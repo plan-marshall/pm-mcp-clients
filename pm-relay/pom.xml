@@ -3,8 +3,8 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>de.planmarshall</groupId>
-        <artifactId>pm-clients</artifactId>
-        <version>0.1.1-SNAPSHOT</version>
+        <artifactId>pm-mcp-clients</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>pm-relay</artifactId>

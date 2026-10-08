@@ -3,8 +3,8 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>de.planmarshall</groupId>
-        <artifactId>pm-modules</artifactId>
-        <version>0.1.1-SNAPSHOT</version>
+        <artifactId>pm-mcp-clients</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>pm-exec</artifactId>
@@ -12,6 +12,8 @@
     <name>pm-exec</name>
     <description>Job confinement launcher, native binary pm-exec.</description>
     <properties>
+        <!-- Switches on the rule of the root POM: no dependency on a module of the product -->
+        <pm.guard.no-product-module.skip>false</pm.guard.no-product-module.skip>
         <maven.jar.plugin.automatic.module.name>de.planmarshall.exec</maven.jar.plugin.automatic.module.name>
         <!-- Enabled by the integration-tests profile -->
         <skipITs>true</skipITs>

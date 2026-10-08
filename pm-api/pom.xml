@@ -3,8 +3,8 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>de.planmarshall</groupId>
-        <artifactId>pm-modules</artifactId>
-        <version>0.1.1-SNAPSHOT</version>
+        <artifactId>pm-mcp-clients</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>pm-api</artifactId>
@@ -12,6 +12,10 @@
     <name>pm-api</name>
     <description>Client contract of the daemon API: socket client, on-demand start, runtime-token checks, host-detection table.</description>
     <properties>
+        <!-- Switches on the rule of the root POM: jackson-core only -->
+        <pm.guard.jackson-core-only.skip>false</pm.guard.jackson-core-only.skip>
+        <!-- Enabled by the integration-tests profile -->
+        <skipITs>true</skipITs>
         <maven.jar.plugin.automatic.module.name>de.planmarshall.api</maven.jar.plugin.automatic.module.name>
     </properties>
     <dependencies>
@@ -61,6 +65,16 @@
                     <argLine>@{argLine} -XX:+IgnoreUnrecognizedVMOptions -Djava.awt.headless=true --enable-native-access=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -XX:+IgnoreUnrecognizedVMOptions -Djava.awt.headless=true --enable-native-access=ALL-UNNAMED</argLine>
+                    <systemPropertyVariables>
+                        <pm.root>${maven.multiModuleProjectDirectory}</pm.root>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
             <!-- The in-test fake runtime server is shared with the test scopes of pm-relay and pm-operator -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -75,4 +89,31 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <!-- Runs the *IT tests -->
+        <profile>
+            <id>integration-tests</id>
+            <properties>
+                <skipITs>false</skipITs>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <skipTests>true</skipTests>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <configuration>
+                            <skipITs>${skipITs}</skipITs>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

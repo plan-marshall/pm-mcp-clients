@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- Resolved from the package registry of the organisation plan-marshall (.mvn/settings.xml). It holds the
+         Java release, the licence, the quality-gate recipes, the managed third-party versions, the plugin
+         management, and the deployment target with the build check that guards it. -->
+    <parent>
+        <groupId>de.planmarshall</groupId>
+        <artifactId>pm-mcp-parent</artifactId>
+        <version>0.1.0</version>
+        <relativePath />
+    </parent>
+    <artifactId>pm-mcp-clients</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>pm-mcp-clients</name>
+    <description>The client contract of plan-marshall-mcp and everything that runs outside the daemon: pm-api,
+        the job launcher pm-exec, the relay pm-mcp and the operator CLI pm-operator.
+    </description>
+    <url>https://github.com/plan-marshall/pm-mcp-clients/</url>
+    <!-- Restated: the licence URL of the parent names the parent's repository. -->
+    <licenses>
+        <license>
+            <name>Proprietary - all rights reserved</name>
+            <url>https://github.com/plan-marshall/pm-mcp-clients/blob/main/LICENSE.md</url>
+            <distribution>manual</distribution>
+        </license>
+    </licenses>
+    <modules>
+        <module>pm-api</module>
+        <module>pm-exec</module>
+        <module>pm-relay</module>
+        <module>pm-operator</module>
+    </modules>
+    <scm>
+        <url>https://github.com/plan-marshall/pm-mcp-clients/</url>
+        <connection>
+            scm:git:https://github.com/plan-marshall/pm-mcp-clients.git
+        </connection>
+        <developerConnection>
+            scm:git:https://github.com/plan-marshall/pm-mcp-clients/
+        </developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+    <issueManagement>
+        <url>https://github.com/plan-marshall/pm-mcp-clients/issues</url>
+        <system>GitHub Issues</system>
+    </issueManagement>
+
+    <properties>
+        <!-- The repository of this POM: the deployment target of the parent is
+             https://maven.pkg.github.com/plan-marshall/${pm.repository}, and its enforcer rule fails without it. -->
+        <pm.repository>pm-mcp-clients</pm.repository>
+        <!-- Switches of the two dependency rules that hold for one module each (see the enforcer executions) -->
+        <pm.guard.no-product-module.skip>true</pm.guard.no-product-module.skip>
+        <pm.guard.jackson-core-only.skip>true</pm.guard.jackson-core-only.skip>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>de.planmarshall</groupId>
+                <artifactId>pm-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <!-- The dependency rules of this repository and its content rule (PM-IMPL-1). Their controls are the
+                 fixture projects below src/guard-controls, which BuildGuardsIT of pm-api builds and expects to
+                 fail. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <!-- Clients never reach the engine: no module depends, directly or transitively, on a
+                         module of the product other than pm-api, and none on Quarkus. One convenience
+                         dependency would let a client binary run engine or store code in its own process, and
+                         a dependency of one CLI module on the other would put operator verbs into the binary
+                         the model may run. -->
+                    <execution>
+                        <id>clients-depend-on-pm-api-only</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>de.planmarshall:*</exclude>
+                                        <exclude>io.quarkus:*</exclude>
+                                    </excludes>
+                                    <includes>
+                                        <include>de.planmarshall:pm-api</include>
+                                    </includes>
+                                    <message>A module of pm-mcp-clients depends on pm-api at most among the modules of the product, and never on Quarkus.</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                    <!-- pm-exec depends on no module of the product; switched on in its POM. -->
+                    <execution>
+                        <id>no-product-module</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${pm.guard.no-product-module.skip}</skip>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>de.planmarshall:*</exclude>
+                                    </excludes>
+                                    <message>pm-exec depends on no other module of the product.</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                    <!-- pm-api depends on the streaming API of jackson-core only (beside Lombok at compile time and
+                         the test libraries): jackson-databind would pull reflection-heavy binding into the plain
+                         native client binaries. Switched on in its POM. -->
+                    <execution>
+                        <id>jackson-core-only</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${pm.guard.jackson-core-only.skip}</skip>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>*</exclude>
+                                    </excludes>
+                                    <!-- Beside jackson-core: Lombok, which is needed at compile time only, and the
+                                         JUnit stack of the tests with what it brings (the rule cannot tell the
+                                         scope of a transitive dependency) -->
+                                    <includes>
+                                        <include>com.fasterxml.jackson.core:jackson-core</include>
+                                        <include>org.projectlombok:lombok</include>
+                                        <include>org.junit.jupiter:*</include>
+                                        <include>org.junit.platform:*</include>
+                                        <include>org.opentest4j:*</include>
+                                        <include>org.apiguardian:*</include>
+                                        <include>org.jspecify:*</include>
+                                    </includes>
+                                    <message>pm-api depends on jackson-core only.</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                    <!-- No model-facing content in a public artifact: a default workflow unit, a shipped role
+                         artifact, a skill or a client bundle in a module of this repository would be published
+                         with its JAR. Test fixtures are written for the test, never copied from the content. -->
+                    <execution>
+                        <id>no-model-facing-content</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireFilesDontExist>
+                                    <files>
+                                        <file>${project.build.outputDirectory}/workflows</file>
+                                        <file>${project.build.outputDirectory}/roles</file>
+                                        <file>${project.build.outputDirectory}/bundles</file>
+                                        <file>${project.build.outputDirectory}/skills</file>
+                                    </files>
+                                    <message>Model-facing content (workflows/, roles/, bundles/, skills/) belongs to the assembly pm-mcp-server, never to a module of this repository.</message>
+                                </requireFilesDontExist>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
