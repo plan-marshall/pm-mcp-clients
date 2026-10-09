@@ -1,0 +1,29 @@
+= Session relay: generation and host markers
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `relay-generation-and-markers`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 2
+Where:: pm-relay
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* Relay rule 6: the relay carries its generation as `PM-MCP-Generation` on a session connection and restarts in the same generation.
+* Relay rule 7: host markers are passed on as `PM-MCP-Host-Marker`.
+* The session-generation store is a Milestone 3 task of `pm-mcp-core`; this task delivers what the relay sends and proves it against the stub daemon.
+
+A session relay has no generation of its own today: the relay sends `PM-MCP-Generation` only for a worker, whose generation comes from its environment. The generation of a session is issued by the daemon from the session-generation store. Relay rule 7 (host markers) can be delivered now; relay rule 6 is delivered when that store has a work package and is done. Split the package there if rule 7 is wanted first.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-3[PM-ARCH-3], link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-8[PM-ARCH-8]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/03-relay.adoc#relay-rules[Runtime Model § Relay Rules]; link:../../../plan-marshall-documentation/doc/specification/runtime-model/03-relay.adoc#_host_protocol_forms[§ Host Protocol Forms]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc#PM-WATCH-RUN-16[PM-WATCH-RUN-16]; link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc[Runtime Model]
+
+== Done When
+
+`RelayTest` covers rules 6 and 7 for both host protocol forms; `PmMcpProcessIT` shows the headers on the wire.
