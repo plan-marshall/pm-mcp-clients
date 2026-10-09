@@ -1,0 +1,166 @@
+= Milestone 2: Always-On Runtime, STDIO Relay, Process Coordination & Operator Channel
+:toc: left
+:toclevels: 2
+:nofooter:
+
+Plan of the repository `pm-mcp-clients` for link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 2. The links assume the repositories checked out beside each other (`../plan-marshall-documentation`, `../pm-mcp-clients`, `../pm-mcp-core`, `../plan-marshall-mcp`); they do not resolve in the web view of a single repository.
+
+== Scope
+
+Modules of this repository in the milestone: `pm-api`, `pm-relay` (binary `pm-mcp`), `pm-operator`.
+
+The milestone delivers the always-on daemon on its Unix socket, the session relay, the operator CLI, process coordination, and the security foundation. What it means and requires is stated in the documentation repository and only referenced here: the requirements the milestone names, the specifications and their watch documents. This plan holds the tasks: what this repository does for the milestone, in which module and package, in which order, and how each task is proven.
+
+The other two plans: link:../../../pm-mcp-core/doc/plans/milestone-02-runtime-relay-operator.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/milestone-02-runtime-relay-operator.adoc[`plan-marshall-mcp`].
+
+== How to Work a Task
+
+* *Trace first.* The tasks are cut from the roadmap items, with the requirements, sections, and watch documents the roadmap names. Before code, the implementing session builds the trace matrix of the project skill `traced-implementation` (`../plan-marshall-documentation/.claude/skills/traced-implementation/SKILL.md`) for the task: every requirement bullet, every specification section, and every watch item anchored to them, each with its destinations. A task is split or extended where the matrix shows it; a row left out is recorded `out of slice` with its reason.
+* *Present and remaining.* Each roadmap item of the milestone states what the code of Milestone 0 already covers. Read it before a task: a task delivers the remainder, never a second form of what exists.
+* *Order.* First of the three. `pm-mcp-core` and `plan-marshall-mcp` build against its `SNAPSHOT`, so a task that changes the contract of `pm-api` merges before the tasks that consume it.
+* *Done.* A task is done with its guarding tests, `verify`, `verify -Ppre-commit` (its rewrites reviewed and committed), `verify -Pcoverage`, and `verify -Pintegration-tests` green, and the native build where the task touches a binary.
+* *Documents.* A statement of a requirement or specification that a task proves wrong is corrected in the documentation repository, never worked around in code. The concept, developer, and user documentation of a task, the deletion of the implemented specification sections and watch items, and the ticks in the roadmap go into one pull request in `plan-marshall-documentation` that names the code pull request and merges after it.
+
+== Tasks
+
+[cols="1,4,3",options="header"]
+|===
+|Task |Deliverable |Depends on
+|<<M2-CL-1>>
+|API contract of `/api/v1` in `pm-api`
+|—
+
+|<<M2-CL-2>>
+|Host-detection data in the profile documents
+|—
+
+|<<M2-CL-3>>
+|Operator checks of `pm-operator`
+|M2-CL-2
+
+|<<M2-CL-4>>
+|Command tree of both binaries
+|M2-CL-1, M2-CL-3; the endpoints of link:../../../plan-marshall-mcp/doc/plans/milestone-02-runtime-relay-operator.adoc#M2-MCP-5[M2-MCP-5]
+
+|<<M2-CL-5>>
+|Session relay: generation and host markers
+|—
+
+|<<M2-CL-6>>
+|Installation layout seen from the binaries
+|—
+
+|<<M2-CL-7>>
+|Exit: integration-test layers of this repository
+|M2-CL-3, M2-CL-4, M2-CL-5
+
+|===
+
+[[M2-CL-1]]
+=== M2-CL-1: API contract of `/api/v1` in `pm-api`
+
+Where:: pm-api, package `api.resource`
+What::
+* Resource records of the resources the daemon serves in this milestone (runtime status, web access, runtime stop, credential status, the runtime-wide event stream), the link relations, and the closed error codes.
+* The JSON codec over the streaming API of `jackson-core`; no `jackson-databind`.
+* The TOON codec is the undecided point of PM-WATCH-MOD-4 (one encoder in `pm-api`, or a JSON-only API). Decide it first, as a correction task of the documentation pull request, and delete the watch item.
+Trace::
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-1[PM-IMPL-1], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-3[PM-IMPL-3]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Runtime Model § Local API]; link:../../../plan-marshall-documentation/doc/specification/identifiers.adoc[Identifiers]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/module-structure.adoc#PM-WATCH-MOD-4[PM-WATCH-MOD-4]; link:../../../plan-marshall-documentation/doc/implementation-watch/module-structure.adoc#PM-WATCH-MOD-1[PM-WATCH-MOD-1]; link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc[Runtime Model]
+Depends on:: —
+Done when:: Every resource of the list has a record with a round-trip test of its codec; the dependency guard still passes (`pm-api` on `jackson-core` only).
+
+[[M2-CL-2]]
+=== M2-CL-2: Host-detection data in the profile documents
+
+Where:: pm-api, package `api.host`; resources `classpath:/profiles/<client_id>.json`
+What::
+* Move the detection signals, their precedence, the process markers, the session id variable, and the identity probes out of the Java constants into the `detection` and `identity` objects of one profile document per harness.
+* A generic reader of these two objects with the streaming API; it skips the rest of the document and names no harness.
+* Build test: no production class of this repository names a harness; every shipped document has both objects in the closed form of the schema, with pairwise different `precedence`.
+* The comparison of the Host Integration Table with the documents needs the documentation checkout; plan where that test runs (this repository with the sibling checkout, or the documentation repository) in the trace matrix.
+Trace::
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-5[PM-CLIENT-5]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#harness-as-data[Client Profiles § The Profile Is the Harness]; link:../../../plan-marshall-documentation/doc/specification/client-profiles/02-placeholders-and-detection.adoc#host-detection-table[Client Profiles § Host-Detection Table]; link:../../../plan-marshall-documentation/doc/specification/client-profiles/02-placeholders-and-detection.adoc#host-integration-table[Host Integration Table]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/client-profiles.adoc[Client Profiles]
+Depends on:: —
+Done when:: `HostDetection` holds no host constant; the detection tests pass unchanged against the documents; the build test fails for a harness name added to a production class (control fixture).
+
+[[M2-CL-3]]
+=== M2-CL-3: Operator checks of `pm-operator`
+
+Where:: pm-operator
+What::
+* Every operator verb refuses to run without an attached terminal or while an agent environment signal of the host-detection table is present; no verb asks for the signal itself.
+Trace::
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[CLI & Security § Operator Channel Isolation]; link:../../../plan-marshall-documentation/doc/later-improvements.adoc#_l_1_operator_proof_beyond_the_cli_checks[Later Improvements L-1]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/cli-and-security.adoc[CLI & Security]
+Depends on:: M2-CL-2
+Done when:: Table test over environments with and without a terminal and with each host's signals; the process-level test in `PmOperatorProcessIT`.
+
+[[M2-CL-4]]
+=== M2-CL-4: Command tree of both binaries
+
+Where:: pm-relay, pm-operator; pm-api package `api.files`
+What::
+* Every command of the command tree whose server side this milestone delivers, each a request through the socket client of `pm-api` with the on-demand start: among them `runtime install|uninstall`, `audit verify`, and `drain`. A command whose server side belongs to a later milestone is recorded `out of slice` in the trace matrix with that milestone.
+* The runtime-free verbs read only the closed list of files, through the read-only codec in `api.files`; a test fails for any other file read.
+Trace::
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-7[PM-ARCH-7], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-6[PM-SEC-6]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[§ Runtime Access & On-Demand Start]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-file-reads[§ Direct file reads]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/cli-and-security.adoc[CLI & Security]
+Depends on:: M2-CL-1, M2-CL-3; the endpoints of link:../../../plan-marshall-mcp/doc/plans/milestone-02-runtime-relay-operator.adoc#M2-MCP-5[M2-MCP-5]
+Done when:: Each verb has a test against the stub daemon of the module; `status` and the other runtime-free verbs start and write nothing.
+
+[[M2-CL-5]]
+=== M2-CL-5: Session relay: generation and host markers
+
+Where:: pm-relay
+What::
+* Relay rule 6: the relay carries its generation as `PM-MCP-Generation` on a session connection and restarts in the same generation.
+* Relay rule 7: host markers are passed on as `PM-MCP-Host-Marker`.
+* The session-generation store is a Milestone 3 task of `pm-mcp-core`; this task delivers what the relay sends and proves it against the stub daemon.
+Trace::
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-3[PM-ARCH-3], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-8[PM-ARCH-8]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/03-relay.adoc#relay-rules[Runtime Model § Relay Rules]; link:../../../plan-marshall-documentation/doc/specification/runtime-model/03-relay.adoc#_host_protocol_forms[§ Host Protocol Forms]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc#PM-WATCH-RUN-16[PM-WATCH-RUN-16]; link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc[Runtime Model]
+Depends on:: —
+Done when:: `RelayTest` covers rules 6 and 7 for both host protocol forms; `PmMcpProcessIT` shows the headers on the wire.
+
+[[M2-CL-6]]
+=== M2-CL-6: Installation layout seen from the binaries
+
+Where:: pm-api (resolution of `PM_MCP_HOME`), pm-operator
+What::
+* The user symlinks of `pm-mcp` and `pm-operator`, the versioned installation directory, and the switch of the symlinks at an upgrade, as far as the specification gives them to the client binaries; the drain of the old runtime is link:../../../pm-mcp-core/doc/plans/milestone-02-runtime-relay-operator.adoc#M2-CO-2[M2-CO-2].
+Trace::
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-7[PM-ARCH-7]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[CLI & Security § Installation Layout]; link:../../../plan-marshall-documentation/doc/specification/filesystem-layout/02-machine-runtime.adoc[Filesystem Layout § Machine & Runtime]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/filesystem-layout.adoc[Filesystem Layout]; link:../../../plan-marshall-documentation/doc/implementation-watch/cli-and-security.adoc[CLI & Security]
+Depends on:: —
+Done when:: A test stages two versioned directories and proves that both binaries resolve `PM_MCP_HOME` through the switched symlinks and start their siblings by absolute path.
+
+[[M2-CL-7]]
+=== M2-CL-7: Exit: integration-test layers of this repository
+
+Where:: pm-relay, pm-operator
+What::
+* `pm-relay`: `stdout` hygiene, relay termination, and the relay rules at the process level against the stub daemon.
+* `pm-operator`: the operator checks and the runtime-free verbs at the process level.
+* What needs the real daemon (restart in the generation, `hello` from a second connection) is link:../../../plan-marshall-mcp/doc/plans/milestone-02-runtime-relay-operator.adoc#M2-MCP-6[M2-MCP-6].
+Trace::
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-3[PM-ARCH-3], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-4[PM-SEC-4]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/mcp-tools/04-errors-and-testing.adoc[MCP Tools § Errors & Protocol Testing]; link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#test-placement[Module Structure § Test Placement]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc[Runtime Model]; link:../../../plan-marshall-documentation/doc/implementation-watch/cli-and-security.adoc[CLI & Security]
+Depends on:: M2-CL-3, M2-CL-4, M2-CL-5
+Done when:: `verify -Pintegration-tests` and `verify -Pnative,integration-tests` are green with the new cases.
+
+
+== Documentation Task
+
+[[M2-CL-DOC]]
+=== M2-CL-DOC: Documentation pull request
+
+One pull request in `plan-marshall-documentation` per code pull request of this plan, or one for several where they describe the same topic: the concept, developer, and user documents written from the implemented sections and watch items and verified against the code, the `Implementation:`, `Verified by:` and `Documentation:` lines of the requirements, the deleted specification sections and watch items, and the roadmap item ticked or its _Present_ and _Remaining_ updated.
