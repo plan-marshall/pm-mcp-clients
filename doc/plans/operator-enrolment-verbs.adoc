@@ -10,7 +10,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* `pm-operator enrol` with `--pilot`, `unenrol`, and `accept-edit`, each a request to the daemon; `accept-edit` shows path and the recorded against the current size and SHA-256 before confirmation.
+* `pm-operator enrol` with `--pilot`, `unenrol`, and `accept-edit`, each a request to the daemon; `accept-edit` shows the path and, side by side, the recorded size and SHA-256 and the current size and SHA-256 of the store before it asks for confirmation.
 
 == Trace
 

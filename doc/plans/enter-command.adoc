@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * `pm-mcp enter` sends what the host shell sees as one request and writes no store: the declared client, the environment signature from the host-detection data, the host build probe with its timeout, the hint file.
-* The bundle drift check of `enter` belongs to Milestone 7.
+* The bundle drift check of `enter` belongs to roadmap Milestone 7, which is not cut into work packages yet (see the index); it is out of this package.
 
 == Trace
 
