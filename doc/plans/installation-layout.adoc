@@ -1,0 +1,27 @@
+= Installation layout seen from the binaries
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `installation-layout`
+
+[horizontal]
+Status:: `open`
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 2
+Where:: pm-api (resolution of `PM_MCP_HOME`), pm-operator
+Depends on:: nothing
+Unblocks:: nothing
+
+== What
+
+* The user symlinks of `pm-mcp` and `pm-operator`, the versioned installation directory, and the switch of the symlinks at an upgrade, as far as the specification gives them to the client binaries; the drain of the old runtime is link:../../../pm-mcp-core/doc/plans/runtime-lifecycle.adoc[`pm-mcp-core` / `runtime-lifecycle`].
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-7[PM-ARCH-7]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[CLI & Security § Installation Layout]; link:../../../plan-marshall-documentation/doc/specification/filesystem-layout/02-machine-runtime.adoc[Filesystem Layout § Machine & Runtime]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/filesystem-layout.adoc[Filesystem Layout]; link:../../../plan-marshall-documentation/doc/implementation-watch/cli-and-security.adoc[CLI & Security]
+
+== Done When
+
+A test stages two versioned directories and proves that both binaries resolve `PM_MCP_HOME` through the switched symlinks and start their siblings by absolute path.

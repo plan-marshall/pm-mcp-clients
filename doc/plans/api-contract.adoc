@@ -1,0 +1,29 @@
+= API contract of `/api/v1` in `pm-api`
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `api-contract`
+
+[horizontal]
+Status:: `open`
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 2
+Where:: pm-api, package `api.resource`
+Depends on:: nothing
+Unblocks:: link:command-tree.adoc[`command-tree`], link:../../../plan-marshall-mcp/doc/plans/local-adapter-on-api-contract.adoc[`plan-marshall-mcp` / `local-adapter-on-api-contract`], link:../../../plan-marshall-mcp/doc/plans/operator-channel-api.adoc[`plan-marshall-mcp` / `operator-channel-api`]
+
+== What
+
+* Resource records of the resources the daemon serves in this milestone (runtime status, web access, runtime stop, credential status, the runtime-wide event stream), the link relations, and the closed error codes.
+* The JSON codec over the streaming API of `jackson-core`; no `jackson-databind`.
+* The TOON codec is the undecided point of PM-WATCH-MOD-4 (one encoder in `pm-api`, or a JSON-only API). Decide it first, as a correction task of the documentation pull request, and delete the watch item.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+
+* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-1[PM-IMPL-1], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-3[PM-IMPL-3]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Runtime Model § Local API]; link:../../../plan-marshall-documentation/doc/specification/identifiers.adoc[Identifiers]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/module-structure.adoc#PM-WATCH-MOD-4[PM-WATCH-MOD-4]; link:../../../plan-marshall-documentation/doc/implementation-watch/module-structure.adoc#PM-WATCH-MOD-1[PM-WATCH-MOD-1]; link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc[Runtime Model]
+
+== Done When
+
+Every resource of the list has a record with a round-trip test of its codec; the dependency guard still passes (`pm-api` on `jackson-core` only).
