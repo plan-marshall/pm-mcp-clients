@@ -1,0 +1,25 @@
+= Operator verbs of harness enrolment and roles
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `operator-harness-and-roles-verbs`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 4
+Where:: pm-operator; contract records in pm-api `api.resource`
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* `pm-operator enrol-harness <client>`, which shows path, version and digest before it is recorded, and `pm-operator roles list|show|qualify`.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/16-model-work.adoc#PM-WORK-1[PM-WORK-1], link:../../../plan-marshall-documentation/doc/requirements/16-model-work.adoc#PM-WORK-6[PM-WORK-6], link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-3[PM-SEC-3]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc[CLI & Security § Credentials & Operator]; link:../../../plan-marshall-documentation/doc/specification/model-work/01-roles-and-configuration.adoc[Model Work § Roles & Configuration]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/cli-and-security.adoc[CLI & Security]; link:../../../plan-marshall-documentation/doc/implementation-watch/model-work.adoc[Model Work]
+
+== Done When
+
+Each verb against the stub daemon; `roles show` reports an advisory tool set and a narrowed effort.

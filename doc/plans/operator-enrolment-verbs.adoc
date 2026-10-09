@@ -1,0 +1,25 @@
+= Operator verbs of enrolment and store integrity
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `operator-enrolment-verbs`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 3
+Where:: pm-operator; contract records in pm-api `api.resource`
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* `pm-operator enrol` with `--pilot`, `unenrol`, and `accept-edit`, each a request to the daemon; `accept-edit` shows path and the recorded against the current size and SHA-256 before confirmation.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/06-execution.adoc#PM-EXEC-2[PM-EXEC-2], link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-3[PM-SEC-3], link:../../../plan-marshall-documentation/doc/requirements/14-implementation.adoc#PM-IMPL-7[PM-IMPL-7]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#enrolment-lifecycle-release[CLI & Security § Enrolment, Lifecycle Gate & Release]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[§ Command Tree]; link:../../../plan-marshall-documentation/doc/specification/store-schemas/13-leases-integrity-testing.adoc#store-digest-verification[Store Schemas § Store Digest Verification]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/cli-and-security.adoc[CLI & Security]
+
+== Done When
+
+Each verb against the stub daemon, with the operator checks; `accept-edit` never sends a confirmation the operator did not give.

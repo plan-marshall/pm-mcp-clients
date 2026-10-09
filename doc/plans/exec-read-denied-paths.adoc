@@ -1,0 +1,25 @@
+= `pm-exec`: several read-denied paths
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `exec-read-denied-paths`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 4
+Where:: pm-exec
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* `pm-exec` takes several read-denied paths beside `<PM_MCP_BASE>` (the session bus socket and, without the opt-in, the container engine's sockets) and enumerates the read set around all of them.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-5[PM-SEC-5]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/job-runtime/02-confinement-and-environment.adoc#session-bus[Job Runtime § Session Bus]; link:../../../plan-marshall-documentation/doc/specification/job-runtime/02-confinement-and-environment.adoc#container-engine[§ Container Engine]; link:../../../plan-marshall-documentation/doc/specification/job-runtime/02-confinement-and-environment.adoc#_linux_filesystem_confinement_landlock[§ Linux Filesystem Confinement]
+* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-35[PM-WATCH-JOB-35]; link:../../../plan-marshall-documentation/doc/implementation-watch/job-runtime.adoc[Job Runtime]
+
+== Done When
+
+`PmExecIT` on Linux: each denied path is unreadable and its siblings are readable; the launch line reports the level and the ABI unchanged.
