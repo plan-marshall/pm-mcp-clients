@@ -4,11 +4,9 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `profile-documents`
 
 [horizontal]
-Status:: `open`
 Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 2
 Where:: pm-api, package `api.host`; resources `classpath:/profiles/<client_id>.json`
-Depends on:: nothing
-Unblocks:: link:operator-checks.adoc[`operator-checks`], link:../../../pm-mcp-core/doc/plans/profile-loader.adoc[`pm-mcp-core` / `profile-loader`]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What
 
@@ -21,7 +19,7 @@ Unblocks:: link:operator-checks.adoc[`operator-checks`], link:../../../pm-mcp-co
 
 Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
-* Requirements: link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-5[PM-CLIENT-5]
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/13-client-profiles.adoc#PM-CLIENT-3[PM-CLIENT-3], link:../../../plan-marshall-documentation/doc/requirements/13-client-profiles.adoc#PM-CLIENT-5[PM-CLIENT-5]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#harness-as-data[Client Profiles § The Profile Is the Harness]; link:../../../plan-marshall-documentation/doc/specification/client-profiles/02-placeholders-and-detection.adoc#host-detection-table[Client Profiles § Host-Detection Table]; link:../../../plan-marshall-documentation/doc/specification/client-profiles/02-placeholders-and-detection.adoc#host-integration-table[Host Integration Table]
 * Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/client-profiles.adoc[Client Profiles]
 
