@@ -14,8 +14,6 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * Relay rule 7: host markers are passed on as `PM-MCP-Host-Marker`.
 * The session-generation store is a Milestone 3 task of `pm-mcp-core`; this task delivers what the relay sends and proves it against the stub daemon.
 
-A session relay has no generation of its own today: the relay sends `PM-MCP-Generation` only for a worker, whose generation comes from its environment. The generation of a session is issued by the daemon from the session-generation store. Relay rule 7 (host markers) can be delivered now; relay rule 6 is delivered when that store has a work package and is done. Split the package there if rule 7 is wanted first.
-
 == Trace
 
 Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
