@@ -48,6 +48,10 @@ them with a fixture project below `src/guard-controls`:
   `pm-operator` depend on `pm-api` only and never on each other.
 - `pm-exec` depends on no other module of the product.
 - `pm-api` depends on the streaming API of `jackson-core` only, never on `jackson-databind`.
+- The coordinates of the product come from the organisation registry: `.mvn/settings.xml` lists it before Maven
+  Central, and the group id filter of `.mvn/rrf` (switched on in `.mvn/maven.config`) lets it be asked for
+  `de.planmarshall` only. This check is inherited from the parent POM; its fixture here has its own `.mvn` with Maven
+  Central listed first.
 - No module carries model-facing content: nothing below `workflows/`, `roles/`, `bundles/` or `skills/` in a JAR.
   Test fixtures are written for the test, never copied from the content of the product.
 
