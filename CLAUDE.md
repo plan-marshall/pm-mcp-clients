@@ -86,8 +86,10 @@ The work of this repository is planned as work packages in `doc/plans/`, one fil
 of the other repositories). A package is ready when it is open and everything it depends on is done; the roadmap milestone it serves says for which exit it
 is needed, not when it may start. The plan files hold the tasks only: requirements, specifications and watch
 items stay in `plan-marshall-documentation` and are linked by relative paths that assume the repositories checked
-out beside each other. Claim a package with a draft pull request that names it and sets it to `in progress`,
-after checking that no open pull request already names it.
+out beside each other. A package is worked in the usual plan-marshall flow of the section "Git Workflow" (branch,
+commits, pull request at finalize), and its row in the index is set to `done` within those commits. A plan that
+changes what a specification or requirement states updates the documents concerned there directly, as part of its
+own work.
 
 ## Git Workflow
 
