@@ -6,7 +6,7 @@ link:README.adoc[Work packages of `pm-mcp-clients`] » `mock-runtime`
 [horizontal]
 Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 2
 Where:: new module `pm-mock-runtime`; the test scopes of `pm-relay` and `pm-operator`
-Epic:: link:epic-clients.adoc[the clients, their mock runtime, and their test infrastructure]
+Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What

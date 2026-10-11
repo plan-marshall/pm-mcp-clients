@@ -6,7 +6,7 @@ link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-design`
 [horizontal]
 Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]; no roadmap milestone yet
 Where:: `plan-marshall-documentation`, `doc/design/` (a design document for the terminal client); no code
-Epic:: link:epic-clients.adoc[the clients, their mock runtime, and their test infrastructure]
+Part of:: link:epic-clients.adoc[the client work]
 Worked by:: a Claude Code session directly, not through plan-marshall (<<run>>)
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 

@@ -6,7 +6,7 @@ link:README.adoc[Work packages of `pm-mcp-clients`] » `web-app-foundation`
 [horizontal]
 Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 11 (the module), pulled forward; link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]
 Where:: new module `pm-web-app`
-Epic:: link:epic-clients.adoc[the clients, their mock runtime, and their test infrastructure]
+Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What

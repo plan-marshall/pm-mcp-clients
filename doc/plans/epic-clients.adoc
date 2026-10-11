@@ -1,9 +1,9 @@
-= Epic: the clients, their mock runtime, and their test infrastructure
+= The Client Work: the clients, their mock runtime, and their test infrastructure
 :toc: left
 :toclevels: 2
 :nofooter:
 
-link:README.adoc[Work packages of `pm-mcp-clients`] » Epic: the clients
+link:README.adoc[Work packages of `pm-mcp-clients`] » The Client Work
 
 The plan of the client work of this repository: what it is for, how its work is cut, the gate between design and implementation, and the rules every package of it follows. The design packages are run directly in Claude Code sessions; the other packages are implemented through plan-marshall in an orchestrator epic, which is bootstrapped from its own brief, link:orchestrator-brief.adoc[Orchestrator Brief]. The packages it covers are rows of the link:README.adoc#packages[index], which stays the only place that states their status and dependencies; this file never repeats either.
 
