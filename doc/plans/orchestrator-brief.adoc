@@ -1,0 +1,77 @@
+= Orchestrator Brief: `pm-mcp-clients`
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » Orchestrator Brief
+
+The brief from which the plan-marshall orchestrator bootstraps and plans the implementation epic of this repository. It is read once at the epic's initialisation and again when the epic is re-planned; the epic's ledger then holds the plan, and the link:README.adoc#packages[index] stays the only place that states the status of a package and what it depends on.
+
+[#epic]
+== Epic
+
+Slug:: `pm-mcp-clients`
+Title:: `pm-mcp-clients` work packages: client contract, binaries, mock runtime, and the two clients
+Vision:: Implement every work package of the index that is worked through plan-marshall, one plan per package, each landing as one pull request here with the updates of `plan-marshall-documentation` made as part of its own work. The epic covers the packages of roadmap Milestones 2 to 4 and the implementation packages of the link:epic-clients.adoc[client work] (the mock runtime, the message catalogue, the terminal test infrastructure, and the onboarding in both clients). It is done when every package in its scope is `done` in the index, or recorded in the epic as blocked on a decision or a dependency outside this repository.
+Sibling epic:: `pm-mcp-core-m2-m4` in `pm-mcp-core`, run in parallel; an epic orders only its own queue, so dependencies between the repositories stay rows of the indexes.
+
+[#scope]
+== Scope
+
+In scope:: every package of the index except those named below.
+Not in scope:: `cli-design` and `web-design`: design work, run directly in Claude Code sessions without plan-marshall (each file's _How It Is Run_). The epic waits on them as on an outside dependency: a package that depends on one is parked until the index shows it `done`.
+Parked from the start:: `landlock-on-wsl2` (`blocked` in the index on a machine the operator provides).
+
+[#order]
+== Order and Priority
+
+* The order is the dependency order of the index; ready packages run in parallel within the parallelization scope.
+* *First*: `profile-documents` and `exec-read-denied-paths`. The sibling epic in `pm-mcp-core` waits on both (its `profile-loader` and, through it, most of its roles and tasks; its `job-confinement-and-environment`); they take the first free slots.
+* *Then*: `api-contract`, which opens `mock-runtime` and the operator verbs; `mock-runtime`, `message-catalogue` and `cli-test-infra` need no design and run before the design gate.
+* *After the gate*: `cli-onboarding`, `web-app-foundation`, `web-onboarding`, each as soon as its design package is `done`.
+
+[#workstreams]
+== Suggested Workstreams
+
+[cols="1,3",options="header"]
+|===
+|Workstream |Packages
+
+|Client contract
+|`api-contract`, `profile-documents`, `installation-layout`
+
+|Operator CLI
+|`operator-checks`, `command-tree`, `operator-enrolment-verbs`, `operator-harness-and-roles-verbs`
+
+|Relay and entry
+|`relay-generation-and-markers`, `enter-command`, `integration-layers`
+
+|Job launcher
+|`exec-read-denied-paths`, `landlock-on-wsl2`
+
+|Mock runtime and test infrastructure
+|`mock-runtime`, `message-catalogue`, `cli-test-infra`
+
+|Clients
+|`cli-onboarding`, `web-app-foundation`, `web-onboarding`
+|===
+
+[#constraints]
+== Standing Constraints
+
+To be carried into every staged plan spec, beside the rules of `CLAUDE.md` and of link:README.adoc#how[How to Work a Package]:
+
+* *Java 25 is the baseline*; the client binaries are plain GraalVM native images without Quarkus, and the client modules depend on `pm-api` only (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#dependency-rules[Dependency Rules]).
+* *Use cases and accepted designs first.* A client package implements what the use cases and the accepted design state; a gap is fixed in `plan-marshall-documentation` first.
+* *Both clients, one state.* No state is built for one client only; every user-facing text comes from the message catalogue.
+* *Mock first.* Every client-facing flow ships its scenarios in `pm-mock-runtime`; client tests run against the mock runtime, never a hand-made fake.
+* *The onboarding principles*: nothing happens without the operator's consent; preselect as much as possible and hide nothing; every check reports a checkmark or an error with its fix.
+* *No dependency without the operator*: the web toolchain, a browser test runner, and a terminal test library are asked for before they are added.
+* *Index discipline*: a plan changes only its own row of the index.
+
+[#bootstrap]
+== Bootstrap
+
+. *Prerequisite*: plan-marshall is set up for this repository (by the operator), as it is for `pm-mcp-core`.
+. Initialise the orchestrator with this file as the brief and the slug above; suggested parallelization scope 3, the ledger in the shared ledger worktree as in `pm-mcp-core`.
+. Decompose along the index: one staged plan per package in scope, the workstreams above, the order and priority above, the standing constraints in every spec, the design packages and `landlock-on-wsl2` parked.

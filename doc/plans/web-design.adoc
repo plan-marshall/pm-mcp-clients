@@ -7,11 +7,12 @@ link:README.adoc[Work packages of `pm-mcp-clients`] » `web-design`
 Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc[Use Cases, Web App]; no roadmap milestone yet
 Where:: Claude Design (claude.ai), and `plan-marshall-documentation`, `doc/design/`; no code
 Epic:: link:epic-clients.adoc[the clients, their mock runtime, and their test infrastructure]
+Worked by:: a Claude Code session directly, not through plan-marshall (<<run>>)
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What
 
-A thorough visual design of the web app, made with Claude Design and reviewed by the operator before any implementation:
+A thorough visual design of the web app, made with Claude Design (the design artifacts of claude.ai, with a design system) and reviewed by the operator before any implementation:
 
 * *Design system*: colour tokens for light and dark, typography, spacing, the components every view uses (step bar, consent, check list with checkmark and error, preselected choice, overview with drill-in, table and its list form, progress and model at work, error and fix), the harness monograms, and the icon set.
 * *Views*: every state of the onboarding (web side of link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc[the onboarding design]), the pairing and start pages of UC-WEB-1, and first views of the plan drill-down (UC-WEB-2) and the plan designer (UC-WEB-3) at the level the use cases allow; each at desktop and phone width.
@@ -30,3 +31,13 @@ Requirements, specification sections, use cases, and design documents stay in `p
 == Done When
 
 The operator has accepted the design; every state of the onboarding and of `start` has its view at both widths and in light and dark; the spike's result and the requested dependencies are recorded; the design documents in `plan-marshall-documentation` are merged.
+
+[#run]
+== How It Is Run
+
+This package is design work and is run directly in a Claude Code session, without plan-marshall and outside the orchestrator epic:
+
+. Start a Claude Code session in a worktree of `plan-marshall-documentation` of its own (beside the checkouts other sessions use) and give it this file: "Work the package `web-design` of `pm-mcp-clients` (`doc/plans/web-design.adoc`)".
+. The session reads the use cases, the design documents, and the specification sections of the trace above, works out the design thoroughly, and opens one pull request in `plan-marshall-documentation` with the Claude Design artifact, and the design documents in `doc/design/`.
+. The operator reviews the design in that pull request and asks for changes until it accepts it; the session merges only on the operator's word.
+. Once accepted, a small pull request here sets the row of the package to `done` in the index; the implementation packages that wait on it become ready.

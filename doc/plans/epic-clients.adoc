@@ -5,7 +5,7 @@
 
 link:README.adoc[Work packages of `pm-mcp-clients`] » Epic: the clients
 
-The entry point for the orchestrator epic of this repository. It states what the epic is for, how its work is cut, the gate between design and implementation, and the rules every plan of it follows. The packages it covers are rows of the link:README.adoc#packages[index], which stays the only place that states their status and dependencies; this file never repeats either.
+The plan of the client work of this repository: what it is for, how its work is cut, the gate between design and implementation, and the rules every package of it follows. The design packages are run directly in Claude Code sessions; the other packages are implemented through plan-marshall in an orchestrator epic, which is bootstrapped from its own brief, link:orchestrator-brief.adoc[Orchestrator Brief]. The packages it covers are rows of the link:README.adoc#packages[index], which stays the only place that states their status and dependencies; this file never repeats either.
 
 [#goal]
 == Goal
@@ -25,7 +25,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 == Phases and the Design Gate
 
 . *Foundation*, without a gate: `mock-runtime`, `message-catalogue`, then `cli-test-infra`. They need no design decision and unblock both clients.
-. *Design*, in parallel, each thorough and complete before any client code: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it, and its accepted state is recorded in `plan-marshall-documentation`.
+. *Design*, in parallel, each thorough and complete before any client code, each run directly in a Claude Code session without plan-marshall: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it, and its accepted state is recorded in `plan-marshall-documentation`. The design can start now: it waits for nothing.
 . *Implementation*, after the gate: `cli-onboarding` after `cli-design`; `web-app-foundation` and then `web-onboarding` after `web-design`. Both run against the mock runtime and its scenarios.
 
 [#workstreams]
@@ -58,6 +58,7 @@ Beside the rules of `CLAUDE.md` and of link:README.adoc#how[How to Work a Packag
 * *Java 25 is the baseline*; the client binaries stay plain GraalVM native images without Quarkus.
 
 [#start]
-== Starting the Epic
+== Starting the Work
 
-Prerequisite: plan-marshall is set up for this repository, as it is for `pm-mcp-core`. Then the orchestrator is initialised with this file as the brief and decomposes it along the index; the epic orders only its own queue, so the dependencies on other repositories stay rows of the index.
+* *Design*: now, in two Claude Code sessions, as each design package's file says under _How It Is Run_.
+* *Implementation*: once plan-marshall is set up for this repository (by the operator), through the orchestrator epic bootstrapped from link:orchestrator-brief.adoc[Orchestrator Brief]. Its foundation packages need no design and can start before the design gate.
