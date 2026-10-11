@@ -1,0 +1,101 @@
+= Terminal Client: Command Model
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Command Model
+
+[#commands]
+== Command Model
+
+[#command-tree]
+=== The Verbs
+
+`pm-operator` is the operator's console. Without a verb it opens the console (xref:04-console.adoc[The Console]); inside it every verb is typed without the program name (`config roles --project .`), and the same verb also runs as one shell command (`pm-operator config roles --project .`), which does that one thing and exits, for scripts and quick changes. The console and the onboarding add the entry, the console commands, and the aspects of the existing verb `config` to the terminal verbs of `pm-operator` (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]). All of them are operator verbs (`[op]`): a choice of the onboarding and an answer to a question are operator acts (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal]), and the entry issues a pairing code, which only an operator verb may do. There is no verb `start` and no verb `onboard`: what to do first follows from the state of the machine.
+
+----
+pm-operator                                               [op]  the console; first the onboarding while it is not complete, here or in
+                                                                the web app; once complete, the web app connected (UC-ONB-1, UC-WEB-1)
+pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of the onboarding as a later change (UC-ONB-3 to UC-ONB-9)
+    language       [--interface <locale>] [--model same|<locale>]
+    harness        [--client <client_id>] [--path <executable>]
+    models         [--enrol <client_id>]... [--allow <client_id>:<model>]... [--no-advice]
+    roles          [--defaults] [--set <role>=<client_id>:<model>[:<effort>]]... [--reset <role>|--reset-all]
+    credentials    [--store os|file]
+    providers      [--use <provider>[:native|:cli]]... [--without <provider>]...
+    plan-defaults  [--landing pull-request|main|files] [--method test-first|tests-after]
+                   [--asking every-phase|key-points|questions-only]
+    consents       the remembered consents, to withdraw one
+pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
+pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
+pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies
+
+<level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
+common:    --no-input   never ask; stop at the first choice not given (exit code 3)
+           --yes        accept the confirmations of the displayed changes (never a consent)
+           --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
+
+In the console only:
+  questions                   the open questions and waiver requests, with deadline and recommendation
+  answer <id> [<option>]      open a question as a dialogue, or answer it with an option
+  web [pair|lan|copy [ssh]]   the ways into the web app; a new code; other devices; copy the URL or the ssh command
+  help [<verb>]               the verbs and console commands
+  exit                        leave the console (as Ctrl+D)
+----
+
+* *`pm-operator`* without a verb opens the console after the operator checks; it starts the runtime on demand, as every verb does, and then follows the state of the machine:
+** *Not fully onboarded* (the onboarding has not reached `onboard.completed`): it asks where to go on, here or in the web app (xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded]). _In the web app_ connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1] does, and the web app shows the onboarding where it stands; the console stays open beside it. _Here_ runs the onboarding dialogue from where it stands: the first run from `onboard.mode`, an interrupted run from the state it stopped in. Left before it completes, the prompt shows the step it stopped at (`pm [setup 3/7] ›`), and `Enter` on the empty prompt continues it.
+** *Onboarded*: it connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1] does, without waiting: the web listener is opened, the browser is opened with a pairing code only when no browser of this machine is paired yet, otherwise the URL is printed, and over SSH the ways in are printed (xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH]). Then the prompt, with what is pending. `start.wait` is the console itself: a pairing is reported above the prompt, and `web` shows the ways in again.
+** `pm-operator --help` prints the verbs, as every picocli command does; it opens no console.
+* *`config <aspect>`* starts the sub-workflow of one aspect as a later run (`onboard_run: reconfigure`), with the current values as the proposal, and answers each choice state from its arguments where they give one (<<direct-verbs>>). The aspects are the seven steps of the onboarding: `language`, `harness`, `models`, `roles`, `credentials`, `providers`, `plan-defaults`.
+* *Other verbs* never ask where to onboard. A verb that needs a step of the onboarding that is not done yet (a credential before the credential store is chosen, a role before the catalogue exists) is refused, and the refusal names the console (`pm-operator`).
+* *`config show|set|unset`* keep what `pm-operator config` already is: the operator's configuration keys of `machine-config.json` and `local-config.json`. A key that an aspect owns (`language.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, the role assignment) is changed only through its aspect, because the aspect validates and checks it; `config set` refuses it and names the aspect verb. `show` lists every key, the aspect-owned ones included.
+* *The console commands* (`questions`, `answer`, `web`, `help`, `exit`) exist only inside the console; they are not shell verbs.
+
+[#one-surface]
+=== One Surface in Every Language
+
+Command names, options, option values, aspect names, consent kinds, state ids, and link relations are the same in every language; only the texts are translated (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]). A command line, a script, a support answer, and the documentation work in every language without change. The key of a prompt is a mnemonic of its label and therefore a text: it comes from the catalogue with the label and follows the language (`y) yes`, `j) ja`; xref:03-dialogues.adoc#keys[Links as Keys and Numbers]).
+
+[#direct-verbs]
+=== A Direct Verb Runs a Sub-Workflow
+
+`config <aspect>` drives the same states as the dialogue; their arguments are answers given in advance. The client walks the workflow:
+
+. It sends the request that starts the run of the aspect.
+. In a server state (`[S]`) or a model state (`[M]`) it shows the progress and waits for the next state (xref:03-dialogues.adoc#waiting[Waiting, Progress, and a Model at Work]).
+. In a choice state (`[O]`) it looks for an answer among the arguments: an option of the aspect for a choice, `--consent <kind>` for a consent state of that kind, `--yes` for a confirmation of a displayed change (`harness.confirm`, `harness.add-confirm`, the move of `config credentials`). An answer the state accepts is sent as its link; the state is printed as one line with the answer (`✓ Interface language  Deutsch   (--interface de)`).
+. A choice state without an answer among the arguments is shown as the dialogue and asks; with `--no-input` the client stops there instead (xref:03-dialogues.adoc#no-input[Without Prompts]).
+. It ends when the sub-workflow reaches its done state (`language.done` and the others) or the onboarding rests in `onboard.completed`.
+
+An argument the state does not accept (a locale without a pack, a model the catalogue does not allow) is not sent: the client shows the state with the refusal in place of the preselection and asks, or with `--no-input` stops with exit code `3` and the refusal. An argument that no state of the run asked for is reported after the run (`--landing main was not used: the landing is set by the project's team`), never silently dropped.
+
+A consent is never implied: no argument but `--consent <kind>` answers a consent state, `--yes` never does, and `--consent` holds for this run only and is never remembered (`yes_remember` exists only as the dialogue's `r`). A secret is never an argument: `providers.credentials` always asks with the echo off, and with `--no-input` stops and names `pm-operator credentials set <credential_key>`.
+
+[#exit-codes]
+=== Exit Codes
+
+The exit codes are those of a verb run as one shell command; the console itself exits with `0` (`exit`, `Ctrl+D`) or `4` (operator checks).
+
+[cols="1,4",options="header"]
+|===
+|Code |Meaning
+
+|`0`
+|done: the sub-workflow reached its done state, or a read-only verb answered.
+
+|`1`
+|refused by the runtime: an error code of `pm-api` (xref:03-dialogues.adoc#refusals[Refusals and Errors]), printed with its text and fix.
+
+|`2`
+|usage: an unknown verb, option, or option value (picocli).
+
+|`3`
+|not finished: the run stopped at a choice it was not given (`--no-input`), or the operator left it (`q`) before its done state; the state stays where it is.
+
+|`4`
+|operator checks: no interactive terminal, or a coding-agent environment (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation], item 2).
+
+|`130`
+|interrupted with `Ctrl+C`; the state stays where it is, as with `q`.
+|===

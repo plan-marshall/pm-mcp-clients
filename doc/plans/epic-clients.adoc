@@ -25,7 +25,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 == Phases and the Design Gate
 
 . *Foundation*, without a gate: `mock-runtime`, `message-catalogue`, then `cli-test-infra`. They need no design decision and unblock both clients.
-. *Design*, in parallel, each thorough and complete before any client code, each run directly in a Claude Code session without plan-marshall: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it. An accepted design is the specification of its client's implementation and lives in this repository, `doc/design/` (link:../design/terminal-client.adoc[Terminal Client], and the web app's from `web-design`). The design can start now: it waits for nothing.
+. *Design*, in parallel, each thorough and complete before any client code, each run directly in a Claude Code session without plan-marshall: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it. An accepted design is the specification of its client's implementation and lives in this repository, `doc/design/` (link:../design/terminal-client/README.adoc[Terminal Client], and the web app's from `web-design`). The design can start now: it waits for nothing.
 . *Implementation*, after the gate: `cli-onboarding` after `cli-design`; `web-app-foundation` and then `web-onboarding` after `web-design`. Both run against the mock runtime and its scenarios.
 
 [#workstreams]

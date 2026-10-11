@@ -1,0 +1,379 @@
+= Terminal Client: Texts: Common, Frame, Automatic Run
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Common, Frame, Automatic Run
+
+[#texts]
+== Texts
+
+Every text of the onboarding and of the entry in the terminal, as keys of the message catalogue with the English and the German text (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). Arguments are ICU arguments; a plural is written `{n, plural, one {…} other {…}}`. German addresses the operator with _du_, and the words of the glossary stay as they are (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#glossary[Glossary]).
+
+* *Shared with the web app*: the keys of the areas `common` and `onboard` are the texts both clients show; the web app adds keys of its own for what only it needs (a button, a tooltip), and the terminal adds the keys of the area `operator` for what only it needs (the prompt line, the keys, the result lines). The labels of links are shared: a button in the web app and a key's label in the terminal read the same.
+* *Titles are questions or names, links are actions* (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#style[How Texts Are Written]). The prompt of a primary link is the action as a question (`operator.prompt.primary` wraps the shared label: `{action}? [Enter]`).
+* The tables below are the content of the packs `common`, `onboard`, and `operator` for these flows. Where a text has a plural, the German has its own forms.
+
+[#texts-common]
+=== `common`: Shared by Every Flow
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`common.consent.yes`
+|yes
+|ja
+
+|`common.consent.yes_remember`
+|yes, and don't ask again
+|ja, und merken
+
+|`common.consent.no`
+|not now
+|nicht jetzt
+
+|`common.consent.nothing_done`
+|Nothing was done.
+|Es ist nichts passiert.
+
+|`common.consent.remembered`
+|Consent remembered: {action}
+|Zustimmung gemerkt: {action}
+
+|`common.consent.withdraw_hint`
+|withdraw: pm-operator config consents
+|zurücknehmen: pm-operator config consents
+
+|`common.consent.field.looks_for`
+|looks for
+|sucht nach
+
+|`common.consent.field.in`
+|in
+|in
+
+|`common.consent.field.runs`
+|runs
+|führt aus
+
+|`common.consent.field.never`
+|never
+|niemals
+
+|`common.consent.field.cost`
+|cost
+|Kosten
+
+|`common.consent.cost.none`
+|none
+|keine
+
+|`common.consent.cost.estimate`
+|about {amount}
+|etwa {amount}
+
+|`common.consent.cost.estimate_runs`
+|about {amount} (from {runs, plural, one {# earlier run} other {# earlier runs}})
+|etwa {amount} (aus {runs, plural, one {# früheren Lauf} other {# früheren Läufen}})
+
+|`common.consent.cost.unknown`
+|not known yet: first run
+|noch unbekannt: erster Lauf
+
+|`common.consent.once_only`
+|This consent is for this run only.
+|Diese Zustimmung gilt nur für diesen Lauf.
+
+|`common.check.not_run`
+|not run
+|nicht ausgeführt
+
+|`common.check.ready`
+|ready
+|bereit
+
+|`common.check.not_ready`
+|not ready
+|nicht bereit
+
+|`common.link.back`
+|back
+|zurück
+
+|`common.link.recheck`
+|check again
+|prüfe erneut
+
+|`common.link.look_again`
+|look again
+|suche erneut
+
+|`common.from.system`
+|from your system
+|von deinem System
+
+|`common.from.system_locale`
+|from your system ({locale})
+|von deinem System ({locale})
+
+|`common.from.recommended`
+|recommended
+|empfohlen
+
+|`common.origin.default`
+|default
+|Vorgabe
+
+|`common.origin.machine`
+|machine
+|Maschine
+
+|`common.origin.project`
+|project
+|Projekt
+
+|`common.origin.team`
+|team
+|Team
+
+|`common.origin.plan`
+|plan
+|Plan
+
+|`common.origin.overrides`
+|overrides {origin}: {value}
+|ersetzt {origin}: {value}
+
+|`common.origin.from`
+|from {origin}
+|von {origin}
+
+|`common.model.working`
+|{role} is working on {harness} · {model}
+|{role} arbeitet auf {harness} · {model}
+
+|`common.model.leave_hint`
+|leave: the work continues; {command} shows its result
+|verlassen: die Arbeit läuft weiter; {command} zeigt ihr Ergebnis
+
+|`common.model.no_result`
+|The {role} gave no proposal: {reason}.
+|Der {role} hat keinen Vorschlag gemacht: {reason}.
+
+|`common.error.state_moved`
+|Answered elsewhere: {answer}
+|Woanders beantwortet: {answer}
+
+|`common.error.runtime_restarted`
+|The runtime restarted; continuing where it is.
+|Die Runtime wurde neu gestartet; es geht dort weiter, wo sie steht.
+
+|`common.error.internal_fault`
+|Something failed inside the runtime (audit {audit_id}). Details: pm-operator status
+|In der Runtime ist etwas fehlgeschlagen (Audit {audit_id}). Details: pm-operator status
+
+|`common.error.invalid_arguments`
+|The runtime refused the request: {detail}
+|Die Runtime hat den Request abgelehnt: {detail}
+
+|`common.error.credential_store_locked`
+|The credential store is locked; unlock it, then try again.
+|Der Speicher für Zugangsdaten ist gesperrt; entsperre ihn und versuche es erneut.
+
+|`common.error.credential_store_failed`
+|The credential store failed: {detail}. Nothing was changed.
+|Der Speicher für Zugangsdaten ist fehlgeschlagen: {detail}. Es wurde nichts geändert.
+
+|`common.error.runtime_recovering`
+|The runtime is still recovering; try again in a moment.
+|Die Runtime stellt sich noch wieder her; versuche es gleich noch einmal.
+
+|`common.error.web_listener_conflict`
+|Port {port} is in use by another program. Choose another: pm-operator config set web.port <port>
+|Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set web.port <port>
+|===
+
+The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them; the two above that the onboarding can meet are complete.
+
+[#texts-onboard]
+=== `onboard`: The Onboarding
+
+[#texts-onboard-frame]
+==== Frame, Start, Mode, Done
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.step.language`
+|Language
+|Sprache
+
+|`onboard.step.harness`
+|Harness
+|Harness
+
+|`onboard.step.models`
+|Models
+|Modelle
+
+|`onboard.step.roles`
+|Roles
+|Roles
+
+|`onboard.step.credentials`
+|Credentials
+|Zugangsdaten
+
+|`onboard.step.providers`
+|Providers
+|Provider
+
+|`onboard.step.plans`
+|Plans
+|Pläne
+
+|`onboard.step.language.summary`
+|the language of plan-marshall and of the models' texts
+|die Sprache von plan-marshall und der Texte der Modelle
+
+|`onboard.step.harness.summary`
+|the coding agent the server works with first
+|der Coding Agent, mit dem der Server zuerst arbeitet
+
+|`onboard.step.models.summary`
+|the agents and models other plans may use
+|die Agents und Modelle, die andere Pläne nutzen dürfen
+
+|`onboard.step.roles.summary`
+|an agent and a model for every role
+|ein Agent und ein Modell für jede Role
+
+|`onboard.step.credentials.summary`
+|where this machine keeps its tokens
+|wo diese Maschine ihre Tokens aufbewahrt
+
+|`onboard.step.providers.summary`
+|the git hosts, CI and analysis services this machine uses
+|die Git-Hosts, CI- und Analysedienste, die diese Maschine nutzt
+
+|`onboard.step.plans.summary`
+|how plans run unless a project says otherwise
+|wie Pläne laufen, wenn ein Projekt nichts anderes sagt
+
+|`onboard.entry.title`
+|Set up this machine for plan-marshall
+|Richte diese Maschine für plan-marshall ein
+
+|`onboard.entry.not_set_up`
+|plan-marshall is running. This machine is not set up yet.
+|plan-marshall läuft. Diese Maschine ist noch nicht eingerichtet.
+
+|`onboard.entry.intro`
+|{steps, plural, one {One step} other {# steps}}. Nothing on this machine is looked at, run, or changed until you say so in that step. You can stop at any point; Enter at the prompt, or the web app, continues where you stopped.
+|{steps, plural, one {Ein Schritt} other {# Schritte}}. Auf dieser Maschine wird nichts angesehen, ausgeführt oder geändert, bevor du es in dem Schritt erlaubst. Du kannst jederzeit aufhören; Enter an der Eingabe oder die Web-App macht dort weiter, wo du aufgehört hast.
+
+|`onboard.mode.guided`
+|Begin with step 1
+|Beginne mit Schritt 1
+
+
+
+|`onboard.mode.auto`
+|decide everything for me
+|entscheide alles für mich
+
+|`onboard.completed.title`
+|This machine is ready
+|Diese Maschine ist bereit
+
+|`onboard.completed.next`
+|Next: enrol a project and set it up: {command}, in its checkout.
+|Als Nächstes: ein Projekt anmelden und einrichten: {command}, in seinem Checkout.
+
+|===
+
+[#texts-onboard-auto]
+==== Automatic Run
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.auto.consent.title`
+|Decide everything for me?
+|Alles für mich entscheiden?
+
+|`onboard.auto.consent.looks_for`
+|the harnesses {programs} in {dirs}; the tools {tools} and the tokens already stored
+|die Harnesses {programs} in {dirs}; die Werkzeuge {tools} und die schon gespeicherten Tokens
+
+|`onboard.auto.consent.runs`
+|the version and login probe of each harness found, the model probe of each harness that can list its models, the version probe of each tool found
+|die Versions- und Anmeldeprüfung jedes gefundenen Harness, die Modellabfrage jedes Harness, der seine Modelle auflisten kann, die Versionsprüfung jedes gefundenen Werkzeugs
+
+|`onboard.auto.consent.never`
+|asks a model, reads other files, sends anything over the network except the provider checks
+|fragt ein Modell, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider
+
+|`onboard.auto.consent.list_all`
+|lists every action
+|listet jede Aktion
+
+|`onboard.auto.result.title`
+|Everything is decided.
+|Alles ist entschieden.
+
+|`onboard.auto.result.no_model`
+|No model was asked; ask the steward to refine the roles: {command}
+|Es wurde kein Modell gefragt; lass den steward die Roles verfeinern: {command}
+
+|`onboard.auto.result.add`
+|Add {name}: {command}
+|{name} hinzufügen: {command}
+
+|`onboard.auto.result.change_any`
+|Change any of it: {command}
+|Ändere etwas davon: {command}
+
+|`onboard.auto.result.finish`
+|Finish
+|Abschließen
+
+|`onboard.auto.result.change_step`
+|change that step
+|diesen Schritt ändern
+
+|`onboard.auto.reason.system`
+|from your system
+|von deinem System
+
+|`onboard.auto.reason.only_supported`
+|the only supported one
+|der einzige unterstützte
+
+|`onboard.auto.reason.first_supported`
+|the first supported one
+|der erste unterstützte
+
+|`onboard.auto.reason.all_found`
+|all found
+|alle gefundenen
+
+|`onboard.auto.reason.default`
+|the default
+|die Vorgabe
+
+|`onboard.auto.reason.available`
+|available here
+|hier verfügbar
+
+|`onboard.auto.reason.tool_logged_in`
+|{tool} logged in
+|{tool} angemeldet
+
+|`onboard.auto.reason.no_token_skipped`
+|no token: skipped
+|kein Token: übersprungen
+|===

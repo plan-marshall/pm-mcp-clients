@@ -1,0 +1,270 @@
+= Terminal Client: Texts: Steps 6 and 7
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Steps 6 and 7
+
+The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
+
+[#texts-onboard-providers]
+== 6 Providers
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.providers.consent.title`
+|Look for CLI tools and stored tokens?
+|Nach CLI-Werkzeugen und gespeicherten Tokens suchen?
+
+|`onboard.providers.consent.looks_for`
+|{tools} in your PATH; the tokens stored in {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {files}}
+|{tools} in deinem PATH; die {store, select, keychain {im macOS-Schlüsselbund} secret_service {im Secret Service} other {in Dateien}} gespeicherten Tokens
+
+|`onboard.providers.consent.never`
+|reads a token's value, uses the network
+|liest den Wert eines Tokens, nutzt das Netzwerk
+
+|`onboard.providers.scan.tokens`
+|{count, plural, one {# token stored} other {# tokens stored}}
+|{count, plural, one {# Token gespeichert} other {# Tokens gespeichert}}
+
+|`onboard.providers.select.title`
+|Choose what this machine works with
+|Wähle, womit diese Maschine arbeitet
+
+|`onboard.providers.select.available`
+|available
+|verfügbar
+
+|`onboard.providers.select.variant`
+|variant
+|Variante
+
+|`onboard.providers.select.native`
+|native
+|nativ
+
+|`onboard.providers.select.native_only`
+|native only
+|nur nativ
+
+|`onboard.providers.select.token_stored`
+|token stored
+|Token gespeichert
+
+|`onboard.providers.select.token_missing`
+|token missing
+|Token fehlt
+
+|`onboard.providers.select.review_bots`
+|Review bots
+|Review-Bots
+
+|`onboard.providers.select.defaults_note`
+|These are the defaults for every project; a project's setup and a single plan can override them.
+|Das sind die Vorgaben für jedes Projekt; die Einrichtung eines Projekts und ein einzelner Plan können sie ersetzen.
+
+|`onboard.providers.select.action`
+|Continue with {count, plural, =0 {no provider} one {# provider} other {# providers}}
+|Weiter mit {count, plural, =0 {keinem Provider} one {# Provider} other {# Providern}}
+
+|`onboard.providers.credentials.title`
+|{provider} needs a token
+|{provider} braucht ein Token
+
+|`onboard.providers.credentials.stored_note`
+|Stored in {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {a file}}; it is never shown again and never reaches a model or a log.
+|Gespeichert {store, select, keychain {im macOS-Schlüsselbund} secret_service {im Secret Service} other {in einer Datei}}; es wird nie wieder angezeigt und erreicht nie ein Modell oder ein Log.
+
+|`onboard.providers.credentials.action`
+|Store and check it
+|Speichere und prüfe es
+
+|`onboard.providers.credentials.skip`
+|skip {provider}
+|ohne {provider} weiter
+
+|`onboard.providers.credentials.lan`
+|Tokens are entered on this machine only. In a terminal of it, run {command}, then check again.
+|Tokens werden nur auf dieser Maschine eingegeben. Führe in einem ihrer Terminals {command} aus und prüfe dann erneut.
+
+|`onboard.providers.verify.title`
+|Checking the providers
+|Prüfe die Provider
+
+|`onboard.providers.verify.reachable`
+|{host} reachable
+|{host} erreichbar
+
+|`onboard.providers.verify.authenticates`
+|token authenticates as {identity} ({kind}, expires in {days, plural, one {# day} other {# days}})
+|Token meldet sich als {identity} an ({kind}, läuft in {days, plural, one {# Tag} other {# Tagen}} ab)
+
+|`onboard.providers.verify.authenticates_no_expiry`
+|token authenticates as {identity} ({kind}, no expiry known)
+|Token meldet sich als {identity} an ({kind}, kein Ablauf bekannt)
+
+|`onboard.providers.verify.permissions`
+|permissions: {list}
+|Berechtigungen: {list}
+
+|`onboard.providers.verify.tool_same`
+|{tool} is logged in as the same account
+|{tool} ist mit demselben Konto angemeldet
+
+|`onboard.providers.verify.tool_other`
+|{tool} is logged in as {identity}, not as {expected}
+|{tool} ist als {identity} angemeldet, nicht als {expected}
+
+|`onboard.providers.verify.refused`
+|token refused: {status} "{answer}"
+|Token abgelehnt: {status} „{answer}"
+
+|`onboard.providers.failed.fix_token`
+|enter the token again
+|gib das Token erneut ein
+
+|`onboard.providers.failed.continue_without`
+|continue without {provider}
+|ohne {provider} weitermachen
+
+|`onboard.providers.failed.without_note`
+|{provider} will be recorded as not available. Projects can still set it up on their own.
+|{provider} wird als nicht verfügbar gespeichert. Projekte können es trotzdem selbst einrichten.
+
+|`onboard.providers.done`
+|Providers recorded: {list}
+|Provider gespeichert: {list}
+
+|`onboard.providers.done_not_available`
+|{provider} not available
+|{provider} nicht verfügbar
+|===
+
+[#texts-onboard-plans]
+== 7 Plans
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.defaults.review.title`
+|How should plans run on this machine?
+|Wie sollen Pläne auf dieser Maschine laufen?
+
+|`onboard.defaults.review.override_note`
+|A project's setup and a single plan can choose otherwise.
+|Die Einrichtung eines Projekts und ein einzelner Plan können anders wählen.
+
+|`onboard.defaults.axis.landing`
+|Landing
+|Abschluss
+
+|`onboard.defaults.axis.method`
+|Method
+|Methode
+
+|`onboard.defaults.axis.asking`
+|Asking
+|Rückfragen
+
+|`onboard.defaults.landing.pull_request`
+|Branch and Pull Request
+|Branch und Pull Request
+
+|`onboard.defaults.landing.pull_request_text`
+|review and merge on the provider
+|Review und Merge beim Provider
+
+|`onboard.defaults.landing.main`
+|Commit on main
+|Commit auf main
+
+|`onboard.defaults.landing.main_text`
+|no Pull Request, pushed directly
+|kein Pull Request, direkt gepusht
+
+|`onboard.defaults.landing.files`
+|Files only
+|Nur Dateien
+
+|`onboard.defaults.landing.files_text`
+|nothing is committed; you take over
+|nichts wird committet; du übernimmst
+
+|`onboard.defaults.method.test_first`
+|Test first
+|Test zuerst
+
+|`onboard.defaults.method.test_first_text`
+|tests are written before the code
+|Tests werden vor dem Code geschrieben
+
+|`onboard.defaults.method.tests_after`
+|Tests after
+|Tests danach
+
+|`onboard.defaults.asking.every_phase`
+|At every phase
+|Bei jeder Phase
+
+|`onboard.defaults.asking.every_phase_text`
+|you confirm each phase
+|du bestätigst jede Phase
+
+|`onboard.defaults.asking.key_points`
+|At the key points
+|An den wichtigen Stellen
+
+|`onboard.defaults.asking.key_points_text`
+|the outline, and before the Merge
+|das Outline, und vor dem Merge
+
+|`onboard.defaults.asking.questions_only`
+|Only questions
+|Nur Fragen
+
+|`onboard.defaults.asking.questions_only_text`
+|you are asked only what needs you
+|du wirst nur gefragt, was dich braucht
+
+|`onboard.defaults.review.needs_provider`
+|needs a provider: none is available
+|braucht einen Provider: keiner ist verfügbar
+
+|`onboard.defaults.review.action_defaults`
+|Use these defaults
+|Verwende diese Vorgaben
+
+|`onboard.defaults.review.action_save`
+|Save these choices
+|Speichere diese Auswahl
+
+|`onboard.defaults.review.team_owned`
+|{axis} is set by the project's team (.marshall/config/); change it in the project setup.
+|{axis} legt das Team des Projekts fest (.marshall/config/); ändere es in der Einrichtung des Projekts.
+
+|`onboard.defaults.review.bound_at_start`
+|The plan's axes were bound at its start ({time}); they do not change while it runs.
+|Die Achsen des Plans wurden bei seinem Start festgelegt ({time}); sie ändern sich nicht, während er läuft.
+
+|`onboard.defaults.validate.main_ok`
+|Commit on main: the base branch accepts pushes ({provider}, {branch} not protected)
+|Commit auf main: der Basis-Branch nimmt Pushes an ({provider}, {branch} nicht geschützt)
+
+|`onboard.defaults.validate.main_protected`
+|Commit on main: {branch} is protected at {provider}
+|Commit auf main: {branch} ist bei {provider} geschützt
+
+|`onboard.defaults.validate.pull_request_ok`
+|Branch and Pull Request: {provider} is available
+|Branch und Pull Request: {provider} ist verfügbar
+
+|`onboard.defaults.done`
+|Plan defaults recorded
+|Vorgaben für Pläne gespeichert
+|===
+
+The German name of the landing axis is _Abschluss_, since _Landing_ is not in the glossary; _Outline_, _Merge_, _Pull Request_, _Branch_, _Commit_, _Push_ stay as the glossary says.

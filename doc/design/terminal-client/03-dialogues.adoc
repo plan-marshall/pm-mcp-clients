@@ -1,0 +1,223 @@
+= Terminal Client: Dialogues
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Dialogues
+
+[#dialogue]
+== Dialogues
+
+[#state-frame]
+=== The Frame of a State
+
+A state is printed as three parts, the counterpart of the web app's frame (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Frame]):
+
+----
+[3/7] Models · Choose the harnesses and models other plans may use          ← step line
+
+  <content: the facts, the proposal, the choices>                           ← content
+
+Enrol and allow 3 models? [Enter]   other: 1-5   b) back   q) leave   ?      ← prompt line
+----
+
+* *Step line*: `[n/7]`, the step's name, `·`, and the title of the state. A later run of one aspect has no counter (`Models · …`); a run on a project or a plan adds its level (`Models · project pm-mcp-clients · …`). Server states print no step line of their own: their progress lines follow the step line of their step.
+* *Content*: indented by two spaces, at most 80 columns; a web table is a list with the same columns as fields (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Principles]); a long value (a path, a digest) is shortened in the middle with `…` and shown in full by `?`.
+* *Prompt line*: the primary link as a question with `[Enter]`, then the other links with their keys, then `?`. The prompt ends with `› ` where the operator types.
+* A new state is printed below the previous one, never over it: the scrollback is the transcript of the run. Only a check line and a progress line are rewritten in place while they run (<<checks>>).
+
+[#keys]
+=== Links as Keys and Numbers
+
+Input is read by the console's line editor (JLine, xref:04-console.adoc#line-editor[Line Editor]): the operator types a key or numbers and presses `Enter`, with the usual editing of the line. A dialogue's answers never go into the history; only typed commands do.
+
+* *`Enter` alone* takes the primary link, which is the preselection: the proposal of the state as it stands.
+* *Numbers* pick from a list. In a single choice a number picks one item and is sent at once when the state has nothing else to decide; in a multiple choice (models, providers, review bots) numbers toggle items (`2 5`, ranges `3-7`) and the list is printed again until `Enter` accepts it. Where a state has several choices (the languages, the plan axes), their items are numbered across the whole state, so one line answers several (`2 5 8`).
+* *Letters* take the other links. The key of a link relation is a text of the catalogue (`operator.key.<relation>`, xref:13-texts-operator.adoc#texts-operator-keys[Keys]), one letter, the mnemonic of its label in the interface language; within one language a relation has the same key in every state that offers it. Two relations share a key only when no state offers both: a test runs every state of the scenarios in every language and fails on a state that offers two links with the same key, or a key that is a digit or `?`.
+* *`?`* prints the explanation of the state (the text the web app shows under the title and behind _Why?_); `?<n>` prints the explanation of item `n` (the advisory of a role, the rationale of a recommended model, the full value of a shortened one).
+* *`q`* (German `v`) or `Ctrl+C` leaves the dialogue back to the console prompt: nothing is sent, the state stays where it is, and the client prints where the dialogue stopped and how to continue it (<<resume>>).
+* *`!`* opens what is waiting for the operator (a question, a waiver request) while a dialogue runs, and returns to the same state afterwards; like `?` it is the same in every language (xref:04-console.adoc#during-dialogue[A Question During a Dialogue]).
+* An input the state does not offer is answered with one line (`3 is not offered here: 1-2, a, l, q`) and the same prompt; nothing is sent.
+
+[cols="1,1,2,3",options="header"]
+|===
+|English |German |Link relation |Used in
+
+|`Enter`
+|`Enter`
+|the primary link of the state
+|every choice state; never a consent (<<consent>>)
+
+|`1`–`n`
+|`1`–`n`
+|an item of a list
+|every list
+
+|`y`, `r`, `n`
+|`j`, `m`, `n`
+|`yes`, `yes_remember`, `no`
+|every consent state; `start.other-device` (`y`, `n`)
+
+|`b`
+|`z`
+|`back`
+|every state of a step that has a previous choice
+
+|`a`
+|`h`
+|`add` (add a harness that is not listed, add a model id)
+|`harness.choose`, `harness.none`, `catalogue.select`
+
+|`l`
+|`e`
+|`recheck` (look again, check again)
+|`harness.choose`, `harness.none`, `harness.blocked`, `store.unavailable`, `providers.failed`
+
+|`o`
+|`a`
+|`choose_another`
+|`harness.blocked`, `store.unavailable`
+
+|`e`
+|`b`
+|`edit` (change single lines, adjust roles, edit the draft)
+|`roles.review`, `harness.add`, `harness.verify-profile`
+
+|`s`
+|`s`
+|`ask_steward`
+|`roles.review`
+
+|`d`
+|`r`
+|`reset_default`
+|`roles.review`
+
+|`t`
+|`t`
+|`fix_credential`
+|`providers.failed`
+
+|`k`
+|`o`
+|`continue_without` (skip one provider)
+|`providers.credentials`, `providers.failed`
+
+|`h`, `w`
+|`h`, `w`
+|here, in the web app
+|the entry's question on a machine not fully onboarded
+
+|`a`
+|`a`
+|`automatic`
+|`onboard.mode`
+
+|`q`
+|`v`
+|leave the dialogue to the console prompt (a client action, no link)
+|every dialogue
+
+|`!`
+|`!`
+|open what is waiting for the operator (a client action, no link)
+|every dialogue, while something waits
+|===
+
+[#preselection]
+=== Preselection on `Enter`
+
+Every choice state opens with its proposal filled in and marked `←` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#preselect-first[Preselect as much as possible, hide nothing]); the prompt names what `Enter` does in words (`Use Deutsch for both? [Enter]`), never "OK". A proposal with a reason says it beside the mark (`← from your system`, `← recommended`, `← from machine`). When the operator changes a line, the state is printed again with the changed line marked `✎` and the prompt names the new primary action (`Use these defaults?` becomes `Save these choices?`).
+
+[#explanation]
+=== The Explanation on `?`
+
+`?` prints, indented below the prompt, the explanation of the state from the catalogue and then the prompt again. It never changes the state and never sends a request. The explanation of an item (`?3`) is the advisory of a role, the rationale of a model, a consent's full list, or the full value of a shortened field.
+
+[#consent]
+=== Consent
+
+A consent state is printed as in link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#consent[Onboarding Screens, Consent]: the action, what it looks at, what it runs, what it never does, and the cost, each a field. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. Nothing happens on the machine until the operator typed `y` or `r`. In German:
+
+[source,text]
+----
+[2/7] Harness · Auf dieser Maschine nach Harnesses suchen?
+  sucht nach   claude, opencode, codex, agy
+  in           deinem PATH, ~/.local/bin, /Applications, /opt/homebrew/bin
+  führt aus    <program> --version für jeden gefundenen
+  niemals      liest andere Dateien, startet eine Sitzung, nutzt das Netzwerk
+  Kosten       keine
+
+j) ja   m) ja, und merken   n) nicht jetzt   ?   › ⏎
+Gib j, m oder n ein.
+j) ja   m) ja, und merken   n) nicht jetzt   ?   › j
+----
+
+`n` sends `no`: the state stays, the client prints `Nothing was done.` under the title, the prompt again, and the step does not move. It is never shown as an error (no `✗`, no colour of an error). A remembered consent passes its state without a question; the client prints one line, `✓ Consent remembered: look for harnesses   (withdraw: pm-operator config consents)`.
+
+[#checks]
+=== Check Lists
+
+A check is one line that starts with a spinner and ends in `✓` or `✗` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#verify-reports[Every verification reports back]):
+
+----
+    ⠹  login                                                 (spinner while it runs)
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✗  not logged in
+       → claude login, then check again
+----
+
+* The line is rewritten in place while it runs and stays as it ended. A `✗` is followed by its answer (what was received) and its fix (`→ …`); a fix that is a command is printed alone on its line so it can be copied.
+* A check the run did not reach is listed as `·  <check>   not run`. A group (a provider, a profile stage) ends in its own `✓ ready` or `✗ not ready`.
+* Without a terminal that renders the spinner (output not a terminal, `TERM=dumb`), a check is printed once, when it ends.
+
+[#waiting]
+=== Waiting, Progress, and a Model at Work
+
+While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the expected cost from earlier runs or `cost not known yet` (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Frame], Model at work):
+
+----
+  ⠼  steward is working on Claude Code · opus-5.5      0:42   about 0.08 USD
+     q) leave: the advice continues; its result is reported above the prompt
+----
+
+`q` and `Ctrl+C` leave while the server works; the work continues in the runtime, the console reports above its prompt when the state needs the operator again, and the prompt then offers it. The client never stops a server state and offers no `cancel` the use cases do not name.
+
+[#resume]
+=== Interruption and Resume
+
+The state lives in the runtime, never in the client. The operator stops anywhere with `q` or `Ctrl+C`; the console prints where the dialogue stopped and how to continue it, and returns to its prompt (a verb run as one shell command exits with `3` or `130` instead):
+
+----
+Left [3/7] Models. Nothing was sent. Enter continues the setup.
+pm [setup 3/7] ›
+----
+
+* `Enter` on the empty prompt, a new console, or the web app opens at the same state with the same proposal (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], Variations).
+* *Another channel moved the state*: the client follows the event stream while it waits for input. When the state changes (the operator answered in the web app), it prints `Answered in the web app: <answer>` and the new state; the typed but unsent input is dropped. A link sent for a state that has moved on is refused by the runtime, and the client prints the new state instead of an error (xref:README.adoc#open-points[Open Points], the code of that refusal).
+* *Connection lost*: the runtime stopped or restarted (a drain, an upgrade). The client says so (xref:04-console.adoc#connection[Connection]), starts the runtime on demand as for every request, re-reads the state, and continues there; a link whose answer did not arrive is never sent twice without reading the state first.
+
+[#refusals]
+=== Refusals and Errors
+
+A refused request is printed as a `✗` line with the text of its error code from the catalogue (`common.error.<code>`), the detail the runtime sent, and the fix (`→ …`); unless the state offers a way on, which it then prompts for, the console returns to its prompt (a verb run as one shell command exits with `1`). `internal_fault` prints its `audit_id` and `pm-operator status`. An error is never printed as a stack trace, and a refusal never ends in a colour or a word of alarm (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#style[Texts and Languages, How Texts Are Written]).
+
+[#no-input]
+=== Without Prompts
+
+* *`--no-input`* never asks: a choice state answered by the arguments is passed, the first one that is not ends the run with exit code `3`, its state printed and one line naming the option that answers it (`Needs a choice: --landing pull-request|main|files`), or for a consent the `--consent <kind>` that gives it, or for a secret the `pm-operator credentials set` command.
+* Like every operator verb it runs only where the operator checks pass, in an interactive terminal.
+* There is no machine-readable output: every interaction goes through the verbs, which validate what they write, and nothing outside the runtime reads or writes the configuration as data.
+
+[#terminal]
+=== The Terminal Itself
+
+* *Width*: content is laid out for 80 columns; a wider terminal (`COLUMNS`) gives long values more room, a narrower one wraps fields below their names. Nothing is cut that `?` cannot show.
+* *Colour*: `✓` green, `✗` red, the preselection bold, the step line bold; never the only carrier of a meaning. No colour when standard output is not a terminal, with `NO_COLOR` set (not empty), or with `TERM=dumb`.
+* *Characters*: `✓ ✗ ← ✎ · → …` and the spinner need a UTF-8 locale; without one the client prints `ok`, `x`, `<-`, `*`, `-`, `->`, `...` and a spinner of `|/-\`.
+* *Copying*: `web copy` and `web copy ssh` write the terminal's clipboard sequence (OSC 52), which reaches the clipboard of the operator's own computer also over SSH; on a local terminal the platform's clipboard tool where one is found (`pbcopy`, `wl-copy`, `xclip`). Whether a terminal honours OSC 52 cannot be detected, so after a copy the client says `Copied, if your terminal allows it; the text is above.` and the text stays on the screen to select. Where neither path exists (no terminal for OSC 52, no tool locally) the command says so and the text stays on the screen.
+
+[#language]
+=== Language of the Terminal
+
+The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. After `language.choose` the client switches at once: the state is printed again in the chosen language before it is recorded, so the operator sees it first (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#language[Onboarding Screens, Language]). `pm-mcp` keeps English (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).

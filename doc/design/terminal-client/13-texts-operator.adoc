@@ -1,0 +1,460 @@
+= Terminal Client: Texts: Only the Terminal
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Only the Terminal
+
+The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
+
+[#texts-operator]
+== `operator`: Only the Terminal
+
+[#texts-operator-dialogue]
+=== The Dialogue
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.prompt.primary`
+|{action}? [Enter]
+|{action}? [Enter]
+
+|`operator.prompt.other_range`
+|other: {range}
+|anders: {range}
+
+|`operator.prompt.toggle_range`
+|toggle: {range}
+|umschalten: {range}
+
+|`operator.prompt.change_example`
+|change: e.g. {example}
+|ändern: z. B. {example}
+
+|`operator.prompt.explains_item`
+|?n explains a line
+|?n erklärt eine Zeile
+
+|`operator.prompt.leave`
+|leave
+|verlassen
+
+|`operator.prompt.consent_needs_answer`
+|Type {yes}, {remember} or {no}.
+|Gib {yes}, {remember} oder {no} ein.
+
+|`operator.prompt.not_offered`
+|{input} is not offered here: {offered}
+|{input} wird hier nicht angeboten: {offered}
+
+|`operator.prompt.keeps_value`
+|(Enter keeps a value)
+|(Enter behält einen Wert)
+
+|`operator.prompt.secret`
+|{name} (not shown while you type)
+|{name} (wird beim Tippen nicht angezeigt)
+
+|`operator.prompt.which_project`
+|Which project?
+|Welches Projekt?
+
+|`operator.prompt.which_plan`
+|Which plan?
+|Welcher Plan?
+
+|`operator.progress.elapsed`
+|{time}
+|{time}
+
+
+
+|`operator.resume.left`
+|Left {step}. Nothing was sent. Enter continues the setup.
+|{step} verlassen. Es wurde nichts gesendet. Enter setzt die Einrichtung fort.
+
+|`operator.resume.left_dialogue`
+|Left {step}. Nothing was sent.
+|{step} verlassen. Es wurde nichts gesendet.
+
+|`operator.resume.answered_elsewhere`
+|Answered in the web app: {answer}
+|In der Web-App beantwortet: {answer}
+
+|`operator.direct.needs_choice`
+|Needs a choice: {option}
+|Braucht eine Wahl: {option}
+
+|`operator.direct.kept`
+|kept
+|beibehalten
+
+|`operator.direct.unused`
+|{option} was not used: {reason}
+|{option} wurde nicht verwendet: {reason}
+
+|`operator.level.project`
+|project {project}
+|Projekt {project}
+
+|`operator.level.plan`
+|plan {plan}
+|Plan {plan}
+
+|`operator.level.not_offered`
+|{aspect} has the levels {levels}.
+|{aspect} hat die Ebenen {levels}.
+
+|`operator.config.aspect_owned`
+|{key} is changed with {command}, which checks it.
+|{key} wird mit {command} geändert, das es prüft.
+
+|`operator.config.change_with`
+|Change: {command}
+|Ändern: {command}
+
+|`operator.config.plan_version`
+|Applies from the plan's next step; the plan's version becomes {version}.
+|Gilt ab dem nächsten Schritt des Plans; die Version des Plans wird {version}.
+
+|`operator.copy.done`
+|Copied, if your terminal allows it; the text is above.
+|Kopiert, sofern dein Terminal es erlaubt; der Text steht oben.
+
+|`operator.check.not_run`
+|not run
+|nicht ausgeführt
+|===
+
+[#texts-operator-console]
+=== The Console
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.console.badge.questions`
+|{count, plural, one {# question} other {# questions}}
+|{count, plural, one {# Frage} other {# Fragen}}
+
+|`operator.console.badge.setup`
+|setup {done}/{total}
+|Einrichtung {done}/{total}
+
+|`operator.console.badge.reconnecting`
+|reconnecting
+|verbinde neu
+
+|`operator.console.not_a_command`
+|{input} is not a command here; help lists them.
+|{input} ist hier kein Befehl; help listet sie.
+
+|`operator.console.ctrl_c_hint`
+|exit or Ctrl+D leaves the console
+|exit oder Strg+D verlässt die Konsole
+
+|`operator.console.exit_open`
+|{count, plural, one {# question stays open} other {# questions stay open}}; you can answer them in the web app. exit or Ctrl+D again leaves.
+|{count, plural, one {# Frage bleibt offen} other {# Fragen bleiben offen}}; du kannst sie in der Web-App beantworten. exit oder Strg+D noch einmal verlässt die Konsole.
+
+|`operator.console.question.notice`
+|Question {id} · plan {plan} · answer by {time} (in {remaining})
+|Frage {id} · Plan {plan} · Antwort bis {time} (in {remaining})
+
+|`operator.console.question.recommended`
+|Recommended: {option}
+|Empfohlen: {option}
+
+|`operator.console.question.waiting`
+|{count, plural, one {# question waiting} other {# questions waiting}}: {id} · {plan} · answer by {time} (in {remaining})   ! shows it
+|{count, plural, one {# Frage wartet} other {# Fragen warten}}: {id} · {plan} · Antwort bis {time} (in {remaining})   ! zeigt sie
+
+|`operator.console.question.not_now`
+|not now
+|nicht jetzt
+
+|`operator.console.question.answered`
+|{id} answered: {option}.
+|{id} beantwortet: {option}.
+
+|`operator.console.question.answered_elsewhere`
+|{id} was answered in {channel} ({device}): {option}. Nothing was sent from here.
+|{id} wurde in {channel} ({device}) beantwortet: {option}. Von hier wurde nichts gesendet.
+
+|`operator.console.question.expired`
+|{id} expired; the plan went on with the recommendation: {option}.
+|{id} ist abgelaufen; der Plan ist mit der Empfehlung weitergegangen: {option}.
+
+|`operator.console.question.reminder`
+|{id} still needs your answer: answer by {time} (in {remaining})
+|{id} braucht noch deine Antwort: Antwort bis {time} (in {remaining})
+
+|`operator.console.questions.none`
+|No open questions.
+|Keine offenen Fragen.
+
+|`operator.console.dialogue.stays`
+|{step} stays where it is; nothing was sent.
+|{step} bleibt, wo es ist; es wurde nichts gesendet.
+
+|`operator.console.dialogue.back`
+|Back to {step}.
+|Zurück zu {step}.
+
+|`operator.console.remaining.minutes`
+|{minutes, plural, one {# min} other {# min}}
+|{minutes, plural, one {# Min.} other {# Min.}}
+
+|`operator.console.connection.lost`
+|Lost the connection to the runtime ({reason}). Reconnecting …
+|Verbindung zur Runtime verloren ({reason}). Verbinde neu …
+
+|`operator.console.connection.back`
+|Reconnected: {version}, restarted at {time}. {questions, plural, =0 {No question open} one {# question open} other {# questions open}}, {plans, plural, one {# plan running} other {# plans running}}.
+|Wieder verbunden: {version}, neu gestartet um {time}. {questions, plural, =0 {Keine Frage offen} one {# Frage offen} other {# Fragen offen}}, {plans, plural, one {# Plan läuft} other {# Pläne laufen}}.
+
+|`operator.console.notification.question`
+|plan {plan} asks a question
+|Plan {plan} stellt eine Frage
+
+|`operator.console.notification.waiver`
+|plan {plan} asks for a waiver
+|Plan {plan} bittet um einen Waiver
+|===
+
+[#texts-operator-keys]
+=== Keys
+
+One letter per link relation, the mnemonic of its label; the build checks of the packs also check that each is one letter, neither a digit nor `?` (xref:03-dialogues.adoc#keys[Links as Keys and Numbers]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.key.yes`
+|y
+|j
+
+|`operator.key.yes_remember`
+|r
+|m
+
+|`operator.key.no`
+|n
+|n
+
+|`operator.key.back`
+|b
+|z
+
+|`operator.key.add`
+|a
+|h
+
+|`operator.key.recheck`
+|l
+|e
+
+|`operator.key.choose_another`
+|o
+|a
+
+|`operator.key.edit`
+|e
+|b
+
+|`operator.key.ask_steward`
+|s
+|s
+
+|`operator.key.reset_default`
+|d
+|r
+
+|`operator.key.fix_credential`
+|t
+|t
+
+|`operator.key.continue_without`
+|k
+|o
+
+|`operator.key.here`
+|h
+|h
+
+|`operator.key.automatic`
+|a
+|a
+
+|`operator.key.web`
+|w
+|w
+
+
+
+
+
+
+|`operator.key.leave`
+|q
+|v
+|===
+
+[#texts-operator-start]
+=== The Entry
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.entry.where`
+|Where do you want to set it up?
+|Wo möchtest du sie einrichten?
+
+|`operator.entry.where_resume`
+|Where do you want to go on?
+|Wo möchtest du weitermachen?
+
+|`operator.entry.stopped_at`
+|This machine is set up up to step {done} of {total}; it stopped at {step}.
+|Diese Maschine ist bis Schritt {done} von {total} eingerichtet; sie hat bei {step} angehalten.
+
+|`operator.entry.here`
+|here, in the terminal
+|hier, im Terminal
+
+|`operator.entry.web`
+|in the web app
+|in der Web-App
+
+|`operator.entry.web_app_paired`
+|Web app: {url}   (paired: {label})
+|Web-App: {url}   (gekoppelt: {label})
+
+|`operator.entry.runtime_started`
+|Runtime started ({version})
+|Runtime gestartet ({version})
+
+|`operator.entry.runtime_running`
+|Runtime running ({version})
+|Runtime läuft ({version})
+
+|`operator.entry.web_on`
+|Web access on {url}
+|Web-Zugang auf {url}
+
+|`operator.entry.web_on_lan`
+|Web access on {url} and every interface
+|Web-Zugang auf {url} und allen Schnittstellen
+
+|`operator.entry.browser_opened_code`
+|Browser opened with a pairing code, valid for {minutes} minutes
+|Browser mit einem Kopplungscode geöffnet, gültig für {minutes} Minuten
+
+|`operator.entry.browser_opened`
+|Browser opened
+|Browser geöffnet
+
+|`operator.entry.no_browser`
+|No browser opened: {reason}
+|Kein Browser geöffnet: {reason}
+
+|`operator.entry.ssh_session`
+|SSH session: no browser opened here
+|SSH-Sitzung: hier wurde kein Browser geöffnet
+
+|`operator.entry.ways_in`
+|Ways in
+|Zugänge
+
+|`operator.entry.ways_in_remote`
+|Ways in, from your own computer
+|Zugänge, von deinem eigenen Computer aus
+
+|`operator.entry.forward`
+|Forward the port (VS Code and JetBrains do this on their own):
+|Leite den Port weiter (VS Code und JetBrains tun das von selbst):
+
+|`operator.entry.open`
+|Open:
+|Öffne:
+
+|`operator.entry.code`
+|Code {code}, valid until {time}
+|Code {code}, gültig bis {time}
+
+
+
+
+
+
+
+|`operator.entry.paired`
+|Paired: {label}
+|Gekoppelt: {label}
+
+|`operator.entry.fresh_code`
+|A new code for a further device: {code}, valid until {time}
+|Ein neuer Code für ein weiteres Gerät: {code}, gültig bis {time}
+
+|`operator.entry.new_code_done`
+|New code: {code}, valid until {time}. The previous code no longer works.
+|Neuer Code: {code}, gültig bis {time}. Der vorige Code funktioniert nicht mehr.
+
+
+
+|`operator.entry.other.title`
+|Reach plan-marshall from a phone or another computer?
+|plan-marshall von einem Telefon oder einem anderen Computer aus erreichen?
+
+|`operator.entry.other.serves`
+|serves
+|bietet
+
+|`operator.entry.other.serves_value`
+|HTTPS on every network interface of this machine, port {port}
+|HTTPS auf jeder Netzwerkschnittstelle dieser Maschine, Port {port}
+
+|`operator.entry.other.certificate`
+|certificate
+|Zertifikat
+
+|`operator.entry.other.certificate_value`
+|self-signed; your browser warns once, compare the fingerprint
+|selbst signiert; dein Browser warnt einmal, vergleiche den Fingerabdruck
+
+|`operator.entry.other.means`
+|means
+|bedeutet
+
+|`operator.entry.other.means_value`
+|every device on your network can reach the pairing page; only a paired device gets in
+|jedes Gerät in deinem Netzwerk erreicht die Kopplungsseite; nur ein gekoppeltes Gerät kommt hinein
+
+|`operator.entry.other.undo`
+|undo
+|rückgängig
+
+|`operator.entry.other.yes`
+|yes
+|ja
+
+|`operator.entry.other.no`
+|no, keep it on this machine
+|nein, auf dieser Maschine lassen
+
+|`operator.entry.other.action`
+|Open to the network
+|Für das Netzwerk öffnen
+
+|`operator.entry.other.nothing_opened`
+|Nothing was opened.
+|Es wurde nichts geöffnet.
+
+|`operator.entry.fingerprint`
+|Fingerprint SHA-256
+|Fingerabdruck SHA-256
+|===

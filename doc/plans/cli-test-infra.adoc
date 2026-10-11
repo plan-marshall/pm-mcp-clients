@@ -13,6 +13,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 * Dialogue tests of `pm-operator` against the mock runtime: a test starts the mock runtime with a scenario, drives an interactive verb with scripted key presses, and compares the terminal output with a recorded transcript; the interactive terminal the operator checks require is provided for the test (a pseudo terminal, or a test seam the operator checks accept only in tests, decided here; a library for it is asked for first).
 * Transcript files beside the scenarios; a changed transcript shows as a diff to review, never as a silent update.
+* The native-image spike of the console's line editor (JLine 4, link:../design/terminal-client/README.adoc#open-points[Terminal Client, Open Points]): size and time to the first prompt with and without it, terminal resize and `Ctrl+C` in the native binary, the native libraries of `jline-native` kept out; the console's transcript tests drive it through a pseudo terminal.
 * The same tests in the JVM and against the native binary in the integration-test profile.
 
 == Trace
@@ -21,7 +22,7 @@ Requirements, specification sections, use cases, and the design documents both c
 
 * Requirements: link:../../../plan-marshall-documentation/doc/requirements/12-testing.adoc#PM-TEST-7[PM-TEST-7]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]
-* Design: link:../design/terminal-client.adoc#transcripts[Terminal Client, Transcripts]
+* Design: link:../design/terminal-client/README.adoc#transcripts[Terminal Client, Transcripts]
 
 == Done When
 

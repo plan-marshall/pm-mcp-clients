@@ -1,0 +1,101 @@
+= Terminal Client: Levels
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Levels
+
+[#levels]
+== Levels
+
+[#level-model]
+=== Machine, Project, Plan
+
+The onboarding records machine values, and they are defaults, not final values: a project may set its own for every aspect but the three that are facts of the machine (the interface language, the enrolled harnesses, the credential store), and a plan overrides what its overrides allow (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#machine-defaults[Onboarding, The machine sets defaults]). The terminal addresses a level with one option and shows, for every value, the level it comes from.
+
+[cols="2,2,2,2",options="header"]
+|===
+|Aspect |Machine |Project |Plan
+
+|`language`
+|interface and model language (`machine-config.json`)
+|model language (`user_language` of `local-config.json`)
+|—
+
+|`harness`
+|the enrolled harnesses
+|—
+|—
+
+|`models`
+|the model catalogue
+|the project's allowed models, from those the enrolled harnesses offer (`projects/<project_id>/model-catalogue.json`)
+|—
+
+|`roles`
+|the machine role assignment
+|the project's role assignment (`projects/<project_id>/role-assignments.json`)
+|override per role (`overrides.json`)
+
+|`credentials`
+|the credential store
+|— (entries per project with `pm-operator credentials set --project`)
+|—
+
+|`providers`
+|availability, variant, and credential per provider
+|variant (`integrations.*.variant`) and credential
+|the optional providers and the variant of an integration (`overrides.json`)
+
+|`plan-defaults`
+|landing, method, asking
+|method and asking (`local-config.json`); landing with origin `team`, kept with the team's configuration and changed through the project setup
+|bound at its start; shown, not changed later
+|===
+
+A dash is not a level of that aspect: `config harness --project p` is refused with usage exit code `2` and the text that names the levels the aspect has. The project column of `language` holds only the model language, since the interface language is the operator's.
+
+[#addressing]
+=== Addressing a Level
+
+* *Machine* is the default: no level option, or `--machine`. A working directory inside an enrolled project never selects the project on its own: the operator who wants the project says so, so that a command typed in a checkout never changes a project by surprise.
+* *Project*: `--project <project_id>`; `--project .` is the project of the working directory by the project resolution rule (as `pm-mcp enter` resolves it); `--project ?` (or `--project` with no value) shows a numbered list of the enrolled projects to pick from.
+* *Plan*: `--plan <plan_id>`, which names its project too; `--plan ?` lists the live plans, of the project given with `--project`, or of every project.
+* Every dialogue on a project or a plan names it in its step line (xref:03-dialogues.adoc#state-frame[The Frame of a State]), so the operator always sees which level the answer goes to.
+
+[source,text]
+----
+$ pm-operator config roles --plan ?
+Which plan?
+  1) pm-mcp-clients   cli-onboarding        execute · 3 of 9 tasks
+  2) pm-mcp-clients   message-catalogue     outline
+  3) pm-mcp-core      session-log           finalize · waiting for review
+Plan? 1-3   q) leave   › 1
+----
+
+[#origins]
+=== Where a Value Comes From
+
+Each value carries its origin, one of `default` (shipped with the release), `machine`, `project`, `team` (the project's team configuration in `.marshall/config/`), and `plan`. The nearest level wins; a value that overrides another names it.
+
+[source,text]
+----
+$ pm-operator config show plan-defaults --project pm-mcp-clients
+Plan defaults · project pm-mcp-clients
+
+  Landing   Branch and Pull Request   team      overrides machine: Commit on main
+  Method    Test first                machine
+  Asking    At the key points         default
+
+Change: pm-operator config plan-defaults --project pm-mcp-clients
+  Landing is set by the project's team (.marshall/config/); change it in the project setup.
+----
+
+* The origin is a word in its own column, never a colour only, so it survives a copy into an issue and a terminal without colour.
+* `config show` without an aspect or key lists every aspect and then every plain key, grouped as in `machine-config.json`, with the origin column.
+* In a dialogue on a project or a plan, a proposal that comes from a lower level says so beside the preselection (`← from machine`), and accepting it records nothing at this level: the level keeps deferring, so a later change of the machine value reaches it. Only a changed line is written at the addressed level.
+
+[#running-plan]
+=== A Running Plan
+
+A plan's axes are bound when it starts; `config show plan-defaults --plan <plan_id>` shows them with origin `plan` (or the level they were taken from at the start) and `config plan-defaults --plan <plan_id>` is refused with the text that names when they were bound. The overrides of a running plan (roles, providers) can change: `config roles --plan <plan_id>` shows the plan's effective assignment and writes the plan's overrides; each change composes a new instance version of the plan (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]), and the client says so before the confirmation (`Applies from the plan's next step; the plan's version becomes 7.`).

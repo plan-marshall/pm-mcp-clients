@@ -24,4 +24,4 @@ Requirements, specification sections, use cases, and the design documents both c
 
 == Done When
 
-Every scenario of the onboarding and of `start` passes as a view test; the same scenarios pass in the terminal (`cli-onboarding`); no text is written in the app's code.
+Every scenario of the onboarding and of the start of the web app (UC-WEB-1) passes as a view test; the same scenarios pass in the terminal (`cli-onboarding`); no text is written in the app's code.
