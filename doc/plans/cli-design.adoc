@@ -22,7 +22,7 @@ A thorough logical design of `pm-operator` as the operator's second client, revi
 
 == Trace
 
-Requirements, specification sections, use cases, and the web design stay in `plan-marshall-documentation` and are only referenced here; the design of the terminal client is the deliverable of this package and lives here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+Requirements, specification sections, use cases, and the design documents both clients share stay in `plan-marshall-documentation` and are only referenced here; the design of the terminal client is the deliverable of this package and lives here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]
 * Design: link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc[Design, Onboarding Screens]; link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Design, Texts and Languages]
