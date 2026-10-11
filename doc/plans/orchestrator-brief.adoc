@@ -12,7 +12,7 @@ The brief from which the plan-marshall orchestrator bootstraps and plans the imp
 
 Slug:: `pm-mcp-clients`
 Title:: `pm-mcp-clients` work packages: client contract, binaries, mock runtime, and the two clients
-Vision:: Implement every work package of the index that is worked through plan-marshall, one plan per package, each landing as one pull request here with the updates of `plan-marshall-documentation` made as part of its own work. The epic covers the packages of roadmap Milestones 2 to 4 and the implementation packages of the link:epic-clients.adoc[client work] (the mock runtime, the message catalogue, the terminal test infrastructure, and the onboarding in both clients). It is done when every package in its scope is `done` in the index, or recorded in the epic as blocked on a decision or a dependency outside this repository.
+Vision:: Implement every work package of the index that is worked through plan-marshall, one plan per package, each landing as one pull request here with the updates of `plan-marshall-documentation` made as part of its own work. The epic covers the packages of roadmap Milestones 2 to 4 and the implementation packages of the link:epic-clients.adoc[client work] (the mock runtime, the message catalogue, the terminal test infrastructure, and the onboarding in both clients). It is done when every package in its scope is `done` in the index, or waits on a dependency outside this repository or on a decision, whose reason the epic records.
 Sibling epic:: `pm-mcp-core-m2-m4` in `pm-mcp-core`, run in parallel; an epic orders only its own queue, so dependencies between the repositories stay rows of the indexes.
 
 [#scope]
@@ -20,7 +20,7 @@ Sibling epic:: `pm-mcp-core-m2-m4` in `pm-mcp-core`, run in parallel; an epic or
 
 In scope:: every package of the index except those named below.
 Not in scope:: `cli-design` and `web-design`: design work, run directly in Claude Code sessions without plan-marshall (each file's _How It Is Run_). The epic waits on them as on an outside dependency: a package that depends on one is parked until the index shows it `done`.
-Parked from the start:: `landlock-on-wsl2` (`blocked` in the index on a machine the operator provides).
+Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a machine the operator provides.
 
 [#order]
 == Order and Priority

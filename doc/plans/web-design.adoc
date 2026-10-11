@@ -30,7 +30,7 @@ Requirements, specification sections, use cases, and design documents stay in `p
 
 == Done When
 
-The operator has accepted the design; every state of the onboarding and of `start` has its view at both widths and in light and dark; the spike's result and the requested dependencies are recorded; the design documents in `plan-marshall-documentation` are merged.
+The operator has accepted the design; every state of the onboarding and of `start` has its view at both widths and in light and dark, and the first views of the plan drill-down (UC-WEB-2) and the plan designer (UC-WEB-3) exist at both widths; the spike's result and the requested dependencies are recorded; the design documents in `plan-marshall-documentation` are merged.
 
 [#run]
 == How It Is Run
