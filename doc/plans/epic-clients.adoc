@@ -25,7 +25,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 == Phases and the Design Gate
 
 . *Foundation*, without a gate: `mock-runtime`, `message-catalogue`, then `cli-test-infra`. They need no design decision and unblock both clients.
-. *Design*, in parallel, each thorough and complete before any client code, each run directly in a Claude Code session without plan-marshall: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it, and its accepted state is recorded in `plan-marshall-documentation`. The design can start now: it waits for nothing.
+. *Design*, in parallel, each thorough and complete before any client code, each run directly in a Claude Code session without plan-marshall: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it. An accepted design is the specification of its client's implementation and lives in this repository, `doc/design/` (link:../design/terminal-client.adoc[Terminal Client], and the web app's from `web-design`). The design can start now: it waits for nothing.
 . *Implementation*, after the gate: `cli-onboarding` after `cli-design`; `web-app-foundation` and then `web-onboarding` after `web-design`. Both run against the mock runtime and its scenarios.
 
 [#workstreams]
@@ -50,7 +50,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 
 Beside the rules of `CLAUDE.md` and of link:README.adoc#how[How to Work a Package], for every plan of the epic:
 
-* *Use cases first.* A package implements what the use cases and their design state; a gap found in a use case is fixed there first (`plan-marshall-documentation`, `doc/use-cases/`, `doc/design/`).
+* *Use cases first.* A package implements what the use cases and their design state; a gap found in a use case is fixed there first (`plan-marshall-documentation`, `doc/use-cases/`, `doc/design/`), a gap in a client's design here (`doc/design/`).
 * *Both clients, one state.* A state is never designed or built for one client only; the texts come from the message catalogue, never from a client's code.
 * *The design principles of the onboarding hold everywhere*: nothing happens without the operator's consent; preselect as much as possible and hide nothing; every check reports a checkmark or an error with its fix (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[UC-ONB]).
 * *Mock first.* Every client-facing flow ships its scenarios; a client test runs against the mock runtime, never against a hand-made fake.

@@ -62,7 +62,7 @@ Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a mac
 To be carried into every staged plan spec, beside the rules of `CLAUDE.md` and of link:README.adoc#how[How to Work a Package]:
 
 * *Java 25 is the baseline*; the client binaries are plain GraalVM native images without Quarkus, and the client modules depend on `pm-api` only (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#dependency-rules[Dependency Rules]).
-* *Use cases and accepted designs first.* A client package implements what the use cases and the accepted design state; a gap is fixed in `plan-marshall-documentation` first.
+* *Use cases and accepted designs first.* A client package implements what the use cases and the accepted design state; a gap is fixed first where it lies: in a use case or a shared design document in `plan-marshall-documentation`, in a client's design in `doc/design/` of this repository.
 * *Both clients, one state.* No state is built for one client only; every user-facing text comes from the message catalogue.
 * *Mock first.* Every client-facing flow ships its scenarios in `pm-mock-runtime`; client tests run against the mock runtime, never a hand-made fake.
 * *The onboarding principles*: nothing happens without the operator's consent; preselect as much as possible and hide nothing; every check reports a checkmark or an error with its fix.

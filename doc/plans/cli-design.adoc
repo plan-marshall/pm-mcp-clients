@@ -5,7 +5,7 @@ link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-design`
 
 [horizontal]
 Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]; no roadmap milestone yet
-Where:: `plan-marshall-documentation`, `doc/design/` (a design document for the terminal client); no code
+Where:: this repository, link:../design/terminal-client.adoc[`doc/design/terminal-client.adoc`], the specification the implementation follows; corrections of the use cases in `plan-marshall-documentation`; no code
 Part of:: link:epic-clients.adoc[the client work]
 Worked by:: a Claude Code session directly, not through plan-marshall (<<run>>)
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -22,7 +22,7 @@ A thorough logical design of `pm-operator` as the operator's second client, revi
 
 == Trace
 
-Requirements, specification sections, use cases, and design documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+Requirements, specification sections, use cases, and the design documents both clients share stay in `plan-marshall-documentation` and are only referenced here; the design of the terminal client is the deliverable of this package and lives here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]
 * Design: link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc[Design, Onboarding Screens]; link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Design, Texts and Languages]
@@ -30,14 +30,14 @@ Requirements, specification sections, use cases, and design documents stay in `p
 
 == Done When
 
-The design document is merged in `plan-marshall-documentation` and the operator has accepted it; every state of the onboarding and of `start` has its transcript and its texts in both languages; every open point is decided or listed with its owner.
+The design document is merged in this repository and the operator has accepted it, and the corrections of the use cases it needed are merged in `plan-marshall-documentation`; every state of the onboarding and of `start` has its transcript and its texts in both languages; every open point is decided or listed with its owner.
 
 [#run]
 == How It Is Run
 
 This package is design work and is run directly in a Claude Code session, without plan-marshall and outside the orchestrator epic:
 
-. Start a Claude Code session in a worktree of `plan-marshall-documentation` of its own (beside the checkouts other sessions use) and give it this file: "Work the package `cli-design` of `pm-mcp-clients` (`doc/plans/cli-design.adoc`)".
-. The session reads the use cases, the design documents, and the specification sections of the trace above, works out the design thoroughly, and opens one pull request in `plan-marshall-documentation` with the design document in `doc/design/`.
-. The operator reviews the design in that pull request and asks for changes until it accepts it; the session merges only on the operator's word.
-. Once accepted, a small pull request here sets the row of the package to `done` in the index; the implementation packages that wait on it become ready.
+. Start a Claude Code session in this repository, with a worktree of `plan-marshall-documentation` of its own for the use-case corrections (beside the checkouts other sessions use), and give it this file: "Work the package `cli-design` of `pm-mcp-clients` (`doc/plans/cli-design.adoc`)".
+. The session reads the use cases, the design documents, and the specification sections of the trace above, works out the design thoroughly, and opens a pull request here with the design document in `doc/design/`, and one in `plan-marshall-documentation` with the corrections of the use cases the design needs.
+. The operator reviews the design in the pull request here and asks for changes until it accepts it; the session merges only on the operator's word, the use-case corrections first.
+. Once accepted, the pull request here sets the row of the package to `done` in the index in a last commit; the implementation packages that wait on it become ready.
