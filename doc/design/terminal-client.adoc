@@ -1,0 +1,3079 @@
+= Design: Terminal Client
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../plans/cli-design.adoc[Work package `cli-design`] » Terminal Client
+
+_Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9], link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]_
+
+_Relies on: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#changes[Onboarding, Changes to the Specification] (proposed), link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#changes[Web App, Changes to the Specification] (proposed), link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Installer, Command Tree], link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation & Privileged CLI], link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc[Onboarding Screens], link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Texts and Languages]_
+
+Status: `DRAFT`. This design is the specification the implementation of the terminal client follows (work package link:../plans/cli-onboarding.adoc[`cli-onboarding`]); the use cases it serves and the web design stay in `plan-marshall-documentation`.
+
+The logical design of `pm-operator` as the operator's second client beside the web app: the commands and their arguments, how the terminal addresses the levels of configuration, how it renders a state of a workflow, the texts it shows in English and German, and a transcript of every state of the onboarding and of `pm-operator start`. The web side of the same states is link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc[Onboarding Screens]; the two documents show the same states with the same texts, and where the terminal needs something the web app does not, this document says so. Names, versions, paths, models, and figures in the transcripts are examples.
+
+The client holds no step order and no rule of its own: it renders the state the runtime reports, offers its links, and sends the link the operator picks (link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc[Onboarding Screens, Principles]). Everything below is about how a state looks and is answered in a terminal, never about what the next state is.
+
+[#commands]
+== Command Model
+
+[#command-tree]
+=== The Verbs
+
+The onboarding adds three verbs to the terminal verbs of `pm-operator` (link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]) and gives the existing verb `config` its aspects. Every one of them is an operator verb (`[op]`): a choice of the onboarding is an operator act (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal]), and `start` issues a pairing code, which only an operator verb may do.
+
+----
+pm-operator start [--auto] [--pair] [--no-wait]           [op]  start the runtime, onboard a new machine, open the web app (UC-WEB-1)
+pm-operator onboard [--auto] [--consent <kind>]...        [op]  the onboarding in the terminal, guided or automatic (UC-ONB-1, UC-ONB-2)
+pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of the onboarding as a later change (UC-ONB-3 to UC-ONB-9)
+    language       [--interface <locale>] [--model same|<locale>]
+    harness        [--client <client_id>] [--path <executable>]
+    models         [--enrol <client_id>]... [--allow <client_id>:<model>]... [--no-advice]
+    roles          [--defaults] [--set <role>=<client_id>:<model>[:<effort>]]... [--reset <role>|--reset-all]
+    credentials    [--store os|file]
+    providers      [--use <provider>[:native|:cli]]... [--without <provider>]...
+    plan-defaults  [--landing pull-request|main|files] [--method test-first|tests-after]
+                   [--asking every-phase|key-points|questions-only]
+    consents       the remembered consents, to withdraw one
+pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
+pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
+pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies
+
+<level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
+common:    --no-input   never ask; stop at the first choice not given (exit code 3)
+           --yes        accept the confirmations of the displayed changes (never a consent)
+           --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
+----
+
+* *`start`* is `web open` with the flow of link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]; on a machine that is not onboarded it first offers the onboarding (<<t-start-first>>). `--auto` runs the automatic onboarding before the web app opens; `--pair` pairs the browser even when one is paired; `--no-wait` prints the ways in once and exits instead of waiting in `start.wait`.
+* *`onboard`* runs the onboarding workflow of the machine scope from the state it is in: the first run from `onboard.entry`, an interrupted run from where it stopped, an onboarded machine from `onboard.completed`, where it offers the aspects to change (<<t-completed>>).
+* *`config <aspect>`* starts the sub-workflow of one aspect as a later run (`onboard_run: reconfigure`), with the current values as the proposal, and answers each choice state from its arguments where they give one (<<direct-verbs>>). The aspects are the seven steps of the onboarding: `language`, `harness`, `models`, `roles`, `credentials`, `providers`, `plan-defaults`.
+* *`config show|set|unset`* keep what `pm-operator config` already is: the operator's configuration keys of `machine-config.json` and `local-config.json`. A key that an aspect owns (`language.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, the role assignment) is changed only through its aspect, because the aspect validates and checks it; `config set` refuses it and names the aspect verb. `show` lists every key, the aspect-owned ones included.
+
+[#one-surface]
+=== One Surface in Every Language
+
+Command names, options, option values, aspect names, consent kinds, state ids, and link relations are the same in every language; only the texts are translated (link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]). A command line, a script, a support answer, and the documentation work in every language without change. The key of a prompt is a mnemonic of its label and therefore a text: it comes from the catalogue with the label and follows the language (`y) yes`, `j) ja`; <<keys>>).
+
+[#direct-verbs]
+=== A Direct Verb Runs a Sub-Workflow
+
+`config <aspect>` and `onboard` drive the same states as the dialogue; their arguments are answers given in advance. The client walks the workflow:
+
+. It sends the request that starts the run (`config <aspect>`) or reads the current state (`onboard`).
+. In a server state (`[S]`) or a model state (`[M]`) it shows the progress and waits for the next state (<<waiting>>).
+. In a choice state (`[O]`) it looks for an answer among the arguments: an option of the aspect for a choice, `--consent <kind>` for a consent state of that kind, `--yes` for a confirmation of a displayed change (`harness.confirm`, `harness.add-confirm`, the move of `config credentials`). An answer the state accepts is sent as its link; the state is printed as one line with the answer (`✓ Interface language  Deutsch   (--interface de)`).
+. A choice state without an answer among the arguments is shown as the dialogue and asks; with `--no-input` the client stops there instead (<<no-input>>).
+. It ends when the sub-workflow reaches its done state (`language.done` and the others) or the onboarding rests in `onboard.completed`.
+
+An argument the state does not accept (a locale without a pack, a model the catalogue does not allow) is not sent: the client shows the state with the refusal in place of the preselection and asks, or with `--no-input` stops with exit code `3` and the refusal. An argument that no state of the run asked for is reported after the run (`--landing main was not used: the landing is set by the project's team`), never silently dropped.
+
+A consent is never implied: no argument but `--consent <kind>` answers a consent state, `--yes` never does, and `--consent` holds for this run only and is never remembered (`yes_remember` exists only as the dialogue's `r`). A secret is never an argument: `providers.credentials` always asks with the echo off, and with `--no-input` stops and names `pm-operator credentials set <credential_key>`.
+
+[#exit-codes]
+=== Exit Codes
+
+[cols="1,4",options="header"]
+|===
+|Code |Meaning
+
+|`0`
+|done: the sub-workflow reached its done state, the onboarding rests in `onboard.completed`, `start` ended by `q`, or a read-only verb answered.
+
+|`1`
+|refused by the runtime: an error code of `pm-api` (<<refusals>>), printed with its text and fix.
+
+|`2`
+|usage: an unknown verb, option, or option value (picocli).
+
+|`3`
+|not finished: the run stopped at a choice it was not given (`--no-input`), or the operator left it (`q`) before its done state; the state stays where it is.
+
+|`4`
+|operator checks: no interactive terminal, or a coding-agent environment (link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation], item 2).
+
+|`130`
+|interrupted with `Ctrl+C`; the state stays where it is, as with `q`.
+|===
+
+[#levels]
+== Levels
+
+[#level-model]
+=== Machine, Project, Plan
+
+The onboarding records machine values, and they are defaults, not final values: a project may set its own for every aspect but the three that are facts of the machine (the interface language, the enrolled harnesses, the credential store), and a plan overrides what its overrides allow (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#machine-defaults[Onboarding, The machine sets defaults]). The terminal addresses a level with one option and shows, for every value, the level it comes from.
+
+[cols="2,2,2,2",options="header"]
+|===
+|Aspect |Machine |Project |Plan
+
+|`language`
+|interface and model language (`machine-config.json`)
+|model language (`user_language` of `local-config.json`)
+|—
+
+|`harness`
+|the enrolled harnesses
+|—
+|—
+
+|`models`
+|the model catalogue
+|the project's allowed models, from those the enrolled harnesses offer (`projects/<project_id>/model-catalogue.json`)
+|—
+
+|`roles`
+|the machine role assignment
+|the project's role assignment (`projects/<project_id>/role-assignments.json`)
+|override per role (`overrides.json`)
+
+|`credentials`
+|the credential store
+|— (entries per project with `pm-operator credentials set --project`)
+|—
+
+|`providers`
+|availability, variant, and credential per provider
+|variant (`integrations.*.variant`) and credential
+|the optional providers and the variant of an integration (`overrides.json`)
+
+|`plan-defaults`
+|landing, method, asking
+|method and asking (`local-config.json`); landing with origin `team`, kept with the team's configuration and changed through the project setup
+|bound at its start; shown, not changed later
+|===
+
+A dash is not a level of that aspect: `config harness --project p` is refused with usage exit code `2` and the text that names the levels the aspect has. The project column of `language` holds only the model language, since the interface language is the operator's.
+
+[#addressing]
+=== Addressing a Level
+
+* *Machine* is the default: no level option, or `--machine`. A working directory inside an enrolled project never selects the project on its own: the operator who wants the project says so, so that a command typed in a checkout never changes a project by surprise.
+* *Project*: `--project <project_id>`; `--project .` is the project of the working directory by the project resolution rule (as `pm-mcp enter` resolves it); `--project ?` (or `--project` with no value) shows a numbered list of the enrolled projects to pick from.
+* *Plan*: `--plan <plan_id>`, which names its project too; `--plan ?` lists the live plans, of the project given with `--project`, or of every project.
+* Every dialogue on a project or a plan names it in its step line (<<state-frame>>), so the operator always sees which level the answer goes to.
+
+[source,text]
+----
+$ pm-operator config roles --plan ?
+Which plan?
+  1) pm-mcp-clients   cli-onboarding        execute · 3 of 9 tasks
+  2) pm-mcp-clients   message-catalogue     outline
+  3) pm-mcp-core      session-log           finalize · waiting for review
+Plan? 1-3   q) leave   › 1
+----
+
+[#origins]
+=== Where a Value Comes From
+
+Each value carries its origin, one of `default` (shipped with the release), `machine`, `project`, `team` (the project's team configuration in `.marshall/config/`), and `plan`. The nearest level wins; a value that overrides another names it.
+
+[source,text]
+----
+$ pm-operator config show plan-defaults --project pm-mcp-clients
+Plan defaults · project pm-mcp-clients
+
+  Landing   Branch and Pull Request   team      overrides machine: Commit on main
+  Method    Test first                machine
+  Asking    At the key points         default
+
+Change: pm-operator config plan-defaults --project pm-mcp-clients
+  Landing is set by the project's team (.marshall/config/); change it in the project setup.
+----
+
+* The origin is a word in its own column, never a colour only, so it survives a copy into an issue and a terminal without colour.
+* `config show` without an aspect or key lists every aspect and then every plain key, grouped as in `machine-config.json`, with the origin column.
+* In a dialogue on a project or a plan, a proposal that comes from a lower level says so beside the preselection (`← from machine`), and accepting it records nothing at this level: the level keeps deferring, so a later change of the machine value reaches it. Only a changed line is written at the addressed level.
+
+[#running-plan]
+=== A Running Plan
+
+A plan's axes are bound when it starts; `config show plan-defaults --plan <plan_id>` shows them with origin `plan` (or the level they were taken from at the start) and `config plan-defaults --plan <plan_id>` is refused with the text that names when they were bound. The overrides of a running plan (roles, providers) can change: `config roles --plan <plan_id>` shows the plan's effective assignment and writes the plan's overrides; each change composes a new instance version of the plan (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]), and the client says so before the confirmation (`Applies from the plan's next step; the plan's version becomes 7.`).
+
+[#dialogue]
+== Dialogues
+
+[#state-frame]
+=== The Frame of a State
+
+A state is printed as three parts, the counterpart of the web app's frame (link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Frame]):
+
+----
+[3/7] Models · Choose the harnesses and models other plans may use          ← step line
+
+  <content: the facts, the proposal, the choices>                           ← content
+
+Enrol and allow 3 models? [Enter]   other: 1-5   b) back   q) leave   ?      ← prompt line
+----
+
+* *Step line*: `[n/7]`, the step's name, `·`, and the title of the state. A later run of one aspect has no counter (`Models · …`); a run on a project or a plan adds its level (`Models · project pm-mcp-clients · …`). Server states print no step line of their own: their progress lines follow the step line of their step.
+* *Content*: indented by two spaces, at most 80 columns; a web table is a list with the same columns as fields (link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Principles]); a long value (a path, a digest) is shortened in the middle with `…` and shown in full by `?`.
+* *Prompt line*: the primary link as a question with `[Enter]`, then the other links with their keys, then `?`. The prompt ends with `› ` where the operator types.
+* A new state is printed below the previous one, never over it: the scrollback is the transcript of the run. Only a check line and a progress line are rewritten in place while they run (<<checks>>).
+
+[#keys]
+=== Links as Keys and Numbers
+
+Input is read by line (`System.console()`, no line editing, link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-implementation[CLI Implementation]): the operator types a key or numbers and presses `Enter`.
+
+* *`Enter` alone* takes the primary link, which is the preselection: the proposal of the state as it stands.
+* *Numbers* pick from a list. In a single choice a number picks one item and is sent at once when the state has nothing else to decide; in a multiple choice (models, providers, review bots) numbers toggle items (`2 5`, ranges `3-7`) and the list is printed again until `Enter` accepts it. Where a state has several choices (the languages, the plan axes), their items are numbered across the whole state, so one line answers several (`2 5 8`).
+* *Letters* take the other links. The key of a link relation is a text of the catalogue (`operator.key.<relation>`, <<texts-operator-keys>>), one letter, the mnemonic of its label in the interface language; within one language a relation has the same key in every state that offers it. Two relations share a key only when no state offers both: a test runs every state of the scenarios in every language and fails on a state that offers two links with the same key, or a key that is a digit or `?`.
+* *`?`* prints the explanation of the state (the text the web app shows under the title and behind _Why?_); `?<n>` prints the explanation of item `n` (the advisory of a role, the rationale of a recommended model, the full value of a shortened one).
+* *`q`* (German `v`) leaves the dialogue: nothing is sent, the state stays where it is, and the client prints where the run stopped and the command that continues it (<<resume>>).
+* An input the state does not offer is answered with one line (`3 is not offered here: 1-2, a, l, q`) and the same prompt; nothing is sent.
+
+[cols="1,1,2,3",options="header"]
+|===
+|English |German |Link relation |Used in
+
+|`Enter`
+|`Enter`
+|the primary link of the state
+|every choice state; never a consent (<<consent>>)
+
+|`1`–`n`
+|`1`–`n`
+|an item of a list
+|every list
+
+|`y`, `r`, `n`
+|`j`, `m`, `n`
+|`yes`, `yes_remember`, `no`
+|every consent state; `start.other-device` (`y`, `n`)
+
+|`b`
+|`z`
+|`back`
+|every state of a step that has a previous choice
+
+|`a`
+|`h`
+|`add` (add a harness that is not listed, add a model id)
+|`harness.choose`, `harness.none`, `catalogue.select`
+
+|`l`
+|`e`
+|`recheck` (look again, check again)
+|`harness.choose`, `harness.none`, `harness.blocked`, `store.unavailable`, `providers.failed`
+
+|`o`
+|`a`
+|`choose_another`
+|`harness.blocked`, `store.unavailable`
+
+|`e`
+|`b`
+|`edit` (change single lines, adjust roles, edit the draft)
+|`roles.review`, `harness.add`, `harness.verify-profile`
+
+|`s`
+|`s`
+|`ask_steward`
+|`roles.review`
+
+|`d`
+|`r`
+|`reset_default`
+|`roles.review`
+
+|`t`
+|`t`
+|`fix_credential`
+|`providers.failed`
+
+|`k`
+|`o`
+|`continue_without` (skip one provider)
+|`providers.credentials`, `providers.failed`
+
+|`g`, `a`, `w`
+|`h`, `a`, `w`
+|guided here, automatic, open the web app instead
+|`onboard.mode` as `start` shows it
+
+|`c`, `s`, `n`, `o`, `q`
+|`u`, `s`, `n`, `g`, `b`
+|copy the URL, copy the SSH forward command, a new code, another device, quit
+|`start.wait`
+
+|`q`
+|`v`
+|leave the dialogue (a client action, no link)
+|every state but `start.wait`
+|===
+
+[#preselection]
+=== Preselection on `Enter`
+
+Every choice state opens with its proposal filled in and marked `←` (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#preselect-first[Preselect as much as possible, hide nothing]); the prompt names what `Enter` does in words (`Use Deutsch for both? [Enter]`), never "OK". A proposal with a reason says it beside the mark (`← from your system`, `← recommended`, `← from machine`). When the operator changes a line, the state is printed again with the changed line marked `✎` and the prompt names the new primary action (`Use these defaults?` becomes `Save these choices?`).
+
+[#explanation]
+=== The Explanation on `?`
+
+`?` prints, indented below the prompt, the explanation of the state from the catalogue and then the prompt again. It never changes the state and never sends a request. The explanation of an item (`?3`) is the advisory of a role, the rationale of a model, a consent's full list, or the full value of a shortened field.
+
+[#consent]
+=== Consent
+
+A consent state is printed as in link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#consent[Onboarding Screens, Consent]: the action, what it looks at, what it runs, what it never does, and the cost, each a field. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. Nothing happens on the machine until the operator typed `y` or `r`. In German:
+
+[source,text]
+----
+[2/7] Harness · Auf dieser Maschine nach Harnesses suchen?
+  sucht nach   claude, opencode, codex, agy
+  in           deinem PATH, ~/.local/bin, /Applications, /opt/homebrew/bin
+  führt aus    <program> --version für jeden gefundenen
+  niemals      liest andere Dateien, startet eine Sitzung, nutzt das Netzwerk
+  Kosten       keine
+
+j) ja   m) ja, und merken   n) nicht jetzt   ?   › ⏎
+Gib j, m oder n ein.
+j) ja   m) ja, und merken   n) nicht jetzt   ?   › j
+----
+
+`n` sends `no`: the state stays, the client prints `Nothing was done.` under the title, the prompt again, and the step does not move. It is never shown as an error (no `✗`, no colour of an error). A remembered consent passes its state without a question; the client prints one line, `✓ Consent remembered: look for harnesses   (withdraw: pm-operator config consents)`.
+
+[#checks]
+=== Check Lists
+
+A check is one line that starts with a spinner and ends in `✓` or `✗` (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#verify-reports[Every verification reports back]):
+
+----
+    ⠹  login                                                 (spinner while it runs)
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✗  not logged in
+       → claude login, then check again
+----
+
+* The line is rewritten in place while it runs and stays as it ended. A `✗` is followed by its answer (what was received) and its fix (`→ …`); a fix that is a command is printed alone on its line so it can be copied.
+* A check the run did not reach is listed as `·  <check>   not run`. A group (a provider, a profile stage) ends in its own `✓ ready` or `✗ not ready`.
+* Without a terminal that renders the spinner (output not a terminal, `TERM=dumb`), a check is printed once, when it ends.
+
+[#waiting]
+=== Waiting, Progress, and a Model at Work
+
+While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the expected cost from earlier runs or `cost not known yet` (link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Frame], Model at work):
+
+----
+  ⠼  steward is working on Claude Code · opus-5.5      0:42   about 0.08 USD
+     q) leave: the advice continues; pm-operator onboard shows its result
+----
+
+`q` and `Ctrl+C` leave while the server works; the work continues in the runtime, and the next run shows the state it reached. The client never stops a server state and offers no `cancel` the use cases do not name.
+
+[#resume]
+=== Interruption and Resume
+
+The state lives in the runtime, never in the client. The operator stops anywhere with `q` or `Ctrl+C`; the client prints where and how to continue, and exits with `3` or `130`:
+
+----
+Stopped at [3/7] Models. Nothing was sent.
+Continue: pm-operator onboard   (or in the web app: pm-operator start)
+----
+
+* The next `pm-operator onboard`, or the web app, opens at the same state with the same proposal (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], Variations).
+* *Another channel moved the state*: the client follows the event stream while it waits for input. When the state changes (the operator answered in the web app), it prints `Answered in the web app: <answer>` and the new state; the typed but unsent input is dropped. A link sent for a state that has moved on is refused by the runtime, and the client prints the new state instead of an error (<<open-points>>, the code of that refusal).
+* *Connection lost*: the runtime stopped or restarted (a drain, an upgrade). The client says so, starts the runtime on demand as for every request, re-reads the state, and continues there; a link whose answer did not arrive is never sent twice without reading the state first.
+
+[#refusals]
+=== Refusals and Errors
+
+A refused request is printed as a `✗` line with the text of its error code from the catalogue (`common.error.<code>`), the detail the runtime sent, and the fix (`→ …`), and the client exits with `1` unless the state offers a way on, which it then prompts for. `internal_fault` prints its `audit_id` and `pm-operator status`. An error is never printed as a stack trace, and a refusal never ends in a colour or a word of alarm (link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#style[Texts and Languages, How Texts Are Written]).
+
+[#no-input]
+=== Without Prompts
+
+* *`--no-input`* never asks: a choice state answered by the arguments is passed, the first one that is not ends the run with exit code `3`, its state printed and one line naming the option that answers it (`Needs a choice: --landing pull-request|main|files`), or for a consent the `--consent <kind>` that gives it, or for a secret the `pm-operator credentials set` command.
+* Like every operator verb it runs only where the operator checks pass, in an interactive terminal.
+* There is no machine-readable output: every interaction goes through the verbs, which validate what they write, and nothing outside the runtime reads or writes the configuration as data.
+
+[#terminal]
+=== The Terminal Itself
+
+* *Width*: content is laid out for 80 columns; a wider terminal (`COLUMNS`) gives long values more room, a narrower one wraps fields below their names. Nothing is cut that `?` cannot show.
+* *Colour*: `✓` green, `✗` red, the preselection bold, the step line bold; never the only carrier of a meaning. No colour when standard output is not a terminal, with `NO_COLOR` set, or with `TERM=dumb` (picocli ANSI).
+* *Characters*: `✓ ✗ ← ✎ · → …` and the spinner need a UTF-8 locale; without one the client prints `ok`, `x`, `<-`, `*`, `-`, `->`, `...` and a spinner of `|/-\`.
+* *Copying*: the copy keys of `start.wait` write the terminal's clipboard sequence (OSC 52), which reaches the clipboard of the operator's own computer also over SSH; on a local terminal the platform's clipboard tool where one is found (`pbcopy`, `wl-copy`, `xclip`). Whether a terminal honours OSC 52 cannot be detected, so after a copy the client says `Copied, if your terminal allows it; the text is above.` and the text stays on the screen to select. A key is not offered where neither path exists (no terminal for OSC 52, no tool locally).
+
+[#language]
+=== Language of the Terminal
+
+The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. After `language.choose` the client switches at once: the state is printed again in the chosen language before it is recorded, so the operator sees it first (link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#language[Onboarding Screens, Language]). `pm-mcp` keeps English (link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).
+
+[#transcripts]
+== Transcripts
+
+One transcript per state or per short sequence of states; the states each one shows are named above it, and <<state-coverage>> lists every state with its transcript. The operator's input follows `› `; `⏎` stands for `Enter` alone. A check is shown as it ended. The transcripts are in English; the German texts are those of <<texts>>, and one German transcript (<<t-language>>) shows the switch.
+
+[#t-start]
+=== `start`
+
+[#t-start-desktop]
+==== On the Desktop (`start.runtime`, `start.pairing`, `start.where`, `start.browser`, `start.show`, `start.wait`)
+
+[source,text]
+----
+$ pm-operator start
+✓ Runtime started (pm-mcpd 0.9.0)
+✓ Web access on http://127.0.0.1:7420
+✓ Browser opened with a pairing code, valid for 10 minutes
+
+  Ways in
+    URL    http://127.0.0.1:7420/pair#code=KXQB-MRTN
+    Code   KXQB-MRTN   valid until 14:32
+
+Waiting for the browser.   c) copy URL   n) new code   o) other device   q) quit   ?   ›
+✓ Paired: local (Firefox on mbp-oliver)
+  A new code for a further device: MPZD-WRHC, valid until 14:33
+
+Waiting for the browser.   c) copy URL   n) new code   o) other device   q) quit   ?   › q
+The runtime keeps running. Open the web app again: pm-operator start
+----
+
+* `start.runtime` prints `✓ Runtime running` when one was running already. `start.pairing` issues no code when a browser of this machine is paired (`paired_by: open`) and `--pair` is not given; the browser then opens the app's start URL and the ways in show no code.
+* `start.browser` that cannot start the browser prints `– No browser opened: <reason>` and continues with `start.show`, which then preselects nothing and lists the ways in as over SSH.
+
+[#t-start-ssh]
+==== Over SSH (`start.where`, `start.show`, `start.wait`)
+
+[source,text]
+----
+$ pm-operator start
+✓ Runtime running (pm-mcpd 0.9.0)
+✓ Web access on http://127.0.0.1:7420
+– SSH session: no browser opened here
+
+  Ways in, from your own computer
+    1. Forward the port (VS Code and JetBrains do this on their own):
+       ssh -L 7420:127.0.0.1:7420 oliver@build-box
+    2. Open:
+       http://127.0.0.1:7420/pair#code=KXQB-MRTN
+    Code KXQB-MRTN, valid until 14:32
+
+Waiting for the browser.   s) copy ssh command   c) copy URL   n) new code   o) other device   q) quit   ?   › s
+✓ Copied, if your terminal allows it; the text is above.
+Waiting for the browser.   s) copy ssh command   c) copy URL   n) new code   o) other device   q) quit   ?   › n
+✓ New code: TBZC-HQPL, valid until 14:35. The previous code no longer works.
+  http://127.0.0.1:7420/pair#code=TBZC-HQPL
+----
+
+[#t-start-other]
+==== Another Device (`start.other-device`, `start.lan`)
+
+[source,text]
+----
+Waiting for the browser.   c) copy URL   n) new code   o) other device   q) quit   ?   › o
+Reach plan-marshall from a phone or another computer?
+  serves      HTTPS on every network interface of this machine, port 7420
+  certificate self-signed; your browser warns once, compare the fingerprint
+  means       every device on your network can reach the pairing page;
+              only a paired device gets in
+  undo        pm-operator web disable
+
+Open to the network? y) yes   n) no, keep it on this machine [Enter]   ›
+  Nothing was opened.
+Waiting for the browser.   c) copy URL   n) new code   o) other device   q) quit   ?   › o
+…
+Open to the network? y) yes   n) no, keep it on this machine [Enter]   › y
+✓ Web access on https://mbp-oliver.local:7420 and every interface
+
+  ▄▄▄▄▄▄▄ ▄ ▄▄ ▄▄▄▄▄▄▄
+  █ ▄▄▄ █ ▀█▄▀ █ ▄▄▄ █      https://mbp-oliver.local:7420/pair#code=HVNQ-SXKD
+  █ ███ █ ▄▀▀█ █ ███ █      Code HVNQ-SXKD, valid until 14:38
+  █▄▄▄▄▄█ █▀▄▀ █▄▄▄▄▄█      Fingerprint SHA-256
+  ▄▄▄▄ ▄▄▄▀█▄▀▄▄▄▄ ▄ ▄        4F:1A:9C:…:E2:07   ? shows it in full
+  …
+
+Waiting for the browser.   c) copy URL   n) new code   q) quit   ?   ›
+----
+
+* `start.other-device` is a choice of the network exposure, not a consent of the onboarding: its default is the safe answer `n`, which `Enter` takes, as the use case says (`no (default)`).
+
+[#t-start-no-wait]
+==== Without Waiting (`--no-wait`)
+
+[source,text]
+----
+$ pm-operator start --no-wait
+✓ Runtime running (pm-mcpd 0.9.0)
+✓ Web access on http://127.0.0.1:7420
+– SSH session: no browser opened here
+
+  Ways in, from your own computer
+    1. ssh -L 7420:127.0.0.1:7420 oliver@build-box
+    2. http://127.0.0.1:7420/pair#code=KXQB-MRTN
+    Code KXQB-MRTN, valid until 14:32
+$
+----
+
+[#t-start-first]
+==== A Machine Not Set Up (`onboard.entry`, `onboard.mode`)
+
+[source,text]
+----
+$ pm-operator start
+✓ Runtime started (pm-mcpd 0.9.0)
+– SSH session: no browser opened here
+
+plan-marshall is running. This machine is not set up yet.
+
+  Seven steps. Nothing on this machine is looked at, run, or changed until
+  you say so in that step. You can stop at any point; the next run continues
+  where you stopped.
+
+    1  Language     the language of plan-marshall and of the models' texts
+    2  Harness      the coding agent the server works with first
+    3  Models       the agents and models other plans may use
+    4  Roles        an agent and a model for every role
+    5  Credentials  where this machine keeps its tokens
+    6  Providers    the git hosts, CI and analysis services this machine uses
+    7  Plans        how plans run unless a project says otherwise
+
+Set it up here, step by step? [Enter]   a) decide everything for me   w) in the web app instead   ?   ›
+----
+
+* The preselection is `g` (guided, here) in an SSH session, as shown, and `w` (the web app) on a desktop, where the browser can open (`Continue in the web app? [Enter]   g) here, step by step   a) decide everything for me`); the prompt names the preselected one. `w` continues with the flow of `start` (<<t-start-desktop>>), and the web app shows `onboard.mode`.
+* Once the onboarding completes in the terminal, `start` continues with its own flow: the runtime runs, the browser opens or the ways in are shown.
+* `pm-operator onboard` shows the same state without `w`.
+
+[#t-onboard]
+=== The Onboarding
+
+[#t-auto]
+==== Automatic (`auto.consent`, `auto.run`, `auto.result`)
+
+[source,text]
+----
+$ pm-operator onboard --auto
+Decide everything for me?
+  looks for   the harnesses claude, opencode, codex, agy in your PATH,
+              ~/.local/bin, /Applications, /opt/homebrew/bin
+              the tools git, gh, glab and the tokens already stored
+  runs        the version and login probe of each harness found,
+              the model probe of each harness that can list its models,
+              the version probe of each tool found
+  never       asks a model, reads other files, sends anything over the network
+              except the provider checks
+  cost        none
+  This consent is for this run only.
+
+y) yes   n) not now   ? lists every action   › y
+
+[1/7] Language     ✓ Deutsch, models too           from your system
+[2/7] Harness      ✓ Claude Code 2.4.1             the only supported one
+                     ✓ version   ✓ logged in
+[3/7] Models       ✓ 3 models on 2 harnesses       all found
+[4/7] Roles        ✓ default assignment, 31 roles  the default
+[5/7] Credentials  ✓ macOS Keychain                available here
+                     ✓ write   ✓ read   ✓ delete
+[6/7] Providers    ✓ GitHub via gh 2.71            gh logged in
+                     ✓ reachable   ✓ oliver-wolff   ✓ permissions   ✓ gh same account
+                   – SonarCloud                    no token: skipped
+[7/7] Plans        ✓ Pull Request · Test first · key points   the default
+
+Everything is decided.
+  No model was asked; ask the steward to refine the roles: pm-operator config roles
+  Add SonarCloud: pm-operator config providers
+  Change any of it: pm-operator config <language|harness|models|roles|credentials|providers|plan-defaults>
+
+Finish? [Enter]   1-7) change that step   ?   › ⏎
+✓ This machine is ready. Next: enrol a project (pm-operator enrol).
+----
+
+* `auto.consent` has no `r`: the automatic run's consent is never remembered.
+* *A step that needs the operator* (`auto.run` stops in a state of a step): the state is shown as in the guided run, under its step line, and the run continues after it:
+
+[source,text]
+----
+[2/7] Harness      ✓ Claude Code 2.4.1             the only supported one
+                     ✓ version   ✗ not logged in
+
+[2/7] Harness · Checking Claude Code
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✗  not logged in
+       → log in to Claude Code in another terminal, then check again:
+         claude login
+
+Check again? [Enter]   o) choose another harness   q) leave   ?   › ⏎
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✓  logged in
+[3/7] Models       ✓ 3 models on 2 harnesses       all found
+…
+----
+
+* `auto.result`: a number opens that step's choice state with the automatic value as its proposal, as `config <aspect>` would, and returns to the result.
+
+[#t-mode]
+==== Guided (`onboard.entry`, `onboard.mode`)
+
+[source,text]
+----
+$ pm-operator onboard
+Set up this machine for plan-marshall
+
+  Seven steps. Nothing on this machine is looked at, run, or changed until
+  you say so in that step. You can stop at any point; the next run continues
+  where you stopped.
+
+    1  Language     the language of plan-marshall and of the models' texts
+    …
+    7  Plans        how plans run unless a project says otherwise
+
+Begin with step 1? [Enter]   a) decide everything for me   ?   › ⏎
+----
+
+[#t-language]
+==== 1 Language (`language.detect`, `language.choose`, `language.record`, `language.done`)
+
+[source,text]
+----
+[1/7] Language · Choose your languages
+  plan-marshall and pm-operator    1) English   2) Deutsch ← from your system (de_DE)
+  What models write and read       3) same as above ←   4) English   5) Deutsch
+
+  Words like Pull Request, Commit, Merge and Request stay as they are.
+
+Use Deutsch for both? [Enter]   other: 1-5   ?   › ?
+  Models do not work equally well in every language; you can let them work
+  in English while plan-marshall speaks German. "same as above" follows a
+  later change of the first language.
+Use Deutsch for both? [Enter]   other: 1-5   ?   › 4
+[1/7] Sprache · Wähle deine Sprachen
+  plan-marshall und pm-operator      1) English   2) Deutsch ← von deinem System (de_DE)
+  Was Modelle schreiben und lesen    3) wie oben   4) English ✎   5) Deutsch
+
+  Wörter wie Pull Request, Commit, Merge und Request bleiben, wie sie sind.
+
+Deutsch hier, English für Modelle verwenden? [Enter]   anders: 1-5   ?   › ⏎
+✓ Sprachen gespeichert: Deutsch, Modelle English
+----
+
+* `language.detect` and `language.record` print no line of their own beyond the result; `language.done` is the result line.
+* The choice of an interface language reprints the state in it before it is recorded (<<language>>).
+
+[#t-harness]
+==== 2 Harness
+
+[#t-harness-consent]
+===== Consent and Scan (`harness.consent`, `harness.scan`)
+
+[source,text]
+----
+[2/7] Harness · Look for harnesses on this machine?
+  looks for   claude, opencode, codex, agy
+  in          your PATH, ~/.local/bin, /Applications, /opt/homebrew/bin
+  runs        <program> --version on each one found
+  never       reads other files, starts a session, uses the network
+  cost        none
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › n
+  Nothing was done.
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
+  ⠼  Looking for harnesses …  2 of 4 programs
+----
+
+[#t-harness-choose]
+===== Choose (`harness.choose`)
+
+[source,text]
+----
+[2/7] Harness · Choose the harness to start with
+  Found on this machine:
+    1) Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported ←
+    2) OpenCode      1.9.0   /opt/homebrew/bin/opencode  ✓ supported
+       Codex         0.31.2  /opt/homebrew/bin/codex     ✗ cannot run workers
+       Antigravity   —       not found
+
+  The first harness also runs the advice in the next steps. You can add the
+  others in step 3, Models.
+
+Check Claude Code? [Enter]   other: 1-2   a) add a harness that is not listed   l) look again   ?   ›
+----
+
+* A harness that cannot run workers is listed without a number and with its reason; one not found is listed so that the operator sees what was looked for.
+
+[#t-harness-none]
+===== None Found (`harness.none`)
+
+[source,text]
+----
+[2/7] Harness · No harness found
+  Looked for claude, opencode, codex, agy in your PATH, ~/.local/bin,
+  /Applications, /opt/homebrew/bin.
+
+  Install one, then look again:
+    Claude Code   https://docs.anthropic.com/en/docs/claude-code/setup
+    OpenCode      https://opencode.ai/docs/
+  Or add a harness that is not listed, by its program.
+
+Add a harness that is not listed? [Enter]   l) look again   ?   ›
+----
+
+[#t-harness-probe]
+===== Check (`harness.probe-consent`, `harness.probe`, `harness.blocked`)
+
+[source,text]
+----
+› ⏎
+[2/7] Harness · Check whether Claude Code is logged in?
+  runs        claude auth status
+  never       starts a session, sends a prompt
+  cost        none
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › r
+[2/7] Harness · Checking Claude Code
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✗  not logged in
+       → log in to Claude Code in another terminal, then check again:
+         claude login
+
+Check again? [Enter]   o) choose another harness   ?   › ⏎
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✓  logged in
+----
+
+* A harness whose profile has no login probe is checked by one minimal headless call; its consent states the call and its token cost (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-login-probe[Login Probe]).
+
+[#t-harness-confirm]
+===== Confirm and Enrol (`harness.confirm`, `harness.enrol`, `harness.done`)
+
+[source,text]
+----
+[2/7] Harness · Enrol Claude Code
+  The server will remember this program and start workers with it only while
+  it is unchanged:
+    Path      /Users/oliver/.local/bin/claude
+    Version   2.4.1
+    SHA-256   9f2c4e…d841ab   ? shows it in full
+
+Enrol Claude Code? [Enter]   b) back   ?   › ⏎
+✓ Claude Code 2.4.1 enrolled
+----
+
+[#t-harness-add]
+===== Add a Harness That Is Not Listed (`harness.add`, `harness.add-consent`, `harness.verify-profile`, `harness.add-confirm`, `harness.install-profile`)
+
+[source,text]
+----
+› a
+[2/7] Harness · Add a harness
+  Executable      [ ] › /usr/local/bin/aider
+  Name            [aider] › Aider
+  Id              [aider] › ⏎
+  Start from      the closest known harness; its settings are filled in
+                  1) Claude Code   2) OpenCode   3) Codex   › 2
+
+  How it is called headless (from OpenCode):
+    Arguments       --message {prompt} --yes --no-pretty
+    MCP config      --mcp-config {mcp_config_file}
+    Output          JSON lines            Usage   field: usage
+    Version probe   --version
+    and 4 more: environment, tools, commands, limits   ? shows them
+
+Verify this harness? [Enter]   e) edit the settings   b) back   ?   › ⏎
+[2/7] Harness · Run Aider to verify these settings?
+  runs        /usr/local/bin/aider with the settings above, once per stage:
+              identity, detection, launch, isolation, classes, limits,
+              paths, faults
+  never       touches your repositories; it runs in a temporary directory
+  cost        about 12 short headless calls; tokens of your Aider account
+
+y) yes   n) not now   ?   › y
+[2/7] Harness · Verifying Aider
+    ✓  identity      aider 0.86.1
+    ✓  detection
+    ✓  launch        a headless call answered in 4.1 s
+    ✗  isolation     the MCP configuration was not used: the harness read
+                     ~/.aider.conf.yml instead
+                     → add --no-config to "Arguments"
+    ·  classes, limits, paths, faults   not run
+
+Edit the settings? [Enter]   b) back   ?   › ⏎
+  Arguments       [--message {prompt} --yes --no-pretty] › --message {prompt} --yes --no-pretty --no-config
+  (Enter keeps a value)
+…
+[2/7] Harness · Verifying Aider
+    ✓  identity  ✓  detection  ✓  launch  ✓  isolation
+    ✓  classes   ✓  limits     ✓  paths   ✓  faults
+
+[2/7] Harness · Install the profile of Aider
+  The verified profile is installed for this machine:
+    Id        aider
+    Profile   ~/.plan-marshall-mcp/profiles/aider.json
+    Workers   can run workers
+
+Install it? [Enter]   b) back   ?   › ⏎
+✓ Profile of Aider installed
+  continues with the check of Aider (harness.probe)
+----
+
+* `harness.add-consent` has no `r`: running an unknown program is asked for every time.
+* A field of the draft is asked as a line with its current value in brackets; `Enter` keeps it. The settings of a known harness found nowhere (added by its path only) are its shipped ones and are not asked.
+
+[#t-models]
+==== 3 Models (`catalogue.consent`, `catalogue.scan`, `catalogue.advise`, `catalogue.select`, `catalogue.enrol`, `catalogue.record`, `catalogue.done`)
+
+[source,text]
+----
+[3/7] Models · Ask the harnesses for their models, and a model for advice?
+  1  List the models of Claude Code and OpenCode
+       runs   claude models list, opencode models
+       cost   none
+  2  Ask the steward which harnesses and models suit which work
+       runs   a steward task on Claude Code · opus-5.5
+       cost   about 0.10 USD (not known yet: first run)
+
+y) yes to both   r) yes to both, and don't ask again   1, 2) yes to that one only   n) not now   ?   › y
+  ✓  Claude Code    3 models
+  ✓  OpenCode       5 models
+  ⠴  steward is working on Claude Code · opus-5.5      0:18   about 0.10 USD
+
+[3/7] Models · Choose the harnesses and models other plans may use
+  Recommendation by steward: Use Claude Code for writing roles and OpenCode
+  with a small model for screening; allow the three models below.   ?0 why
+
+  Claude Code   enrolled
+    1) [x] opus-5.5         ★ recommended
+    2) [x] sonnet-5.5       ★ recommended
+    3) [ ] haiku-5.5
+  OpenCode      found, not enrolled
+    4) [x] enrol OpenCode   ★ recommended
+    5) [x] qwen-coder-32b   ★ recommended
+    6) [ ] deepseek-v4
+  a) add a model id
+
+Enrol OpenCode and allow 3 models? [Enter]   toggle: 1-6   b) back   ?   › 3
+    3) [x] haiku-5.5        ✎
+Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   › ⏎
+  ✓  OpenCode 1.9.0: version, logged in
+[3/7] Models · Enrol OpenCode
+    Path      /opt/homebrew/bin/opencode
+    Version   1.9.0
+    SHA-256   41be07…a19c3e
+Enrol OpenCode? [Enter]   b) back   ?   › ⏎
+✓ OpenCode 1.9.0 enrolled
+✓ 4 models allowed on 2 harnesses
+----
+
+* The two consents of `catalogue.consent` are asked together and answered together or one by one (`1`, `2`); a model probe without the advice, or the advice without the probe, is a valid answer, and `catalogue.select` then shows what it has (no recommendation, or model ids to enter).
+* `?0` is the recommendation's rationale, `?n` the rationale of item `n` with cost and limits.
+* A harness that cannot list its models shows `a) add a model id` as its only entry; `a` asks `Model id for OpenCode › `.
+* `catalogue.enrol` runs the check and the confirmation of `harness.probe` and `harness.confirm` for each further harness, under the step line of step 3.
+
+[#t-roles]
+==== 4 Roles
+
+[#t-roles-review]
+===== The Overview (`roles.load`, `roles.default`, `roles.review`, `roles.validate`, `roles.write`, `roles.done`)
+
+[source,text]
+----
+[4/7] Roles · Give every role a harness and a model
+  The default assignment is applied to all 31 roles.
+
+    1) Claude Code · opus-5.5      7 roles   planning and decisions
+    2) Claude Code · sonnet-5.5   16 roles   execution and review
+    3) OpenCode · qwen-coder       6 roles   screening and checks
+    4) ⚠ not assignable             2 roles   no fast model allowed
+
+Assign the 2 open roles first: 4) or e) adjust roles   s) ask the steward to refine   b) back   ?   ›
+----
+
+* While a `⚠` line remains, `Enter` is not the primary link and the prompt names what to do first; with none, the prompt is `Use the defaults? [Enter]`.
+* `?1` to `?4` list the roles of the group with the advisory of the group.
+
+[#t-roles-adjust]
+===== Adjust Roles (`roles.review`, `edit`)
+
+[source,text]
+----
+› 4
+[4/7] Roles · 2 roles to look at
+  Review
+    12) screener    zero_tool   —            —           —        ⚠ no model of tier fast
+  Decisions
+    27) tie-break   zero_tool   —            —           —        ⚠ no model of tier fast
+
+Select roles to assign: numbers or ranges, a) all shown   ?n advisory   b) back   › 12 27
+  Harness   1) Claude Code   2) OpenCode            › 2
+  Model     1) qwen-coder-32b   2) deepseek-v4      › 1
+  Effort    (OpenCode has no effort setting)
+    12) screener    zero_tool   OpenCode     qwen-coder  —        ✎ changed
+    27) tie-break   zero_tool   OpenCode     qwen-coder  —        ✎ changed
+
+Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   › ⏎
+  ✓  31 roles valid
+✓ 31 roles assigned
+----
+
+* `e` from the overview lists every role, grouped by phase, with the columns of the web table as fields: number, role, class, harness, model, effort, origin (`default`, `✎ steward`, `✎ changed`, `⚠ <reason>`). A filter is typed as `/text`.
+* `?<n>` prints the advisory of role `n` in place (link:../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#roles[Onboarding Screens, Roles]), here of `outline`:
+
+[source,text]
+----
+  outline     writer     Claude Code  opus-5.5    high     default
+    What it does   Turns the refined request into deliverables and the plan's
+                   lane; reads the whole affected codebase.
+    What it needs  Deep reasoning over a large context; few tool calls.
+    Why frontier   A weak outline costs more later than the model costs here:
+                   every later phase builds on it.
+    If cheaper     More loop-backs from the Q-Gate; standard tier passed 71 %
+                   of the qualification items (frontier 92 %).
+    Steward        no departure
+----
+
+[#t-roles-steward]
+===== Ask the Steward (`roles.consent`, `roles.propose`)
+
+[source,text]
+----
+› s
+[4/7] Roles · Ask the steward to refine the defaults?
+  runs        a steward task on Claude Code · opus-5.5: it reads the roles,
+              the catalogue, and the qualification records of your projects
+  never       changes a role: you accept or reject each proposal
+  cost        about 0.12 USD (from 2 earlier runs)
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
+  ⠦  steward is working on Claude Code · opus-5.5      1:04   about 0.12 USD
+
+[4/7] Roles · The steward proposes 2 departures
+    1) qgate       read_only   OpenCode · qwen-coder   ← Claude Code · sonnet-5.5
+       Reason: the qualification records of 2 projects show qwen-coder at
+       the level of sonnet-5.5 for this role, at a third of the cost.
+    2) refine      writer      Claude Code · opus-5.5  ← Claude Code · sonnet-5.5
+       Reason: refine loops back twice as often on sonnet-5.5.
+
+Accept both? [Enter]   toggle: 1-2 to reject   b) back   ?   › 2
+    2) refine      … rejected
+Accept 1, reject 1? [Enter]   toggle: 1-2   b) back   ?   › ⏎
+[4/7] Roles · Give every role a harness and a model
+    …
+    1 role ✎ steward
+Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
+----
+
+* A failed or left model task returns to `roles.review` as it was, with one line: `– The steward gave no proposal: <reason>.`
+* `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
+
+[#t-credentials]
+==== 5 Credentials
+
+[#t-store-choose]
+===== Choose (`store.detect`, `store.choose`, `store.check`, `store.record`, `store.done`)
+
+[source,text]
+----
+[5/7] Credentials · Where should this machine keep its tokens?
+  1) macOS Keychain                                    ★ recommended ←
+     Only plan-marshall's runtime reads them without asking you; any other
+     program that tries makes macOS ask first.
+  2) Files in ~/.plan-marshall-mcp/credentials/
+     Readable by every program you run (mode 0600). Works everywhere, also
+     without a desktop session.
+
+  The choice holds until you change it; a change moves the tokens and never
+  leaves a copy behind.
+
+Use the macOS Keychain? [Enter]   other: 2   b) back   ?   › ⏎
+    ✓  write a test entry
+    ✓  read it back
+    ✓  delete it
+✓ Tokens are kept in the macOS Keychain
+----
+
+* On Linux the first option is the Secret Service, with its own text (`Every program you run can read it while it is unlocked.`).
+
+[#t-store-unavailable]
+===== Not Available Now (`store.unavailable`)
+
+[source,text]
+----
+[5/7] Credentials · Where should this machine keep its tokens?
+  1) Linux Secret Service                              not available now
+     Every program you run can read it while it is unlocked.
+     ✗ no session bus: this is an SSH session
+     → log in at the desktop, or use the files below
+  2) Files in ~/.plan-marshall-mcp/credentials/                      ←
+     Readable by every program you run (mode 0600). Works everywhere, also
+     without a desktop session.
+
+Use the files? [Enter]   l) check again   b) back   ?   ›
+----
+
+* Chosen while unavailable, or failing `store.check`, the state is `store.unavailable` with its cause and the two links `l) check again` and `o) choose another store`.
+
+[#t-store-move]
+===== A Later Change Moves the Tokens (`config credentials`)
+
+[source,text]
+----
+$ pm-operator config credentials --store os
+Credentials · Move the tokens to the macOS Keychain?
+  moves       7 tokens from ~/.plan-marshall-mcp/credentials/ to the Keychain
+  each        written, read back, then deleted from the files
+  if stopped  the next run continues the move; no token is lost or doubled
+
+Move 7 tokens? [Enter]   b) back   ?   › ⏎
+    ✓  github                   moved
+    ✓  sonar                    moved
+    …
+    ✓  pm-mcp-clients/github    moved
+✓ Tokens are kept in the macOS Keychain
+----
+
+[#t-providers]
+==== 6 Providers
+
+[#t-providers-select]
+===== Consent, Scan, Select (`providers.consent`, `providers.scan`, `providers.select`)
+
+[source,text]
+----
+[6/7] Providers · Look for CLI tools and stored tokens?
+  looks for   git, gh, glab in your PATH; the tokens stored in the macOS Keychain
+  runs        <tool> --version, gh auth status, glab auth status
+  never       reads a token's value, uses the network
+  cost        none
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › r
+  ✓  git 2.47   ✓  gh 2.71   –  glab not found   ✓  1 token stored
+
+[6/7] Providers · Choose what this machine works with
+  GitHub        1) [x] available    variant 2) native  3) gh 2.71 ←   token ✓ stored
+  GitLab        4) [ ] available
+  SonarCloud    5) [x] available    native only                       token ✗ missing
+  Review bots   6) [x] CodeRabbit   7) [x] Sourcery   8) [ ] cuioss-review-bot
+
+  These are the defaults for every project; a project's setup and a single
+  plan can override them.
+
+Continue with 2 providers? [Enter]   toggle: 1-8   b) back   ?   › ⏎
+----
+
+[#t-providers-credentials]
+===== A Missing Token (`providers.credentials`)
+
+[source,text]
+----
+[6/7] Providers · SonarCloud needs a token
+  Stored in the macOS Keychain; it is never shown again and never reaches a
+  model or a log.
+
+Token (not shown while you type): ›
+Store and check it? [Enter]   k) skip SonarCloud   ?   › ⏎
+----
+
+* The token is read with the echo off (`readPassword`) and sent in the body of one request; nothing of it is printed. `--no-input` stops here and names `pm-operator credentials set sonar`.
+
+[#t-providers-verify]
+===== Check (`providers.verify`, `providers.failed`, `providers.record`, `providers.done`)
+
+[source,text]
+----
+[6/7] Providers · Checking the providers
+  GitHub                                                     ✓ ready
+    ✓  github.com reachable
+    ✓  token authenticates as oliver-wolff (fine-grained, expires in 41 days)
+    ✓  permissions: contents, pull requests, checks (read and write)
+    ✓  gh 2.71 is logged in as the same account
+  SonarCloud                                                 ✗ not ready
+    ✓  sonarcloud.io reachable
+    ✗  token refused: 401 "Invalid token"
+       → enter the token again
+
+Enter the token again? [Enter]   l) check again   k) continue without SonarCloud   ?   › k
+  SonarCloud will be recorded as not available. Projects can still set it up
+  on their own.
+Continue without SonarCloud? [Enter]   b) back   › ⏎
+✓ Providers recorded: GitHub (gh); SonarCloud not available
+----
+
+* With every provider `✓`, the state passes on its own to `providers.record`; the client prints the result line.
+
+[#t-defaults]
+==== 7 Plans (`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`)
+
+[source,text]
+----
+[7/7] Plans · How should plans run on this machine?
+  A project's setup and a single plan can choose otherwise.
+
+  Landing   1) Branch and Pull Request ←   review and merge on the provider
+            2) Commit on main              no Pull Request, pushed directly
+            3) Files only                  nothing is committed; you take over
+  Method    4) Test first ←                tests are written before the code
+            5) Tests after
+  Asking    6) At every phase              you confirm each phase
+            7) At the key points ←         the outline, and before the Merge
+            8) Only questions              you are asked only what needs you
+
+Use these defaults? [Enter]   change: e.g. 2 5   ?n explains a line   b) back   › 2
+  Landing   2) Commit on main ✎
+Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
+    ✓  Commit on main: the base branch accepts pushes (GitHub, main not protected)
+    ✓  Test first
+    ✓  At the key points
+✓ Plan defaults recorded
+----
+
+* A variant that cannot run on this machine is listed without a number and with its reason (`Branch and Pull Request   needs a provider: none is available`).
+* `defaults.validate` that refuses a line reprints the state with the line marked `✗ <reason>` and the prompt naming it.
+
+[#t-completed]
+==== Done (`onboard.completed`)
+
+[source,text]
+----
+✓ This machine is ready
+    ✓ Language     Deutsch, models English
+    ✓ Harness      Claude Code 2.4.1 (+ OpenCode 1.9.0)
+    ✓ Models       4 models allowed
+    ✓ Roles        31 roles assigned
+    ✓ Credentials  macOS Keychain
+    ✓ Providers    GitHub (gh)
+    ✓ Plans        Commit on main · Test first · key points
+
+  Next: enrol a project and set it up: pm-operator enrol, in its checkout.
+  The web app: pm-operator start
+$
+----
+
+`pm-operator onboard` on a machine that rests in `onboard.completed` prints the same summary and offers the aspects:
+
+[source,text]
+----
+Change one of them? 1-7   q) leave   ›
+----
+
+[#t-later]
+=== Later Changes and Scripts
+
+[#t-config-direct]
+==== Arguments as Answers (`config plan-defaults`)
+
+[source,text]
+----
+$ pm-operator config plan-defaults --landing pull-request --yes
+Plans · How should plans run on this machine?
+  ✓ Landing   Branch and Pull Request   (--landing pull-request)
+  ✓ Method    Test first                (kept)
+  ✓ Asking    At the key points         (kept)
+    ✓  Branch and Pull Request: GitHub is available
+✓ Plan defaults recorded
+----
+
+[#t-config-no-input]
+==== Stopped at a Choice (`--no-input`)
+
+[source,text]
+----
+$ pm-operator config harness --client opencode --no-input
+Harness · Look for harnesses on this machine?
+Needs a choice: --consent scan_harnesses
+$ echo $?
+3
+$ pm-operator config harness --client opencode --consent scan_harnesses --consent probe_harness_login --no-input
+  ✓  Looking for harnesses: 2 found
+  ✓  Harness   OpenCode 1.9.0   (--client opencode)
+    ✓  version 1.9.0 is supported (1.5 – 1.x)
+    ✓  logged in
+Harness · Enrol OpenCode
+Needs a choice: --yes
+$
+----
+
+[#t-config-project]
+==== On a Project (`config language --project`)
+
+[source,text]
+----
+$ pm-operator config language --project .
+Language · project pm-mcp-clients · What should models write and read here?
+  1) as the machine: English ← from machine
+  2) English   3) Deutsch
+
+Keep the machine's language? [Enter]   other: 2-3   ?   › 3
+✓ Models write Deutsch in pm-mcp-clients (overrides machine: English)
+----
+
+[#t-config-project-roles]
+==== A Project's Own Roles (`config roles --project`)
+
+[source,text]
+----
+$ pm-operator config roles --project pm-mcp-clients
+Roles · project pm-mcp-clients · Give every role a harness and a model
+  The machine's assignment applies to all 31 roles here.
+
+    1) Claude Code · opus-5.5      7 roles   from machine
+    2) Claude Code · sonnet-5.5   16 roles   from machine
+    3) OpenCode · qwen-coder       8 roles   from machine
+
+Keep the machine's assignment? [Enter]   e) adjust roles   ?   › e
+    …
+    14) qgate       read_only   OpenCode     qwen-coder  —        from machine
+    …
+Select roles to assign: numbers or ranges, a) all shown   ?n advisory   b) back   › 14
+  Harness   1) Claude Code ← from machine: OpenCode   2) OpenCode   › 1
+  Model     1) opus-5.5   2) sonnet-5.5               › 2
+  Effort    1) low   2) medium   3) high              › 2
+    14) qgate       read_only   Claude Code  sonnet-5.5  medium   ✎ project
+
+Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machine's   b) back   ?   › ⏎
+  ✓  31 roles valid
+✓ 1 role set for pm-mcp-clients (overrides machine: OpenCode · qwen-coder); 30 follow the machine
+----
+
+* Only the changed role is written to the project's assignment; the others keep following the machine, so a later machine change reaches them. `d` removes the project's value of the selected roles.
+
+[#state-coverage]
+=== Every State and Its Transcript
+
+[cols="2,1,3",options="header"]
+|===
+|State |Kind |Transcript
+
+|`start.runtime`, `start.pairing`, `start.where`, `start.browser`, `start.show`, `start.wait`
+|`[S]`, `[O]`
+|<<t-start-desktop>>, <<t-start-ssh>>, <<t-start-no-wait>>
+
+|`start.other-device`, `start.lan`
+|`[O]`, `[S]`
+|<<t-start-other>>
+
+|`onboard.entry`, `onboard.mode`
+|`[S]`, `[O]`
+|<<t-start-first>>, <<t-mode>>
+
+|`auto.consent`, `auto.run`, `auto.result`
+|`[O]`, `[S]`, `[O]`
+|<<t-auto>>
+
+|`language.detect`, `language.choose`, `language.record`, `language.done`
+|`[S]`, `[O]`, `[S]`
+|<<t-language>>, <<t-config-project>>
+
+|`harness.consent`, `harness.scan`
+|`[O]`, `[S]`
+|<<t-harness-consent>>, <<t-config-no-input>>
+
+|`harness.none`
+|`[S]`
+|<<t-harness-none>>
+
+|`harness.choose`
+|`[O]`
+|<<t-harness-choose>>
+
+|`harness.probe-consent`, `harness.probe`, `harness.blocked`
+|`[O]`, `[S]`, `[S]`
+|<<t-harness-probe>>, <<t-auto>>
+
+|`harness.confirm`, `harness.enrol`, `harness.done`
+|`[O]`, `[S]`
+|<<t-harness-confirm>>
+
+|`harness.add`, `harness.add-consent`, `harness.verify-profile`, `harness.add-confirm`, `harness.install-profile`
+|`[O]`, `[O]`, `[S]`, `[O]`, `[S]`
+|<<t-harness-add>>
+
+|`catalogue.consent`, `catalogue.scan`, `catalogue.advise`, `catalogue.select`, `catalogue.enrol`, `catalogue.record`, `catalogue.done`
+|`[O]`, `[S]`, `[M]`, `[O]`, `[S]`, `[S]`
+|<<t-models>>
+
+|`roles.load`, `roles.default`, `roles.review`, `roles.validate`, `roles.write`, `roles.done`
+|`[S]`, `[S]`, `[O]`, `[S]`, `[S]`
+|<<t-roles-review>>, <<t-roles-adjust>>, <<t-config-project-roles>>
+
+|`roles.consent`, `roles.propose`
+|`[O]`, `[M]`
+|<<t-roles-steward>>
+
+|`store.detect`, `store.choose`, `store.check`, `store.record`, `store.done`
+|`[S]`, `[O]`, `[S]`, `[S]`
+|<<t-store-choose>>, <<t-store-move>>
+
+|`store.unavailable`
+|`[S]`
+|<<t-store-unavailable>>
+
+|`providers.consent`, `providers.scan`, `providers.select`
+|`[O]`, `[S]`, `[O]`
+|<<t-providers-select>>
+
+|`providers.credentials`
+|`[O]`
+|<<t-providers-credentials>>
+
+|`providers.verify`, `providers.failed`, `providers.record`, `providers.done`
+|`[S]`, `[O]`, `[S]`
+|<<t-providers-verify>>
+
+|`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`
+|`[S]`, `[O]`, `[S]`, `[S]`
+|<<t-defaults>>, <<t-config-direct>>
+
+|`onboard.completed`
+|rest
+|<<t-completed>>
+|===
+
+[#texts]
+== Texts
+
+Every text of the onboarding and of `start` in the terminal, as keys of the message catalogue with the English and the German text (link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). Arguments are ICU arguments; a plural is written `{n, plural, one {…} other {…}}`. German addresses the operator with _du_, and the words of the glossary stay as they are (link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#glossary[Glossary]).
+
+* *Shared with the web app*: the keys of the areas `common` and `onboard` are the texts both clients show; the web app adds keys of its own for what only it needs (a button, a tooltip), and the terminal adds the keys of the area `operator` for what only it needs (the prompt line, the keys, the result lines). The labels of links are shared: a button in the web app and a key's label in the terminal read the same.
+* *Titles are questions or names, links are actions* (link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#style[How Texts Are Written]). The prompt of a primary link is the action as a question (`operator.prompt.primary` wraps the shared label: `{action}? [Enter]`).
+* The tables below are the content of the packs `common`, `onboard`, and `operator` for these flows. Where a text has a plural, the German has its own forms.
+
+[#texts-common]
+=== `common`: Shared by Every Flow
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`common.consent.yes`
+|yes
+|ja
+
+|`common.consent.yes_remember`
+|yes, and don't ask again
+|ja, und merken
+
+|`common.consent.no`
+|not now
+|nicht jetzt
+
+|`common.consent.nothing_done`
+|Nothing was done.
+|Es ist nichts passiert.
+
+|`common.consent.remembered`
+|Consent remembered: {action}
+|Zustimmung gemerkt: {action}
+
+|`common.consent.withdraw_hint`
+|withdraw: pm-operator config consents
+|zurücknehmen: pm-operator config consents
+
+|`common.consent.field.looks_for`
+|looks for
+|sucht nach
+
+|`common.consent.field.in`
+|in
+|in
+
+|`common.consent.field.runs`
+|runs
+|führt aus
+
+|`common.consent.field.never`
+|never
+|niemals
+
+|`common.consent.field.cost`
+|cost
+|Kosten
+
+|`common.consent.cost.none`
+|none
+|keine
+
+|`common.consent.cost.estimate`
+|about {amount}
+|etwa {amount}
+
+|`common.consent.cost.estimate_runs`
+|about {amount} (from {runs, plural, one {# earlier run} other {# earlier runs}})
+|etwa {amount} (aus {runs, plural, one {# früheren Lauf} other {# früheren Läufen}})
+
+|`common.consent.cost.unknown`
+|not known yet: first run
+|noch unbekannt: erster Lauf
+
+|`common.consent.once_only`
+|This consent is for this run only.
+|Diese Zustimmung gilt nur für diesen Lauf.
+
+|`common.check.not_run`
+|not run
+|nicht ausgeführt
+
+|`common.check.ready`
+|ready
+|bereit
+
+|`common.check.not_ready`
+|not ready
+|nicht bereit
+
+|`common.link.back`
+|back
+|zurück
+
+|`common.link.recheck`
+|check again
+|prüfe erneut
+
+|`common.link.look_again`
+|look again
+|suche erneut
+
+|`common.from.system`
+|from your system
+|von deinem System
+
+|`common.from.system_locale`
+|from your system ({locale})
+|von deinem System ({locale})
+
+|`common.from.recommended`
+|recommended
+|empfohlen
+
+|`common.origin.default`
+|default
+|Vorgabe
+
+|`common.origin.machine`
+|machine
+|Maschine
+
+|`common.origin.project`
+|project
+|Projekt
+
+|`common.origin.team`
+|team
+|Team
+
+|`common.origin.plan`
+|plan
+|Plan
+
+|`common.origin.overrides`
+|overrides {origin}: {value}
+|ersetzt {origin}: {value}
+
+|`common.origin.from`
+|from {origin}
+|von {origin}
+
+|`common.model.working`
+|{role} is working on {harness} · {model}
+|{role} arbeitet auf {harness} · {model}
+
+|`common.model.leave_hint`
+|leave: the work continues; {command} shows its result
+|verlassen: die Arbeit läuft weiter; {command} zeigt ihr Ergebnis
+
+|`common.model.no_result`
+|The {role} gave no proposal: {reason}.
+|Der {role} hat keinen Vorschlag gemacht: {reason}.
+
+|`common.error.state_moved`
+|Answered elsewhere: {answer}
+|Woanders beantwortet: {answer}
+
+|`common.error.runtime_restarted`
+|The runtime restarted; continuing where it is.
+|Die Runtime wurde neu gestartet; es geht dort weiter, wo sie steht.
+
+|`common.error.internal_fault`
+|Something failed inside the runtime (audit {audit_id}). Details: pm-operator status
+|In der Runtime ist etwas fehlgeschlagen (Audit {audit_id}). Details: pm-operator status
+
+|`common.error.invalid_arguments`
+|The runtime refused the request: {detail}
+|Die Runtime hat den Request abgelehnt: {detail}
+
+|`common.error.credential_store_locked`
+|The credential store is locked; unlock it, then try again.
+|Der Speicher für Zugangsdaten ist gesperrt; entsperre ihn und versuche es erneut.
+
+|`common.error.credential_store_failed`
+|The credential store failed: {detail}. Nothing was changed.
+|Der Speicher für Zugangsdaten ist fehlgeschlagen: {detail}. Es wurde nichts geändert.
+
+|`common.error.runtime_recovering`
+|The runtime is still recovering; try again in a moment.
+|Die Runtime stellt sich noch wieder her; versuche es gleich noch einmal.
+
+|`common.error.web_listener_conflict`
+|Port {port} is in use by another program. Choose another: pm-operator config set web.port <port>
+|Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set web.port <port>
+|===
+
+The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them; the two above that the onboarding can meet are complete.
+
+[#texts-onboard]
+=== `onboard`: The Onboarding
+
+[#texts-onboard-frame]
+==== Frame, Start, Mode, Done
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.step.language`
+|Language
+|Sprache
+
+|`onboard.step.harness`
+|Harness
+|Harness
+
+|`onboard.step.models`
+|Models
+|Modelle
+
+|`onboard.step.roles`
+|Roles
+|Roles
+
+|`onboard.step.credentials`
+|Credentials
+|Zugangsdaten
+
+|`onboard.step.providers`
+|Providers
+|Provider
+
+|`onboard.step.plans`
+|Plans
+|Pläne
+
+|`onboard.step.language.summary`
+|the language of plan-marshall and of the models' texts
+|die Sprache von plan-marshall und der Texte der Modelle
+
+|`onboard.step.harness.summary`
+|the coding agent the server works with first
+|der Coding Agent, mit dem der Server zuerst arbeitet
+
+|`onboard.step.models.summary`
+|the agents and models other plans may use
+|die Agents und Modelle, die andere Pläne nutzen dürfen
+
+|`onboard.step.roles.summary`
+|an agent and a model for every role
+|ein Agent und ein Modell für jede Role
+
+|`onboard.step.credentials.summary`
+|where this machine keeps its tokens
+|wo diese Maschine ihre Tokens aufbewahrt
+
+|`onboard.step.providers.summary`
+|the git hosts, CI and analysis services this machine uses
+|die Git-Hosts, CI- und Analysedienste, die diese Maschine nutzt
+
+|`onboard.step.plans.summary`
+|how plans run unless a project says otherwise
+|wie Pläne laufen, wenn ein Projekt nichts anderes sagt
+
+|`onboard.entry.title`
+|Set up this machine for plan-marshall
+|Richte diese Maschine für plan-marshall ein
+
+|`onboard.entry.not_set_up`
+|plan-marshall is running. This machine is not set up yet.
+|plan-marshall läuft. Diese Maschine ist noch nicht eingerichtet.
+
+|`onboard.entry.intro`
+|{steps, plural, one {One step} other {# steps}}. Nothing on this machine is looked at, run, or changed until you say so in that step. You can stop at any point; the next run continues where you stopped.
+|{steps, plural, one {Ein Schritt} other {# Schritte}}. Auf dieser Maschine wird nichts angesehen, ausgeführt oder geändert, bevor du es in dem Schritt erlaubst. Du kannst jederzeit aufhören; der nächste Lauf macht dort weiter, wo du aufgehört hast.
+
+|`onboard.mode.guided`
+|Begin with step 1
+|Beginne mit Schritt 1
+
+|`onboard.mode.guided_here`
+|Set it up here, step by step
+|Richte sie hier ein, Schritt für Schritt
+
+|`onboard.mode.guided_here_short`
+|here, step by step
+|hier, Schritt für Schritt
+
+|`onboard.mode.auto`
+|decide everything for me
+|entscheide alles für mich
+
+|`onboard.completed.title`
+|This machine is ready
+|Diese Maschine ist bereit
+
+|`onboard.completed.next`
+|Next: enrol a project and set it up: {command}, in its checkout.
+|Als Nächstes: ein Projekt anmelden und einrichten: {command}, in seinem Checkout.
+
+|`onboard.completed.change_one`
+|Change one of them?
+|Eines davon ändern?
+|===
+
+[#texts-onboard-auto]
+==== Automatic Run
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.auto.consent.title`
+|Decide everything for me?
+|Alles für mich entscheiden?
+
+|`onboard.auto.consent.looks_for`
+|the harnesses {programs} in {dirs}; the tools {tools} and the tokens already stored
+|die Harnesses {programs} in {dirs}; die Werkzeuge {tools} und die schon gespeicherten Tokens
+
+|`onboard.auto.consent.runs`
+|the version and login probe of each harness found, the model probe of each harness that can list its models, the version probe of each tool found
+|die Versions- und Anmeldeprüfung jedes gefundenen Harness, die Modellabfrage jedes Harness, der seine Modelle auflisten kann, die Versionsprüfung jedes gefundenen Werkzeugs
+
+|`onboard.auto.consent.never`
+|asks a model, reads other files, sends anything over the network except the provider checks
+|fragt ein Modell, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider
+
+|`onboard.auto.consent.list_all`
+|lists every action
+|listet jede Aktion
+
+|`onboard.auto.result.title`
+|Everything is decided.
+|Alles ist entschieden.
+
+|`onboard.auto.result.no_model`
+|No model was asked; ask the steward to refine the roles: {command}
+|Es wurde kein Modell gefragt; lass den steward die Roles verfeinern: {command}
+
+|`onboard.auto.result.add`
+|Add {name}: {command}
+|{name} hinzufügen: {command}
+
+|`onboard.auto.result.change_any`
+|Change any of it: {command}
+|Ändere etwas davon: {command}
+
+|`onboard.auto.result.finish`
+|Finish
+|Abschließen
+
+|`onboard.auto.result.change_step`
+|change that step
+|diesen Schritt ändern
+
+|`onboard.auto.reason.system`
+|from your system
+|von deinem System
+
+|`onboard.auto.reason.only_supported`
+|the only supported one
+|der einzige unterstützte
+
+|`onboard.auto.reason.first_supported`
+|the first supported one
+|der erste unterstützte
+
+|`onboard.auto.reason.all_found`
+|all found
+|alle gefundenen
+
+|`onboard.auto.reason.default`
+|the default
+|die Vorgabe
+
+|`onboard.auto.reason.available`
+|available here
+|hier verfügbar
+
+|`onboard.auto.reason.tool_logged_in`
+|{tool} logged in
+|{tool} angemeldet
+
+|`onboard.auto.reason.no_token_skipped`
+|no token: skipped
+|kein Token: übersprungen
+|===
+
+[#texts-onboard-language]
+==== 1 Language
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.language.choose.title`
+|Choose your languages
+|Wähle deine Sprachen
+
+|`onboard.language.choose.interface`
+|plan-marshall and pm-operator
+|plan-marshall und pm-operator
+
+|`onboard.language.choose.model`
+|What models write and read
+|Was Modelle schreiben und lesen
+
+|`onboard.language.choose.model_same`
+|same as above
+|wie oben
+
+|`onboard.language.choose.model_as_machine`
+|as the machine: {language}
+|wie die Maschine: {language}
+
+|`onboard.language.choose.glossary_note`
+|Words like Pull Request, Commit, Merge and Request stay as they are.
+|Wörter wie Pull Request, Commit, Merge und Request bleiben, wie sie sind.
+
+|`onboard.language.choose.why`
+|Models do not work equally well in every language; you can let them work in English while plan-marshall speaks German. "same as above" follows a later change of the first language.
+|Modelle arbeiten nicht in jeder Sprache gleich gut; du kannst sie auf Englisch arbeiten lassen, während plan-marshall Deutsch spricht. „wie oben" folgt einer späteren Änderung der ersten Sprache.
+
+|`onboard.language.choose.action_both`
+|Use {language} for both
+|{language} für beides verwenden
+
+|`onboard.language.choose.action_split`
+|Use {interface} here, {model} for models
+|{interface} hier, {model} für Modelle verwenden
+
+|`onboard.language.project.title`
+|What should models write and read here?
+|Was sollen Modelle hier schreiben und lesen?
+
+|`onboard.language.project.keep`
+|Keep the machine's language
+|Die Sprache der Maschine behalten
+
+|`onboard.language.done`
+|Languages recorded: {interface}, models {model}
+|Sprachen gespeichert: {interface}, Modelle {model}
+
+|`onboard.language.done_project`
+|Models write {model} in {project}
+|Modelle schreiben {model} in {project}
+
+|`onboard.language.name.en`
+|English
+|English
+
+|`onboard.language.name.de`
+|Deutsch
+|Deutsch
+|===
+
+The names of the languages are each written in their own language, in every pack, so the operator finds their own.
+
+[#texts-onboard-harness]
+==== 2 Harness
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.harness.consent.title`
+|Look for harnesses on this machine?
+|Auf dieser Maschine nach Harnesses suchen?
+
+|`onboard.harness.consent.in`
+|your PATH, {dirs}
+|deinem PATH, {dirs}
+
+|`onboard.harness.consent.runs`
+|{program} --version on each one found
+|{program} --version für jeden gefundenen
+
+|`onboard.harness.consent.never`
+|reads other files, starts a session, uses the network
+|liest andere Dateien, startet eine Sitzung, nutzt das Netzwerk
+
+|`onboard.harness.consent.action`
+|Look for harnesses
+|Suche nach Harnesses
+
+|`onboard.harness.scan.progress`
+|Looking for harnesses … {done} of {total} programs
+|Suche nach Harnesses … {done} von {total} Programmen
+
+|`onboard.harness.scan.found`
+|Looking for harnesses: {count, plural, =0 {none found} one {# found} other {# found}}
+|Suche nach Harnesses: {count, plural, =0 {keiner gefunden} one {# gefunden} other {# gefunden}}
+
+|`onboard.harness.choose.title`
+|Choose the harness to start with
+|Wähle den Harness, mit dem du beginnst
+
+|`onboard.harness.choose.found`
+|Found on this machine:
+|Auf dieser Maschine gefunden:
+
+|`onboard.harness.choose.supported`
+|supported
+|unterstützt
+
+|`onboard.harness.choose.no_workers`
+|cannot run workers
+|kann keine Worker ausführen
+
+|`onboard.harness.choose.not_found`
+|not found
+|nicht gefunden
+
+|`onboard.harness.choose.note`
+|The first harness also runs the advice in the next steps. You can add the others in step 3, Models.
+|Der erste Harness führt auch die Beratung der nächsten Schritte aus. Die anderen kannst du in Schritt 3, Modelle, hinzufügen.
+
+|`onboard.harness.choose.action_check`
+|Check {harness}
+|Prüfe {harness}
+
+|`onboard.harness.choose.add`
+|add a harness that is not listed
+|einen Harness hinzufügen, der nicht aufgeführt ist
+
+|`onboard.harness.none.title`
+|No harness found
+|Kein Harness gefunden
+
+|`onboard.harness.none.looked_for`
+|Looked for {programs} in {dirs}.
+|Gesucht nach {programs} in {dirs}.
+
+|`onboard.harness.none.install`
+|Install one, then look again:
+|Installiere einen und suche dann erneut:
+
+|`onboard.harness.none.or_add`
+|Or add a harness that is not listed, by its program.
+|Oder füge einen Harness, der nicht aufgeführt ist, über sein Programm hinzu.
+
+|`onboard.harness.probe_consent.title`
+|Check whether {harness} is logged in?
+|Prüfen, ob {harness} angemeldet ist?
+
+|`onboard.harness.probe_consent.never`
+|starts a session, sends a prompt
+|startet eine Sitzung, sendet einen Prompt
+
+|`onboard.harness.probe_consent.never_call`
+|reads your repositories
+|liest deine Repositories
+
+|`onboard.harness.probe_consent.runs_call`
+|one minimal headless call of {harness}
+|einen minimalen Headless-Aufruf von {harness}
+
+|`onboard.harness.probe.title`
+|Checking {harness}
+|Prüfe {harness}
+
+|`onboard.harness.probe.version_ok`
+|version {version} is supported ({range})
+|Version {version} wird unterstützt ({range})
+
+|`onboard.harness.probe.version_unsupported`
+|version {version} is not supported ({range})
+|Version {version} wird nicht unterstützt ({range})
+
+|`onboard.harness.probe.logged_in`
+|logged in
+|angemeldet
+
+|`onboard.harness.probe.logged_out`
+|not logged in
+|nicht angemeldet
+
+|`onboard.harness.blocked.fix_login`
+|log in to {harness} in another terminal, then check again:
+|melde dich in einem anderen Terminal bei {harness} an und prüfe dann erneut:
+
+|`onboard.harness.blocked.fix_version`
+|install a version in {range}, then check again
+|installiere eine Version in {range} und prüfe dann erneut
+
+|`onboard.harness.blocked.choose_another`
+|choose another harness
+|wähle einen anderen Harness
+
+|`onboard.harness.confirm.title`
+|Enrol {harness}
+|{harness} anmelden
+
+|`onboard.harness.confirm.intro`
+|The server will remember this program and start workers with it only while it is unchanged:
+|Der Server merkt sich dieses Programm und startet Worker damit nur, solange es unverändert ist:
+
+|`onboard.harness.confirm.path`
+|Path
+|Pfad
+
+|`onboard.harness.confirm.version`
+|Version
+|Version
+
+|`onboard.harness.confirm.digest`
+|SHA-256
+|SHA-256
+
+|`onboard.harness.confirm.action`
+|Enrol {harness}
+|Melde {harness} an
+
+|`onboard.harness.done`
+|{harness} {version} enrolled
+|{harness} {version} angemeldet
+
+|`onboard.harness.add.title`
+|Add a harness
+|Einen Harness hinzufügen
+
+|`onboard.harness.add.executable`
+|Executable
+|Programm
+
+|`onboard.harness.add.name`
+|Name
+|Name
+
+|`onboard.harness.add.id`
+|Id
+|Id
+
+|`onboard.harness.add.start_from`
+|Start from
+|Ausgehend von
+
+|`onboard.harness.add.start_from_hint`
+|the closest known harness; its settings are filled in
+|dem ähnlichsten bekannten Harness; seine Einstellungen werden übernommen
+
+|`onboard.harness.add.headless`
+|How it is called headless (from {harness}):
+|Wie er headless aufgerufen wird (von {harness}):
+
+|`onboard.harness.add.arguments`
+|Arguments
+|Argumente
+
+|`onboard.harness.add.mcp_config`
+|MCP config
+|MCP-Konfiguration
+
+|`onboard.harness.add.output`
+|Output
+|Ausgabe
+
+|`onboard.harness.add.usage`
+|Usage
+|Verbrauch
+
+|`onboard.harness.add.version_probe`
+|Version probe
+|Versionsprüfung
+
+|`onboard.harness.add.more`
+|and {count} more: {names}
+|und {count} weitere: {names}
+
+|`onboard.harness.add.keep_hint`
+|(Enter keeps a value)
+|(Enter behält einen Wert)
+
+|`onboard.harness.add.action_verify`
+|Verify this harness
+|Prüfe diesen Harness
+
+|`onboard.harness.add.edit`
+|edit the settings
+|die Einstellungen bearbeiten
+
+|`onboard.harness.add_consent.title`
+|Run {harness} to verify these settings?
+|{harness} ausführen, um diese Einstellungen zu prüfen?
+
+|`onboard.harness.add_consent.runs`
+|{executable} with the settings above, once per stage: {stages}
+|{executable} mit den Einstellungen oben, einmal je Stufe: {stages}
+
+|`onboard.harness.add_consent.never`
+|touches your repositories; it runs in a temporary directory
+|berührt deine Repositories; es läuft in einem temporären Verzeichnis
+
+|`onboard.harness.add_consent.cost`
+|about {calls} short headless calls; tokens of your {harness} account
+|etwa {calls} kurze Headless-Aufrufe; Tokens deines {harness}-Kontos
+
+|`onboard.harness.verify.title`
+|Verifying {harness}
+|Prüfe {harness}
+
+|`onboard.harness.verify.answered`
+|a headless call answered in {seconds} s
+|ein Headless-Aufruf hat in {seconds} s geantwortet
+
+|`onboard.harness.verify.fix_field`
+|change "{field}": {fix}
+|ändere „{field}": {fix}
+
+|`onboard.harness.add_confirm.title`
+|Install the profile of {harness}
+|Das Profil von {harness} installieren
+
+|`onboard.harness.add_confirm.intro`
+|The verified profile is installed for this machine:
+|Das geprüfte Profil wird für diese Maschine installiert:
+
+|`onboard.harness.add_confirm.profile`
+|Profile
+|Profil
+
+|`onboard.harness.add_confirm.workers_yes`
+|can run workers
+|kann Worker ausführen
+
+|`onboard.harness.add_confirm.workers_no`
+|cannot run workers
+|kann keine Worker ausführen
+
+|`onboard.harness.add_confirm.action`
+|Install it
+|Installiere es
+
+|`onboard.harness.install.done`
+|Profile of {harness} installed
+|Profil von {harness} installiert
+|===
+
+[#texts-onboard-models]
+==== 3 Models
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.catalogue.consent.title`
+|Ask the harnesses for their models, and a model for advice?
+|Die Harnesses nach ihren Modellen fragen, und ein Modell um Rat?
+
+|`onboard.catalogue.consent.probe`
+|List the models of {harnesses}
+|Die Modelle von {harnesses} auflisten
+
+|`onboard.catalogue.consent.advice`
+|Ask the steward which harnesses and models suit which work
+|Den steward fragen, welche Harnesses und Modelle zu welcher Arbeit passen
+
+|`onboard.catalogue.consent.advice_runs`
+|a steward task on {harness} · {model}
+|eine Aufgabe des steward auf {harness} · {model}
+
+|`onboard.catalogue.consent.yes_both`
+|yes to both
+|ja zu beidem
+
+|`onboard.catalogue.consent.yes_both_remember`
+|yes to both, and don't ask again
+|ja zu beidem, und merken
+
+|`onboard.catalogue.consent.yes_one`
+|yes to that one only
+|ja nur zu diesem
+
+|`onboard.catalogue.scan.models`
+|{count, plural, one {# model} other {# models}}
+|{count, plural, one {# Modell} other {# Modelle}}
+
+|`onboard.catalogue.select.title`
+|Choose the harnesses and models other plans may use
+|Wähle die Harnesses und Modelle, die andere Pläne nutzen dürfen
+
+|`onboard.catalogue.select.recommendation`
+|Recommendation by steward: {text}
+|Empfehlung des steward: {text}
+
+|`onboard.catalogue.select.why`
+|why
+|warum
+
+|`onboard.catalogue.select.enrolled`
+|enrolled
+|angemeldet
+
+|`onboard.catalogue.select.found_not_enrolled`
+|found, not enrolled
+|gefunden, nicht angemeldet
+
+|`onboard.catalogue.select.enrol`
+|enrol {harness}
+|{harness} anmelden
+
+|`onboard.catalogue.select.add_model`
+|add a model id
+|eine Modell-Id hinzufügen
+
+|`onboard.catalogue.select.model_id_prompt`
+|Model id for {harness}
+|Modell-Id für {harness}
+
+|`onboard.catalogue.select.action`
+|{enrol, select, none {} other {Enrol {enrol} and }}allow {count, plural, one {# model} other {# models}}
+|{enrol, select, none {} other {{enrol} anmelden und }}{count, plural, one {# Modell} other {# Modelle}} erlauben
+
+|`onboard.catalogue.done`
+|{models, plural, one {# model} other {# models}} allowed on {harnesses, plural, one {# harness} other {# harnesses}}
+|{models, plural, one {# Modell} other {# Modelle}} erlaubt auf {harnesses, plural, one {# Harness} other {# Harnesses}}
+|===
+
+[#texts-onboard-roles]
+==== 4 Roles
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.roles.review.title`
+|Give every role a harness and a model
+|Gib jeder Role einen Harness und ein Modell
+
+|`onboard.roles.review.applied`
+|The default assignment is applied to all {count} roles.
+|Die vorgegebene Zuordnung ist auf alle {count} Roles angewendet.
+
+|`onboard.roles.review.group_roles`
+|{count, plural, one {# role} other {# roles}}
+|{count, plural, one {# Role} other {# Roles}}
+
+|`onboard.roles.review.not_assignable`
+|not assignable
+|nicht zuordenbar
+
+|`onboard.roles.review.no_model_of_tier`
+|no {tier} model allowed
+|kein Modell der Stufe {tier} erlaubt
+
+|`onboard.roles.review.assign_open_first`
+|Assign the {count, plural, one {open role} other {# open roles}} first
+|Ordne zuerst {count, plural, one {die offene Role} other {die # offenen Roles}} zu
+
+|`onboard.roles.review.action_defaults`
+|Use the defaults
+|Verwende die Vorgaben
+
+|`onboard.roles.review.action_save`
+|Save {count} roles
+|Speichere {count} Roles
+
+|`onboard.roles.review.action_use`
+|Use these roles
+|Verwende diese Roles
+
+|`onboard.roles.review.adjust`
+|adjust roles
+|Roles bearbeiten
+
+|`onboard.roles.review.ask_steward`
+|ask the steward to refine
+|den steward verfeinern lassen
+
+|`onboard.roles.review.reset`
+|reset to default
+|auf die Vorgabe zurücksetzen
+
+|`onboard.roles.review.to_look_at`
+|{count, plural, one {# role to look at} other {# roles to look at}}
+|{count, plural, one {# Role zum Ansehen} other {# Roles zum Ansehen}}
+
+|`onboard.roles.review.select_prompt`
+|Select roles to assign: numbers or ranges
+|Wähle Roles zum Zuordnen: Nummern oder Bereiche
+
+|`onboard.roles.review.all_shown`
+|all shown
+|alle angezeigten
+
+|`onboard.roles.review.no_effort`
+|({harness} has no effort setting)
+|({harness} hat keine Einstellung für den Aufwand)
+
+|`onboard.roles.field.harness`
+|Harness
+|Harness
+
+|`onboard.roles.field.model`
+|Model
+|Modell
+
+|`onboard.roles.field.effort`
+|Effort
+|Aufwand
+
+|`onboard.roles.origin.default`
+|default
+|Vorgabe
+
+|`onboard.roles.origin.steward`
+|steward
+|steward
+
+|`onboard.roles.origin.changed`
+|changed
+|geändert
+
+|`onboard.roles.origin.project`
+|project
+|Projekt
+
+|`onboard.roles.project.applies`
+|The machine's assignment applies to all {count} roles here.
+|Die Zuordnung der Maschine gilt hier für alle {count} Roles.
+
+|`onboard.roles.project.keep`
+|Keep the machine's assignment
+|Die Zuordnung der Maschine behalten
+
+|`onboard.roles.project.reset`
+|reset to the machine's
+|auf die der Maschine zurücksetzen
+
+|`onboard.roles.project.action_save`
+|Save {count, plural, one {# role} other {# roles}} for {project}
+|{count, plural, one {# Role} other {# Roles}} für {project} speichern
+
+|`onboard.roles.project.done`
+|{count, plural, one {# role} other {# roles}} set for {project}; {following} follow the machine
+|{count, plural, one {# Role} other {# Roles}} für {project} festgelegt; {following} folgen der Maschine
+
+|`onboard.roles.advisory.does`
+|What it does
+|Was sie tut
+
+|`onboard.roles.advisory.needs`
+|What it needs
+|Was sie braucht
+
+|`onboard.roles.advisory.why`
+|Why {tier}
+|Warum {tier}
+
+|`onboard.roles.advisory.if_cheaper`
+|If cheaper
+|Wenn günstiger
+
+|`onboard.roles.advisory.steward`
+|Steward
+|steward
+
+|`onboard.roles.advisory.no_departure`
+|no departure
+|keine Abweichung
+
+|`onboard.roles.consent.title`
+|Ask the steward to refine the defaults?
+|Den steward die Vorgaben verfeinern lassen?
+
+|`onboard.roles.consent.runs`
+|a steward task on {harness} · {model}: it reads the roles, the catalogue, and the qualification records of your projects
+|eine Aufgabe des steward auf {harness} · {model}: er liest die Roles, den Katalog und die Qualifizierungsnachweise deiner Projekte
+
+|`onboard.roles.consent.never`
+|changes a role: you accept or reject each proposal
+|ändert eine Role: du nimmst jeden Vorschlag an oder lehnst ihn ab
+
+|`onboard.roles.propose.title`
+|The steward proposes {count, plural, one {# departure} other {# departures}}
+|Der steward schlägt {count, plural, one {# Abweichung} other {# Abweichungen}} vor
+
+|`onboard.roles.propose.reason`
+|Reason: {text}
+|Grund: {text}
+
+|`onboard.roles.propose.rejected`
+|rejected
+|abgelehnt
+
+|`onboard.roles.propose.action_all`
+|Accept {count, plural, one {it} =2 {both} other {all #}}
+|{count, plural, one {Nimm ihn an} =2 {Nimm beide an} other {Nimm alle # an}}
+
+|`onboard.roles.propose.action_some`
+|Accept {accepted}, reject {rejected}
+|{accepted} annehmen, {rejected} ablehnen
+
+|`onboard.roles.validate.ok`
+|{count} roles valid
+|{count} Roles gültig
+
+|`onboard.roles.done`
+|{count} roles assigned
+|{count} Roles zugeordnet
+|===
+
+[#texts-onboard-credentials]
+==== 5 Credentials
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.store.choose.title`
+|Where should this machine keep its tokens?
+|Wo soll diese Maschine ihre Tokens aufbewahren?
+
+|`onboard.store.choose.keychain`
+|macOS Keychain
+|macOS-Schlüsselbund
+
+|`onboard.store.choose.keychain_text`
+|Only plan-marshall's runtime reads them without asking you; any other program that tries makes macOS ask first.
+|Nur die Runtime von plan-marshall liest sie, ohne dich zu fragen; versucht es ein anderes Programm, fragt macOS dich zuerst.
+
+|`onboard.store.choose.secret_service`
+|Linux Secret Service
+|Linux Secret Service
+
+|`onboard.store.choose.secret_service_text`
+|Every program you run can read it while it is unlocked.
+|Jedes Programm, das du ausführst, kann ihn lesen, solange er entsperrt ist.
+
+|`onboard.store.choose.files`
+|Files in {dir}
+|Dateien in {dir}
+
+|`onboard.store.choose.files_text`
+|Readable by every program you run (mode 0600). Works everywhere, also without a desktop session.
+|Lesbar für jedes Programm, das du ausführst (Modus 0600). Funktioniert überall, auch ohne Desktop-Sitzung.
+
+|`onboard.store.choose.holds`
+|The choice holds until you change it; a change moves the tokens and never leaves a copy behind.
+|Die Wahl gilt, bis du sie änderst; eine Änderung verschiebt die Tokens und lässt keine Kopie zurück.
+
+|`onboard.store.choose.action`
+|Use {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {the files}}
+|Verwende {store, select, keychain {den macOS-Schlüsselbund} secret_service {den Secret Service} other {die Dateien}}
+
+|`onboard.store.unavailable.now`
+|not available now
+|gerade nicht verfügbar
+
+|`onboard.store.unavailable.locked`
+|the collection is locked
+|die Sammlung ist gesperrt
+
+|`onboard.store.unavailable.locked_fix`
+|unlock it (for example by logging in at the desktop), then check again
+|entsperre sie (zum Beispiel durch eine Anmeldung am Desktop) und prüfe dann erneut
+
+|`onboard.store.unavailable.no_bus`
+|no session bus: this is an SSH session
+|kein Session-Bus: dies ist eine SSH-Sitzung
+
+|`onboard.store.unavailable.no_bus_fix`
+|log in at the desktop, or use the files below
+|melde dich am Desktop an oder verwende die Dateien unten
+
+|`onboard.store.unavailable.choose_another`
+|choose another store
+|wähle einen anderen Speicher
+
+|`onboard.store.check.write`
+|write a test entry
+|einen Testeintrag schreiben
+
+|`onboard.store.check.read`
+|read it back
+|ihn zurücklesen
+
+|`onboard.store.check.delete`
+|delete it
+|ihn löschen
+
+|`onboard.store.done`
+|Tokens are kept in {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {files}}
+|Tokens werden {store, select, keychain {im macOS-Schlüsselbund} secret_service {im Secret Service} other {in Dateien}} aufbewahrt
+
+|`onboard.store.move.title`
+|Move the tokens to {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {files}}?
+|Die Tokens {store, select, keychain {in den macOS-Schlüsselbund} secret_service {in den Secret Service} other {in Dateien}} verschieben?
+
+|`onboard.store.move.moves`
+|moves
+|verschiebt
+
+|`onboard.store.move.moves_value`
+|{count, plural, one {# token} other {# tokens}} from {from} to {to}
+|{count, plural, one {# Token} other {# Tokens}} von {from} nach {to}
+
+|`onboard.store.move.each`
+|each
+|jedes
+
+|`onboard.store.move.each_value`
+|written, read back, then deleted from {from}
+|geschrieben, zurückgelesen, dann aus {from} gelöscht
+
+|`onboard.store.move.if_stopped`
+|if stopped
+|bei Abbruch
+
+|`onboard.store.move.if_stopped_value`
+|the next run continues the move; no token is lost or doubled
+|der nächste Lauf setzt das Verschieben fort; kein Token geht verloren oder wird verdoppelt
+
+|`onboard.store.move.action`
+|Move {count, plural, one {# token} other {# tokens}}
+|Verschiebe {count, plural, one {# Token} other {# Tokens}}
+
+|`onboard.store.move.moved`
+|moved
+|verschoben
+|===
+
+[#texts-onboard-providers]
+==== 6 Providers
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.providers.consent.title`
+|Look for CLI tools and stored tokens?
+|Nach CLI-Werkzeugen und gespeicherten Tokens suchen?
+
+|`onboard.providers.consent.looks_for`
+|{tools} in your PATH; the tokens stored in {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {files}}
+|{tools} in deinem PATH; die {store, select, keychain {im macOS-Schlüsselbund} secret_service {im Secret Service} other {in Dateien}} gespeicherten Tokens
+
+|`onboard.providers.consent.never`
+|reads a token's value, uses the network
+|liest den Wert eines Tokens, nutzt das Netzwerk
+
+|`onboard.providers.scan.tokens`
+|{count, plural, one {# token stored} other {# tokens stored}}
+|{count, plural, one {# Token gespeichert} other {# Tokens gespeichert}}
+
+|`onboard.providers.select.title`
+|Choose what this machine works with
+|Wähle, womit diese Maschine arbeitet
+
+|`onboard.providers.select.available`
+|available
+|verfügbar
+
+|`onboard.providers.select.variant`
+|variant
+|Variante
+
+|`onboard.providers.select.native`
+|native
+|nativ
+
+|`onboard.providers.select.native_only`
+|native only
+|nur nativ
+
+|`onboard.providers.select.token_stored`
+|token stored
+|Token gespeichert
+
+|`onboard.providers.select.token_missing`
+|token missing
+|Token fehlt
+
+|`onboard.providers.select.review_bots`
+|Review bots
+|Review-Bots
+
+|`onboard.providers.select.defaults_note`
+|These are the defaults for every project; a project's setup and a single plan can override them.
+|Das sind die Vorgaben für jedes Projekt; die Einrichtung eines Projekts und ein einzelner Plan können sie ersetzen.
+
+|`onboard.providers.select.action`
+|Continue with {count, plural, =0 {no provider} one {# provider} other {# providers}}
+|Weiter mit {count, plural, =0 {keinem Provider} one {# Provider} other {# Providern}}
+
+|`onboard.providers.credentials.title`
+|{provider} needs a token
+|{provider} braucht ein Token
+
+|`onboard.providers.credentials.stored_note`
+|Stored in {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {a file}}; it is never shown again and never reaches a model or a log.
+|Gespeichert {store, select, keychain {im macOS-Schlüsselbund} secret_service {im Secret Service} other {in einer Datei}}; es wird nie wieder angezeigt und erreicht nie ein Modell oder ein Log.
+
+|`onboard.providers.credentials.action`
+|Store and check it
+|Speichere und prüfe es
+
+|`onboard.providers.credentials.skip`
+|skip {provider}
+|ohne {provider} weiter
+
+|`onboard.providers.credentials.lan`
+|Tokens are entered on this machine only. In a terminal of it, run {command}, then check again.
+|Tokens werden nur auf dieser Maschine eingegeben. Führe in einem ihrer Terminals {command} aus und prüfe dann erneut.
+
+|`onboard.providers.verify.title`
+|Checking the providers
+|Prüfe die Provider
+
+|`onboard.providers.verify.reachable`
+|{host} reachable
+|{host} erreichbar
+
+|`onboard.providers.verify.authenticates`
+|token authenticates as {identity} ({kind}, expires in {days, plural, one {# day} other {# days}})
+|Token meldet sich als {identity} an ({kind}, läuft in {days, plural, one {# Tag} other {# Tagen}} ab)
+
+|`onboard.providers.verify.authenticates_no_expiry`
+|token authenticates as {identity} ({kind}, no expiry known)
+|Token meldet sich als {identity} an ({kind}, kein Ablauf bekannt)
+
+|`onboard.providers.verify.permissions`
+|permissions: {list}
+|Berechtigungen: {list}
+
+|`onboard.providers.verify.tool_same`
+|{tool} is logged in as the same account
+|{tool} ist mit demselben Konto angemeldet
+
+|`onboard.providers.verify.tool_other`
+|{tool} is logged in as {identity}, not as {expected}
+|{tool} ist als {identity} angemeldet, nicht als {expected}
+
+|`onboard.providers.verify.refused`
+|token refused: {status} "{answer}"
+|Token abgelehnt: {status} „{answer}"
+
+|`onboard.providers.failed.fix_token`
+|enter the token again
+|gib das Token erneut ein
+
+|`onboard.providers.failed.continue_without`
+|continue without {provider}
+|ohne {provider} weitermachen
+
+|`onboard.providers.failed.without_note`
+|{provider} will be recorded as not available. Projects can still set it up on their own.
+|{provider} wird als nicht verfügbar gespeichert. Projekte können es trotzdem selbst einrichten.
+
+|`onboard.providers.done`
+|Providers recorded: {list}
+|Provider gespeichert: {list}
+
+|`onboard.providers.done_not_available`
+|{provider} not available
+|{provider} nicht verfügbar
+|===
+
+[#texts-onboard-plans]
+==== 7 Plans
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.defaults.review.title`
+|How should plans run on this machine?
+|Wie sollen Pläne auf dieser Maschine laufen?
+
+|`onboard.defaults.review.override_note`
+|A project's setup and a single plan can choose otherwise.
+|Die Einrichtung eines Projekts und ein einzelner Plan können anders wählen.
+
+|`onboard.defaults.axis.landing`
+|Landing
+|Abschluss
+
+|`onboard.defaults.axis.method`
+|Method
+|Methode
+
+|`onboard.defaults.axis.asking`
+|Asking
+|Rückfragen
+
+|`onboard.defaults.landing.pull_request`
+|Branch and Pull Request
+|Branch und Pull Request
+
+|`onboard.defaults.landing.pull_request_text`
+|review and merge on the provider
+|Review und Merge beim Provider
+
+|`onboard.defaults.landing.main`
+|Commit on main
+|Commit auf main
+
+|`onboard.defaults.landing.main_text`
+|no Pull Request, pushed directly
+|kein Pull Request, direkt gepusht
+
+|`onboard.defaults.landing.files`
+|Files only
+|Nur Dateien
+
+|`onboard.defaults.landing.files_text`
+|nothing is committed; you take over
+|nichts wird committet; du übernimmst
+
+|`onboard.defaults.method.test_first`
+|Test first
+|Test zuerst
+
+|`onboard.defaults.method.test_first_text`
+|tests are written before the code
+|Tests werden vor dem Code geschrieben
+
+|`onboard.defaults.method.tests_after`
+|Tests after
+|Tests danach
+
+|`onboard.defaults.asking.every_phase`
+|At every phase
+|Bei jeder Phase
+
+|`onboard.defaults.asking.every_phase_text`
+|you confirm each phase
+|du bestätigst jede Phase
+
+|`onboard.defaults.asking.key_points`
+|At the key points
+|An den wichtigen Stellen
+
+|`onboard.defaults.asking.key_points_text`
+|the outline, and before the Merge
+|das Outline, und vor dem Merge
+
+|`onboard.defaults.asking.questions_only`
+|Only questions
+|Nur Fragen
+
+|`onboard.defaults.asking.questions_only_text`
+|you are asked only what needs you
+|du wirst nur gefragt, was dich braucht
+
+|`onboard.defaults.review.needs_provider`
+|needs a provider: none is available
+|braucht einen Provider: keiner ist verfügbar
+
+|`onboard.defaults.review.action_defaults`
+|Use these defaults
+|Verwende diese Vorgaben
+
+|`onboard.defaults.review.action_save`
+|Save these choices
+|Speichere diese Auswahl
+
+|`onboard.defaults.review.team_owned`
+|{axis} is set by the project's team (.marshall/config/); change it in the project setup.
+|{axis} legt das Team des Projekts fest (.marshall/config/); ändere es in der Einrichtung des Projekts.
+
+|`onboard.defaults.review.bound_at_start`
+|The plan's axes were bound at its start ({time}); they do not change while it runs.
+|Die Achsen des Plans wurden bei seinem Start festgelegt ({time}); sie ändern sich nicht, während er läuft.
+
+|`onboard.defaults.validate.main_ok`
+|Commit on main: the base branch accepts pushes ({provider}, {branch} not protected)
+|Commit auf main: der Basis-Branch nimmt Pushes an ({provider}, {branch} nicht geschützt)
+
+|`onboard.defaults.validate.main_protected`
+|Commit on main: {branch} is protected at {provider}
+|Commit auf main: {branch} ist bei {provider} geschützt
+
+|`onboard.defaults.validate.pull_request_ok`
+|Branch and Pull Request: {provider} is available
+|Branch und Pull Request: {provider} ist verfügbar
+
+|`onboard.defaults.done`
+|Plan defaults recorded
+|Vorgaben für Pläne gespeichert
+|===
+
+The German name of the landing axis is _Abschluss_, since _Landing_ is not in the glossary; _Outline_, _Merge_, _Pull Request_, _Branch_, _Commit_, _Push_ stay as the glossary says.
+
+[#texts-operator]
+=== `operator`: Only the Terminal
+
+[#texts-operator-dialogue]
+==== The Dialogue
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.prompt.primary`
+|{action}? [Enter]
+|{action}? [Enter]
+
+|`operator.prompt.other_range`
+|other: {range}
+|anders: {range}
+
+|`operator.prompt.toggle_range`
+|toggle: {range}
+|umschalten: {range}
+
+|`operator.prompt.change_example`
+|change: e.g. {example}
+|ändern: z. B. {example}
+
+|`operator.prompt.explains_item`
+|?n explains a line
+|?n erklärt eine Zeile
+
+|`operator.prompt.leave`
+|leave
+|verlassen
+
+|`operator.prompt.consent_needs_answer`
+|Type {yes}, {remember} or {no}.
+|Gib {yes}, {remember} oder {no} ein.
+
+|`operator.prompt.not_offered`
+|{input} is not offered here: {offered}
+|{input} wird hier nicht angeboten: {offered}
+
+|`operator.prompt.keeps_value`
+|(Enter keeps a value)
+|(Enter behält einen Wert)
+
+|`operator.prompt.secret`
+|{name} (not shown while you type)
+|{name} (wird beim Tippen nicht angezeigt)
+
+|`operator.prompt.which_project`
+|Which project?
+|Welches Projekt?
+
+|`operator.prompt.which_plan`
+|Which plan?
+|Welcher Plan?
+
+|`operator.progress.elapsed`
+|{time}
+|{time}
+
+|`operator.resume.stopped`
+|Stopped at {step}. Nothing was sent.
+|Angehalten bei {step}. Es wurde nichts gesendet.
+
+|`operator.resume.continue`
+|Continue: {command}   (or in the web app: {web_command})
+|Weiter: {command}   (oder in der Web-App: {web_command})
+
+|`operator.resume.answered_elsewhere`
+|Answered in the web app: {answer}
+|In der Web-App beantwortet: {answer}
+
+|`operator.direct.needs_choice`
+|Needs a choice: {option}
+|Braucht eine Wahl: {option}
+
+|`operator.direct.kept`
+|kept
+|beibehalten
+
+|`operator.direct.unused`
+|{option} was not used: {reason}
+|{option} wurde nicht verwendet: {reason}
+
+|`operator.level.project`
+|project {project}
+|Projekt {project}
+
+|`operator.level.plan`
+|plan {plan}
+|Plan {plan}
+
+|`operator.level.not_offered`
+|{aspect} has the levels {levels}.
+|{aspect} hat die Ebenen {levels}.
+
+|`operator.config.aspect_owned`
+|{key} is changed with {command}, which checks it.
+|{key} wird mit {command} geändert, das es prüft.
+
+|`operator.config.change_with`
+|Change: {command}
+|Ändern: {command}
+
+|`operator.config.plan_version`
+|Applies from the plan's next step; the plan's version becomes {version}.
+|Gilt ab dem nächsten Schritt des Plans; die Version des Plans wird {version}.
+
+|`operator.copy.done`
+|Copied, if your terminal allows it; the text is above.
+|Kopiert, sofern dein Terminal es erlaubt; der Text steht oben.
+
+|`operator.check.not_run`
+|not run
+|nicht ausgeführt
+|===
+
+[#texts-operator-keys]
+==== Keys
+
+One letter per link relation, the mnemonic of its label; the build checks of the packs also check that each is one letter, neither a digit nor `?` (<<keys>>).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.key.yes`
+|y
+|j
+
+|`operator.key.yes_remember`
+|r
+|m
+
+|`operator.key.no`
+|n
+|n
+
+|`operator.key.back`
+|b
+|z
+
+|`operator.key.add`
+|a
+|h
+
+|`operator.key.recheck`
+|l
+|e
+
+|`operator.key.choose_another`
+|o
+|a
+
+|`operator.key.edit`
+|e
+|b
+
+|`operator.key.ask_steward`
+|s
+|s
+
+|`operator.key.reset_default`
+|d
+|r
+
+|`operator.key.fix_credential`
+|t
+|t
+
+|`operator.key.continue_without`
+|k
+|o
+
+|`operator.key.guided`
+|g
+|h
+
+|`operator.key.automatic`
+|a
+|a
+
+|`operator.key.web_instead`
+|w
+|w
+
+|`operator.key.copy_url`
+|c
+|u
+
+|`operator.key.copy_ssh`
+|s
+|s
+
+|`operator.key.new_code`
+|n
+|n
+
+|`operator.key.other_device`
+|o
+|g
+
+|`operator.key.quit`
+|q
+|b
+
+|`operator.key.leave`
+|q
+|v
+|===
+
+[#texts-operator-start]
+==== `start`
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.start.runtime_started`
+|Runtime started ({version})
+|Runtime gestartet ({version})
+
+|`operator.start.runtime_running`
+|Runtime running ({version})
+|Runtime läuft ({version})
+
+|`operator.start.web_on`
+|Web access on {url}
+|Web-Zugang auf {url}
+
+|`operator.start.web_on_lan`
+|Web access on {url} and every interface
+|Web-Zugang auf {url} und allen Schnittstellen
+
+|`operator.start.browser_opened_code`
+|Browser opened with a pairing code, valid for {minutes} minutes
+|Browser mit einem Kopplungscode geöffnet, gültig für {minutes} Minuten
+
+|`operator.start.browser_opened`
+|Browser opened
+|Browser geöffnet
+
+|`operator.start.no_browser`
+|No browser opened: {reason}
+|Kein Browser geöffnet: {reason}
+
+|`operator.start.ssh_session`
+|SSH session: no browser opened here
+|SSH-Sitzung: hier wurde kein Browser geöffnet
+
+|`operator.start.ways_in`
+|Ways in
+|Zugänge
+
+|`operator.start.ways_in_remote`
+|Ways in, from your own computer
+|Zugänge, von deinem eigenen Computer aus
+
+|`operator.start.forward`
+|Forward the port (VS Code and JetBrains do this on their own):
+|Leite den Port weiter (VS Code und JetBrains tun das von selbst):
+
+|`operator.start.open`
+|Open:
+|Öffne:
+
+|`operator.start.code`
+|Code {code}, valid until {time}
+|Code {code}, gültig bis {time}
+
+|`operator.start.waiting`
+|Waiting for the browser.
+|Warte auf den Browser.
+
+|`operator.start.copy_url`
+|copy URL
+|URL kopieren
+
+|`operator.start.copy_ssh`
+|copy ssh command
+|ssh-Befehl kopieren
+
+|`operator.start.new_code`
+|new code
+|neuer Code
+
+|`operator.start.other_device`
+|other device
+|anderes Gerät
+
+|`operator.start.quit`
+|quit
+|beenden
+
+|`operator.start.paired`
+|Paired: {label}
+|Gekoppelt: {label}
+
+|`operator.start.fresh_code`
+|A new code for a further device: {code}, valid until {time}
+|Ein neuer Code für ein weiteres Gerät: {code}, gültig bis {time}
+
+|`operator.start.new_code_done`
+|New code: {code}, valid until {time}. The previous code no longer works.
+|Neuer Code: {code}, gültig bis {time}. Der vorige Code funktioniert nicht mehr.
+
+|`operator.start.keeps_running`
+|The runtime keeps running. Open the web app again: {command}
+|Die Runtime läuft weiter. Öffne die Web-App wieder: {command}
+
+|`operator.start.web_instead`
+|in the web app instead
+|stattdessen in der Web-App
+
+|`operator.start.other.title`
+|Reach plan-marshall from a phone or another computer?
+|plan-marshall von einem Telefon oder einem anderen Computer aus erreichen?
+
+|`operator.start.other.serves`
+|serves
+|bietet
+
+|`operator.start.other.serves_value`
+|HTTPS on every network interface of this machine, port {port}
+|HTTPS auf jeder Netzwerkschnittstelle dieser Maschine, Port {port}
+
+|`operator.start.other.certificate`
+|certificate
+|Zertifikat
+
+|`operator.start.other.certificate_value`
+|self-signed; your browser warns once, compare the fingerprint
+|selbst signiert; dein Browser warnt einmal, vergleiche den Fingerabdruck
+
+|`operator.start.other.means`
+|means
+|bedeutet
+
+|`operator.start.other.means_value`
+|every device on your network can reach the pairing page; only a paired device gets in
+|jedes Gerät in deinem Netzwerk erreicht die Kopplungsseite; nur ein gekoppeltes Gerät kommt hinein
+
+|`operator.start.other.undo`
+|undo
+|rückgängig
+
+|`operator.start.other.yes`
+|yes
+|ja
+
+|`operator.start.other.no`
+|no, keep it on this machine
+|nein, auf dieser Maschine lassen
+
+|`operator.start.other.action`
+|Open to the network
+|Für das Netzwerk öffnen
+
+|`operator.start.other.nothing_opened`
+|Nothing was opened.
+|Es wurde nichts geöffnet.
+
+|`operator.start.fingerprint`
+|Fingerprint SHA-256
+|Fingerabdruck SHA-256
+|===
+
+[#open-points]
+== Open Points
+
+Each open point names who decides it.
+
+* *The refusal of a link for a state that moved on* (package `api-contract`, with the machine scope). Two channels answer the same state; the second answer needs an error code of its own (`state_moved`, `409`) with the current state in its detail, so that a client re-renders instead of reporting an error. It is not in the closed list of link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#api-error-codes[Local API Error Codes] yet.
+* *Withdrawing a remembered consent* (with link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Consent Before Acting]). The machine settings list and withdraw remembered consents; this design names the terminal verb `pm-operator config consents` (a list with numbers to withdraw) and leaves its transcript to the package that specifies the consent store.
+* *The model probe and the advice in one consent state* (with link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]). `catalogue.consent` asks two consents in one state; the terminal answers them together or one by one (<<t-models>>). The web design shows the same as two choices of one screen.

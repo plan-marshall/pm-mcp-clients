@@ -17,10 +17,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, use cases, and design documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+Requirements, specification sections, use cases, and the web design stay in `plan-marshall-documentation` and are only referenced here; the design of the terminal client is in this repository. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]
-* Design: the accepted terminal design of `cli-design`; link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Design, Texts and Languages]
+* Design: link:../design/terminal-client.adoc[Terminal Client], the accepted design of `cli-design`, which this package implements; link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Design, Texts and Languages]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]
 
 == Done When
