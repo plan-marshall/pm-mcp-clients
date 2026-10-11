@@ -1,0 +1,63 @@
+= Epic: the clients, their mock runtime, and their test infrastructure
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » Epic: the clients
+
+The entry point for the orchestrator epic of this repository. It states what the epic is for, how its work is cut, the gate between design and implementation, and the rules every plan of it follows. The packages it covers are rows of the link:README.adoc#packages[index], which stays the only place that states their status and dependencies; this file never repeats either.
+
+[#goal]
+== Goal
+
+The operator works with `PM-MCP` through two clients, the terminal (`pm-operator`) and the web app (`pm-web-app`), built in parallel from the same use cases: every state is designed for both, both render the same states with the same texts, and both are developed and tested against a mock runtime long before the real runtime serves the flow. The first flows are the onboarding of a machine and the start of the web app (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[UC-ONB], link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]).
+
+The epic is done when every package below is `done` in the index.
+
+[#parallel]
+== Parallel to `pm-mcp-core`
+
+The clients depend on the contract `pm-api` only (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#dependency-rules[Dependency Rules]), and the mock runtime serves that contract from scenario files (link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]). The epic therefore needs nothing of the engine work in `pm-mcp-core` and runs beside its epic `pm-mcp-core-m2-m4`. The server side of the onboarding (the machine scope and its workflow) is not part of this epic: it is planned in `pm-mcp-core` and `plan-marshall-mcp` once the use cases are agreed, and the scenarios of this epic are replayed against it there.
+
+Two packages of this repository are on the critical path of the core epic: `profile-documents` (core waits on it for `profile-loader` and, through it, most of its roles and tasks) and `exec-read-denied-paths` (core waits on it for `job-confinement-and-environment`). They are not part of this epic but take precedence over it when slots are short.
+
+[#phases]
+== Phases and the Design Gate
+
+. *Foundation*, without a gate: `mock-runtime`, `message-catalogue`, then `cli-test-infra`. They need no design decision and unblock both clients.
+. *Design*, in parallel, each thorough and complete before any client code: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it, and its accepted state is recorded in `plan-marshall-documentation`.
+. *Implementation*, after the gate: `cli-onboarding` after `cli-design`; `web-app-foundation` and then `web-onboarding` after `web-design`. Both run against the mock runtime and its scenarios.
+
+[#workstreams]
+== Suggested Workstreams
+
+[cols="1,3",options="header"]
+|===
+|Workstream |Packages
+
+|Mock runtime and test infrastructure
+|`mock-runtime`, `cli-test-infra`, `message-catalogue`
+
+|Terminal client
+|`cli-design`, `cli-onboarding`
+
+|Web app
+|`web-design`, `web-app-foundation`, `web-onboarding`
+|===
+
+[#rules]
+== Standing Rules
+
+Beside the rules of `CLAUDE.md` and of link:README.adoc#how[How to Work a Package], for every plan of the epic:
+
+* *Use cases first.* A package implements what the use cases and their design state; a gap found in a use case is fixed there first (`plan-marshall-documentation`, `doc/use-cases/`, `doc/design/`).
+* *Both clients, one state.* A state is never designed or built for one client only; the texts come from the message catalogue, never from a client's code.
+* *The design principles of the onboarding hold everywhere*: nothing happens without the operator's consent; preselect as much as possible and hide nothing; every check reports a checkmark or an error with its fix (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[UC-ONB]).
+* *Mock first.* Every client-facing flow ships its scenarios; a client test runs against the mock runtime, never against a hand-made fake.
+* *No dependency without the operator.* The web toolchain, a browser test runner, and a terminal test library are asked for first; `web-design` proposes them with their reasons.
+* *Java 25 is the baseline*; the client binaries stay plain GraalVM native images without Quarkus.
+
+[#start]
+== Starting the Epic
+
+Prerequisite: plan-marshall is set up for this repository, as it is for `pm-mcp-core`. Then the orchestrator is initialised with this file as the brief and decomposes it along the index; the epic orders only its own queue, so the dependencies on other repositories stay rows of the index.

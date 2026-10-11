@@ -1,0 +1,28 @@
+= Message catalogue and the English and German packs
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `message-catalogue`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding] (UC-ONB-3); no roadmap milestone yet
+Where:: `pm-api`, a package for the catalogue; the build of `pm-mcp-clients`
+Epic:: link:epic-clients.adoc[the clients, their mock runtime, and their test infrastructure]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* The message catalogue: keys `<area>.<view>.<element>.<part>`, one pack per area and locale (`messages/<area>.<locale>.properties`, UTF-8, ICU message format), the lookup by key, locale and arguments.
+* English complete as the base, German from the start, addressing the operator with _du_.
+* The build checks: a key missing in a pack, a key not in English, a differing argument, and a glossary term translated in a German text each fail the build.
+* The catalogue served for the web app as the mock runtime serves it (`GET /api/v1/messages/{locale}/{area}`); the real endpoint follows with the runtime.
+
+== Trace
+
+Requirements, specification sections, use cases, and design documents stay in `plan-marshall-documentation` and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding] (UC-ONB-3, change _Languages and Internationalisation_)
+* Design: link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Design, Texts and Languages]
+
+== Done When
+
+Each build check has a test that makes it fail; `pm-operator` prints its texts from the catalogue in both languages; the mock runtime serves a pack.
