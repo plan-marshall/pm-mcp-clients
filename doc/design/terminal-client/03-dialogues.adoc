@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Dialogues
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
+
 [#dialogue]
 == Dialogues
 
@@ -108,7 +110,7 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |`h`, `w`
 |`h`, `w`
 |here, in the web app
-|the entry's question on a machine not fully onboarded
+|`entry.where-to-onboard`
 
 |`a`
 |`a`
@@ -120,10 +122,30 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |leave the dialogue to the console prompt (a client action, no link)
 |every dialogue
 
+|`a`
+|`a`
+|`all_shown` (select every role the list shows)
+|the selection of roles in `roles.review` (`edit`)
+
+|`e`, `p`, `r`, `c`
+|`e`, `p`, `l`, `f`
+|`add_epic`, `add_plan`, `running_work`, `continue_setup`
+|a project's actions in the explorer and the end of its onboarding (xref:17-projects.adoc[Projects])
+
+|`r`, `x`, `o`, `n`
+|`u`, `w`, `a`, `n`
+|`rename`, `revoke`, `revoke_others`, `listener_off`
+|the paired devices (xref:08-transcripts-later.adoc#t-devices[Paired Devices])
+
 |`w`, `m`, `x`, `l`
 |`w`, `n`, `x`, `s`
 |in my own words, add a note, none fits, later
 |`decision.answer`
+
+|`y`, `d`, `l`
+|`w`, `a`, `s`
+|`waive`, `decline`, `later`
+|a waiver request (xref:14-transcripts-decisions.adoc#t-decision-waiver[A Waiver Request])
 
 |`?r`
 |`?r`
@@ -140,6 +162,8 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |open what is waiting for the operator (a client action, no link)
 |every dialogue, while something waits
 |===
+
+The keys of the full-screen views (the overview, the explorer, the plan view: moving, opening, filtering) are keys of navigation, not mnemonics of a label; they are the same in every language and are not in this table (xref:15-overview.adoc#full-screen-keys[Keys of the Full-Screen View]).
 
 [#preselection]
 === Preselection on `Enter`
@@ -237,4 +261,4 @@ A refused request is printed as a `✗` line with the text of its error code fro
 [#language]
 === Language of the Terminal
 
-The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. After `language.choose` the client switches at once: the state is printed again in the chosen language before it is recorded, so the operator sees it first (link:../web-app/onboarding.adoc#language[Web App, Onboarding, Language]). `pm-mcp` keeps English (link:../shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).
+The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. After `language.choose` the client switches at once: the state is printed again in the chosen language before it is recorded, so the operator sees it first (link:../web-app/onboarding.adoc#language[Web App, Onboarding, Language]). `pm-mcp` prints in the same interface language as `pm-operator` (link:../shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).

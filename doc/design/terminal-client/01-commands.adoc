@@ -5,13 +5,15 @@
 
 link:README.adoc[Terminal Client] » Command Model
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] to link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] to link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
+
 [#commands]
 == Command Model
 
 [#command-tree]
 === The Verbs
 
-`pm-operator` is the operator's console. Without a verb it opens the console (xref:04-console.adoc[The Console]); inside it every verb is typed without the program name (`config roles --project .`), and the same verb also runs as one shell command (`pm-operator config roles --project .`), which does that one thing and exits, for scripts and quick changes. The console and the onboarding add the entry, the console commands, and the aspects of the existing verb `config` to the terminal verbs of `pm-operator` (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]). All of them are operator verbs (`[op]`): a choice of the onboarding and an answer to a question are operator acts (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal]), and the entry issues a pairing code, which only an operator verb may do. There is no verb `start` and no verb `onboard`: what to do first follows from the state of the machine.
+`pm-operator` is the operator's console. Without a verb it opens the console (xref:04-console.adoc[The Console]); inside it every verb is typed without the program name (`config roles --project .`), and the same verb also runs as one shell command (`pm-operator config roles --project .`), which does that one thing and exits, for scripts and quick changes. The console and the onboarding add the entry, the console commands, and the aspects of the existing verb `config` to the terminal verbs of `pm-operator` (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]). All of them are operator verbs (`[op]`): a choice of the onboarding and an answer to a question are operator acts (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-cli-answers[Answers from the Terminal Client]), and the entry issues a pairing code, which only an operator verb may do. There is no verb `start` and no verb `onboard`: what to do first follows from the state of the machine.
 
 ----
 pm-operator                                               [op]  the console; first the onboarding while it is not complete, here or in
@@ -22,54 +24,73 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
     models         [--enrol <client_id>]... [--allow <client_id>:<model>]... [--no-advice]
     roles          [--defaults] [--set <role>=<client_id>:<model>[:<effort>]]... [--reset <role>|--reset-all]
     credentials    [--store os|file]
-    providers      [--use <provider>[:native|:cli]]... [--without <provider>]...
+    providers      [--use <provider>[:native|:cli]]... [--without <provider>]... [--verify]
     plan-defaults  [--landing pull-request|main|files] [--method test-first|tests-after]
                    [--asking every-phase|key-points|questions-only]
-    consents       the remembered consents, to withdraw one
+    consents       the remembered consents, to withdraw one (08-transcripts-later)
 pm-operator projects [--list]                             [op]  the explorer of the machine's projects; full screen in the console (17-projects)
 pm-operator project add [<path>]                          [op]  onboard a project; the working directory is the proposed checkout
-pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding
+pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding, or the open one continued
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
-pm-operator plan add [--project <project_id>|.] [<source>]... [op]  start a plan from its sources (18-starting)
-pm-operator epic add [--project <project_id>|.] [<source>]...
+pm-operator project release <project_id> [--reason <text>]
+                                                          [op]  release a project: no new work starts in it (UC-PRJ-3, 17-projects)
+pm-operator project unenrol <project_id> [--reason <text>] [op]  remove a project's enrolment; refused while its work runs (UC-PRJ-3, 17-projects)
+pm-operator plan add [--project <project_id>|.] [<source>]... [--title <title>] [--id <plan_id>]
+                                                          [op]  start a plan from its sources (18-starting)
+pm-operator epic add [--project <project_id>|.] [<source>]... [--title <title>] [--id <epic_id>]
                                                           [op]  start an epic from its sources (18-starting)
-pm-operator recipe run [<recipe_key>] [--param <name>=<value>]...
+pm-operator recipe run [<recipe_key>] [--project <project_id>|.] [<source>]... [--param <name>=<value>]...
                                                           [op]  run a recipe of the project (18-starting)
-pm-operator plan pause|start|cancel|abandon <plan_id> [op]  act on a plan by its state (19-actions)
-pm-operator epic next|decompose|archive|cancel|findings|watches <epic_id>
+pm-operator plan pause <plan_id> [--now|--after-task|--after-phase]
+pm-operator plan start <plan_id>
+pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
+                                                          [op]  act on a plan by its state (19-actions)
+pm-operator epic next <epic_id> [--raise-scope]
+pm-operator epic decompose <epic_id> [--instruction <text>]
+pm-operator epic archive|findings|watches <epic_id>
+pm-operator epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
                                                           [op]  act on an epic, review its findings or watches (19-actions)
 pm-operator abort plan|epic <id> --reason <text>        [op]  the existing verb: as plan cancel or abandon, and epic cancel (19-actions)
+pm-operator web devices [rename <device_id> <label>|revoke <device_id>|revoke --others]
+                                                          [op]  the paired devices: list, rename, revoke one, revoke all others (UC-ENT-2)
 pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
 pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
 pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies
 pm-operator status [--project <project_id>] [--by epic] [--watch]
                                                                 the running work as a tree, and the runtime (15-overview)
+pm-operator status --ended [--project <project_id>]             the ended work as a tree, opened read-only as it ended (15-overview)
 
 <level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
+<source>:  --description <text>|-   --document <path>   --issue <number>|<url>   --pull-request <number>|<url>
+           and the others of 18-starting; each repeatable but --description and --pull-request
 common:    --no-input   never ask; stop at the first choice not given (exit code 3)
            --yes        accept the confirmations of the displayed changes (never a consent)
            --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
 
 In the console only:
-  plans                       the overview of running work, full screen (15-overview)
+  plans                       the overview of running work, full screen (15-overview); E shows the ended work
   plan <plan_id> [--all|--depth <n>]   a plan's process as a tree (16-plan-view)
   epic <epic_id>              an epic's view as a tree (19-actions)
-  questions                   the open questions and waiver requests, with what they block and the recommendation
-  answer <id> [<option>]      open a question as a dialogue, or answer it with an option
-  web [pair|lan|copy [ssh]]   the ways into the web app; a new code; other devices; copy the URL or the ssh command
+  questions                   the open decisions and waiver requests, with what they block and the recommendation
+  answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
+  web [pair|lan|qr|copy [ssh]]   the ways into the web app; a new code; other devices; the code's QR code again;
+                              copy the URL or the ssh command
   help [<verb>]               the verbs and console commands
   exit                        leave the console (as Ctrl+D)
 ----
 
 * *`pm-operator`* without a verb opens the console after the operator checks; it starts the runtime on demand, as every verb does, and then follows the state of the machine:
-** *Not fully onboarded* (the onboarding has not reached `onboard.completed`): it asks where to go on, here or in the web app (xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded]). _In the web app_ connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, and the web app shows the onboarding where it stands; the console stays open beside it. _Here_ runs the onboarding dialogue from where it stands: the first run from `onboard.mode`, an interrupted run from the state it stopped in. Left before it completes, the prompt shows the step it stopped at (`pm [setup 3/7] ›`), and `Enter` on the empty prompt continues it.
+** *Not fully onboarded* (`entry.check-onboarded` finds that the onboarding has not reached `onboard.completed`): `entry.where-to-onboard` asks where to go on, here or in the web app (xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded]). _In the web app_ connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, and the web app shows the onboarding where it stands; the console stays open beside it. _Here_ runs the onboarding dialogue from where it stands: the first run from `onboard.mode`, an interrupted run from the state it stopped in. Left before it completes, the prompt shows the step it stopped at (`pm [setup 3/7] ›`), and `Enter` on the empty prompt continues it.
 ** *Onboarded*: it connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, without waiting: the web listener is opened, the browser is opened with a pairing code only when no browser of this machine is paired yet, otherwise the URL is printed, and over SSH the ways in are printed (xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH]). Then the prompt, with what is pending. `entry.wait` is the console itself: a pairing is reported above the prompt, and `web` shows the ways in again.
 ** `pm-operator --help` prints the verbs, as every picocli command does; it opens no console.
-* *`config <aspect>`* starts the sub-workflow of one aspect as a later run (`onboard_run: reconfigure`), with the current values as the proposal, and answers each choice state from its arguments where they give one (<<direct-verbs>>). The aspects are the seven steps of the onboarding: `language`, `harness`, `models`, `roles`, `credentials`, `providers`, `plan-defaults`.
-* *Other verbs* never ask where to onboard. A verb that needs a step of the onboarding that is not done yet (a credential before the credential store is chosen, a role before the catalogue exists) is refused, and the refusal names the console (`pm-operator`).
+* *`config <aspect>`* starts the sub-workflow of one aspect as a later run (`onboard_run: reconfigure`), with the current values as the proposal, and answers each choice state from its arguments where they give one (<<direct-verbs>>). The aspects are the seven steps of the onboarding: `language`, `harness`, `models`, `roles`, `credentials`, `providers`, `plan-defaults`. `config providers --verify` checks the recorded providers again and changes nothing unless a check fails (xref:08-transcripts-later.adoc#t-providers-verify[Providers Checked Again]); `config consents` lists the remembered consents to withdraw one (xref:08-transcripts-later.adoc#t-consents[The Remembered Consents]).
+* *`project release` and `project unenrol`* end a project's work on the machine as link:../shared/project-explorer.adoc#release[Project Explorer, Release] says; both are also actions of the project's setup (xref:17-projects.adoc[Projects]).
+* *`web devices`* lists the paired devices and acts on them as link:../shared/paired-devices.adoc[Paired Devices] says (xref:08-transcripts-later.adoc#t-devices[Paired Devices]); the console itself needs no pairing and is never listed.
+* *Other verbs* never ask where to onboard. A verb that needs a step of the onboarding that is not done yet (a credential before the credential store is chosen, a role before the catalogue exists) is refused, and the refusal names both ways to complete it: the console (`pm-operator`) and the web app (`operator.entry.onboarding_needed`, xref:13-texts-operator.adoc#texts-operator-entry[The Entry]).
 * *`config show|set|unset`* keep what `pm-operator config` already is: the operator's configuration keys of `machine-config.json` and `local-config.json`. A key that an aspect owns (`language.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, the role assignment) is changed only through its aspect, because the aspect validates and checks it; `config set` refuses it and names the aspect verb. `show` lists every key, the aspect-owned ones included.
-* *`status`* prints the overview of running work as a tree, `--project <project_id>` for one project and `--by epic` with the plans below their epics (xref:15-overview.adoc#status-tree[The Tree]).
-* *The console commands* (`plans`, `questions`, `answer`, `web`, `help`, `exit`) exist only inside the console; they are not shell verbs.
+* *`status`* prints the overview of running work as a tree, `--project <project_id>` for one project and `--by epic` with the plans below their epics (xref:15-overview.adoc#status-tree[The Tree]); `status --ended` prints the ended work instead (link:../shared/plan-overview.adoc#ended[Plan Overview, Ended Work]).
+* *The flags of the actions* on plans and epics are those of xref:19-actions.adoc[Actions on Plans and Epics], which says what each does; the listing above repeats them, 19 is the reference.
+* *The console commands* (`plans`, `plan`, `epic`, `questions`, `answer`, `web`, `help`, `exit`) exist only inside the console; they are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-fresh-code[A Fresh Code after a Redemption]).
 
 [#one-surface]
 === One Surface in Every Language

@@ -5,36 +5,47 @@
 
 link:README.adoc[Terminal Client] » Transcripts: Steps 1 to 3
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]_
+
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#t-language]
 == 1 Language (`language.detect`, `language.choose`, `language.record`, `language.done`)
 
+The system's locale is `de_DE` and a German pack exists, so the state opens in German (xref:03-dialogues.adoc#language[Language of the Terminal]):
+
 [source,text]
 ----
-[1/7] Language · Choose your languages
-  plan-marshall and pm-operator    1) English   2) Deutsch ← from your system (de_DE)
-  What models write and read       3) same as above ←   4) English   5) Deutsch
-
-  Words like Pull Request, Commit, Merge and Request stay as they are.
-
-Use Deutsch for both? [Enter]   other: 1-5   ?   › ?
-  Models do not work equally well in every language; you can let them work
-  in English while plan-marshall speaks German. "same as above" follows a
-  later change of the first language.
-Use Deutsch for both? [Enter]   other: 1-5   ?   › 4
 [1/7] Sprache · Wähle deine Sprachen
   plan-marshall und pm-operator      1) English   2) Deutsch ← von deinem System (de_DE)
-  Was Modelle schreiben und lesen    3) wie oben   4) English ✎   5) Deutsch
+  Was Modelle schreiben und lesen    3) wie oben ←   4) English   5) Deutsch
 
   Wörter wie Pull Request, Commit, Merge und Request bleiben, wie sie sind.
 
-Deutsch hier, English für Modelle verwenden? [Enter]   anders: 1-5   ?   › ⏎
+Verwende Deutsch für beides? [Enter]   anders: 1-5   ?   › ?
+  Modelle arbeiten nicht in jeder Sprache gleich gut; du kannst sie auf
+  Englisch arbeiten lassen, während plan-marshall Deutsch spricht. „wie oben"
+  folgt einer späteren Änderung der ersten Sprache.
+Verwende Deutsch für beides? [Enter]   anders: 1-5   ?   › 4
+  Was Modelle schreiben und lesen    3) wie oben   4) English ✎   5) Deutsch
+Verwende Deutsch hier, English für Modelle? [Enter]   anders: 1-5   ?   › 1
+[1/7] Language · Choose your languages
+  plan-marshall and pm-operator    1) English ✎   2) Deutsch   from your system (de_DE)
+  What models write and read       3) same as above   4) English ✎   5) Deutsch
+
+  Words like Pull Request, Commit, Merge and Request stay as they are.
+
+Use English for both? [Enter]   other: 1-5   ?   › 2
+[1/7] Sprache · Wähle deine Sprachen
+  plan-marshall und pm-operator      1) English   2) Deutsch ← von deinem System (de_DE)
+  Was Modelle schreiben und lesen    3) wie oben   4) English ✎   5) Deutsch
+  …
+Verwende Deutsch hier, English für Modelle? [Enter]   anders: 1-5   ?   › ⏎
 ✓ Sprachen gespeichert: Deutsch, Modelle English
 ----
 
 * `language.detect` and `language.record` print no line of their own beyond the result; `language.done` is the result line.
-* The choice of an interface language reprints the state in it before it is recorded (xref:03-dialogues.adoc#language[Language of the Terminal]).
+* The state opens in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`), else in English. A change of the interface language reprints the whole state in it before it is recorded, so the operator reads it first; a change of the model language marks the line `✎` and changes nothing else (xref:03-dialogues.adoc#language[Language of the Terminal]).
 
 [#t-harness]
 == 2 Harness

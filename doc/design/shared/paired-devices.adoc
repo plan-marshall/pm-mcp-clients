@@ -1,0 +1,184 @@
+= Design: Paired Devices
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Paired Devices
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2], reached from link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-devices[Devices in Both Clients] (proposed); link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices], link:../web-app/README.adoc[Web App] (in its machine settings).
+
+Every paired browser can do what the operator does: it is an operator channel. The list of paired devices is where the operator sees which browsers can act on the machine, and takes that right away from any of them. The terminal client needs no pairing and is never listed.
+
+[#list]
+== The List
+
+----
+  Paired devices · The browsers that can act on this machine
+  ─────────────────────────────────────────────────────────────────────────────
+    Firefox on mbp-oliver   paired 12 May   last used today 14:02   loopback   this one
+    iPad Oliver             paired 20 May   last used 3 d ago       network
+    Chrome on build-box     paired 2 Jun    last used 5 weeks ago   loopback
+  ─────────────────────────────────────────────────────────────────────────────
+  The terminal client needs no pairing and is not listed.
+  Network listener: on                          [Turn the network listener off]
+                                                       [Revoke all others]
+----
+
+* *A device* (`devices.list`): its label, when it was paired, when it was last used, from where it was last used (`loopback` or `network`), and `this one` for the browser the operator acts from; newest use first. A label is proposed at pairing from the browser and the machine it runs on, and the operator may rename it.
+* *Its acts* (`devices.act`), one step away from its line: _Rename_ and _Revoke…_.
+* *For the list*: _Revoke all others_ (every device but this one) and _Turn the network listener off_ (as `web disable`, link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client]); the listener's state is shown beside it.
+* In the web app the list is reached from the machine settings (link:../web-app/README.adoc[Web App]); in the terminal client it is `web devices` with `rename <id> <label>`, `revoke <id>`, and `revoke --others` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices]).
+
+[#revoke]
+== Revoking
+
+----
+  Revoke Chrome on build-box?
+  ─────────────────────────────────────────────────────────────────────────────
+  It is signed out at once; its open pages close with the reason.
+                                                     [Keep it]  [Revoke it]
+----
+
+* *Every revocation asks first*, since it cannot be undone; a revoked device can only be paired again with a new code.
+* *Revoking* (`devices.revoke`) voids the device's token at once and ends its event streams; the list shows it gone.
+* *This device* asks with its consequence named: its pages close and show the pairing page, and a new code pairs it again. After the yes the web app deletes its stored secret and lands on the pairing page.
+* *Revoke all others* names how many devices it revokes and which one stays.
+
+[#revoked-page]
+== A Revoked Page
+
+An open page of a device that was revoked elsewhere, or expired after its idle time, does not fail silently: it shows why it can no longer act, and the way back.
+
+----
+  This browser is no longer paired
+  ─────────────────────────────────────────────────────────────────────────────
+  It was revoked from the terminal client today at 14:10.
+  To use the web app here again, pair it with a new code: run pm-operator in a
+  terminal of this machine.
+                                                              [Pair this browser]
+----
+
+* The reason names who revoked it (the terminal client, or the label of another device) and when, or that it expired after not being used.
+* Nothing the page showed stays visible behind the message.
+
+[#texts]
+== Texts
+
+Keys of the area `devices`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`devices.list.title`
+|Paired devices
+|Gekoppelte Geräte
+
+|`devices.list.subtitle`
+|The browsers that can act on this machine
+|Die Browser, die auf dieser Maschine handeln können
+
+|`devices.list.paired`
+|paired {date}
+|gekoppelt {date}
+
+|`devices.list.last_used`
+|last used {time}
+|zuletzt verwendet {time}
+
+|`devices.list.from`
+|{from, select, loopback {loopback} other {network}}
+|{from, select, loopback {Loopback} other {Netzwerk}}
+
+|`devices.list.this_one`
+|this one
+|dieses Gerät
+
+|`devices.list.terminal_note`
+|The terminal client needs no pairing and is not listed.
+|Der Terminal-Client braucht keine Kopplung und wird nicht gelistet.
+
+|`devices.list.empty`
+|No browser is paired.
+|Kein Browser ist gekoppelt.
+
+|`devices.list.listener`
+|Network listener: {state, select, on {on} other {off}}
+|Netzwerk-Listener: {state, select, on {an} other {aus}}
+
+|`devices.act.rename`
+|Rename
+|Benenne es um
+
+|`devices.act.label`
+|Label
+|Bezeichnung
+
+|`devices.act.renamed`
+|Renamed: {label}
+|Umbenannt: {label}
+
+|`devices.act.revoke`
+|Revoke…
+|Entziehe die Kopplung…
+
+|`devices.act.revoke_others`
+|Revoke all others
+|Entziehe allen anderen die Kopplung
+
+|`devices.act.listener_off`
+|Turn the network listener off
+|Schalte den Netzwerk-Listener aus
+
+|`devices.revoke.title`
+|Revoke {label}?
+|{label} die Kopplung entziehen?
+
+|`devices.revoke.explain`
+|It is signed out at once; its open pages close with the reason.
+|Es wird sofort abgemeldet; seine offenen Seiten schließen sich mit dem Grund.
+
+|`devices.revoke.this_one`
+|It is the browser you are using: its pages close and show the pairing page; a new code pairs it again.
+|Es ist der Browser, den du gerade verwendest: seine Seiten schließen sich und zeigen die Kopplungsseite; ein neuer Code koppelt ihn wieder.
+
+|`devices.revoke.others_title`
+|Revoke {count, plural, one {# device} other {# devices}} other than this one ({label})?
+|{count, plural, one {# Gerät} other {# Geräten}} außer diesem ({label}) die Kopplung entziehen?
+
+|`devices.revoke.keep`
+|Keep it
+|Behalte es
+
+|`devices.revoke.action`
+|Revoke it
+|Entziehe die Kopplung
+
+|`devices.revoke.done`
+|Revoked: {label}
+|Kopplung entzogen: {label}
+
+|`devices.revoke.others_done`
+|Revoked {count, plural, one {# device} other {# devices}}; {label} stays paired.
+|{count, plural, one {# Gerät} other {# Geräten}} die Kopplung entzogen; {label} bleibt gekoppelt.
+
+|`devices.revoked.title`
+|This browser is no longer paired
+|Dieser Browser ist nicht mehr gekoppelt
+
+|`devices.revoked.reason`
+|{reason, select, revoked {It was revoked from {by} {time}.} other {It expired after not being used since {time}.}}
+|{reason, select, revoked {Die Kopplung wurde {time} von {by} entzogen.} other {Die Kopplung ist abgelaufen, weil er seit {time} nicht verwendet wurde.}}
+
+|`devices.revoked.how_back`
+|To use the web app here again, pair it with a new code: run pm-operator in a terminal of this machine.
+|Um die Web-App hier wieder zu verwenden, kopple ihn mit einem neuen Code: führe pm-operator in einem Terminal dieser Maschine aus.
+
+|`devices.revoked.pair`
+|Pair this browser
+|Kopple diesen Browser
+|===

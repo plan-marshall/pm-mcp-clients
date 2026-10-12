@@ -5,12 +5,14 @@
 
 link:README.adoc[Terminal Client] » Transcripts: Later Changes, and Every State
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]_
+
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#t-later]
 == Later Changes and Scripts
 
-The first two run a verb as one shell command, as a script does; the others run it in the console.
+The first two run a verb as one shell command, as a script does, and so does `config providers --verify`; the others run it in the console.
 
 [#t-config-direct]
 === Arguments as Answers (`config plan-defaults`)
@@ -90,10 +92,105 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 
 * Only the changed role is written to the project's assignment; the others keep following the machine, so a later machine change reaches them. `d` removes the project's value of the selected roles.
 
+[#t-consents]
+=== The Remembered Consents (`config consents`)
+
+[source,text]
+----
+pm › config consents
+Consents · The consents you said not to ask again
+    1) look for harnesses                 scan_harnesses        12 May, 10:14
+    2) check whether a harness is logged in   probe_harness_login   12 May, 10:15
+    3) look for CLI tools and stored tokens   scan_providers        12 May, 10:21
+    4) approve the cost of a role task    model_cost · pm-mcp-clients   3 Jun, 16:02
+
+  A withdrawn consent is asked again the next time its action runs.
+
+Withdraw: 1-4   q) leave   ?   › 2 4
+    2) check whether a harness is logged in   ✎ withdraw
+    4) approve the cost of a role task        ✎ withdraw
+Withdraw 2 consents? [Enter]   toggle: 1-4   q) leave   ?   › ⏎
+✓ 2 consents withdrawn; they are asked again the next time.
+----
+
+* The list is what the runtime remembers: the action, its consent kind, the project for a consent of a project (`model_cost`), and when it was given. A consent is never given here; it is given only where its action asks (xref:03-dialogues.adoc#consent[Consent]).
+* With no remembered consent the verb prints `No consent is remembered.` and returns.
+
+[#t-providers-verify]
+=== Providers Checked Again (`config providers --verify`)
+
+[source,text]
+----
+$ pm-operator config providers --verify
+Providers · Checking the providers again
+  GitHub (gh)                                                ✓ ready
+    last check  ✓ ready, 12 May, 10:24
+    ✓  github.com reachable
+    ✓  token authenticates as oliver-wolff (fine-grained, expires in 9 days)
+    ✓  permissions: contents, pull requests, checks (read and write)
+    ✓  gh 2.71 is logged in as the same account
+  SonarCloud                                                 ✗ not ready
+    last check  ✓ ready, 12 May, 10:24
+    ✓  sonarcloud.io reachable
+    ✗  token refused: 401 "Invalid token"
+       → enter the token again
+
+Enter the token again? [Enter]   l) check again   k) continue without SonarCloud   ?   › ⏎
+Providers · SonarCloud needs a token
+  …
+Token (not shown while you type): ›
+Store and check it? [Enter]   b) back   ?   › ⏎
+  SonarCloud                                                 ✓ ready
+    ✓  sonarcloud.io reachable
+    ✓  token authenticates as oliver-wolff (user token, no expiry known)
+✓ Providers checked: GitHub ready, SonarCloud ready. GitHub: the token expires in 9 days.
+----
+
+* `--verify` runs `providers.verify` on the recorded providers; each shows the result and the time of its last check before the new one. With every check `✓` nothing is recorded and the verb ends; a failed check leads to `providers.failed`, as in the onboarding (xref:07-transcripts-steps-4-7.adoc#t-providers-verify[Check]). With `--project <project_id>` it checks the project's providers.
+* A token that expires within 14 days is named in the result line.
+
+[#t-devices]
+=== Paired Devices (`web devices`)
+
+[source,text]
+----
+pm › web devices
+Paired devices · The browsers that can act on this machine
+    1) Firefox on mbp-oliver     paired 12 May   last used today 14:02   loopback   this one
+    2) Safari on iPad            paired 20 May   last used 3 d ago       network
+    3) Chrome on build-box       paired 2 Jun    last used 5 weeks ago   loopback
+
+  The console needs no pairing and is not listed. Network listener: on.
+
+Act on a device: 1-3   o) revoke all others   n) turn the network listener off   q) leave   ?   › 2
+  2) Safari on iPad
+Rename or revoke? r) rename   x) revoke   b) back   ?   › r
+Label [Safari on iPad] › iPad Oliver
+✓ Renamed: iPad Oliver
+pm › web devices revoke 3
+Revoke Chrome on build-box? It is signed out at once; its open pages close with the reason.
+Revoke? [Enter]   b) back   ?   › ⏎
+✓ Revoked: Chrome on build-box
+pm › web devices revoke --others
+Revoke 1 device other than this one (iPad Oliver)?
+Revoke? [Enter]   b) back   ?   › ⏎
+✓ Revoked 1 device; Firefox on mbp-oliver stays paired.
+pm › web devices revoke 1
+Revoke Firefox on mbp-oliver? It is the browser you are using on this machine:
+  its pages close and show the pairing page; a new code pairs it again.
+Revoke? [Enter]   b) back   ?   › ⏎
+✓ Revoked: Firefox on mbp-oliver. web pair issues a new code.
+pm ›
+----
+
+* `web devices` is the terminal side of link:../shared/paired-devices.adoc[Paired Devices]: the list (`devices.list`) with label, when paired and last used, from where (loopback or the network), and which one is _this one_; the acts (`devices.act`) rename, revoke one, revoke all others, and turn the network listener off (as `web disable`); a revocation (`devices.revoke`) voids the device's token at once and closes its open pages with the reason.
+* _This one_ is the browser the console's entry paired or last opened on this machine; revoking it asks first and says that its pages land on the pairing page. Revoking any other device asks too, since it cannot be undone; `--yes` answers that confirmation in a script.
+* The direct forms `web devices rename <device_id> <label>`, `web devices revoke <device_id>`, and `web devices revoke --others` act at once after the confirmation; the ids are the numbers of the list or the device ids the list shows with `?`.
+
 [#state-coverage]
 == Every State and Its Transcript
 
-The states are those of the use cases' flows (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Onboarding], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]); the kinds are listed one per state, in the same order, and `end` marks the done state of a sub-workflow.
+The states are those of the use cases' flows (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Onboarding], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]); the kinds are listed one per state, in the same order, and `end` marks the done state of a sub-workflow.
 
 [cols="2,1,3",options="header"]
 |===
@@ -111,9 +208,9 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |console
 |xref:05-transcripts-entry.adoc#t-console[The Console at Work]
 
-|`onboard.entry`, `onboard.mode`
-|`[S]`, `[O]`
-|xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded (onboard.entry, onboard.mode)], xref:05-transcripts-entry.adoc#t-mode[Guided (onboard.mode)]
+|`entry.check-onboarded`, `entry.where-to-onboard`, `onboard.mode`
+|`[S]`, `[O]`, `[O]`
+|xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded (entry.runtime, entry.check-onboarded, entry.where-to-onboard, onboard.mode)], xref:05-transcripts-entry.adoc#t-mode[Guided (onboard.mode)]
 
 |`auto.consent`, `auto.run`, `auto.result`
 |`[O]`, `[S]`, `[O]`
@@ -165,7 +262,7 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 
 |`store.unavailable`
 |`[S]`
-|xref:07-transcripts-steps-4-7.adoc#t-store-unavailable[Not Available Now (store.unavailable)]
+|xref:07-transcripts-steps-4-7.adoc#t-store-unavailable[Not Available Now (store.check, store.unavailable)]
 
 |`providers.consent`, `providers.scan`, `providers.select`
 |`[O]`, `[S]`, `[O]`
@@ -173,11 +270,11 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 
 |`providers.credentials`
 |`[O]`
-|xref:07-transcripts-steps-4-7.adoc#t-providers-credentials[A Missing Token (providers.credentials)]
+|xref:07-transcripts-steps-4-7.adoc#t-providers-credentials[A Missing Token (providers.credentials)], xref:05-transcripts-entry.adoc#t-auto[Automatic (auto.consent, auto.run, auto.result)]
 
 |`providers.verify`, `providers.failed`, `providers.record`, `providers.done`
 |`[S]`, `[O]`, `[S]`, end
-|xref:07-transcripts-steps-4-7.adoc#t-providers-verify[Check (providers.verify, providers.failed, providers.record, providers.done)]
+|xref:07-transcripts-steps-4-7.adoc#t-providers-verify[Check (providers.verify, providers.failed, providers.record, providers.done)], <<t-providers-verify>>
 
 |`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`
 |`[S]`, `[O]`, `[S]`, `[S]`, end
@@ -187,7 +284,101 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |`[S]`, `[S]`, `[O]`, `[M]`, `[O]`, `[O]`, `[O]`, `[S]`, end
 |xref:14-transcripts-decisions.adoc#t-decisions[Decisions]
 
+|`devices.list`, `devices.act`, `devices.revoke`
+|`[S]`, `[O]`, `[S]`
+|<<t-devices>>
+
+|the remembered consents (machine settings)
+|`config`
+|<<t-consents>>
+
 |`onboard.completed`
 |rest
 |xref:07-transcripts-steps-4-7.adoc#t-completed[Done (onboard.completed)]
+|===
+
+[#texts-operator-devices]
+== Texts: Paired Devices and Machine Settings
+
+The terminal's lines of `web devices`, `config consents`, and `config providers --verify`; the names of the list's fields and acts are the shared `devices.*` (link:../shared/paired-devices.adoc[Paired Devices]). Transcripts: <<t-devices>>, <<t-consents>>, <<t-providers-verify>>.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.devices.console_not_listed`
+|The console needs no pairing and is not listed. Network listener: {state, select, on {on} other {off}}.
+|Die Konsole braucht keine Kopplung und steht nicht in der Liste. Netzwerk-Listener: {state, select, on {an} other {aus}}.
+
+|`operator.devices.act_prompt`
+|Act on a device: {range}
+|Wähle ein Gerät: {range}
+
+|`operator.devices.rename_or_revoke`
+|Rename or revoke?
+|Umbenennen oder widerrufen?
+
+|`operator.devices.label_prompt`
+|Label
+|Bezeichnung
+
+|`operator.devices.renamed`
+|Renamed: {label}
+|Umbenannt: {label}
+
+|`operator.devices.revoke_confirm`
+|Revoke {label}? It is signed out at once; its open pages close with the reason.
+|{label} widerrufen? Das Gerät ist sofort abgemeldet; seine offenen Seiten schließen sich mit dem Grund.
+
+|`operator.devices.revoke_this_confirm`
+|Revoke {label}? It is the browser you are using on this machine: its pages close and show the pairing page; a new code pairs it again.
+|{label} widerrufen? Das ist der Browser, den du auf dieser Maschine benutzt: seine Seiten schließen sich und zeigen die Kopplungsseite; ein neuer Code koppelt ihn wieder.
+
+|`operator.devices.revoke_others_confirm`
+|Revoke {count, plural, one {# device} other {# devices}} other than this one ({labels})?
+|{count, plural, one {# Gerät} other {# Geräte}} außer diesem widerrufen ({labels})?
+
+|`operator.devices.revoke_action`
+|Revoke
+|Widerrufe
+
+|`operator.devices.revoked`
+|Revoked: {label}
+|Widerrufen: {label}
+
+|`operator.devices.revoked_others`
+|Revoked {count, plural, one {# device} other {# devices}}; {label} stays paired.
+|{count, plural, one {# Gerät} other {# Geräte}} widerrufen; {label} bleibt gekoppelt.
+
+|`operator.devices.revoked_this`
+|Revoked: {label}. web pair issues a new code.
+|Widerrufen: {label}. web pair gibt einen neuen Code aus.
+
+|`operator.consents.title`
+|The consents you said not to ask again
+|Die Zustimmungen, die du dir gemerkt hast
+
+|`operator.consents.asked_again`
+|A withdrawn consent is asked again the next time its action runs.
+|Eine zurückgenommene Zustimmung wird beim nächsten Lauf ihrer Aktion wieder erfragt.
+
+|`operator.consents.withdraw_prompt`
+|Withdraw: {range}
+|Nimm zurück: {range}
+
+|`operator.consents.withdraw_mark`
+|withdraw
+|zurücknehmen
+
+|`operator.consents.withdraw_action`
+|Withdraw {count, plural, one {# consent} other {# consents}}
+|Nimm {count, plural, one {# Zustimmung} other {# Zustimmungen}} zurück
+
+|`operator.consents.withdrawn`
+|{count, plural, one {# consent withdrawn; it is} other {# consents withdrawn; they are}} asked again the next time.
+|{count, plural, one {# Zustimmung zurückgenommen; sie wird} other {# Zustimmungen zurückgenommen; sie werden}} beim nächsten Mal wieder erfragt.
+
+|`operator.consents.none`
+|No consent is remembered.
+|Es ist keine Zustimmung gemerkt.
 |===

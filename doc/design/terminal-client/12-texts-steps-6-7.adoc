@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Texts: Steps 6 and 7
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
+
 The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
 
 [#texts-onboard-providers]
@@ -68,7 +70,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 
 |`onboard.providers.select.action`
 |Continue with {count, plural, =0 {no provider} one {# provider} other {# providers}}
-|Weiter mit {count, plural, =0 {keinem Provider} one {# Provider} other {# Providern}}
+|Mach weiter mit {count, plural, =0 {keinem Provider} one {# Provider} other {# Providern}}
 
 |`onboard.providers.credentials.title`
 |{provider} needs a token
@@ -81,10 +83,6 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |`onboard.providers.credentials.action`
 |Store and check it
 |Speichere und prüfe es
-
-|`onboard.providers.credentials.skip`
-|skip {provider}
-|ohne {provider} weiter
 
 |`onboard.providers.credentials.lan`
 |Tokens are entered on this machine only. In a terminal of it, run {command}, then check again.
@@ -128,7 +126,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 
 |`onboard.providers.failed.continue_without`
 |continue without {provider}
-|ohne {provider} weitermachen
+|mach ohne {provider} weiter
 
 |`onboard.providers.failed.without_note`
 |{provider} will be recorded as not available. Projects can still set it up on their own.
@@ -141,6 +139,22 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |`onboard.providers.done_not_available`
 |{provider} not available
 |{provider} nicht verfügbar
+
+|`onboard.providers.verify_again.title`
+|Checking the providers again
+|Prüfe die Provider erneut
+
+|`onboard.providers.verify_again.last`
+|last check
+|letzte Prüfung
+
+|`onboard.providers.verify_again.done`
+|Providers checked: {list}
+|Provider geprüft: {list}
+
+|`onboard.providers.verify_again.expires`
+|{provider}: the token expires in {days, plural, one {# day} other {# days}}
+|{provider}: das Token läuft in {days, plural, one {# Tag} other {# Tagen}} ab
 |===
 
 [#texts-onboard-plans]
@@ -246,17 +260,9 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |{axis} is set by the project's team (.marshall/config/); change it in the project setup.
 |{axis} legt das Team des Projekts fest (.marshall/config/); ändere es in der Einrichtung des Projekts.
 
-|`onboard.defaults.review.bound_at_start`
-|The plan's axes were bound at its start ({time}); they do not change while it runs.
-|Die Achsen des Plans wurden bei seinem Start festgelegt ({time}); sie ändern sich nicht, während er läuft.
-
-|`onboard.defaults.validate.main_ok`
-|Commit on main: the base branch accepts pushes ({provider}, {branch} not protected)
-|Commit auf main: der Basis-Branch nimmt Pushes an ({provider}, {branch} nicht geschützt)
-
-|`onboard.defaults.validate.main_protected`
-|Commit on main: {branch} is protected at {provider}
-|Commit auf main: {branch} ist bei {provider} geschützt
+|`onboard.defaults.validate.main_per_project`
+|Commit on main: checked for each project, where its base branch is known
+|Commit auf main: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
 
 |`onboard.defaults.validate.pull_request_ok`
 |Branch and Pull Request: {provider} is available
@@ -267,4 +273,4 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Vorgaben für Pläne gespeichert
 |===
 
-The German name of the landing axis is _Abschluss_, since _Landing_ is not in the glossary; _Outline_, _Merge_, _Pull Request_, _Branch_, _Commit_, _Push_ stay as the glossary says.
+At the machine level there is no repository, so _Commit on main_ is not checked against a protected base branch here (`onboard.defaults.validate.main_per_project`); that check belongs to a project's setup. The German name of the landing axis is _Abschluss_, since _Landing_ is not in the glossary; _Outline_, _Merge_, _Pull Request_, _Branch_, _Commit_, _Push_ stay as the glossary says.

@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Texts: Steps 4 and 5
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7]_
+
 The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
 
 [#texts-onboard-roles]
@@ -52,15 +54,15 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 
 |`onboard.roles.review.adjust`
 |adjust roles
-|Roles bearbeiten
+|bearbeite Roles
 
 |`onboard.roles.review.ask_steward`
 |ask the steward to refine
-|den steward verfeinern lassen
+|lass den steward verfeinern
 
 |`onboard.roles.review.reset`
 |reset to default
-|auf die Vorgabe zurücksetzen
+|setze auf die Vorgabe zurück
 
 |`onboard.roles.review.to_look_at`
 |{count, plural, one {# role to look at} other {# roles to look at}}
@@ -106,21 +108,25 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |project
 |Projekt
 
+|`onboard.roles.review.steward_count`
+|{count, plural, one {# role} other {# roles}} ✎ steward
+|{count, plural, one {# Role} other {# Roles}} ✎ steward
+
 |`onboard.roles.project.applies`
 |The machine's assignment applies to all {count} roles here.
 |Die Zuordnung der Maschine gilt hier für alle {count} Roles.
 
 |`onboard.roles.project.keep`
 |Keep the machine's assignment
-|Die Zuordnung der Maschine behalten
+|Behalte die Zuordnung der Maschine
 
 |`onboard.roles.project.reset`
 |reset to the machine's
-|auf die der Maschine zurücksetzen
+|setze auf die der Maschine zurück
 
 |`onboard.roles.project.action_save`
 |Save {count, plural, one {# role} other {# roles}} for {project}
-|{count, plural, one {# Role} other {# Roles}} für {project} speichern
+|Speichere {count, plural, one {# Role} other {# Roles}} für {project}
 
 |`onboard.roles.project.done`
 |{count, plural, one {# role} other {# roles}} set for {project}; {following} follow the machine
@@ -143,7 +149,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Wenn günstiger
 
 |`onboard.roles.advisory.steward`
-|Steward
+|steward
 |steward
 
 |`onboard.roles.advisory.no_departure`
@@ -180,7 +186,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 
 |`onboard.roles.propose.action_some`
 |Accept {accepted}, reject {rejected}
-|{accepted} annehmen, {rejected} ablehnen
+|Nimm {accepted} an, lehne {rejected} ab
 
 |`onboard.roles.validate.ok`
 |{count} roles valid
@@ -237,6 +243,10 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |`onboard.store.unavailable.now`
 |not available now
 |gerade nicht verfügbar
+
+|`onboard.store.unavailable.title`
+|{store, select, keychain {The macOS Keychain is} secret_service {The Secret Service is} other {The files are}} not available now
+|{store, select, keychain {Der macOS-Schlüsselbund ist} secret_service {Der Secret Service ist} other {Die Dateien sind}} gerade nicht verfügbar
 
 |`onboard.store.unavailable.locked`
 |the collection is locked

@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Texts: Steps 1 to 3
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]_
+
 The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
 
 [#texts-onboard-language]
@@ -44,11 +46,11 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 
 |`onboard.language.choose.action_both`
 |Use {language} for both
-|{language} für beides verwenden
+|Verwende {language} für beides
 
 |`onboard.language.choose.action_split`
 |Use {interface} here, {model} for models
-|{interface} hier, {model} für Modelle verwenden
+|Verwende {interface} hier, {model} für Modelle
 
 |`onboard.language.project.title`
 |What should models write and read here?
@@ -56,7 +58,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 
 |`onboard.language.project.keep`
 |Keep the machine's language
-|Die Sprache der Maschine behalten
+|Behalte die Sprache der Maschine
 
 |`onboard.language.done`
 |Languages recorded: {interface}, models {model}
@@ -142,7 +144,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.choose.add`
 |add a harness that is not listed
-|einen Harness hinzufügen, der nicht aufgeführt ist
+|füge einen Harness hinzu, der nicht aufgeführt ist
 
 |`onboard.harness.none.title`
 |No harness found
@@ -174,7 +176,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.probe_consent.runs_call`
 |one minimal headless call of {harness}
-|einen minimalen Headless-Aufruf von {harness}
+|einen minimalen Aufruf von {harness} ohne Oberfläche
 
 |`onboard.harness.probe.title`
 |Checking {harness}
@@ -210,7 +212,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.confirm.title`
 |Enrol {harness}
-|{harness} anmelden
+|{harness} registrieren
 
 |`onboard.harness.confirm.intro`
 |The server will remember this program and start workers with it only while it is unchanged:
@@ -230,11 +232,11 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.confirm.action`
 |Enrol {harness}
-|Melde {harness} an
+|Registriere {harness}
 
 |`onboard.harness.done`
 |{harness} {version} enrolled
-|{harness} {version} angemeldet
+|{harness} {version} registriert
 
 |`onboard.harness.add.title`
 |Add a harness
@@ -262,7 +264,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.add.headless`
 |How it is called headless (from {harness}):
-|Wie er headless aufgerufen wird (von {harness}):
+|Wie er ohne Oberfläche aufgerufen wird (von {harness}):
 
 |`onboard.harness.add.arguments`
 |Arguments
@@ -298,7 +300,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.add.edit`
 |edit the settings
-|die Einstellungen bearbeiten
+|bearbeite die Einstellungen
 
 |`onboard.harness.add_consent.title`
 |Run {harness} to verify these settings?
@@ -314,7 +316,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.add_consent.cost`
 |about {calls} short headless calls; tokens of your {harness} account
-|etwa {calls} kurze Headless-Aufrufe; Tokens deines {harness}-Kontos
+|etwa {calls} kurze Aufrufe ohne Oberfläche; Tokens deines {harness}-Kontos
 
 |`onboard.harness.verify.title`
 |Verifying {harness}
@@ -322,7 +324,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.harness.verify.answered`
 |a headless call answered in {seconds} s
-|ein Headless-Aufruf hat in {seconds} s geantwortet
+|ein Aufruf ohne Oberfläche hat in {seconds} s geantwortet
 
 |`onboard.harness.verify.fix_field`
 |change "{field}": {fix}
@@ -410,19 +412,19 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.catalogue.select.enrolled`
 |enrolled
-|angemeldet
+|registriert
 
 |`onboard.catalogue.select.found_not_enrolled`
 |found, not enrolled
-|gefunden, nicht angemeldet
+|gefunden, nicht registriert
 
 |`onboard.catalogue.select.enrol`
 |enrol {harness}
-|{harness} anmelden
+|registriere {harness}
 
 |`onboard.catalogue.select.add_model`
 |add a model id
-|eine Modell-Id hinzufügen
+|füge eine Modell-Id hinzu
 
 |`onboard.catalogue.select.model_id_prompt`
 |Model id for {harness}
@@ -430,7 +432,7 @@ The names of the languages are each written in their own language, in every pack
 
 |`onboard.catalogue.select.action`
 |{enrol, select, none {} other {Enrol {enrol} and }}allow {count, plural, one {# model} other {# models}}
-|{enrol, select, none {} other {{enrol} anmelden und }}{count, plural, one {# Modell} other {# Modelle}} erlauben
+|{enrol, select, none {Erlaube} other {Registriere {enrol} und erlaube}} {count, plural, one {# Modell} other {# Modelle}}
 
 |`onboard.catalogue.done`
 |{models, plural, one {# model} other {# models}} allowed on {harnesses, plural, one {# harness} other {# harnesses}}

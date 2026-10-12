@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Actions on Plans and Epics
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
+
 What the actions are, per state, is link:../shared/work-actions.adoc[Actions on Plans and Epics], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[Use Cases, Controlling Work]). This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#commands]
@@ -13,33 +15,37 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 ----
   plan pause <plan_id> [--now|--after-task|--after-phase]
   plan start <plan_id>
-  plan cancel <plan_id> --reason <text> [--close-pr|--keep-pr]
-  plan abandon <plan_id> --reason <text> [--close-pr|--keep-pr]
+  plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]
+  plan abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
+  config <aspect> --plan <plan_id>       the plan's settings, in every state (plan-defaults, roles, providers)
+  epic <epic_id>                         the epic's view
   epic next <epic_id> [--raise-scope]
   epic decompose <epic_id> [--instruction <text>]   decompose again, with the review
   epic archive <epic_id>
-  epic cancel <epic_id> --reason <text> [--with-plans|--without-plans]
+  epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
   epic findings <epic_id>                the findings review
   epic watches <epic_id>                 the watches review
 ----
 
-* All are operator verbs, in the console and as one shell command, and direct verbs: an argument answers its state, a missing one is asked, and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
-* An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon`).
+* All are operator verbs, in the console and as one shell command, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
+* An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, settings`).
+* *Settings* is an action of every state of a plan: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]).
 * `pm-operator abort plan` and `abort epic` stay as they are and do what `plan cancel` (or `abandon`) and `epic cancel` do.
 * The reviews are dialogues; as one shell command they need a terminal, like every dialogue.
 
 [#full-screen]
 == In the Full-Screen View
 
-`a` on a plan or an epic in the overview (xref:15-overview.adoc[The Overview]) or in the plan view (xref:16-plan-view.adoc[The Plan View]) opens its actions below the row, with mnemonic keys in the language of the client:
+`a` on a plan or an epic in the overview (xref:15-overview.adoc[The Overview]), in the plan view (xref:16-plan-view.adoc[The Plan View]), or in the epic's view (<<epic-view>>) opens its actions below the row:
 
 ----
-▶ fix-relay              execute · running · 25 min          relay-hardening
+▶ fix-relay              execute · running · 25 min · #214    relay-hardening
       p  Pause…
       x  Cancel…
+      o  Settings…
 
-▶ relay-hardening        epic · 3 running · 1 paused · 4 staged      ! 3
-      n  Next plan: relay-reconnect-backoff
+▶ relay-hardening        epic · running · 3 running · 1 paused · 3 staged      ! 3
+      n  Next plan: relay-token-store
       d  Decompose again…
       f  Findings review (3 new)
       w  Watches review (5)
@@ -47,7 +53,11 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
       x  Cancel…
 ----
 
-An action with `…` leaves the view for its dialogue and returns to it afterwards; _Start_ and _Next plan_ act in place and the row follows.
+* *The menu is modal*: while it is open, only its mnemonics, `↑` `↓` with `Enter`, and `a` or `Esc` (which close it) act; the keys of the view wait until it is closed.
+* *Its mnemonics* are texts of the catalogue, `operator.actions.key.*` (xref:22-texts-actions.adoc#actions-keys[Keys]), in the language of the client; none is `a`, which closes the menu in every language.
+* *What it offers* follows the state, from the runtime: a running plan _Pause…_, _Cancel…_, _Settings…_; a pausing plan _Start_, _Cancel…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Settings…_; a plan that holds also the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_; an ended plan or epic nothing (`fix-relay has ended: its view only`).
+* An action with `…` leaves the view for its dialogue and returns to it afterwards; _Start_ and _Next plan_ act in place and the row follows. _Settings…_ asks which aspect (`plan-defaults`, `roles`, `providers`) and runs `config <aspect> --plan <plan_id>`.
+* A plan's own pull request is shown by its number (`#214`), a terminal hyperlink (OSC 8) where the terminal shows one; the dialogues print its URL.
 
 [#plan]
 == A Plan
@@ -57,8 +67,10 @@ An action with `…` leaves the view for its dialogue and returns to it afterwar
 pm › plan cancel fix-relay
 Cancel fix-relay?
   What ends      the running work: 1 job, 2 tasks
-  Pull request   #214 is open   1) close it, with the reason ←   2) leave it open
+  Pull request   #214 https://github.com/plan-marshall/pm-mcp-clients/pull/214 is open
+                 1) close it, with the reason ←   2) leave it open
   Its epic       relay-hardening is told
+  Afterwards     the plan is archived as cancelled; its branch stays
   Reason         › the approach is replaced by plan relay-v2
 Cancel the plan? y) yes   n) no, keep it running   ?   › y
 ✓ fix-relay cancelled and archived; #214 closed; relay-hardening told
@@ -80,7 +92,16 @@ Pause fix-relay?
 pm ›
 ----
 
-`plan pause` without an answer asks; `--after-task` is the answer of the default, and `--no-input` without one stops.
+* `plan pause` without an answer asks; `--after-task` is the answer of the default, and `--no-input` without one stops.
+* `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops.
+
+[source,text]
+----
+pm › config roles --plan fix-relay
+Roles · plan fix-relay · Give a role of this plan another harness or model
+  …
+Applies from the plan's next step; the plan's version becomes 7.
+----
 
 [#epic]
 == An Epic
@@ -89,6 +110,11 @@ pm ›
 ----
 pm › epic next relay-hardening
 ✓ relay-reconnect-backoff started (2 of 3 at once)
+
+pm › epic next relay-hardening
+relay-hardening runs 3 of 3 at once; the next plan, relay-token-store, waits for the scope.
+  r) Raise to 4 at once and start it   ?   › r
+✓ relay-token-store started (4 of 4 at once)
 
 pm › epic archive relay-hardening
 Archive relay-hardening?
@@ -102,25 +128,53 @@ relay-hardening is not through yet.
 pm ›
 ----
 
+* With no plan launchable, `epic next` says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs waits for a lock: the surface pm-relay`); with only the scope full, it offers to raise the scope by one, which `--raise-scope` answers.
+
 [#epic-view]
 == An Epic's View
 
-`epic <epic_id>` prints the epic's view as a tree into the scrollback (link:../shared/epic-view.adoc[Epic View]); in the full-screen view, `Enter` on an epic opens it as its level, with the workstreams opening like nodes of the plan view and `a` for its actions.
+`epic <epic_id>` prints the epic's view as a tree into the scrollback (link:../shared/epic-view.adoc[Epic View], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]); in the full-screen view, `Enter` on an epic opens it as its level, with the workstreams, the sources, the landings, and the events opening like nodes of the plan view, and `a` for its actions.
 
 [source,text]
 ----
 pm › epic relay-hardening
-relay-hardening · epic · running · 3 of 3 at once · needs you: 3
-  WS-1 Reconnect                     2 shipped · 1 running
-    shipped    relay-reconnect-backoff     #211 · 2 d ago
-    running    relay-cursor-order          execute · 40 min
-    paused     relay-reconnect-docs        by you · 1 h
-  WS-2 Authentication                1 running · 1 staged
-    waiting    relay-auth-v2               refine · a decision · 12 min
-    staged     relay-token-rotation        after relay-auth-v2
-  sources 2 documents, 1 issue · landings 2 · findings 3 new, 4 open · watches 5
+relay-hardening · epic · running · 3 of 3 at once · running 6 d · needs you: 3
+  needs you      relay-auth-v2 asks a decision (Q-014)      answer relay-auth-v2/Q-014
+                 3 new findings                             epic findings relay-hardening
+  WS-1 Reconnect                     2 shipped · 1 running · 1 paused
+    shipped    relay-reconnect             #211 · 5 d ago
+    shipped    relay-reconnect-backoff     #216 · 2 d ago
+    running    relay-cursor-order          execute · running · 40 min
+    paused     relay-reconnect-docs        paused by you · 1 h
+  WS-2 Authentication                1 running · 2 staged
+    running    relay-auth-v2               refine · waiting for you · 12 min
+    staged     relay-token-rotation        waits for relay-auth-v2 · since 2 d
+    staged     relay-token-store           waits for the scope (3 of 3 at once) · since 1 h
+  WS-3 Documentation                 1 running · 1 staged
+    running    relay-docs-site             outline · running · 20 min
+    staged     relay-docs                  waits for a lock: the surface pm-relay · since 3 h
+  sources        2 documents, 1 issue
+                   doc/concepts/relay-hardening/   4 files
+                   https://github.com/plan-marshall/pm-mcp-clients/issues/212
+  landings       2
+                   relay-reconnect           #211 https://github.com/plan-marshall/pm-mcp-clients/pull/211   5 d ago
+                     analysis: the cursor is still written after delivery; F-0004 opened
+                   relay-reconnect-backoff   #216 https://github.com/plan-marshall/pm-mcp-clients/pull/216   2 d ago
+                     analysis: as planned; no finding
+  findings       3 new · 4 open                             epic findings relay-hardening
+  watches        5 open                                     epic watches relay-hardening
+  events         newest first
+    12:40  relay-auth-v2 asks a decision
+    11:55  you paused relay-reconnect-docs
+    09:10  relay-token-store staged by the decomposition
+    …      9 more today
 pm ›
 ----
+
+* *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may, since when it runs, and the count of what needs the operator; what waits stands first below it, each with the command that opens it.
+* *The workstreams*: each plan with its status from one list (`staged`, `running`, `pausing`, `paused`, `shipped`, `cancelled`, `abandoned`, `held`), what it waits for (a dependency, a lock, the scope), and since when. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
+* *Sources, landings, findings, watches, events*: the sources as stored; each landing with its pull request and the epic's analysis; the open items with their counts and the review that opens them; the events, newest first, the ten newest in the tree and all of them in the full-screen view.
+* An ended epic prints as it ended, read-only, with `ended` and its outcome in its first line (xref:15-overview.adoc#ended[Ended Work]).
 
 [#holds]
 == What Holds a Plan
@@ -128,13 +182,55 @@ pm ›
 [source,text]
 ----
 pm › plan fix-relay
-fix-relay · execute · holds: a condition since 14:02
+fix-relay · execute · waiting for you · holds: a condition since 14:02
   cause   the plan reads cui-http, which this project may not read
   tried   3 times, last 14:10
   g) grant read access to cui-http…   r) retry   x) end the plan…   ?   › g
 ----
 
-The acts of a hold are the same as in the shared design (link:../shared/work-actions.adoc#holds[What Holds a Plan]); the terminal offers them on `plan` and `epic` and below a row with `a`.
+[source,text]
+----
+pm › plan relay-cursor-order
+relay-cursor-order · execute · waiting for you · holds: an integrity pause since 10:31
+  cause   pm-relay/src/main/java/…/Cursor.java changed outside the plan's tasks
+  v) view the change   c) accept the change…   t) restore   x) end the plan…   ?   › v
+  --- a/pm-relay/src/main/java/…/Cursor.java
+  +++ b/pm-relay/src/main/java/…/Cursor.java
+  …
+  v) view the change   c) accept the change…   t) restore   x) end the plan…   ?   › c
+Accept the change to Cursor.java?   it becomes part of the plan's work; this cannot be undone
+  y) yes   n) no   ?   › y
+✓ relay-cursor-order goes on with the change
+----
+
+The acts of a hold are those of the shared design (link:../shared/work-actions.adoc#holds[What Holds a Plan]), each with its key; the terminal offers them on `plan` and `epic`, and in the menu below a row with `a`:
+
+[cols="2,4",options="header"]
+|===
+|Hold |Its prompt
+
+|stalled
+|`r) retry now   w) recycle the worker   x) end the plan…`
+
+|condition
+|the act it names as a dialogue: `g) grant read access to <project>…`, `c) add the credential <name>…`, or `b) raise the budget…`; then `r) retry   x) end the plan…`
+
+|integrity pause
+|`v) view the change   c) accept the change…   t) restore   x) end the plan…`
+
+|held item of an epic
+|`r) retry` and the item's own acts, `x) end the plan…` for a plan's item
+
+|landing failed (an epic's)
+|`r) retry   p) show the pull request`
+
+|landing failed (a move's removal from git)
+|`r) retry   p) show the pull request   g) give up the removal…`
+|===
+
+* The labels are the shared keys `control.hold.act.<act>`, the kind of the hold the shared `control.hold.kind.<kind>`; the mnemonics are `operator.actions.key.<act>` (xref:22-texts-actions.adoc#actions-keys[Keys]).
+* An act that cannot be undone (_accept the change_, _end the plan_, _give up the removal_) confirms first and names what follows. _Give up the removal_ keeps the moved files tracked in git: the removal's branch is dropped, and the source keeps its copy.
+* _Show the pull request_ prints its number and URL; _view the change_ (`control.hold.act.show_change`) prints the diff as text, after the control characters are removed (xref:04-console.adoc#output-safety[Output Safety]).
 
 [#review]
 == A Review
@@ -148,9 +244,9 @@ F-0004  Reconnect loses the last event                            open
               but the cursor is written after the event is delivered.
   Rules       a fix must hold for every transport; covered by a test that
               drops the connection between delivery and cursor write
-  Origin      landing of relay-reconnect (#211) · 2 days ago
+  Origin      landing of relay-reconnect (#211) · 5 days ago
   Proposal    promote to a plan: it needs a change across two modules
-k) keep   d) drop   p) promote ←   e) edit   t) talk   a) accept the remaining 4
+k) keep   d) drop   p) promote ←   e) edit   t) talk   r) accept the remaining 4   f) finish
 ›  e
   What should change?
   │ The rule should also name the SSE transport explicitly.
@@ -160,7 +256,7 @@ k) keep   d) drop   p) promote ←   e) edit   t) talk   a) accept the remaining
   - a fix must hold for every transport; …
   + a fix must hold for every transport, the SSE stream included; …
 Accept? [Enter]   i) instruct again   x) discard   ?   › ⏎
-k) keep   d) drop   p) promote ←   e) edit   t) talk   a) accept the remaining 4
+k) keep   d) drop   p) promote ←   e) edit   t) talk   r) accept the remaining 4   f) finish
 ›  p
     ▶  the planning role drafts a plan from F-0004
   Plan  relay-cursor-after-delivery
@@ -170,30 +266,39 @@ k) keep   d) drop   p) promote ←   e) edit   t) talk   a) accept the remaining
     Depends on    —
 Stage it? [Enter]   e) edit   b) back   ?   › ⏎
     ✓  F-0004 promoted: relay-cursor-after-delivery staged
-F-0005  …
+F-0005  Reconnect storms after a runtime restart                  open
+  …
+k) keep   d) drop   p) promote   e) edit   t) talk   r) accept the remaining 3   f) finish
+›  k
+  Keep F-0005   1) as defect ←   2) as watch   › 2
+    ✓  F-0005 kept as watch
+F-0006  Relay ignores the proxy settings                          open · untrusted
+  Statement   “The relay ignores HTTPS_PROXY; see the CI log …”
+  Origin      review comment on #216 · 2 days ago
+k) keep   d) drop ←   p) promote   e) edit   t) talk   r) accept the remaining 2   f) finish
+›  d
+  Reason   › the relay never uses a proxy: it talks to the local runtime only
+    ✓  F-0006 dropped
+F-0007  …
+k) keep   d) drop   p) promote ←   e) edit   t) talk   r) accept the remaining 1   f) finish
+›  r
+  The remaining proposal:
+    F-0007  Cursor file not fsynced           promote to a plan
+Accept the remaining proposal? y) yes   n) no   ?   › y
+    ✓  F-0007 promoted: relay-cursor-fsync staged
+k) keep   d) drop   p) promote   e) edit   t) talk   f) finish   ›  f
+✓ relay-hardening: 7 of 7 decided, written to the ledger
+pm ›
 ----
 
+* `k) keep` asks whether as a defect or as a watch, the item's register preselected; an item may change its register.
+* `d) drop` asks the reason in one line; it is recorded.
+* `r) accept the remaining` lists every item not decided yet with its proposal and confirms once.
+* *An item from outside the machine* (a finding from a review comment) carries `untrusted`; its text is printed as text between quotes, never rendered, after the control characters are removed.
 * `t) talk` opens a conversation inside the review, ended by an empty line; each change the planning role proposes is shown as a read-back like _edit_.
-* Leaving the review (`q`, `Ctrl+D`) keeps what was decided; `epic findings relay-hardening` opens it where it stopped.
+* `f) finish` writes the decisions to the epic's ledger. Leaving the review before (`q`, `Ctrl+D`) keeps what was decided; `epic findings relay-hardening` opens it where it stopped.
 
 [#actions-texts]
 == Texts of the Terminal
 
-The texts of the actions, the dialogues, and the review are those of link:../shared/work-actions.adoc#texts[Actions on Plans and Epics, Texts]; the terminal adds these, of the area `operator`:
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`operator.actions.keys.actions`
-|actions
-|Aktionen
-
-|`operator.actions.refused`
-|{name} is {state}: {actions}
-|{name} ist {state}: {actions}
-
-|`operator.actions.talk_end`
-|an empty line ends it
-|eine leere Zeile beendet es
-|===
+The texts this part adds are in xref:22-texts-actions.adoc#actions-texts[Texts: Projects, Starting Work, Actions].

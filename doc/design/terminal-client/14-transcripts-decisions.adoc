@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Transcripts: Decisions
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
+
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts]. What a decision carries and how every client shows it is link:../shared/decisions.adoc[Decisions]; these transcripts show each variant in the console. The states are those of the sub-workflow `decision.*` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]).
 
 [#t-decisions]
@@ -107,7 +109,7 @@ Decide? [Enter]   1-3) change a part   ?   › ⏎
 ----
 Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › w
 Your answer (Enter sends it): › rebase, but leave release/0.9 alone, it is frozen
-  ⠴  interpreter is reading your answer       0:03
+  ⠴  interpret is reading your answer       0:03
 
 I understood: Rebase onto main, provided release/0.9 stays as it is.
   your words: rebase, but leave release/0.9 alone, it is frozen
@@ -121,13 +123,13 @@ Unclear, then a new option in the operator's words:
 [source,text]
 ----
 Your answer (Enter sends it): › do whatever the reviewer would do
-  ⠴  interpreter is reading your answer       0:02
+  ⠴  interpret is reading your answer       0:02
 Which do you mean?
     1) Merge main into the branch, as the reviewer voted
     2) Leave it to the recommendation: Rebase onto main
 Choose: 1-2   w) in my own words   o) choose an option instead   ?   › w
 Your answer (Enter sends it): › neither: squash the branch into one commit on main
-  ⠴  interpreter is reading your answer       0:03
+  ⠴  interpret is reading your answer       0:03
 
 I understood: your own answer: squash the branch into one commit on main.
 Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
@@ -136,7 +138,7 @@ Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
 
 * The read-back marks the passages it rests on; nothing is recorded before `Enter`.
 * A delegation is read back as `you leave it to the recommendation: …` and offered only where the decision allows one.
-* How often the interpreter may ask back is the decision's. A read-back of an understood answer always offers `e)` and `o)`; only when the answer stays unclear after the last question the decision allows does the console offer `o)` alone, back to the options.
+* How often `interpret` may ask back is the decision's. A read-back of an understood answer always offers `e)` and `o)`; only when the answer stays unclear after the last question the decision allows does the console offer `o)` alone, back to the options.
 
 [#t-decision-not-voted]
 === Not Voted On, and a Note
@@ -189,9 +191,108 @@ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests
   The test needs a second machine the CI does not have.
   ? shows the evidence: the failing run, the test
 
-Waive the gate? y) yes, with a reason   n) not now   ?   › y
-Reason: › covered by the manual run on the build box, log attached to the PR
+Waive the gate or decline the request?   y) waive, with a reason   d) decline, with a reason   l) later   ?   › ⏎
+Type y, d or l.
+Waive the gate or decline the request?   y) waive, with a reason   d) decline, with a reason   l) later   ?   › y
+Reason (required): › covered by the manual run on the build box, log attached to the PR
 ✓ Waived ci_check:integration-tests for fix-relay.
 ----
 
-* A waiver request is answered by a waiver, an operator override: no preselection, no own words, a reason is required.
+Declined, and left for later:
+
+[source,text]
+----
+pm [1 waiver request] › answer WR-3
+Waiver request WR-3 · plan session-log · gate coverage:pm-api
+  …
+Waive the gate or decline the request?   y) waive, with a reason   d) decline, with a reason   l) later   ?   › d
+Reason (required): › the missing tests are part of this plan; write them
+✓ Declined WR-3: the plan takes its next step without the waiver.
+pm › answer WR-4
+…
+Waive the gate or decline the request?   y) waive, with a reason   d) decline, with a reason   l) later   ?   › l
+WR-4 stays open; the plan waits for it. questions lists it.
+pm [1 waiver request] ›
+----
+
+* A waiver request is answered by a waiver or a decline, each an operator override with a required reason: no preselection, no `Enter` default, no own words, no interpretation. _Later_ leaves it open; the plan waits, as for a decision.
+* An empty reason is not sent: the console asks again with `A reason is required.`
+
+[#t-decision-texts]
+=== The Texts of These Transcripts
+
+The texts are the shared ones of link:../shared/decisions.adoc#texts[Decisions, Texts] (`decision.*`, among them `decision.interpret.working` with the role `interpret`, `decision.confirm.action` for `Decide?`, `decision.outcome.rethink`, `decision.outcome.revised`, and `decision.waiver.title`, `decision.waiver.waive`, `decision.waiver.decline`, `decision.waiver.later`, `decision.waiver.reason` for the waiver request), and the console's own of <<texts-operator-decisions>> (`operator.decision.*`) for the prompts only the terminal has: `Your answer (Enter sends it):`, `Your note:`, `Choose: 1-3`, `1-3) change a part`, the line of _later_, the confirmation of _none fits_, the result lines, and the prompt and results of a waiver request.
+
+[#texts-operator-decisions]
+== Texts: Decisions in the Console
+
+The prompts and result lines only the terminal has; what both clients show is `decision.*` (link:../shared/decisions.adoc#texts[Decisions, Texts]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.decision.own_words_prompt`
+|Your answer (Enter sends it):
+|Deine Antwort (Enter sendet sie):
+
+|`operator.decision.note_prompt`
+|Your note:
+|Deine Notiz:
+
+|`operator.decision.note_set`
+|✎ note
+|✎ Notiz
+
+|`operator.decision.change_part`
+|change a part
+|ändere einen Teil
+
+|`operator.decision.later_done`
+|{id} stays open; the {scope, select, epic {epic} other {plan}} waits for it. questions lists it.
+|{id} bleibt offen; {scope, select, epic {das Epic} other {der Plan}} wartet darauf. questions listet sie.
+
+|`operator.decision.none_fits_confirm`
+|None fits: the {scope, select, epic {epic} other {plan}} thinks again and asks anew. Send?
+|Nichts passt: {scope, select, epic {das Epic} other {der Plan}} überlegt neu und fragt noch einmal. Senden?
+
+|`operator.decision.answered_parts`
+|{id} answered.
+|{id} beantwortet.
+
+|`operator.decision.answered_own_words`
+|{id} answered in your own words.
+|{id} in deinen eigenen Worten beantwortet.
+
+|`operator.decision.with_note`
+|(with your note)
+|(mit deiner Notiz)
+
+|`operator.decision.goes_on`
+|The {scope, select, epic {epic} other {plan}} goes on.
+|{scope, select, epic {Das Epic} other {Der Plan}} läuft weiter.
+
+|`operator.decision.waiver_prompt`
+|Waive the gate or decline the request?
+|Gewährst du den Waiver oder lehnst du die Anfrage ab?
+
+|`operator.decision.waiver_needs_answer`
+|Type {waive}, {decline} or {later}.
+|Gib {waive}, {decline} oder {later} ein.
+
+|`operator.decision.reason_prompt`
+|Reason (required):
+|Grund (nötig):
+
+|`operator.decision.reason_required`
+|A reason is required.
+|Ein Grund ist nötig.
+
+|`operator.decision.waived`
+|Waived {gate} for {plan}.
+|Waiver für {gate} in {plan} gewährt.
+
+|`operator.decision.declined`
+|Declined {id}: the plan takes its next step without the waiver.
+|{id} abgelehnt: der Plan geht ohne den Waiver seinen nächsten Schritt.
+|===

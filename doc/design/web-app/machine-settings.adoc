@@ -1,0 +1,194 @@
+= Design: Web App, Machine Settings
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Machine Settings
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect, the remembered consents), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices)_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Onboarding, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal] (proposed)_
+
+Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding. They show what the onboarding recorded and change it by running one aspect again; they hold no form of their own that writes a value. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
+
+[#layout]
+== Layout
+
+[source,text]
+----
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ plan-marshall                                   Machine: mbp-oliver   ⚙  ?   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Machine settings                                                            │
+│                                                                              │
+│  How this machine is set up                                                  │
+│    ① Language     Deutsch, models English                        [ Change ]  │
+│    ② Harness      Claude Code 2.4.1 (+ OpenCode 1.9.0)           [ Change ]  │
+│    ③ Models       4 models on 2 harnesses                        [ Change ]  │
+│    ④ Roles        31 roles · 1 ✎ steward    [ Ask the steward… ] [ Change ]  │
+│    ⑤ Credentials  macOS Keychain                                 [ Change ]  │
+│    ⑥ Providers    GitHub (gh); SonarCloud not available          [ Change ]  │
+│    ⑦ Plans        Pull Request · Test first · key points         [ Change ]  │
+│                                                                              │
+│  Providers                                                   [ Check all ]   │
+│    GitHub (gh)    ✓ ready        checked today 09:12            [ Check ]    │
+│    SonarCloud     – not available  recorded 3 Oct, 401 "Invalid token"       │
+│                                                                 [ Check ]    │
+│                                                                              │
+│  Remembered consents                                                         │
+│    Look for harnesses on this machine          12 Oct · terminal [ Withdraw ]│
+│    Check whether Claude Code is logged in?     12 Oct · Firefox  [ Withdraw ]│
+│    Look for CLI tools and stored tokens?       12 Oct · terminal [ Withdraw ]│
+│    Run the scripts of pm-mcp-clients (3)       14 Oct · Firefox  [ Withdraw ]│
+│                                                                              │
+│  Paired devices      3 devices · network listener off           [ Manage ]   │
+└──────────────────────────────────────────────────────────────────────────────┘
+----
+
+[#aspects]
+== A Later Run of One Aspect
+
+* *Change* runs the aspect's sub-workflow again as a later run (`onboard.entry` with `reconfigure <aspect>`): it opens in the frame of the onboarding (link:onboarding.adoc#frame[Onboarding, Frame]), the step bar showing only that aspect, the current values as the proposal. The screens are those of the first run, with the consents that are not remembered asked again; at its end the app returns here.
+* A later change of the credential store moves the tokens (link:onboarding-steps-4-7.adoc#store-move[Onboarding, A Later Change Moves the Tokens]).
+* *Ask the steward…* is the later run of the roles opened directly at the steward's consent (`roles.consent`); after the automatic run, it is where the operator asks a model for the first time.
+* The interface language changes the app at once, as in the first run.
+* An aspect a project sets for itself is changed in that project's setup, never here; the line says only what the machine provides.
+
+Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-later.adoc#t-later[Terminal Client, Later Changes]).
+
+[#providers]
+== Providers Verified Again
+
+Every provider shows the result and the time of its last verification, from the onboarding or from a later check. *Check* runs the verification of that provider (`providers.verify`, link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification]), *Check all* of every provider the machine records; no consent is asked, since it uses only the tokens and tools the operator recorded. The lines appear in place, as in the onboarding:
+
+[source,text]
+----
+  Providers                                                     [ Check all ]
+    GitHub (gh)    ✓ ready        checked just now                [ Check ]
+      ✓  github.com reachable
+      ✓  token authenticates as oliver-wolff (fine-grained, expires in 9 days)
+      ✓  permissions: contents, pull requests, checks (read and write)
+      ✓  gh 2.71 is logged in as the same account
+----
+
+* A ✗ shows the provider's answer and the fix with the links of `providers.failed`: _Enter the token again_, _Check again_, _Continue without GitHub_ (recorded as not available after its confirmation). The result is kept with the time, whatever it is.
+* A provider recorded as not available shows when and why; *Check* verifies it again, and a pass offers to record it as available (`providers.record`).
+* An expiry within 14 days is shown as a warning on the line, not only in the detail.
+* Checks that need a repository (permissions on it, check runs) stay in the project's setup.
+
+Terminal: `pm-operator config providers --verify` (link:../terminal-client/08-transcripts-later.adoc#t-providers-verify[Terminal Client, transcript]).
+
+[#consents]
+== Remembered Consents
+
+Every consent the operator remembered (_yes, and don't ask again_), from either client: the action by the title of its consent, when it was given, where (the terminal, or the label of the paired device), and for a consent of a project its project and, for the scripts of a checkout, how many scripts it covers.
+
+* *Withdraw* removes it at once; the line is replaced by `Withdrawn: you will be asked again next time.` Withdrawing asks nothing first: it only brings back a question. Both remembering and withdrawing are audited.
+* With none remembered, the section says `No consent is remembered: you are asked every time.`
+
+Terminal: `pm-operator config consents` (link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, transcript]).
+
+[#devices]
+== Paired Devices
+
+The count of paired devices and whether the network listener is on; *Manage* opens the list of the paired devices, to rename one, revoke one or all others, and turn the network listener off (link:../shared/paired-devices.adoc[Paired Devices]).
+
+Terminal: `pm-operator web devices` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, transcript]).
+
+[#texts]
+== Texts
+
+Keys of the area `web`. The lines of the aspects use the summaries of the onboarding's result (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Done]) and the step names `onboard.step.*`; the check lines and the links of a provider are those of `providers.verify` and `providers.failed` (link:../terminal-client/12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]); a consent is named by the title of its consent state (`onboard.harness.consent.title`, …).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`web.settings.page.title`
+|Machine settings
+|Einstellungen der Maschine
+
+|`web.settings.aspects.title`
+|How this machine is set up
+|Wie diese Maschine eingerichtet ist
+
+|`web.settings.aspects.change`
+|Change
+|Ändere
+
+|`web.settings.aspects.ask_steward`
+|Ask the steward…
+|Frag den steward…
+
+|`web.settings.aspects.project_note`
+|Projects can set their own in their setup.
+|Projekte können in ihrer Einrichtung eigene Werte setzen.
+
+|`web.settings.providers.title`
+|Providers
+|Provider
+
+|`web.settings.providers.check`
+|Check
+|Prüfe
+
+|`web.settings.providers.check_all`
+|Check all
+|Prüfe alle
+
+|`web.settings.providers.checked`
+|checked {time}
+|geprüft {time}
+
+|`web.settings.providers.not_available`
+|not available
+|nicht verfügbar
+
+|`web.settings.providers.recorded`
+|recorded {time}, {answer}
+|gespeichert {time}, {answer}
+
+|`web.settings.providers.expires_soon`
+|token expires in {days, plural, one {# day} other {# days}}
+|Token läuft in {days, plural, one {# Tag} other {# Tagen}} ab
+
+|`web.settings.providers.record_available`
+|Record {provider} as available
+|Speichere {provider} als verfügbar
+
+|`web.settings.consents.title`
+|Remembered consents
+|Gemerkte Zustimmungen
+
+|`web.settings.consents.where_terminal`
+|terminal
+|Terminal
+
+|`web.settings.consents.scripts`
+|{count, plural, one {# script} other {# scripts}}
+|{count, plural, one {# Skript} other {# Skripte}}
+
+|`web.settings.consents.withdraw`
+|Withdraw
+|Nimm sie zurück
+
+|`web.settings.consents.withdrawn`
+|Withdrawn: you will be asked again next time.
+|Zurückgenommen: Du wirst beim nächsten Mal wieder gefragt.
+
+|`web.settings.consents.none`
+|No consent is remembered: you are asked every time.
+|Keine Zustimmung ist gemerkt: Du wirst jedes Mal gefragt.
+
+|`web.settings.devices.title`
+|Paired devices
+|Gekoppelte Geräte
+
+|`web.settings.devices.summary`
+|{count, plural, one {# device} other {# devices}} · network listener {lan, select, on {on} other {off}}
+|{count, plural, one {# Gerät} other {# Geräte}} · Netzwerkzugang {lan, select, on {an} other {aus}}
+
+|`web.settings.devices.manage`
+|Manage
+|Verwalte sie
+|===

@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » The Plan View
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]_
+
 What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan View], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]). This part is how the console draws it: as the third level of the full-screen view of xref:15-overview.adoc[The Overview], and as a tree in the scrollback. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#plan-view-ways]
@@ -21,6 +23,7 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 
 ----
  fix-relay › execute                                                   ● connected
+ fix-relay · execute · running · 2 h 10 min · #214                relay-hardening
  ─────────────────────────────────────────────────────────────────────────────
    ✓ phase  init                                    done · 2 min
    ✓ phase  refine                                  done · 14 min
@@ -34,12 +37,14 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
  ▸ ○ phase  finalize                                planned
      · not in this plan: land (deep lane)
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   → open   ← close   Enter details   . where it is   Esc back
+ ↑↓ move   → open   ← close   Enter details   . where it is   a actions   Esc back
 ----
 
 * The plan view is a tree: `▸` a closed node, `▾` an open one; `→` (`l`) opens the selected node one level, `←` (`h`) closes it or moves to its parent.
 * It opens with the path to the plan's current position open and the selection on the running leaf; `.` jumps there again from anywhere.
-* The header is the path from the plan to the selected node.
+* The header is the path from the plan to the selected node, and below it the plan's line: its phase, its state, since when it runs, its own pull request by its number (a terminal hyperlink, OSC 8, where the terminal shows one), and its epic.
+* *The state* is one of the closed list of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]: `running`, `pausing after the task` or `pausing after the phase`, `paused`, `waiting for you`, `stalled`. A hold is named after it, with its kind and since when (`execute · waiting for you · holds: a condition since 14:02`), and `a` offers its acts (xref:19-actions.adoc#holds[What Holds a Plan]).
+* `a` opens the plan's actions below the header (xref:19-actions.adoc#full-screen[Actions]).
 * `Enter` on a leaf shows its details below it (<<full-screen-leaf>>); on a node that waits for the operator it leaves the view and opens the decision, as `answer` does.
 
 [#full-screen-sub]
@@ -81,17 +86,23 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 [#full-screen-keys]
 === Keys
 
-In addition to the keys of the overview (xref:15-overview.adoc#full-screen-keys[Keys]):
+The keys of the overview hold here too (xref:15-overview.adoc#full-screen-keys[Keys]); those of this table replace them where both name a key: `→` (`l`) and `←` (`h`) open and close nodes instead of moving between levels, and `Enter` shows a leaf's details instead of opening a row. `Esc` goes back to the overview.
 
 [cols="1,3",options="header"]
 |===
 |Key |Action
 
 |`→`, `l`
-|open the selected node one level
+|open the selected node one level (replaces _open_ of the overview)
 
 |`←`, `h`
-|close the selected node, or move to its parent
+|close the selected node, or move to its parent (replaces _back_ of the overview)
+
+|`Enter`
+|on a leaf, its details; on a node that waits for the operator, the decision (replaces _open_ of the overview)
+
+|`a`
+|the plan's actions, below the header; on a node that holds, the acts of the hold
 
 |`.`
 |jump to where the plan is
@@ -108,13 +119,18 @@ In addition to the keys of the overview (xref:15-overview.adoc#full-screen-keys[
 
 The tree follows the plan's events; the selection stays on its node. When the plan changes its composition, the view reads the process again and prints `The plan changed: replan` in the header for a moment; when the plan ends, the header says so and the tree stays as it ended.
 
+[#ended]
+=== An Ended Plan
+
+A plan that has ended, opened from ended work (xref:15-overview.adoc#ended[Ended Work]) or by `plan <plan_id>`, shows as it ended, read from the archive: the header names its outcome, its reason, and when it ended (`fix-relay · cancelled 2 d ago · the approach is replaced by plan relay-v2`); the tree is the process as it was when the plan ended, opened down to where it stopped; nothing updates, and `a` offers no action (`fix-relay has ended: its view only`).
+
 [#tree]
 == The Tree (`plan`)
 
 [source,text]
 ----
 pm › plan fix-relay
-fix-relay · execute · running · 2 h 10 min
+fix-relay · execute · running · 2 h 10 min · pull request #214 https://github.com/plan-marshall/pm-mcp-clients/pull/214
   done      phase init                       2 min
   done      phase refine                     14 min
   done      phase outline                    31 min
@@ -130,6 +146,7 @@ pm ›
 
 * The tree uses words for the states, so that it reads the same without glyphs and colour; sub-workflows carry the word `sub-workflow`.
 * `plan fix-relay --all` opens every level; `--depth 2` opens two.
+* The first line carries the state from the same closed list as the full-screen header, the hold with its kind where one holds, and the plan's pull request by its number and its URL. An ended plan prints `ended` with its outcome instead (`fix-relay · ended: cancelled · 2 d ago`) and the tree as it ended.
 
 [#plan-view-texts]
 == Texts of the Terminal
@@ -142,11 +159,11 @@ The texts of the nodes are those of link:../shared/plan-view.adoc#texts[Plan Vie
 
 |`operator.plan.keys.open`
 |open
-|öffnen
+|öffne
 
 |`operator.plan.keys.close`
 |close
-|schließen
+|schließe
 
 |`operator.plan.keys.details`
 |details
@@ -158,9 +175,25 @@ The texts of the nodes are those of link:../shared/plan-view.adoc#texts[Plan Vie
 
 |`operator.plan.keys.all`
 |open all
-|alle öffnen
+|öffne alle
 
 |`operator.plan.keys.not_in_plan`
 |not in this plan
 |nicht in diesem Plan
+
+|`operator.plan.keys.actions`
+|actions
+|Aktionen
+
+|`operator.plan.header.holds`
+|holds: {kind} since {time}
+|hält: {kind} seit {time}
+
+|`operator.plan.header.ended`
+|{outcome} {when} · {reason}
+|{outcome} {when} · {reason}
+
+|`operator.plan.tree.ended`
+|ended: {outcome} · {when}
+|beendet: {outcome} · {when}
 |===

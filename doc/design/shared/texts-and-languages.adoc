@@ -31,7 +31,7 @@ How the texts of the web app and the command-line binaries are written, kept, an
 |the instructions of the units and roles, which stay in English
 |===
 
-The few texts of `pm-mcp` (the relay's errors, which the host and its model read) stay in English for now, whatever the interface language.
+The few texts of `pm-mcp` (the relay's errors, which the host and its model read) follow the interface language like those of `pm-operator` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]); their keys live in the area `relay`.
 
 A question a model asks the operator is in the model language; the frame around it (buttons, what it blocks, the recommendation label) is in the interface language.
 
@@ -62,7 +62,18 @@ The domain vocabulary stays as it is in every language: it is what the operator 
 |Lane |die |a planning lane
 |Issue, Lesson |das, die |an issue of a forge; a lesson recorded from a plan's work
 |Workflow, Sub-Workflow, State, Link |der, der, der, der |the workflow language and its parts
+|Runtime |die |the daemon `pm-mcpd` that runs the plans of the machine
+|Job |der |a confined process the runtime runs for a plan (a build, a probe, a provider call)
+|Ledger |das |an epic's committed record of its workstreams, plans, findings, and watches
+|Checkout |der |a project's working copy of its repository on this machine
+|Prompt |der |the input line of the terminal client
+|Coding Agent |der |a coding agent such as the one a harness runs; also the host of `pm-mcp`
+|Bot |der |a review bot of the provider
+|Web-App |die |the web app of `PM-MCP`
+|Slot |der |a place a job or a worker takes from a bounded number (a build slot, a model slot)
 |===
+
+_Headless_ is translated ("ohne Oberfläche"): it describes how a harness runs, and is no word of the domain.
 
 A word not in the glossary is translated. A new domain word is added here before it is used in a text.
 
@@ -79,12 +90,21 @@ A word not in the glossary is translated. A new domain word is added here before
 [#keys]
 == Keys and Packs
 
-* *Key*: `<area>.<use case or view>.<state or element>.<part>`, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in.
-* *Areas*: `common` (texts every view uses), `onboard`, `web` (the frame and navigation of the web app), `plan`, `decision` (what both clients show of a decision, link:decisions.adoc#texts[Decisions]), `overview` (the overview of running work, link:plan-overview.adoc#texts[Plan Overview]), `project` (the projects and their onboarding, link:project-explorer.adoc#texts[Project Explorer], link:project-onboarding.adoc#texts[Project Onboarding]), `start` (starting a plan or an epic, link:starting-work.adoc#texts[Starting Work]), `control` (the actions on plans and epics and the reviews, link:work-actions.adoc#texts[Actions on Plans and Epics]), `operator` (the verbs of `pm-operator`), `relay` (`pm-mcp`). A client loads only the areas it shows; the web app loads `common` and `web` at start and every other area when it first opens a view of it.
+* *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in.
+* *Areas*, each a pack; a client loads only the areas it shows, and the web app loads `common` and `web` at start and every other area when it first opens a view of it:
+** `common`: texts every view uses;
+** `onboard`: the onboarding of the machine;
+** `web`: the frame and navigation of the web app;
+** `plan`: the plan view (link:plan-view.adoc#texts[Plan View]);
+** `decision`: what both clients show of a decision and a waiver request (link:decisions.adoc#texts[Decisions]);
+** `overview`: running work, ended work, and the epic view (link:plan-overview.adoc#texts[Plan Overview], link:epic-view.adoc#texts[Epic View]);
+** `project`: the projects, their onboarding, release, and unenrolment (link:project-explorer.adoc#texts[Project Explorer], link:project-onboarding.adoc#texts[Project Onboarding]);
+** `start`: starting a plan or an epic (link:starting-work-texts.adoc#texts[Starting Work, Texts]);
+** `control`: the actions on plans and epics, the holds, and the reviews (link:work-actions-texts.adoc#texts[Actions on Plans and Epics, Texts]);
+** `devices`: the paired devices (link:paired-devices.adoc#texts[Paired Devices]);
+** `operator`: the verbs of `pm-operator`;
+** `relay`: `pm-mcp`.
 * *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message format. English (`en`) is complete and the base; German (`de`) ships from the start.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it.
 
-== Open Points
-
-* Enrolling a project in the web app and its texts, once the project enrolment has a use case.

@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » The Overview
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
+
 What the overview of running work shows and in which order is link:../shared/plan-overview.adoc[Plan Overview], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]). This part is how the console draws it: as a full-screen view for navigating, and as a tree in the scrollback for reading. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#overview-ways]
@@ -28,7 +30,7 @@ What the overview of running work shows and in which order is link:../shared/pla
       plan-marshall-mcp   1 epic                              1 h ago
  ! 1  plan-marshall       setup needs you
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   / filter   ? help   q leave
+ ↑↓ move   Enter open   E ended work   / filter   ? help   q leave
 ----
 
 * *Header*: where the operator is (`projects`, or the project and its view) and the connection to the runtime.
@@ -46,14 +48,14 @@ By plan:
  ─────────────────────────────────────────────────────────────────────────────
  ! decision  ▸ plan  Console history of answers       refine · waiting for you
                      running 40 min · in refine 12 min · 0 of 0 tasks
-▶            ▸ plan  Overview resource of the runtime execute · working
+▶            ▸ plan  Overview resource of the runtime execute · running
                      running 2 h 10 min · in execute 25 min · 7 of 12 tasks
                      in ◇ client work
-             ▸ plan  Message catalogue                outline · working
+             ▸ plan  Message catalogue                outline · pausing after the task
                      running 1 h 5 min · in outline 30 min · 0 of 0 tasks
                      in ◇ client work
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   e epic   ! what waits   Tab by epic   Esc back
+ ↑↓ move   Enter open   a actions   e epic   ! what waits   Tab by epic   E ended work   Esc back
 ----
 
 By epic:
@@ -63,17 +65,20 @@ By epic:
  ─────────────────────────────────────────────────────────────────────────────
 ▶            ◇ epic  client work          2 running · 3 staged
                      running 3 d · 4 of 9 plans
-               ├─    ▸ plan  Overview resource of the runtime  execute · working
-               └─    ▸ plan  Message catalogue                 outline · working
+               ├─    ▸ plan  Overview resource of the runtime  execute · running
+               └─    ▸ plan  Message catalogue                 outline · pausing after the task
    without epic
  ! decision  ▸ plan  Console history of answers       refine · waiting for you
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   ! what waits   Tab by plan   Esc back
+ ↑↓ move   Enter open   a actions   ! what waits   Tab by plan   E ended work   Esc back
 ----
 
 * Each row is the plan's or epic's first line (kind, title, phase and state) and below it its details (times, progress, the epic it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
+* *The state* of a plan is one of a closed list, the texts `overview.state.*` of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]: `running`, `pausing` (with its point: `after the task`, `after the phase`), `paused`, `waiting for you`, `stalled`. A plan's own pull request, where it has one, is shown in its details by its number (`#214`), a terminal hyperlink (OSC 8) to the pull request where the terminal shows one; `?` on the row prints its URL.
+* *The marker* `!` names the kind of the first item that needs the operator, the texts `overview.needs.*`: `decision`, `waiver`, `waits for you` (an operator wait), `integrity pause`, `stalled`, `needs a fix` (a condition), `held for you`, `landing failed`, `new findings`, `paused by you`, `setup`.
 * `e` on a plan moves to its epic in the view by epic; `Tab` switches between the two views and keeps the selection.
-* `Enter` on a plan or an epic opens its own view in the same full-screen view: a plan its plan view (xref:16-plan-view.adoc[The Plan View]); an epic its own view, designed with the epic's use case; `!` leaves the view and opens what waits for the operator in it, as `answer` does (link:../shared/decisions.adoc[Decisions]).
+* `Enter` on a plan or an epic opens its own view in the same full-screen view: a plan its plan view (xref:16-plan-view.adoc[The Plan View]); an epic its epic view (link:../shared/epic-view.adoc[Epic View]; drawn as xref:19-actions.adoc#epic-view[An Epic's View] says); `!` leaves the view and opens what waits for the operator in it, as `answer` does (link:../shared/decisions.adoc[Decisions]).
+* `a` opens the actions of the selected plan or epic below its row (xref:19-actions.adoc#full-screen[Actions]); `E` opens the project's ended work (<<ended>>).
 
 [#full-screen-keys]
 === Keys
@@ -107,6 +112,9 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 
 |`!`
 |open what waits for the operator in the selected row
+
+|`E`
+|the ended work of the selected project, or of the project shown (<<ended>>)
 
 |`/`
 |filter the rows by a part of their name or title; `Esc` clears it
@@ -158,20 +166,60 @@ Runtime pm-mcpd 0.9.1, running since 08:14 · 2 workers · 1 of 2 build slots in
 
 ! 2  pm-mcp-clients · 3 plans · 1 epic
      ! decision  plan  Console history of answers   refine · waiting for you · 40 min
-                 plan  Overview resource of the runtime   execute · working · 2 h 10 min
+                 plan  Overview resource of the runtime   execute · running · 2 h 10 min
                        in epic client work · 7 of 12 tasks
-                 plan  Message catalogue   outline · working · 1 h 5 min
+                 plan  Message catalogue   outline · pausing after the task · 1 h 5 min
                        in epic client work
      pm-mcp-core · 2 plans
-                 plan  Session log and generations   execute · working · 4 h
-                 plan  Profile loader   finalize · working · 6 h
+                 plan  Session log and generations   execute · running · 4 h
+                       pull request #198 https://github.com/plan-marshall/pm-mcp-core/pull/198
+                 plan  Profile loader   finalize · paused · 6 h
 ! 1  plan-marshall · setup needs you
 pm [1 question] ›
 ----
 
-* The same rows, in the same order, as words: the kind is a word (`plan`, `epic`), the marker `!` is followed by its kind, and no meaning is in a colour or a glyph alone.
-* By default the tree is the view by plan: plans flat, each naming its epic. `status --by epic` prints the view by epic: the epics with their running and staged plans, and their plans below them; `status --project <id>` prints one project.
+* The same rows, in the same order, as words: the kind is a word (`plan`, `epic`), the state is a word of the closed list (`running`, `pausing`, `paused`, `waiting for you`, `stalled`), the marker `!` is followed by its kind, and no meaning is in a colour or a glyph alone.
+* A plan's own pull request is printed by its number and its URL, so that it can be opened from the scrollback.
+* By default the tree is the view by plan: plans flat, each naming its epic. `status --by epic` prints the view by epic: the epics with their running and staged plans, and their plans below them; `status --project <id>` prints one project; `status --ended` prints the ended work (<<ended>>).
 * The tree is printed once; it is the view of a screen reader, of a terminal without cursor control, and of a narrow one.
+
+[#ended]
+== Ended Work
+
+What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, Ended Work] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], its variation). The terminal reaches it two ways:
+
+* *`E`* in the full-screen view opens the ended work of the selected project (on the level of the projects) or of the project shown, as a level of the same view; `Esc` goes back to where it was opened.
+* *`status --ended [--project <project_id>]`* prints it into the scrollback; without `--project`, the project of the working directory, else every project with ended work, newest first.
+
+----
+ Ended work · pm-mcp-clients                                      ● connected
+ ─────────────────────────────────────────────────────────────────────────────
+▶ ▸ plan  Relay drops events on reconnect   completed   #211 · 2 d ago
+  ▸ plan  Fix the relay's event loss        cancelled   2 d ago
+            the approach is replaced by plan relay-v2
+  ◇ epic  client bootstrap                  completed   2 weeks ago
+  ▸ plan  Message catalogue v0              abandoned   3 weeks ago
+            superseded by the shared texts
+ ─────────────────────────────────────────────────────────────────────────────
+ ↑↓ move   Enter open   / filter   Esc back
+----
+
+[source,text]
+----
+pm › status --ended --project pm-mcp-clients
+pm-mcp-clients · ended work
+  plan  Relay drops events on reconnect   completed · 2 d ago
+        pull request #211 https://github.com/plan-marshall/pm-mcp-clients/pull/211
+  plan  Fix the relay's event loss   cancelled · 2 d ago
+        reason: the approach is replaced by plan relay-v2
+  epic  client bootstrap   completed · 2 weeks ago
+  plan  Message catalogue v0   abandoned · 3 weeks ago
+        reason: superseded by the shared texts
+pm ›
+----
+
+* Each row is the plan or epic with its outcome (`completed`, `cancelled`, `abandoned`), its reason where it has one, and when it ended; newest first; the client reads the runtime's pages as the operator scrolls (full screen) or as it prints (`status --ended`).
+* `Enter` on an ended plan opens its plan view as it ended (xref:16-plan-view.adoc#ended[An Ended Plan]), on an ended epic its epic view as it ended (link:../shared/epic-view.adoc[Epic View]); both are read-only: no actions, no live updates, and `a` says `fix-relay has ended: its view only`. `plan <plan_id>` and `epic <epic_id>` print an ended plan or epic the same way, with `ended` in its first line.
 
 [#overview-texts]
 == Texts of the Terminal
@@ -184,11 +232,11 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 
 |`operator.overview.keys.move`
 |move
-|bewegen
+|bewege
 
 |`operator.overview.keys.open`
 |open
-|öffnen
+|öffne
 
 |`operator.overview.keys.back`
 |back
@@ -196,7 +244,7 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 
 |`operator.overview.keys.filter`
 |filter
-|filtern
+|filtere
 
 |`operator.overview.keys.epic`
 |epic
@@ -216,7 +264,7 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 
 |`operator.overview.keys.leave`
 |leave
-|verlassen
+|verlasse
 
 |`operator.overview.more_above`
 |{count} more
@@ -237,6 +285,30 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |`operator.overview.too_narrow`
 |The terminal is too narrow for the overview; here is the tree.
 |Das Terminal ist zu schmal für die Übersicht; hier ist der Baum.
+
+|`operator.overview.keys.actions`
+|actions
+|Aktionen
+
+|`operator.overview.keys.ended`
+|ended work
+|beendete Arbeit
+
+|`operator.overview.ended_view_only`
+|{name} has ended: its view only
+|{name} ist beendet: nur seine Ansicht
+
+|`operator.status.ended_title`
+|{project} · ended work
+|{project} · beendete Arbeit
+
+|`operator.status.pull_request`
+|pull request #{number} {url}
+|Pull Request #{number} {url}
+
+|`operator.status.reason`
+|reason: {reason}
+|Grund: {reason}
 
 |`operator.status.runtime`
 |Runtime {version}, running since {time} · {workers, plural, one {# worker} other {# workers}} · {slots} of {total} build slots in use

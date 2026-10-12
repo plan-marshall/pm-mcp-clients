@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Projects
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]_
+
 What the explorer and a project's onboarding show is link:../shared/project-explorer.adoc[Project Explorer] and link:../shared/project-onboarding.adoc[Project Onboarding], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc[Use Cases, Projects]). This part is how the console draws them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#commands]
@@ -13,12 +15,19 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 ----
   projects [--list]                     the explorer, full screen; --list prints it into the scrollback
   project add [<path>]                  onboard a project; the working directory is the proposed checkout
-  project setup <project_id> [<step>]   a later run of a project's onboarding, at a step (team, own, roles, commit)
+  project setup <project_id> [<step>]   a later run of a project's onboarding, at a step (identity, team,
+                                        own, architecture, roles, descriptions, commit); without a step it
+                                        asks which, release and unenrol among the choices
+  project release <project_id> [--reason <text>]
+                                        end every plan of the project and close its plan lifecycle; the
+                                        reason is asked when it is missing
+  project unenrol <project_id> [--reason <text>]   remove the project's enrolment; refused while work of it runs
   project favourite <project_id> [--off]
 ----
 
 * All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `pm-operator enrol` stays the direct verb of a project's enrolment, with its arguments as the answers of `project.identity` to `project.enrol`.
 * `--project ?` of every other verb shows the same list as the explorer, favourites first (xref:02-levels.adoc#addressing[Addressing a Level]).
+* `project release` and `project unenrol` are direct verbs (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]): `--reason` answers the reason, a missing one is asked, and `--no-input` stops there; the confirmation is answered by `--yes`, never by `Enter` alone (<<release>>).
 
 [#explorer]
 == The Explorer, Full Screen
@@ -28,6 +37,8 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 ----
  Projects                                                         ● connected
  ─────────────────────────────────────────────────────────────────────────────
+ Being added
+    /home/oliver/git/cui-parent       ② Identity
  Favourites
 ▶ ★ pm-mcp-clients    ready      ! 2   3 plans · 1 epic    2 min ago
   ★ pm-mcp-core       ready            2 plans                     9 min ago
@@ -36,10 +47,14 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
     cui-http          ready                                        3 d ago
  All projects · by name
     API-Sheriff       ready                                        5 weeks ago
+    legacy-portal     released                                     2 months ago
     …
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move   Enter actions   * favourite   s sort   / filter   + add   q leave
 ----
+
+* *Being added*: a project's onboarding that has not reached its enrolment yet, by the path of its checkout and the step it waits at; it has no id yet. Once enrolled, the project is listed by its id like every other, with `setup needs: …` until it is ready.
+* A released project is listed with `released`; an unenrolled one is not listed.
 
 `Enter` on a project opens its actions in place:
 
@@ -50,9 +65,12 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
       r  Running work
       u  Setup
       *  Remove from favourites
-
-A released project offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `r  Running work` while plans of it still show.
 ----
+
+* *A released project* offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `r  Running work` while plans of it still show.
+* *A project that is not ready* offers `c  Continue the setup` first; `e` and `p` are shown disabled with the reason (`pm-mcp-core is not ready: credential sonar`).
+* *A project with an open entry* (a start not finished) offers `c  Continue starting` first (link:../shared/starting-work.adoc#leaving[Starting Work, Leaving and Coming Back]).
+* *A project being added* offers `c  Continue` and `x  Abandon…`; abandoning asks first and deletes the run, of which nothing is enrolled yet.
 
 [cols="1,3",options="header"]
 |===
@@ -63,6 +81,12 @@ A released project offers instead `a  Enrol again`, which runs its onboarding ag
 
 |`e`, `p`, `r`, `u`
 |add an epic, add a plan, running work, setup: directly from the row
+
+|`c`
+|continue: the open entry (_Continue starting_), the setup of a project that is not ready (_Continue the setup_), or a project being added
+
+|`x`
+|on a project being added: abandon its onboarding
 
 |`a`
 |on a released project: enrol it again
@@ -83,21 +107,21 @@ A released project offers instead `a  Enrol again`, which runs its onboarding ag
 |add a project: leaves the view and starts `project add`
 |===
 
-The keys of the explorer are keys of navigation, the same in every language, like those of the overview (xref:15-overview.adoc#full-screen-keys[Keys]). The two _Add_ actions leave the view and start `epic add` and `plan add` for the project (xref:18-starting.adoc[Starting Work]); while an entry of the project is open, `Enter` offers `c  Continue starting` first.
+The keys of the explorer are keys of navigation, the same in every language, like those of the overview (xref:15-overview.adoc#full-screen-keys[Keys]). The two _Add_ actions leave the view and start `epic add` and `plan add` for the project (xref:18-starting.adoc[Starting Work]); _Setup_ leaves the view and starts `project setup <project_id>`, which asks what to change, releasing and unenrolling among the choices (<<release>>).
 
 [#onboarding]
 == Onboarding a Project
 
-The onboarding is a dialogue of the console, with the frame, the step line, consent, and check lines of xref:03-dialogues.adoc[Dialogues]:
+The onboarding is a dialogue of the console, with the frame, the step line, consent, and check lines of xref:03-dialogues.adoc[Dialogues]; its nine steps are those of link:../shared/project-onboarding.adoc#steps[Project Onboarding, Steps]:
 
 [source,text]
 ----
 pm › project add
-[1/8] Checkout · Which checkout is the project?
+[1/9] Checkout · Which checkout is the project?
   Path of the checkout   [/home/oliver/git/pm-mcp-clients] ← the working directory
 Use this checkout? [Enter]   e) edit the path   ?   › ⏎
 
-[1/8] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
+[1/9] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
   reads       its git configuration, build wrappers, host tools, language
               servers, and scripts
   runs        the version probe of each host tool in the absolute directories
@@ -112,7 +136,7 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
 
     ?  build wrapper gradlew   its version is known only by running it
 
-[1/8] Checkout · Run this script of the checkout to know its version?
+[1/9] Checkout · Run this script of the checkout to know its version?
   runs        ./gradlew --version   (as a job, confined: no network, no writes
               outside a temporary directory)
   why         the wrapper names no version in its properties
@@ -121,55 +145,173 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
 y) yes, for this project   n) no, leave its version unknown   ?   › y
     ✓  build wrapper gradlew (Gradle 9.1)
 
-[2/8] Identity · How should the project be named?
+[2/9] Identity · How should the project be named?
   Id     [pm-mcp-clients] ← from the remote
   Name   [plan-marshall/pm-mcp-clients] ← from the remote
   Pilot  this release runs plans only in pilot projects   1) yes ←   2) no
-Use these? [Enter]   e) edit   ?   › ⏎
+Use these? [Enter]   e) edit a line   ?   › ⏎
 
-[3/8] Enrolment · Enrol pm-mcp-clients with these settings?
-  root             /home/oliver/git/pm-mcp-clients            detected
-  build wrapper    mvnw, pinned .mvn/wrapper/maven-wrapper.properties   detected
-  host tools       git, gh                                     detected
-  build env        12 variables (?3 lists them)                from your login
-  budgets, paths   the defaults                                default
-  containers       off   (?c explains, c) turn on)
-Enrol pm-mcp-clients? [Enter]   e) edit a line   ?   › ⏎
-✓ pm-mcp-clients enrolled
-…
-[5/8] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
-  1) Model language     English              ← from machine
-  2) Allowed models     4 models             ← from machine
-  3) Providers          GitHub (gh)          ← from machine
-  4) Plan defaults      Pull Request · Test first · key points   ← from machine
-  5) Commit identity    Oliver Wolff <…>     ← from machine
-Use the machine's values? [Enter]   change: 1-5   ?   › 4
+[3/9] Enrolment · Enrol pm-mcp-clients with these settings?
+  1) root             /home/oliver/git/pm-mcp-clients                     detected
+  2) build wrapper    mvnw, pinned .mvn/wrapper/maven-wrapper.properties  detected
+  3) host tools       git, gh                                             detected
+  4) build env        12 variables                                        from your login
+  5) budgets, paths   the defaults                                        default
+  6) containers       off: the jobs run without Docker
+Enrol pm-mcp-clients? [Enter]   change: 1-6   ?n explains a line   ?   › ⏎
+    ✓  pm-mcp-clients enrolled
+
+[4/9] Team settings · What the team works with
+  1) Base branch      main                                  team · detected
+  2) Branch prefix    feature/                              team · default
+  3) Lanes            light, deep                           team · default
+  4) CI provider      GitHub Actions                        team · detected
+  5) Analysis         SonarCloud                            team · detected
+  6) Finalize steps   create-pr, automatic-review, merge    team · default
+Use these? [Enter]   change: 1-6   ?   › ⏎
+  Build map   9 modules, 412 files attributed, 0 unattributed
+Confirm the build map? [Enter]   e) edit a route   ?   › ⏎
+
+[5/9] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
+  1) Model language        English                                  ← from machine
+  2) Allowed models        4 models                                 ← from machine
+  3) Role assignment       12 roles on 2 harnesses                  ← from machine
+  4) Providers             GitHub (gh) · token ✓ stored             ← from machine
+  5) Plan defaults         Pull Request · Test first · key points   ← from machine
+  6) Integration variants  git: gh 2.71 · github: gh 2.71           ← from machine
+  7) Commit identity       Oliver Wolff <…>                         ← from machine
+Use the machine's values? [Enter]   change: 1-7   ?   › 5
   Plan defaults · project pm-mcp-clients
     Method   1) Test first ← from machine   2) Tests after
   …
-Save 1 own value? [Enter]   change: 1-5   ?   › ⏎
+Save 1 own value? [Enter]   change: 1-7   ?   › ⏎
 
-[6/8] Architecture · What pm-mcp-clients is made of
+[6/9] Architecture · What pm-mcp-clients is made of
   Domains     java (pom.xml), documentation (doc/**/*.adoc)
   Modules     9 modules found by Maven
                 pm-api · jar        pm-operator · jar     pm-relay · jar
                 pm-exec · jar       pm-mock-runtime · jar …
-  Build map   9 modules, 412 files attributed, 0 unattributed
-Confirm the build map? [Enter]   e) edit a route   ?   › ⏎
-…
-[6/8] Architecture · Describing the modules
+Use this architecture? [Enter]   e) edit the domains   ?   › ⏎
+
+[7/9] Roles · Qualify the roles for pm-mcp-clients?
+  runs        one qualification task per role on its assigned model: 12 tasks
+  never       changes the role assignment
+  cost        about 0.40 USD (from 3 earlier runs)
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
+[7/9] Roles · Qualifying the roles: 4 of 12 done
+    ✓  implement       Claude Code · sonnet-5.5
+    ▶  qgate           OpenCode · qwen-coder          running 0:22
+    ○  refine          waiting
+    …
+
+[8/9] Descriptions · Describe the modules of pm-mcp-clients?
+  runs        one task of the role enrich per module: 9 tasks on
+              Claude Code · sonnet-5.5
+  writes      .marshall/project-architecture/, committed in the next step
+  cost        about 0.30 USD (from 2 earlier runs)
+  if not      the project is ready without descriptions; a later run of
+              its setup offers them again
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
+[8/9] Descriptions · Describing the modules: 1 of 9 done
     ✓  pm-api              enrich · Claude Code sonnet-5.5
     ▶  pm-operator         running 0:41
     ○  pm-relay            waiting
     …
-…
+
+[9/9] Commit · Commit the team's configuration?
+  14 files in .marshall/
+    .marshall/project.json   .marshall/domains.json   .marshall/build-map.json
+    .marshall/project-architecture/   9 files
+Commit the files? [Enter]   n) no, leave them in the checkout   ?   › ⏎
+    ✓  committed: 3f2a91c "chore: plan-marshall project configuration"   not pushed
+
 ✓ pm-mcp-clients is ready
     e) Add an epic   p) Add a plan   r) Running work
 pm ›
 ----
 
 * `project add <path>` starts with that path; in a checkout, the working directory is the proposal.
+* *Enrolment*: every line can be changed by its number; `?n` lists what a line holds (`?4` the 12 variables of the build environment). The container engine is line 6, off; `6` opens its choice with its warning (`project.enrolment.container_warning`) before it can be turned on.
+* *Team settings* hold the build map; it is confirmed here and nowhere else, a route edited with `e`.
+* *Roles* and *Descriptions* each ask a consent of kind `model_cost` with its expected cost; both can be remembered (`r`). `n` at the descriptions makes the project ready without them (`.marshall/project-architecture/` gets no descriptions), and a later run (`project setup pm-mcp-clients descriptions`) offers them again.
+* *Commit* commits the team's configuration in the checkout, never pushes it; `n` leaves the files uncommitted.
+* The keys of the ready line are `operator.key.add_epic`, `operator.key.add_plan`, and `operator.key.running_work` (xref:13-texts-operator.adoc#texts-operator-keys[Keys]).
 * A later run (`project setup pm-mcp-clients own`) opens the same states with the project's current values; a project that is not ready continues where its setup stopped.
+
+[#several]
+=== Several at Once
+
+Each project's onboarding runs in a scope of its own, so several can be open together; the console shows one badge per open run (xref:04-console.adoc#prompt[The Prompt]). Before its enrolment a run is named by the directory of its checkout, after it by the project's id:
+
+[source,text]
+----
+pm [setup pm-mcp-clients 5/9] › project add ~/git/cui-parent
+[1/9] Checkout · Which checkout is the project?
+  …
+[2/9] Identity · How should the project be named?
+  … q
+Left [2/9] Identity of /home/oliver/git/cui-parent. Nothing was sent. Enter continues it.
+pm [setup cui-parent 2/9 · setup pm-mcp-clients 5/9] › ⏎
+[2/9] Identity · How should the project be named?
+  …
+pm [setup cui-parent 3/9 · setup pm-mcp-clients 5/9] › project setup pm-mcp-clients
+[5/9] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
+  …
+----
+
+* `Enter` on the empty prompt continues the most recent run; `project setup <project_id>` continues a specific one, and `project add <path>` of a checkout whose run is open continues that run.
+* A run before its enrolment is listed in the explorer under _Being added_ (<<explorer>>).
+
+[#release]
+== Releasing and Unenrolling
+
+What releasing and unenrolling do is link:../shared/project-explorer.adoc#release[Project Explorer, Release and Unenrol]. In the console both are choices of the project's setup and verbs of their own:
+
+[source,text]
+----
+pm › project setup plan-marshall
+plan-marshall · Setup · What do you want to change?
+  1) Identity        2) Team settings   3) Own settings    4) Architecture
+  5) Roles           6) Descriptions    7) Commit
+  8) Release the project…              9) Unenrol the project…
+› 8
+Release plan-marshall?
+  What ends      every plan of the project: 2 running, 1 paused; each is
+                 archived as cancelled, and its epic gate-hardening is told
+  Afterwards     the project's plan lifecycle is closed; it stays listed as
+                 released and can be enrolled again with its values
+  Reason         › the gates move to the new repository
+Release the project? y) yes   n) no, keep it   ?   › y
+    ✓  fix-sonar-gate cancelled and archived
+    ✓  gate-timeouts cancelled and archived
+    ✓  gate-docs abandoned and archived
+    ✓  gate-hardening told
+✓ plan-marshall released
+pm ›
+----
+
+[source,text]
+----
+pm › project unenrol cui-http
+✗ cui-http still runs work; unenrolling is refused while it does:
+    plan  http-retry-budget     execute · running     plan cancel http-retry-budget
+    epic  http-hardening        running               epic cancel http-hardening
+  → end them first, or release the project: project release cui-http
+pm ›
+
+pm › project unenrol legacy-portal
+Unenrol legacy-portal?
+  What ends      its enrolment: the project leaves the list; its checkout and
+                 the team's configuration in it stay as they are
+  Afterwards     it is onboarded again only from the start (project add)
+Unenrol the project? y) yes   n) no, keep it   ?   › y
+✓ legacy-portal unenrolled
+pm ›
+----
+
+* The confirmation names what ends before it asks and is answered by `y` or `n`, never by `Enter` alone; its texts are the shared keys `project.release.*` (link:../shared/project-explorer.adoc#release[Project Explorer, Release and Unenrol]).
+* An unenrolment refused while work runs lists the running plans and epics, each with the verb that ends it (xref:19-actions.adoc[Actions on Plans and Epics]).
+* As one shell command, `pm-operator project release plan-marshall --reason "…" --yes` answers the reason and the confirmation; without `--yes` it asks, and `--no-input` stops there.
 
 [#list]
 == The List (`projects --list`)
@@ -177,6 +319,8 @@ pm ›
 [source,text]
 ----
 pm › projects --list
+Being added
+    /home/oliver/git/cui-parent   Identity (2 of 9)
 Favourites
   ★ pm-mcp-clients    ready   needs you: 2   3 plans · 1 epic   2 min ago
   ★ pm-mcp-core       ready   2 plans   9 min ago
@@ -184,6 +328,7 @@ Recent
     plan-marshall     setup needs: credential sonar   yesterday
 All projects (by name)
     API-Sheriff       ready   5 weeks ago
+    legacy-portal     released   2 months ago
     …
 pm ›
 ----
@@ -193,33 +338,4 @@ The list uses words for every mark, so that it reads the same without glyphs and
 [#projects-texts]
 == Texts of the Terminal
 
-The texts of the rows and steps are those of the shared designs; the terminal adds these, of the area `operator`:
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`operator.projects.keys.actions`
-|actions
-|Aktionen
-
-|`operator.projects.keys.favourite`
-|favourite
-|Favorit
-
-|`operator.projects.keys.sort`
-|sort
-|sortieren
-
-|`operator.projects.keys.add`
-|add
-|hinzufügen
-
-|`operator.projects.working_directory`
-|the working directory
-|das Arbeitsverzeichnis
-
-|`operator.projects.from_login`
-|from your login
-|aus deiner Anmeldung
-|===
+The texts this part adds are in xref:20-texts-projects.adoc#projects-texts[Texts: Projects, Starting Work, Actions].
