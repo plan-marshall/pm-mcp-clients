@@ -18,10 +18,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, use cases, and the design documents both clients share stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients are in this repository (`doc/design/`). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding] (UC-ONB-3, change _Languages and Internationalisation_)
-* Design: link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Design, Texts and Languages]; link:../design/terminal-client.adoc#texts[Terminal Client, Texts] (the keys of the onboarding and of `start`, English and German)
+* Design: link:../design/shared/texts-and-languages.adoc[Texts and Languages]; link:../design/terminal-client/README.adoc#texts[Terminal Client, Texts] (the keys of the onboarding, the entry, and the console, English and German)
 
 == Done When
 

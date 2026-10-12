@@ -1,0 +1,312 @@
+= Terminal Client: Texts: Steps 4 and 5
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Steps 4 and 5
+
+The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
+
+[#texts-onboard-roles]
+== 4 Roles
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.roles.review.title`
+|Give every role a harness and a model
+|Gib jeder Role einen Harness und ein Modell
+
+|`onboard.roles.review.applied`
+|The default assignment is applied to all {count} roles.
+|Die vorgegebene Zuordnung ist auf alle {count} Roles angewendet.
+
+|`onboard.roles.review.group_roles`
+|{count, plural, one {# role} other {# roles}}
+|{count, plural, one {# Role} other {# Roles}}
+
+|`onboard.roles.review.not_assignable`
+|not assignable
+|nicht zuordenbar
+
+|`onboard.roles.review.no_model_of_tier`
+|no {tier} model allowed
+|kein Modell der Stufe {tier} erlaubt
+
+|`onboard.roles.review.assign_open_first`
+|Assign the {count, plural, one {open role} other {# open roles}} first
+|Ordne zuerst {count, plural, one {die offene Role} other {die # offenen Roles}} zu
+
+|`onboard.roles.review.action_defaults`
+|Use the defaults
+|Verwende die Vorgaben
+
+|`onboard.roles.review.action_save`
+|Save {count} roles
+|Speichere {count} Roles
+
+|`onboard.roles.review.action_use`
+|Use these roles
+|Verwende diese Roles
+
+|`onboard.roles.review.adjust`
+|adjust roles
+|Roles bearbeiten
+
+|`onboard.roles.review.ask_steward`
+|ask the steward to refine
+|den steward verfeinern lassen
+
+|`onboard.roles.review.reset`
+|reset to default
+|auf die Vorgabe zurücksetzen
+
+|`onboard.roles.review.to_look_at`
+|{count, plural, one {# role to look at} other {# roles to look at}}
+|{count, plural, one {# Role zum Ansehen} other {# Roles zum Ansehen}}
+
+|`onboard.roles.review.select_prompt`
+|Select roles to assign: numbers or ranges
+|Wähle Roles zum Zuordnen: Nummern oder Bereiche
+
+|`onboard.roles.review.all_shown`
+|all shown
+|alle angezeigten
+
+|`onboard.roles.review.no_effort`
+|({harness} has no effort setting)
+|({harness} hat keine Einstellung für den Aufwand)
+
+|`onboard.roles.field.harness`
+|Harness
+|Harness
+
+|`onboard.roles.field.model`
+|Model
+|Modell
+
+|`onboard.roles.field.effort`
+|Effort
+|Aufwand
+
+|`onboard.roles.origin.default`
+|default
+|Vorgabe
+
+|`onboard.roles.origin.steward`
+|steward
+|steward
+
+|`onboard.roles.origin.changed`
+|changed
+|geändert
+
+|`onboard.roles.origin.project`
+|project
+|Projekt
+
+|`onboard.roles.project.applies`
+|The machine's assignment applies to all {count} roles here.
+|Die Zuordnung der Maschine gilt hier für alle {count} Roles.
+
+|`onboard.roles.project.keep`
+|Keep the machine's assignment
+|Die Zuordnung der Maschine behalten
+
+|`onboard.roles.project.reset`
+|reset to the machine's
+|auf die der Maschine zurücksetzen
+
+|`onboard.roles.project.action_save`
+|Save {count, plural, one {# role} other {# roles}} for {project}
+|{count, plural, one {# Role} other {# Roles}} für {project} speichern
+
+|`onboard.roles.project.done`
+|{count, plural, one {# role} other {# roles}} set for {project}; {following} follow the machine
+|{count, plural, one {# Role} other {# Roles}} für {project} festgelegt; {following} folgen der Maschine
+
+|`onboard.roles.advisory.does`
+|What it does
+|Was sie tut
+
+|`onboard.roles.advisory.needs`
+|What it needs
+|Was sie braucht
+
+|`onboard.roles.advisory.why`
+|Why {tier}
+|Warum {tier}
+
+|`onboard.roles.advisory.if_cheaper`
+|If cheaper
+|Wenn günstiger
+
+|`onboard.roles.advisory.steward`
+|Steward
+|steward
+
+|`onboard.roles.advisory.no_departure`
+|no departure
+|keine Abweichung
+
+|`onboard.roles.consent.title`
+|Ask the steward to refine the defaults?
+|Den steward die Vorgaben verfeinern lassen?
+
+|`onboard.roles.consent.runs`
+|a steward task on {harness} · {model}: it reads the roles, the catalogue, and the qualification records of your projects
+|eine Aufgabe des steward auf {harness} · {model}: er liest die Roles, den Katalog und die Qualifizierungsnachweise deiner Projekte
+
+|`onboard.roles.consent.never`
+|changes a role: you accept or reject each proposal
+|ändert eine Role: du nimmst jeden Vorschlag an oder lehnst ihn ab
+
+|`onboard.roles.propose.title`
+|The steward proposes {count, plural, one {# departure} other {# departures}}
+|Der steward schlägt {count, plural, one {# Abweichung} other {# Abweichungen}} vor
+
+|`onboard.roles.propose.reason`
+|Reason: {text}
+|Grund: {text}
+
+|`onboard.roles.propose.rejected`
+|rejected
+|abgelehnt
+
+|`onboard.roles.propose.action_all`
+|Accept {count, plural, one {it} =2 {both} other {all #}}
+|{count, plural, one {Nimm ihn an} =2 {Nimm beide an} other {Nimm alle # an}}
+
+|`onboard.roles.propose.action_some`
+|Accept {accepted}, reject {rejected}
+|{accepted} annehmen, {rejected} ablehnen
+
+|`onboard.roles.validate.ok`
+|{count} roles valid
+|{count} Roles gültig
+
+|`onboard.roles.done`
+|{count} roles assigned
+|{count} Roles zugeordnet
+|===
+
+[#texts-onboard-credentials]
+== 5 Credentials
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.store.choose.title`
+|Where should this machine keep its tokens?
+|Wo soll diese Maschine ihre Tokens aufbewahren?
+
+|`onboard.store.choose.keychain`
+|macOS Keychain
+|macOS-Schlüsselbund
+
+|`onboard.store.choose.keychain_text`
+|Only plan-marshall's runtime reads them without asking you; any other program that tries makes macOS ask first.
+|Nur die Runtime von plan-marshall liest sie, ohne dich zu fragen; versucht es ein anderes Programm, fragt macOS dich zuerst.
+
+|`onboard.store.choose.secret_service`
+|Linux Secret Service
+|Linux Secret Service
+
+|`onboard.store.choose.secret_service_text`
+|Every program you run can read it while it is unlocked.
+|Jedes Programm, das du ausführst, kann ihn lesen, solange er entsperrt ist.
+
+|`onboard.store.choose.files`
+|Files in {dir}
+|Dateien in {dir}
+
+|`onboard.store.choose.files_text`
+|Readable by every program you run (mode 0600). Works everywhere, also without a desktop session.
+|Lesbar für jedes Programm, das du ausführst (Modus 0600). Funktioniert überall, auch ohne Desktop-Sitzung.
+
+|`onboard.store.choose.holds`
+|The choice holds until you change it; a change moves the tokens and never leaves a copy behind.
+|Die Wahl gilt, bis du sie änderst; eine Änderung verschiebt die Tokens und lässt keine Kopie zurück.
+
+|`onboard.store.choose.action`
+|Use {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {the files}}
+|Verwende {store, select, keychain {den macOS-Schlüsselbund} secret_service {den Secret Service} other {die Dateien}}
+
+|`onboard.store.unavailable.now`
+|not available now
+|gerade nicht verfügbar
+
+|`onboard.store.unavailable.locked`
+|the collection is locked
+|die Sammlung ist gesperrt
+
+|`onboard.store.unavailable.locked_fix`
+|unlock it (for example by logging in at the desktop), then check again
+|entsperre sie (zum Beispiel durch eine Anmeldung am Desktop) und prüfe dann erneut
+
+|`onboard.store.unavailable.no_bus`
+|no session bus: this is an SSH session
+|kein Session-Bus: dies ist eine SSH-Sitzung
+
+|`onboard.store.unavailable.no_bus_fix`
+|log in at the desktop, or use the files below
+|melde dich am Desktop an oder verwende die Dateien unten
+
+|`onboard.store.unavailable.choose_another`
+|choose another store
+|wähle einen anderen Speicher
+
+|`onboard.store.check.write`
+|write a test entry
+|einen Testeintrag schreiben
+
+|`onboard.store.check.read`
+|read it back
+|ihn zurücklesen
+
+|`onboard.store.check.delete`
+|delete it
+|ihn löschen
+
+|`onboard.store.done`
+|Tokens are kept in {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {files}}
+|Tokens werden {store, select, keychain {im macOS-Schlüsselbund} secret_service {im Secret Service} other {in Dateien}} aufbewahrt
+
+|`onboard.store.move.title`
+|Move the tokens to {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {files}}?
+|Die Tokens {store, select, keychain {in den macOS-Schlüsselbund} secret_service {in den Secret Service} other {in Dateien}} verschieben?
+
+|`onboard.store.move.moves`
+|moves
+|verschiebt
+
+|`onboard.store.move.moves_value`
+|{count, plural, one {# token} other {# tokens}} from {from} to {to}
+|{count, plural, one {# Token} other {# Tokens}} von {from} nach {to}
+
+|`onboard.store.move.each`
+|each
+|jedes
+
+|`onboard.store.move.each_value`
+|written, read back, then deleted from {from}
+|geschrieben, zurückgelesen, dann aus {from} gelöscht
+
+|`onboard.store.move.if_stopped`
+|if stopped
+|bei Abbruch
+
+|`onboard.store.move.if_stopped_value`
+|the next run continues the move; no token is lost or doubled
+|der nächste Lauf setzt das Verschieben fort; kein Token geht verloren oder wird verdoppelt
+
+|`onboard.store.move.action`
+|Move {count, plural, one {# token} other {# tokens}}
+|Verschiebe {count, plural, one {# Token} other {# Tokens}}
+
+|`onboard.store.move.moved`
+|moved
+|verschoben
+|===

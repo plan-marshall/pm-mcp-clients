@@ -1,0 +1,290 @@
+= Terminal Client: Transcripts: Steps 4 to 7
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Transcripts: Steps 4 to 7
+
+The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
+
+[#t-roles]
+== 4 Roles
+
+[#t-roles-review]
+=== The Overview (`roles.load`, `roles.default`, `roles.review`, `roles.validate`, `roles.write`, `roles.done`)
+
+[source,text]
+----
+[4/7] Roles · Give every role a harness and a model
+  The default assignment is applied to all 31 roles.
+
+    1) Claude Code · opus-5.5      7 roles   planning and decisions
+    2) Claude Code · sonnet-5.5   16 roles   execution and review
+    3) OpenCode · qwen-coder       6 roles   screening and checks
+    4) ⚠ not assignable             2 roles   no fast model allowed
+
+Assign the 2 open roles first: 4) or e) adjust roles   s) ask the steward to refine   b) back   ?   ›
+----
+
+* While a `⚠` line remains, `Enter` is not the primary link and the prompt names what to do first; with none, the prompt is `Use the defaults? [Enter]`.
+* `?1` to `?4` list the roles of the group with the advisory of the group.
+
+[#t-roles-adjust]
+=== Adjust Roles (`roles.review`, `edit`)
+
+[source,text]
+----
+› 4
+[4/7] Roles · 2 roles to look at
+  Review
+    12) screener    zero_tool   —            —           —        ⚠ no model of tier fast
+  Decisions
+    27) tie-break   zero_tool   —            —           —        ⚠ no model of tier fast
+
+Select roles to assign: numbers or ranges, a) all shown   ?n advisory   b) back   › 12 27
+  Harness   1) Claude Code   2) OpenCode            › 2
+  Model     1) qwen-coder-32b   2) deepseek-v4      › 1
+  Effort    (OpenCode has no effort setting)
+    12) screener    zero_tool   OpenCode     qwen-coder  —        ✎ changed
+    27) tie-break   zero_tool   OpenCode     qwen-coder  —        ✎ changed
+
+Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   › ⏎
+  ✓  31 roles valid
+✓ 31 roles assigned
+----
+
+* `e` from the overview lists every role, grouped by phase, with the columns of the web table as fields: number, role, class, harness, model, effort, origin (`default`, `✎ steward`, `✎ changed`, `⚠ <reason>`). A filter is typed as `/text`.
+* `?<n>` prints the advisory of role `n` in place (link:../web-app/onboarding.adoc#roles[Web App, Onboarding, Roles]), here of `outline`:
+
+[source,text]
+----
+  outline     writer     Claude Code  opus-5.5    high     default
+    What it does   Turns the refined request into deliverables and the plan's
+                   lane; reads the whole affected codebase.
+    What it needs  Deep reasoning over a large context; few tool calls.
+    Why frontier   A weak outline costs more later than the model costs here:
+                   every later phase builds on it.
+    If cheaper     More loop-backs from the Q-Gate; standard tier passed 71 %
+                   of the qualification items (frontier 92 %).
+    Steward        no departure
+----
+
+[#t-roles-steward]
+=== Ask the Steward (`roles.consent`, `roles.propose`)
+
+[source,text]
+----
+› s
+[4/7] Roles · Ask the steward to refine the defaults?
+  runs        a steward task on Claude Code · opus-5.5: it reads the roles,
+              the catalogue, and the qualification records of your projects
+  never       changes a role: you accept or reject each proposal
+  cost        about 0.12 USD (from 2 earlier runs)
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
+  ⠦  steward is working on Claude Code · opus-5.5      1:04   about 0.12 USD
+
+[4/7] Roles · The steward proposes 2 departures
+    1) qgate       read_only   OpenCode · qwen-coder   ← Claude Code · sonnet-5.5
+       Reason: the qualification records of 2 projects show qwen-coder at
+       the level of sonnet-5.5 for this role, at a third of the cost.
+    2) refine      writer      Claude Code · opus-5.5  ← Claude Code · sonnet-5.5
+       Reason: refine loops back twice as often on sonnet-5.5.
+
+Accept both? [Enter]   toggle: 1-2 to reject   b) back   ?   › 2
+    2) refine      … rejected
+Accept 1, reject 1? [Enter]   toggle: 1-2   b) back   ?   › ⏎
+[4/7] Roles · Give every role a harness and a model
+    …
+    1 role ✎ steward
+Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
+----
+
+* A failed or left model task returns to `roles.review` as it was, with one line: `– The steward gave no proposal: <reason>.`
+* `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
+
+[#t-credentials]
+== 5 Credentials
+
+[#t-store-choose]
+=== Choose (`store.detect`, `store.choose`, `store.check`, `store.record`, `store.done`)
+
+[source,text]
+----
+[5/7] Credentials · Where should this machine keep its tokens?
+  1) macOS Keychain                                    ★ recommended ←
+     Only plan-marshall's runtime reads them without asking you; any other
+     program that tries makes macOS ask first.
+  2) Files in ~/.plan-marshall-mcp/credentials/
+     Readable by every program you run (mode 0600). Works everywhere, also
+     without a desktop session.
+
+  The choice holds until you change it; a change moves the tokens and never
+  leaves a copy behind.
+
+Use the macOS Keychain? [Enter]   other: 2   b) back   ?   › ⏎
+    ✓  write a test entry
+    ✓  read it back
+    ✓  delete it
+✓ Tokens are kept in the macOS Keychain
+----
+
+* On Linux the first option is the Secret Service, with its own text (`Every program you run can read it while it is unlocked.`).
+
+[#t-store-unavailable]
+=== Not Available Now (`store.unavailable`)
+
+[source,text]
+----
+[5/7] Credentials · Where should this machine keep its tokens?
+  1) Linux Secret Service                              not available now
+     Every program you run can read it while it is unlocked.
+     ✗ no session bus: this is an SSH session
+     → log in at the desktop, or use the files below
+  2) Files in ~/.plan-marshall-mcp/credentials/                      ←
+     Readable by every program you run (mode 0600). Works everywhere, also
+     without a desktop session.
+
+Use the files? [Enter]   l) check again   b) back   ?   ›
+----
+
+* Chosen while unavailable, or failing `store.check`, the state is `store.unavailable` with its cause and the two links `l) check again` and `o) choose another store`.
+
+[#t-store-move]
+=== A Later Change Moves the Tokens (`config credentials`)
+
+[source,text]
+----
+$ pm-operator config credentials --store os
+Credentials · Move the tokens to the macOS Keychain?
+  moves       7 tokens from ~/.plan-marshall-mcp/credentials/ to the Keychain
+  each        written, read back, then deleted from the files
+  if stopped  the next run continues the move; no token is lost or doubled
+
+Move 7 tokens? [Enter]   b) back   ?   › ⏎
+    ✓  github                   moved
+    ✓  sonar                    moved
+    …
+    ✓  pm-mcp-clients/github    moved
+✓ Tokens are kept in the macOS Keychain
+----
+
+[#t-providers]
+== 6 Providers
+
+[#t-providers-select]
+=== Consent, Scan, Select (`providers.consent`, `providers.scan`, `providers.select`)
+
+[source,text]
+----
+[6/7] Providers · Look for CLI tools and stored tokens?
+  looks for   git, gh, glab in your PATH; the tokens stored in the macOS Keychain
+  runs        <tool> --version, gh auth status, glab auth status
+  never       reads a token's value, uses the network
+  cost        none
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › r
+  ✓  git 2.47   ✓  gh 2.71   –  glab not found   ✓  1 token stored
+
+[6/7] Providers · Choose what this machine works with
+  GitHub        1) [x] available    variant 2) native  3) gh 2.71 ←   token ✓ stored
+  GitLab        4) [ ] available
+  SonarCloud    5) [x] available    native only                       token ✗ missing
+  Review bots   6) [x] CodeRabbit   7) [x] Sourcery   8) [ ] cuioss-review-bot
+
+  These are the defaults for every project; a project's setup and a single
+  plan can override them.
+
+Continue with 2 providers? [Enter]   toggle: 1-8   b) back   ?   › ⏎
+----
+
+[#t-providers-credentials]
+=== A Missing Token (`providers.credentials`)
+
+[source,text]
+----
+[6/7] Providers · SonarCloud needs a token
+  Stored in the macOS Keychain; it is never shown again and never reaches a
+  model or a log.
+
+Token (not shown while you type): ›
+Store and check it? [Enter]   k) skip SonarCloud   ?   › ⏎
+----
+
+* The token is read with the echo off into a `char[]` (xref:04-console.adoc#line-editor[Line Editor]) and sent in the body of one request to the runtime over its Unix domain socket, which only the user can open; it never crosses a network on its way to the credential store, and nothing of it is printed. `--no-input` stops here and names `pm-operator credentials set sonar`.
+
+[#t-providers-verify]
+=== Check (`providers.verify`, `providers.failed`, `providers.record`, `providers.done`)
+
+[source,text]
+----
+[6/7] Providers · Checking the providers
+  GitHub                                                     ✓ ready
+    ✓  github.com reachable
+    ✓  token authenticates as oliver-wolff (fine-grained, expires in 41 days)
+    ✓  permissions: contents, pull requests, checks (read and write)
+    ✓  gh 2.71 is logged in as the same account
+  SonarCloud                                                 ✗ not ready
+    ✓  sonarcloud.io reachable
+    ✗  token refused: 401 "Invalid token"
+       → enter the token again
+
+Enter the token again? [Enter]   l) check again   k) continue without SonarCloud   ?   › k
+  SonarCloud will be recorded as not available. Projects can still set it up
+  on their own.
+Continue without SonarCloud? [Enter]   b) back   › ⏎
+✓ Providers recorded: GitHub (gh); SonarCloud not available
+----
+
+* With every provider `✓`, the state passes on its own to `providers.record`; the client prints the result line.
+
+[#t-defaults]
+== 7 Plans (`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`)
+
+[source,text]
+----
+[7/7] Plans · How should plans run on this machine?
+  A project's setup and a single plan can choose otherwise.
+
+  Landing   1) Branch and Pull Request ←   review and merge on the provider
+            2) Commit on main              no Pull Request, pushed directly
+            3) Files only                  nothing is committed; you take over
+  Method    4) Test first ←                tests are written before the code
+            5) Tests after
+  Asking    6) At every phase              you confirm each phase
+            7) At the key points ←         the outline, and before the Merge
+            8) Only questions              you are asked only what needs you
+
+Use these defaults? [Enter]   change: e.g. 2 5   ?n explains a line   b) back   › 2
+  Landing   2) Commit on main ✎
+Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
+    ✓  Commit on main: the base branch accepts pushes (GitHub, main not protected)
+    ✓  Test first
+    ✓  At the key points
+✓ Plan defaults recorded
+----
+
+* A variant that cannot run on this machine is listed without a number and with its reason (`Branch and Pull Request   needs a provider: none is available`).
+* `defaults.validate` that refuses a line reprints the state with the line marked `✗ <reason>` and the prompt naming it.
+
+[#t-completed]
+== Done (`onboard.completed`)
+
+[source,text]
+----
+✓ This machine is ready
+    ✓ Language     Deutsch, models English
+    ✓ Harness      Claude Code 2.4.1 (+ OpenCode 1.9.0)
+    ✓ Models       4 models allowed
+    ✓ Roles        31 roles assigned
+    ✓ Credentials  macOS Keychain
+    ✓ Providers    GitHub (gh)
+    ✓ Plans        Commit on main · Test first · key points
+
+  Next: enrol a project and set it up: pm-operator enrol, in its checkout.
+✓ Web access on http://127.0.0.1:7420
+✓ Browser opened with a pairing code, valid for 10 minutes
+pm ›
+----
+
+The console returns to its prompt and connects the web app as the onboarded entry does (xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop]); a later change of one aspect is `config <aspect>`.

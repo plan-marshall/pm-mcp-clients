@@ -1,0 +1,146 @@
+= Terminal Client: The Console
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » The Console
+
+[#console]
+== The Console
+
+`pm-operator` without a verb opens the operator's console: a prompt at which the operator types verbs without the program name, which runs the dialogues of xref:03-dialogues.adoc[Dialogues], and which shows what the runtime pushes while it is open, above all the questions a running plan asks the operator to decide. It is line-oriented, not full-screen: the scrollback, copying, and SSH keep working as in any shell. Transcripts: xref:05-transcripts-entry.adoc#t-console[The Console at Work].
+
+[#prompt]
+=== The Prompt
+
+* `pm ›` is the prompt; it is the same in every language.
+* *Badges* say what waits for the operator, between `pm` and `›`, only when there is something: `pm [1 question] ›`, `pm [setup 3/7] ›`, `pm [2 questions · setup 3/7] ›`. The counts come from the runtime (its list of open questions and waiver requests, the state of the onboarding), never from counting in the client, so a question answered in the web app leaves the badge at once.
+* *Connection*: `pm (reconnecting) ›` while the runtime cannot be reached (<<connection>>).
+* `Enter` on the empty prompt takes what the badge offers first: an unfinished onboarding continues where it stopped; otherwise nothing happens. A question is never taken by `Enter` alone (<<answering>>).
+* A badge changes while the operator types: the prompt is redrawn with the typed text and the cursor where they were.
+
+[#pushed]
+=== What the Runtime Pushes
+
+The console follows the runtime's event stream (`GET /api/v1/events`) while it is open. Events are of two kinds:
+
+* *Waiting for the operator*: a question of a plan or an epic, a waiver request, a plan stalled or paused on integrity. Each is shown as a notice block, counted in the badge, and announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>).
+* *For information*: a plan ended, a worker restarted, a check of a running dialogue reported. At most one quiet line, several of them coalesced into one; the full list is `pm-operator status`.
+
+A notice is printed *above* the prompt: the line the operator is typing is taken off, the notice is printed, and the prompt is drawn again with the typed text and the cursor where they were. Nothing typed is lost, and nothing typed becomes an answer.
+
+----
+pm › config roles --pro
+◆ Question Q7 · plan fix-relay · answer by 14:52 (in 18 min)
+  The change conflicts with main in RelayServer.java.
+  Recommended: 2) Rebase onto main
+  answer Q7   ·   questions
+pm [1 question] › config roles --pro
+----
+
+[#answering]
+=== Answering a Question
+
+A pushed item never takes the focus: no keystroke typed before it was shown can answer it, and a bare number at the prompt is no answer (`2 is not a command here; help lists them`).
+
+* `questions` lists what waits: id, plan or epic, the question in one line, the recommendation, and the deadline.
+* `answer Q7` opens the question as a dialogue state (xref:03-dialogues.adoc#state-frame[The Frame of a State]): the question, the options numbered, the recommendation preselected, the default assumption, the deadline, and the rationale on `?`. Input typed ahead before it opened is discarded, so a stray `Enter` cannot take the recommendation; from then on `Enter` takes it, as everywhere, because the operator opened the question.
+* `answer Q7 2` answers at once with option 2, after printing the option it chose.
+* A waiver request is answered the same way; it has no `Enter` default, like a consent (xref:03-dialogues.adoc#consent[Consent]).
+* A question's text comes from a model; the console shows it as data, never as a command, and strips every control sequence from it before it is printed (<<output-safety>>).
+
+[#during-dialogue]
+=== A Question During a Dialogue
+
+A dialogue is never interrupted. When something arrives while a dialogue runs, the console prints one line at the next state of the dialogue, before its prompt:
+
+----
+◆ 1 question waiting: Q7 · fix-relay · answer by 14:52 (in 11 min)   ! shows it
+----
+
+`!` leaves the dialogue where it is (nothing is sent; its state stays in the runtime), opens what waits, and afterwards reads the dialogue's state again and prints it. The line is repeated at every state of the dialogue while the deadline is within its last reminder (<<deadlines>>).
+
+[#deadlines]
+=== Deadlines
+
+* A deadline is shown as the time and the time left (`answer by 14:52 (in 18 min)`), computed each time it is printed. Nothing ticks in place: a counting line breaks screen readers and plain terminals.
+* A reminder is printed above the prompt at half the time, at 5 minutes, and at 1 minute before the deadline, with the bell.
+* At the deadline the console prints what the runtime did: `Q7 expired; the plan went on with the recommendation: Rebase onto main.`
+
+[#answered-elsewhere]
+=== Answered Elsewhere
+
+The first valid answer wins, from the web app, the console, or an entry session. When another channel answers first:
+
+* the console prints `– Q7 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.` and the badge drops;
+* a question open as a dialogue is closed, the input typed into it is dropped, and the console returns to its prompt;
+* an answer from the console that arrives too late is refused by the runtime (`already_answered`), and the console prints the same line, not an error;
+* a desktop notification of the question is withdrawn where the terminal allows it.
+
+[#connection]
+=== Connection
+
+* The console reconnects to the event stream with `Last-Event-ID` and the delay the runtime names (`retry:`), backing off with jitter after repeated failures; it starts the runtime on demand like every verb.
+* While the runtime cannot be reached, the prompt shows `(reconnecting)` and one line says why; the typed text stays.
+* After a reconnect it always reads the state again (the open questions, a running dialogue's state), because a restarted runtime holds no events to replay, and prints one line: `✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 2 plans running.`
+
+[#console-keys]
+=== Keys of the Console
+
+[cols="1,2,2,2",options="header"]
+|===
+|Key |At the prompt, with text |At the empty prompt |In a dialogue or a question
+
+|`Ctrl+C`
+|clears the line; `↑` brings it back
+|prints `exit or Ctrl+D leaves the console`
+|leaves the dialogue to the prompt, as `q`
+
+|`Ctrl+D`
+|deletes the character under the cursor
+|leaves the console; while questions are open it first says `2 questions stay open; you can answer them in the web app.` and leaves at the second `Ctrl+D`
+|leaves the dialogue to the prompt
+
+|`↑`, `↓`, `Ctrl+R`
+|the history of typed commands
+|the same
+|—
+
+|`Tab`
+|completes verbs, options, aspects, ids of questions, projects, and plans
+|lists the verbs
+|—
+|===
+
+* `exit` leaves the console as `Ctrl+D` does.
+* The history holds typed commands only, in `$XDG_STATE_HOME/pm-operator/history` (default `~/.local/state/pm-operator/history`, mode `0600`), outside `<PM_MCP_BASE>`, whose only writer is the runtime; answers of dialogues and questions, and every secret, are never written to it.
+
+[#notifications]
+=== Notifications
+
+* What waits for the operator rings the terminal bell once when it arrives and at each reminder.
+* A desktop notification is sent instead where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
+* The machine configuration key `console.notify` chooses `auto` (the default: the desktop notification where known, else the bell), `bell`, or `off`.
+* A notification carries the plan and the kind (`plan fix-relay asks a question`), never the text of the question, which may hold content of the project.
+
+[#output-safety]
+=== Output Safety
+
+Every text that comes from the runtime and may come from a model or a repository (a question, a finding, a file name, a branch) is printed only after every control character and terminal sequence (C0 and C1 controls, `ESC`, `CSI`, `OSC`, `DEL`) has been removed or shown as a visible placeholder. This holds for the notice blocks, the dialogues, the notification payloads, and the window title alike: a crafted text must not move the cursor, write the clipboard, fake a prompt, or change what the operator sees. Pasted input that contains a line break never answers a question: a bracketed paste is taken as text of the line, never as `Enter`.
+
+[#console-security]
+=== The Operator Checks
+
+The console runs the operator checks once, when it opens: an interactive terminal and no coding-agent environment (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation], item 2); every verb typed in it is an operator act of that terminal. The checks are a speed bump, not a boundary: an agent that drives a real terminal (through `tmux` or `expect`) passes them, which is the accepted risk of the operator channel and stays so. Every answer and every change is audited with channel `cli`.
+
+[#line-editor]
+=== Line Editor
+
+The console reads with JLine 4 (`jline-reader`, `jline-terminal`, `jline-terminal-ffm`): it is the only Java line editor that prints above the line being edited and draws it again (`LineReader.printAbove`), reads secrets without an echo and without history, and is built and tested as a GraalVM native image upstream.
+
+* *Terminal access*: through the Foreign Function & Memory API (`ffm`), and through `stty` (`exec`) where that fails; the JNI provider, which unpacks a native library at runtime, is not used. The native libraries that `jline-native` carries for other platforms are kept out of the binary.
+* *Platforms*: Linux (`x86_64`, `aarch64`) and macOS on Apple silicon (`arm64`).
+* *Threads*: one thread reads; the thread of the event stream only prints above the prompt and redraws it. A verb writes through the console's writer while the console is open, never directly to standard output.
+* *A terminal without cursor control* (`TERM=dumb`, a screen reader that reads each redraw): notices are printed between lines, at the next prompt, never into the line being typed; the badge and the bell still announce them.
+* *Secrets* (a token in `providers.credentials`, `credentials set`) are read character by character from the terminal with the echo off into a `char[]` that is cleared after the request, never through `LineReader.readLine`, whose result is a `String` that cannot be cleared; they never reach the history.
+* *Picocli* stays the parser of verbs and options; completion is computed from picocli's model of the commands.

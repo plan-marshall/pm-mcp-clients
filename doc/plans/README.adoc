@@ -118,7 +118,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |epic clients
 
 |link:cli-onboarding.adoc[`cli-onboarding`]
-|Onboarding and `start` in `pm-operator`
+|The console `pm-operator`: entry, onboarding, and questions
 |`open`
 |link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:operator-checks.adoc[`operator-checks`]
 |epic clients

@@ -1,0 +1,39 @@
+= Design of the Clients
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../plans/README.adoc[Work packages of `pm-mcp-clients`] » Design
+
+== Overview
+
+The design shows how the use cases (link:../../../plan-marshall-documentation/doc/UseCases.adoc[Use Cases]) look and behave in the two clients of the operator, the terminal client `pm-operator` and the web app `pm-web-app`: the views and dialogues, what they show, how one moves between them, the interactions, the texts, and the visual language. A design is the specification its client's implementation follows, so it lives here, beside the code. The use cases stay in `plan-marshall-documentation`: one set for both clients, which says what the operator achieves and never how a client shows it. The specification there states what the runtime does behind both clients, and a design never contradicts it.
+
+== Conventions
+
+* *One folder per client, one folder for what they share*: `terminal-client/`, `web-app/`, `shared/`; each folder's `README.adoc` is its entry point and lists its parts.
+* *Small parts*: a document stays below 500 lines; one that grows beyond is split into parts.
+* *Traceability*: every document names the use cases it serves (`_Use cases:_` below its title) and the specification sections it relies on.
+* *Both clients, one state*: a state of a workflow is designed for both clients; where one client needs something the other does not, its design says so.
+* *Status*: `DRAFT` while it is being worked out, `AGREED` once the operator agreed to it; the work package of a design records the acceptance in the index of the work packages.
+* *Pictures*: wireframes and mock-ups are SVG files beside the document, named `<subject>-<what>.svg`, embedded with `image::`; a picture always has a text that says what it shows.
+
+[#index]
+== Design Documents
+
+[cols="2,1,3",options="header"]
+|===
+|Document |Status |What it covers
+
+|link:terminal-client/README.adoc[Terminal Client]
+|`DRAFT`
+|The console `pm-operator`: its commands, the levels machine, project and plan, how a state is rendered and answered, pushed questions, a transcript of every state, and its texts in English and German. Work package link:../plans/cli-design.adoc[`cli-design`].
+
+|link:web-app/README.adoc[Web App]
+|`DRAFT`
+|The web app: its principles, the onboarding screens, the harness icons; its structure, plan views, plan designer, and visual language are still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
+
+|link:shared/texts-and-languages.adoc[Texts and Languages]
+|`DRAFT`
+|What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).
+|===

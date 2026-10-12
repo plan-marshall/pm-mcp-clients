@@ -4,25 +4,26 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-onboarding`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]; no roadmap milestone yet
 Where:: `pm-operator`; scenarios in `pm-mock-runtime`
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What
 
-* `pm-operator start [--auto] [--pair]`, `pm-operator onboard [--auto]`, and `pm-operator config <aspect>` as designed in `cli-design`, rendering the states the runtime reports; no step order or rule in the client.
+* The console `pm-operator` (the entry, the console commands, pushed questions and their answers) and `pm-operator config <aspect>` as designed in `cli-design`, rendering the states the runtime reports; no step order or rule in the client. The line editor is JLine 4 (`jline-reader`, `jline-terminal`, `jline-terminal-ffm`), approved by the operator; its version is managed in `pm-mcp-parent`.
+* One shared sanitiser of every text from the runtime before it reaches the terminal (notices, dialogues, notifications, the window title; link:../design/terminal-client/04-console.adoc#output-safety[Output Safety]), with tests that feed it control sequences of every kind.
 * The scenarios of every case the use cases name (each consent answered no, each check failing, stop and resume, the automatic run), in `pm-mock-runtime`.
 * Texts from the catalogue only, in English and German.
 
 == Trace
 
-Requirements, specification sections, use cases, and the design documents both clients share stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients are in this repository (`doc/design/`). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]
-* Design: link:../design/terminal-client.adoc[Terminal Client], the accepted design of `cli-design`, which this package implements; link:../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc[Design, Texts and Languages]
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]
+* Design: link:../design/terminal-client/README.adoc[Terminal Client], the accepted design of `cli-design`, which this package implements; link:../design/shared/texts-and-languages.adoc[Texts and Languages]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]
 
 == Done When
 
-Every scenario of the onboarding and of `start` passes as a transcript test, in the JVM and native; no text is written in the client's code (a test fails for a literal user-facing string).
+Every scenario of the onboarding, the entry, and the console passes as a transcript test, in the JVM and native; no text is written in the client's code (a test fails for a literal user-facing string).

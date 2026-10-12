@@ -1,0 +1,343 @@
+= Terminal Client: Transcripts: The Entry and the Automatic Run
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Transcripts: The Entry and the Automatic Run
+
+[#transcripts]
+== Transcripts
+
+One transcript per state or per short sequence of states; the states each one shows are named above it, and xref:08-transcripts-later.adoc#state-coverage[Every State and Its Transcript] lists every state with its transcript. The operator's input follows `› `; `⏎` stands for `Enter` alone. A check is shown as it ended. The transcripts are in English; the German texts are those of xref:09-texts-common.adoc#texts[Texts], and one German transcript (xref:06-transcripts-steps-1-3.adoc#t-language[1 Language (language.detect, language.choose, language.record, language.done)]) shows the switch.
+
+[#t-entry]
+=== The Entry `pm-operator`
+
+[#t-entry-desktop]
+==== Onboarded, on the Desktop (`start.runtime`, `start.pairing`, `start.where`, `start.browser`, `start.show`, `start.wait`)
+
+The first console after the onboarding, with no browser of this machine paired yet:
+
+[source,text]
+----
+$ pm-operator
+✓ Runtime started (pm-mcpd 0.9.0)
+✓ Web access on http://127.0.0.1:7420
+✓ Browser opened with a pairing code, valid for 10 minutes
+    URL    http://127.0.0.1:7420/pair#code=KXQB-MRTN
+    Code   KXQB-MRTN   valid until 14:32
+pm › status
+…
+✓ Paired: local (Firefox on mbp-oliver)
+pm › exit
+$
+----
+
+A later console, with the browser paired:
+
+[source,text]
+----
+$ pm-operator
+✓ Runtime running (pm-mcpd 0.9.0)
+✓ Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)
+pm [1 question] ›
+----
+
+* `start.runtime` prints `✓ Runtime running` when one was running already. `start.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one).
+* `start.browser` that cannot start the browser prints `– No browser opened: <reason>` and shows the ways in as over SSH.
+* `start.wait` is the console itself: a pairing is reported above the prompt (`✓ Paired: …`), and a redeemed code is replaced by a new one for a further device, which `web` shows.
+
+[#t-entry-ssh]
+==== Onboarded, over SSH (`start.where`, `start.show`, `start.wait`)
+
+[source,text]
+----
+$ pm-operator
+✓ Runtime running (pm-mcpd 0.9.0)
+✓ Web access on http://127.0.0.1:7420
+– SSH session: no browser opened here
+  Ways in, from your own computer
+    1. Forward the port (VS Code and JetBrains do this on their own):
+       ssh -L 7420:127.0.0.1:7420 oliver@build-box
+    2. Open:
+       http://127.0.0.1:7420/pair#code=KXQB-MRTN
+    Code KXQB-MRTN, valid until 14:32
+pm › web copy ssh
+✓ Copied, if your terminal allows it; the text is above.
+pm › web pair
+✓ New code: TBZC-HQPL, valid until 14:35. The previous code no longer works.
+  http://127.0.0.1:7420/pair#code=TBZC-HQPL
+pm ›
+----
+
+[#t-entry-other]
+==== Another Device (`start.other-device`, `start.lan`)
+
+[source,text]
+----
+pm › web lan
+Reach plan-marshall from a phone or another computer?
+  serves      HTTPS on every network interface of this machine, port 7420
+  certificate self-signed; your browser warns once, compare the fingerprint
+  means       every device on your network can reach the pairing page;
+              only a paired device gets in
+  undo        pm-operator web disable
+
+Open to the network? y) yes   n) no, keep it on this machine [Enter]   › ⏎
+  Nothing was opened.
+pm › web lan
+…
+Open to the network? y) yes   n) no, keep it on this machine [Enter]   › y
+✓ Web access on https://mbp-oliver.local:7420 and every interface
+
+  ▄▄▄▄▄▄▄ ▄ ▄▄ ▄▄▄▄▄▄▄
+  █ ▄▄▄ █ ▀█▄▀ █ ▄▄▄ █      https://mbp-oliver.local:7420/pair#code=HVNQ-SXKD
+  █ ███ █ ▄▀▀█ █ ███ █      Code HVNQ-SXKD, valid until 14:38
+  █▄▄▄▄▄█ █▀▄▀ █▄▄▄▄▄█      Fingerprint SHA-256
+  ▄▄▄▄ ▄▄▄▀█▄▀▄▄▄▄ ▄ ▄        4F:1A:9C:…:E2:07   ? shows it in full
+  …
+pm ›
+----
+
+* `start.other-device` is a choice of the network exposure, not a consent of the onboarding: its default is the safe answer `n`, which `Enter` takes, as the use case says (`no (default)`).
+
+[#t-entry-first]
+==== Not Fully Onboarded (`onboard.entry`, `onboard.mode`)
+
+[source,text]
+----
+$ pm-operator
+✓ Runtime started (pm-mcpd 0.9.0)
+– SSH session: no browser opened here
+
+plan-marshall is running. This machine is not set up yet.
+
+  Seven steps. Nothing on this machine is looked at, run, or changed until
+  you say so in that step. You can stop at any point; Enter at the prompt,
+  or the web app, continues where you stopped.
+
+    1  Language     the language of plan-marshall and of the models' texts
+    2  Harness      the coding agent the server works with first
+    3  Models       the agents and models other plans may use
+    4  Roles        an agent and a model for every role
+    5  Credentials  where this machine keeps its tokens
+    6  Providers    the git hosts, CI and analysis services this machine uses
+    7  Plans        how plans run unless a project says otherwise
+
+Where do you want to set it up?   h) here, in the terminal [Enter]   w) in the web app   ?   › ⏎
+
+Set up this machine for plan-marshall
+Begin with step 1? [Enter]   a) decide everything for me   ?   ›
+----
+
+* The preselection is _here_ in an SSH session, as shown, and _in the web app_ on a desktop, where the browser can open (`w) in the web app [Enter]   h) here, in the terminal`).
+* _In the web app_ connects the web app as the onboarded entry does (<<t-entry-desktop>>, <<t-entry-ssh>>) and returns to the prompt with its badge; the web app shows `onboard.mode` or the state the onboarding stopped in.
+* Left before it completes, the onboarding waits behind the badge, and `Enter` on the empty prompt continues it; a new console asks again, naming where it stopped:
+
+[source,text]
+----
+Set up this machine for plan-marshall
+Begin with step 1? [Enter]   a) decide everything for me   ?   › q
+Left the setup before step 1. Nothing was sent. Enter continues the setup.
+pm [setup 0/7] › status
+…
+pm [setup 0/7] › ⏎
+Set up this machine for plan-marshall
+…
+$ pm-operator
+✓ Runtime running (pm-mcpd 0.9.0)
+
+plan-marshall is running. This machine is set up up to step 2 of 7; it
+stopped at [3/7] Models.
+
+Where do you want to go on?   h) here, in the terminal [Enter]   w) in the web app   ?   › ⏎
+[3/7] Models · Choose the harnesses and models other plans may use
+…
+----
+
+[#t-console]
+=== The Console at Work
+
+[#t-console-typing]
+==== A Question While the Operator Types
+
+[source,text]
+----
+pm › config roles --pro
+◆ Question Q7 · plan fix-relay · answer by 14:52 (in 18 min)
+  The change conflicts with main in RelayServer.java.
+  Recommended: 2) Rebase onto main
+  answer Q7   ·   questions
+pm [1 question] › config roles --project .
+Roles · project pm-mcp-clients · Give every role a harness and a model
+…
+pm [1 question] › questions
+  Q7   fix-relay   The change conflicts with main in RelayServer.java.
+       recommended: Rebase onto main        answer by 14:52 (in 16 min)
+pm [1 question] › answer Q7
+Question Q7 · plan fix-relay · phase 5 execute · answer by 14:52 (in 16 min)
+  The change conflicts with main in RelayServer.java.
+    1) Merge main into the branch
+    2) Rebase onto main ← recommended: keeps the history linear
+    3) Stop the plan and ask me later
+
+Rebase onto main? [Enter]   other: 1-3   q) not now   ?   › ⏎
+✓ Q7 answered: Rebase onto main. The plan goes on.
+pm ›
+----
+
+* The notice is printed above the line being typed; `config roles --pro` and the cursor are drawn again below it, and the operator goes on typing.
+
+[#t-console-dialogue]
+==== A Question During a Dialogue
+
+[source,text]
+----
+[3/7] Models · Choose the harnesses and models other plans may use
+  …
+Enrol OpenCode and allow 3 models? [Enter]   toggle: 1-6   b) back   ?   › 3
+◆ 1 question waiting: Q7 · fix-relay · answer by 14:52 (in 11 min)   ! shows it
+    3) [x] haiku-5.5        ✎
+Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   › !
+  [3/7] Models stays where it is; nothing was sent.
+Question Q7 · plan fix-relay · answer by 14:52 (in 11 min)
+  …
+Rebase onto main? [Enter]   other: 1-3   q) not now   ?   › ⏎
+✓ Q7 answered: Rebase onto main.
+Back to [3/7] Models.
+[3/7] Models · Choose the harnesses and models other plans may use
+  …
+    3) [x] haiku-5.5        ✎
+Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   ›
+----
+
+[#t-console-elsewhere]
+==== Answered on Another Device
+
+[source,text]
+----
+pm [1 question] › answer Q7
+Question Q7 · plan fix-relay · answer by 14:52 (in 9 min)
+    1) Merge main into the branch
+    2) Rebase onto main ← recommended
+    3) Stop the plan and ask me later
+Rebase onto main? [Enter]   other: 1-3   q) not now   ?   › 1
+– Q7 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.
+pm ›
+----
+
+* The same line is printed when the web answer arrives while `1` is typed but not sent, and when `1` reaches the runtime after the web answer and is refused (`already_answered`).
+
+[#t-console-reconnect]
+==== The Runtime Restarts
+
+[source,text]
+----
+pm [1 question] › stat
+– Lost the connection to the runtime (pm-mcpd stopped). Reconnecting …
+pm (reconnecting) › stat
+✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 2 plans running.
+pm [1 question] › status
+…
+----
+
+[#t-console-exit]
+==== Leaving with Open Questions
+
+[source,text]
+----
+pm [2 questions] › exit
+2 questions stay open; you can answer them in the web app. exit or Ctrl+D again leaves.
+pm [2 questions] › exit
+$
+----
+
+[#t-onboard]
+=== The Onboarding
+
+[#t-auto]
+==== Automatic (`auto.consent`, `auto.run`, `auto.result`)
+
+[source,text]
+----
+Begin with step 1? [Enter]   a) decide everything for me   ?   › a
+Decide everything for me?
+  looks for   the harnesses claude, opencode, codex, agy in your PATH,
+              ~/.local/bin, /Applications, /opt/homebrew/bin
+              the tools git, gh, glab and the tokens already stored
+  runs        the version and login probe of each harness found,
+              the model probe of each harness that can list its models,
+              the version probe of each tool found
+  never       asks a model, reads other files, sends anything over the network
+              except the provider checks
+  cost        none
+  This consent is for this run only.
+
+y) yes   n) not now   ? lists every action   › y
+
+[1/7] Language     ✓ Deutsch, models too           from your system
+[2/7] Harness      ✓ Claude Code 2.4.1             the first supported one
+                     ✓ version   ✓ logged in
+[3/7] Models       ✓ 3 models on 2 harnesses       all found
+[4/7] Roles        ✓ default assignment, 31 roles  the default
+[5/7] Credentials  ✓ macOS Keychain                available here
+                     ✓ write   ✓ read   ✓ delete
+[6/7] Providers    ✓ GitHub via gh 2.71            gh logged in
+                     ✓ reachable   ✓ oliver-wolff   ✓ permissions   ✓ gh same account
+                   – SonarCloud                    no token: skipped
+[7/7] Plans        ✓ Pull Request · Test first · key points   the default
+
+Everything is decided.
+  No model was asked; ask the steward to refine the roles: pm-operator config roles
+  Add SonarCloud: pm-operator config providers
+  Change any of it: pm-operator config <language|harness|models|roles|credentials|providers|plan-defaults>
+
+Finish? [Enter]   1-7) change that step   ?   › ⏎
+✓ This machine is ready. Next: enrol a project (pm-operator enrol).
+…
+pm ›
+----
+
+* The automatic run is the choice `a` of `onboard.mode`, after _here_ in the entry's question; there is no option for it.
+* `auto.consent` has no `r`: the automatic run's consent is never remembered.
+* *A step that needs the operator* (`auto.run` stops in a state of a step): the state is shown as in the guided run, under its step line, and the run continues after it:
+
+[source,text]
+----
+[2/7] Harness      ✓ Claude Code 2.4.1             the first supported one
+                     ✓ version   ✗ not logged in
+
+[2/7] Harness · Checking Claude Code
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✗  not logged in
+       → log in to Claude Code in another terminal, then check again:
+         claude login
+
+Check again? [Enter]   o) choose another harness   q) leave   ?   › ⏎
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✓  logged in
+[3/7] Models       ✓ 3 models on 2 harnesses       all found
+…
+----
+
+* `auto.result`: a number opens that step's choice state with the automatic value as its proposal, as `config <aspect>` would, and returns to the result.
+
+[#t-mode]
+==== Guided (`onboard.mode`)
+
+After _here_ in the entry's question (<<t-entry-first>>):
+
+[source,text]
+----
+Set up this machine for plan-marshall
+
+  Seven steps. Nothing on this machine is looked at, run, or changed until
+  you say so in that step. You can stop at any point; the next run continues
+  where you stopped.
+
+    1  Language     the language of plan-marshall and of the models' texts
+    …
+    7  Plans        how plans run unless a project says otherwise
+
+Begin with step 1? [Enter]   a) decide everything for me   ?   › ⏎
+----
