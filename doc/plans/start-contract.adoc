@@ -5,7 +5,7 @@ link:README.adoc[Work packages of `pm-mcp-clients`] » `start-contract`
 
 [horizontal]
 Serves:: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5]; no roadmap milestone yet
-Where:: `pm-api` (the entry of a plan or an orchestrator, its sources and their states, the listing of files); `pm-mock-runtime` (routes and scenarios)
+Where:: `pm-api` (the entry of a plan or an epic, its sources and their states, the listing of files); `pm-mock-runtime` (routes and scenarios)
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
@@ -15,7 +15,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * The records of an entry (its kind, its project, its sources with their kind, reference, state, trust, and screening verdict, the proposed title and id), of a source's failure and of a flagged source with its spans; the request that opens an entry and the one that adds each kind of source.
 * The listing of files for the web app's picker, confined as the specification says.
 * The representation of the entry's states for both clients (`start.choose`, `start.sources`, `start.ready`, the source sub-workflows, `recipe.choose`, `recipe.parameters`), on the scheme of `operator-interaction-contract`.
-* The scenarios of the mock runtime: a plan from one description; a plan from description, documents, and an issue of another repository on Codeberg with its grant; documents copied and moved, a directory, a file tracked by git, a file refused; an issue not found and tried again; a flagged issue accepted and one removed; a lesson whose premise no longer holds; local changes; a pull request; an orchestrator from documents; a recipe with parameters; an entry left and continued; scenario names `start-<case>`.
+* The scenarios of the mock runtime: a plan from one description; a plan from description, documents, and an issue of another repository on Codeberg with its grant; documents copied and moved, a directory, a file tracked by git, a file refused; an issue not found and tried again; a flagged issue accepted and one removed; a lesson whose premise no longer holds; local changes; a pull request; an epic from documents; a recipe with parameters; an entry left and continued; scenario names `start-<case>`.
 
 == Trace
 

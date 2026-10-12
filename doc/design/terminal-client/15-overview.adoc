@@ -23,16 +23,16 @@ What the overview of running work shows and in which order is link:../shared/pla
 ----
  Running work · projects                                          ● connected
  ─────────────────────────────────────────────────────────────────────────────
- ! 2  pm-mcp-clients      3 plans · 1 orchestrator                    2 min ago
+ ! 2  pm-mcp-clients      3 plans · 1 epic                    2 min ago
 ▶     pm-mcp-core         2 plans                                     9 min ago
-      plan-marshall-mcp   1 orchestrator                              1 h ago
+      plan-marshall-mcp   1 epic                              1 h ago
  ! 1  plan-marshall       setup needs you
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move   Enter open   / filter   ? help   q leave
 ----
 
 * *Header*: where the operator is (`projects`, or the project and its view) and the connection to the runtime.
-* *List*: one row per project, plan, or orchestrator, the selected one marked `▶` and drawn inverted; it scrolls when it is longer than the screen, with `↑ 3 more` and `↓ 5 more` at its edges.
+* *List*: one row per project, plan, or epic, the selected one marked `▶` and drawn inverted; it scrolls when it is longer than the screen, with `↑ 3 more` and `↓ 5 more` at its edges.
 * *Footer*: the keys that apply here; `?` shows all of them.
 * The view opens on the terminal's alternate screen, so the scrollback and the prompt are as they were when it is left.
 
@@ -53,27 +53,27 @@ By plan:
                      running 1 h 5 min · in outline 30 min · 0 of 0 tasks
                      in ◇ client work
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   o orchestrator   ! what waits   Tab by orchestrator   Esc back
+ ↑↓ move   Enter open   o epic   ! what waits   Tab by epic   Esc back
 ----
 
-By orchestrator:
+By epic:
 
 ----
- Running work · pm-mcp-clients · by orchestrator                  ● connected
+ Running work · pm-mcp-clients · by epic                  ● connected
  ─────────────────────────────────────────────────────────────────────────────
-▶            ◇ orchestrator  client work          2 running · 3 staged
+▶            ◇ epic  client work          2 running · 3 staged
                      running 3 d · 4 of 9 plans
                ├─    ▸ plan  Overview resource of the runtime  execute · working
                └─    ▸ plan  Message catalogue                 outline · working
-   without orchestrator
+   without epic
  ! decision  ▸ plan  Console history of answers       refine · waiting for you
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move   Enter open   ! what waits   Tab by plan   Esc back
 ----
 
-* Each row is the plan's or orchestrator's first line (kind, title, phase and state) and below it its details (times, progress, the orchestrator it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
-* `o` on a plan moves to its orchestrator in the view by orchestrator; `Tab` switches between the two views and keeps the selection.
-* `Enter` on a plan or an orchestrator opens its own view in the same full-screen view: a plan its plan view (xref:16-plan-view.adoc[The Plan View]); an orchestrator its own view, designed with the orchestrator's use case; `!` leaves the view and opens what waits for the operator in it, as `answer` does (link:../shared/decisions.adoc[Decisions]).
+* Each row is the plan's or epic's first line (kind, title, phase and state) and below it its details (times, progress, the epic it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
+* `o` on a plan moves to its epic in the view by epic; `Tab` switches between the two views and keeps the selection.
+* `Enter` on a plan or an epic opens its own view in the same full-screen view: a plan its plan view (xref:16-plan-view.adoc[The Plan View]); an epic its own view, designed with the epic's use case; `!` leaves the view and opens what waits for the operator in it, as `answer` does (link:../shared/decisions.adoc[Decisions]).
 
 [#full-screen-keys]
 === Keys
@@ -91,16 +91,19 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 |a page; the first and the last row
 
 |`Enter`, `→`, `l`
-|open: a project shows its plans; a plan or an orchestrator opens its own view
+|open: a project shows its plans; a plan or an epic opens its own view
 
 |`Esc`, `←`, `h`
 |back one level
 
 |`Tab`
-|switch the view of a project: by plan, by orchestrator
+|switch the view of a project: by plan, by epic
 
-|`o`
-|on a plan: its orchestrator
+|`e`
+|on a plan: its epic
+
+|`a`
+|the actions of the selected plan or epic, below its row (xref:19-actions.adoc#full-screen[Actions])
 
 |`!`
 |open what waits for the operator in the selected row
@@ -143,7 +146,7 @@ pm [1 question] ›
 [#overview-persistence]
 === Where the Operator Left It
 
-The view stores the project, the view of the project, and the id of the selected plan or orchestrator in `$XDG_STATE_HOME/pm-operator/overview.json` (default `~/.local/state/pm-operator/overview.json`), when the operator leaves it; the next `plans` opens there, or falls back as link:../shared/plan-overview.adoc#persistence[Where the Operator Left It] says. Like the history, the file lies outside `<PM_MCP_BASE>` and holds no content of a plan.
+The view stores the project, the view of the project, and the id of the selected plan or epic in `$XDG_STATE_HOME/pm-operator/overview.json` (default `~/.local/state/pm-operator/overview.json`), when the operator leaves it; the next `plans` opens there, or falls back as link:../shared/plan-overview.adoc#persistence[Where the Operator Left It] says. Like the history, the file lies outside `<PM_MCP_BASE>` and holds no content of a plan.
 
 [#status-tree]
 == The Tree (`status`)
@@ -153,12 +156,12 @@ The view stores the project, the view of the project, and the id of the selected
 pm › status
 Runtime pm-mcpd 0.9.1, running since 08:14 · 2 workers · 1 of 2 build slots in use
 
-! 2  pm-mcp-clients · 3 plans · 1 orchestrator
+! 2  pm-mcp-clients · 3 plans · 1 epic
      ! decision  plan  Console history of answers   refine · waiting for you · 40 min
                  plan  Overview resource of the runtime   execute · working · 2 h 10 min
-                       in orchestrator client work · 7 of 12 tasks
+                       in epic client work · 7 of 12 tasks
                  plan  Message catalogue   outline · working · 1 h 5 min
-                       in orchestrator client work
+                       in epic client work
      pm-mcp-core · 2 plans
                  plan  Session log and generations   execute · working · 4 h
                  plan  Profile loader   finalize · working · 6 h
@@ -166,8 +169,8 @@ Runtime pm-mcpd 0.9.1, running since 08:14 · 2 workers · 1 of 2 build slots in
 pm [1 question] ›
 ----
 
-* The same rows, in the same order, as words: the kind is a word (`plan`, `orchestrator`), the marker `!` is followed by its kind, and no meaning is in a colour or a glyph alone.
-* By default the tree is the view by plan: plans flat, each naming its orchestrator. `status --by orchestrator` prints the view by orchestrator: the orchestrators with their running and staged plans, and their plans below them; `status --project <id>` prints one project.
+* The same rows, in the same order, as words: the kind is a word (`plan`, `epic`), the marker `!` is followed by its kind, and no meaning is in a colour or a glyph alone.
+* By default the tree is the view by plan: plans flat, each naming its epic. `status --by epic` prints the view by epic: the epics with their running and staged plans, and their plans below them; `status --project <id>` prints one project.
 * The tree is printed once; it is the view of a screen reader, of a terminal without cursor control, and of a narrow one.
 
 [#overview-texts]
@@ -195,9 +198,9 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |filter
 |filtern
 
-|`operator.overview.keys.orchestrator`
-|orchestrator
-|Orchestrator
+|`operator.overview.keys.epic`
+|epic
+|Epic
 
 |`operator.overview.keys.waits`
 |what waits

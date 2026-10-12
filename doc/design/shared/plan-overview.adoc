@@ -11,7 +11,7 @@ _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
 
-`PM-MCP` runs many plans and orchestrators over many projects. The overview is where the operator sees what runs and what needs attention, in two dimensions: the projects, and in a project its plans and orchestrators. This document is what both clients show; how each draws it is its own design.
+`PM-MCP` runs many plans and epics over many projects. The overview is where the operator sees what runs and what needs attention, in two dimensions: the projects, and in a project its plans and epics. This document is what both clients show; how each draws it is its own design.
 
 [#levels]
 == Two Levels, Two Views
@@ -19,15 +19,15 @@ Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.ado
 ----
   Projects                          A project
   ─────────                         ───────────────────────────────────────────
-  ! pm-mcp-clients   3 · 1  2 ◀──── by plan:          by orchestrator:
-    pm-mcp-core      2 · 0            plans, flat,      orchestrators, each with
+  ! pm-mcp-clients   3 · 1  2 ◀──── by plan:          by epic:
+    pm-mcp-core      2 · 0            plans, flat,      epics, each with
     plan-marshall    0 · 1            each naming its   its plans below it; the
-                                      orchestrator      plans of none at the end
+                                      epic      plans of none at the end
 ----
 
-* *Projects*: only those with running work (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work]): an active plan or orchestrator, or an open decision of the project's setup. Ended and archived plans never appear; a project with nothing running does not either.
-* *A project, by plan*: its active plans, flat. Each plan names the orchestrator it belongs to; in the web app the name is a link to that orchestrator, in the terminal a key moves there.
-* *A project, by orchestrator*: its active orchestrators, each with its active plans below it; the plans that belong to no orchestrator follow as a group of their own (`without orchestrator`), so both views hold the same plans.
+* *Projects*: only those with running work (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work]): an active plan or epic, or an open decision of the project's setup. Ended and archived plans never appear; a project with nothing running does not either.
+* *A project, by plan*: its active plans, flat. Each plan names the epic it belongs to; in the web app the name is a link to that epic, in the terminal a key moves there.
+* *A project, by epic*: its active epics, each with its active plans below it; the plans that belong to no epic follow as a group of their own (`without epic`), so both views hold the same plans.
 * The operator switches between the two views of a project at any time; the view is part of where the operator left the overview (<<persistence>>).
 
 [#project-row]
@@ -44,24 +44,24 @@ Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.ado
 |the project's display name; its id where it has none
 
 |Active work
-|plans and orchestrators, counted apart (`3 plans · 1 orchestrator`)
+|plans and epics, counted apart (`3 plans · 1 epic`)
 
 |Setup
 |`setup needs you` when only its setup waits for the operator
 |===
 
-Order: projects that need the operator first, then by their latest activity. A project whose running work ends (its last active plan and orchestrator ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
+Order: projects that need the operator first, then by their latest activity. A project whose running work ends (its last active plan and epic ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
 
 [#item-rows]
-== A Plan, an Orchestrator
+== A Plan, an Epic
 
 [cols="1,2,2",options="header"]
 |===
-|Element |Plan |Orchestrator
+|Element |Plan |Epic
 
 |Kind
 |its icon, colour, and the word `plan`
-|its icon, colour, and the word `orchestrator`
+|its icon, colour, and the word `epic`
 
 |Needs the operator
 |the marker with the count and the kind of the first (`! decision`, `! stalled`, `! paused`, `! waiver`)
@@ -69,7 +69,7 @@ Order: projects that need the operator first, then by their latest activity. A p
 
 |Title
 |the plan's title
-|the orchestrator's title
+|the epic's title
 
 |Where it is
 |the current phase and the state in it: `working`, `waiting for you`, `stalled`, `paused`
@@ -84,18 +84,18 @@ Order: projects that need the operator first, then by their latest activity. A p
 |plans shipped of all (`4 of 9 plans`)
 
 |Belongs to
-|its orchestrator, or nothing
+|its epic, or nothing
 |—
 |===
 
-* Order within a project: those that need the operator first, then the most recently active; the plans below an orchestrator in the same order.
+* Order within a project: those that need the operator first, then the most recently active; the plans below an epic in the same order.
 * Times are shown as durations, rounded to what matters (`25 min`, `2 h 10 min`, `3 d`), and computed at each redraw; nothing counts in place by the second.
-* Selecting a plan or an orchestrator leads into its own view (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]); selecting its marker leads to what waits (link:decisions.adoc[Decisions]).
+* Selecting a plan or an epic leads into its own view (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]); selecting its marker leads to what waits (link:decisions.adoc[Decisions]).
 
 [#distinction]
 == Telling Them Apart
 
-A plan and an orchestrator differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (link:../../plans/web-design.adoc[`web-design`], under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
+A plan and an epic differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (link:../../plans/web-design.adoc[`web-design`], under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
 
 [cols="1,1,1,2",options="header"]
 |===
@@ -106,10 +106,10 @@ A plan and an orchestrator differ by three things at once, so that none carries 
 |`>`
 |the plan colour of the design system (terminal: cyan)
 
-|Orchestrator
+|Epic
 |`◇`
 |`<>`
-|the orchestrator colour (terminal: magenta)
+|the epic colour (terminal: magenta)
 
 |Needs the operator
 |`!`
@@ -120,12 +120,12 @@ A plan and an orchestrator differ by three things at once, so that none carries 
 [#live]
 == Live
 
-The overview follows the runtime's events and changes in place: a plan that starts or ends, a phase change, a decision that arrives or is answered, an orchestrator's plan that starts. The selection is anchored to the selected item's id, never to its row: rows that move do not move the selection. A client that lost the connection says so on the overview and reads everything again when it is back.
+The overview follows the runtime's events and changes in place: a plan that starts or ends, a phase change, a decision that arrives or is answered, an epic's plan that starts. The selection is anchored to the selected item's id, never to its row: rows that move do not move the selection. A client that lost the connection says so on the overview and reads everything again when it is back.
 
 [#persistence]
 == Where the Operator Left It
 
-The overview remembers the project, the view (by plan, by orchestrator), and the selected plan or orchestrator, and opens there the next time:
+The overview remembers the project, the view (by plan, by epic), and the selected plan or epic, and opens there the next time:
 
 * the web app per browser, in its local storage beside its device secret;
 * the terminal client per user, in its state directory (link:../terminal-client/15-overview.adoc[The Overview]).
@@ -150,8 +150,8 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |Es läuft nichts. Starte einen Plan in einem Projekt, oder melde eines an.
 
 |`overview.project.counts`
-|{plans, plural, one {# plan} other {# plans}} · {orchestrators, plural, one {# orchestrator} other {# orchestrators}}
-|{plans, plural, one {# Plan} other {# Pläne}} · {orchestrators, plural, one {# Orchestrator} other {# Orchestratoren}}
+|{plans, plural, one {# plan} other {# plans}} · {epics, plural, one {# epic} other {# epics}}
+|{plans, plural, one {# Plan} other {# Pläne}} · {epics, plural, one {# Epic} other {# Epics}}
 
 |`overview.project.setup`
 |setup needs you
@@ -165,21 +165,21 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |by plan
 |nach Plan
 
-|`overview.view.by_orchestrator`
-|by orchestrator
-|nach Orchestrator
+|`overview.view.by_epic`
+|by epic
+|nach Epic
 
 |`overview.kind.plan`
 |plan
 |Plan
 
-|`overview.kind.orchestrator`
-|orchestrator
-|Orchestrator
+|`overview.kind.epic`
+|epic
+|Epic
 
-|`overview.without_orchestrator`
-|without orchestrator
-|ohne Orchestrator
+|`overview.without_epic`
+|without epic
+|ohne Epic
 
 |`overview.needs.decision`
 |decision
@@ -245,13 +245,13 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |{done} of {total} plans
 |{done} von {total} Plänen
 
-|`overview.orchestrator.plans`
+|`overview.epic.plans`
 |{running} running · {staged} staged
 |{running} laufen · {staged} vorgesehen
 
 |`overview.belongs_to`
-|in {orchestrator}
-|in {orchestrator}
+|in {epic}
+|in {epic}
 
 |`overview.connection.lost`
 |Not connected to the runtime; reconnecting …
@@ -262,4 +262,4 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |{item} ist beendet; sein Projekt wird gezeigt.
 |===
 
-The word _Orchestrator_ stays as it is in German, as a domain word of `PM-MCP`, and is added to the glossary (link:texts-and-languages.adoc#glossary[Glossary]).
+The word _Epic_ stays as it is in German, as a domain word of `PM-MCP`, and is added to the glossary (link:texts-and-languages.adoc#glossary[Glossary]).

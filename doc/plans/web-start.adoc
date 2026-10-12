@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* Starting a plan or an orchestrator and running a recipe as screens: the list of sources with their progress, the editor of a description, the picker of files over the server's listing, copy or move, the issue field with the forge recognised and the grant, a flagged issue, the ready step; leaving and continuing; at desktop and phone width, light and dark.
+* Starting a plan or an epic and running a recipe as screens: the list of sources with their progress, the editor of a description, the picker of files over the server's listing, copy or move, the issue field with the forge recognised and the grant, a flagged issue, the ready step; leaving and continuing; at desktop and phone width, light and dark.
 
 == Trace
 

@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* `plan add`, `orchestrator add`, `recipe run` as direct verbs: the sources as arguments, the dialogue for every state without one, `--no-input` stopping with the state it needs.
+* `plan add`, `epic add`, `recipe run` as direct verbs: the sources as arguments, the dialogue for every state without one, `--no-input` stopping with the state it needs.
 * The list of sources with lines updated in place while a source is fetched and screened; a flagged issue printed as plain text; an open entry offered to continue; the explorer's actions `p`, `o`, and _Continue starting_.
 
 == Trace
@@ -23,4 +23,4 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 == Done When
 
-Every scenario of `start-contract` passes as a transcript test of `plan add`, `orchestrator add`, and `recipe run`, in the console and as one shell command, in the JVM and native.
+Every scenario of `start-contract` passes as a transcript test of `plan add`, `epic add`, and `recipe run`, in the console and as one shell command, in the JVM and native.

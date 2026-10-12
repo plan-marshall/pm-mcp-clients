@@ -29,7 +29,7 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
  Projects                                                         ● connected
  ─────────────────────────────────────────────────────────────────────────────
  Favourites
-▶ ★ pm-mcp-clients    ready      ! 2   3 plans · 1 orchestrator    2 min ago
+▶ ★ pm-mcp-clients    ready      ! 2   3 plans · 1 epic    2 min ago
   ★ pm-mcp-core       ready            2 plans                     9 min ago
  Recent
     plan-marshall     setup needs: credential sonar                yesterday
@@ -44,11 +44,11 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 `Enter` on a project opens its actions in place:
 
 ----
-▶ ★ pm-mcp-clients    ready      ! 2   3 plans · 1 orchestrator    2 min ago
-      o  Add an orchestrator
+▶ ★ pm-mcp-clients    ready      ! 2   3 plans · 1 epic    2 min ago
+      e  Add an epic
       p  Add a plan
       r  Running work
-      e  Setup
+      u  Setup
       *  Remove from favourites
 
 A released project offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `r  Running work` while plans of it still show.
@@ -61,8 +61,8 @@ A released project offers instead `a  Enrol again`, which runs its onboarding ag
 |`Enter`
 |the actions of the selected project; on an action, that action
 
-|`o`, `p`, `r`, `e`
-|add an orchestrator, add a plan, running work, setup: directly from the row
+|`e`, `p`, `r`, `u`
+|add an epic, add a plan, running work, setup: directly from the row
 
 |`a`
 |on a released project: enrol it again
@@ -83,7 +83,7 @@ A released project offers instead `a  Enrol again`, which runs its onboarding ag
 |add a project: leaves the view and starts `project add`
 |===
 
-The keys of the explorer are keys of navigation, the same in every language, like those of the overview (xref:15-overview.adoc#full-screen-keys[Keys]). The two _Add_ actions leave the view and start `orchestrator add` and `plan add` for the project (xref:18-starting.adoc[Starting Work]); while an entry of the project is open, `Enter` offers `s  Continue starting` first.
+The keys of the explorer are keys of navigation, the same in every language, like those of the overview (xref:15-overview.adoc#full-screen-keys[Keys]). The two _Add_ actions leave the view and start `epic add` and `plan add` for the project (xref:18-starting.adoc[Starting Work]); while an entry of the project is open, `Enter` offers `c  Continue starting` first.
 
 [#onboarding]
 == Onboarding a Project
@@ -164,7 +164,7 @@ Confirm the build map? [Enter]   e) edit a route   ?   › ⏎
     …
 …
 ✓ pm-mcp-clients is ready
-    o) Add an orchestrator   p) Add a plan   r) Running work
+    e) Add an epic   p) Add a plan   r) Running work
 pm ›
 ----
 
@@ -178,7 +178,7 @@ pm ›
 ----
 pm › projects --list
 Favourites
-  ★ pm-mcp-clients    ready   needs you: 2   3 plans · 1 orchestrator   2 min ago
+  ★ pm-mcp-clients    ready   needs you: 2   3 plans · 1 epic   2 min ago
   ★ pm-mcp-core       ready   2 plans   9 min ago
 Recent
     plan-marshall     setup needs: credential sonar   yesterday
