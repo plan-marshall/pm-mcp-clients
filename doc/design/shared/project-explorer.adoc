@@ -74,7 +74,7 @@ Selecting a project offers, in this order:
 . *Setup*: a later run of the project's onboarding, opened at what the operator chooses (link:project-onboarding.adoc#steps[Steps]).
 . *Favourite*: mark or unmark it.
 
-A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an orchestrator and of a plan, whose use cases follow.
+A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, and _Running work_ while plans of it still show. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an orchestrator and of a plan, whose use cases follow.
 
 [#marks]
 == Favourites, Recent, Most Used

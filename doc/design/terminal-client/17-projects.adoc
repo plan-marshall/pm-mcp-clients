@@ -50,6 +50,8 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
       r  Running work
       e  Setup
       *  Remove from favourites
+
+A released project offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `r  Running work` while plans of it still show.
 ----
 
 [cols="1,3",options="header"]
@@ -61,6 +63,9 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 
 |`o`, `p`, `r`, `e`
 |add an orchestrator, add a plan, running work, setup: directly from the row
+
+|`a`
+|on a released project: enrol it again
 
 |`*`
 |mark or unmark the selected project as a favourite
@@ -95,8 +100,9 @@ Use this checkout? [Enter]   e) edit the path   ?   › ⏎
 [1/8] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
   reads       its git configuration, build wrappers, host tools, language
               servers, and scripts
-  runs        the version probe of each wrapper and tool found
-  never       changes a file, uses the network
+  runs        the version probe of each host tool on your PATH
+  never       runs anything of the checkout (its wrappers and scripts are
+              read, not run), changes a file, uses the network
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
     ✓  remote plan-marshall/pm-mcp-clients, base branch main
     ✓  build wrapper mvnw (Maven 3.9.11)
