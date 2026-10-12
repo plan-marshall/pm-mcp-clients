@@ -1,0 +1,32 @@
+= What every operator interaction shares: contract and mock runtime
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `operator-interaction-contract`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]; no roadmap milestone yet
+Where:: `pm-api` (representation, link scheme, event envelope, text fields); `pm-mock-runtime` (state scenarios with operator links and events)
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* *Specification first*: the package writes its part of the specification into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), and opens that pull request beside its own; the proposal's rows it writes are removed from the proposal.
+* *A state for a client*: the representation of a state the operator acts on (its id, kind, step, level, facts, proposal, items with what is not offered and why, links), the scheme of the operator's links over the local API and how a client follows one, and the refusal of a link to a state that moved on (`state_moved`).
+* *The event catalogue*: the envelope, closed type names, payload schemas, `Last-Event-ID` and `reset` per stream; the streams of a plan, an epic, the workspace, and the machine.
+* *Texts of the runtime*: which fields are message keys with arguments and which are verbatim external or model text.
+* *Configuration and levels*: every value with its origin and what it overrides, `set` and `unset` per key and level, a later run of an aspect for a project or a plan, and the refusals of an aspect-owned key and of a verb whose onboarding step is not done.
+* *The mock runtime's specification*: its socket name as everywhere else, scenario links keyed by the operator link's id, events named from the catalogue.
+* *Client inputs and files*: the client's locale, login `PATH`, and SSH session as request fields; the client-owned files outside `<PM_MCP_BASE>` as an exception to the closed list of direct file reads; `console.notify` and `console.full_screen` in `machine-config.json`.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+
+* Proposal: link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#foundations[Specification Changes for the Clients, Foundational Findings]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Runtime Model § Local API]; link:../../../plan-marshall-documentation/doc/specification/hypermedia-format/01-representation-and-link-forms.adoc[Hypermedia Format]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-file-reads[Direct File Reads]
+* Design: link:../design/terminal-client/03-dialogues.adoc[Terminal Client, Dialogues]; link:../design/terminal-client/04-console.adoc[The Console]
+
+== Done When
+
+The specification of these four parts is merged in `plan-marshall-documentation`; every record, link, and event type has a round-trip test of its codec and every closed list is an enumeration a test compares with the specification; the mock runtime serves a scenario with operator links, check events, and a moved state, and a test asserts each.

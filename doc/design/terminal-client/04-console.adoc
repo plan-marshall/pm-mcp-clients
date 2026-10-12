@@ -31,10 +31,10 @@ A notice is printed *above* the prompt: the line the operator is typing is taken
 
 ----
 pm › config roles --pro
-◆ Question Q7 · plan fix-relay · blocks the plan
+◆ Question Q-007 · plan fix-relay · blocks the plan
   The change conflicts with main in RelayServer.java.
   Recommended: 2) Rebase onto main
-  answer Q7   ·   questions
+  answer Q-007   ·   questions
 pm [1 question] › config roles --pro
 ----
 
@@ -44,8 +44,9 @@ pm [1 question] › config roles --pro
 A pushed item never takes the focus: no keystroke typed before it was shown can answer it, and a bare number at the prompt is no answer (`2 is not a command here; help lists them`).
 
 * `questions` lists what waits: id, plan or epic, the question in one line, the recommendation, and since when the plan waits.
-* `answer Q7` opens the decision as the states of its sub-workflow `decision.*`, shown as link:../shared/decisions.adoc[Decisions] says for every client: what is asked and why, the evidence on `?`, the parts one at a time, the options in the workflow's order with their support, and the recommendation placed by what is at stake (link:../shared/decisions.adoc#recommendation[Where the Recommendation Stands]): preselected only where the decision is reversible and the votes agree or no quorum voted; one step away (`?r`) where it is costly to undo or cannot be undone. Input typed ahead before it opened is discarded, so a stray `Enter` cannot take a recommendation (transcripts: xref:14-transcripts-decisions.adoc[Decisions]).
-* `answer Q7 2` answers a single-part decision at once with option 2, after printing the option it chose; where the decision asks for `decision.confirm` (several parts, or costly to undo, or not reversible), the confirmation is still shown.
+* `answer Q-007` opens the decision as the states of its sub-workflow `decision.*`, shown as link:../shared/decisions.adoc[Decisions] says for every client: what is asked and why, the evidence on `?`, the parts one at a time, the options in the workflow's order with their support, and the recommendation placed by what is at stake (link:../shared/decisions.adoc#recommendation[Where the Recommendation Stands]): preselected only where the decision is reversible and the votes agree or no quorum voted; one step away (`?r`) where it is costly to undo or cannot be undone. Input typed ahead before it opened is discarded, so a stray `Enter` cannot take a recommendation (transcripts: xref:14-transcripts-decisions.adoc[Decisions]).
+* *Addressing a decision*: a decision's id (`Q-007`) is unique within its plan, orchestrator, or project setup; across them it is `<scope>/<id>` (`fix-relay/Q-007`). The short form answers when exactly one open decision has that id; otherwise the console names the candidates in their full form. `questions` prints the short form where it is unique and the full form where it is not.
+* `answer Q-007 2` answers a single-part decision at once with option 2, after printing the option it chose; where the decision asks for `decision.confirm` (several parts, or costly to undo, or not reversible), the confirmation is still shown.
 * A waiver request is opened the same way and answered by a waiver with its reason; it has no `Enter` default, like a consent (xref:03-dialogues.adoc#consent[Consent]; xref:14-transcripts-decisions.adoc#t-decision-waiver[A Waiver Request]).
 * A question's text comes from a model; the console shows it as data, never as a command, and strips every control sequence from it before it is printed (<<output-safety>>).
 
@@ -55,7 +56,7 @@ A pushed item never takes the focus: no keystroke typed before it was shown can 
 A dialogue is never interrupted. When something arrives while a dialogue runs, the console prints one line at the next state of the dialogue, before its prompt:
 
 ----
-◆ 1 question waiting: Q7 · fix-relay · blocks the plan   ! shows it
+◆ 1 question waiting: Q-007 · fix-relay · blocks the plan   ! shows it
 ----
 
 `!` leaves the dialogue where it is (nothing is sent; its state stays in the runtime), opens what waits, and afterwards reads the dialogue's state again and prints it.
@@ -65,7 +66,7 @@ A dialogue is never interrupted. When something arrives while a dialogue runs, t
 
 The first valid answer wins, from the web app, the console, or an entry session. When another channel answers first:
 
-* the console prints `– Q7 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.` and the badge drops;
+* the console prints `– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.` and the badge drops;
 * a question open as a dialogue is closed, the input typed into it is dropped, and the console returns to its prompt;
 * an answer from the console that arrives too late is refused by the runtime (`already_answered`), and the console prints the same line, not an error;
 * a desktop notification of the question is withdrawn where the terminal allows it.

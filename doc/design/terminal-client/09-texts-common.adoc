@@ -165,7 +165,7 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |Answered elsewhere: {answer}
 |Woanders beantwortet: {answer}
 
-|`common.error.runtime_restarted`
+|`common.connection.runtime_restarted`
 |The runtime restarted; continuing where it is.
 |Die Runtime wurde neu gestartet; es geht dort weiter, wo sie steht.
 

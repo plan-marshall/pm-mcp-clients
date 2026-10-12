@@ -15,19 +15,19 @@ The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#t
 
 [source,text]
 ----
-pm [1 question] › answer Q7
-Question Q7 · plan fix-relay · execute · blocks the plan · can be undone
+pm [1 question] › answer Q-007
+Question Q-007 · plan fix-relay · execute · blocks the plan · can be undone
   The change conflicts with main in RelayServer.java.
   ? shows the evidence: the conflict, both versions of the method
 
-    2) Rebase onto main ←          4 of 6 votes · 3 models   clear majority
-    1) Merge main into the branch  2 of 6 votes · 2 models
+    2) Rebase onto main ←          2 of 3 votes · 2 models   clear majority
+    1) Merge main into the branch  1 of 3 votes · 1 model
     3) Stop the plan and ask me later
-  Recommended by quorum: Rebase onto main. Keeps the history linear.
-  Against it (reviewer): the branch was pushed; a rebase rewrites what others pulled.
+  Recommended by implement: Rebase onto main. Keeps the history linear.
+  Against it (quorum-b): the branch was pushed; a rebase rewrites what others pulled.
 
 Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
-✓ Q7 answered: Rebase onto main. The plan goes on.
+✓ Q-007 answered: Rebase onto main. The plan goes on.
 pm ›
 ----
 
@@ -39,26 +39,26 @@ pm ›
 
 [source,text]
 ----
-pm [1 question] › answer Q9
-Question Q9 · plan drop-legacy-api · finalize · blocks the plan · cannot be undone
+pm [1 question] › answer Q-009
+Question Q-009 · plan drop-legacy-api · finalize · blocks the plan · cannot be undone
   Delete the published v1 endpoints from the release branch?
 
-    1) Delete them now                 3 of 6 votes · 3 models
-    2) Deprecate them, delete in 0.11  3 of 6 votes · 2 models
-    3) Keep them
+    1) Delete them now                 1 of 3 votes · 1 model
+    2) Deprecate them, delete in 0.11  1 of 3 votes · 1 model
+    3) Keep them                       1 of 3 votes · 1 model
   Votes: split. The recommendation is one step away, so that you weigh the
   options first: ?r
 
 Choose: 1-3   w) in my own words   x) none fits   l) later   ?   › ?r
-  Recommended by quorum: Deprecate them, delete in 0.11.
-  Against it (architect): two clients of v1 are known; both migrated last week.
+  Recommended by architecture: Deprecate them, delete in 0.11.
+  Against it (quorum-a): two clients of v1 are known; both migrated last week.
 Choose: 1-3   w) in my own words   x) none fits   l) later   ?   › 2
 
-Your decision · Q9 · cannot be undone
+Your decision · Q-009 · cannot be undone
   Deprecate the v1 endpoints, delete them in 0.11.
   Follows: a deprecation header on every v1 response; a task for 0.11.
 Decide? [Enter]   b) back   ?   › ⏎
-✓ Q9 answered: Deprecate them, delete in 0.11.
+✓ Q-009 answered: Deprecate them, delete in 0.11.
 ----
 
 * No option is preselected and `Enter` alone asks for a choice; `decision.confirm` restates what follows before the answer is sent.
@@ -68,8 +68,8 @@ Decide? [Enter]   b) back   ?   › ⏎
 
 [source,text]
 ----
-pm [1 question] › answer Q12
-Question Q12 · plan storage-v2 · outline · blocks the plan · can be undone
+pm [1 question] › answer Q-012
+Question Q-012 · plan storage-v2 · outline · blocks the plan · can be undone
   How should the new store be introduced?                  3 parts
   ? shows the evidence: the outline, the measurements of the current store
 
@@ -89,13 +89,13 @@ JSON lines? [Enter]   other: 1-2   b) back   ?   › b
     2) By a verb the operator runs ✎
 …   › ⏎
 
-Your decision · Q12
+Your decision · Q-012
   1  A file per plan
   2  By a verb the operator runs
   3  JSON lines
   Follows: the outline is revised; a task for the migration verb.
 Decide? [Enter]   1-3) change a part   ?   › ⏎
-✓ Q12 answered.
+✓ Q-012 answered.
 ----
 
 * Changing part 1 would reopen part 2 with `Part 2 was opened again, because part 1 changed.`
@@ -113,7 +113,7 @@ I understood: Rebase onto main, provided release/0.9 stays as it is.
   your words: rebase, but leave release/0.9 alone, it is frozen
               ^^^^^^          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
-✓ Q7 answered: Rebase onto main, provided release/0.9 stays as it is.
+✓ Q-007 answered: Rebase onto main, provided release/0.9 stays as it is.
 ----
 
 Unclear, then a new option in the operator's words:
@@ -131,7 +131,7 @@ Your answer (Enter sends it): › neither: squash the branch into one commit on 
 
 I understood: your own answer: squash the branch into one commit on main.
 Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
-✓ Q7 answered in your own words.
+✓ Q-007 answered in your own words.
 ----
 
 * The read-back marks the passages it rests on; nothing is recorded before `Enter`.
@@ -143,8 +143,8 @@ Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
 
 [source,text]
 ----
-pm [1 question] › answer Q3
-Question Q3 · plan cli-onboarding · refine · blocks the plan · can be undone
+pm [1 question] › answer Q-003
+Question Q-003 · plan cli-onboarding · refine · blocks the plan · can be undone
   Should the console keep a history of answers to questions?
 
     1) Commands only ←                      not voted on
@@ -154,7 +154,7 @@ Question Q3 · plan cli-onboarding · refine · blocks the plan · can be undone
 Commands only? [Enter]   other: 1-2   w) in my own words   m) add a note   x) none fits   l) later   ?   › m
 Your note: › and say so in the help text
 Commands only? [Enter]   other: 1-2   w) in my own words   m) ✎ note   x) none fits   l) later   ?   › ⏎
-✓ Q3 answered: Commands only (with your note).
+✓ Q-003 answered: Commands only (with your note).
 ----
 
 [#t-decision-ends]
@@ -163,14 +163,14 @@ Commands only? [Enter]   other: 1-2   w) in my own words   m) ✎ note   x) none
 [source,text]
 ----
 …   x) none fits   l) later   ?   › l
-Q7 stays open; the plan waits for it. questions lists it.
-pm [1 question] › answer Q7
+Q-007 stays open; the plan waits for it. questions lists it.
+pm [1 question] › answer Q-007
 …   x) none fits   l) later   ?   › x
 None fits: the plan thinks again and asks anew. Send? [Enter]   b) back   › ⏎
-✓ Q7: you asked the plan to think again.
+✓ Q-007: you asked the plan to think again.
 
 pm [1 question] ›
-◆ Q8 changed: a third option was added. Please answer again.
+◆ Q-008 changed: a third option was added. Please answer again.
 pm [1 question] ›
 ----
 

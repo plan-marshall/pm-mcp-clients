@@ -58,7 +58,7 @@ Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   �
 
 [source,text]
 ----
-  outline     writer     Claude Code  opus-5.5    high     default
+  outline     read_only  Claude Code  opus-5.5    high     default
     What it does   Turns the refined request into deliverables and the plan's
                    lane; reads the whole affected codebase.
     What it needs  Deep reasoning over a large context; few tool calls.
@@ -88,7 +88,7 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
     1) qgate       read_only   OpenCode · qwen-coder   ← Claude Code · sonnet-5.5
        Reason: the qualification records of 2 projects show qwen-coder at
        the level of sonnet-5.5 for this role, at a third of the cost.
-    2) refine      writer      Claude Code · opus-5.5  ← Claude Code · sonnet-5.5
+    2) refine      read_only   Claude Code · opus-5.5  ← Claude Code · sonnet-5.5
        Reason: refine loops back twice as often on sonnet-5.5.
 
 Accept both? [Enter]   toggle: 1-2 to reject   b) back   ?   › 2

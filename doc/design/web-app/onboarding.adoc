@@ -294,8 +294,8 @@ The step opens with the default assignment applied, as an overview; accepting it
   Group: [ by phase ▾ ]   Filter: [            ]   [ Assign to selection… ]
 
   ▾ Planning
-    [ ] refine      writer     Claude Code  sonnet-5.5  medium   default        ⓘ
-    [ ] outline     writer     Claude Code  opus-5.5    high     default        ⓘ
+    [ ] refine      read_only  Claude Code  sonnet-5.5  medium   default        ⓘ
+    [ ] outline     read_only  Claude Code  opus-5.5    high     default        ⓘ
   ▾ Review
     [ ] qgate       read_only  OpenCode     qwen-coder  —        ✎ steward      ⓘ
     [ ] screener    zero_tool  —            —           —        ⚠ no model     ⓘ
@@ -309,7 +309,7 @@ The advisory of a role (ⓘ, opened in place below its row):
 
 [source,text]
 ----
-    outline     writer     Claude Code  opus-5.5    high     default        ⓘ
+    outline     read_only  Claude Code  opus-5.5    high     default        ⓘ
     ┌───────────────────────────────────────────────────────────────────────┐
     │ What it does   Turns the refined request into deliverables and the    │
     │                plan's lane; reads the whole affected codebase.        │
