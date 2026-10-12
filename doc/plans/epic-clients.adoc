@@ -26,6 +26,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 
 . *Foundation*, without a gate: `mock-runtime`, `message-catalogue`, then `cli-test-infra`. They need no design decision and unblock both clients.
 . *Design*, in parallel, each thorough and complete before any client code, each run directly in a Claude Code session without plan-marshall: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it. An accepted design is the specification of its client's implementation and lives in this repository, `doc/design/` (link:../design/terminal-client/README.adoc[Terminal Client], and the web app's from `web-design`). The design can start now: it waits for nothing.
+. *Contracts*, each once its use case is agreed: `operator-interaction-contract` first, on the foundations of `pm-mcp-core` (`operator-wait-and-machine-scope`), then `overview-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`. Each writes its part of the specification as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients]).
 . *Implementation*, after the gate: `cli-onboarding` after `cli-design`; `web-app-foundation` and then `web-onboarding` after `web-design`. Both run against the mock runtime and its scenarios.
 
 [#workstreams]
@@ -36,13 +37,13 @@ Two packages of this repository are on the critical path of the core epic: `prof
 |Workstream |Packages
 
 |Mock runtime and test infrastructure
-|`mock-runtime`, `cli-test-infra`, `message-catalogue`, `overview-contract`
+|`mock-runtime`, `cli-test-infra`, `message-catalogue`, `operator-interaction-contract`, `overview-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`
 
 |Terminal client
-|`cli-design`, `cli-onboarding`, `cli-overview`
+|`cli-design`, `cli-onboarding`, `cli-decisions`, `cli-overview`
 
 |Web app
-|`web-design`, `web-app-foundation`, `web-onboarding`, `web-overview`
+|`web-design`, `web-app-foundation`, `web-onboarding`, `web-decisions`, `web-overview`
 |===
 
 [#rules]

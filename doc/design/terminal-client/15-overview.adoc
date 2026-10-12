@@ -128,7 +128,7 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 ----
 pm › plans
   (the full-screen view, until q)
-While the overview was open: 1 decision arrived (Q14, plan fix-relay), 1 plan ended.
+While the overview was open: 1 decision arrived (Q-014, plan fix-relay), 1 plan ended.
 pm [1 question] ›
 ----
 

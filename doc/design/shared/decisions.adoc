@@ -61,13 +61,13 @@ A decision is self-contained: whoever opens it hours later finds in it what was 
 Where a quorum voted, each option shows its support as a count, never as a percentage:
 
 ----
-  2) Rebase onto main        4 of 6 votes · 3 models    ← recommended
-  1) Merge main into branch  2 of 6 votes · 2 models
+  2) Rebase onto main        2 of 3 votes · 2 models    ← recommended
+  1) Merge main into branch  1 of 3 votes · 1 model
   3) Stop and ask me later   —
 ----
 
-* *Count and spread*: votes out of all votes, and from how many distinct models, because votes of one model, and of models of one maker, are not independent: their errors coincide.
-* *Band* beside the counts for the whole part: `unanimous`, `clear majority`, `split`, `no consensus`; always together with the counts, never alone.
+* *Count and spread*: votes out of all votes (a quorum has at most three; the operator sees a decision a quorum voted on only when it escalated, so the count shows why it did), and from how many distinct models, because votes of one model, and of models of one maker, are not independent: their errors coincide.
+* *Band* beside the counts for the whole part: `unanimous`, `clear majority`, `split`, `no consensus`; always together with the counts, never alone. The counts, the band, and the strongest dissent come from the runtime with the decision; a client never computes them.
 * *Dissent*: the strongest reason against the recommended option is shown with it, also when the vote was unanimous (where the quorum gave one): one visible dissent is what keeps a consensus from being taken for proof.
 * *Self-reported confidence* of a vote is a detail of that vote (`?` on the vote, expanded in the web app), labelled as the model's own estimate; it is never averaged, never shown as the confidence of an option, and never in decimals.
 * *Not voted on*: a part without a quorum shows the recommendation of the asking role as such (`recommended by outline`), without counts.
@@ -120,7 +120,7 @@ Where a part allows it, every client offers to answer in own words next to the o
 
 * *Urgency* follows from what the decision carries: it interrupts (a notification, the bell) when it blocks the plan or is not reversible; otherwise it waits in the badge, the list of open decisions, and the next notice at a natural break (when a dialogue ends, when the operator returns to the prompt or the overview).
 * *Nothing is answered by accident*: an announcement never takes the focus, input typed before it was shown never answers it, and opening a decision discards input typed ahead (xref:../terminal-client/04-console.adoc#answering[Terminal Client, Answering a Question]).
-* *No time limit*: a decision delivered to the operator waits until the operator answers it, and the plan waits with it (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-no-expiry[No Time Limit on a Decision]); the clients show how long it has waited, never a countdown, and never answer it on their own. A decision that changed (a new revision) is announced again as changed.
+* *No time limit*: a decision delivered to the operator waits until the operator answers it, and the plan waits with it (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-operator-wait[Waiting for the Operator]); the clients show how long it has waited, never a countdown, and never answer it on their own. A decision that changed (a new revision) is announced again as changed.
 * A notification names the plan and the kind of decision, never its content.
 
 [#outcomes]

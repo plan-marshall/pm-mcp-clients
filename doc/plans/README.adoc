@@ -118,9 +118,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |epic clients
 
 |link:cli-onboarding.adoc[`cli-onboarding`]
-|The console `pm-operator`: entry, onboarding, and questions
-|`open`
-|link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:operator-checks.adoc[`operator-checks`]
+|The console `pm-operator`: entry and onboarding
+|`blocked`
+|link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:operator-checks.adoc[`operator-checks`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
 |epic clients
 
 |link:web-app-foundation.adoc[`web-app-foundation`]
@@ -131,14 +131,50 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:web-onboarding.adoc[`web-onboarding`]
 |Onboarding and start in the web app
-|`open`
-|link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
+|`blocked`
+|link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
+|epic clients
+
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|What every operator interaction shares: a state for a client, the operator's links, the event catalogue, texts, client inputs
+|`blocked`
+|link:api-contract.adoc[`api-contract`]; link:mock-runtime.adoc[`mock-runtime`]; link:../../../pm-mcp-core/doc/plans/operator-wait-and-machine-scope.adoc[`pm-mcp-core` / `operator-wait-and-machine-scope`]
+|epic clients
+
+|link:decision-contract.adoc[`decision-contract`]
+|Decisions: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-PLN-2 agreed (no work package)
+|epic clients
+
+|link:onboarding-contract.adoc[`onboarding-contract`]
+|Onboarding: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; UC-ONB agreed (no work package)
+|epic clients
+
+|link:entry-contract.adoc[`entry-contract`]
+|Entry: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-ENT-1 agreed (no work package)
+|epic clients
+
+|link:cli-decisions.adoc[`cli-decisions`]
+|Decisions in the terminal
+|`blocked`
+|link:decision-contract.adoc[`decision-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]
+|epic clients
+
+|link:web-decisions.adoc[`web-decisions`]
+|Decisions in the web app
+|`blocked`
+|link:decision-contract.adoc[`decision-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
 |epic clients
 
 |link:overview-contract.adoc[`overview-contract`]
 |Overview of running work: contract and mock runtime
 |`blocked`
-|link:api-contract.adoc[`api-contract`]; link:mock-runtime.adoc[`mock-runtime`]; the specification of the changes of link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-PLN-4 agreed (no work package)
 |epic clients
 
 |link:cli-overview.adoc[`cli-overview`]
