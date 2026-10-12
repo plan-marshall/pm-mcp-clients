@@ -10,7 +10,7 @@ The modules of this repository, their packages and their dependency rules are li
 [#packages]
 == Packages
 
-The packages listed serve roadmap Milestones 2 to 4, and the packages of the link:epic-clients.adoc[client work] (the mock runtime, the two clients, and their test infrastructure, which serve use cases not yet in a roadmap milestone); later milestones are not cut into packages yet, except the module `pm-web-app` of Milestone 11, which `web-app-foundation` pulls forward for the client work, and a package that names one of them as the home of something says what is left out here. This table is the only place that states the status of a package and what it depends on; the package files do not repeat either. A package is *ready* when its status is `open` and everything in its _Depends on_ column is `done`. Ready packages can be worked in parallel, also across the repositories. A dependency that has no work package yet keeps a package `blocked`; it is replaced by the package when that is planned.
+The packages listed serve roadmap Milestones 2 to 4, and the packages of the link:epic-clients.adoc[client work] (the mock runtime, the two clients, and their test infrastructure, which serve use cases not yet in a roadmap milestone); later milestones are not cut into packages yet, except the module `pm-web-app` of Milestone 11, which `web-app-foundation` pulls forward for the client work, and a package that names one of them as the home of something says what is left out here. This table is the only place that states the status of a package and what it depends on; the package files do not repeat either. A package is *ready* when its status is `open` and everything in its _Depends on_ column is `done`. Ready packages can be worked in parallel, also across the repositories. A dependency that has no work package yet keeps a package `blocked`; it is replaced by the package when that is planned. A package that depends on a `blocked` package is `blocked` too.
 
 [cols="3,4,1,3,2",options="header"]
 |===
@@ -66,7 +66,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:enter-command.adoc[`enter-command`]
 |`pm-mcp enter` as an API request
 |`blocked`
-|link:api-contract.adoc[`api-contract`]; link:profile-documents.adoc[`profile-documents`]; the decision on link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-clients-only[All Interaction in the Operator's Clients], which removes `pm-mcp enter` as the operator's way to start work (no work package)
+|link:api-contract.adoc[`api-contract`]; link:profile-documents.adoc[`profile-documents`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`], whose change All Interaction in the Operator's Clients removes `pm-mcp enter` as the operator's way to start work: once it is written, this package keeps only what a host still needs, or is retired
 |Milestone 3
 
 |link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]
@@ -144,19 +144,19 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:decision-contract.adoc[`decision-contract`]
 |Decisions: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-PLN-2 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/decision-engine.adoc[`pm-mcp-core` / `decision-engine`]; UC-PLN-2 agreed (no work package)
 |epic clients
 
 |link:onboarding-contract.adoc[`onboarding-contract`]
 |Onboarding: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; UC-ONB agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/machine-onboarding-unit.adoc[`pm-mcp-core` / `machine-onboarding-unit`]; UC-ONB agreed (no work package)
 |epic clients
 
 |link:entry-contract.adoc[`entry-contract`]
 |Entry: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-ENT-1 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-ENT-1, UC-ENT-2, and UC-ONB-8 agreed (no work package)
 |epic clients
 
 |link:cli-decisions.adoc[`cli-decisions`]
@@ -174,7 +174,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:project-contract.adoc[`project-contract`]
 |Projects: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/project-onboarding-unit.adoc[`pm-mcp-core` / `project-onboarding-unit`]; UC-PRJ-1 and UC-PRJ-2 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/project-onboarding-unit.adoc[`pm-mcp-core` / `project-onboarding-unit`]; UC-PRJ-1 to UC-PRJ-3 agreed (no work package)
 |epic clients
 
 |link:cli-projects.adoc[`cli-projects`]
@@ -216,19 +216,19 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-actions.adoc[`cli-actions`]
 |Actions on plans and epics in the terminal
 |`blocked`
-|link:control-contract.adoc[`control-contract`]; link:cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]
+|link:control-contract.adoc[`control-contract`]; link:cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]; link:cli-start.adoc[`cli-start`]
 |epic clients
 
 |link:web-actions.adoc[`web-actions`]
 |Actions on plans and epics in the web app
 |`blocked`
-|link:control-contract.adoc[`control-contract`]; link:web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]
+|link:control-contract.adoc[`control-contract`]; link:web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
 |epic clients
 
 |link:start-contract.adoc[`start-contract`]
 |Starting work: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`]; UC-STA-1 to UC-STA-5 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`]; link:../../../pm-mcp-core/doc/plans/recipe-workflows.adoc[`pm-mcp-core` / `recipe-workflows`]; link:../../../pm-mcp-core/doc/plans/forgejo-provider.adoc[`pm-mcp-core` / `forgejo-provider`]; UC-STA-1 to UC-STA-5 and UC-STA-7 to UC-STA-9 agreed (no work package)
 |epic clients
 
 |link:cli-start.adoc[`cli-start`]
@@ -246,7 +246,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:overview-contract.adoc[`overview-contract`]
 |Overview of running work: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-PLN-4 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-PLN-4 agreed, with Ended Work (no work package)
 |epic clients
 
 |link:cli-overview.adoc[`cli-overview`]

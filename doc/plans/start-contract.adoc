@@ -4,7 +4,7 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `start-contract`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5], link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-7[UC-STA-7] to link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9]; no roadmap milestone yet
 Where:: `pm-api` (the entry of a plan or an epic, its sources and their states, the listing of files); `pm-mock-runtime` (routes and scenarios)
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -21,7 +21,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-5] and their changes
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-5, UC-STA-7 to UC-STA-9] and their changes
 * Design: link:../design/shared/starting-work.adoc[Starting Work]
 
 == Done When

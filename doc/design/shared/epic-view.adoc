@@ -1,0 +1,89 @@
+= Design: Epic View
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Epic View
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], leading into link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2] and link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-epic-resource[The Epic as a Resource], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope] (proposed)_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
+
+An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan View]): the whole epic at a glance, from which the operator reaches any of its plans and acts on the epic. It opens from the epic's row in Running Work (link:plan-overview.adoc[Plan Overview]).
+
+[#layout]
+== Layout
+
+----
+  relay-hardening · epic                        running · 3 of 3 at once   ! 3
+  ─────────────────────────────────────────────────────────────────────────────
+  [▶ Next plan: relay-token-rotation]  [Decompose again]  [Findings review · 3 new]
+  [Watches review · 5]  [Archive]  [Cancel]
+  ─────────────────────────────────────────────────────────────────────────────
+  ▾ WS-1  Reconnect                                        2 shipped · 1 running
+      ✓  relay-reconnect-backoff      shipped · #211                 2 d ago
+      ▶  relay-cursor-order           execute · running              40 min
+      ⏸  relay-reconnect-docs         paused by you                  1 h
+  ▾ WS-2  Authentication                                   1 running · 1 staged
+      ▶  relay-auth-v2                refine · waiting for you   !   12 min
+      ○  relay-token-rotation         staged · after relay-auth-v2
+  ─────────────────────────────────────────────────────────────────────────────
+  Sources      2 documents · 1 issue           Landings    2 · last 2 d ago
+  Findings     3 new · 4 open                  Watches     5 open
+  ─────────────────────────────────────────────────────────────────────────────
+  Events
+    12:40  relay-auth-v2 asks a decision
+    11:55  you paused relay-reconnect-docs
+    …
+----
+
+* *The head*: the title, the state (running, waiting for you, held, landing, ended), how many plans run of how many may, the marker of what needs the operator with its count, and the epic's actions (link:work-actions.adoc#epic-actions[An Epic's Actions]).
+* *Workstreams*: open or closed like a node of the plan view; each plan with its status from one list (staged, running, pausing, paused, shipped, cancelled, abandoned, held), what it waits for, and since when. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view.
+* *Sources, landings, findings, watches*: one line each, opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
+* *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts, decompositions, landings.
+* *What waits for the operator* (a decomposition, a held item, a decision) stands first in the head, with a link to it.
+* *An ended epic* shows as it ended, without actions, opened from Ended Work.
+
+[#texts]
+== Texts
+
+Keys of the area `overview`, shared by both clients.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`overview.epic.at_once`
+|{running} of {scope} at once
+|{running} von {scope} gleichzeitig
+
+|`overview.epic.workstream_counts`
+|{counts}
+|{counts}
+
+|`overview.epic.status`
+|{status, select, staged {staged} running {running} pausing {pausing} paused {paused} shipped {shipped} cancelled {cancelled} abandoned {abandoned} other {held}}
+|{status, select, staged {vorgesehen} running {läuft} pausing {hält an} paused {angehalten} shipped {ausgeliefert} cancelled {abgebrochen} abandoned {aufgegeben} other {zurückgehalten}}
+
+|`overview.epic.after`
+|after {plan}
+|nach {plan}
+
+|`overview.epic.sources`
+|Sources
+|Quellen
+
+|`overview.epic.landings`
+|Landings
+|Landungen
+
+|`overview.epic.events`
+|Events
+|Ereignisse
+
+|`overview.ended.title`
+|Ended work
+|Beendete Arbeit
+|===

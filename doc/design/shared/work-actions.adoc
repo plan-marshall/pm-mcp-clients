@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#changes[Controlling Work, Changes] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
@@ -127,6 +127,42 @@ Each line is a check of the runtime; a failing one leads to what is open. _Archi
   Afterwards     the epic is archived as aborted
                                                   [Keep it]  [Cancel the epic]
 ----
+
+[#holds]
+== What Holds a Plan
+
+A plan, an epic, or a landing that does not go on without a decision being asked shows its hold where the decision would be: on its row as the marker of what needs the operator, and first in its view.
+
+----
+  fix-relay holds: a condition                                         since 14:02
+  ─────────────────────────────────────────────────────────────────────────────
+  Cause        the plan reads cui-http, which this project may not read
+  Tried        3 times, last 14:10
+  Resolve      [Grant read access to cui-http…]   [Retry]   [End the plan…]
+----
+
+[cols="1,3",options="header"]
+|===
+|Hold |Its acts
+
+|stalled
+|_Retry now_, _Recycle the worker_, _End the plan…_
+
+|condition
+|the act it names, as a dialogue (_Grant read access…_, _Add the credential…_, _Raise the budget…_), _Retry_, _End the plan…_
+
+|integrity pause
+|_Show the change_, _Accept the change…_, _Restore_, _End the plan…_
+
+|held item of an epic
+|_Retry_, and the item's own acts
+
+|landing failed (an epic's, or a move's removal from git)
+|_Retry_, _Show the pull request_, _Give up the removal…_
+|===
+
+* Every act is offered in both clients; a hold that clears by itself (a provider is back) leaves with a line in the events (`the provider answered again`).
+* An act that cannot be undone (_Accept the change_, _End the plan_) confirms first and names what follows.
 
 [#review]
 == Reviewing Findings or Watches
@@ -379,4 +415,31 @@ Keys of the area `control`, shared by both clients.
 |`control.review.discard`
 |Discard
 |Verwerfen
+|`control.hold.title`
+|{name} holds: {kind}
+|{name} hält: {kind}
+
+|`control.hold.cause`
+|Cause
+|Ursache
+
+|`control.hold.tried`
+|Tried {count, plural, one {once} other {# times}}, last {time}
+|{count, plural, one {Einmal} other {# Mal}} versucht, zuletzt {time}
+
+|`control.hold.retry`
+|Retry
+|Erneut versuchen
+
+|`control.hold.recycle`
+|Recycle the worker
+|Den Worker neu starten
+
+|`control.hold.end_plan`
+|End the plan
+|Den Plan beenden
+
+|`control.hold.cleared`
+|{cause} cleared by itself
+|{cause} hat sich von selbst erledigt
 |===

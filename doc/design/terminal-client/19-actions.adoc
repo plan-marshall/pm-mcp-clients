@@ -102,6 +102,40 @@ relay-hardening is not through yet.
 pm ›
 ----
 
+[#epic-view]
+== An Epic's View
+
+`epic <epic_id>` prints the epic's view as a tree into the scrollback (link:../shared/epic-view.adoc[Epic View]); in the full-screen view, `Enter` on an epic opens it as its level, with the workstreams opening like nodes of the plan view and `a` for its actions.
+
+[source,text]
+----
+pm › epic relay-hardening
+relay-hardening · epic · running · 3 of 3 at once · needs you: 3
+  WS-1 Reconnect                     2 shipped · 1 running
+    shipped    relay-reconnect-backoff     #211 · 2 d ago
+    running    relay-cursor-order          execute · 40 min
+    paused     relay-reconnect-docs        by you · 1 h
+  WS-2 Authentication                1 running · 1 staged
+    waiting    relay-auth-v2               refine · a decision · 12 min
+    staged     relay-token-rotation        after relay-auth-v2
+  sources 2 documents, 1 issue · landings 2 · findings 3 new, 4 open · watches 5
+pm ›
+----
+
+[#holds]
+== What Holds a Plan
+
+[source,text]
+----
+pm › plan fix-relay
+fix-relay · execute · holds: a condition since 14:02
+  cause   the plan reads cui-http, which this project may not read
+  tried   3 times, last 14:10
+  g) grant read access to cui-http…   r) retry   x) end the plan…   ?   › g
+----
+
+The acts of a hold are the same as in the shared design (link:../shared/work-actions.adoc#holds[What Holds a Plan]); the terminal offers them on `plan` and `epic` and below a row with `a`.
+
 [#review]
 == A Review
 

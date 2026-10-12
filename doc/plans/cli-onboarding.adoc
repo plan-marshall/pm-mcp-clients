@@ -4,7 +4,7 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-onboarding`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]; no roadmap milestone yet
 Where:: `pm-operator`; scenarios in `pm-mock-runtime`
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -15,12 +15,13 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * One shared sanitiser of every text from the runtime before it reaches the terminal (notices, dialogues, notifications, the window title; link:../design/terminal-client/04-console.adoc#output-safety[Output Safety]), with tests that feed it control sequences of every kind.
 * The scenarios of every case the use cases name (each consent answered no, each check failing, stop and resume, the automatic run), in `pm-mock-runtime`.
 * Texts from the catalogue only, in English and German.
+* The paired devices (UC-ENT-2): `web devices` with rename and revoke.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]
 * Design: link:../design/terminal-client/README.adoc[Terminal Client], the accepted design of `cli-design`, which this package implements; link:../design/shared/texts-and-languages.adoc[Texts and Languages]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]
 

@@ -23,7 +23,7 @@ Starting a plan or an epic is one guided run in which the operator only says wha
 
 * *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where the project has a recipe; an epic starts from sources only.
 * *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the epic_.
-* *③ Decomposition* (an epic only, `epic.decomposition`): the cut of the epic into workstreams and plans, drafted by the planning role and shaped by the operator before anything is committed (<<decomposition>>).
+* *③ Decomposition* (an epic only, `decomposition`): the cut of the epic into workstreams and plans, drafted by the planning role and shaped by the operator before anything is committed (<<decomposition>>).
 * *✓ Started*: the plan or the epic, with _Follow it_ (its plan view, link:plan-view.adoc[Plan View]; for an epic its level of link:plan-overview.adoc[Running Work]) and _Back to the project_.
 
 [#sources]
@@ -60,7 +60,7 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 
 * *Picking*: files or one directory. The web app browses the checkout first, then the operator's home directory, through the server's listing; the terminal client takes paths, completed against its working directory. A directory shows what it holds (`12 files: 9 adoc, 3 svg`) before it is added.
 * *Checked*: each file with a check line; a file that cannot be used names its cause (`not readable`, `larger than 10 MB`, `a link that leads outside`), and the others can be added without it.
-* *Copy or move* (`source.documents.mode`): the machine's default chosen, _always_ beside it.
+* *Copy or move* (`source-documents.mode`): the machine's default chosen, _always_ beside it.
 ** *Copy*: the originals stay where they are; the copy is not kept in step with them, and the dialogue says so.
 ** *Move*: the documents leave where they were. A file git tracks is removed from git by a short landing (`git.land-removal`, one commit landed as the project lands); the source's line shows `moved · removing from git`, then `moved`, and the work may start meanwhile. Until it is landed, the landing is a row of the project's running work; if it fails, it waits for the operator there.
 
@@ -77,9 +77,9 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 === An Issue
 
 * *Naming*: one field that takes a number (`212`, `#212`: the project's own repository) or a URL; a number is shown at once as the URL of the issue in the project's repository, and the URL is what is stored and shown from then on, also for a pull request. The field takes a URL of GitHub, GitLab, or a Forgejo forge such as Codeberg; the forge is shown as soon as it is recognised (`Codeberg · forgejo/forgejo`).
-* *Another repository* asks first (`source.issue.grant`): _Read issues of forgejo/forgejo?_ with _this time_ and _for this project_; a forge without a credential says that only a public issue can be read, and where a credential is added.
+* *Another repository* asks first (`source-issue.grant`): _Read issues of forgejo/forgejo?_ with _this time_ and _for this project_; a forge without a credential says that only a public issue can be read, and where a credential is added.
 * *Progress*: `fetching`, then `screening`, each as a check line; then the issue's title, labels, and state.
-* *Flagged* (`source.issue.flagged`): the spans the screener flagged, quoted as text with their reason, and _Use it anyway_ (with a reason, which is recorded) or _Remove it_. The flagged text is never rendered as Markdown and its links are inert.
+* *Flagged* (`source-issue.flagged`): the spans the screener flagged, quoted as text with their reason, and _Use it anyway_ (with a reason, which is recorded) or _Remove it_. The flagged text is never rendered as Markdown and its links are inert.
 
 [#lesson]
 === A Lesson

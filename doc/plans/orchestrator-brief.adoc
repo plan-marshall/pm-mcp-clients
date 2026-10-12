@@ -12,7 +12,7 @@ The brief from which the plan-marshall orchestrator bootstraps and plans the imp
 
 Slug:: `pm-mcp-clients`
 Title:: `pm-mcp-clients` work packages: client contract, binaries, mock runtime, and the two clients
-Vision:: Implement every work package of the index that is worked through plan-marshall, one plan per package, each landing as one pull request here with the updates of `plan-marshall-documentation` made as part of its own work. The epic covers the packages of roadmap Milestones 2 to 4 and the implementation packages of the link:epic-clients.adoc[client work] (the mock runtime, the message catalogue, the terminal test infrastructure, and the onboarding in both clients). It is done when every package in its scope is `done` in the index, or waits on a dependency outside this repository or on a decision, whose reason the epic records.
+Vision:: Implement every work package of the index that is worked through plan-marshall, one plan per package, each landing as one pull request here with the updates of `plan-marshall-documentation` made as part of its own work. The epic covers the packages of roadmap Milestones 2 to 4 and the implementation packages of the link:epic-clients.adoc[client work] (the mock runtime, the message catalogue, the terminal test infrastructure, the contracts, and in both clients the onboarding, decisions, the overview, the plan view, projects, starting work, and the actions on plans and epics). It is done when every package in its scope is `done` in the index, or waits on a dependency outside this repository or on a decision, whose reason the epic records.
 Sibling epic:: `pm-mcp-core-m2-m4` in `pm-mcp-core`, run in parallel; an epic orders only its own queue, so dependencies between the repositories stay rows of the indexes.
 
 [#scope]
@@ -28,7 +28,7 @@ Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a mac
 * The order is the dependency order of the index; ready packages run in parallel within the parallelization scope.
 * *First*: `profile-documents` and `exec-read-denied-paths`. The sibling epic in `pm-mcp-core` waits on both (its `profile-loader` and, through it, most of its roles and tasks; its `job-confinement-and-environment`); they take the first free slots.
 * *Then*: `api-contract`, which opens `mock-runtime` and the operator verbs; `mock-runtime`, `message-catalogue` and `cli-test-infra` need no design and run before the design gate.
-* *After the gate*: `cli-onboarding`, `web-app-foundation`, `web-onboarding`, each as soon as its design package is `done`.
+* *After the gate*: `cli-onboarding`, `web-app-foundation`, `web-onboarding`, each as soon as its design package and `onboarding-contract` are `done`; then the other client packages of both clients, each after its contract (see the index).
 
 [#workstreams]
 == Suggested Workstreams
@@ -44,16 +44,16 @@ Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a mac
 |`operator-checks`, `command-tree`, `operator-enrolment-verbs`, `operator-harness-and-roles-verbs`
 
 |Relay and entry
-|`relay-generation-and-markers`, `enter-command`, `integration-layers`
+|`relay-generation-and-markers`, `enter-command` (waits for the decision of All Interaction in the Operator's Clients), `integration-layers`
 
 |Job launcher
 |`exec-read-denied-paths`, `landlock-on-wsl2`
 
 |Mock runtime and test infrastructure
-|`mock-runtime`, `message-catalogue`, `cli-test-infra`, `operator-interaction-contract`, `overview-contract`, `process-contract`, `project-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`
+|`mock-runtime`, `message-catalogue`, `cli-test-infra`, `operator-interaction-contract`, `overview-contract`, `process-contract`, `project-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`, `start-contract`, `control-contract`
 
 |Clients
-|`cli-onboarding`, `web-app-foundation`, `web-onboarding`, `cli-decisions`, `web-decisions`, `cli-overview`, `web-overview`, `cli-plan-view`, `web-plan-view`, `cli-projects`, `web-projects`
+|`cli-onboarding`, `web-app-foundation`, `web-onboarding`, `cli-decisions`, `web-decisions`, `cli-overview`, `web-overview`, `cli-plan-view`, `web-plan-view`, `cli-projects`, `web-projects`, `cli-start`, `web-start`, `cli-actions`, `web-actions`
 |===
 
 [#constraints]

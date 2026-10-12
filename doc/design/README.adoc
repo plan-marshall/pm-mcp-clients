@@ -57,9 +57,13 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |What both clients show while a plan or an epic is started: the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request), their progress through fetching and screening, a flagged issue, the ready step with title and id, a recipe and its parameters, leaving and continuing.
 
+|link:shared/epic-view.adoc[Epic View]
+|`DRAFT`
+|What both clients show of one epic: its head and actions, its workstreams with their plans and status, its sources, landings, findings, watches, and events.
+
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
 |`DRAFT`
-|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and talk.
+|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and talk; what holds a plan and the acts that resolve it.
 
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`

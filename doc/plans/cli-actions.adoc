@@ -4,7 +4,7 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-actions`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]; no roadmap milestone yet
 Where:: `pm-operator`
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -12,13 +12,14 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * `plan pause|start|cancel|abandon` (the pause with its point) and `epic next|decompose|archive|cancel|findings|watches` as direct verbs, `epic decompose` opening the decomposition of `cli-start`, with their confirmations and refusals; the actions below a row of the full-screen view (`a`); the archive check's lines; the review as a dialogue with read-back and talk.
+* `epic <epic_id>` as the epic's view in the full-screen view and as a tree (UC-PLN-5: workstreams and plans with their status, sources, landings, registers, events); what holds a plan, the epic, or a landing, with the acts that resolve it (UC-CTL-4).
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-3]
-* Design: link:../design/shared/work-actions.adoc[Actions on Plans and Epics]; link:../design/terminal-client/19-actions.adoc[Terminal Client, Actions]
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]
+* Design: link:../design/shared/work-actions.adoc[Actions on Plans and Epics]; link:../design/shared/epic-view.adoc[Epic View]; link:../design/terminal-client/19-actions.adoc[Terminal Client, Actions]
 
 == Done When
 

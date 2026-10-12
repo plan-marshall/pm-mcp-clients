@@ -4,7 +4,7 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `control-contract`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]; no roadmap milestone yet
 Where:: `pm-api` (the actions of a plan and an epic, the archive check, the review's items and states); `pm-mock-runtime` (routes and scenarios)
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -14,6 +14,8 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * *Specification first*: the package writes the client side of the changes of Controlling Work into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), once the use cases are agreed, and opens that pull request beside its own.
 * The actions a plan or an epic offers in its state, each with its availability and the reason when disabled; the requests of each action; the confirmation of an end (what ends, the pull request, the reason); the archive check's lines; the cancel of an epic with the choice for its plans.
 * The decomposition: the draft (workstreams, plans with objective, deliverables, surface, dependencies, order), the checks per plan, the changes of a later run, and its states with read-back and talk.
+* The epic as a resource: its header, workstreams and rows with status and what each waits for, sources, landings, registers, its history.
+* The holds and their acts: each hold's kind, cause, attempts, and the acts that resolve it.
 * The pause with its point (now, after the task, after the phase) and the states pausing and paused.
 * The review: an item (id, statement, rules, origin, trust, state, proposal), the dispositions, the planning role's draft, rewrite, and talk as states of the review, the read-back.
 * The scenarios of the mock runtime: a plan paused now, after the task, and after the phase, a pause withdrawn while pausing, a plan started again, cancelled with its pull request closed, abandoned while paused; a first decomposition agreed after an edit and a failing check, a later run with changed, new, and dropped plans; each of them in an epic, the epic told; next plan started, none launchable, the scope full; an archive check failing on open findings and passing; an epic cancelled with and without its plans; a findings review with every disposition, an edit read back and discarded, a talk, the remaining proposals accepted, a review left and continued; scenario names `control-<case>`.
@@ -22,8 +24,8 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-3] and their changes
-* Design: link:../design/shared/work-actions.adoc[Actions on Plans and Epics]
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5] and their changes
+* Design: link:../design/shared/work-actions.adoc[Actions on Plans and Epics]; link:../design/shared/starting-work.adoc#decomposition[Starting Work, The Decomposition]; link:../design/shared/epic-view.adoc[Epic View]
 
 == Done When
 

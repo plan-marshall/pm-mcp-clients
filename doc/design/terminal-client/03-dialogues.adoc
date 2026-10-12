@@ -58,7 +58,7 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |`y`, `r`, `n`
 |`j`, `m`, `n`
 |`yes`, `yes_remember`, `no`
-|every consent state; `start.other-device` (`y`, `n`)
+|every consent state; `entry.other-device` (`y`, `n`)
 
 |`b`
 |`z`
