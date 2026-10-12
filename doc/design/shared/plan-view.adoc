@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Plan View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
@@ -27,6 +27,7 @@ A plan's process is not a fixed list of phases: it is the plan's composed workfl
   └─   not in this plan: land (the deep lane runs outline and plan)
 ----
 
+* *The head*: the plan's title; its current phase; its state, from the closed list of Running Work (link:plan-overview.adoc#item-rows[A Plan, an Epic]): `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `stalled`; a hold where one holds the plan (`holds: a condition`, link:work-actions.adoc#holds[What Holds a Plan]); how long it runs; its own pull request by its number with a link (`#214`); its epic, if any; and its actions (link:work-actions.adoc#plan-actions[A Plan's Actions]).
 * *The plan*: its phases, in the order the plan unit calls them; the phases its composition left out are a group of their own at the end, each with its reason.
 * *A phase, a sub-workflow*: its workflow, opened below it: the states in the order of the workflow, the calls marked as sub-workflows, each with its state; a sub-workflow opens the same way, through every level of nesting.
 * *A leaf*: a state that calls nothing; opening it shows what runs or ran in it (<<leaf>>).
@@ -108,7 +109,7 @@ The web app draws the kinds with the icons of its design system; the terminal us
 
 A leaf shows what runs or ran in it:
 
-* *A job*: its kind, its status, since when it runs or how long it ran, its outcome.
+* *A job*: its kind, its status, since when it runs or how long it ran, its outcome; a job that waits for a build slot says so (`waits for a build slot`).
 * *Tasks* (a state that hands work to workers): one line per task, with its role, the worker serving it (harness and model), its attempt, its status, and its outcome; how many tasks of how many are done.
 * *A finalize step*: its outcome and its firings (`fired 2×: failure, then done`).
 * *A state that waits for the operator*: what waits (a decision, a waiver request), and the way into it.
@@ -124,6 +125,11 @@ A leaf shows what runs or ran in it:
 == Live
 
 The view follows the plan's events: a node entered becomes _running_, one left _done_ or _failed_, and a new version of the composition reads the process again; the selection stays on its node by id. A plan that ends shows its last state, and the view says so.
+
+[#ended]
+=== An Ended Plan
+
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome, the reason where the operator gave one, and the end time in the head; no action, and no live update.
 
 [#texts]
 == Texts
@@ -224,15 +230,31 @@ Keys of the area `plan`, shared by both clients.
 
 |`plan.path.jump`
 |to where it is
-|dorthin, wo er steht
+|Spring dorthin, wo er steht
 
-|`plan.changed`
+|`plan.view.changed`
 |The plan changed: {event}.
 |Der Plan hat sich geändert: {event}.
 
-|`plan.ended`
+|`plan.view.ended`
 |The plan has ended: {outcome}.
 |Der Plan ist beendet: {outcome}.
+
+|`plan.view.state`
+|{phase} · {state}
+|{phase} · {state}
+
+|`plan.view.holds`
+|holds: {kind}
+|hält: {kind}
+
+|`plan.view.pull_request`
+|#{number}
+|#{number}
+
+|`plan.leaf.job_waits_slot`
+|waits for a build slot
+|wartet auf einen Build-Slot
 |===
 
-The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]); _Sub-Workflow_ joins the glossary as a word of the workflow language.
+The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The plan's state in the head uses the keys `overview.state.*` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-texts.adoc#texts[Actions on Plans and Epics, Texts]).

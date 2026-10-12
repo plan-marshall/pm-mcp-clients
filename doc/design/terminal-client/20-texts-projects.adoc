@@ -1,0 +1,208 @@
+= Terminal Client: Texts of Projects
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Projects
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc[UC-PRJ-1 to UC-PRJ-3]_
+
+The texts the terminal adds to the shared ones in xref:17-projects.adoc[Projects], of the area `operator`.
+
+[#projects-texts]
+== Projects
+
+The texts of the rows and steps are those of the shared designs; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.projects.keys.move`
+|move
+|bewege
+
+|`operator.projects.keys.actions`
+|actions
+|Aktionen
+
+|`operator.projects.keys.favourite`
+|favourite
+|Favorit
+
+|`operator.projects.keys.sort`
+|sort
+|sortiere
+
+|`operator.projects.keys.filter`
+|filter
+|filtere
+
+|`operator.projects.keys.add`
+|add
+|füge hinzu
+
+|`operator.projects.keys.leave`
+|leave
+|verlasse
+
+|`operator.projects.being_added`
+|Being added
+|Wird hinzugefügt
+
+|`operator.projects.being_added.step`
+|{step} ({number} of {total})
+|{step} ({number} von {total})
+
+|`operator.projects.action.continue`
+|Continue
+|Setze fort
+
+|`operator.projects.action.abandon`
+|Abandon…
+|Verwirf…
+
+|`operator.projects.list.needs_you`
+|needs you: {count}
+|braucht dich: {count}
+
+|`operator.projects.working_directory`
+|the working directory
+|das Arbeitsverzeichnis
+
+|`operator.projects.from_login`
+|from your login
+|aus deiner Login-Shell
+
+|`operator.projects.checkout.use`
+|Use this checkout
+|Verwende diesen Checkout
+
+|`operator.projects.checkout.edit_path`
+|edit the path
+|bearbeite den Pfad
+
+|`operator.projects.run_consent.title`
+|Run this script of the checkout to know its version?
+|Dieses Skript des Checkouts ausführen, um seine Version zu kennen?
+
+|`operator.projects.run_consent.why`
+|why
+|warum
+
+|`operator.projects.run_consent.this`
+|this
+|das
+
+|`operator.projects.run_consent.yes_project`
+|yes, for this project
+|ja, für dieses Projekt
+
+|`operator.projects.run_consent.no_unknown`
+|no, leave its version unknown
+|nein, lass seine Version unbekannt
+
+|`operator.projects.consent.reads`
+|reads
+|liest
+
+|`operator.projects.consent.writes`
+|writes
+|schreibt
+
+|`operator.projects.consent.if_not`
+|if not
+|wenn nicht
+
+|`operator.projects.use_these`
+|Use these
+|Verwende diese
+
+|`operator.projects.edit_line`
+|edit a line
+|bearbeite eine Zeile
+
+|`operator.projects.change_range`
+|change: {range}
+|ändern: {range}
+
+|`operator.projects.enrolment.containers_off`
+|off: the jobs run without Docker
+|aus: die Jobs laufen ohne Docker
+
+|`operator.projects.enrolled`
+|{project} enrolled
+|{project} registriert
+
+|`operator.projects.build_map.confirm`
+|Confirm the build map
+|Bestätige die Build-Map
+
+|`operator.projects.build_map.edit_route`
+|edit a route
+|bearbeite eine Route
+
+|`operator.projects.architecture.use`
+|Use this architecture
+|Verwende diese Architektur
+
+|`operator.projects.architecture.edit_domains`
+|edit the domains
+|bearbeite die Domänen
+
+|`operator.projects.commit.action`
+|Commit the files
+|Committe die Dateien
+
+|`operator.projects.commit.leave`
+|no, leave them in the checkout
+|nein, lass sie im Checkout
+
+|`operator.projects.commit.done`
+|committed: {commit} "{message}"   not pushed
+|committet: {commit} "{message}"   nicht gepusht
+
+|`operator.projects.left_run`
+|Left {step} of {checkout}. Nothing was sent. Enter continues it.
+|{step} von {checkout} verlassen. Es wurde nichts gesendet. Enter setzt es fort.
+
+|`operator.projects.setup.title`
+|{project} · Setup · What do you want to change?
+|{project} · Einrichtung · Was möchtest du ändern?
+
+|`operator.projects.setup.release`
+|Release the project…
+|Gib das Projekt ab…
+
+|`operator.projects.setup.unenrol`
+|Unenrol the project…
+|Entferne die Registrierung des Projekts…
+
+|`operator.projects.release.confirm`
+|Release the project
+|Gib das Projekt ab
+
+|`operator.projects.unenrol.confirm`
+|Unenrol the project
+|Entferne die Registrierung
+
+|`operator.projects.keep_it`
+|no, keep it
+|nein, behalte es
+
+|`operator.projects.released`
+|{project} released
+|{project} abgegeben
+
+|`operator.projects.unenrolled`
+|{project} unenrolled
+|Registrierung von {project} entfernt
+
+|`operator.projects.unenrol.refused`
+|{project} still runs work; unenrolling is refused while it does:
+|{project} hat noch laufende Arbeit; solange sie läuft, wird die Registrierung nicht entfernt:
+
+|`operator.projects.unenrol.refused_fix`
+|end them first, or release the project: {command}
+|beende sie zuerst, oder gib das Projekt ab: {command}
+|===

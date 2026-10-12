@@ -1,0 +1,250 @@
+= Design: Web App, Onboarding Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Onboarding, Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#changes[Onboarding, Changes to the Specification] (proposed), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
+
+Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
+
+[#texts]
+== Texts
+
+Every text of the screens above is a key of the message catalogue (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). The keys of the areas `common` and `onboard` are shared with the terminal client and listed with their texts in its tables (link:../terminal-client/09-texts-common.adoc#texts[Common, Frame, Automatic Run], link:../terminal-client/10-texts-steps-1-3.adoc[Steps 1 to 3], link:../terminal-client/11-texts-steps-4-5.adoc[Steps 4 and 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]); the web app adds the keys of the area `web` below for what only it shows. A shared label written in lower case (a link label of the terminal, `look again`) is shown on a button with its first letter capitalised (_Look again_, _Suche erneut_); the text is the same.
+
+[#texts-shared]
+=== Shared Keys Used Here
+
+[cols="2,5",options="header"]
+|===
+|Screen |Keys
+
+|xref:onboarding.adoc#frame[frame]
+|the steps `onboard.step.language`, `.harness`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`
+
+|xref:onboarding.adoc#model-at-work[model-at-work]
+|`common.model.working`, `common.consent.cost.estimate`, `common.model.no_result`
+
+|xref:onboarding.adoc#start[start]
+|`onboard.entry.title`; the summaries `onboard.step.<step>.summary`; `onboard.mode.auto`, `onboard.mode.guided`
+
+|xref:onboarding.adoc#consent[consent]
+|the title `onboard.<step>.consent.title`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.cost` with the values of the step's consent keys; `common.consent.cost.none`, `.estimate`, `.estimate_runs`, `.unknown`; the choice `common.consent.yes`, `common.consent.yes_remember`; `common.consent.no`, `common.consent.nothing_done`, `common.consent.once_only`, `common.consent.remembered`; the primary button is the step's consent action (`onboard.harness.consent.action`)
+
+|xref:onboarding.adoc#language[language]
+|`onboard.language.choose.title`, `.interface`, `.model`, `.model_same`, `.glossary_note`, `.why`, `.action_both`, `.action_split`; `onboard.language.name.<locale>`; `common.from.system_locale`
+
+|xref:onboarding.adoc#harness-choose[harness-choose], xref:onboarding.adoc#harness-none[harness-none]
+|`onboard.harness.scan.progress`, `onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.note`, `.action_check`, `.add`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`
+
+|xref:onboarding.adoc#harness-add[harness-add], xref:onboarding.adoc#harness-add-confirm[harness-add-confirm]
+|`onboard.harness.add.title`, `.executable`, `.name`, `.id`, `.start_from`, `.start_from_hint`, `.headless`, `.arguments`, `.mcp_config`, `.output`, `.usage`, `.version_probe`, `.more`, `.action_verify`, `.edit`; `onboard.harness.add_consent.title`, `.runs`, `.never`, `.cost`; `onboard.harness.verify.title`, `.answered`, `.fix_field`; `common.check.not_run`; `onboard.harness.add_confirm.title`, `.intro`, `.profile`, `.workers_yes`, `.workers_no`, `.action`; `onboard.harness.install.done`; `common.link.back`
+
+|xref:onboarding.adoc#harness-probe[harness-probe], xref:onboarding.adoc#harness-confirm[harness-confirm]
+|`onboard.harness.probe_consent.title`, `.never`, `.never_call`, `.runs_call`; `onboard.harness.probe.title`, `.version_ok`, `.version_unsupported`, `.logged_in`, `.logged_out`; `onboard.harness.blocked.fix_login`, `.fix_version`, `.choose_another`; `common.link.recheck`; `onboard.harness.confirm.title`, `.intro`, `.path`, `.version`, `.digest`, `.action`; `onboard.harness.done`
+
+|xref:onboarding.adoc#models[models]
+|`onboard.catalogue.consent.title`, `.probe`, `.advice`, `.advice_runs`, `.yes_both`, `.yes_both_remember`; `onboard.catalogue.scan.models`; `onboard.catalogue.select.title`, `.recommendation`, `.why`, `.enrolled`, `.found_not_enrolled`, `.enrol`, `.add_model`, `.model_id_prompt`, `.action`; `common.from.recommended`; `onboard.catalogue.done`
+
+|xref:onboarding-steps-4-7.adoc#roles[roles]
+|`onboard.roles.review.title`, `.applied`, `.group_roles`, `.not_assignable`, `.no_model_of_tier`, `.assign_open_first`, `.action_defaults`, `.action_save`, `.action_use`, `.adjust`, `.ask_steward`, `.reset`, `.to_look_at`, `.no_effort`; `onboard.roles.field.*`, `onboard.roles.origin.*`, `onboard.roles.advisory.*`; `onboard.roles.consent.title`, `.runs`, `.never`; `onboard.roles.propose.title`, `.reason`, `.rejected`, `.action_all`, `.action_some`; `onboard.roles.validate.ok`, `onboard.roles.done`
+
+|xref:onboarding-steps-4-7.adoc#credential-store[credential-store]
+|`onboard.store.choose.title`, `.keychain`, `.keychain_text`, `.secret_service`, `.secret_service_text`, `.files`, `.files_text`, `.holds`, `.action`; `onboard.store.check.write`, `.read`, `.delete`; `onboard.store.unavailable.now`, `.locked`, `.locked_fix`, `.no_bus`, `.no_bus_fix`, `.choose_another`; `common.link.recheck`; `onboard.store.done`; `onboard.store.move.title`, `.moves`, `.moves_value`, `.each`, `.each_value`, `.if_stopped`, `.if_stopped_value`, `.action`, `.moved`
+
+|xref:onboarding-steps-4-7.adoc#providers[providers]
+|`onboard.providers.consent.title`, `.looks_for`, `.never`; `onboard.providers.scan.tokens`; `onboard.providers.select.title`, `.available`, `.variant`, `.native`, `.native_only`, `.token_stored`, `.token_missing`, `.review_bots`, `.defaults_note`, `.action`; `onboard.providers.credentials.title`, `.stored_note`, `.action`, `.lan`; `onboard.providers.verify.*`; `common.check.ready`, `common.check.not_ready`; `onboard.providers.failed.fix_token`, `.continue_without`, `.without_note`; `onboard.providers.done`, `.done_not_available`
+
+|xref:onboarding-steps-4-7.adoc#plan-defaults[plan-defaults]
+|`onboard.defaults.review.title`, `.override_note`, `.needs_provider`, `.action_defaults`, `.action_save`; `onboard.defaults.axis.*`, `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`
+
+|xref:onboarding-steps-4-7.adoc#auto[auto]
+|`onboard.auto.consent.title`, `.looks_for`, `.runs`, `.never`, `.cost`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`
+
+|xref:onboarding-steps-4-7.adoc#done[done]
+|`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])
+|===
+
+Three keys of the area `onboard` are new with this design and belong in the terminal client's tables as well, since its dialogues say the same:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+
+|`onboard.auto.reason.asked`
+|you were asked
+|du wurdest gefragt
+
+|`onboard.defaults.validate.main_per_project`
+|Commit on main: checked for each project, where its base branch is known
+|Commit auf main: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
+|===
+
+[#texts-web]
+=== Keys of the Web App
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`web.frame.machine`
+|Machine: {name}
+|Maschine: {name}
+
+|`web.frame.settings`
+|Machine settings
+|Einstellungen der Maschine
+
+|`web.frame.help`
+|What is this step for?
+|Wofür ist dieser Schritt?
+
+|`web.onboard.step.done`
+|Done
+|Fertig
+
+|`web.onboard.entry.intro`
+|{steps, plural, one {One step} other {# steps}}. Nothing on this machine is looked at, run, or changed until you say so in that step. You can stop at any point; the next visit, here or in pm-operator, continues where you stopped.
+|{steps, plural, one {Ein Schritt} other {# Schritte}}. Auf dieser Maschine wird nichts angesehen, ausgeführt oder geändert, bevor du es in dem Schritt erlaubst. Du kannst jederzeit aufhören; der nächste Besuch, hier oder in pm-operator, macht dort weiter, wo du aufgehört hast.
+
+|`web.consent.withdraw_hint`
+|you can withdraw it in the settings
+|du kannst sie in den Einstellungen zurücknehmen
+
+|`web.common.why`
+|Why?
+|Warum?
+
+|`web.common.copy`
+|Copy
+|Kopiere
+
+|`web.common.copied`
+|Copied
+|Kopiert
+
+|`web.common.show_full`
+|Show in full
+|Zeige alles
+
+|`web.model.leave_note`
+|You can leave this page; the work continues, and the next visit shows its result.
+|Du kannst diese Seite verlassen; die Arbeit läuft weiter, und der nächste Besuch zeigt ihr Ergebnis.
+
+|`web.model.continue_without`
+|Continue without the advice
+|Mach ohne den Rat weiter
+
+|`web.onboard.harness.advanced`
+|Advanced
+|Erweitert
+
+|`web.onboard.harness.icons_note`
+|Icons: initials for now.
+|Symbole: vorerst Initialen.
+
+|`web.onboard.harness.icons_action`
+|Fetch the makers' icons…
+|Hole die Symbole der Hersteller…
+
+|`web.onboard.harness.install_page`
+|opens the installation page in a new tab
+|öffnet die Installationsseite in einem neuen Tab
+
+|`web.onboard.harness_add.executable_hint`
+|the full path on this machine; the browser's file dialog cannot name it
+|der vollständige Pfad auf dieser Maschine; der Dateidialog des Browsers kann ihn nicht nennen
+
+|`web.onboard.icons_consent.title`
+|Fetch the icons of the found harnesses?
+|Die Symbole der gefundenen Harnesses holen?
+
+|`web.onboard.icons_consent.runs`
+|the runtime downloads once: {list}
+|die Runtime lädt einmal herunter: {list}
+
+|`web.onboard.icons_consent.runs_item`
+|the icon of {harness} from {host}
+|das Symbol von {harness} von {host}
+
+|`web.onboard.icons_consent.in`
+|{dir}, served by the runtime itself
+|{dir}, von der Runtime selbst ausgeliefert
+
+|`web.onboard.icons_consent.never`
+|lets your browser load anything from these sites; uses an icon as the mark of plan-marshall
+|lässt deinen Browser etwas von diesen Seiten laden; verwendet ein Symbol als Zeichen von plan-marshall
+
+|`web.onboard.icons_consent.action`
+|Fetch {count, plural, one {# icon} other {# icons}}
+|Hole {count, plural, one {# Symbol} other {# Symbole}}
+
+|`web.onboard.icons_consent.failed`
+|The icon of {harness} was not fetched: {cause}. Its initials stay.
+|Das Symbol von {harness} wurde nicht geholt: {cause}. Seine Initialen bleiben.
+
+|`web.onboard.catalogue_consent.only`
+|yes to {item} only
+|ja nur zu {item}
+
+|`web.onboard.catalogue_consent.action`
+|{answer, select, probe {List the models} advice {Ask the steward} other {List the models and ask the steward}}
+|{answer, select, probe {Liste die Modelle auf} advice {Frag den steward} other {Liste die Modelle auf und frag den steward}}
+
+|`web.onboard.roles.group`
+|Group
+|Gruppierung
+
+|`web.onboard.roles.by_phase`
+|by phase
+|nach Phase
+
+|`web.onboard.roles.filter`
+|Filter
+|Filter
+
+|`web.onboard.roles.assign_selected`
+|Assign the selected roles…
+|Ordne die gewählten Roles zu…
+
+|`web.onboard.store_move.title`
+|Moving the tokens
+|Die Tokens werden verschoben
+
+|`web.onboard.store_move.more`
+|{count} more
+|{count} weitere
+
+|`web.onboard.auto_consent.list`
+|List every action
+|Liste jede Aktion auf
+
+|`web.onboard.auto_consent.action`
+|Decide everything for me
+|Entscheide alles für mich
+
+|`web.onboard.auto_run.title`
+|Deciding everything
+|Alles wird entschieden
+
+|`web.onboard.auto_run.waits`
+|The automatic run waits for you here.
+|Der automatische Lauf wartet hier auf dich.
+
+|`web.onboard.auto_result.change`
+|Change
+|Ändere
+
+|`web.onboard.auto_result.no_model`
+|No model was asked; you can ask the steward to refine the roles in the machine settings.
+|Es wurde kein Modell gefragt; du kannst den steward die Roles in den Einstellungen der Maschine verfeinern lassen.
+
+|`web.onboard.completed.next`
+|Next: add a project and set it up.
+|Als Nächstes: Füge ein Projekt hinzu und richte es ein.
+|===

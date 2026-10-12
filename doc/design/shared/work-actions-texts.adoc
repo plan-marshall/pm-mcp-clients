@@ -1,0 +1,412 @@
+= Design: Actions on Plans and Epics, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics] » Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
+
+Status: `DRAFT`. The texts of link:work-actions.adoc[Actions on Plans and Epics]; how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+
+[#texts]
+== Texts
+
+Keys of the area `control`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`control.plan.pause`
+|Pause
+|Halte den Plan an
+
+|`control.plan.start`
+|Start
+|Starte den Plan
+
+|`control.plan.cancel`
+|Cancel
+|Brich den Plan ab
+
+|`control.plan.abandon`
+|Abandon
+|Gib den Plan auf
+
+|`control.plan.settings`
+|Settings
+|Einstellungen
+
+|`control.plan.state.paused`
+|paused since {time}
+|angehalten seit {time}
+
+|`control.plan.state.pausing`
+|pausing {point, select, task {after the task} other {after the phase}}
+|hält {point, select, task {nach dem Task} other {nach der Phase}} an
+
+|`control.plan.still_holds`
+|a job finishes: {job} · {duration}
+|ein Job läuft zu Ende: {job} · {duration}
+
+|`control.plan.label.epic`
+|Its epic
+|Sein Epic
+
+|`control.plan.epic_told`
+|{epic} is told
+|{epic} wird informiert
+
+|`control.plan.epic_was_told`
+|{epic} told
+|{epic} informiert
+
+|`control.plan.pull_request`
+|#{number}
+|#{number}
+
+|`control.pause.title`
+|Pause {plan}?
+|{plan} anhalten?
+
+|`control.pause.now`
+|Now
+|Sofort
+
+|`control.pause.after_task`
+|After the current task
+|Nach dem laufenden Task
+
+|`control.pause.after_phase`
+|After the current phase
+|Nach der laufenden Phase
+
+|`control.pause.keep_running`
+|Keep it running
+|Lass ihn weiterlaufen
+
+|`control.end.title`
+|{action, select, cancel {Cancel} other {Abandon}} {plan}?
+|{plan} {action, select, cancel {abbrechen} other {aufgeben}}?
+
+|`control.end.label.what_ends`
+|What ends
+|Was endet
+
+|`control.end.label.pull_request`
+|Pull request
+|Pull Request
+
+|`control.end.label.reason`
+|Reason
+|Grund
+
+|`control.end.label.afterwards`
+|Afterwards
+|Danach
+
+|`control.end.what_ends`
+|the running work: {jobs, plural, one {# job} other {# jobs}}, {tasks, plural, one {# task} other {# tasks}}
+|die laufende Arbeit: {jobs, plural, one {# Job} other {# Jobs}}, {tasks, plural, one {# Task} other {# Tasks}}
+
+|`control.end.pr_open`
+|#{number} is open
+|#{number} ist offen
+
+|`control.end.pr_close`
+|Close it, with the reason
+|Schließe ihn, mit dem Grund
+
+|`control.end.pr_leave`
+|Leave it open
+|Lass ihn offen
+
+|`control.end.afterwards`
+|the plan is archived as {outcome, select, cancelled {cancelled} other {abandoned}}; its branch stays
+|der Plan wird als {outcome, select, cancelled {abgebrochen} other {aufgegeben}} archiviert; sein Branch bleibt
+
+|`control.end.keep`
+|{action, select, cancel {Keep it running} other {Keep it paused}}
+|{action, select, cancel {Lass ihn weiterlaufen} other {Lass ihn angehalten}}
+
+|`control.end.action`
+|{action, select, cancel {Cancel the plan} other {Abandon the plan}}
+|{action, select, cancel {Brich den Plan ab} other {Gib den Plan auf}}
+
+|`control.epic.next`
+|Next plan: {plan}
+|Starte den nächsten Plan: {plan}
+
+|`control.epic.next_none`
+|No plan can start: {reasons}
+|Kein Plan kann starten: {reasons}
+
+|`control.epic.next_raise`
+|Raise to {count} at once and start it
+|Erhöhe auf {count} gleichzeitig und starte ihn
+
+|`control.epic.decompose_again`
+|Decompose again
+|Zerlege neu
+
+|`control.epic.findings_review`
+|Findings review
+|Prüfe die Findings
+
+|`control.epic.watches_review`
+|Watches review
+|Prüfe die Beobachtungen
+
+|`control.epic.archive`
+|Archive
+|Archiviere das Epic
+
+|`control.epic.cancel`
+|Cancel
+|Brich das Epic ab
+
+|`control.archive.title`
+|Archive {epic}?
+|{epic} archivieren?
+
+|`control.archive.no_plan_active`
+|no plan running, pausing, or paused
+|kein Plan läuft, hält an oder ist angehalten
+
+|`control.archive.rows_ended`
+|every plan shipped or ended
+|jeder Plan ausgeliefert oder beendet
+
+|`control.archive.open_findings`
+|open findings
+|offene Findings
+
+|`control.archive.ledger_landed`
+|the ledger is landed
+|das Ledger ist gelandet
+
+|`control.archive.completion_reviewed`
+|the completion review is done
+|die Abschlussprüfung ist erledigt
+
+|`control.archive.open_watches`
+|watches still open: they go into the archive
+|noch offene Beobachtungen: sie kommen ins Archiv
+
+|`control.archive.review_findings`
+|Review the findings
+|Prüfe die Findings
+
+|`control.archive.not_yet`
+|Not yet
+|Noch nicht
+
+|`control.archive.action`
+|Archive the epic
+|Archiviere das Epic
+
+|`control.cancel_epic.title`
+|Cancel {epic}?
+|{epic} abbrechen?
+
+|`control.cancel_epic.label.plans`
+|Its plans
+|Seine Pläne
+
+|`control.cancel_epic.plans_too`
+|Cancel them too
+|Brich sie mit ab
+
+|`control.cancel_epic.plans_on`
+|Let them run on without the epic
+|Lass sie ohne das Epic weiterlaufen
+
+|`control.cancel_epic.afterwards`
+|the epic is archived as cancelled
+|das Epic wird als abgebrochen archiviert
+
+|`control.cancel_epic.keep`
+|Keep it
+|Behalte es
+
+|`control.cancel_epic.action`
+|Cancel the epic
+|Brich das Epic ab
+
+|`control.review.title`
+|{epic} · {register, select, findings {findings review} other {watches review}}
+|{epic} · {register, select, findings {Prüfung der Findings} other {Prüfung der Beobachtungen}}
+
+|`control.review.progress`
+|{done} of {total} decided
+|{done} von {total} entschieden
+
+|`control.review.statement`
+|Statement
+|Aussage
+
+|`control.review.rules`
+|Rules
+|Regeln
+
+|`control.review.origin`
+|Origin
+|Herkunft
+
+|`control.review.proposal`
+|Proposal
+|Vorschlag
+
+|`control.review.untrusted`
+|untrusted
+|nicht vertrauenswürdig
+
+|`control.review.keep_defect`
+|Keep as defect
+|Behalte es als Defekt
+
+|`control.review.keep_watch`
+|Keep as watch
+|Behalte es als Beobachtung
+
+|`control.review.drop`
+|Drop
+|Lass es fallen
+
+|`control.review.drop_reason`
+|Why do you drop it?
+|Warum lässt du es fallen?
+
+|`control.review.promote`
+|Promote to a plan
+|Mach einen Plan daraus
+
+|`control.review.edit`
+|Edit
+|Bearbeite es
+
+|`control.review.talk`
+|Talk
+|Besprich es
+
+|`control.review.accept_remaining`
+|Accept the remaining {count, plural, one {# proposal} other {# proposals}}
+|{count, plural, one {Nimm den übrigen Vorschlag an} other {Nimm die übrigen # Vorschläge an}}
+
+|`control.review.accept_remaining_confirm`
+|Take the proposal for {count, plural, one {this item} other {these # items}}?
+|Den Vorschlag für {count, plural, one {diesen Eintrag} other {diese # Einträge}} übernehmen?
+
+|`control.review.stage`
+|Stage it
+|Merke ihn vor
+
+|`control.review.back`
+|Back
+|Zurück
+
+|`control.review.accept`
+|Accept
+|Nimm es an
+
+|`control.review.instruct_again`
+|Instruct again
+|Weise neu an
+
+|`control.review.discard`
+|Discard
+|Verwirf die Änderung
+
+|`control.review.finish`
+|Finish
+|Schließe die Prüfung ab
+
+|`control.hold.title`
+|{kind, select, stalled {{name} is stalled} condition {{name} holds: a condition} integrity_pause {{name} holds: an integrity pause} held {{name} holds: a held item} other {{name} holds: a failed landing}}
+|{kind, select, stalled {{name} steht} condition {{name} wird durch eine Bedingung aufgehalten} integrity_pause {{name} wird durch eine Integritätspause aufgehalten} held {{name} wird durch einen zurückgehaltenen Eintrag aufgehalten} other {{name} wird durch eine fehlgeschlagene Landung aufgehalten}}
+
+|`control.hold.kind.stalled`
+|stalled
+|steht
+
+|`control.hold.kind.condition`
+|a condition
+|eine Bedingung
+
+|`control.hold.kind.integrity_pause`
+|an integrity pause
+|eine Integritätspause
+
+|`control.hold.kind.held`
+|a held item
+|ein zurückgehaltener Eintrag
+
+|`control.hold.kind.landing_failed`
+|a failed landing
+|eine fehlgeschlagene Landung
+
+|`control.hold.cause`
+|Cause
+|Ursache
+
+|`control.hold.tried`
+|Tried {count, plural, one {once} other {# times}}, last {time}
+|{count, plural, one {Einmal} other {# Mal}} versucht, zuletzt {time}
+
+|`control.hold.resolve`
+|Resolve
+|Lösen
+
+|`control.hold.act.retry`
+|Retry now
+|Versuche es jetzt erneut
+
+|`control.hold.act.recycle`
+|Recycle the worker
+|Starte den Worker neu
+
+|`control.hold.act.grant`
+|Grant read access to {project}…
+|Gib Lesezugriff auf {project}…
+
+|`control.hold.act.add_credential`
+|Add the credential…
+|Füge den Zugang hinzu…
+
+|`control.hold.act.raise_budget`
+|Raise the budget…
+|Erhöhe das Budget…
+
+|`control.hold.act.show_change`
+|Show the change
+|Zeige die Änderung
+
+|`control.hold.act.accept_change`
+|Accept the change…
+|Nimm die Änderung an…
+
+|`control.hold.act.restore`
+|Restore
+|Stelle wieder her
+
+|`control.hold.act.show_pr`
+|Show the pull request #{number}
+|Zeige den Pull Request #{number}
+
+|`control.hold.act.give_up_removal`
+|Give up the removal…
+|Gib das Entfernen auf…
+
+|`control.hold.act.end_plan`
+|End the plan…
+|Beende den Plan…
+
+|`control.hold.give_up_removal.explain`
+|The files stay tracked in git where they were, and the source keeps its copy; the two are no longer kept as one.
+|Die Dateien bleiben in Git, wo sie waren, und die Quelle behält ihre Kopie; beide werden nicht mehr als eins geführt.
+
+|`control.hold.cleared`
+|{cause} cleared by itself
+|{cause} hat sich von selbst erledigt
+|===

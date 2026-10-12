@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Transcripts: Steps 4 to 7
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
+
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#t-roles]
@@ -54,7 +56,7 @@ Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   �
 ----
 
 * `e` from the overview lists every role, grouped by phase, with the columns of the web table as fields: number, role, class, harness, model, effort, origin (`default`, `✎ steward`, `✎ changed`, `⚠ <reason>`). A filter is typed as `/text`.
-* `?<n>` prints the advisory of role `n` in place (link:../web-app/onboarding.adoc#roles[Web App, Onboarding, Roles]), here of `outline`:
+* `?<n>` prints the advisory of role `n` in place (link:../web-app/onboarding-steps-4-7.adoc#roles[Web App, Onboarding, Roles]), here of `outline`:
 
 [source,text]
 ----
@@ -132,7 +134,7 @@ Use the macOS Keychain? [Enter]   other: 2   b) back   ?   › ⏎
 * On Linux the first option is the Secret Service, with its own text (`Every program you run can read it while it is unlocked.`).
 
 [#t-store-unavailable]
-=== Not Available Now (`store.unavailable`)
+=== Not Available Now (`store.check`, `store.unavailable`)
 
 [source,text]
 ----
@@ -148,7 +150,32 @@ Use the macOS Keychain? [Enter]   other: 2   b) back   ?   › ⏎
 Use the files? [Enter]   l) check again   b) back   ?   ›
 ----
 
-* Chosen while unavailable, or failing `store.check`, the state is `store.unavailable` with its cause and the two links `l) check again` and `o) choose another store`.
+* Chosen while unavailable, or failing `store.check`, the state is `store.unavailable` with its cause and the two links `l) check again` and `o) choose another store`:
+
+[source,text]
+----
+[5/7] Credentials · Where should this machine keep its tokens?
+  1) Linux Secret Service                              ★ recommended ←
+  …
+Use the Secret Service? [Enter]   other: 2   b) back   ?   › ⏎
+    ✓  write a test entry
+    ✗  read it back: the collection was locked while the entry was written
+       → unlock it (for example by logging in at the desktop), then check again
+    ·  delete it   not run
+
+[5/7] Credentials · The Secret Service is not available now
+  ✗ the collection is locked
+  → unlock it (for example by logging in at the desktop), then check again
+
+Check again? [Enter]   o) choose another store   ?   › ⏎
+    ✓  write a test entry
+    ✓  read it back
+    ✓  delete it
+✓ Tokens are kept in the Secret Service
+----
+
+* `l` (here the primary link) runs `store.detect` again and checks the same store; `o` returns to `store.choose` with the other stores. Nothing is written to the file store in place of the chosen one.
+* Later, a recorded store that has become unavailable makes every step that needs a credential refuse with `credential_store_unavailable` and its fix (`common.error.credential_store_unavailable`, xref:09-texts-common.adoc#texts-common[Common]); `pm-operator status` names it too.
 
 [#t-store-move]
 === A Later Change Moves the Tokens (`config credentials`)
@@ -208,8 +235,10 @@ Continue with 2 providers? [Enter]   toggle: 1-8   b) back   ?   › ⏎
   model or a log.
 
 Token (not shown while you type): ›
-Store and check it? [Enter]   k) skip SonarCloud   ?   › ⏎
+Store and check it? [Enter]   b) back   ?   › ⏎
 ----
+
+* There is no way past a missing token here: `b` returns to `providers.select`, where the provider can be unselected, and a provider whose check fails can be left out in `providers.failed` (<<t-providers-verify>>).
 
 * The token is read with the echo off into a `char[]` (xref:04-console.adoc#line-editor[Line Editor]) and sent in the body of one request to the runtime over its Unix domain socket, which only the user can open; it never crosses a network on its way to the credential store, and nothing of it is printed. `--no-input` stops here and names `pm-operator credentials set sonar`.
 
@@ -258,7 +287,7 @@ Continue without SonarCloud? [Enter]   b) back   › ⏎
 Use these defaults? [Enter]   change: e.g. 2 5   ?n explains a line   b) back   › 2
   Landing   2) Commit on main ✎
 Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
-    ✓  Commit on main: the base branch accepts pushes (GitHub, main not protected)
+    ✓  Commit on main: checked for each project, where its base branch is known
     ✓  Test first
     ✓  At the key points
 ✓ Plan defaults recorded
@@ -266,6 +295,7 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
 
 * A variant that cannot run on this machine is listed without a number and with its reason (`Branch and Pull Request   needs a provider: none is available`).
 * `defaults.validate` that refuses a line reprints the state with the line marked `✗ <reason>` and the prompt naming it.
+* At the machine level it checks only what the machine knows: whether a provider is available for a pull request. There is no repository at this level, so whether a base branch is protected is checked where a project chooses _Commit on main_ (its setup, or `config plan-defaults --project`), which refuses it on a protected branch with the reason.
 
 [#t-completed]
 == Done (`onboard.completed`)
@@ -281,7 +311,7 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
     ✓ Providers    GitHub (gh)
     ✓ Plans        Commit on main · Test first · key points
 
-  Next: enrol a project and set it up: pm-operator enrol, in its checkout.
+  Next: add a project: pm-operator project add, in its checkout.
 ✓ Web access on http://127.0.0.1:7420
 ✓ Browser opened with a pairing code, valid for 10 minutes
 pm ›

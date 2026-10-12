@@ -1,0 +1,423 @@
+= Design: Web App, Onboarding Steps ④ to ⑦
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Onboarding, Steps ④ to ⑦
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#changes[Onboarding, Changes to the Specification] (proposed), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
+
+Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
+
+[#roles]
+== ④ Roles (`roles.review`)
+
+The step opens with the default assignment applied, as an overview; accepting it is one click.
+
+[source,text]
+----
+  Give every role a harness and a model
+
+  The default assignment is applied to all 31 roles.
+
+    Claude Code · opus-5.5      7 roles   planning and decisions   ⓘ
+    Claude Code · sonnet-5.5   16 roles   execution and review     ⓘ
+    OpenCode · qwen-coder       6 roles   screening and checks     ⓘ
+    ⚠ not assignable            2 roles   no fast model allowed    → assign
+
+  [ Adjust roles ]   [ Ask the steward to refine… ]     [ Use the defaults ]
+----
+
+* Each line is one harness and model with its roles, grouped by what they do; ⓘ lists the roles and the advisory of the group. A ⚠ line opens the table filtered to its roles.
+* *Use the defaults* is disabled while a ⚠ line remains, and its place says `Assign the 2 open roles first`; it saves the assignment.
+* *Ask the steward to refine…* goes through its consent screen (`roles.consent`, consent kind `model_advice`); the steward then works as every model at work (xref:onboarding.adoc#model-at-work[model-at-work]), and the proposed departures appear in the table, marked, each to accept or reject.
+* *When the steward fails or is left* (`roles.propose` without a result): the overview returns as it was, with one line above it:
+
+[source,text]
+----
+  Give every role a harness and a model
+
+  – The steward gave no proposal: the task ended after 5:00 without an answer.
+
+  The default assignment is applied to all 31 roles.
+    …
+----
+
+* *Adjust roles* opens the table:
+
+[source,text]
+----
+  Give every role a harness and a model                 31 roles · 2 to look at
+
+  Group: [ by phase ▾ ]   Filter: [            ]   [ Assign the selected roles… ]
+
+  ▾ Planning
+    [ ] refine      read_only  Claude Code  sonnet-5.5  medium   default        ⓘ
+    [ ] outline     read_only  Claude Code  opus-5.5    high     default        ⓘ
+  ▾ Review
+    [ ] qgate       read_only  OpenCode     qwen-coder  —        ✎ steward      ⓘ
+    [ ] screener    zero_tool  —            —           —        ⚠ no model     ⓘ
+                                                                   of tier fast
+  ▸ Execution (8)   ▸ Finalize (6)   ▸ Decisions (5)
+
+  [ Back ]                                              [ Save 31 roles ]
+----
+
+The advisory of a role (ⓘ, opened in place below its row):
+
+[source,text]
+----
+    outline     read_only  Claude Code  opus-5.5    high     default        ⓘ
+    ┌───────────────────────────────────────────────────────────────────────┐
+    │ What it does   Turns the refined request into deliverables and the    │
+    │                plan's lane; reads the whole affected codebase.        │
+    │ What it needs  Deep reasoning over a large context; few tool calls.   │
+    │ Why frontier   A weak outline costs more later than the model costs   │
+    │                here: every later phase builds on it.                  │
+    │ If cheaper     More loop-backs from the Q-Gate; standard tier passed  │
+    │                71 % of the qualification items (frontier 92 %).       │
+    │ Steward        no departure                                           │
+    │                                                 [ Reset to default ]  │
+    └───────────────────────────────────────────────────────────────────────┘
+----
+
+* Each row: role, class, harness, model, effort, and where the value comes from: `default`, `✎ steward` (a proposed departure, its reason in the advisory under _Steward_), `✎ changed` (the operator's), or `⚠` with the validation reason of `roles.validate` or a default that cannot be met here.
+* The advisory always shows the default's what and why, also when the value departs from it; *Reset to default* per row and for all.
+* *Assign the selected roles…* sets harness, model, and effort for the selected rows in one go; the advisories of the rows stay. A harness without an effort setting shows `(OpenCode has no effort setting)` in place of the effort.
+* *Save* is disabled while a row is marked ⚠; the header counts them. `roles.validate` that refuses a role returns to the table with the row marked `⚠ <reason>`.
+
+Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal Client, transcript].
+
+[#credential-store]
+== ⑤ Credentials
+
+[#store-choose]
+=== Choose (`store.detect`, `store.choose`)
+
+[source,text]
+----
+  Where should this machine keep its tokens?
+
+  (•) macOS Keychain                                         ★ recommended
+      Only plan-marshall's runtime reads them without asking you; any
+      other program that tries makes macOS ask first.
+
+  ( ) Files in ~/.plan-marshall-mcp/credentials/
+      Readable by every program you run (mode 0600). Works everywhere,
+      also without a desktop session.
+
+  The choice holds until you change it; a change moves the tokens and
+  never leaves a copy behind.
+
+  [ Back ]                                     [ Use the macOS Keychain ]
+----
+
+* On Linux the first option is the Secret Service, with its own text: every program you run can read it while it is unlocked.
+* The primary button names the store it will use.
+
+[#store-check]
+=== Check (`store.check`, `store.record`)
+
+[source,text]
+----
+  Where should this machine keep its tokens?
+
+    ✓  write a test entry
+    ✓  read it back
+    ✓  delete it
+
+  ✓ Tokens are kept in the macOS Keychain
+----
+
+* Each line turns from a spinner to ✓ or ✗; with all three ✓ the store is recorded and the step is done. A ✗ names its cause (the store's answer) and leads to <<store-unavailable>>.
+
+[#store-unavailable]
+=== Not Available Now (`store.unavailable`)
+
+[source,text]
+----
+  Where should this machine keep its tokens?
+
+  ( ) Linux Secret Service                              not available now
+      Every program you run can read it while it is unlocked.
+      ✗ no session bus: this is an SSH session
+      → log in at the desktop, or use the files below
+
+  (•) Files in ~/.plan-marshall-mcp/credentials/
+      Readable by every program you run (mode 0600). Works everywhere,
+      also without a desktop session.
+
+  [ Check again ]   [ Choose another store ]          [ Use the files ]
+----
+
+* The state is reached when the OS store is not available now (`store.detect`: locked, no session bus over SSH), or when its check failed (`store.check` with a ✗, whose line is shown in place of the cause: `✗ read it back: the collection is locked` with `→ unlock it (for example by logging in at the desktop), then check again`).
+* *Check again* goes back to `store.detect` and then shows `store.choose` with what is available now; *Choose another store* goes to `store.choose` with the other store preselected, which the primary button then names.
+
+[#store-move]
+=== A Later Change Moves the Tokens
+
+A later run of this step from the settings (link:machine-settings.adoc#aspects[Machine Settings]) that changes the store asks for the move first, with the count:
+
+[source,text]
+----
+  Move the tokens to the macOS Keychain?
+
+    moves       7 tokens from ~/.plan-marshall-mcp/credentials/ to the
+                macOS Keychain
+    each        written, read back, then deleted from the files
+    if stopped  the next run continues the move; no token is lost or doubled
+
+  [ Back ]                                              [ Move 7 tokens ]
+----
+
+[source,text]
+----
+  Moving the tokens
+
+    ✓  github                   moved
+    ✓  sonar                    moved
+    ⠦  pm-mcp-clients/github
+    ·  4 more
+
+  ✓ Tokens are kept in the macOS Keychain
+----
+
+* The new store is checked first as in <<store-check>>; the move starts only when it passes. A token that does not read back from the new store stays in the old one, is marked ✗ with the cause, and the move stops there; *Check again* continues it. Closing the page does not stop the move; the next visit shows where it is.
+
+Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-credentials[Terminal Client, transcript].
+
+[#providers]
+== ⑥ Providers
+
+The consent `providers.consent` comes first, as in xref:onboarding.adoc#consent[consent] (`Look for CLI tools and stored tokens?`); with _yes_ the scan shows one line per tool and the count of stored tokens.
+
+[#providers-select]
+=== Select (`providers.select`)
+
+[source,text]
+----
+  Choose what this machine works with
+
+  GitHub        [x] available   variant ( ) native  (•) gh 2.71   ✓ token stored
+  GitLab        [ ] available
+  SonarCloud    [x] available   native only                       ✗ token missing
+  Review bots   [x] CodeRabbit  [x] Sourcery  [ ] cuioss-review-bot
+
+  These are the defaults for every project; a project's setup and a single
+  plan can override them.
+
+  [ Back ]                                 [ Continue with 2 providers ]
+----
+
+[#providers-credentials]
+=== Credentials (`providers.credentials`)
+
+[source,text]
+----
+  SonarCloud needs a token
+
+  Token   [ •••••••••••••••••••••••••••••• ]
+          Stored in the macOS Keychain; it is never shown again and never
+          reaches a model or a log.
+
+                                                   [ Store and check it ]
+----
+
+* The state has one link, and no link to skip the provider: continuing without a provider is offered only after its check failed (<<providers-verify>>).
+* On the LAN listener the input is replaced by the command to run in a terminal and *Check again* (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-web-credentials[Credentials in the Web App]): `Tokens are entered on this machine only. In a terminal of it, run pm-operator credentials set sonar, then check again.`
+* *Store and check it* stores the token and leads to the check (<<providers-verify>>).
+
+[#providers-verify]
+=== Check (`providers.verify`, `providers.failed`)
+
+[source,text]
+----
+  Checking the providers
+
+  GitHub                                                       ✓ ready
+    ✓  github.com reachable
+    ✓  token authenticates as oliver-wolff (fine-grained, expires in 41 days)
+    ✓  permissions: contents, pull requests, checks (read and write)
+    ✓  gh 2.71 is logged in as the same account
+
+  SonarCloud                                                   ✗ not ready
+    ✓  sonarcloud.io reachable
+    ✗  token refused: 401 "Invalid token"
+       → enter the token again
+
+  [ Continue without SonarCloud ]   [ Check again ]   [ Enter the token again ]
+----
+
+* Every provider and every check has its own line; a provider is ✓ only when all its checks are. A ✗ shows the provider's answer and the fix.
+* *Enter the token again* goes to `providers.credentials`; *Check again* to `providers.verify`.
+* *Continue without SonarCloud* asks first, in place: `SonarCloud will be recorded as not available. Projects can still set it up on their own.` with *Back* and *Continue without SonarCloud*; then `providers.record`.
+* With every provider ✓ the state passes on its own to `providers.record`, which shows `Providers recorded: GitHub (gh)`, and the onboarding goes on to <<plan-defaults>>.
+
+Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-providers[Terminal Client, transcript].
+
+[#plan-defaults]
+== ⑦ Plans (`defaults.review`, `defaults.validate`)
+
+[source,text]
+----
+  How should plans run on this machine?
+
+  A project's setup and a single plan can choose otherwise.
+
+  Landing    (•) Branch and Pull Request    review and merge on the provider
+             ( ) Commit on main             no Pull Request, pushed directly
+             ( ) Files only                 nothing is committed; you take over
+                                                                    [ Why? ]
+  Method     (•) Test first                 tests are written before the code
+             ( ) Tests after
+                                                                    [ Why? ]
+  Asking     ( ) At every phase             you confirm each phase
+             (•) At the key points          the outline, and before the Merge
+             ( ) Only questions             you are asked only what needs you
+                                                                    [ Why? ]
+
+  [ Back ]                                         [ Use these defaults ]
+----
+
+* The preselection is the shipped default; each line says in a few words what the variant does, and *Why?* beside an axis explains its consequences in place.
+* A variant that cannot run on this machine is greyed with its reason (`Branch and Pull Request   needs a provider: none is available`).
+* With a line changed, the button reads *Save these choices*.
+
+The validation (`defaults.validate`) shows one line per axis:
+
+[source,text]
+----
+  How should plans run on this machine?
+
+    ✓  Branch and Pull Request: GitHub is available
+    ✓  Test first
+    ✓  At the key points
+
+  ✓ Plan defaults recorded
+----
+
+* At machine level only what the machine can know is checked: that a provider is available for `Branch and Pull Request`. Whether a base branch is protected is known only for a repository; `Commit on main` is checked when a project's setup or a plan chooses it, and here reads `✓  Commit on main: checked for each project, where its base branch is known`.
+* A refused line returns to `defaults.review` with the axis marked `✗ <reason>` and the button disabled until it is changed.
+
+Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-defaults[Terminal Client, transcript].
+
+[#auto]
+== Automatic Run (`auto.consent`, `auto.run`, `auto.result`)
+
+[#auto-consent]
+=== Consent (`auto.consent`)
+
+The consent lists everything the run does, in the form of xref:onboarding.adoc#consent[consent], in one list; it is never remembered, so it has no remember choice:
+
+[source,text]
+----
+  Decide everything for me?
+
+    looks for   the harnesses claude, opencode, codex, agy in your PATH,
+                ~/.local/bin, /Applications, /opt/homebrew/bin;
+                the tools git, gh, glab and the tokens already stored
+    runs        the version and login probe of each harness found, the
+                model probe of each harness that can list its models, the
+                version probe of each tool found
+    never       asks a model for advice, reads other files, sends anything
+                over the network except the provider checks
+    cost        none; for a harness that has no login probe, one short
+                headless call, paid with tokens of its account
+
+  This consent is for this run only.                  [ List every action ]
+
+  [ Not now ]                                 [ Decide everything for me ]
+----
+
+* *Not now* goes back to xref:onboarding.adoc#start[start] (`onboard.mode`) with the line `Nothing was done.`; nothing was looked at.
+* *List every action* lists each scan and probe with its command, in place.
+
+[#auto-run]
+=== The Run (`auto.run`)
+
+The run shows the step bar moving and each step's check lines as they report:
+
+[source,text]
+----
+  Deciding everything
+
+  ① Language     ✓ Deutsch, models too              from your system
+  ② Harness      ✓ Claude Code 2.4.1                the first supported one
+                   ✓ version   ✓ logged in
+  ③ Models       ✓ 3 models on 2 harnesses          all found
+  ④ Roles        ✓ default assignment, 31 roles     the default
+  ⑤ Credentials  ✓ macOS Keychain                   available here
+                   ✓ write   ✓ read   ✓ delete
+  ⑥ Providers    ⠦ GitHub via gh 2.71, SonarCloud
+----
+
+* *A step that needs the operator* (a login, a token, no harness found, a check that fails): the run stops in that step's own state, shown as in the guided run under the step bar, with the line `The automatic run waits for you here.` above it; when the state passes, the run continues on its own. Here SonarCloud is selected because a stored token was found for it, and that token is refused:
+
+[source,text]
+----
+  The automatic run waits for you here.
+
+  Checking the providers
+
+  SonarCloud                                                   ✗ not ready
+    ✓  sonarcloud.io reachable
+    ✗  token refused: 401 "Invalid token"
+       → enter the token again
+
+  [ Continue without SonarCloud ]   [ Check again ]   [ Enter the token again ]
+----
+
+* A provider whose token is missing stops the run in `providers.credentials` (<<providers-credentials>>) the same way; the automatic run never skips a step for want of a token.
+
+[#auto-result]
+=== The Result (`auto.result`)
+
+[source,text]
+----
+  Everything is decided.
+
+  ① Language     Deutsch, models too           from your system      [ Change ]
+  ② Harness      Claude Code 2.4.1  ✓          the first supported one [ Change ]
+  ③ Models       3 models on 2 harnesses  ✓    all found              [ Change ]
+  ④ Roles        default assignment, 31 roles  the default            [ Change ]
+  ⑤ Credentials  macOS Keychain  ✓             available here         [ Change ]
+  ⑥ Providers    GitHub (gh)  ✓                gh logged in           [ Change ]
+                 SonarCloud  ✓                 you were asked
+  ⑦ Plans        Pull Request · Test first · key points   the default [ Change ]
+
+  No model was asked; you can ask the steward to refine the roles in the
+  machine settings.
+
+                                                            [ Finish ]
+----
+
+* *Change* opens that step's choice state with the automatic value as its proposal and returns to the result.
+* A value the operator gave during the run has the reason `you were asked`.
+
+Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, transcript].
+
+[#done]
+== Done (`onboard.completed`)
+
+[source,text]
+----
+  This machine is ready
+
+    ✓ Language    Deutsch, models too
+    ✓ Harness     Claude Code 2.4.1 (+ OpenCode 1.9.0)
+    ✓ Models      3 models allowed
+    ✓ Roles       31 roles assigned
+    ✓ Credentials macOS Keychain
+    ✓ Providers   GitHub (gh); SonarCloud not available
+    ✓ Plans       Pull Request · Test first · key points
+
+  Next: add a project and set it up.
+
+  [ Machine settings ]                                  [ Add a project ]
+----
+
+* *Add a project* opens the project onboarding (link:../shared/project-onboarding.adoc[Project Onboarding]) from the explorer (link:../shared/project-explorer.adoc[Project Explorer]); *Machine settings* opens link:machine-settings.adoc[Machine Settings].
+
+Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Terminal Client, transcript].

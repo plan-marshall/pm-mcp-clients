@@ -5,9 +5,9 @@
 
 link:../README.adoc[Design] » Plan Overview
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], leading into link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], leading into link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-overview-resource[The Overview Resource and Its Events] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-overview-resource[The Overview Resource and Its Events], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-titles[Titles and Names], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-start[The Start of the Current Phase], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
 
@@ -25,7 +25,7 @@ Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.ado
                                       epic      plans of none at the end
 ----
 
-* *Projects*: only those with running work (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work]): an active plan or epic, or an open decision of the project's setup. Ended and archived plans never appear; a project with nothing running does not either.
+* *Projects*: only those with running work (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work]): an active plan or epic, or an open decision of the project's setup. Ended and archived plans never appear here; a project with nothing running does not either. What ended is a list of its own (<<ended>>).
 * *A project, by plan*: its active plans, flat. Each plan names the epic it belongs to; in the web app the name is a link to that epic, in the terminal a key moves there.
 * *A project, by epic*: its active epics, each with its active plans below it; the plans that belong to no epic follow as a group of their own (`without epic`), so both views hold the same plans.
 * The operator switches between the two views of a project at any time; the view is part of where the operator left the overview (<<persistence>>).
@@ -64,15 +64,15 @@ Order: projects that need the operator first, then by their latest activity. A p
 |its icon, colour, and the word `epic`
 
 |Needs the operator
-|the marker with the count and the kind of the first (`! decision`, `! stalled`, `! paused`, `! waiver`)
-|the same, counting its plans' items too
+|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you`, `integrity pause`, `stalled`, `needs a fix`, `held`, `landing failed`, `paused by you`, `setup` (`! 2 · decision`, `! paused by you`)
+|the same, counting its plans' items too, and `new findings` of its own
 
 |Title
 |the plan's title
 |the epic's title
 
 |Where it is
-|the current phase and the state in it: `working`, `waiting for you`, `stalled`, `paused`
+|the current phase and the state in it, from one closed list: `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `stalled`
 |its plans: `2 running · 3 staged`
 
 |Time
@@ -86,11 +86,15 @@ Order: projects that need the operator first, then by their latest activity. A p
 |Belongs to
 |its epic, or nothing
 |—
+
+|Pull request
+|its own pull request once it has one, by its number with a link to the provider (`#214`)
+|—
 |===
 
 * Order within a project: those that need the operator first, then the most recently active; the plans below an epic in the same order.
 * Times are shown as durations, rounded to what matters (`25 min`, `2 h 10 min`, `3 d`), and computed at each redraw; nothing counts in place by the second.
-* Selecting a plan or an epic leads into its own view (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]); selecting its marker leads to what waits (link:decisions.adoc[Decisions]).
+* Selecting a plan leads into its plan view (link:plan-view.adoc[Plan View]), selecting an epic into its epic view (link:epic-view.adoc[Epic View]); selecting the marker leads to what waits: a decision or a waiver request (link:decisions.adoc[Decisions]), a hold (link:work-actions.adoc#holds[What Holds a Plan]), new findings (link:work-actions.adoc#review[Reviewing Findings or Watches]).
 
 [#distinction]
 == Telling Them Apart
@@ -117,6 +121,28 @@ A plan and an epic differ by three things at once, so that none carries the mean
 |the attention colour (terminal: yellow), always with the count
 |===
 
+[#ended]
+== Ended Work
+
+A project's ended plans and epics are a list of their own, apart from Running Work, so that what runs is never crowded by what ended (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work]).
+
+----
+  pm-mcp-clients · ended work                                         page 1 of 3
+  ─────────────────────────────────────────────────────────────────────────────
+  ▸ plan  fix-relay               completed   #214                  today 11:20
+  ◇ epic  relay-hardening         archived                          yesterday
+  ▸ plan  codeberg-issues         cancelled   replaced by relay-v2  2 d ago
+  ▸ plan  docs-cleanup            abandoned   no longer needed      5 d ago
+  ─────────────────────────────────────────────────────────────────────────────
+                                                          [Newer]  [Older]
+----
+
+* *Where*: per project, opened from the project's level of Running Work (_Ended work_) and from the project's actions in the explorer (link:project-explorer.adoc#actions[Actions of a Project]), also for a project with nothing running.
+* *A row*: the kind as in Running Work (<<distinction>>), the title, the outcome (a plan: completed, cancelled, abandoned; an epic: archived, cancelled), the plan's own pull request by its number with a link, the reason where the operator gave one, and when it ended.
+* *Order and paging*: newest first, a page at a time, with _Newer_ and _Older_; the runtime pages, the client never loads the whole archive.
+* *Opening one*: an ended plan opens its plan view, an ended epic its epic view, both read-only and as it ended: the last state of every node, the outcome, the reason, and the end time in the head, and no action (link:plan-view.adoc#live[Plan View, Live]; link:epic-view.adoc#layout[Epic View]).
+* A plan that ends while the operator looks at Running Work leaves it and appears at the top of its project's ended work.
+
 [#live]
 == Live
 
@@ -141,13 +167,13 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |===
 |Key |English |German
 
-|`overview.title`
+|`overview.running.title`
 |Running work
 |Laufende Arbeit
 
 |`overview.projects.empty`
 |Nothing runs. Start a plan in a project, or enrol one.
-|Es läuft nichts. Starte einen Plan in einem Projekt, oder melde eines an.
+|Es läuft nichts. Starte einen Plan in einem Projekt, oder registriere eines.
 
 |`overview.project.counts`
 |{plans, plural, one {# plan} other {# plans}} · {epics, plural, one {# epic} other {# epics}}
@@ -177,9 +203,13 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |epic
 |Epic
 
-|`overview.without_epic`
+|`overview.group.without_epic`
 |without epic
 |ohne Epic
+
+|`overview.needs.count`
+|! {count}
+|! {count}
 
 |`overview.needs.decision`
 |decision
@@ -189,9 +219,13 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |waiver
 |Waiver
 
+|`overview.needs.operator_wait`
+|waits for you
+|wartet auf dich
+
 |`overview.needs.integrity_pause`
-|paused
-|pausiert
+|integrity pause
+|Integritätspause
 
 |`overview.needs.stalled`
 |stalled
@@ -202,20 +236,36 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |braucht eine Korrektur
 
 |`overview.needs.held`
-|held for you
-|wartet auf dich
+|held
+|zurückgehalten
 
 |`overview.needs.landing_failed`
 |landing failed
 |Landen fehlgeschlagen
 
+|`overview.needs.findings`
+|new findings
+|neue Findings
+
+|`overview.needs.paused`
+|paused by you
+|von dir angehalten
+
 |`overview.needs.setup`
 |setup
 |Einrichtung
 
-|`overview.state.working`
-|working
-|arbeitet
+|`overview.state.running`
+|running
+|läuft
+
+|`overview.state.pausing`
+|pausing {point, select, task {after the task} other {after the phase}}
+|hält {point, select, task {nach dem Task} other {nach der Phase}} an
+
+|`overview.state.paused`
+|paused
+|angehalten
 
 |`overview.state.waiting`
 |waiting for you
@@ -224,10 +274,6 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |`overview.state.stalled`
 |stalled
 |steht
-
-|`overview.state.paused`
-|paused
-|pausiert
 
 |`overview.time.running`
 |{duration}
@@ -247,11 +293,15 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 
 |`overview.epic.plans`
 |{running} running · {staged} staged
-|{running} laufen · {staged} vorgesehen
+|{running, plural, one {# läuft} other {# laufen}} · {staged} vorgesehen
 
-|`overview.belongs_to`
+|`overview.plan.belongs_to`
 |in {epic}
 |in {epic}
+
+|`overview.plan.pull_request`
+|#{number}
+|#{number}
 
 |`overview.connection.lost`
 |Not connected to the runtime; reconnecting …
@@ -260,6 +310,45 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |`overview.fallback.ended`
 |{item} has ended; showing its project.
 |{item} ist beendet; sein Projekt wird gezeigt.
+
+|`overview.ended.title`
+|Ended work
+|Beendete Arbeit
+
+|`overview.ended.open`
+|Ended work
+|Beendete Arbeit
+
+|`overview.ended.empty`
+|Nothing in {project} has ended yet.
+|In {project} ist noch nichts beendet.
+
+|`overview.ended.outcome`
+|{outcome, select, completed {completed} cancelled {cancelled} abandoned {abandoned} archived {archived} other {ended}}
+|{outcome, select, completed {abgeschlossen} cancelled {abgebrochen} abandoned {aufgegeben} archived {archiviert} other {beendet}}
+
+|`overview.ended.reason`
+|Reason: {reason}
+|Grund: {reason}
+
+|`overview.ended.time`
+|ended {time}
+|beendet {time}
+
+|`overview.ended.page`
+|page {page} of {pages}
+|Seite {page} von {pages}
+
+|`overview.ended.newer`
+|Newer
+|Neuere
+
+|`overview.ended.older`
+|Older
+|Ältere
+
+|`overview.ended.as_it_ended`
+|{item} has ended ({outcome}, {time}); this is how it ended.
+|{item} ist beendet ({outcome}, {time}); du siehst seinen letzten Stand.
 |===
 
-The word _Epic_ stays as it is in German, as a domain word of `PM-MCP`, and is added to the glossary (link:texts-and-languages.adoc#glossary[Glossary]).

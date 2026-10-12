@@ -1,0 +1,274 @@
+= Terminal Client: Texts of Actions on Plans and Epics
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Actions on Plans and Epics
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
+
+The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
+
+[#actions-texts]
+== Actions on Plans and Epics
+
+The texts of the actions, the dialogues, and the review are those of link:../shared/work-actions.adoc#texts[Actions on Plans and Epics, Texts]; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.actions.keys.actions`
+|actions
+|Aktionen
+
+|`operator.actions.refused`
+|{name} is {state}: {actions}
+|{name} ist {state}: {actions}
+
+|`operator.actions.ended`
+|{name} has ended: its view only
+|{name} ist beendet: nur seine Ansicht
+
+|`operator.actions.talk_end`
+|an empty line ends it
+|eine leere Zeile beendet es
+
+|`operator.actions.settings.which`
+|Which settings of {plan}?
+|Welche Einstellungen von {plan}?
+
+|`operator.actions.pr_open`
+|#{number} {url} is open
+|#{number} {url} ist offen
+
+|`operator.actions.cancel.confirm`
+|{action, select, cancel {Cancel the plan} other {Abandon the plan}}
+|{action, select, cancel {Brich den Plan ab} other {Gib den Plan auf}}
+
+|`operator.actions.keep_running`
+|no, keep it running
+|nein, lass ihn weiterlaufen
+
+|`operator.actions.result.ended`
+|{plan} {outcome, select, cancelled {cancelled} other {abandoned}} and archived
+|{plan} {outcome, select, cancelled {abgebrochen} other {aufgegeben}} und archiviert
+
+|`operator.actions.result.pr_closed`
+|#{number} closed
+|#{number} geschlossen
+
+|`operator.actions.result.epic_told`
+|{epic} told
+|{epic} informiert
+
+|`operator.actions.result.pausing`
+|{plan} pausing {point, select, task {after the task} other {after the phase}}
+|{plan} hält an {point, select, task {nach dem Task} other {nach der Phase}}
+
+|`operator.actions.result.paused`
+|{plan} paused
+|{plan} angehalten
+
+|`operator.actions.result.next_started`
+|{plan} started ({running} of {scope} at once)
+|{plan} gestartet ({running} von {scope} gleichzeitig)
+
+|`operator.actions.next.scope_full`
+|{epic} runs {running} of {scope} at once; the next plan, {plan}, waits for the scope.
+|{epic} führt {running} von {scope} gleichzeitig aus; der nächste Plan, {plan}, wartet auf den Scope.
+
+|`operator.actions.result.not_through`
+|{epic} is not through yet.
+|{epic} ist noch nicht durch.
+
+|`operator.actions.epic.needs_you`
+|needs you
+|braucht dich
+
+|`operator.actions.epic.waits_for`
+|waits for {what}
+|wartet auf {what}
+
+|`operator.actions.epic.waits_for_lock`
+|a lock: the surface {surface}
+|eine Sperre: die Oberfläche {surface}
+
+|`operator.actions.epic.waits_for_scope`
+|the scope ({running} of {scope} at once)
+|den Scope ({running} von {scope} gleichzeitig)
+
+|`operator.actions.epic.analysis`
+|analysis: {text}
+|Analyse: {text}
+
+|`operator.actions.epic.events`
+|newest first
+|die neuesten zuerst
+
+|`operator.actions.epic.more_events`
+|{count} more today
+|{count} weitere heute
+
+|`operator.actions.hold.confirm_accept`
+|it becomes part of the plan's work; this cannot be undone
+|sie wird Teil der Arbeit des Plans; das lässt sich nicht rückgängig machen
+
+|`operator.actions.hold.goes_on`
+|{plan} goes on with the change
+|{plan} läuft mit der Änderung weiter
+
+|`operator.actions.review.keep_as`
+|Keep {item}
+|Behalte {item}
+
+|`operator.actions.review.kept`
+|{item} kept as {register, select, findings {defect} other {watch}}
+|{item} behalten als {register, select, findings {Defekt} other {Beobachtung}}
+
+|`operator.actions.review.dropped`
+|{item} dropped
+|{item} verworfen
+
+|`operator.actions.review.promoted`
+|{item} promoted: {plan} staged
+|{item} zum Plan gemacht: {plan} vorgemerkt
+
+|`operator.actions.review.remaining`
+|{count, plural, one {The remaining proposal:} other {The remaining # proposals:}}
+|{count, plural, one {Der übrige Vorschlag:} other {Die übrigen # Vorschläge:}}
+
+|`operator.actions.review.finish`
+|finish
+|schließe ab
+
+|`operator.actions.review.finished`
+|{epic}: {done} of {total} decided, written to the ledger
+|{epic}: {done} von {total} entschieden, ins Ledger geschrieben
+
+|`operator.actions.review.untrusted`
+|untrusted
+|nicht vertrauenswürdig
+|===
+
+[#actions-keys]
+=== Keys of the Actions
+
+The mnemonics of the action menu, of the acts of a hold, and of the review, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `y) yes`, and `n) no` are the common ones there, and _instruct again_ and _discard_ are those of the decomposition (xref:21-texts-starting.adoc#starting-keys[Starting Work, Keys]). No mnemonic of the menu is `a`, in any language. Within each menu and prompt every key is unique, in both languages.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.actions.key.pause`
+|p
+|h
+
+|`operator.actions.key.start`
+|s
+|s
+
+|`operator.actions.key.cancel`
+|x
+|x
+
+|`operator.actions.key.abandon`
+|x
+|x
+
+|`operator.actions.key.settings`
+|o
+|e
+
+|`operator.actions.key.next`
+|n
+|n
+
+|`operator.actions.key.decompose_again`
+|d
+|z
+
+|`operator.actions.key.findings_review`
+|f
+|f
+
+|`operator.actions.key.watches_review`
+|w
+|b
+
+|`operator.actions.key.archive`
+|A
+|r
+
+|`operator.actions.key.raise_and_start`
+|r
+|e
+
+|`operator.actions.key.retry`
+|r
+|w
+
+|`operator.actions.key.recycle`
+|w
+|u
+
+|`operator.actions.key.grant`
+|g
+|g
+
+|`operator.actions.key.add_credential`
+|c
+|c
+
+|`operator.actions.key.raise_budget`
+|b
+|u
+
+|`operator.actions.key.show_change`
+|v
+|z
+
+|`operator.actions.key.accept_change`
+|c
+|n
+
+|`operator.actions.key.restore`
+|t
+|w
+
+|`operator.actions.key.show_pr`
+|p
+|p
+
+|`operator.actions.key.give_up_removal`
+|g
+|g
+
+|`operator.actions.key.end_plan`
+|x
+|x
+
+|`operator.actions.key.keep`
+|k
+|h
+
+|`operator.actions.key.drop`
+|d
+|l
+
+|`operator.actions.key.promote`
+|p
+|p
+
+|`operator.actions.key.talk`
+|t
+|s
+
+|`operator.actions.key.accept_remaining`
+|r
+|r
+
+|`operator.actions.key.finish`
+|f
+|f
+|===

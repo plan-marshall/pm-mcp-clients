@@ -5,9 +5,9 @@
 
 link:../README.adoc[Design] » Project Explorer
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], leading into link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3], leading into link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-explorer[The Projects of the Machine] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-explorer[The Projects of the Machine], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-release[Releasing Ends Work as the Operator Ends It] (proposed)_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects], link:../web-app/README.adoc[Web App].
 
@@ -25,6 +25,8 @@ The explorer is where the operator finds a project among all the machine's proje
   Recent
       plan-marshall      setup needs: credential sonar             yesterday
       cui-http           ready                                     3 d ago
+  Being added
+      ~/git/cui-parent   step 2 of 9: Identity         [Continue]  [Abandon]
   All projects                                    [ filter ]   by name ▾
       API-Sheriff        ready                                     5 weeks ago
       cui-http           ready                                     3 d ago
@@ -34,8 +36,14 @@ The explorer is where the operator finds a project among all the machine's proje
 * *Favourites*: the projects the operator marked, in the operator's order; always first.
 * *Recent*: the projects the operator worked with last, newest first, at most five; a favourite is not repeated here.
 * *All projects*: every enrolled project, by name, or by _most used_ (how often the operator worked in it over the last four weeks); a filter on name and id narrows the list, and with a filter the three groups become one list of matches.
-* *Add a project* starts the onboarding of a project (link:project-onboarding.adoc[Project Onboarding]).
-* A released project is listed with `released` and offers to be enrolled again; an unenrolled one is not listed.
+* *Being added*: the projects whose onboarding has not reached its enrolment yet (<<being-added>>); shown only while there is one.
+* *Add a project* starts the onboarding of a project (link:project-onboarding.adoc[Project Onboarding]). On a machine that is not fully onboarded it is disabled with the reason (`this machine is not fully onboarded: providers`) and _Continue the onboarding_ beside it.
+* A released project is listed with `released` and offers to be enrolled again; an unenrolled one is not listed (<<release>>).
+
+[#being-added]
+=== Being Added
+
+A project's onboarding that has not reached its enrolment has no project id yet (link:project-onboarding.adoc#several[Several Onboardings at Once]). It is listed by the path of its checkout, with the step it waits at, _Continue_, which opens the run where it stopped, and _Abandon_, which deletes the entry after a confirmation (nothing was enrolled). Once enrolled, it leaves the group and is listed by its project id like every project, not ready, with _Continue the setup_ until it is.
 
 [#project-row]
 == A Project
@@ -63,6 +71,8 @@ The explorer is where the operator finds a project among all the machine's proje
 |when the operator or its plans last worked in it, as a duration (`2 min ago`, `yesterday`)
 |===
 
+A project's running work shows its own pull requests by their numbers, each a link to the provider, where the client shows its plans (link:plan-overview.adoc#item-rows[A Plan, an Epic]).
+
 [#actions]
 == Actions of a Project
 
@@ -71,10 +81,44 @@ Selecting a project offers, in this order:
 . *Add an epic*: starts an epic in the project.
 . *Add a plan*: starts a plan in the project.
 . *Running work*: the project's level of Running Work, its plans and epics (link:plan-overview.adoc#levels[Two Levels, Two Views]).
-. *Setup*: a later run of the project's onboarding, opened at what the operator chooses (link:project-onboarding.adoc#steps[Steps]).
+. *Ended work*: its ended plans and epics, newest first (link:plan-overview.adoc#ended[Ended Work]).
+. *Setup*: a later run of the project's onboarding, opened at what the operator chooses (link:project-onboarding.adoc#later-run[A Later Run]); releasing and unenrolling the project are among its choices (<<release>>).
 . *Favourite*: mark or unmark it.
 
-A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, and _Running work_ while plans of it still show. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an epic and of a plan (link:starting-work.adoc[Starting Work]); while an entry of the project is open, _Continue starting_ comes first (link:starting-work.adoc#leaving[Leaving and Coming Back]).
+A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, then _Ended work_. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an epic and of a plan (link:starting-work.adoc[Starting Work]); while an entry of the project is open, _Continue starting_ comes first (link:starting-work.adoc#leaving[Leaving and Coming Back]).
+
+[#release]
+== Release and Unenrol
+
+The project's setup offers, after its aspects, _Release the project…_ and _Unenrol the project…_ (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]). Each confirms first with what it ends (`project.release-confirm`).
+
+----
+  Release pm-mcp-clients?
+  ─────────────────────────────────────────────────────────────────────────────
+  What ends      3 plans, each archived as cancelled; 1 epic, cancelled with
+                 its plans; each epic is told
+  Pull requests  #214, #219 are open   (●) Close them, with the reason
+                                       ( ) Leave them open
+  Reason         [                                                         ]
+  Afterwards     no plan runs in pm-mcp-clients; it stays listed as released
+                 and can be enrolled again with its values
+                                                  [Keep it]  [Release the project]
+----
+
+* *Release* ends every plan as a cancel does (link:work-actions.adoc#confirm-end[Ending a Plan]) and cancels every epic with its plans, then closes the project's plan lifecycle. The reason is required; it goes to every plan's archive and to the closing comments.
+* *Unenrol* removes the project's enrolment; its checkout and its committed configuration stay. It is refused while work runs: the dialogue lists the running plans and epics instead, each leading to its actions (link:work-actions.adoc[Actions on Plans and Epics]), and offers _Release the project…_, which ends them.
+
+----
+  pm-mcp-clients cannot be unenrolled while work runs
+  ─────────────────────────────────────────────────────────────────────────────
+    ▸ plan  fix-relay           execute · running                      [Actions]
+    ◇ epic  relay-hardening     running · 2 of 3 at once               [Actions]
+  End them first, or release the project, which ends them.
+                                                  [Back]  [Release the project…]
+----
+
+* *The reason*: the release asks it (it closes the pull requests and goes to the epics); unenrolling takes an optional one, recorded in the audit trail.
+* *Afterwards*: a released project stays listed with `released` and offers _Enrol again_; an unenrolled one leaves the list, and a client that shows it says so and moves to the list.
 
 [#marks]
 == Favourites, Recent, Most Used
@@ -98,7 +142,7 @@ Keys of the area `project`, shared by both clients.
 
 |`project.explorer.add`
 |Add a project
-|Ein Projekt hinzufügen
+|Füge ein Projekt hinzu
 
 |`project.explorer.favourites`
 |Favourites
@@ -122,11 +166,35 @@ Keys of the area `project`, shared by both clients.
 
 |`project.explorer.filter`
 |filter
-|filtern
+|Filter
 
 |`project.explorer.empty`
 |No project is enrolled yet.
-|Noch ist kein Projekt angemeldet.
+|Noch ist kein Projekt registriert.
+
+|`project.explorer.last_active`
+|{duration} ago
+|vor {duration}
+
+|`project.adding.title`
+|Being added
+|Wird hinzugefügt
+
+|`project.adding.step`
+|step {step} of {total}: {name}
+|Schritt {step} von {total}: {name}
+
+|`project.adding.continue`
+|Continue
+|Setze fort
+
+|`project.adding.abandon`
+|Abandon
+|Verwirf es
+
+|`project.adding.abandon_confirm`
+|Abandon adding {path}? Nothing was enrolled.
+|Das Hinzufügen von {path} verwerfen? Es wurde nichts registriert.
 
 |`project.state.ready`
 |ready
@@ -140,39 +208,119 @@ Keys of the area `project`, shared by both clients.
 |released
 |abgegeben
 
-|`project.last_active`
-|{duration} ago
-|vor {duration}
-
 |`project.action.add_epic`
 |Add an epic
-|Ein Epic hinzufügen
+|Füge ein Epic hinzu
 
 |`project.action.add_plan`
 |Add a plan
-|Einen Plan hinzufügen
+|Füge einen Plan hinzu
 
 |`project.action.running_work`
 |Running work
 |Laufende Arbeit
 
+|`project.action.ended_work`
+|Ended work
+|Beendete Arbeit
+
 |`project.action.setup`
 |Setup
 |Einrichtung
 
+|`project.action.continue_setup`
+|Continue the setup
+|Setze die Einrichtung fort
+
 |`project.action.favourite`
 |Mark as favourite
-|Als Favorit markieren
+|Markiere es als Favorit
 
 |`project.action.unfavourite`
 |Remove from favourites
-|Aus den Favoriten entfernen
+|Entferne es aus den Favoriten
 
 |`project.action.enrol_again`
 |Enrol again
-|Erneut anmelden
+|Registriere es erneut
 
 |`project.action.disabled_not_ready`
 |{project} is not ready: {need}
 |{project} ist nicht bereit: {need}
+
+|`project.release.offer_release`
+|Release the project…
+|Gib das Projekt ab…
+
+|`project.release.offer_unenrol`
+|Unenrol the project…
+|Hebe die Registrierung des Projekts auf…
+
+|`project.release.title`
+|{action, select, release {Release} other {Unenrol}} {project}?
+|{project} {action, select, release {abgeben} other {nicht mehr registrieren}}?
+
+|`project.release.what_ends`
+|What ends
+|Was endet
+
+|`project.release.ends`
+|{plans, plural, one {# plan, archived as cancelled} other {# plans, each archived as cancelled}}; {epics, plural, one {# epic, cancelled with its plans} other {# epics, each cancelled with its plans}}; each epic is told
+|{plans, plural, one {# Plan, als abgebrochen archiviert} other {# Pläne, jeder als abgebrochen archiviert}}; {epics, plural, one {# Epic, mit seinen Plänen abgebrochen} other {# Epics, jedes mit seinen Plänen abgebrochen}}; jedes Epic wird informiert
+
+|`project.release.pull_requests`
+|Pull requests
+|Pull Requests
+
+|`project.release.pr_close`
+|Close them, with the reason
+|Schließe sie, mit dem Grund
+
+|`project.release.pr_leave`
+|Leave them open
+|Lass sie offen
+
+|`project.release.reason`
+|Reason
+|Grund
+
+|`project.release.afterwards`
+|Afterwards
+|Danach
+
+|`project.release.afterwards_release`
+|no plan runs in {project}; it stays listed as released and can be enrolled again with its values
+|in {project} läuft kein Plan; es bleibt als abgegeben gelistet und kann mit seinen Werten erneut registriert werden
+
+|`project.release.afterwards_unenrol`
+|its enrolment is removed and it leaves the list; its checkout and its committed configuration stay
+|seine Registrierung wird entfernt und es verlässt die Liste; sein Checkout und seine committete Konfiguration bleiben
+
+|`project.release.keep`
+|Keep it
+|Behalte es
+
+|`project.release.action_release`
+|Release the project
+|Gib das Projekt ab
+
+|`project.release.action_unenrol`
+|Unenrol the project
+|Hebe die Registrierung des Projekts auf
+
+|`project.release.refused`
+|{project} cannot be unenrolled while work runs
+|Die Registrierung von {project} kann nicht aufgehoben werden, solange Arbeit läuft
+
+|`project.release.refused_hint`
+|End them first, or release the project, which ends them.
+|Beende sie zuerst, oder gib das Projekt ab, was sie beendet.
+
+|`project.release.back`
+|Back
+|Zurück
+
+|`project.release.unenrolled`
+|{project} is no longer enrolled.
+|{project} ist nicht mehr registriert.
 |===

@@ -1,0 +1,334 @@
+= Terminal Client: Texts of Starting Work
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Starting Work
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-9]_
+
+The texts the terminal adds to the shared ones in xref:18-starting.adoc[Starting Work], of the area `operator`.
+
+[#starting-texts]
+== Starting Work
+
+The texts of the steps, sources, and states are those of link:../shared/starting-work.adoc#texts[Starting Work, Texts]; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.start.description_end`
+|an empty line ends it
+|eine leere Zeile beendet sie
+
+|`operator.start.open_entry`
+|{project} has an open {kind, select, plan {plan} other {epic}} with {count, plural, one {# source} other {# sources}}: c) continue it   n) begin a new one
+|{project} hat {kind, select, plan {einen offenen Plan} other {ein offenes Epic}} mit {count, plural, one {# Quelle} other {# Quellen}}: f) setze fort   n) beginne neu
+
+|`operator.start.no_input_stop`
+|{state} needs you: {hint}
+|{state} braucht dich: {hint}
+
+|`operator.start.remove_one`
+|remove one
+|entferne eine
+
+|`operator.start.continue`
+|continue
+|mach weiter
+
+|`operator.start.path`
+|Path
+|Pfad
+
+|`operator.start.copy_or_move`
+|Copy or move?
+|Kopieren oder verschieben?
+
+|`operator.start.always_this`
+|always this
+|immer so
+
+|`operator.start.number_or_url`
+|Number or URL of the {kind, select, issue {issue} other {pull request}}
+|Nummer oder URL {kind, select, issue {des Issues} other {des Pull Requests}}
+
+|`operator.start.use_anyway`
+|use it anyway (a reason is recorded)
+|verwende es trotzdem (ein Grund wird festgehalten)
+
+|`operator.start.remove_it`
+|remove it
+|entferne es
+
+|`operator.start.try_again`
+|try again
+|versuche es erneut
+
+|`operator.start.reason`
+|Reason
+|Grund
+
+|`operator.start.may_contain`
+|This text may contain instructions to a model:
+|Dieser Text kann Anweisungen an ein Modell enthalten:
+
+|`operator.start.pr.other_repository`
+|{url} is not a pull request of {project}: a plan adopts only a pull request of its own project.
+|{url} ist kein Pull Request von {project}: ein Plan übernimmt nur einen Pull Request seines eigenen Projekts.
+
+|`operator.start.lesson.list_title`
+|Unclaimed lessons of {project}, newest first
+|Nicht beanspruchte Lessons von {project}, die neuesten zuerst
+
+|`operator.start.lesson.cites`
+|What it cites:
+|Worauf sie sich bezieht:
+
+|`operator.start.lesson.use_anyway`
+|use it anyway (the evidence goes into the plan)
+|verwende sie trotzdem (der Befund geht in den Plan)
+
+|`operator.start.lesson.retire`
+|retire the lesson
+|mustere die Lesson aus
+
+|`operator.start.lesson.choose_another`
+|choose another
+|wähle eine andere
+
+|`operator.start.local.title`
+|Local changes of {checkout} against {branch}
+|Lokale Änderungen von {checkout} gegenüber {branch}
+
+|`operator.start.local.add`
+|Add the local changes
+|Füge die lokalen Änderungen hinzu
+
+|`operator.start.local.captured`
+|local changes captured: snapshot {commit}, {count, plural, one {# file} other {# files}}
+|lokale Änderungen erfasst: Snapshot {commit}, {count, plural, one {# Datei} other {# Dateien}}
+
+|`operator.start.local.changed_after_preview`
+|changed after the preview, captured with the rest: {paths}
+|nach der Vorschau geändert, mit dem Rest erfasst: {paths}
+
+|`operator.start.started`
+|{id} has started
+|{id} ist gestartet
+
+|`operator.start.follow`
+|Follow it
+|Folge ihm
+
+|`operator.start.back_to_project`
+|back to the project
+|zurück zum Projekt
+
+|`operator.start.not_ready`
+|{project} is not ready: {need}
+|{project} ist nicht bereit: {need}
+
+|`operator.start.not_onboarded`
+|This machine is not onboarded yet; work starts once its onboarding is complete.
+|Diese Maschine ist noch nicht eingerichtet; Arbeit startet, sobald ihre Einrichtung abgeschlossen ist.
+
+|`operator.start.not_onboarded_fix`
+|pm-operator (the console), or the web app: pm-operator web
+|pm-operator (die Konsole), oder die Web-App: pm-operator web
+
+|`operator.start.id_taken`
+|the id {id} was taken meanwhile; {proposal} is free
+|die Id {id} wurde inzwischen vergeben; {proposal} ist frei
+
+|`operator.start.id_free`
+|free
+|frei
+
+|`operator.start.decomposition.open_plan`
+|open a plan
+|öffne einen Plan
+
+|`operator.start.decomposition.add_plan`
+|add a plan
+|füge einen Plan hinzu
+
+|`operator.start.decomposition.talk`
+|talk
+|sprich darüber
+
+|`operator.start.decomposition.draft_again`
+|draft again
+|entwirf neu
+
+|`operator.start.decomposition.agree`
+|agree
+|stimme zu
+
+|`operator.start.decomposition.checks_fail`
+|({count, plural, one {# check fails} other {# checks fail}})
+|({count, plural, one {# Prüfung schlägt fehl} other {# Prüfungen schlagen fehl}})
+
+|`operator.start.decomposition.keep`
+|keep
+|behalte
+
+|`operator.start.decomposition.drop`
+|drop
+|verwirf
+
+|`operator.start.decomposition.what_change`
+|What should change?
+|Was soll sich ändern?
+
+|`operator.start.decomposition.accept`
+|Accept
+|Nimm an
+
+|`operator.start.decomposition.instruct_again`
+|instruct again
+|weise neu an
+
+|`operator.start.decomposition.discard`
+|discard
+|verwirf es
+
+|`operator.start.decomposition.locked`
+|locked
+|gesperrt
+
+|`operator.start.decomposition.committed`
+|{epic}: {workstreams, plural, one {# workstream} other {# workstreams}}, {plans, plural, one {# plan} other {# plans}} committed
+|{epic}: {workstreams, plural, one {# Workstream} other {# Workstreams}}, {plans, plural, one {# Plan} other {# Pläne}} committet
+
+|`operator.start.decomposition.recommitted`
+|{epic}: {workstreams, plural, one {# workstream} other {# workstreams}}, {changed} changed, {new} new, {dropped} dropped
+|{epic}: {workstreams, plural, one {# Workstream} other {# Workstreams}}, {changed} geändert, {new} neu, {dropped} verworfen
+
+|`operator.start.decomposition.left`
+|Left {step} of {epic}. The draft is kept. {command} continues it.
+|{step} von {epic} verlassen. Der Entwurf bleibt erhalten. {command} setzt ihn fort.
+
+|`operator.start.decomposition.scope_unset`
+|(the project sets no parallelization_scope)
+|(das Projekt setzt keinen parallelization_scope)
+
+|`operator.start.recipe.which`
+|Which recipe?
+|Welches Rezept?
+
+|`operator.start.recipe.parameters`
+|{recipe} · its parameters
+|{recipe} · seine Parameter
+
+|`operator.start.recipe.run`
+|Run {recipe}
+|Führe {recipe} aus
+
+|`operator.start.recipe.to_sources`
+|Go on to its sources
+|Weiter zu seinen Quellen
+
+|`operator.start.recipe.takes_request`
+|takes a request
+|nimmt eine Anfrage
+|===
+
+[#starting-keys]
+=== Keys of the Prompts
+
+The mnemonics of starting work, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `n) no`, and `o) choose another` are the common ones there. Within each state every key is unique, in both languages.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.start.key.description`
+|d
+|b
+
+|`operator.start.key.documents`
+|f
+|d
+
+|`operator.start.key.issue`
+|i
+|i
+
+|`operator.start.key.lesson`
+|l
+|l
+
+|`operator.start.key.local_changes`
+|c
+|a
+
+|`operator.start.key.pull_request`
+|p
+|p
+
+|`operator.start.key.remove_one`
+|x
+|x
+
+|`operator.start.key.always`
+|a
+|i
+
+|`operator.start.key.use_anyway`
+|u
+|t
+
+|`operator.start.key.retire`
+|t
+|a
+
+|`operator.start.key.remove`
+|r
+|e
+
+|`operator.start.key.try_again`
+|t
+|w
+
+|`operator.start.key.follow`
+|f
+|f
+
+|`operator.start.key.continue_entry`
+|c
+|f
+
+|`operator.start.key.new_entry`
+|n
+|n
+
+|`operator.start.key.add_plan`
+|+
+|+
+
+|`operator.start.key.talk`
+|t
+|s
+
+|`operator.start.key.draft_again`
+|r
+|n
+
+|`operator.start.key.keep`
+|k
+|h
+
+|`operator.start.key.drop`
+|d
+|l
+
+|`operator.start.key.instruct_again`
+|i
+|a
+
+|`operator.start.key.discard`
+|x
+|x
+|===

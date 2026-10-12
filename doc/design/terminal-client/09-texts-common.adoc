@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Texts: Common, Frame, Automatic Run
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]_
+
 [#texts]
 == Texts
 
@@ -155,15 +157,15 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 
 |`common.model.leave_hint`
 |leave: the work continues; {command} shows its result
-|verlassen: die Arbeit läuft weiter; {command} zeigt ihr Ergebnis
+|verlasse: die Arbeit läuft weiter; {command} zeigt ihr Ergebnis
 
 |`common.model.no_result`
 |The {role} gave no proposal: {reason}.
 |Der {role} hat keinen Vorschlag gemacht: {reason}.
 
 |`common.error.state_moved`
-|Answered elsewhere: {answer}
-|Woanders beantwortet: {answer}
+|Answered in {channel}: {answer}
+|Beantwortet in {channel}: {answer}
 
 |`common.connection.runtime_restarted`
 |The runtime restarted; continuing where it is.
@@ -185,6 +187,10 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |The credential store failed: {detail}. Nothing was changed.
 |Der Speicher für Zugangsdaten ist fehlgeschlagen: {detail}. Es wurde nichts geändert.
 
+|`common.error.credential_store_unavailable`
+|The credential store ({store}) is not available: {cause}. Nothing was written elsewhere. → {fix}, then check again; or choose another store: pm-operator config credentials
+|Der Speicher für Zugangsdaten ({store}) ist nicht verfügbar: {cause}. Es wurde nichts anderswo gespeichert. → {fix}, dann prüfe erneut; oder wähle einen anderen Speicher: pm-operator config credentials
+
 |`common.error.runtime_recovering`
 |The runtime is still recovering; try again in a moment.
 |Die Runtime stellt sich noch wieder her; versuche es gleich noch einmal.
@@ -194,7 +200,7 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set web.port <port>
 |===
 
-The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
+The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. `common.error.state_moved` is also the line the console prints when another channel answered the state it shows, with `{channel}` one of the shared `decision.channel.web` and `decision.channel.cli`; `common.error.credential_store_unavailable` is the text of `precondition_unmet` with `facts.reason: credential_store_unavailable`. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
 
 [#texts-onboard]
 === `onboard`: The Onboarding
@@ -243,12 +249,12 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |der Coding Agent, mit dem der Server zuerst arbeitet
 
 |`onboard.step.models.summary`
-|the agents and models other plans may use
-|die Agents und Modelle, die andere Pläne nutzen dürfen
+|the coding agents and models other plans may use
+|die Coding Agents und Modelle, die andere Pläne nutzen dürfen
 
 |`onboard.step.roles.summary`
-|an agent and a model for every role
-|ein Agent und ein Modell für jede Role
+|a coding agent and a model for every role
+|ein Coding Agent und ein Modell für jede Role
 
 |`onboard.step.credentials.summary`
 |where this machine keeps its tokens
@@ -271,14 +277,16 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |plan-marshall läuft. Diese Maschine ist noch nicht eingerichtet.
 
 |`onboard.entry.intro`
-|{steps, plural, one {One step} other {# steps}}. Nothing on this machine is looked at, run, or changed until you say so in that step. You can stop at any point; Enter at the prompt, or the web app, continues where you stopped.
-|{steps, plural, one {Ein Schritt} other {# Schritte}}. Auf dieser Maschine wird nichts angesehen, ausgeführt oder geändert, bevor du es in dem Schritt erlaubst. Du kannst jederzeit aufhören; Enter an der Eingabe oder die Web-App macht dort weiter, wo du aufgehört hast.
+|{steps, plural, one {One step} other {# steps}}. Nothing on this machine is looked at, run, or changed until you say so in that step.
+|{steps, plural, one {Ein Schritt} other {# Schritte}}. Auf dieser Maschine wird nichts angesehen, ausgeführt oder geändert, bevor du es in dem Schritt erlaubst.
+
+|`onboard.mode.resume`
+|You can stop at any point; the next run, here or in the web app, continues where you stopped.
+|Du kannst jederzeit aufhören; der nächste Lauf, hier oder in der Web-App, macht dort weiter, wo du aufgehört hast.
 
 |`onboard.mode.guided`
 |Begin with step 1
 |Beginne mit Schritt 1
-
-
 
 |`onboard.mode.auto`
 |decide everything for me
@@ -289,9 +297,8 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |Diese Maschine ist bereit
 
 |`onboard.completed.next`
-|Next: enrol a project and set it up: {command}, in its checkout.
-|Als Nächstes: ein Projekt anmelden und einrichten: {command}, in seinem Checkout.
-
+|Next: add a project: {command}, in its checkout.
+|Als Nächstes: Füge ein Projekt hinzu: {command}, in seinem Checkout.
 |===
 
 [#texts-onboard-auto]
@@ -314,8 +321,12 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |die Versions- und Anmeldeprüfung jedes gefundenen Harness, die Modellabfrage jedes Harness, der seine Modelle auflisten kann, die Versionsprüfung jedes gefundenen Werkzeugs
 
 |`onboard.auto.consent.never`
-|asks a model, reads other files, sends anything over the network except the provider checks
-|fragt ein Modell, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider
+|asks a model for advice, reads other files, sends anything over the network except the provider checks
+|fragt ein Modell um Rat, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider
+
+|`onboard.auto.consent.cost`
+|none; for a harness that has no login probe, one short headless call, paid with tokens of its account
+|keine; für einen Harness ohne Anmeldeprüfung ein kurzer Aufruf ohne Oberfläche, bezahlt mit Tokens seines Kontos
 
 |`onboard.auto.consent.list_all`
 |lists every action
@@ -331,7 +342,7 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 
 |`onboard.auto.result.add`
 |Add {name}: {command}
-|{name} hinzufügen: {command}
+|Füge {name} hinzu: {command}
 
 |`onboard.auto.result.change_any`
 |Change any of it: {command}
@@ -339,11 +350,11 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 
 |`onboard.auto.result.finish`
 |Finish
-|Abschließen
+|Schließe ab
 
 |`onboard.auto.result.change_step`
 |change that step
-|diesen Schritt ändern
+|ändere diesen Schritt
 
 |`onboard.auto.reason.system`
 |from your system
@@ -373,7 +384,7 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |{tool} logged in
 |{tool} angemeldet
 
-|`onboard.auto.reason.no_token_skipped`
-|no token: skipped
-|kein Token: übersprungen
+|`onboard.auto.reason.asked`
+|you were asked
+|du wurdest gefragt
 |===

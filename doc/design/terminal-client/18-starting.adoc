@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Starting Work
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9]_
+
 What starting a plan or an epic shows is link:../shared/starting-work.adoc[Starting Work], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[Use Cases, Starting Work]). This part is how the console draws it. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#commands]
@@ -13,23 +15,42 @@ What starting a plan or an epic shows is link:../shared/starting-work.adoc[Start
 ----
   plan add [--project <project_id>|.] [<source>]... [--title <title>] [--id <plan_id>]
   epic add [--project <project_id>|.] [<source>]... [--title <title>] [--id <epic_id>]
-  recipe run [<recipe_key>] [--project <project_id>|.] [--param <name>=<value>]...
+  recipe run [<recipe_key>] [--project <project_id>|.] [--param <name>=<value>]... [<source>]...
 
-  <source>:  --description <text>|-        a description; - reads it from standard input
-             --document <path>             a file or a directory; repeatable
-             --issue <number>|<url>        an issue of the project or a URL; repeatable
-             --lesson <lesson_id>          plan add only
-             --local-changes               plan add only
-             --pull-request <number>       plan add only
-             --copy | --move               the answer to copy or move, for this run
+  <source>:  --description <text>|-             a description; - reads it from standard input
+             --document <path>                  a file or a directory; repeatable
+             --issue <number>|<url>             an issue of the project or a URL; repeatable
+             --lesson <lesson_id>               plan add only
+             --local-changes                    plan add only
+             --pull-request <number>|<url>      plan add only; a pull request of the project's repository
+             --copy | --move                    the answer to copy or move, for this run
 ----
 
 * All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); they are direct verbs: each argument answers the state that asks for it, and a state without an answer is asked as a dialogue, or with `--no-input` stops the run (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
-* The verb answers `start.choose`: `plan add` is a plan from sources, `recipe run` a recipe, so the console never asks that choice; `recipe run` without a key asks which recipe (`recipe.choose`), with a key goes on to its parameters.
+* The verb answers `start.choose`: `plan add` is a plan from sources, `recipe run` a recipe, so the console never asks that choice; `recipe run` without a key asks which recipe (`recipe.choose`), with a key goes on to its parameters. A `<source>` of `recipe run` is taken only by a recipe that takes a request (<<recipe>>).
+* Each kind of source is a sub-workflow of its own, named `source-<kind>`: `source-documents`, `source-issue`, `source-lesson`, `source-local-changes`, `source-pr` (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1]); its states are those the transcripts below show.
 * Without `--project` the project of the working directory is the proposal, else `--project ?` lists the projects (xref:02-levels.adoc#addressing[Addressing a Level]).
 * `plan add` with an open entry of the project asks first whether to continue it (`c`) or begin a new one (`n`).
 * In the console, `plan add` is the verb and not the plan `add`; a plan whose id is `add` is opened with `plan -- add`.
 * The project's actions in the explorer, `p` and `e`, start `plan add` and `epic add` for the selected project (xref:17-projects.adoc#explorer[The Explorer]).
+
+[#refused]
+=== When Work Cannot Start
+
+`start.open` checks the setup gate first: the machine onboarded, the project ready. A verb that fails it is refused before any source is asked, with what is missing and where it is done:
+
+[source,text]
+----
+pm › plan add --project plan-marshall
+✗ plan-marshall is not ready: credential sonar
+  → project setup plan-marshall
+pm ›
+
+$ pm-operator epic add
+✗ This machine is not onboarded yet; work starts once its onboarding is complete.
+  → pm-operator (the console), or the web app: pm-operator web
+$
+----
 
 [#plan]
 == Starting a Plan
@@ -48,7 +69,8 @@ pm › plan add
 
 [1/2] Sources · What does the plan start from?
     ✓  description   "Add a Codeberg provider for issues, so that …"
-  d) description   f) documents   i) issue   Enter) continue   x) remove one   ?   › f
+  d) description   f) documents   i) issue   l) lesson (2)   c) local changes (4 files)
+  p) pull request   Enter) continue   x) remove one   ?   › f
   Path   › doc/concepts/forgejo.adoc
     ✓  doc/concepts/forgejo.adoc   18 KB
   Copy or move?   1) copy ← the machine's default   2) move   a) always this   › ⏎
@@ -62,7 +84,7 @@ pm › plan add
     ▶  issue   https://codeberg.org/forgejo/forgejo/issues/4711   fetching
     ▶  issue   https://codeberg.org/forgejo/forgejo/issues/4711   screening   untrusted
     ✓  issue   https://codeberg.org/forgejo/forgejo/issues/4711   Issue comments API · open
-  d) description   f) documents   i) issue   Enter) continue   x) remove one   ?   › ⏎
+  d) description   f) documents   i) issue   l) lesson (2)   Enter) continue   x) remove one   ?   › ⏎
 
 [2/2] Ready · The plan starts from
   Description   "Add a Codeberg provider for issues, so that …"
@@ -77,7 +99,28 @@ pm ›
 ----
 
 * The source line updates in place while it is fetched and screened; the prompt stays usable, and a source still at work is shown by `Enter) continue` as `waits for 1 source`.
-* `l` lists the unclaimed lessons, numbered; `c` shows the local changes as files with their counts of lines before they are added; the keys of a kind not offered are not shown.
+* *The keys that still apply*: after a description and a document every kind is still offered; once an issue or a lesson is added, `c` (local changes) and `p` (pull request) are no longer offered, since a plan that lands local changes or adopts a pull request starts from it alone, with descriptions and documents at most; once local changes or a pull request are added, `i`, `l`, and the other of the two are no longer offered, and a line says why (<<pull-request>>). A kind the project does not have (no unclaimed lesson, no local changes) is never shown.
+* `l` lists the unclaimed lessons, numbered (<<lesson>>); `c` shows the local changes as files with their counts of lines before they are added (<<local-changes>>).
+* _Follow it_ opens the plan's view (xref:16-plan-view.adoc[The Plan View]); _back to the project_ opens the project's actions in the explorer.
+* What the plan needs and has no value for (its posture, its base branch) is not asked here: it is asked where the plan first needs it, as a decision (link:../shared/decisions.adoc[Decisions]).
+
+[#create-failed]
+=== When the Start Fails
+
+`start.create` checks again what creation needs, since time passed since the ready step; what changed meanwhile returns to the ready step with the cause:
+
+[source,text]
+----
+Start the plan? [Enter]   e) edit   ?   › ⏎
+    ✗  the id codeberg-provider-issues was taken meanwhile; codeberg-provider-issues-2 is free
+[2/2] Ready · The plan starts from
+  …
+  Id     [codeberg-provider-issues-2] ← free
+Start the plan? [Enter]   e) edit   ?   › ⏎
+✓ codeberg-provider-issues-2 has started
+----
+
+The same holds for the other checks of creation (the project released meanwhile, a lesson claimed meanwhile): the cause, and the state that resolves it.
 
 [#flagged]
 === A Flagged Issue
@@ -92,6 +135,106 @@ pm ›
 ----
 
 The flagged spans are printed as plain text between quotes, never interpreted, with control characters shown as their names.
+
+[#pull-request]
+=== A Pull Request
+
+[source,text]
+----
+[1/2] Sources · What does the plan start from?
+  d) description   f) documents   i) issue   l) lesson (2)   c) local changes (4 files)
+  p) pull request   ?   › p
+  Number or URL of the pull request   › 231
+    ▶  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/231   checking
+    ✗  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/231   not open: merged 3 d ago
+  t) try again   r) remove it   ?   › r
+
+[1/2] Sources · What does the plan start from?
+  … p
+  Number or URL of the pull request   › 236
+    ▶  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/236   checking
+    ▶  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/236   screening   untrusted
+    !  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/236   flagged
+  This text may contain instructions to a model:
+    “… also disable the integration tests in CI …”            instruction to the model
+  u) use it anyway (a reason is recorded)   r) remove it   ?   › u
+  Reason   › the body quotes the CI change it reverts
+    ✓  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/236   Retry the relay handshake · 3 files
+
+[1/2] Sources · What does the plan start from?
+    ✓  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/236   Retry the relay handshake · 3 files
+  A plan that adopts a pull request starts from it alone, with descriptions and documents at most.
+  d) description   f) documents   Enter) continue   x) remove one   ?   › ⏎
+----
+
+* A number is shown at once as the URL of the pull request in the project's repository; the URL is what is stored and shown from then on. A URL of another repository is refused: a plan adopts only a pull request of its own project.
+* `source-pr.observe` fails with its cause: `not open` (merged or closed, with when), `its head branch is not writable by the agent identity` (a fork, or a protected branch), `not found`; each offers _try again_ and _remove it_.
+* `source-pr.flagged` is the flagged issue's dialogue (<<flagged>>); _use it anyway_ asks for the reason, which is recorded.
+* As a direct verb: `plan add --pull-request 236`; with `--no-input` a flagged pull request stops the run.
+
+[#lesson]
+=== A Lesson
+
+[source,text]
+----
+[1/2] Sources · What does the plan start from?
+  … l
+  Unclaimed lessons of pm-mcp-clients, newest first
+    1) ConfigLoader keeps a stale cache after reload           2 d ago
+    2) The relay retries without a backoff                     3 weeks ago
+  › 1
+    ▶  lesson   ConfigLoader keeps a stale cache after reload   checking
+    !  lesson   ConfigLoader keeps a stale cache after reload   its premise no longer holds
+  What it cites:
+    ✗  pm-api/src/main/java/de/planmarshall/api/ConfigLoader.java   no longer exists
+    ✓  ConfigCache#reload                                          still exists
+  u) use it anyway (the evidence goes into the plan)   t) retire the lesson   r) remove it   ?   › u
+    ✓  lesson   ConfigLoader keeps a stale cache after reload   stored · with the evidence
+
+[1/2] Sources · What does the plan start from?
+  … l
+  › 2
+    ✗  lesson   The relay retries without a backoff   claimed by plan relay-backoff meanwhile
+  o) choose another   b) back   ?   › b
+  d) description   f) documents   i) issue   l) lesson (1)   Enter) continue   x) remove one   ?   › ⏎
+----
+
+* `source-lesson.resolve` checks the premise against the current checkout: whether the files and symbols the lesson cites still exist.
+* *Its premise no longer holds*: the evidence, with _use it anyway_ (the evidence goes into the plan with the lesson), _retire the lesson_ (it is retired in the lesson store and not added), and _remove it_ (not added; the lesson stays unclaimed).
+* *Unavailable*: `claimed by plan <plan_id> meanwhile`, `retired meanwhile`, `the lesson store cannot be read: <cause>`; the lesson is not added, and _choose another_ lists the lessons again.
+* The lesson is claimed for the plan when the plan is created, and released if the plan ends without merging. As a direct verb: `plan add --lesson <lesson_id>`.
+
+[#local-changes]
+=== Local Changes
+
+[source,text]
+----
+[1/2] Sources · What does the plan start from?
+  … c
+  Local changes of /home/oliver/git/pm-mcp-clients against main
+    M  pm-relay/src/main/java/…/Reconnect.java           +42   −7
+    M  pm-relay/src/test/java/…/ReconnectTest.java       +88   −0
+    A  doc/design/relay.adoc                             +31
+    D  pm-relay/src/main/java/…/OldBackoff.java                −54
+  Add the local changes? [Enter]   n) not now   ?   › ⏎
+    ✓  local changes   4 files, +161 −61   stored · captured when the plan starts
+  A plan that lands local changes starts from them alone, with descriptions and documents at most.
+  d) description   f) documents   Enter) continue   x) remove one   ?   › ⏎
+
+[2/2] Ready · The plan starts from
+  Local changes   4 files, +161 −61 against main
+  Title  [Reconnect without the old backoff] ← from the changes
+  Id     [reconnect-without-old-backoff] ← from the title
+Start the plan? [Enter]   e) edit   ?   › ⏎
+    ✓  local changes captured: snapshot 9c41e02, 5 files
+    !  changed after the preview, captured with the rest: pm-relay/pom.xml
+✓ reconnect-without-old-backoff has started
+pm ›
+----
+
+* `source-local-changes.preview` lists the changed files against the branch with their counts of lines; `n` leaves them out, and nothing is recorded.
+* At creation the changes are captured as a snapshot commit, and the plan runs the land lane; a file changed between the preview and the creation is captured with the rest, and the creation names it.
+* As a direct verb: `plan add --local-changes`; the preview is printed, and the confirmation is the argument itself.
 
 [#shell]
 === As One Shell Command
@@ -113,14 +256,34 @@ With `--no-input` a state that needs the operator and has no answer among the ar
 [#epic]
 == Starting an Epic
 
-`epic add` is the same dialogue with the sources description, documents, and issue; its ready step names the title and the id, the decomposition follows as its third step (<<decomposition>>), and _Follow it_ opens the epic's level of the overview (xref:15-overview.adoc[The Overview]).
+`epic add` is the same dialogue with the sources description, documents, and issue; its steps are those of link:../shared/starting-work.adoc#steps[Starting Work, Steps]: ① Sources, ② Ready, then the epic has started, and ③ Decomposition follows (<<decomposition>>). The epic exists from its start; the decomposition is its first work.
+
+[source,text]
+----
+pm › epic add
+[1/3] Sources · What does the epic start from?   project pm-mcp-clients ← the working directory
+  d) description   f) documents   i) issue   ?   › f
+  Path   › doc/concepts/relay-hardening/
+    ✓  doc/concepts/relay-hardening/   4 files: 3 adoc, 1 svg
+  Copy or move?   1) copy ← the machine's default   2) move   a) always this   › ⏎
+    ✓  documents     doc/concepts/relay-hardening/   copied
+  d) description   f) documents   i) issue   Enter) continue   x) remove one   ?   › ⏎
+
+[2/3] Ready · The epic starts from
+  Documents     doc/concepts/relay-hardening/   4 files
+  Title  [Relay hardening] ← from the documents
+  Id     [relay-hardening] ← from the title
+Start the epic? [Enter]   e) edit   ?   › ⏎
+✓ relay-hardening has started
+----
+
+The decomposition follows at once, in the same dialogue (<<decomposition>>); after it, _Follow it_ opens the epic's view (link:../shared/epic-view.adoc[Epic View]; xref:19-actions.adoc#epic-view[An Epic's View]).
 
 [#decomposition]
 === The Decomposition
 
 [source,text]
 ----
-✓ relay-hardening has started
 [3/3] Decomposition · relay-hardening
     ▶  the planning role drafts the workstreams and plans   drafting WS-2
   WS-1  Reconnect
@@ -145,11 +308,50 @@ With `--no-input` a state that needs the operator and has no answer among the ar
 Accept? [Enter]   i) instruct again   x) discard   ?   › ⏎
     ✓  every check passes
   1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree   › ⏎
-✓ relay-hardening: 2 workstreams, 4 plans committed; relay-reconnect-backoff started
+✓ relay-hardening: 2 workstreams, 4 plans committed
+    f) Follow it   b) back to the project
+◆ Question Q-001 · epic relay-hardening · blocks the epic
+  How many plans may run at once?   (the project sets no parallelization_scope)
+pm [1 question] ›
+----
+
+* *How many plans run at once* is asked where the epic first needs it, before its first plan starts, and only when the project sets no `parallelization_scope`: as a decision of the epic, announced like every question (xref:04-console.adoc#answering[Answering a Question]); with the project's value the epic starts its plans at once.
+* *Leaving* (`q`, `Ctrl+C`) keeps the draft and the decisions made on it: `Left [3/3] Decomposition of relay-hardening. The draft is kept. epic decompose relay-hardening continues it.` The epic starts no plan before its first decomposition is agreed, and its row in Running Work shows `waiting for you` until then.
+
+[#decompose-again]
+=== Decomposing Again
+
+`epic decompose <epic_id>` opens the same dialogue for a later run, with `--instruction` as the words of _draft again_; it is also how a left decomposition is continued. A later run has no step counter:
+
+[source,text]
+----
+pm › epic decompose relay-hardening --instruction "split the token work off; drop the docs plan"
+Decomposition · relay-hardening
+    ▶  the planning role drafts again
+  WS-1  Reconnect
+       relay-reconnect-backoff     shipped                       locked
+       relay-cursor-order          running                       locked
+       relay-reconnect-docs        paused                        locked
+    1) relay-docs                  dropped
+  WS-2  Authentication
+    2) relay-auth-v2               unchanged
+  WS-3  Token lifecycle
+    3) relay-token-rotation        changed: moved from WS-2, after relay-token-store
+    4) relay-token-store           new
+  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree   › 3
+  relay-token-rotation
+  - Workstream    WS-2 Authentication
+  + Workstream    WS-3 Token lifecycle
+  - Depends on    relay-auth-v2
+  + Depends on    relay-auth-v2, relay-token-store
+  k) keep   e) edit   d) drop   b) back   › k
+  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree   › ⏎
+✓ relay-hardening: 3 workstreams, 1 changed, 1 new, 1 dropped
 pm ›
 ----
 
-`epic decompose <epic_id>` opens the same dialogue for a later run, with `--instruction` as the words of _draft again_.
+* Shipped, running, pausing, and paused plans are listed with `locked` and cannot be opened for a change: a paused plan is the operator's to start or abandon (xref:19-actions.adoc#plan[A Plan]), never the decomposition's.
+* Each staged plan carries `unchanged`, `changed`, `new`, or `dropped`; a change opens to old against new, and _keep_ keeps the change.
 
 [#recipe]
 == Running a Recipe
@@ -160,37 +362,36 @@ pm › recipe run
 Which recipe?   project pm-mcp-clients
   1) coverage     raise the test coverage of modules          domain java
   2) deps-update  update the dependencies of the build        domain java
+  3) audit        audit the code against a request            project · takes a request
   › 1
 coverage · its parameters
-  1) Modules       all 9 ← proposed          (? lists them)
+  1) Modules       all 9 ← proposed
   2) Thoroughness  standard ← proposed       quick · standard · thorough
-Run coverage? [Enter]   change: 1-2   ?   › ⏎
+Run coverage? [Enter]   change: 1-2   ?n explains a line   ?   › ⏎
 ✓ recipe-coverage-2026-10-12-14-05-00 has started
 pm ›
 ----
 
+A recipe that takes a request asks its parameters first, then its sources, as a plan's (<<plan>>):
+
+[source,text]
+----
+pm › recipe run audit
+audit · its parameters
+  1) Modules       all 9 ← proposed
+Go on to its sources? [Enter]   change: 1   ?n explains a line   ?   › ⏎
+[1/2] Sources · What does the recipe start from?
+  d) description   f) documents   i) issue   ?   › i
+  Number or URL of the issue   › 240
+    ✓  issue   https://github.com/plan-marshall/pm-mcp-clients/issues/240   Audit the relay's retries
+  d) description   f) documents   i) issue   Enter) continue   x) remove one   ?   › ⏎
+✓ recipe-audit-2026-10-12-14-20-00 has started
+pm ›
+----
+
+As a direct verb: `recipe run audit --project . --param modules=pm-relay --issue 240`.
+
 [#starting-texts]
 == Texts of the Terminal
 
-The texts of the steps, sources, and states are those of link:../shared/starting-work.adoc#texts[Starting Work, Texts]; the terminal adds these, of the area `operator`:
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`operator.start.description_end`
-|an empty line ends it
-|eine leere Zeile beendet sie
-
-|`operator.start.open_entry`
-|{project} has an open {kind, select, plan {plan} other {epic}} with {count, plural, one {# source} other {# sources}}: c) continue it   n) begin a new one
-|{project} hat {kind, select, plan {einen offenen Plan} other {ein offenes Epic}} mit {count, plural, one {# Quelle} other {# Quellen}}: c) fortsetzen   n) neu beginnen
-
-|`operator.start.no_input_stop`
-|{state} needs you: {hint}
-|{state} braucht dich: {hint}
-
-|`operator.start.remove_one`
-|remove one
-|eine entfernen
-|===
+The texts this part adds are in xref:21-texts-starting.adoc#starting-texts[Texts: Projects, Starting Work, Actions].

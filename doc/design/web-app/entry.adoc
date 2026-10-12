@@ -1,0 +1,206 @@
+= Design: Web App, Entry
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Entry
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the page a revoked device lands on)_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing[CLI, Coordination & Security Specification, Pairing Protocol], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-devices[Entry, Devices in Both Clients] (proposed)_
+
+Status: `DRAFT`. How a browser gets into the web app: the pairing page, the page a revoked device lands on, and where the app opens after pairing. The entry itself (the runtime, the pairing code, the ways in, another device) runs in the terminal client (link:../terminal-client/05-transcripts-entry.adoc#t-entry[Terminal Client, The Entry]); the web app sees only its end: a URL with a code, or a browser without one. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
+
+[#pairing]
+== The Pairing Page (`/pair`)
+
+The URL the terminal client opens or shows carries the code in its fragment (`http://127.0.0.1:7420/pair#code=KXQB-MRTN`), which the browser never sends to a server.
+
+* *With a code in the URL*: the page reads it, removes the fragment from the address bar, and redeems it at once: opening the URL the terminal gave is the operator's act. While it redeems it shows one line, `Pairing this browser …`; then the app opens (<<after-pairing>>) with the note `Paired as Firefox on mbp-oliver` and a link _Rename_ to the paired devices (link:../shared/paired-devices.adoc[Paired Devices]).
+* *A browser that is paired already* does not redeem the code: it opens its start view, and the code expires unused.
+* *Without a code* (another browser, a cleared storage, the code typed from the terminal), the page asks for it:
+
+[source,text]
+----
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ plan-marshall                                                                │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Pair this browser                                                           │
+│  A paired browser can act on this machine as you do.                         │
+│                                                                              │
+│  Code   [ KXQB-MRTN ]                                                        │
+│                                                                              │
+│  Get a code in a terminal of the machine:                                    │
+│    on this machine          pm-operator web open --pair          [ Copy ]    │
+│    from another computer    pm-operator web pair                 [ Copy ]    │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                     [ Pair this browser ]    │
+└──────────────────────────────────────────────────────────────────────────────┘
+----
+
+* The code is accepted with or without the dash and in any case; the button is enabled once eight characters are typed.
+* *A code that does not work* (mistyped, used, expired, replaced by a newer one, or the runtime restarted) gets one answer, since the runtime does not say which: the line under the input `This code does not work. Get a new one in a terminal of the machine.` with the two commands. After too many failed tries the open code stops working even when typed right; the same answer covers it.
+* *On the network listener* (HTTPS) the page also shows the certificate's fingerprint, to compare with the one the terminal printed (`Fingerprint SHA-256  4F:1A:9C:…:E2:07`, _Show in full_).
+
+[#revoked]
+== A Revoked Device
+
+When the device is revoked, its open pages are told at once (the runtime ends its event streams with the reason); a page opened later gets the refusal on its first request. Either way the app deletes the stored device secret and shows the pairing page with the reason above it:
+
+[source,text]
+----
+  This browser is no longer paired
+
+  It was revoked from iPad (Safari) at 14:32.
+
+  A paired browser can act on this machine as you do. To pair this one
+  again, get a code in a terminal of the machine.
+
+  Code   [           ]
+
+    on this machine          pm-operator web open --pair          [ Copy ]
+    from another computer    pm-operator web pair                 [ Copy ]
+
+                                                    [ Pair this browser ]
+----
+
+The reason names what the runtime reported:
+
+[cols="1,2",options="header"]
+|===
+|Reason |Line
+
+|revoked from another device
+|`It was revoked from iPad (Safari) at 14:32.`
+
+|revoked in the terminal
+|`It was revoked in the terminal at 14:32.`
+
+|all other devices revoked
+|`All other devices were revoked from Firefox on mbp-oliver at 14:32.`
+
+|this device revoked from itself
+|`You revoked this browser at 14:32.`
+
+|idle expiry
+|`It was not used for 30 days, so its pairing expired.`
+
+|no reason known (the page was not open)
+|`Its pairing is no longer accepted.`
+|===
+
+* Nothing typed in an open form survives the revocation: the page that was open is replaced, not covered.
+* Revoking the device the operator acts from asks first (link:../shared/paired-devices.adoc[Paired Devices]) and then lands here with `You revoked this browser`.
+
+[#after-pairing]
+== Where the App Opens
+
+After pairing, and on every later visit, the app asks the runtime whether the machine is onboarded:
+
+* *Not fully onboarded*: the app opens the onboarding (link:onboarding.adoc#frame[Onboarding]) at the state the server is in: `onboard.mode` for a first run (link:onboarding.adoc#start[Start]), else the state where it stopped, with the step bar showing the steps done. This is where the operator lands who chose _in the web app_ in the terminal's question (`entry.where-to-onboard`; link:../terminal-client/05-transcripts-entry.adoc#t-entry-first[Terminal Client, Not Fully Onboarded]); the terminal returns to its prompt with the setup badge, and either client continues the run. Every other route of the app leads to the onboarding until it is complete.
+* *Onboarded*: the app opens where the operator left it, first in the explorer of the projects (link:README.adoc#structure[Structure and Navigation]).
+* *The runtime is not reachable* (stopped, restarting): the app says so on a page of its own, `plan-marshall is not reachable on this machine. Start it in a terminal: pm-operator`, and reconnects on its own when it is back; nothing the operator had open is lost.
+
+[#texts]
+== Texts
+
+Keys of the area `web`; the copy button is `web.common.copy`, the fingerprint's _Show in full_ is `web.common.show_full` (link:onboarding-texts.adoc#texts-web[Onboarding, Keys of the Web App]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`web.pair.page.title`
+|Pair this browser
+|Kopple diesen Browser
+
+|`web.pair.page.intro`
+|A paired browser can act on this machine as you do.
+|Ein gekoppelter Browser kann auf dieser Maschine handeln wie du.
+
+|`web.pair.page.code`
+|Code
+|Code
+
+|`web.pair.page.get_code`
+|Get a code in a terminal of the machine:
+|Hol dir einen Code in einem Terminal der Maschine:
+
+|`web.pair.page.this_machine`
+|on this machine
+|auf dieser Maschine
+
+|`web.pair.page.other_computer`
+|from another computer
+|von einem anderen Computer
+
+|`web.pair.page.action`
+|Pair this browser
+|Kopple diesen Browser
+
+|`web.pair.page.pairing`
+|Pairing this browser …
+|Dieser Browser wird gekoppelt …
+
+|`web.pair.page.invalid`
+|This code does not work. Get a new one in a terminal of the machine.
+|Dieser Code funktioniert nicht. Hol dir einen neuen in einem Terminal der Maschine.
+
+|`web.pair.page.fingerprint`
+|Fingerprint SHA-256
+|Fingerabdruck SHA-256
+
+|`web.pair.page.fingerprint_hint`
+|Compare it with the fingerprint the terminal printed.
+|Vergleiche ihn mit dem Fingerabdruck, den das Terminal ausgegeben hat.
+
+|`web.pair.done.paired_as`
+|Paired as {label}
+|Gekoppelt als {label}
+
+|`web.pair.done.rename`
+|Rename
+|Benenne um
+
+|`web.revoked.page.title`
+|This browser is no longer paired
+|Dieser Browser ist nicht mehr gekoppelt
+
+|`web.revoked.reason.device`
+|It was revoked from {device} at {time}.
+|Er wurde um {time} von {device} aus entfernt.
+
+|`web.revoked.reason.terminal`
+|It was revoked in the terminal at {time}.
+|Er wurde um {time} im Terminal entfernt.
+
+|`web.revoked.reason.others`
+|All other devices were revoked from {device} at {time}.
+|Alle anderen Geräte wurden um {time} von {device} aus entfernt.
+
+|`web.revoked.reason.self`
+|You revoked this browser at {time}.
+|Du hast diesen Browser um {time} entfernt.
+
+|`web.revoked.reason.idle`
+|It was not used for {days, plural, one {# day} other {# days}}, so its pairing expired.
+|Er wurde {days, plural, one {einen Tag} other {# Tage}} nicht benutzt, daher ist seine Kopplung abgelaufen.
+
+|`web.revoked.reason.unknown`
+|Its pairing is no longer accepted.
+|Seine Kopplung wird nicht mehr angenommen.
+
+|`web.revoked.page.again`
+|To pair this one again, get a code in a terminal of the machine.
+|Um diesen erneut zu koppeln, hol dir einen Code in einem Terminal der Maschine.
+
+|`web.entry.unreachable.title`
+|plan-marshall is not reachable on this machine
+|plan-marshall ist auf dieser Maschine nicht erreichbar
+
+|`web.entry.unreachable.fix`
+|Start it in a terminal: {command}. This page reconnects on its own.
+|Starte es in einem Terminal: {command}. Diese Seite verbindet sich von selbst wieder.
+|===

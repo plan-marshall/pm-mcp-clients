@@ -21,27 +21,29 @@ A plan and an epic carry their actions wherever they are shown: their row in Run
 |State |Actions |Shown as
 
 |running
-|Pause, Cancel
+|Pause, Cancel, Settings
 |`running`; _Pause_ first
 
 |pausing
-|Start, Cancel
+|Start, Cancel, Settings
 |`pausing after the task` or `after the phase`; _Start_ withdraws the pause
 
 |paused
-|Start, Abandon
+|Start, Abandon, Settings
 |`paused` since when, by the operator
 
 |ended
 |none
-|its outcome; the plan view only
+|its outcome; its plan view, read-only (link:plan-view.adoc#ended[An Ended Plan])
 |===
 
+* *Settings* opens the plan's own values (its overrides, link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]) in every state of a plan that runs, each with where its value comes from (the plan, the project, the machine). A value may be set where the plan first needs it, or later here; it applies from where the plan next reads it.
 * *Pause* asks where the plan holds, _after the current task_ preselected (<<pause>>); *Start* acts at once. Neither needs a confirmation: each is undone by the other.
 * A plan always runs once it exists: a plan an epic starts is created and run in one act, so there is no state of a plan that waits to be started.
 * *Cancel* and *Abandon* confirm first (<<confirm-end>>).
 * *A plan of an epic* says on every action which epic is told (`fix-relay-epic is told`), and after it, that it was (<<epic-told>>).
 * An action that applies but cannot run now is disabled with its reason (`the runtime is reconnecting`).
+* *A plan's own pull request* is shown by its number with a link to the provider (`#214`), in its row, its head, and the dialogues.
 
 [#pause]
 === Pausing a Plan
@@ -60,6 +62,9 @@ A plan and an epic carry their actions wherever they are shown: their row in Run
 
 While it is pausing, its row says where it will hold and what still runs (`pausing after the task · build · 2 min`).
 
+* *An operator wait* of the plan (a decision, a waiver request) stays open while the plan is paused, and answering it does not start the plan: the answer is recorded and the plan goes on with it once the operator starts it. A pause after the current task or phase holds at an operator wait too, since nothing runs there.
+* *After a restart* of the runtime or the machine, a paused plan stays paused, a pausing plan holds at its point once it runs again, a running plan runs on from its last committed state, and an open operator wait stays open; the clients show each as it is, and nothing asks the operator again.
+
 [#confirm-end]
 === Ending a Plan
 
@@ -74,8 +79,8 @@ While it is pausing, its row says where it will hold and what still runs (`pausi
                                                   [Keep it running]  [Cancel the plan]
 ----
 
-* The reason is required; it goes to the plan's archive, to the epic, and to the pull request's closing comment.
-* _Abandon_ is the same dialogue for a paused plan, without _What ends_.
+* The reason is required; it goes to the plan's archive, to the epic, and to the pull request's closing comment. `#214` is a link to the pull request at the provider.
+* _Abandon_ is the same dialogue for a paused plan, without _What ends_, with _Keep it paused_ and _Abandon the plan_.
 
 [#epic-told]
 === The Epic Is Told
@@ -92,7 +97,7 @@ After an action on a plan of an epic, the row of the plan shows for a moment `re
   [Decompose again]   [Watches review · 5]   [Archive]   [Cancel]
 ----
 
-* *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs: the surface overlaps a running plan`); with the epic's scope full it offers _Start it anyway: run 4 at once_.
+* *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs: the surface overlaps a running plan`); with the epic's scope full it offers _Raise to 4 at once and start it_, which raises the epic's `parallelization_scope` by one and starts the plan.
 * *Decompose again* asks for the instruction (`split the auth workstream; drop the docs plan`) and opens the decomposition with it (link:starting-work.adoc#decomposition[The Decomposition]).
 * *Findings review* and *Watches review* carry their counts; new findings since the last review are also a `needs you` of the epic in Running Work.
 * *Archive* runs the check first (<<archive-check>>).
@@ -124,7 +129,7 @@ Each line is a check of the runtime; a failing one leads to what is open. _Archi
   Its plans      3 running · 1 paused
                  (●) Cancel them too   ( ) Let them run on without the epic
   Reason         [                                                        ]
-  Afterwards     the epic is archived as aborted
+  Afterwards     the epic is archived as cancelled
                                                   [Keep it]  [Cancel the epic]
 ----
 
@@ -149,20 +154,22 @@ A plan, an epic, or a landing that does not go on without a decision being asked
 |_Retry now_, _Recycle the worker_, _End the plan…_
 
 |condition
-|the act it names, as a dialogue (_Grant read access…_, _Add the credential…_, _Raise the budget…_), _Retry_, _End the plan…_
+|the act it names, as a dialogue (_Grant read access…_, _Add the credential…_, _Raise the budget…_), _Retry now_, _End the plan…_
 
 |integrity pause
 |_Show the change_, _Accept the change…_, _Restore_, _End the plan…_
 
 |held item of an epic
-|_Retry_, and the item's own acts
+|_Retry now_, and the item's own acts
 
 |landing failed (an epic's, or a move's removal from git)
-|_Retry_, _Show the pull request_, _Give up the removal…_
+|_Retry now_, _Show the pull request_ (by its number, with a link), and for a move's removal _Give up the removal…_
 |===
 
 * Every act is offered in both clients; a hold that clears by itself (a provider is back) leaves with a line in the events (`the provider answered again`).
-* An act that cannot be undone (_Accept the change_, _End the plan_) confirms first and names what follows.
+* An act that cannot be undone (_Accept the change_, _End the plan_, _Give up the removal_) confirms first and names what follows.
+* *Give up the removal* ends the short landing that removes moved documents from git: the removal's branch is dropped and the files remain tracked in git where they were, and the source keeps its copy; the two are no longer one, and the dialogue says so.
+* *End the plan* is the plan's _Cancel_ (<<confirm-end>>).
 
 [#review]
 == Reviewing Findings or Watches
@@ -183,7 +190,7 @@ The review goes through the items of one register, one at a time, open ones firs
               (the planning role)
   ─────────────────────────────────────────────────────────────────────────────
   [Keep ▾ as defect | as watch]  [Drop]  [Promote to a plan]  [Edit]  [Talk]
-                                       [Accept the remaining 4 proposals]
+                              [Accept the remaining 4 proposals]   [Finish]
 ----
 
 * *Keep* as a defect (a finding) or as a watch: the item may change its register.
@@ -191,255 +198,16 @@ The review goes through the items of one register, one at a time, open ones firs
 * *Promote to a plan* shows the planning role at work, then its draft of the staged plan (objective, deliverables, surface, dependencies) with _Stage it_, _Edit_, and _Back_.
 * *Edit* asks what to adapt or add, in the operator's words; the planning role rewrites the statement and the rules, and the read-back shows old against new with _Accept_, _Instruct again_, and _Discard_.
 * *Talk* opens a conversation with the planning role about this item or the whole register; each change it proposes is shown as a read-back, and nothing changes without _Accept_.
-* *Accept the remaining proposals* lists them all once for one confirmation.
+* *Accept the remaining proposals* lists them all once, each with its proposal, for one confirmation.
 * *An item from outside the machine* (a finding from a review comment) carries `untrusted`, and its text is shown as text, never rendered.
-* *Finish* writes the decisions to the epic's ledger; leaving before keeps them, and the review opens where it stopped.
+* *Finish* writes the decisions to the epic's ledger, where they are landed; leaving before keeps them, and the review opens where it stopped, in either client.
+
+[#open-points]
+== Open Points
+
+* Whether an epic can be paused as a whole (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]): today the operator pauses its plans one by one, and the epic starts no plan while its scope is full. Until it is decided, an epic offers no _Pause_.
 
 [#texts]
 == Texts
 
-Keys of the area `control`, shared by both clients.
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`control.plan.pause`
-|Pause
-|Anhalten
-
-|`control.plan.start`
-|Start
-|Starten
-
-|`control.plan.cancel`
-|Cancel
-|Abbrechen
-
-|`control.plan.abandon`
-|Abandon
-|Aufgeben
-
-|`control.plan.state.paused`
-|paused since {time}
-|angehalten seit {time}
-
-|`control.plan.state.pausing`
-|pausing {point, select, task {after the task} other {after the phase}}
-|hält an {point, select, task {nach dem Task} other {nach der Phase}}
-
-|`control.pause.title`
-|Pause {plan}?
-|{plan} anhalten?
-
-|`control.pause.now`
-|Now
-|Sofort
-
-|`control.pause.after_task`
-|After the current task
-|Nach dem laufenden Task
-
-|`control.pause.after_phase`
-|After the current phase
-|Nach der laufenden Phase
-
-|`control.pause.keep_running`
-|Keep it running
-|Weiterlaufen lassen
-
-|`control.epic.decompose_again`
-|Decompose again
-|Neu zerlegen
-
-|`control.plan.still_holds`
-|a job finishes: {job} · {duration}
-|ein Job läuft zu Ende: {job} · {duration}
-
-|`control.end.title`
-|{action, select, cancel {Cancel} other {Abandon}} {plan}?
-|{plan} {action, select, cancel {abbrechen} other {aufgeben}}?
-
-|`control.end.what_ends`
-|the running work: {jobs, plural, one {# job} other {# jobs}}, {tasks, plural, one {# task} other {# tasks}}
-|die laufende Arbeit: {jobs, plural, one {# Job} other {# Jobs}}, {tasks, plural, one {# Task} other {# Tasks}}
-
-|`control.end.pr_close`
-|Close it, with the reason
-|Schließen, mit dem Grund
-
-|`control.end.pr_leave`
-|Leave it open
-|Offen lassen
-
-|`control.end.reason`
-|Reason
-|Grund
-
-|`control.end.afterwards`
-|the plan is archived as {outcome}; its branch stays
-|der Plan wird als {outcome} archiviert; sein Branch bleibt
-
-|`control.epic_told`
-|{epic} is told
-|{epic} wird informiert
-
-|`control.epic.next`
-|Next plan: {plan}
-|Nächster Plan: {plan}
-
-|`control.epic.next_none`
-|No plan can start: {reasons}
-|Kein Plan kann starten: {reasons}
-
-|`control.epic.next_raise`
-|Start it anyway: run {count} at once
-|Trotzdem starten: {count} gleichzeitig
-
-|`control.epic.findings_review`
-|Findings review
-|Findings prüfen
-
-|`control.epic.watches_review`
-|Watches review
-|Beobachtungen prüfen
-
-|`control.epic.archive`
-|Archive
-|Archivieren
-
-|`control.epic.cancel`
-|Cancel
-|Abbrechen
-
-|`control.archive.title`
-|Archive {epic}?
-|{epic} archivieren?
-
-|`control.archive.no_plan_active`
-|no plan running, pausing, or paused
-|kein Plan läuft, hält an oder ist angehalten
-
-|`control.archive.rows_ended`
-|every plan shipped or ended
-|jeder Plan ausgeliefert oder beendet
-
-|`control.archive.open_findings`
-|open findings
-|offene Findings
-
-|`control.archive.ledger_landed`
-|the ledger is landed
-|das Ledger ist gelandet
-
-|`control.archive.completion_reviewed`
-|the completion review is done
-|die Abschlussprüfung ist erledigt
-
-|`control.archive.open_watches`
-|watches still open: they go into the archive
-|noch offene Beobachtungen: sie kommen ins Archiv
-
-|`control.archive.action`
-|Archive the epic
-|Das Epic archivieren
-
-|`control.cancel_epic.plans_too`
-|Cancel them too
-|Mit abbrechen
-
-|`control.cancel_epic.plans_on`
-|Let them run on without the epic
-|Ohne das Epic weiterlaufen lassen
-
-|`control.review.title`
-|{epic} · {register, select, findings {findings review} other {watches review}}
-|{epic} · {register, select, findings {Findings prüfen} other {Beobachtungen prüfen}}
-
-|`control.review.progress`
-|{done} of {total} decided
-|{done} von {total} entschieden
-
-|`control.review.statement`
-|Statement
-|Aussage
-
-|`control.review.rules`
-|Rules
-|Regeln
-
-|`control.review.origin`
-|Origin
-|Herkunft
-
-|`control.review.proposal`
-|Proposal
-|Vorschlag
-
-|`control.review.keep_defect`
-|Keep as defect
-|Als Defekt behalten
-
-|`control.review.keep_watch`
-|Keep as watch
-|Als Beobachtung behalten
-
-|`control.review.drop`
-|Drop
-|Verwerfen
-
-|`control.review.promote`
-|Promote to a plan
-|Zu einem Plan machen
-
-|`control.review.edit`
-|Edit
-|Bearbeiten
-
-|`control.review.talk`
-|Talk
-|Besprechen
-
-|`control.review.accept_remaining`
-|Accept the remaining {count, plural, one {# proposal} other {# proposals}}
-|{count, plural, one {Den übrigen Vorschlag} other {Die übrigen # Vorschläge}} annehmen
-
-|`control.review.stage`
-|Stage it
-|Vormerken
-
-|`control.review.instruct_again`
-|Instruct again
-|Neu anweisen
-
-|`control.review.discard`
-|Discard
-|Verwerfen
-|`control.hold.title`
-|{name} holds: {kind}
-|{name} hält: {kind}
-
-|`control.hold.cause`
-|Cause
-|Ursache
-
-|`control.hold.tried`
-|Tried {count, plural, one {once} other {# times}}, last {time}
-|{count, plural, one {Einmal} other {# Mal}} versucht, zuletzt {time}
-
-|`control.hold.retry`
-|Retry
-|Erneut versuchen
-
-|`control.hold.recycle`
-|Recycle the worker
-|Den Worker neu starten
-
-|`control.hold.end_plan`
-|End the plan
-|Den Plan beenden
-
-|`control.hold.cleared`
-|{cause} cleared by itself
-|{cause} hat sich von selbst erledigt
-|===
+Keys of the area `control`, shared by both clients. They are listed in their own part: link:work-actions-texts.adoc[Actions on Plans and Epics, Texts].

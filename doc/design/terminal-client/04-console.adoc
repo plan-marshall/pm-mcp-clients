@@ -5,18 +5,20 @@
 
 link:README.adoc[Terminal Client] » The Console
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+
 [#console]
 == The Console
 
-`pm-operator` without a verb opens the operator's console: a prompt at which the operator types verbs without the program name, which runs the dialogues of xref:03-dialogues.adoc[Dialogues], and which shows what the runtime pushes while it is open, above all the questions a running plan asks the operator to decide. It is line-oriented, not full-screen: the scrollback, copying, and SSH keep working as in any shell. Transcripts: xref:05-transcripts-entry.adoc#t-console[The Console at Work].
+`pm-operator` without a verb opens the operator's console: a prompt at which the operator types verbs without the program name, which runs the dialogues of xref:03-dialogues.adoc[Dialogues], and which shows what the runtime pushes while it is open, above all the decisions and waiver requests a running plan or epic asks the operator to answer. It is line-oriented, not full-screen: the scrollback, copying, and SSH keep working as in any shell. Transcripts: xref:05-transcripts-entry.adoc#t-console[The Console at Work].
 
 [#prompt]
 === The Prompt
 
 * `pm ›` is the prompt; it is the same in every language.
-* *Badges* say what waits for the operator, between `pm` and `›`, only when there is something: `pm [1 question] ›`, `pm [setup 3/7] ›`, `pm [2 questions · setup 3/7] ›`. The counts come from the runtime (its list of open questions and waiver requests, the state of the onboarding), never from counting in the client, so a question answered in the web app leaves the badge at once.
+* *Badges* say what waits for the operator, between `pm` and `›`, only when there is something: `pm [1 question] ›`, `pm [setup 3/7] ›`, `pm [2 questions · 1 waiver request · setup 3/7] ›`. One badge per kind of the runtime's `needs_operator` summary that is not zero (<<pushed>>), with its count, and one per open onboarding: the machine's (`setup 3/7`) and each project's that has not completed (`setup pm-mcp-clients 5/9`). The counts come from the runtime (its `needs_operator` summaries and the open onboarding runs), never from counting in the client, so a question answered in the web app leaves the badge at once. More than three badges are cut to the first three and `+<n>` (`pm [2 questions · 1 waiver request · 1 stalled · +2] ›`); `questions` and `plans` show them all.
 * *Connection*: `pm (reconnecting) ›` while the runtime cannot be reached (<<connection>>).
-* `Enter` on the empty prompt takes what the badge offers first: an unfinished onboarding continues where it stopped; otherwise nothing happens. A question is never taken by `Enter` alone (<<answering>>).
+* `Enter` on the empty prompt takes what the badge offers first: an unfinished onboarding continues where it stopped, the most recent one when several are open (the machine's first while it is not complete, it gates the others); `project setup <project_id>` continues a specific project's. Otherwise nothing happens. A question is never taken by `Enter` alone (<<answering>>).
 * A badge changes while the operator types: the prompt is redrawn with the typed text and the cursor where they were.
 
 [#pushed]
@@ -24,8 +26,72 @@ link:README.adoc[Terminal Client] » The Console
 
 The console follows the runtime's event stream (`GET /api/v1/events`) while it is open. Events are of two kinds:
 
-* *Waiting for the operator*: a question of a plan or an epic, a waiver request, a plan stalled or paused on integrity. Each is shown as a notice block, counted in the badge, and announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>).
+* *Waiting for the operator*: a change of a `needs_operator` summary of a plan, an epic, or a project that adds an item. Each new item is shown as a notice block, counted in the badge, and announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>); an item the operator caused (`paused`) is shown and counted, never rung.
 * *For information*: a plan ended, a worker restarted, a check of a running dialogue reported. At most one quiet line, several of them coalesced into one; the full list is `pm-operator status`.
+
+Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.adoc[Plan Overview]) has its notice, its badge, and the command that opens it; the label of the kind is the shared `overview.needs.<kind>`, the rest is the console's (<<texts-operator-console>>):
+
+[cols="2,4,2,3",options="header"]
+|===
+|Kind |Notice (first line) |Badge |Opens it
+
+|`decision`
+|`◆ Question Q-007 · plan fix-relay · blocks the plan` (an epic's: `· epic storage-v2`), its text, the recommendation (`operator.console.question.notice`)
+|`1 question` (`operator.console.badge.questions`)
+|`answer <id>`, `questions`
+
+|`waiver_request`
+|`◆ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests` (`operator.console.notice.waiver_request`)
+|`1 waiver request` (`operator.console.badge.waiver_requests`)
+|`answer <id>`, `questions`
+
+|`operator_wait`
+|`◆ Plan fix-relay waits for you: <what>` (`operator.console.notice.operator_wait`)
+|`1 waits for you` (`operator.console.badge.operator_waits`)
+|`plan <id>`, `epic <id>`
+
+|`integrity_pause`
+|`◆ Integrity pause · plan fix-relay: <reason>` (`operator.console.notice.integrity_pause`)
+|`1 integrity pause` (`operator.console.badge.integrity_pauses`)
+|`plan <id>`
+
+|`stalled`
+|`◆ Plan fix-relay stalled: <reason>` (`operator.console.notice.stalled`)
+|`1 stalled` (`operator.console.badge.stalled`)
+|`plan <id>`
+
+|`condition`
+|`◆ Plan fix-relay needs a fix: <condition>`, then `→ <command>` (`operator.console.notice.condition`)
+|`1 needs a fix` (`operator.console.badge.conditions`)
+|`plan <id>`
+
+|`held`
+|`◆ Epic storage-v2: 1 held for you` (`operator.console.notice.held`)
+|`1 held` (`operator.console.badge.held`)
+|`epic <id>`
+
+|`landing_failed`
+|`◆ Epic storage-v2: the landing failed: <reason>` (`operator.console.notice.landing_failed`)
+|`1 landing failed` (`operator.console.badge.landing_failed`)
+|`epic <id>`
+
+|`findings`
+|`◆ Epic storage-v2: 3 new findings` (`operator.console.notice.findings`)
+|`3 new findings` (`operator.console.badge.findings`)
+|`epic findings <id>`
+
+|`paused`
+|`◆ Plan fix-relay paused by you` (`operator.console.notice.paused`), never rung
+|`1 paused` (`operator.console.badge.paused`)
+|`plan <id>`, `plan start <id>`
+
+|`setup`
+|`◆ Project plan-marshall: the setup needs you: <what>` (`operator.console.notice.setup`)
+|`1 setup` (`operator.console.badge.setup_needs`)
+|`project setup <id>`
+|===
+
+The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup <project_id> 5/9` for each (before its enrolment, the directory name of its checkout stands for the id) project's (`operator.console.badge.setup_project`).
 
 A notice is printed *above* the prompt: the line the operator is typing is taken off, the notice is printed, and the prompt is drawn again with the typed text and the cursor where they were. Nothing typed is lost, and nothing typed becomes an answer.
 
@@ -43,11 +109,11 @@ pm [1 question] › config roles --pro
 
 A pushed item never takes the focus: no keystroke typed before it was shown can answer it, and a bare number at the prompt is no answer (`2 is not a command here; help lists them`).
 
-* `questions` lists what waits: id, plan or epic, the question in one line, the recommendation, and since when the plan waits.
+* `questions` lists the open decisions and waiver requests: id, plan or epic, the question in one line, the recommendation, and since when it waits.
 * `answer Q-007` opens the decision as the states of its sub-workflow `decision.*`, shown as link:../shared/decisions.adoc[Decisions] says for every client: what is asked and why, the evidence on `?`, the parts one at a time, the options in the workflow's order with their support, and the recommendation placed by what is at stake (link:../shared/decisions.adoc#recommendation[Where the Recommendation Stands]): preselected only where the decision is reversible and the votes agree or no quorum voted; one step away (`?r`) where it is costly to undo or cannot be undone. Input typed ahead before it opened is discarded, so a stray `Enter` cannot take a recommendation (transcripts: xref:14-transcripts-decisions.adoc[Decisions]).
-* *Addressing a decision*: a decision's id (`Q-007`) is unique within its plan, epic, or project setup; across them it is `<scope>/<id>` (`fix-relay/Q-007`). The short form answers when exactly one open decision has that id; otherwise the console names the candidates in their full form. `questions` prints the short form where it is unique and the full form where it is not.
+* *Addressing a decision*: a decision's id (`Q-007`) is unique within its scope (a plan, an epic, or a project setup); across scopes it is `<scope_id>/<question_id>` (`fix-relay/Q-007`). A waiver request is addressed the same way by its id, `WR-<n>`, unique within its plan, and `<scope_id>/WR-<n>` across plans (`fix-relay/WR-2`). The short form answers when exactly one open decision or waiver request has that id; otherwise the console names the candidates in their full form. `questions` prints the short form where it is unique and the full form where it is not.
 * `answer Q-007 2` answers a single-part decision at once with option 2, after printing the option it chose; where the decision asks for `decision.confirm` (several parts, or costly to undo, or not reversible), the confirmation is still shown.
-* A waiver request is opened the same way and answered by a waiver with its reason; it has no `Enter` default, like a consent (xref:03-dialogues.adoc#consent[Consent]; xref:14-transcripts-decisions.adoc#t-decision-waiver[A Waiver Request]).
+* A waiver request is opened the same way (`answer WR-2`) and answered by _waive_ with a reason, _decline_ with a reason, or _later_; it has no `Enter` default and no preselection, like a consent (xref:03-dialogues.adoc#consent[Consent]; xref:14-transcripts-decisions.adoc#t-decision-waiver[A Waiver Request]).
 * A question's text comes from a model; the console shows it as data, never as a command, and strips every control sequence from it before it is printed (<<output-safety>>).
 
 [#during-dialogue]
@@ -64,7 +130,7 @@ A dialogue is never interrupted. When something arrives while a dialogue runs, t
 [#answered-elsewhere]
 === Answered Elsewhere
 
-The first valid answer wins, from the web app, the console, or an entry session. When another channel answers first:
+The first valid answer wins, from the web app or the console (the channels `web` and `cli`, named in the texts as `decision.channel.web` "the web app" and `decision.channel.cli` "the console"). When another channel or another console answers first:
 
 * the console prints `– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.` and the badge drops;
 * a question open as a dialogue is closed, the input typed into it is dropped, and the console returns to its prompt;
@@ -115,7 +181,7 @@ The first valid answer wins, from the web app, the console, or an entry session.
 * What waits for the operator rings the terminal bell once, when it arrives.
 * A desktop notification is sent instead where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
 * The machine configuration key `console.notify` chooses `auto` (the default: the desktop notification where known, else the bell), `bell`, or `off`.
-* A notification carries the plan and the kind (`plan fix-relay asks a question`), never the text of the question, which may hold content of the project.
+* A notification carries the scope and the kind (`plan fix-relay asks a question`, `epic storage-v2 asks a question`, `plan fix-relay asks for a waiver`), never the text of the question, which may hold content of the project.
 
 [#output-safety]
 === Output Safety
@@ -138,3 +204,181 @@ The console reads with JLine 4 (`jline-reader`, `jline-terminal`, `jline-termina
 * *A terminal without cursor control* (`TERM=dumb`, a screen reader that reads each redraw): notices are printed between lines, at the next prompt, never into the line being typed; the badge and the bell still announce them.
 * *Secrets* (a token in `providers.credentials`, `credentials set`) are read character by character from the terminal with the echo off into a `char[]` that is cleared after the request, never through `LineReader.readLine`, whose result is a `String` that cannot be cleared; they never reach the history.
 * *Picocli* stays the parser of verbs and options; completion is computed from picocli's model of the commands.
+
+[#texts-operator-console]
+== Texts of the Console
+
+The console's own texts, area `operator`; the conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.console.badge.questions`
+|{count, plural, one {# question} other {# questions}}
+|{count, plural, one {# Frage} other {# Fragen}}
+
+|`operator.console.badge.setup`
+|setup {done}/{total}
+|Einrichtung {done}/{total}
+
+|`operator.console.badge.setup_project`
+|setup {project} {done}/{total}
+|Einrichtung {project} {done}/{total}
+
+|`operator.console.badge.waiver_requests`
+|{count, plural, one {# waiver request} other {# waiver requests}}
+|{count, plural, one {# Waiver-Anfrage} other {# Waiver-Anfragen}}
+
+|`operator.console.badge.operator_waits`
+|{count, plural, one {# waits for you} other {# wait for you}}
+|{count, plural, one {# wartet auf dich} other {# warten auf dich}}
+
+|`operator.console.badge.integrity_pauses`
+|{count, plural, one {# integrity pause} other {# integrity pauses}}
+|{count, plural, one {# Integritätspause} other {# Integritätspausen}}
+
+|`operator.console.badge.stalled`
+|{count, plural, one {# stalled} other {# stalled}}
+|{count, plural, one {# steht} other {# stehen}}
+
+|`operator.console.badge.conditions`
+|{count, plural, one {# needs a fix} other {# need a fix}}
+|{count, plural, one {# braucht eine Korrektur} other {# brauchen eine Korrektur}}
+
+|`operator.console.badge.held`
+|{count, plural, one {# held} other {# held}}
+|{count, plural, one {# zurückgehalten} other {# zurückgehalten}}
+
+|`operator.console.badge.landing_failed`
+|{count, plural, one {# landing failed} other {# landings failed}}
+|{count, plural, one {# Landen fehlgeschlagen} other {# Landungen fehlgeschlagen}}
+
+|`operator.console.badge.findings`
+|{count, plural, one {# new finding} other {# new findings}}
+|{count, plural, one {# neues Finding} other {# neue Findings}}
+
+|`operator.console.badge.paused`
+|{count, plural, one {# paused} other {# paused}}
+|{count, plural, one {# angehalten} other {# angehalten}}
+
+|`operator.console.badge.setup_needs`
+|{count, plural, one {# setup} other {# setups}}
+|{count, plural, one {# Einrichtung} other {# Einrichtungen}}
+
+|`operator.console.badge.more`
+|+{count}
+|+{count}
+
+|`operator.console.badge.reconnecting`
+|reconnecting
+|verbinde neu
+
+|`operator.console.not_a_command`
+|{input} is not a command here; help lists them.
+|{input} ist hier kein Befehl; help listet sie.
+
+|`operator.console.ctrl_c_hint`
+|exit or Ctrl+D leaves the console
+|exit oder Strg+D verlässt die Konsole
+
+|`operator.console.exit_open`
+|{count, plural, one {# question stays open} other {# questions stay open}}; you can answer {count, plural, one {it} other {them}} in the web app. exit or Ctrl+D again leaves.
+|{count, plural, one {# Frage bleibt offen} other {# Fragen bleiben offen}}; du kannst {count, plural, one {sie} other {sie}} in der Web-App beantworten. exit oder Strg+D noch einmal verlässt die Konsole.
+
+|`operator.console.question.notice`
+|Question {id} · {scope, select, epic {epic} setup {setup of} other {plan}} {name} · {blocks}
+|Frage {id} · {scope, select, epic {Epic} setup {Einrichtung von} other {Plan}} {name} · {blocks}
+
+|`operator.console.question.recommended`
+|Recommended: {option}
+|Empfohlen: {option}
+
+|`operator.console.question.waiting`
+|{count, plural, one {# question waiting} other {# questions waiting}}: {id} · {name} · {blocks}   ! shows it
+|{count, plural, one {# Frage wartet} other {# Fragen warten}}: {id} · {name} · {blocks}   ! zeigt sie
+
+|`operator.console.question.not_now`
+|not now
+|nicht jetzt
+
+|`operator.console.question.answered`
+|{id} answered: {option}.
+|{id} beantwortet: {option}.
+
+|`operator.console.question.answered_elsewhere`
+|{id} was answered in {channel} ({device}): {option}. Nothing was sent from here.
+|{id} wurde in {channel} ({device}) beantwortet: {option}. Von hier wurde nichts gesendet.
+
+|`operator.console.notice.waiver_request`
+|Waiver request {id} · plan {plan} · gate {gate}
+|Waiver-Anfrage {id} · Plan {plan} · Gate {gate}
+
+|`operator.console.notice.operator_wait`
+|{scope, select, epic {Epic} other {Plan}} {name} waits for you: {what}
+|{scope, select, epic {Epic} other {Plan}} {name} wartet auf dich: {what}
+
+|`operator.console.notice.integrity_pause`
+|Integrity pause · plan {plan}: {reason}
+|Integritätspause · Plan {plan}: {reason}
+
+|`operator.console.notice.stalled`
+|Plan {plan} stalled: {reason}
+|Plan {plan} steht: {reason}
+
+|`operator.console.notice.condition`
+|Plan {plan} needs a fix: {condition}
+|Plan {plan} braucht eine Korrektur: {condition}
+
+|`operator.console.notice.held`
+|Epic {epic}: {count, plural, one {# held for you} other {# held for you}}
+|Epic {epic}: {count, plural, one {# wartet auf dich} other {# warten auf dich}}
+
+|`operator.console.notice.landing_failed`
+|Epic {epic}: {what, select, removal {the removal from git failed} other {the landing failed}}: {reason}
+|Epic {epic}: {what, select, removal {das Entfernen aus git ist fehlgeschlagen} other {das Landen ist fehlgeschlagen}}: {reason}
+
+|`operator.console.notice.findings`
+|Epic {epic}: {count, plural, one {# new finding} other {# new findings}}
+|Epic {epic}: {count, plural, one {# neues Finding} other {# neue Findings}}
+
+|`operator.console.notice.paused`
+|Plan {plan} paused by you
+|Plan {plan} von dir angehalten
+
+|`operator.console.notice.setup`
+|Project {project}: the setup needs you: {what}
+|Projekt {project}: die Einrichtung braucht dich: {what}
+
+|`operator.console.questions.none`
+|No open questions.
+|Keine offenen Fragen.
+
+|`operator.console.dialogue.stays`
+|{step} stays where it is; nothing was sent.
+|{step} bleibt, wo es ist; es wurde nichts gesendet.
+
+|`operator.console.dialogue.back`
+|Back to {step}.
+|Zurück zu {step}.
+
+|`operator.console.connection.lost`
+|Lost the connection to the runtime ({reason}). Reconnecting …
+|Verbindung zur Runtime verloren ({reason}). Verbinde neu …
+
+|`operator.console.connection.back`
+|Reconnected: {version}, restarted at {time}. {questions, plural, =0 {No question open} one {# question open} other {# questions open}}, {plans, plural, one {# plan running} other {# plans running}}.
+|Wieder verbunden: {version}, neu gestartet um {time}. {questions, plural, =0 {Keine Frage offen} one {# Frage offen} other {# Fragen offen}}, {plans, plural, one {# Plan läuft} other {# Pläne laufen}}.
+
+|`operator.console.notification.question`
+|{scope, select, epic {epic} other {plan}} {name} asks a question
+|{scope, select, epic {Epic} other {Plan}} {name} stellt eine Frage
+
+|`operator.console.notification.waiver`
+|plan {plan} asks for a waiver
+|Plan {plan} bittet um einen Waiver
+
+|`operator.console.notification.needs`
+|{scope, select, epic {epic} project {project} other {plan}} {name} needs you: {kind}
+|{scope, select, epic {Epic} project {Projekt} other {Plan}} {name} braucht dich: {kind}
+|===

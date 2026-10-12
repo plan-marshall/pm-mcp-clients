@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Transcripts: The Entry and the Automatic Run
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]_
+
 [#transcripts]
 == Transcripts
 
@@ -67,8 +69,16 @@ pm › web copy ssh
 pm › web pair
 ✓ New code: TBZC-HQPL, valid until 14:35. The previous code no longer works.
   http://127.0.0.1:7420/pair#code=TBZC-HQPL
+pm › web qr
+  ▄▄▄▄▄▄▄ ▄ ▄▄ ▄▄▄▄▄▄▄
+  █ ▄▄▄ █ ▀█▄▀ █ ▄▄▄ █      http://127.0.0.1:7420/pair#code=TBZC-HQPL
+  █ ███ █ ▄▀▀█ █ ███ █      Code TBZC-HQPL, valid until 14:35
+  █▄▄▄▄▄█ █▀▄▀ █▄▄▄▄▄█
+  …
 pm ›
 ----
+
+* `web qr` prints the QR code of the open code with its URL again, for a phone at hand; it issues no new code. After a redemption the fresh code is reported above the prompt (`operator.entry.fresh_code`), and `web qr` shows its QR code (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-fresh-code[A Fresh Code after a Redemption]).
 
 [#t-entry-other]
 ==== Another Device (`entry.other-device`, `entry.lan`)
@@ -102,13 +112,12 @@ pm ›
 * `entry.other-device` is a choice of the network exposure, not a consent of the onboarding: its default is the safe answer `n`, which `Enter` takes, as the use case says (`no (default)`).
 
 [#t-entry-first]
-==== Not Fully Onboarded (`onboard.entry`, `onboard.mode`)
+==== Not Fully Onboarded (`entry.runtime`, `entry.check-onboarded`, `entry.where-to-onboard`, `onboard.mode`)
 
 [source,text]
 ----
 $ pm-operator
 ✓ Runtime started (pm-mcpd 0.9.0)
-– SSH session: no browser opened here
 
 plan-marshall is running. This machine is not set up yet.
 
@@ -118,8 +127,8 @@ plan-marshall is running. This machine is not set up yet.
 
     1  Language     the language of plan-marshall and of the models' texts
     2  Harness      the coding agent the server works with first
-    3  Models       the agents and models other plans may use
-    4  Roles        an agent and a model for every role
+    3  Models       the coding agents and models other plans may use
+    4  Roles        a coding agent and a model for every role
     5  Credentials  where this machine keeps its tokens
     6  Providers    the git hosts, CI and analysis services this machine uses
     7  Plans        how plans run unless a project says otherwise
@@ -130,8 +139,25 @@ Set up this machine for plan-marshall
 Begin with step 1? [Enter]   a) decide everything for me   ?   ›
 ----
 
-* The preselection is _here_ in an SSH session, as shown, and _in the web app_ on a desktop, where the browser can open (`w) in the web app [Enter]   h) here, in the terminal`).
-* _In the web app_ connects the web app as the onboarded entry does (<<t-entry-desktop>>, <<t-entry-ssh>>) and returns to the prompt with its badge; the web app shows `onboard.mode` or the state the onboarding stopped in.
+* `entry.check-onboarded` prints nothing of its own; it leads to `entry.where-to-onboard` while the onboarding has not reached `onboard.completed`, otherwise to `entry.pairing` (<<t-entry-desktop>>).
+* The preselection of `entry.where-to-onboard` is _here_ in an SSH session, as shown, and _in the web app_ on a desktop, where the browser can open (`w) in the web app [Enter]   h) here, in the terminal`).
+* _In the web app_ goes on as the onboarded entry does from `entry.pairing` (<<t-entry-desktop>>, <<t-entry-ssh>>) and returns to the prompt with its badge; the web app shows `onboard.mode` or the state the onboarding stopped in. Only then is the kind of session told, over SSH as below:
+
+[source,text]
+----
+Where do you want to set it up?   h) here, in the terminal [Enter]   w) in the web app   ?   › w
+✓ Web access on http://127.0.0.1:7420
+– SSH session: no browser opened here
+  Ways in, from your own computer
+    1. Forward the port (VS Code and JetBrains do this on their own):
+       ssh -L 7420:127.0.0.1:7420 oliver@build-box
+    2. Open:
+       http://127.0.0.1:7420/pair#code=KXQB-MRTN
+    Code KXQB-MRTN, valid until 14:32
+  The web app opens at the setup of this machine.
+pm [setup 0/7] ›
+----
+
 * Left before it completes, the onboarding waits behind the badge, and `Enter` on the empty prompt continues it; a new console asks again, naming where it stopped:
 
 [source,text]
@@ -153,6 +179,15 @@ stopped at [3/7] Models.
 Where do you want to go on?   h) here, in the terminal [Enter]   w) in the web app   ?   › ⏎
 [3/7] Models · Choose the harnesses and models other plans may use
 …
+----
+
+* Until the onboarding completes, a verb that needs it is refused with both ways to complete it:
+
+[source,text]
+----
+$ pm-operator plan add --project .
+✗ This machine is not set up yet. Set it up in the console (pm-operator) or
+  in the web app.
 ----
 
 [#t-console]
@@ -211,6 +246,32 @@ Back to [3/7] Models.
 Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   ›
 ----
 
+[#t-console-kinds]
+==== Other Things That Wait
+
+[source,text]
+----
+pm [1 question] ›
+◆ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests
+  "The test needs a second machine the CI does not have."
+  answer WR-2   ·   questions
+◆ Question Q-004 · epic storage-v2 · blocks the epic
+  Which workstream goes first?
+  answer storage-v2/Q-004   ·   questions
+◆ Plan session-log stalled: the worker has not reported for 30 minutes
+  plan session-log
+pm [2 questions · 1 waiver request · 1 stalled] › questions
+  Q-007                fix-relay     The change conflicts with main in RelayServer.java.
+                       recommended: Rebase onto main             waiting since 14:34
+  storage-v2/Q-004     storage-v2    Which workstream goes first?
+                       recommended: the store first              waiting since 14:50
+  WR-2                 fix-relay     waiver request: ci_check:integration-tests
+                                                                  waiting since 13:10
+pm [2 questions · 1 waiver request · 1 stalled] ›
+----
+
+* Each notice names the command that opens it (xref:04-console.adoc#pushed[The Console, Pushed], the table of the kinds); `Q-004` is open in another scope too, so the console prints its full form.
+
 [#t-console-elsewhere]
 ==== Answered on Another Device
 
@@ -268,11 +329,18 @@ Decide everything for me?
   runs        the version and login probe of each harness found,
               the model probe of each harness that can list its models,
               the version probe of each tool found
-  never       asks a model, reads other files, sends anything over the network
-              except the provider checks
-  cost        none
+  never       asks a model for advice, reads other files, sends anything over
+              the network except the provider checks
+  cost        none; for a harness that has no login probe, one short headless
+              call, paid with tokens of its account
   This consent is for this run only.
 
+y) yes   n) not now   ? lists every action   › n
+  Nothing was done.
+Set up this machine for plan-marshall
+Begin with step 1? [Enter]   a) decide everything for me   ?   › a
+Decide everything for me?
+  …
 y) yes   n) not now   ? lists every action   › y
 
 [1/7] Language     ✓ Deutsch, models too           from your system
@@ -282,24 +350,32 @@ y) yes   n) not now   ? lists every action   › y
 [4/7] Roles        ✓ default assignment, 31 roles  the default
 [5/7] Credentials  ✓ macOS Keychain                available here
                      ✓ write   ✓ read   ✓ delete
-[6/7] Providers    ✓ GitHub via gh 2.71            gh logged in
+[6/7] Providers    GitHub via gh 2.71              gh logged in
+
+[6/7] Providers · GitHub needs a token
+  Stored in the macOS Keychain; it is never shown again and never reaches a
+  model or a log.
+
+Token (not shown while you type): ›
+Store and check it? [Enter]   ?   › ⏎
+[6/7] Providers    ✓ GitHub via gh 2.71            you were asked
                      ✓ reachable   ✓ oliver-wolff   ✓ permissions   ✓ gh same account
-                   – SonarCloud                    no token: skipped
 [7/7] Plans        ✓ Pull Request · Test first · key points   the default
 
 Everything is decided.
   No model was asked; ask the steward to refine the roles: pm-operator config roles
-  Add SonarCloud: pm-operator config providers
   Change any of it: pm-operator config <language|harness|models|roles|credentials|providers|plan-defaults>
 
 Finish? [Enter]   1-7) change that step   ?   › ⏎
-✓ This machine is ready. Next: enrol a project (pm-operator enrol).
+✓ This machine is ready. Next: add a project: pm-operator project add, in its checkout.
 …
 pm ›
 ----
 
-* The automatic run is the choice `a` of `onboard.mode`, after _here_ in the entry's question; there is no option for it.
-* `auto.consent` has no `r`: the automatic run's consent is never remembered.
+* The automatic run is the choice `a` of `onboard.mode`, after _here_ in `entry.where-to-onboard`; there is no option for it.
+* `auto.consent` has no `r`: the automatic run's consent is never remembered. `n` returns to `onboard.mode` with `Nothing was done.`; nothing of the run has happened.
+* The cost line names the headless call because the consent is asked before the scan: whether a harness without a login probe is found is not known yet (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-login-probe[Login Probe]).
+* *A state that needs a token* stops the run there: `providers.credentials` is shown as in the guided run, and the run continues after it. It has no way to skip the provider; a provider can be left out after its check fails (`providers.failed`), or the operator leaves with `q` and the run waits at that state.
 * *A step that needs the operator* (`auto.run` stops in a state of a step): the state is shown as in the guided run, under its step line, and the run continues after it:
 
 [source,text]
@@ -325,15 +401,15 @@ Check again? [Enter]   o) choose another harness   q) leave   ?   › ⏎
 [#t-mode]
 ==== Guided (`onboard.mode`)
 
-After _here_ in the entry's question (<<t-entry-first>>):
+After _here_ in `entry.where-to-onboard` (<<t-entry-first>>), or in a console where the onboarding was left before step 1:
 
 [source,text]
 ----
 Set up this machine for plan-marshall
 
   Seven steps. Nothing on this machine is looked at, run, or changed until
-  you say so in that step. You can stop at any point; the next run continues
-  where you stopped.
+  you say so in that step. You can stop at any point; the next run, here or
+  in the web app, continues where you stopped.
 
     1  Language     the language of plan-marshall and of the models' texts
     …
@@ -341,3 +417,5 @@ Set up this machine for plan-marshall
 
 Begin with step 1? [Enter]   a) decide everything for me   ?   › ⏎
 ----
+
+* The intro of `onboard.mode` is the shared `onboard.entry.intro` with `onboard.mode.resume`; the entry's question says the same with the console's own hint (`operator.entry.resume_hint`).

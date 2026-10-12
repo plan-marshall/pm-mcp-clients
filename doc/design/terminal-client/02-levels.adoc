@@ -5,6 +5,8 @@
 
 link:README.adoc[Terminal Client] » Levels
 
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]_
+
 [#levels]
 == Levels
 
@@ -50,7 +52,7 @@ The onboarding records machine values, and they are defaults, not final values: 
 |`plan-defaults`
 |landing, method, asking
 |method and asking (`local-config.json`); landing with origin `team`, kept with the team's configuration and changed through the project setup
-|bound at its start; shown, not changed later
+|landing, method, asking (origin `plan`): set where the plan first needs it, or later as a new instance version
 |===
 
 A dash is not a level of that aspect: `config harness --project p` is refused with usage exit code `2` and the text that names the levels the aspect has. The project column of `language` holds only the model language, since the interface language is the operator's.
@@ -59,7 +61,7 @@ A dash is not a level of that aspect: `config harness --project p` is refused wi
 === Addressing a Level
 
 * *Machine* is the default: no level option, or `--machine`. A working directory inside an enrolled project never selects the project on its own: the operator who wants the project says so, so that a command typed in a checkout never changes a project by surprise.
-* *Project*: `--project <project_id>`; `--project .` is the project of the working directory by the project resolution rule (as `pm-mcp enter` resolves it); `--project ?` (or `--project` with no value) shows a numbered list of the enrolled projects to pick from.
+* *Project*: `--project <project_id>`; `--project .` is the project of the working directory by the project resolution rule (link:../../../../plan-marshall-documentation/doc/specification/filesystem-layout/03-project-store.adoc#project-resolution[Project Resolution Rule]): the working directory's git top-level resolves to the enrolled project it belongs to; a directory that resolves to none is refused (`project_not_enrolled`) with the text that names `--project <project_id>`; `--project ?` (or `--project` with no value) shows a numbered list of the enrolled projects to pick from.
 * *Plan*: `--plan <plan_id>`, which names its project too; `--plan ?` lists the live plans, of the project given with `--project`, or of every project.
 * Every dialogue on a project or a plan names it in its step line (xref:03-dialogues.adoc#state-frame[The Frame of a State]), so the operator always sees which level the answer goes to.
 
@@ -96,6 +98,6 @@ Change: pm-operator config plan-defaults --project pm-mcp-clients
 * In a dialogue on a project or a plan, a proposal that comes from a lower level says so beside the preselection (`← from machine`), and accepting it records nothing at this level: the level keeps deferring, so a later change of the machine value reaches it. Only a changed line is written at the addressed level.
 
 [#running-plan]
-=== A Running Plan
+=== A Plan's Own Values
 
-A plan's axes are bound when it starts; `config show plan-defaults --plan <plan_id>` shows them with origin `plan` (or the level they were taken from at the start) and `config plan-defaults --plan <plan_id>` is refused with the text that names when they were bound. The overrides of a running plan (roles, providers) can change: `config roles --plan <plan_id>` shows the plan's effective assignment and writes the plan's overrides; each change composes a new instance version of the plan (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]), and the client says so before the confirmation (`Applies from the plan's next step; the plan's version becomes 7.`).
+A plan's values are its own level (origin `plan`). `config show plan-defaults --plan <plan_id>` shows the axes with their origin: `plan` where the plan set its own, otherwise the level it takes them from. A plan sets an axis where it first needs it (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-options-when-needed[Asked When Needed]) or later: `config plan-defaults --plan <plan_id>` writes the plan's value, as `config roles --plan <plan_id>` writes the plan's overrides of roles and providers and shows the plan's effective assignment first. Each change composes a new instance version of the plan (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]), and the client says so before the confirmation (`Applies from the plan's next step; the plan's version becomes 7.`); a part of the plan that has run already keeps what it ran with. The plan's settings are reached the same way from its actions (`o` in its menu, xref:19-actions.adoc[Actions on Plans and Epics]).

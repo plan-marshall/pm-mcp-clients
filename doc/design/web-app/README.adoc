@@ -5,14 +5,18 @@
 
 link:../README.adoc[Design] » Web App
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-3[UC-STA-3], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-4[UC-STA-4], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-7[UC-STA-7], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-8[UC-STA-8], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
 Status: `DRAFT`. The design of the web app, the specification its implementation follows (work packages link:../../plans/web-app-foundation.adoc[`web-app-foundation`] and link:../../plans/web-onboarding.adoc[`web-onboarding`]); the work package link:../../plans/web-design.adoc[`web-design`] works it out. Its parts:
 
-* link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent pattern, the automatic run.
+* link:entry.adoc[Entry]: the pairing page, the page a revoked device lands on, and where the app opens after pairing.
+* link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent pattern, the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
+* link:machine-settings.adoc[Machine Settings]: a later run of one aspect, the providers verified again, the remembered consents, the paired devices.
 * link:harness-icons.adoc[Harness Icons]: how a harness is shown, and the research behind it.
+
+Everything else the web app shows is designed once for both clients in the shared designs (<<structure>>).
 
 [#principles]
 == Principles
@@ -26,15 +30,58 @@ Status: `DRAFT`. The design of the web app, the specification its implementation
 * *Web and terminal say the same.* Both render the same state with the same texts from the same catalogue (link:../shared/texts-and-languages.adoc[Texts and Languages]); a link is a button in the web app and a key or a numbered choice in the terminal. Where the web app shows a table, the terminal shows a list, with the same columns as fields.
 * *First run and later change look alike.* A later run of one aspect opens the same screen with the current values filled in and the step bar showing only that aspect.
 
-The sections below are the subjects still to work out; none is designed yet.
-
+[#structure]
 == Structure and Navigation
 
-How the app is organised and how one moves from the overview to a part and back. The overview of running work and its two levels are link:../shared/plan-overview.adoc[Plan Overview]; once the machine is onboarded, the web app opens where the operator left it, first in the explorer of the projects (link:../shared/project-explorer.adoc[Project Explorer]), from which _Running work_ and the onboarding of a project (link:../shared/project-onboarding.adoc[Project Onboarding]) are reached.
+How the app is organised and how one moves from one part to another and back. Until the machine is onboarded, the app shows the onboarding only (link:entry.adoc#after-pairing[Entry, Where the App Opens]); afterwards it opens where the operator left it, first in the explorer of the projects. Each part below is designed once for both clients; this list is where the web app finds it.
 
-== Plan Views
+[cols="1,3",options="header"]
+|===
+|Part |Design
 
-The views of an epic and a plan and the levels of the drill-down (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]). They are reached from the overview (link:../shared/plan-overview.adoc[Plan Overview]); a plan's link to its epic is a link in the web app. What the view of a plan shows, level by level, is link:../shared/plan-view.adoc[Plan View].
+|Entry and pairing
+|link:entry.adoc[Entry] (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1])
+
+|Onboarding of the machine
+|link:onboarding.adoc[Onboarding] (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9])
+
+|Machine settings
+|link:machine-settings.adoc[Machine Settings]: the aspects run again, the providers verified again, the remembered consents
+
+|Paired devices
+|link:../shared/paired-devices.adoc[Paired Devices] (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]), reached from the machine settings
+
+|Projects
+|link:../shared/project-explorer.adoc[Project Explorer] (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]), with releasing and unenrolling a project in its setup (link:../shared/project-explorer.adoc#release[Release], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3])
+
+|Onboarding of a project
+|link:../shared/project-onboarding.adoc[Project Onboarding] (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]); each open run is a route of its own
+
+|Running work and ended work
+|link:../shared/plan-overview.adoc[Plan Overview] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]), with the ended plans and epics (link:../shared/plan-overview.adoc#ended[Ended Work])
+
+|A plan
+|link:../shared/plan-view.adoc[Plan View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]); a plan's reference to its epic is a link
+
+|An epic
+|link:../shared/epic-view.adoc[Epic View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5])
+
+|Decisions
+|link:../shared/decisions.adoc[Decisions] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]), with the browser notifications (link:../shared/decisions.adoc#announce[Announcing a Decision])
+
+|Starting work
+|link:../shared/starting-work.adoc[Starting Work] (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9])
+
+|Actions on plans and epics
+|link:../shared/work-actions.adoc[Actions on Plans and Epics] (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]), with what holds a plan (link:../shared/work-actions.adoc#holds[What Holds a Plan], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]) and the reviews of findings and watches (link:../shared/work-actions.adoc#review[Reviewing Findings or Watches], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3])
+
+|Texts
+|link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings])
+|===
+
+How the parts are laid out in one app (the header, the navigation between the explorer, the overview and the settings, the routes) is worked out with the visual language below.
+
+The sections below are the subjects still to work out.
 
 == Plan Designer
 

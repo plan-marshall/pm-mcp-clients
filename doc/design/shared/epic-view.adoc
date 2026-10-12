@@ -17,15 +17,16 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
 == Layout
 
 ----
-  relay-hardening · epic                        running · 3 of 3 at once   ! 3
+  relay-hardening · epic                        running · 2 of 3 at once   ! 3
   ─────────────────────────────────────────────────────────────────────────────
-  [▶ Next plan: relay-token-rotation]  [Decompose again]  [Findings review · 3 new]
+  [▶ Next plan: relay-reconnect-metrics]  [Decompose again]  [Findings review · 3 new]
   [Watches review · 5]  [Archive]  [Cancel]
   ─────────────────────────────────────────────────────────────────────────────
-  ▾ WS-1  Reconnect                                        2 shipped · 1 running
+  ▾ WS-1  Reconnect                    1 shipped · 1 running · 1 paused · 1 staged
       ✓  relay-reconnect-backoff      shipped · #211                 2 d ago
       ▶  relay-cursor-order           execute · running              40 min
       ⏸  relay-reconnect-docs         paused by you                  1 h
+      ○  relay-reconnect-metrics      staged · can start
   ▾ WS-2  Authentication                                   1 running · 1 staged
       ▶  relay-auth-v2                refine · waiting for you   !   12 min
       ○  relay-token-rotation         staged · after relay-auth-v2
@@ -39,12 +40,12 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
     …
 ----
 
-* *The head*: the title, the state (running, waiting for you, held, landing, ended), how many plans run of how many may, the marker of what needs the operator with its count, and the epic's actions (link:work-actions.adoc#epic-actions[An Epic's Actions]).
-* *Workstreams*: open or closed like a node of the plan view; each plan with its status from one list (staged, running, pausing, paused, shipped, cancelled, abandoned, held), what it waits for, and since when. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view.
-* *Sources, landings, findings, watches*: one line each, opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
+* *The head*: the title, the state from one closed list (running, waiting for you, held, landing, ended), how many plans run of how many may at once, the marker of what needs the operator with its count, and the epic's actions (link:work-actions.adoc#epic-actions[An Epic's Actions]). _Next plan_ names a plan that can start now (here `relay-reconnect-metrics`: `relay-token-rotation` waits for `relay-auth-v2`); with none it is disabled with its reason.
+* *Workstreams*: open or closed like a node of the plan view, each with its counts per status; each plan with its status from one closed list (staged, running, pausing, paused, shipped, cancelled, abandoned, held; a paused plan is always paused by the operator and says so), what a staged plan waits for (a dependency, a lock, the scope full) or `can start`, and since when. A shipped plan shows its pull request by its number with a link. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view.
+* *Sources, landings, findings, watches*: one line each (findings: how many are new since the last review and how many are open; watches: how many are open), opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
 * *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts, decompositions, landings.
 * *What waits for the operator* (a decomposition, a held item, a decision) stands first in the head, with a link to it.
-* *An ended epic* shows as it ended, without actions, opened from Ended Work.
+* *An ended epic* shows read-only as it ended, with its outcome, reason, and end time in the head, without actions and without live updates, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
 
 [#texts]
 == Texts
@@ -55,21 +56,65 @@ Keys of the area `overview`, shared by both clients.
 |===
 |Key |English |German
 
+|`overview.epic.state`
+|{state, select, running {running} waiting {waiting for you} held {held} landing {landing} ended {ended} other {{state}}}
+|{state, select, running {läuft} waiting {wartet auf dich} held {zurückgehalten} landing {landet} ended {beendet} other {{state}}}
+
 |`overview.epic.at_once`
 |{running} of {scope} at once
 |{running} von {scope} gleichzeitig
 
-|`overview.epic.workstream_counts`
-|{counts}
-|{counts}
+|`overview.epic.counts.staged`
+|{count} staged
+|{count} vorgesehen
+
+|`overview.epic.counts.running`
+|{count} running
+|{count, plural, one {# läuft} other {# laufen}}
+
+|`overview.epic.counts.pausing`
+|{count} pausing
+|{count, plural, one {# hält an} other {# halten an}}
+
+|`overview.epic.counts.paused`
+|{count} paused
+|{count} angehalten
+
+|`overview.epic.counts.shipped`
+|{count} shipped
+|{count} ausgeliefert
+
+|`overview.epic.counts.cancelled`
+|{count} cancelled
+|{count} abgebrochen
+
+|`overview.epic.counts.abandoned`
+|{count} abandoned
+|{count} aufgegeben
+
+|`overview.epic.counts.held`
+|{count} held
+|{count} zurückgehalten
 
 |`overview.epic.status`
-|{status, select, staged {staged} running {running} pausing {pausing} paused {paused} shipped {shipped} cancelled {cancelled} abandoned {abandoned} other {held}}
-|{status, select, staged {vorgesehen} running {läuft} pausing {hält an} paused {angehalten} shipped {ausgeliefert} cancelled {abgebrochen} abandoned {aufgegeben} other {zurückgehalten}}
+|{status, select, staged {staged} running {running} pausing {pausing} paused {paused by you} shipped {shipped} cancelled {cancelled} abandoned {abandoned} held {held} other {{status}}}
+|{status, select, staged {vorgesehen} running {läuft} pausing {hält an} paused {von dir angehalten} shipped {ausgeliefert} cancelled {abgebrochen} abandoned {aufgegeben} held {zurückgehalten} other {{status}}}
 
-|`overview.epic.after`
+|`overview.epic.waits.dependency`
 |after {plan}
 |nach {plan}
+
+|`overview.epic.waits.lock`
+|waits for the lock on {lock}
+|wartet auf die Sperre von {lock}
+
+|`overview.epic.waits.scope`
+|waits for a free place: {running} of {scope} taken
+|wartet auf einen freien Platz: {running} von {scope} belegt
+
+|`overview.epic.waits.none`
+|can start
+|kann starten
 
 |`overview.epic.sources`
 |Sources
@@ -79,11 +124,23 @@ Keys of the area `overview`, shared by both clients.
 |Landings
 |Landungen
 
+|`overview.epic.findings`
+|Findings
+|Findings
+
+|`overview.epic.findings_counts`
+|{new, plural, one {# new} other {# new}} · {open, plural, one {# open} other {# open}}
+|{new, plural, one {# neues} other {# neue}} · {open, plural, one {# offenes} other {# offene}}
+
+|`overview.epic.watches`
+|Watches
+|Beobachtungen
+
+|`overview.epic.watches_counts`
+|{open, plural, one {# open} other {# open}}
+|{open, plural, one {# offene} other {# offene}}
+
 |`overview.epic.events`
 |Events
 |Ereignisse
-
-|`overview.ended.title`
-|Ended work
-|Beendete Arbeit
 |===
