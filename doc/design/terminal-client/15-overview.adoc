@@ -53,7 +53,7 @@ By plan:
                      running 1 h 5 min · in outline 30 min · 0 of 0 tasks
                      in ◇ client work
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   o epic   ! what waits   Tab by epic   Esc back
+ ↑↓ move   Enter open   e epic   ! what waits   Tab by epic   Esc back
 ----
 
 By epic:
@@ -72,7 +72,7 @@ By epic:
 ----
 
 * Each row is the plan's or epic's first line (kind, title, phase and state) and below it its details (times, progress, the epic it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
-* `o` on a plan moves to its epic in the view by epic; `Tab` switches between the two views and keeps the selection.
+* `e` on a plan moves to its epic in the view by epic; `Tab` switches between the two views and keeps the selection.
 * `Enter` on a plan or an epic opens its own view in the same full-screen view: a plan its plan view (xref:16-plan-view.adoc[The Plan View]); an epic its own view, designed with the epic's use case; `!` leaves the view and opens what waits for the operator in it, as `answer` does (link:../shared/decisions.adoc[Decisions]).
 
 [#full-screen-keys]

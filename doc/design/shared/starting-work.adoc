@@ -257,7 +257,7 @@ Keys of the area `start`, shared by both clients.
 
 |`start.documents.mode.copy`
 |Copy: they stay where they are; the copy is not kept in step
-|Kopieren: sie bleiben, wo sie sind; die Kopie wird nicht mitgeführt
+|Kopieren: sie bleiben, wo sie sind; die Kopie wird nicht synchronisiert
 
 |`start.documents.mode.move`
 |Move: they leave where they are
