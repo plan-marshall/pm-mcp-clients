@@ -412,14 +412,14 @@ Two consents in one screen, each with its own cost (consent kinds `probe_harness
        runs   a steward task on the default harness, Claude Code · opus-5.5
        cost   about 0.10 USD (not known yet: first run)
 
-    1  (•) yes   ( ) yes, and don't ask again   ( ) not now
+    1  (•) yes   ( ) yes, and don't ask again
     2  (•) yes   ( ) yes, and don't ask again   ( ) no, without advice
        you can withdraw a remembered consent in the settings
 
   [ Not now ]                       [ List the models and ask the steward ]
 ----
 
-* Each consent is answered on its own, and _don't ask again_ remembers its own kind only. The model probes are needed: _not now_ for them (or *Not now*) stays, nothing was done. The advice is optional: _no, without advice_ leads to <<models-select>> without a recommendation.
+* Each consent is answered on its own, and _don't ask again_ remembers its own kind only. The model probes are needed: the secondary button *Not now* refuses them (the shared pattern's _no_) and stays, nothing was done. The advice is optional: _no, without advice_ leads to <<models-select>> without a recommendation.
 * The primary button follows the choice: `List the models and ask the steward`, or `List the models`.
 * A remembered consent shows as one line in place of its item (`Consent remembered: ask the harnesses for their models`, with the kind's title `common.consent.kind.probe_harness_models`); with both remembered the screen is skipped.
 
