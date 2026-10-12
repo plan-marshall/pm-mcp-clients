@@ -26,6 +26,10 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
     plan-defaults  [--landing pull-request|main|files] [--method test-first|tests-after]
                    [--asking every-phase|key-points|questions-only]
     consents       the remembered consents, to withdraw one
+pm-operator projects [--list]                             [op]  the explorer of the machine's projects; full screen in the console (17-projects)
+pm-operator project add [<path>]                          [op]  onboard a project; the working directory is the proposed checkout
+pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding
+pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
 pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
 pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
 pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies

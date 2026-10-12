@@ -1,0 +1,205 @@
+= Design: Project Onboarding
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Project Onboarding
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-onboarding[Onboarding a Project as One Process], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-levels[Project Values over Machine Values] (proposed), link:../../../../plan-marshall-documentation/doc/specification/domain-extensions/04-setup-state-machine.adoc[Setup State Machine]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects], link:../web-app/README.adoc[Web App].
+
+Onboarding a project is one guided run: the checkout, a look at it on consent, the project's identity, its enrolment, its setup, and what it takes from the machine or sets of its own. It follows the onboarding of the machine in everything shared: the frame, consent, check lines, preselection, own values against the machine's (link:../web-app/onboarding.adoc[Web App, Onboarding]; link:../terminal-client/03-dialogues.adoc[Terminal Client, Dialogues]).
+
+[#steps]
+== Steps
+
+The step line counts the project's steps as the machine's onboarding counts its own:
+
+----
+  ① Checkout ─ ② Identity ─ ③ Enrolment ─ ④ Team settings ─ ⑤ Own settings ─ ⑥ Architecture
+  ─ ⑦ Roles ─ ⑧ Commit ─ ✓ Ready
+----
+
+* *① Checkout* (`project.checkout`, `project.consent`, `project.detect`): the path of the checkout, the terminal client proposing its working directory; the consent to look at it, listing what is read and the version probes of the host tools that run; what can be read is read (a build wrapper's version from its pinned properties); host tools are resolved only from the absolute directories of the operator's login `PATH`, never from a relative entry or a directory inside the checkout, and recorded with their path and digest; where a script of the checkout must run to be known, a second consent names every script with its arguments and asks first (`run_checkout_scripts`, per project, recorded with the enrolment, asked again only for a script that changed), and the scripts run as confined jobs; the check lines of what was found.
+* *② Identity* (`project.identity`): the id proposed from the remote's name, the display name from its owner and name, both editable; the pilot choice only while the release's plan lifecycle is not open, with one sentence of what it means.
+* *③ Enrolment* (`project.enrolment`, `project.enrol`): everything to be enrolled as a list, each line with where it comes from (`detected`, `from machine`, `default`): the root, the build wrappers and their pinned files, the host tools, the language servers, the scripts, the budgets, the write paths, the build environment; the container engine is not in the list but a choice of its own, off, with its warning before it can be turned on.
+* *④ Team settings* (the setup's choices that write the team's configuration): base branch and branch prefix, the lanes, the providers of the team's CI and analysis, the build map, the finalize steps; each preselected from what the setup derived, each marked `team` because it is committed for everyone who works on the project.
+* *⑤ Own settings* (`project.operator`): every aspect the project may set, with the machine's value preselected and marked `from machine`: the model language, the allowed models, the providers and their credentials, the plan defaults, the integration variants, the commit identity (link:../terminal-client/02-levels.adoc#origins[Where a Value Comes From]). Accepting a line as proposed records nothing for the project; only a changed line is the project's.
+* *⑥ Architecture* (`setup.detect-domains`, `setup.discover-modules`, `setup.seed-build-map`, and later `setup.enrich-architecture`): the project's type as the setup found it: the domains that apply, each with what made it apply (a descriptor, files), changeable where the team's `domains.json` allows; the modules each build system's parser found, as a tree with their build system and packaging; the build map to confirm. The enrichment runs after the roles are qualified: one line per module turning from waiting to running to ✓ as the role `enrich` describes it, behind its consent with its expected cost. What it writes is `.marshall/project-architecture/`, committed in ⑧. When the operator says no to the enrichment's consent, the setup goes on without it: the architecture keeps what discovery found, `.marshall/project-architecture/` gets no descriptions of the modules, the project is ready, and a later run of its onboarding offers the enrichment again.
+* *⑦ Roles* (`setup.qualify-roles`): the role assignment proposed from the machine like ⑤, then the qualification, behind its consent with its expected cost, with its progress.
+* *⑧ Commit* (`setup.commit-changes`): the team's configuration as a list of files, to commit and push, or to leave in the checkout.
+* *✓ Ready* (`project.completed`): what is ready, and the three actions of a project: add an orchestrator, add a plan, its running work (link:project-explorer.adoc#actions[Project Explorer]).
+
+[#not-ready]
+== Not Ready Yet
+
+A step that cannot pass shows its check line with the cause and the fix and waits (link:../web-app/onboarding.adoc#harness-probe[the check of a harness] is the pattern); the project is enrolled but not ready, and the explorer shows it so, with _Continue the setup_ as its first action. Closing the client changes nothing: the run waits where it stopped, in either client.
+
+[#texts]
+== Texts
+
+Keys of the area `project`, shared by both clients; the check lines and the setup's choices use the texts of their states.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`project.step.checkout`
+|Checkout
+|Checkout
+
+|`project.step.identity`
+|Identity
+|Identität
+
+|`project.step.enrolment`
+|Enrolment
+|Anmeldung
+
+|`project.step.team`
+|Team settings
+|Team-Einstellungen
+
+|`project.step.own`
+|Own settings
+|Eigene Einstellungen
+
+|`project.step.architecture`
+|Architecture
+|Architektur
+
+|`project.architecture.title`
+|What {project} is made of
+|Woraus {project} besteht
+
+|`project.architecture.domains`
+|Domains: {list}
+|Domänen: {list}
+
+|`project.architecture.domain_because`
+|{domain}, because of {evidence}
+|{domain}, wegen {evidence}
+
+|`project.architecture.modules`
+|{count, plural, one {# module} other {# modules}} found by {build_systems}
+|{count, plural, one {# Modul} other {# Module}} gefunden von {build_systems}
+
+|`project.architecture.enriching`
+|Describing modules: {done} of {total} done
+|{done} von {total} Modulen beschrieben
+
+|`project.step.roles`
+|Roles
+|Roles
+
+|`project.step.commit`
+|Commit
+|Commit
+
+|`project.checkout.title`
+|Which checkout is the project?
+|Welcher Checkout ist das Projekt?
+
+|`project.checkout.path`
+|Path of the checkout
+|Pfad des Checkouts
+
+|`project.consent.title`
+|Look at the checkout {path}?
+|Den Checkout {path} ansehen?
+
+|`project.consent.reads`
+|its git configuration, build wrappers, host tools, language servers, and scripts
+|seine Git-Konfiguration, Build-Wrapper, Host-Werkzeuge, Language-Server und Skripte
+
+|`project.identity.title`
+|How should the project be named?
+|Wie soll das Projekt heißen?
+
+|`project.identity.id`
+|Id (used in commands, never changes)
+|Id (in Befehlen verwendet, ändert sich nie)
+
+|`project.identity.name`
+|Name
+|Name
+
+|`project.identity.pilot`
+|Pilot: this release runs plans only in pilot projects
+|Pilot: dieses Release führt Pläne nur in Pilot-Projekten aus
+
+|`project.enrolment.title`
+|Enrol {project} with these settings?
+|{project} mit diesen Einstellungen anmelden?
+
+|`project.origin.detected`
+|detected
+|erkannt
+
+|`project.origin.machine`
+|from machine
+|von der Maschine
+
+|`project.origin.default`
+|default
+|Vorgabe
+
+|`project.origin.team`
+|team
+|Team
+
+|`project.enrolment.container`
+|Run the project's jobs in containers (Docker)
+|Die Jobs des Projekts in Containern ausführen (Docker)
+
+|`project.enrolment.container_warning`
+|The jobs then hold the authority of the Docker group, which reaches every path of this machine.
+|Die Jobs haben dann die Rechte der Docker-Gruppe, die jeden Pfad dieser Maschine erreicht.
+
+|`project.enrolment.action`
+|Enrol {project}
+|Melde {project} an
+
+|`project.team.title`
+|What the team works with
+|Womit das Team arbeitet
+
+|`project.own.title`
+|What {project} takes from the machine, and what it sets of its own
+|Was {project} von der Maschine übernimmt, und was es selbst festlegt
+
+|`project.own.action_keep`
+|Use the machine's values
+|Die Werte der Maschine verwenden
+
+|`project.own.action_save`
+|Save {count, plural, one {# own value} other {# own values}}
+|{count, plural, one {# eigenen Wert} other {# eigene Werte}} speichern
+
+|`project.commit.title`
+|Commit the team's configuration?
+|Die Konfiguration des Teams committen?
+
+|`project.commit.files`
+|{count, plural, one {# file} other {# files}} in .marshall/
+|{count, plural, one {# Datei} other {# Dateien}} in .marshall/
+
+|`project.commit.leave`
+|leave it in the checkout
+|im Checkout lassen
+
+|`project.ready.title`
+|{project} is ready
+|{project} ist bereit
+
+|`project.not_ready`
+|{project} is enrolled; its setup needs: {need}
+|{project} ist angemeldet; seine Einrichtung braucht: {need}
+
+|`project.continue_setup`
+|Continue the setup
+|Die Einrichtung fortsetzen
+|===

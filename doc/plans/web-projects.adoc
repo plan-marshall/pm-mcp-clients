@@ -1,0 +1,25 @@
+= Projects in the web app
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `web-projects`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]; no roadmap milestone yet
+Where:: `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* The explorer of the projects as the web app's first view: groups, a project's row and actions, favourites and their order, sort and filter; the onboarding of a project as its screens, with the build environment the terminal client last captured; at desktop and phone width, light and dark.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]
+* Design: link:../design/shared/project-explorer.adoc[Project Explorer]; link:../design/shared/project-onboarding.adoc[Project Onboarding]; the web app's views of `web-design`
+
+== Done When
+
+Every scenario of `project-contract` passes as a view test; the same scenarios pass in the terminal (`cli-projects`).

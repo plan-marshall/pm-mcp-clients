@@ -41,6 +41,14 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |What both clients show of the running work across projects: the projects with running work, a project by plan and by orchestrator, what a row shows, how plans and orchestrators are told apart, live updates, and where the operator left it.
 
+|link:shared/project-explorer.adoc[Project Explorer]
+|`DRAFT`
+|What both clients show of the machine's projects: favourites, recent, all projects by name or most used, a project's row, and its actions (add an orchestrator, add a plan, running work, setup).
+
+|link:shared/project-onboarding.adoc[Project Onboarding]
+|`DRAFT`
+|What both clients show while a project is onboarded: checkout, consent and detection, identity, enrolment, the team's settings, the project's own settings against the machine's, roles, commit, ready.
+
 |link:shared/plan-view.adoc[Plan View]
 |`DRAFT`
 |What both clients show of one plan's process: its phases and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, and the leaves' jobs and tasks.

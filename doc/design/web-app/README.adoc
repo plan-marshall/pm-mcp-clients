@@ -30,7 +30,7 @@ The sections below are the subjects still to work out; none is designed yet.
 
 == Structure and Navigation
 
-How the app is organised and how one moves from the overview to a part and back. The overview of running work and its two levels are link:../shared/plan-overview.adoc[Plan Overview]; the web app draws it as its start view once the machine is onboarded.
+How the app is organised and how one moves from the overview to a part and back. The overview of running work and its two levels are link:../shared/plan-overview.adoc[Plan Overview]; once the machine is onboarded, the web app opens where the operator left it, first in the explorer of the projects (link:../shared/project-explorer.adoc[Project Explorer]), from which _Running work_ and the onboarding of a project (link:../shared/project-onboarding.adoc[Project Onboarding]) are reached.
 
 == Plan Views
 
