@@ -14,7 +14,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * *Specification first*: the package writes the change The Projects of the Machine, and the client side of Onboarding a Project as One Process, into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), once the use cases are agreed, and opens that pull request beside its own.
 * The resource records of every enrolled project (display name, remote, ready or what its setup needs, `needs_operator`, counts, last activity, released), the favourites with their order, recent and most used; the writes of a favourite and of its order.
 * The representation of the project onboarding's states for both clients, on the scheme of `operator-interaction-contract`.
-* The scenarios of the mock runtime: no project, projects with favourites and recent ones, a project not ready, a released project, an onboarding run to the end, one stopped at a failing check, a later run of one step; scenario names `projects-<case>`.
+* The scenarios of the mock runtime: no project, projects with favourites and recent ones, a project not ready, a released project, an onboarding run to the end, one stopped at a failing check, a script of the checkout run on consent and one refused, an enrichment refused (the architecture without descriptions, the project ready), a later run of one step; scenario names `projects-<case>`.
 
 == Trace
 

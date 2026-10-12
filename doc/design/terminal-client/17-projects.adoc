@@ -100,14 +100,26 @@ Use this checkout? [Enter]   e) edit the path   ?   › ⏎
 [1/8] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
   reads       its git configuration, build wrappers, host tools, language
               servers, and scripts
-  runs        the version probe of each host tool on your PATH
-  never       runs anything of the checkout (its wrappers and scripts are
-              read, not run), changes a file, uses the network
+  runs        the version probe of each host tool in the absolute directories
+              of your PATH, never one inside the checkout
+  never       runs a script of the checkout without asking, changes a file,
+              uses the network
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
     ✓  remote plan-marshall/pm-mcp-clients, base branch main
     ✓  build wrapper mvnw (Maven 3.9.11)
     ✓  host tools git 2.47, gh 2.71
     ·  language servers   none found
+
+    ?  build wrapper gradlew   its version is known only by running it
+
+[1/8] Checkout · Run this script of the checkout to know its version?
+  runs        ./gradlew --version   (as a job, confined: no network, no writes
+              outside a temporary directory)
+  why         the wrapper names no version in its properties
+  this        is the same trust as enrolling the project: its wrapper runs
+              in every build of its plans
+y) yes, for this project   n) no, leave its version unknown   ?   › y
+    ✓  build wrapper gradlew (Gradle 9.1)
 
 [2/8] Identity · How should the project be named?
   Id     [pm-mcp-clients] ← from the remote
