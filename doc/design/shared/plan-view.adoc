@@ -1,0 +1,238 @@
+= Design: Plan View
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Plan View
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process] (proposed)_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
+
+A plan's process is not a fixed list of phases: it is the plan's composed workflow, whose phases are sub-workflows, which call sub-workflows of their own. The plan view shows that process level by level, each node with its state, from the plan down to the leaves. Everything it shows comes from the runtime's process of the plan; the client derives no state.
+
+[#levels]
+== Levels
+
+----
+  fix-relay                                   execute · running · 2 h 10 min
+  ├─ ✓ phase  init                            done · 2 min
+  ├─ ✓ phase  refine                          done · 14 min
+  ├─ ✓ phase  outline                         done · 31 min
+  ├─ ✓ phase  plan                            done · 9 min
+  ├─ ▶ phase  execute                         running · 25 min
+  ├─ ○ phase  finalize                        planned
+  └─   not in this plan: land (the deep lane runs outline and plan)
+----
+
+* *The plan*: its phases, in the order the plan unit calls them; the phases its composition left out are a group of their own at the end, each with its reason.
+* *A phase, a sub-workflow*: its workflow, opened below it: the states in the order of the workflow, the calls marked as sub-workflows, each with its state; a sub-workflow opens the same way, through every level of nesting.
+* *A leaf*: a state that calls nothing; opening it shows what runs or ran in it (<<leaf>>).
+* A level shows its nodes one line each; what the line cannot hold (times, counts) is the next line, or one step away.
+
+[#states]
+== The State of a Node
+
+Each node shows its state as a glyph and a word, never as colour alone:
+
+[cols="1,1,1,3",options="header"]
+|===
+|State |Glyph |ASCII |Means
+
+|done
+|`✓`
+|`+`
+|entered and left; with how often, when more than once
+
+|running
+|`▶`
+|`>`
+|the plan is in it, or in a node below it; with the run it is in
+
+|waiting for you
+|`!`
+|`!`
+|the plan waits for the operator in it, or below it; leads into the decision (link:decisions.adoc[Decisions])
+
+|failed
+|`✗`
+|`x`
+|left with a failure; the plan went on by its fallback or waits
+
+|planned
+|`○`
+|`o`
+|in the plan's composition, not reached yet
+
+|not taken
+|`–`
+|`-`
+|a branch the plan did not take where the workflow branched
+
+|not in this plan
+|`·`
+|`.`
+|left out by the composition, with its reason (another lane, a step the project does not need)
+|===
+
+* A node that contains the plan's current position is _running_ (or _waiting for you_), whatever its earlier runs were; the path from the plan to the current position is marked at every level, and one key or click jumps to it.
+* A node the plan ran more than once (a loop-back, a step that fired again) shows how often and which run it is in: `done ×2`, `running · run 3`.
+* A state the plan ran under an earlier version of its composition shows as it was when it ran; when a new version changes what is planned, the view says `The plan changed: <event>` once and shows the new plan.
+
+[#kinds]
+== Phase, Sub-Workflow, State
+
+[cols="1,1,3",options="header"]
+|===
+|Kind |Shown as |Opens
+
+|Phase
+|the word `phase` and the phase's name
+|the phase's workflow
+
+|Sub-workflow
+|`↳` and the word `sub-workflow`, with its name (`git.commit_and_push`, `remediation.ci-failure`)
+|the sub-workflow's workflow
+
+|State
+|its name, with its kind where it matters (`job`, `tasks`, `waits for you`)
+|a leaf: what runs or ran in it
+|===
+
+The web app draws the kinds with the icons of its design system; the terminal uses the words and the glyph `↳` (ASCII `->`).
+
+[#leaf]
+== A Leaf
+
+A leaf shows what runs or ran in it:
+
+* *A job*: its kind, its status, since when it runs or how long it ran, its outcome.
+* *Tasks* (a state that hands work to workers): one line per task, with its role, the worker serving it (harness and model), its attempt, its status, and its outcome; how many tasks of how many are done.
+* *A finalize step*: its outcome and its firings (`fired 2×: failure, then done`).
+* *A state that waits for the operator*: what waits (a decision, a waiver request), and the way into it.
+* Its times: when it was entered and left, for each run.
+
+[#position]
+== Where It Is
+
+* The path from the plan to the level shown is always visible (`fix-relay › finalize › remediation.ci-failure`), each part a way back up.
+* The plan view opens at the plan's level with the path to the current position open down to the running phase; a jump opens it down to the running leaf.
+
+[#live]
+== Live
+
+The view follows the plan's events: a node entered becomes _running_, one left _done_ or _failed_, and a new version of the composition reads the process again; the selection stays on its node by id. A plan that ends shows its last state, and the view says so.
+
+[#texts]
+== Texts
+
+Keys of the area `plan`, shared by both clients.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`plan.view.title`
+|{plan}
+|{plan}
+
+|`plan.node.state.done`
+|done
+|fertig
+
+|`plan.node.state.done_times`
+|done ×{count}
+|fertig ×{count}
+
+|`plan.node.state.running`
+|running
+|läuft
+
+|`plan.node.state.running_run`
+|running · run {run}
+|läuft · Durchlauf {run}
+
+|`plan.node.state.waiting`
+|waiting for you
+|wartet auf dich
+
+|`plan.node.state.failed`
+|failed
+|fehlgeschlagen
+
+|`plan.node.state.planned`
+|planned
+|geplant
+
+|`plan.node.state.not_taken`
+|not taken
+|nicht genommen
+
+|`plan.node.state.not_in_plan`
+|not in this plan
+|nicht in diesem Plan
+
+|`plan.node.kind.phase`
+|phase
+|Phase
+
+|`plan.node.kind.sub_workflow`
+|sub-workflow
+|Sub-Workflow
+
+|`plan.node.kind.job`
+|job
+|Job
+
+|`plan.node.kind.tasks`
+|tasks
+|Tasks
+
+|`plan.node.kind.waits`
+|waits for you
+|wartet auf dich
+
+|`plan.not_in_plan.group`
+|not in this plan
+|nicht in diesem Plan
+
+|`plan.not_in_plan.reason`
+|{node} ({reason})
+|{node} ({reason})
+
+|`plan.leaf.tasks_done`
+|{done} of {total} tasks done
+|{done} von {total} Tasks fertig
+
+|`plan.leaf.task`
+|{role} · {harness} {model} · attempt {attempt} · {status} · {outcome}
+|{role} · {harness} {model} · Versuch {attempt} · {status} · {outcome}
+
+|`plan.leaf.job`
+|{kind} · {status} · {duration} · {outcome}
+|{kind} · {status} · {duration} · {outcome}
+
+|`plan.leaf.fired`
+|fired {count}×: {outcomes}
+|{count}× ausgelöst: {outcomes}
+
+|`plan.leaf.entered`
+|entered {time}, left {left}
+|betreten {time}, verlassen {left}
+
+|`plan.path.jump`
+|to where it is
+|dorthin, wo er steht
+
+|`plan.changed`
+|The plan changed: {event}.
+|Der Plan hat sich geändert: {event}.
+
+|`plan.ended`
+|The plan has ended: {outcome}.
+|Der Plan ist beendet: {outcome}.
+|===
+
+The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]); _Sub-Workflow_ joins the glossary as a word of the workflow language.
