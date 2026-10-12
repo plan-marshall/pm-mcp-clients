@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The actions of a plan and an epic on their rows and in the plan view's head; the dialogues of ending a plan, the archive check, and cancelling an epic; the review of findings or watches with its list, its item, read-back, and talk; at desktop and phone width, light and dark.
+* The actions of a plan and an epic on their rows and in the plan view's head; the dialogues of pausing a plan (with its point), of ending a plan, of decomposing again, the archive check, and cancelling an epic; the review of findings or watches with its list, its item, read-back, and talk; at desktop and phone width, light and dark.
 
 == Trace
 

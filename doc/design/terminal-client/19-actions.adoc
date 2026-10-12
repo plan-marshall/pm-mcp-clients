@@ -11,11 +11,12 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 == Commands
 
 ----
-  plan pause <plan_id>
+  plan pause <plan_id> [--now|--after-task|--after-phase]
   plan start <plan_id>
   plan cancel <plan_id> --reason <text> [--close-pr|--keep-pr]
   plan abandon <plan_id> --reason <text> [--close-pr|--keep-pr]
   epic next <epic_id> [--raise-scope]
+  epic decompose <epic_id> [--instruction <text>]   decompose again, with the review
   epic archive <epic_id>
   epic cancel <epic_id> --reason <text> [--with-plans|--without-plans]
   epic findings <epic_id>                the findings review
@@ -34,18 +35,19 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 ----
 ▶ fix-relay              execute · running · 25 min          relay-hardening
-      p  Pause
+      p  Pause…
       x  Cancel…
 
-▶ relay-hardening        epic · 3 running · 1 idle · 4 staged      ! 3
+▶ relay-hardening        epic · 3 running · 1 paused · 4 staged      ! 3
       n  Next plan: relay-reconnect-backoff
+      d  Decompose again…
       f  Findings review (3 new)
       w  Watches review (5)
       A  Archive…
       x  Cancel…
 ----
 
-An action with `…` leaves the view for its dialogue and returns to it afterwards; _Pause_, _Start_, and _Next plan_ act in place and the row follows.
+An action with `…` leaves the view for its dialogue and returns to it afterwards; _Start_ and _Next plan_ act in place and the row follows.
 
 [#plan]
 == A Plan
@@ -63,17 +65,34 @@ Cancel the plan? y) yes   n) no, keep it running   ?   › y
 pm ›
 ----
 
+[source,text]
+----
+pm › plan pause fix-relay
+Pause fix-relay?
+  1) now                       2 tasks withdrawn, 1 job stopped; they run again on start
+  2) after the current task ←  implement · 4 min, build · 2 min finish
+  3) after the current phase   execute runs to its end: 3 of 7 tasks left
+  Its epic   relay-hardening is told
+› ⏎
+✓ fix-relay pausing after the task; relay-hardening told
+…
+✓ fix-relay paused
+pm ›
+----
+
+`plan pause` without an answer asks; `--after-task` is the answer of the default, and `--no-input` without one stops.
+
 [#epic]
 == An Epic
 
 [source,text]
 ----
 pm › epic next relay-hardening
-✓ relay-reconnect-backoff emitted and started (2 of 3 at once)
+✓ relay-reconnect-backoff started (2 of 3 at once)
 
 pm › epic archive relay-hardening
 Archive relay-hardening?
-    ✓  no plan running or idle
+    ✓  no plan running, pausing, or paused
     ✓  every plan shipped or ended            11 shipped · 1 cancelled
     ✗  open findings                          2   (epic findings relay-hardening)
     ✓  the ledger is landed

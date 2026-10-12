@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Starting Work
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-start-from-clients[Starting from the Clients], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-source-directory[The Source Directory], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-screen-stored[Screened Once Stored] (proposed); link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc[Bootstrap & Lessons States]_
 
@@ -17,11 +17,13 @@ Starting a plan or an epic is one guided run in which the operator only says wha
 == Steps
 
 ----
-  ① Sources ─ ② Ready ─ ✓ Started
+  a plan:    ① Sources ─ ② Ready ─ ✓ Started
+  an epic:   ① Sources ─ ② Ready ─ ③ Decomposition ─ ✓ Started
 ----
 
 * *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where the project has a recipe; an epic starts from sources only.
 * *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the epic_.
+* *③ Decomposition* (an epic only, `epic.decomposition`): the cut of the epic into workstreams and plans, drafted by the planning role and shaped by the operator before anything is committed (<<decomposition>>).
 * *✓ Started*: the plan or the epic, with _Follow it_ (its plan view, link:plan-view.adoc[Plan View]; for an epic its level of link:plan-overview.adoc[Running Work]) and _Back to the project_.
 
 [#sources]
@@ -120,6 +122,31 @@ A number of the project's own repository; fetched, checked (open, its head writa
 * *Choosing* (`recipe.choose`): the project's recipes, each with its name, what it does in one line, and where it comes from (a domain, the project).
 * *Parameters* (`recipe.parameters`): one line per parameter, with the options the server resolved (`modules: 9 found`) and its proposal preselected, as the onboarding's choices are (link:../web-app/onboarding.adoc[Web App, Onboarding]). A recipe that takes a request asks its sources first, as in <<sources>>.
 * *Started*: the plan, its id from the recipe and the time (`recipe-coverage-2026-10-12-14-05-00`).
+
+[#decomposition]
+== The Decomposition
+
+----
+  relay-hardening · decomposition                     ① ─ ② ─ ③ Decomposition
+  ─────────────────────────────────────────────────────────────────────────────
+  ▾ WS-1  Reconnect                                       3 plans
+      ✓  relay-reconnect-backoff      objective · 4 deliverables · pm-relay
+      ✓  relay-cursor-order           objective · 2 deliverables · pm-relay, pm-api
+      ●  relay-reconnect-docs         edited — accept or discard the change
+  ▾ WS-2  Authentication                                  2 plans
+      ✗  relay-auth-v2                surface overlaps relay-cursor-order (pm-api)
+      ○  relay-token-rotation         after relay-auth-v2
+  ─────────────────────────────────────────────────────────────────────────────
+  [+ Add a plan]  [Talk]  [Draft again…]                 [Agree]  (1 check fails)
+----
+
+* *The draft* is shown while the planning role works on it, workstream by workstream, as in the onboarding's progress (`drafting WS-2`).
+* *A plan* opens to its objective, deliverables, expected surface, dependencies, and order, with _Keep_, _Edit_, and _Drop_. _Edit_ and _Add a plan_ ask for the operator's words; the planning role rewrites or drafts, and the read-back shows old against new with _Accept_, _Instruct again_, and _Discard_.
+* *The checks* of the server are marks on the plans concerned (`✗` with the reason); _Agree_ is disabled while one fails and says how many.
+* *Talk* opens a conversation with the planning role about the whole cut; each change it proposes is a read-back.
+* *Draft again* asks for an instruction and replaces the draft, keeping what the operator decided where the plan is still in it.
+* *A later run* (_Decompose again_, or the epic's own recut) shows the shipped, running, pausing, and paused plans locked and greyed (a paused plan is the operator's to start or abandon, never the decomposition's), and marks each staged plan as `unchanged`, `changed`, `new`, or `dropped`, a change opening to old against new.
+* *Agree* commits the cut; the epic then starts the plans that can start.
 
 [#leaving]
 == Leaving and Coming Back
@@ -362,4 +389,44 @@ Keys of the area `start`, shared by both clients.
 |`start.abandon`
 |Abandon
 |Verwerfen
+
+|`start.step.decomposition`
+|Decomposition
+|Zerlegung
+
+|`start.decomposition.title`
+|{epic} · decomposition
+|{epic} · Zerlegung
+
+|`start.decomposition.drafting`
+|drafting {workstream}
+|entwirft {workstream}
+
+|`start.decomposition.plans`
+|{count, plural, one {# plan} other {# plans}}
+|{count, plural, one {# Plan} other {# Pläne}}
+
+|`start.decomposition.add`
+|Add a plan
+|Einen Plan hinzufügen
+
+|`start.decomposition.draft_again`
+|Draft again
+|Neu entwerfen
+
+|`start.decomposition.agree`
+|Agree
+|Zustimmen
+
+|`start.decomposition.checks_fail`
+|{count, plural, one {# check fails} other {# checks fail}}
+|{count, plural, one {# Prüfung schlägt fehl} other {# Prüfungen schlagen fehl}}
+
+|`start.decomposition.overlap`
+|surface overlaps {plan} ({paths})
+|Bereich überschneidet sich mit {plan} ({paths})
+
+|`start.decomposition.change`
+|{change, select, unchanged {unchanged} changed {changed} new {new} other {dropped}}
+|{change, select, unchanged {unverändert} changed {geändert} new {neu} other {entfernt}}
 |===

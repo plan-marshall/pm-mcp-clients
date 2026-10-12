@@ -36,7 +36,7 @@ pm-operator epic add [--project <project_id>|.] [<source>]...
 pm-operator recipe run [<recipe_key>] [--param <name>=<value>]...
                                                           [op]  run a recipe of the project (18-starting)
 pm-operator plan pause|start|cancel|abandon <plan_id> [op]  act on a plan by its state (19-actions)
-pm-operator epic next|archive|cancel|findings|watches <epic_id>
+pm-operator epic next|decompose|archive|cancel|findings|watches <epic_id>
                                                           [op]  act on an epic, review its findings or watches (19-actions)
 pm-operator abort plan|epic <id> --reason <text>        [op]  the existing verb: as plan cancel or abandon, and epic cancel (19-actions)
 pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin

@@ -113,7 +113,43 @@ With `--no-input` a state that needs the operator and has no answer among the ar
 [#epic]
 == Starting an Epic
 
-`epic add` is the same dialogue with the sources description, documents, and issue; its ready step names the title and the id, and _Follow it_ opens the epic's level of the overview (xref:15-overview.adoc[The Overview]).
+`epic add` is the same dialogue with the sources description, documents, and issue; its ready step names the title and the id, the decomposition follows as its third step (<<decomposition>>), and _Follow it_ opens the epic's level of the overview (xref:15-overview.adoc[The Overview]).
+
+[#decomposition]
+=== The Decomposition
+
+[source,text]
+----
+✓ relay-hardening has started
+[3/3] Decomposition · relay-hardening
+    ▶  the planning role drafts the workstreams and plans   drafting WS-2
+  WS-1  Reconnect
+    1) relay-reconnect-backoff     pm-relay
+    2) relay-cursor-order          pm-relay, pm-api
+  WS-2  Authentication
+    3) relay-auth-v2               pm-api          ✗ overlaps relay-cursor-order (pm-api)
+    4) relay-token-rotation        pm-relay        after relay-auth-v2
+  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree (1 check fails)   › 3
+  relay-auth-v2
+    Objective     a token exchange the relay renews by itself
+    Deliverables  token exchange; renewal; a test per failure
+    Surface       pm-api
+    Depends on    —
+  k) keep   e) edit   d) drop   b) back   › e
+  What should change?
+  │ Keep it out of pm-api: the exchange belongs into pm-relay.
+  │
+    ▶  the planning role rewrites relay-auth-v2
+  - Surface       pm-api
+  + Surface       pm-relay
+Accept? [Enter]   i) instruct again   x) discard   ?   › ⏎
+    ✓  every check passes
+  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree   › ⏎
+✓ relay-hardening: 2 workstreams, 4 plans committed; relay-reconnect-backoff started
+pm ›
+----
+
+`epic decompose <epic_id>` opens the same dialogue for a later run, with `--instruction` as the words of _draft again_.
 
 [#recipe]
 == Running a Recipe

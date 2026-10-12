@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* `plan pause|start|cancel|abandon` and `epic next|archive|cancel|findings|watches` as direct verbs, with their confirmations and refusals; the actions below a row of the full-screen view (`a`); the archive check's lines; the review as a dialogue with read-back and talk.
+* `plan pause|start|cancel|abandon` (the pause with its point) and `epic next|decompose|archive|cancel|findings|watches` as direct verbs, `epic decompose` opening the decomposition of `cli-start`, with their confirmations and refusals; the actions below a row of the full-screen view (`a`); the archive check's lines; the review as a dialogue with read-back and talk.
 
 == Trace
 
