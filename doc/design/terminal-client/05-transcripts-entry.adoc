@@ -181,7 +181,7 @@ Question Q7 · plan fix-relay · phase 5 execute · blocks the plan
     2) Rebase onto main ← recommended: keeps the history linear
     3) Stop the plan and ask me later
 
-Rebase onto main? [Enter]   other: 1-3   q) not now   ?   › ⏎
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
 ✓ Q7 answered: Rebase onto main. The plan goes on.
 pm ›
 ----
@@ -202,7 +202,7 @@ Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   › !
   [3/7] Models stays where it is; nothing was sent.
 Question Q7 · plan fix-relay · blocks the plan
   …
-Rebase onto main? [Enter]   other: 1-3   q) not now   ?   › ⏎
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
 ✓ Q7 answered: Rebase onto main.
 Back to [3/7] Models.
 [3/7] Models · Choose the harnesses and models other plans may use
@@ -221,7 +221,7 @@ Question Q7 · plan fix-relay · blocks the plan
     1) Merge main into the branch
     2) Rebase onto main ← recommended
     3) Stop the plan and ask me later
-Rebase onto main? [Enter]   other: 1-3   q) not now   ?   › 1
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › 1
 – Q7 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.
 pm ›
 ----

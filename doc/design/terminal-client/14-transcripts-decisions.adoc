@@ -69,7 +69,7 @@ Decide? [Enter]   b) back   ?   › ⏎
 [source,text]
 ----
 pm [1 question] › answer Q12
-Question Q12 · plan storage-v2 · outline · blocks the plan · costly to undo
+Question Q12 · plan storage-v2 · outline · blocks the plan · can be undone
   How should the new store be introduced?                  3 parts
   ? shows the evidence: the outline, the measurements of the current store
 
@@ -136,7 +136,7 @@ Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
 
 * The read-back marks the passages it rests on; nothing is recorded before `Enter`.
 * A delegation is read back as `you leave it to the recommendation: …` and offered only where the decision allows one.
-* How often the interpreter may ask back is the decision's; after the last question the read-back offers only `o)`.
+* How often the interpreter may ask back is the decision's. A read-back of an understood answer always offers `e)` and `o)`; only when the answer stays unclear after the last question the decision allows does the console offer `o)` alone, back to the options.
 
 [#t-decision-not-voted]
 === Not Voted On, and a Note
