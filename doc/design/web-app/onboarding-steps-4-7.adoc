@@ -309,7 +309,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-defaults[Termi
 [#auto-consent]
 === Consent (`auto.consent`)
 
-The consent lists everything the run does, in the form of xref:onboarding.adoc#consent[consent], in one list; it is never remembered, so it has no remember choice:
+The consent lists everything the run does, in the form of xref:onboarding.adoc#consent[consent], in one list (link:../shared/consents.adoc#auto[Consents, The Automatic Run's One Consent]); it is never remembered, so it has no remember choice:
 
 [source,text]
 ----
@@ -333,6 +333,7 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
 
 * *Not now* goes back to xref:onboarding.adoc#start[start] (`onboard.mode`) with the line `Nothing was done.`; nothing was looked at.
 * *List every action* lists each scan and probe with its command, in place.
+* The run fetches no icon: it uses the network for the provider checks only, so the harnesses keep their monograms; the icons can be fetched with a later run of ② from the settings.
 
 [#auto-run]
 === The Run (`auto.run`)
@@ -344,9 +345,10 @@ The run shows the step bar moving and each step's check lines as they report:
   Deciding everything
 
   ① Language     ✓ Deutsch, models too              from your system
-  ② Harness      ✓ Claude Code 2.4.1                the first supported one
-                   ✓ version   ✓ logged in
-  ③ Models       ✓ 3 models on 2 harnesses          all found
+  ② Harnesses    ✓ Claude Code 2.4.1 (default),     every supported one,
+                   OpenCode 1.9.0                   the first the default
+                   ✓ version   ✓ logged in   (each)
+  ③ Models       ✓ 8 models on 2 harnesses          all listed
   ④ Roles        ✓ default assignment, 31 roles     the default
   ⑤ Credentials  ✓ macOS Keychain                   available here
                    ✓ write   ✓ read   ✓ delete
@@ -379,8 +381,9 @@ The run shows the step bar moving and each step's check lines as they report:
   Everything is decided.
 
   ① Language     Deutsch, models too           from your system      [ Change ]
-  ② Harness      Claude Code 2.4.1  ✓          the first supported one [ Change ]
-  ③ Models       3 models on 2 harnesses  ✓    all found              [ Change ]
+  ② Harnesses    Claude Code 2.4.1 (default),  every supported one,   [ Change ]
+                 OpenCode 1.9.0  ✓             the first the default
+  ③ Models       8 models on 2 harnesses  ✓    all listed             [ Change ]
   ④ Roles        default assignment, 31 roles  the default            [ Change ]
   ⑤ Credentials  macOS Keychain  ✓             available here         [ Change ]
   ⑥ Providers    GitHub (gh)  ✓                gh logged in           [ Change ]
@@ -395,6 +398,7 @@ The run shows the step bar moving and each step's check lines as they report:
 
 * *Change* opens that step's choice state with the automatic value as its proposal and returns to the result.
 * A value the operator gave during the run has the reason `you were asked`.
+* ② enrols every supported harness found, the first of them the default (`onboard.auto.reason.supported_found`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; a harness that cannot list its models gets none, stays enrolled but used by no role, and is named in the result (`OpenCode: no model allowed`), its model ids to be added with *Change*.
 
 Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, transcript].
 
@@ -406,8 +410,8 @@ Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Clie
   This machine is ready
 
     ✓ Language    Deutsch, models too
-    ✓ Harness     Claude Code 2.4.1 (+ OpenCode 1.9.0)
-    ✓ Models      3 models allowed
+    ✓ Harnesses   Claude Code 2.4.1 (default), OpenCode 1.9.0
+    ✓ Models      3 models allowed on 2 harnesses
     ✓ Roles       31 roles assigned
     ✓ Credentials macOS Keychain
     ✓ Providers   GitHub (gh); SonarCloud not available

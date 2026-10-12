@@ -37,7 +37,7 @@ The step line counts the project's steps as the machine's onboarding counts its 
 [#consents]
 === The Two Consents of Cost
 
-The consents of ⑦ and ⑧ are consents of kind `model_cost`, shown like every consent of the onboarding (link:../web-app/onboarding.adoc[Web App, Onboarding]): what runs, what it never does, its expected cost from earlier runs or `not known yet: first run`, and the answers _yes_, _yes, and don't ask again_, and _not now_ (`common.consent.*`). A remembered consent is listed in the machine settings and withdrawn there.
+The consents of ⑦ and ⑧ are consents of kind `model_cost` (link:consents.adoc#kinds[Consents, The Kinds]), shown like every consent (link:consents.adoc#pattern[Consents, The Consent State]): what runs, what it never does, its expected cost from earlier runs or `not known yet: first run`, and the answers _yes_, _yes, and don't ask again_, and _not now_ (`common.consent.*`). A remembered consent is listed in the machine settings and withdrawn there (link:consents.adoc#remembered[Consents, The Remembered Consents]).
 
 * *⑦ not now*: the step waits at its consent; the project is enrolled but not ready, since its roles are not qualified.
 * *⑧ not now*: the project is ready without descriptions (above).

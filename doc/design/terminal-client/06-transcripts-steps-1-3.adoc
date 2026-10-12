@@ -48,14 +48,16 @@ Verwende Deutsch hier, English für Modelle? [Enter]   anders: 1-5   ?   › ⏎
 * The state opens in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`), else in English. A change of the interface language reprints the whole state in it before it is recorded, so the operator reads it first; a change of the model language marks the line `✎` and changes nothing else (xref:03-dialogues.adoc#language[Language of the Terminal]).
 
 [#t-harness]
-== 2 Harness
+== 2 Harnesses
+
+One scan finds every harness the profiles know; the operator chooses the ones to enrol and one of them as the default, on which the steward of the later steps runs (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]). Every consent state is the shared pattern (link:../shared/consents.adoc#pattern[Consents, The Pattern]; xref:03-dialogues.adoc#consent[Consent]).
 
 [#t-harness-consent]
 === Consent and Scan (`harness.consent`, `harness.scan`)
 
 [source,text]
 ----
-[2/7] Harness · Look for harnesses on this machine?
+[2/7] Harnesses · Look for harnesses on this machine?
   looks for   claude, opencode, codex, agy
   in          your PATH, ~/.local/bin, /Applications, /opt/homebrew/bin
   runs        <program> --version on each one found
@@ -66,34 +68,17 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › n
   Nothing was done.
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
   ⠼  Looking for harnesses …  2 of 4 programs
+  ✓  Looking for harnesses: 3 found
 ----
 
-[#t-harness-choose]
-=== Choose (`harness.choose`)
-
-[source,text]
-----
-[2/7] Harness · Choose the harness to start with
-  Found on this machine:
-    1) Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported ←
-    2) OpenCode      1.9.0   /opt/homebrew/bin/opencode  ✓ supported
-       Codex         0.31.2  /opt/homebrew/bin/codex     ✗ cannot run workers
-       Antigravity   —       not found
-
-  The first harness also runs the advice in the next steps. You can add the
-  others in step 3, Models.
-
-Check Claude Code? [Enter]   other: 1-2   a) add a harness that is not listed   l) look again   ?   ›
-----
-
-* A harness that cannot run workers is listed without a number and with its reason; one not found is listed so that the operator sees what was looked for.
+* The scan is one: every executable of every profile, in the directories of the login `PATH` and the profiles' install locations, with its version probe and nothing else (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-harness-scan[Harness Scan]).
 
 [#t-harness-none]
 === None Found (`harness.none`)
 
 [source,text]
 ----
-[2/7] Harness · No harness found
+[2/7] Harnesses · No harness found
   Looked for claude, opencode, codex, agy in your PATH, ~/.local/bin,
   /Applications, /opt/homebrew/bin.
 
@@ -105,45 +90,115 @@ Check Claude Code? [Enter]   other: 1-2   a) add a harness that is not listed   
 Add a harness that is not listed? [Enter]   l) look again   ?   ›
 ----
 
+[#t-harness-icons]
+=== Icons (`harness.icons-consent`, `harness.fetch-icons`)
+
+The terminal shows no icon. It asks the consent all the same, because the runtime fetches the icons once for both clients and the web app shows them; a run in the terminal and a later look in the web app are one machine (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-harness-icons[Harness Icons], link:../web-app/harness-icons.adoc[Web App, Harness Icons]).
+
+[source,text]
+----
+[2/7] Harnesses · Fetch the makers' icons of the found harnesses?
+  looks for   the makers' icons of Claude Code, OpenCode, Codex
+  runs        one download of each, by the runtime, from the address in its
+              profile; stored on this machine
+  never       sends anything about you or this machine; your browser never
+              loads them from the maker
+  cost        none
+  Only the web app shows them. With n it shows monograms.
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › n
+  Nothing was fetched; the web app shows monograms.
+----
+
+* `n` goes on, unlike the other consents of the step: an icon is no condition (link:../shared/consents.adoc#kinds[Consents, The Kinds], `fetch_icons`). The next state follows at once.
+* With `y` or `r`, `harness.fetch-icons` prints one line, `✓ Icons fetched: 3`; a failed fetch adds a line of its own, `The icon of Codex was not fetched: the address answered 404. Its monogram stays.`. A remembered consent prints its line and the fetch line (xref:03-dialogues.adoc#consent[Consent]).
+
+[#t-harness-choose]
+=== Choose (`harness.choose`)
+
+[source,text]
+----
+[2/7] Harnesses · Choose the harnesses to enrol
+  Found on this machine:
+    1) [x] Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported   ★ default
+    2) [x] OpenCode      1.9.0   /opt/homebrew/bin/opencode  ✓ supported
+           Codex         0.31.2  /opt/homebrew/bin/codex     ✗ cannot run workers
+           Antigravity   —       not found
+
+  The default runs the steward of the next steps and is proposed for new
+  roles.
+
+Check 2 harnesses, Claude Code the default? [Enter]   toggle: 1-2   d) set the default   a) add a harness that is not listed   l) look again   ?   › d
+  default   1) Claude Code ←   2) OpenCode   › 2
+    2) [x] OpenCode      1.9.0   /opt/homebrew/bin/opencode  ✓ supported   ★ default ✎
+Check 2 harnesses, OpenCode the default? [Enter]   toggle: 1-2   d) set the default   a) add …   l) look again   ?   › d
+  default   1) Claude Code   2) OpenCode ←   › 1
+Check 2 harnesses, Claude Code the default? [Enter]   toggle: 1-2   d) set the default   a) add …   l) look again   ?   › ⏎
+----
+
+* Every supported harness found is preselected, the first of them the default (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#preselect-first[Preselect as much as possible]). A harness that cannot run workers is listed without a number and with its reason; one not found is listed so that the operator sees what was looked for.
+* The default is one of the chosen ones: unchecking it moves the mark to the first chosen one that is left, and a line says so (`OpenCode is now the default.`). With none chosen the prompt reads `Choose at least one: 1-2   a) add …` and has no `Enter`.
+* `a` is what the web app keeps under _Advanced_ (<<t-harness-add>>); the terminal offers it in the prompt line.
+
 [#t-harness-probe]
 === Check (`harness.probe-consent`, `harness.probe`, `harness.blocked`)
 
 [source,text]
 ----
-› ⏎
-[2/7] Harness · Check whether Claude Code is logged in?
-  runs        claude auth status
+[2/7] Harnesses · Check whether the chosen harnesses are logged in?
+  runs        claude auth status   (Claude Code)
+              opencode auth list   (OpenCode)
   never       starts a session, sends a prompt
   cost        none
 
 y) yes   r) yes, and don't ask again   n) not now   ?   › r
-[2/7] Harness · Checking Claude Code
+[2/7] Harnesses · Checking 2 harnesses
+  Claude Code
     ✓  version 2.4.1 is supported (2.0 – 2.x)
     ✗  not logged in
        → log in to Claude Code in another terminal, then check again:
          claude login
+  OpenCode
+    ✓  version 1.9.0 is supported (1.5 – 1.x)
+    ✓  logged in
 
-Check again? [Enter]   o) choose another harness   ?   › ⏎
+Check Claude Code again? [Enter]   x) leave it out   o) choose again   ?   › ⏎
+  Claude Code
     ✓  version 2.4.1 is supported (2.0 – 2.x)
     ✓  logged in
 ----
 
-* A harness whose profile has no login probe is checked by one minimal headless call; its consent states the call and its token cost (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-login-probe[Login Probe]).
+* One consent covers the login probes of every chosen harness, each named in `runs`. A harness whose profile has no login probe is checked by one minimal headless call; the consent states the call and its token cost (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-login-probe[Login Probe]):
+
+[source,text]
+----
+  runs        claude auth status   (Claude Code)
+              one minimal headless call of Aider
+  never       reads your repositories
+  cost        about 0.01 USD, tokens of your Aider account
+----
+
+* `harness.blocked` is asked for each failing harness in turn, under its name. `x` leaves it out: the step goes on to `harness.confirm` without it, and if it was the default, the mark moves to the first one left (`★ default ✎` there). The last harness left cannot be left out: its prompt has no `x`. `o` returns to `harness.choose` with the current choice. A harness left out stays found and is offered again by a later run; `harness.confirm` names it `left out`.
 
 [#t-harness-confirm]
 === Confirm and Enrol (`harness.confirm`, `harness.enrol`, `harness.done`)
 
 [source,text]
 ----
-[2/7] Harness · Enrol Claude Code
-  The server will remember this program and start workers with it only while
-  it is unchanged:
-    Path      /Users/oliver/.local/bin/claude
-    Version   2.4.1
-    SHA-256   9f2c4e…d841ab   ? shows it in full
+[2/7] Harnesses · Enrol 2 harnesses
+  The server will remember these programs and start workers with them only
+  while they are unchanged:
+    Claude Code   ★ default
+      Path      /Users/oliver/.local/bin/claude
+      Version   2.4.1
+      SHA-256   9f2c4e…d841ab   ?1 shows it in full
+    OpenCode
+      Path      /opt/homebrew/bin/opencode
+      Version   1.9.0
+      SHA-256   41be07…a19c3e   ?2 shows it in full
 
-Enrol Claude Code? [Enter]   b) back   ?   › ⏎
-✓ Claude Code 2.4.1 enrolled
+Enrol 2 harnesses, Claude Code the default? [Enter]   b) back   ?   › ⏎
+✓ 2 harnesses enrolled: Claude Code 2.4.1 (default), OpenCode 1.9.0
 ----
 
 [#t-harness-add]
@@ -152,7 +207,7 @@ Enrol Claude Code? [Enter]   b) back   ?   › ⏎
 [source,text]
 ----
 › a
-[2/7] Harness · Add a harness
+[2/7] Harnesses · Add a harness
   Executable      [ ] › /usr/local/bin/aider
   Name            [aider] › Aider
   Id              [aider] › ⏎
@@ -167,7 +222,7 @@ Enrol Claude Code? [Enter]   b) back   ?   › ⏎
     and 4 more: environment, tools, commands, limits   ? shows them
 
 Verify this harness? [Enter]   e) edit the settings   b) back   ?   › ⏎
-[2/7] Harness · Run Aider to verify these settings?
+[2/7] Harnesses · Run Aider to verify these settings?
   runs        /usr/local/bin/aider with the settings above, once per stage:
               identity, detection, launch, isolation, classes, limits,
               paths, faults
@@ -175,7 +230,7 @@ Verify this harness? [Enter]   e) edit the settings   b) back   ?   › ⏎
   cost        about 12 short headless calls; tokens of your Aider account
 
 y) yes   n) not now   ?   › y
-[2/7] Harness · Verifying Aider
+[2/7] Harnesses · Verifying Aider
     ✓  identity      aider 0.86.1
     ✓  detection
     ✓  launch        a headless call answered in 4.1 s
@@ -188,11 +243,11 @@ Edit the settings? [Enter]   b) back   ?   › ⏎
   Arguments       [--message {prompt} --yes --no-pretty] › --message {prompt} --yes --no-pretty --no-config
   (Enter keeps a value)
 …
-[2/7] Harness · Verifying Aider
+[2/7] Harnesses · Verifying Aider
     ✓  identity  ✓  detection  ✓  launch  ✓  isolation
     ✓  classes   ✓  limits     ✓  paths   ✓  faults
 
-[2/7] Harness · Install the profile of Aider
+[2/7] Harnesses · Install the profile of Aider
   The verified profile is installed for this machine:
     Id        aider
     Profile   ~/.plan-marshall-mcp/profiles/aider.json
@@ -200,14 +255,21 @@ Edit the settings? [Enter]   b) back   ?   › ⏎
 
 Install it? [Enter]   b) back   ?   › ⏎
 ✓ Profile of Aider installed
-  continues with the check of Aider (harness.probe)
+[2/7] Harnesses · Choose the harnesses to enrol
+    1) [x] Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported   ★ default
+    2) [x] OpenCode      1.9.0   /opt/homebrew/bin/opencode  ✓ supported
+    3) [x] Aider         0.86.1  /usr/local/bin/aider        ✓ supported   ✎
+    …
 ----
 
-* `harness.add-consent` has no `r`: running an unknown program is asked for every time.
-* A field of the draft is asked as a line with its current value in brackets; `Enter` keeps it. The settings of a known harness found nowhere (added by its path only) are its shipped ones and are not asked.
+* `harness.add-consent` has no `r`: running an unknown program is asked for every time (`verify_harness_profile`, link:../shared/consents.adoc#kinds[Consents, The Kinds]).
+* After the installation the run returns to `harness.choose` with the added harness among the found ones and chosen; its check and enrolment are those of every chosen harness. A profile that cannot run workers is installed, listed without a number, and cannot be the default.
+* A field of the draft is asked as a line with its current value in brackets; `Enter` keeps it. A known harness found nowhere is added by its path only: its shipped settings are used and not asked.
 
 [#t-models]
-== 3 Models (`catalogue.consent`, `catalogue.scan`, `catalogue.advise`, `catalogue.select`, `catalogue.enrol`, `catalogue.record`, `catalogue.done`)
+== 3 Models (`catalogue.consent`, `catalogue.models`, `catalogue.advise`, `catalogue.select`, `catalogue.record`, `catalogue.done`)
+
+The harnesses are enrolled in step 2; this step only asks them for their models and records the allowed ones (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]).
 
 [source,text]
 ----
@@ -215,43 +277,35 @@ Install it? [Enter]   b) back   ?   › ⏎
   1  List the models of Claude Code and OpenCode
        runs   claude models list, opencode models
        cost   none
-  2  Ask the steward which harnesses and models suit which work
-       runs   a steward task on Claude Code · opus-5.5
+  2  Ask the steward which models suit which work
+       runs   a steward task on the default harness, Claude Code · opus-5.5
        cost   about 0.10 USD (not known yet: first run)
 
-y) yes to both   r) yes to both, and don't ask again   1, 2) yes to that one only   n) not now   ?   › y
+y) yes to both   r) yes to both, and don't ask again   1) only list the models   n) not now   ?   › y
   ✓  Claude Code    3 models
   ✓  OpenCode       5 models
   ⠴  steward is working on Claude Code · opus-5.5      0:18   about 0.10 USD
 
-[3/7] Models · Choose the harnesses and models other plans may use
-  Recommendation by steward: Use Claude Code for writing roles and OpenCode
-  with a small model for screening; allow the three models below.   ?0 why
+[3/7] Models · Choose the models plans may use
+  Recommendation by steward: Claude Code for writing roles, OpenCode with a
+  small model for screening; allow the four models below.   ?0 why
 
-  Claude Code   enrolled
+  Claude Code   ★ default
     1) [x] opus-5.5         ★ recommended
     2) [x] sonnet-5.5       ★ recommended
     3) [ ] haiku-5.5
-  OpenCode      found, not enrolled
-    4) [x] enrol OpenCode   ★ recommended
-    5) [x] qwen-coder-32b   ★ recommended
-    6) [ ] deepseek-v4
+  OpenCode
+    4) [x] qwen-coder-32b   ★ recommended
+    5) [x] deepseek-v4      ★ recommended
   a) add a model id
 
-Enrol OpenCode and allow 3 models? [Enter]   toggle: 1-6   b) back   ?   › 3
+Allow 4 models? [Enter]   toggle: 1-5   b) back   ?   › 3
     3) [x] haiku-5.5        ✎
-Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   › ⏎
-  ✓  OpenCode 1.9.0: version, logged in
-[3/7] Models · Enrol OpenCode
-    Path      /opt/homebrew/bin/opencode
-    Version   1.9.0
-    SHA-256   41be07…a19c3e
-Enrol OpenCode? [Enter]   b) back   ?   › ⏎
-✓ OpenCode 1.9.0 enrolled
-✓ 4 models allowed on 2 harnesses
+Allow 5 models? [Enter]   toggle: 1-5   b) back   ?   › ⏎
+✓ 5 models allowed on 2 harnesses
 ----
 
-* The two consents of `catalogue.consent` are asked together and answered together or one by one (`1`, `2`); a model probe without the advice, or the advice without the probe, is a valid answer, and `catalogue.select` then shows what it has (no recommendation, or model ids to enter).
+* The two consents of `catalogue.consent` are the kinds `probe_harness_models` and `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]). `y` and `r` answer both; `1` gives the model probes alone, and the state after them is `catalogue.select` without a recommendation. The advice without the probes is not offered: `n` to the probes leaves the step where it is (`Nothing was done.`).
+* The steward runs on the default harness chosen in step 2, with that harness's default model (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-steward-role[Steward Role]); a failed or left task leads to `catalogue.select` without a recommendation and the line `– The steward gave no proposal: <reason>.`
 * `?0` is the recommendation's rationale, `?n` the rationale of item `n` with cost and limits.
-* A harness that cannot list its models shows `a) add a model id` as its only entry; `a` asks `Model id for OpenCode › `.
-* `catalogue.enrol` runs the check and the confirmation of `harness.probe` and `harness.confirm` for each further harness, under the step line of step 3.
+* A harness that cannot list its models shows `a) add a model id` as its only entry; `a` asks `Model id for OpenCode › `. A harness of which no model is allowed stays enrolled and is used by no role; the result line names it (`OpenCode: no model allowed`).

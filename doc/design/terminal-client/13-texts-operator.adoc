@@ -161,6 +161,14 @@ One letter per link relation, the mnemonic of its label; the build checks of the
 |l
 |e
 
+|`operator.key.set_default`
+|d
+|f
+
+|`operator.key.leave_out`
+|x
+|w
+
 |`operator.key.choose_another`
 |o
 |a

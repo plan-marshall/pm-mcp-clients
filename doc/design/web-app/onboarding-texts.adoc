@@ -14,7 +14,7 @@ Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web
 [#texts]
 == Texts
 
-Every text of the screens above is a key of the message catalogue (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). The keys of the areas `common` and `onboard` are shared with the terminal client and listed with their texts in its tables (link:../terminal-client/09-texts-common.adoc#texts[Common, Frame, Automatic Run], link:../terminal-client/10-texts-steps-1-3.adoc[Steps 1 to 3], link:../terminal-client/11-texts-steps-4-5.adoc[Steps 4 and 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]); the web app adds the keys of the area `web` below for what only it shows. A shared label written in lower case (a link label of the terminal, `look again`) is shown on a button with its first letter capitalised (_Look again_, _Suche erneut_); the text is the same.
+Every text of the screens above is a key of the message catalogue (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). The keys of the areas `common` and `onboard` are shared with the terminal client and listed with their texts in its tables (link:../terminal-client/09-texts-common.adoc#texts[Common, Frame, Automatic Run], link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2] and link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5], link:../terminal-client/11-texts-steps-3-5.adoc[Steps 4 and 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]); the web app adds the keys of the area `web` below for what only it shows. A shared label written in lower case (a link label of the terminal, `look again`) is shown on a button with its first letter capitalised (_Look again_, _Suche erneut_); the text is the same.
 
 [#texts-shared]
 === Shared Keys Used Here
@@ -24,7 +24,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |Screen |Keys
 
 |xref:onboarding.adoc#frame[frame]
-|the steps `onboard.step.language`, `.harness`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`
+|the steps `onboard.step.language`, `.harnesses`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`
 
 |xref:onboarding.adoc#model-at-work[model-at-work]
 |`common.model.working`, `common.consent.cost.estimate`, `common.model.no_result`
@@ -33,22 +33,28 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.entry.title`; the summaries `onboard.step.<step>.summary`; `onboard.mode.auto`, `onboard.mode.guided`
 
 |xref:onboarding.adoc#consent[consent]
-|the title `onboard.<step>.consent.title`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.cost` with the values of the step's consent keys; `common.consent.cost.none`, `.estimate`, `.estimate_runs`, `.unknown`; the choice `common.consent.yes`, `common.consent.yes_remember`; `common.consent.no`, `common.consent.nothing_done`, `common.consent.once_only`, `common.consent.remembered`; the primary button is the step's consent action (`onboard.harness.consent.action`)
+|the title `onboard.<step>.consent.title`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.cost` with the values of the step's consent keys; `common.consent.cost.none`, `.estimate`, `.estimate_runs`, `.unknown`; the choice `common.consent.yes`, `common.consent.yes_remember`; `common.consent.no`, `common.consent.nothing_done`, `common.consent.once_only`, `common.consent.remembered` with the kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]); the primary button is the step's consent action (`onboard.harness.consent.action`)
 
 |xref:onboarding.adoc#language[language]
 |`onboard.language.choose.title`, `.interface`, `.model`, `.model_same`, `.glossary_note`, `.why`, `.action_both`, `.action_split`; `onboard.language.name.<locale>`; `common.from.system_locale`
 
+|xref:onboarding.adoc#harness-icons-consent[harness-icons-consent]
+|`onboard.harness.scan.progress`, `.found`; `onboard.harness.icons_consent.title`, `.looks_for`, `.runs`, `.never`; `onboard.harness.fetch_icons.done`, `.failed`; `web.onboard.icons_consent.action`, `web.onboard.icons_consent.no_action`; `web.consent.withdraw_hint`
+
 |xref:onboarding.adoc#harness-choose[harness-choose], xref:onboarding.adoc#harness-none[harness-none]
-|`onboard.harness.scan.progress`, `onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.note`, `.action_check`, `.add`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`
+|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `web.onboard.harness.advanced`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`
 
 |xref:onboarding.adoc#harness-add[harness-add], xref:onboarding.adoc#harness-add-confirm[harness-add-confirm]
 |`onboard.harness.add.title`, `.executable`, `.name`, `.id`, `.start_from`, `.start_from_hint`, `.headless`, `.arguments`, `.mcp_config`, `.output`, `.usage`, `.version_probe`, `.more`, `.action_verify`, `.edit`; `onboard.harness.add_consent.title`, `.runs`, `.never`, `.cost`; `onboard.harness.verify.title`, `.answered`, `.fix_field`; `common.check.not_run`; `onboard.harness.add_confirm.title`, `.intro`, `.profile`, `.workers_yes`, `.workers_no`, `.action`; `onboard.harness.install.done`; `common.link.back`
 
 |xref:onboarding.adoc#harness-probe[harness-probe], xref:onboarding.adoc#harness-confirm[harness-confirm]
-|`onboard.harness.probe_consent.title`, `.never`, `.never_call`, `.runs_call`; `onboard.harness.probe.title`, `.version_ok`, `.version_unsupported`, `.logged_in`, `.logged_out`; `onboard.harness.blocked.fix_login`, `.fix_version`, `.choose_another`; `common.link.recheck`; `onboard.harness.confirm.title`, `.intro`, `.path`, `.version`, `.digest`, `.action`; `onboard.harness.done`
+|`onboard.harness.probe_consent.title`, `.runs_item`, `.never`, `.never_call`, `.runs_call`, `.cost_call`; `onboard.harness.probe.title`, `.version_ok`, `.version_unsupported`, `.logged_in`, `.logged_out`; `common.check.ready`, `common.check.not_ready`; `onboard.harness.blocked.fix_login`, `.fix_version`, `.action_recheck`, `.leave_out`, `.left_out`, `.choose_again`; `web.common.copy`; `onboard.harness.confirm.title`, `.intro`, `.path`, `.version`, `.digest`, `.action`, with `onboard.harness.choose.default` for the mark; `onboard.harness.done`
+
+|link:machine-settings.adoc#harnesses[harnesses again]
+|as xref:onboarding.adoc#harness-choose[harness-choose], and `onboard.harness.choose.new`, `.missing`, `.used_by_roles`, `.changed`; `onboard.harness.confirm.remove`, `.keep`; `onboard.harness.done.no_models`; `web.settings.back`, `web.settings.harnesses.reassign` (link:machine-settings.adoc#texts[Machine Settings, Texts])
 
 |xref:onboarding.adoc#models[models]
-|`onboard.catalogue.consent.title`, `.probe`, `.advice`, `.advice_runs`, `.yes_both`, `.yes_both_remember`; `onboard.catalogue.scan.models`; `onboard.catalogue.select.title`, `.recommendation`, `.why`, `.enrolled`, `.found_not_enrolled`, `.enrol`, `.add_model`, `.model_id_prompt`, `.action`; `common.from.recommended`; `onboard.catalogue.done`
+|`onboard.catalogue.consent.title`, `.probe`, `.advice`, `.advice_runs`, `.yes_both`, `.yes_both_remember`, `.probes_only`; `web.onboard.catalogue_consent.action`; `common.consent.remembered`; `onboard.catalogue.models.count`, `.cannot_list`; `onboard.catalogue.select.title`, `.recommendation`, `.why`, `.add_model`, `.model_id_prompt`, `.none_allowed`, `.action`, with `onboard.harness.choose.default` for the mark; `common.from.recommended`; `onboard.catalogue.done`
 
 |xref:onboarding-steps-4-7.adoc#roles[roles]
 |`onboard.roles.review.title`, `.applied`, `.group_roles`, `.not_assignable`, `.no_model_of_tier`, `.assign_open_first`, `.action_defaults`, `.action_save`, `.action_use`, `.adjust`, `.ask_steward`, `.reset`, `.to_look_at`, `.no_effort`; `onboard.roles.field.*`, `onboard.roles.origin.*`, `onboard.roles.advisory.*`; `onboard.roles.consent.title`, `.runs`, `.never`; `onboard.roles.propose.title`, `.reason`, `.rejected`, `.action_all`, `.action_some`; `onboard.roles.validate.ok`, `onboard.roles.done`
@@ -63,18 +69,17 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.defaults.review.title`, `.override_note`, `.needs_provider`, `.action_defaults`, `.action_save`; `onboard.defaults.axis.*`, `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`
 
 |xref:onboarding-steps-4-7.adoc#auto[auto]
-|`onboard.auto.consent.title`, `.looks_for`, `.runs`, `.never`, `.cost`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`
+|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.cost`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
 
 |xref:onboarding-steps-4-7.adoc#done[done]
 |`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])
 |===
 
-Three keys of the area `onboard` are new with this design and belong in the terminal client's tables as well, since its dialogues say the same:
+The keys below of the area `onboard` are new with this design and belong in the terminal client's tables as well, since its dialogues say the same (link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2]); every other `onboard` key named above is defined in its tables. Gone with this design: `onboard.step.harness` (now `onboard.step.harnesses`), `onboard.harness.choose.action_check` (now `.action`), `onboard.harness.blocked.choose_another` (now `.choose_again`), `onboard.catalogue.consent.yes_one` (now `.probes_only`), `onboard.catalogue.scan.models` (now `onboard.catalogue.models.count`), `onboard.catalogue.select.enrolled`, `.found_not_enrolled`, `.enrol`, and the web keys of the icons' consent, now shared.
 
 [cols="3,3,3",options="header"]
 |===
 |Key |English |German
-
 
 |`onboard.auto.reason.asked`
 |you were asked
@@ -83,6 +88,38 @@ Three keys of the area `onboard` are new with this design and belong in the term
 |`onboard.defaults.validate.main_per_project`
 |Commit on main: checked for each project, where its base branch is known
 |Commit auf main: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
+
+|`onboard.harness.fetch_icons.failed`
+|The icon of {harness} was not fetched: {cause}. Its monogram stays.
+|Das Icon von {harness} wurde nicht geladen: {cause}. Sein Monogramm bleibt.
+
+|`onboard.harness.choose.default_moved`
+|{harness} is now the default.
+|{harness} ist jetzt die Vorgabe.
+
+|`onboard.harness.choose.changed`
+|was {version}: checked and enrolled again
+|war {version}: wird geprüft und neu registriert
+
+|`onboard.harness.probe_consent.runs_item`
+|{command}   ({harness})
+|{command}   ({harness})
+
+|`onboard.harness.blocked.left_out`
+|left out
+|weggelassen
+
+|`onboard.harness.confirm.keep`
+|Keep as it is
+|Lass es, wie es ist
+
+|`onboard.harness.done.no_models`
+|{harness} has no model allowed yet: run ③ Models.
+|{harness} hat noch kein erlaubtes Modell: führe ③ Modelle aus.
+
+|`onboard.catalogue.models.cannot_list`
+|cannot list its models
+|kann seine Modelle nicht auflisten
 |===
 
 [#texts-web]
@@ -144,57 +181,25 @@ Three keys of the area `onboard` are new with this design and belong in the term
 |Advanced
 |Erweitert
 
-|`web.onboard.harness.icons_note`
-|Icons: initials for now.
-|Symbole: vorerst Initialen.
-
-|`web.onboard.harness.icons_action`
-|Fetch the makers' icons…
-|Hole die Symbole der Hersteller…
-
 |`web.onboard.harness.install_page`
 |opens the installation page in a new tab
 |öffnet die Installationsseite in einem neuen Tab
+
+|`web.onboard.icons_consent.action`
+|Fetch {count, plural, one {# icon} other {# icons}}
+|Lade {count, plural, one {# Icon} other {# Icons}}
+
+|`web.onboard.icons_consent.no_action`
+|Use monograms
+|Nutze Monogramme
 
 |`web.onboard.harness_add.executable_hint`
 |the full path on this machine; the browser's file dialog cannot name it
 |der vollständige Pfad auf dieser Maschine; der Dateidialog des Browsers kann ihn nicht nennen
 
-|`web.onboard.icons_consent.title`
-|Fetch the icons of the found harnesses?
-|Die Symbole der gefundenen Harnesses holen?
-
-|`web.onboard.icons_consent.runs`
-|the runtime downloads once: {list}
-|die Runtime lädt einmal herunter: {list}
-
-|`web.onboard.icons_consent.runs_item`
-|the icon of {harness} from {host}
-|das Symbol von {harness} von {host}
-
-|`web.onboard.icons_consent.in`
-|{dir}, served by the runtime itself
-|{dir}, von der Runtime selbst ausgeliefert
-
-|`web.onboard.icons_consent.never`
-|lets your browser load anything from these sites; uses an icon as the mark of plan-marshall
-|lässt deinen Browser etwas von diesen Seiten laden; verwendet ein Symbol als Zeichen von plan-marshall
-
-|`web.onboard.icons_consent.action`
-|Fetch {count, plural, one {# icon} other {# icons}}
-|Hole {count, plural, one {# Symbol} other {# Symbole}}
-
-|`web.onboard.icons_consent.failed`
-|The icon of {harness} was not fetched: {cause}. Its initials stay.
-|Das Symbol von {harness} wurde nicht geholt: {cause}. Seine Initialen bleiben.
-
-|`web.onboard.catalogue_consent.only`
-|yes to {item} only
-|ja nur zu {item}
-
 |`web.onboard.catalogue_consent.action`
-|{answer, select, probe {List the models} advice {Ask the steward} other {List the models and ask the steward}}
-|{answer, select, probe {Liste die Modelle auf} advice {Frag den steward} other {Liste die Modelle auf und frag den steward}}
+|{advice, select, no {List the models} other {List the models and ask the steward}}
+|{advice, select, no {Liste die Modelle auf} other {Liste die Modelle auf und frag den steward}}
 
 |`web.onboard.roles.group`
 |Group

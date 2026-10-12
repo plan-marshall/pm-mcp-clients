@@ -78,8 +78,9 @@ Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   �
 ----
 › s
 [4/7] Roles · Ask the steward to refine the defaults?
-  runs        a steward task on Claude Code · opus-5.5: it reads the roles,
-              the catalogue, and the qualification records of your projects
+  runs        a steward task on the default harness, Claude Code · opus-5.5:
+              it reads the roles, the catalogue, and the qualification
+              records of your projects
   never       changes a role: you accept or reject each proposal
   cost        about 0.12 USD (from 2 earlier runs)
 
@@ -102,6 +103,7 @@ Accept 1, reject 1? [Enter]   toggle: 1-2   b) back   ?   › ⏎
 Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
 ----
 
+* The steward runs on the default harness of step 2 with that harness's default model (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
 * A failed or left model task returns to `roles.review` as it was, with one line: `– The steward gave no proposal: <reason>.`
 * `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
 
@@ -304,8 +306,8 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
 ----
 ✓ This machine is ready
     ✓ Language     Deutsch, models English
-    ✓ Harness      Claude Code 2.4.1 (+ OpenCode 1.9.0)
-    ✓ Models       4 models allowed
+    ✓ Harnesses    Claude Code 2.4.1 (default), OpenCode 1.9.0
+    ✓ Models       5 models allowed
     ✓ Roles        31 roles assigned
     ✓ Credentials  macOS Keychain
     ✓ Providers    GitHub (gh)

@@ -24,8 +24,8 @@ The onboarding records machine values, and they are defaults, not final values: 
 |model language (`user_language` of `local-config.json`)
 |—
 
-|`harness`
-|the enrolled harnesses
+|`harnesses`
+|the enrolled harnesses, one of them the default
 |—
 |—
 
@@ -55,7 +55,7 @@ The onboarding records machine values, and they are defaults, not final values: 
 |landing, method, asking (origin `plan`): set where the plan first needs it, or later as a new instance version
 |===
 
-A dash is not a level of that aspect: `config harness --project p` is refused with usage exit code `2` and the text that names the levels the aspect has. The project column of `language` holds only the model language, since the interface language is the operator's.
+A dash is not a level of that aspect: `config harnesses --project p` is refused with usage exit code `2` and the text that names the levels the aspect has. The project column of `language` holds only the model language, since the interface language is the operator's.
 
 [#addressing]
 === Addressing a Level

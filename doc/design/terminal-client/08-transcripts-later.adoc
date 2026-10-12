@@ -33,20 +33,68 @@ Plans · How should plans run on this machine?
 
 [source,text]
 ----
-$ pm-operator config harness --client opencode --no-input
-Harness · Look for harnesses on this machine?
+$ pm-operator config harnesses --add codex --no-input
+Harnesses · Look for harnesses on this machine?
 Needs a choice: --consent scan_harnesses
 $ echo $?
 3
-$ pm-operator config harness --client opencode --consent scan_harnesses --consent probe_harness_login --no-input
-  ✓  Looking for harnesses: 2 found
-  ✓  Harness   OpenCode 1.9.0   (--client opencode)
-    ✓  version 1.9.0 is supported (1.5 – 1.x)
+$ pm-operator config harnesses --add codex --consent scan_harnesses --no-icons --consent probe_harness_login --no-input
+  ✓  Looking for harnesses: 3 found
+  –  Icons: no   (--no-icons)
+  ✓  Harnesses   Claude Code (default), OpenCode, Codex 0.32.0   (--add codex)
+  Codex
+    ✓  version 0.32.0 is supported (0.32 – 0.x)
     ✓  logged in
-Harness · Enrol OpenCode
+Harnesses · Enrol 3 harnesses
 Needs a choice: --yes
 $
 ----
+
+* A consent whose _no_ lets the step go on is answered no by its own option (`--no-icons`, `--no-advice`); without it, or `--consent` of its kind, `--no-input` stops there as at every other consent. A remembered consent needs neither.
+
+[#t-config-harness]
+=== Harnesses Again (`config harnesses`)
+
+A later run of step 2, `config harnesses` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], _Variations_): one scan again; a harness found that is not enrolled is offered, an enrolled one no longer found is shown as missing and offered for removal, and the default can change. The consents remembered in the first run pass with their line.
+
+[source,text]
+----
+pm › config harnesses
+  ✓ Consent remembered: look for harnesses   (withdraw: pm-operator config consents)
+  ✓  Looking for harnesses: 3 found
+  ✓ Consent remembered: fetch the icons of the harnesses
+  ✓ Icons fetched: 1
+Harnesses · Choose the harnesses to enrol
+    1) [x] Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported   ★ default
+    2) [x] OpenCode      —       /opt/homebrew/bin/opencode  missing: not found any more
+           used by 8 roles; reassign them first: pm-operator config roles
+    3) [ ] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   new since the last run
+
+Keep as it is? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › 2
+  2 cannot be removed: used by 8 roles; reassign them first: pm-operator config roles
+Keep as it is? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › 3 d
+    3) [x] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   new since the last run ✎
+  default   1) Claude Code ←   3) Codex   › 3
+    3) [x] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   ★ default ✎
+Check 1 harness, Codex the default? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › ⏎
+  ✓ Consent remembered: check whether a harness is logged in
+  Codex
+    ✓  version 0.32.0 is supported (0.32 – 0.x)
+    ✓  logged in
+Harnesses · Enrol 1 harness
+    Codex   ★ default   new since the last run
+      Path      /opt/homebrew/bin/codex
+      …
+Enrol 1 harness, Codex the default? [Enter]   b) back   ?   › ⏎
+✓ 1 harness enrolled: Codex 0.32.0 (default)
+  Codex has no model allowed yet: run ③ Models.
+----
+
+* The proposal is the current state: every enrolled harness found is ticked, the default as recorded. A harness found that is not enrolled is offered unticked, marked `new since the last run`; ticking it adds it. An enrolled one no longer found is unticked and marked missing: it is offered for removal, and unticking an enrolled one found removes it too; `harness.confirm` lists it as `Remove OpenCode: its enrolment is deleted`. With nothing changed the prompt is `Keep as it is?`, and `Enter` ends the run without a change.
+* A harness that roles use cannot be removed, neither unticked nor as missing: it stays ticked, with the roles and the verb that reassigns them (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]); its default mark can still move.
+* The check and the confirmation cover the harnesses that change: a new one, and an enrolled one whose version or digest changed (`was 2.3.0: checked and enrolled again`). An unchanged one keeps its enrolment.
+* A new harness has no allowed model until `config models` runs; a removed one's allowed models go with it. A new default moves the steward of later advice to it (xref:07-transcripts-steps-4-7.adoc#t-roles-steward[Ask the Steward]); the roles keep their harnesses.
+* With arguments: `--add`, `--remove`, `--default`, `--path` (xref:01-commands.adoc#command-tree[The Verbs]).
 
 [#t-config-project]
 === On a Project (`config language --project`)
@@ -95,26 +143,35 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 [#t-consents]
 === The Remembered Consents (`config consents`)
 
+The terminal side of link:../shared/consents.adoc#remembered[Consents, The Remembered Consents]: what the runtime remembers, given in either client.
+
 [source,text]
 ----
 pm › config consents
 Consents · The consents you said not to ask again
-    1) look for harnesses                 scan_harnesses        12 May, 10:14
-    2) check whether a harness is logged in   probe_harness_login   12 May, 10:15
-    3) look for CLI tools and stored tokens   scan_providers        12 May, 10:21
-    4) approve the cost of a role task    model_cost · pm-mcp-clients   3 Jun, 16:02
+    1) look for harnesses                    scan_harnesses
+         12 May, 10:14 · terminal
+    2) fetch the icons of the harnesses      fetch_icons
+         12 May, 10:14 · terminal
+    3) check whether a harness is logged in  probe_harness_login
+         12 May, 10:15 · Firefox on mbp-oliver
+    4) look at a project's checkout          inspect_checkout
+         pm-mcp-clients · 2 Jun, 09:40 · terminal
+    5) run scripts of a project's checkout   run_checkout_scripts
+         pm-mcp-clients · 3 scripts · 2 Jun, 09:41 · terminal   ?5 lists them
+    6) approve the cost of a role task       model_cost
+         pm-mcp-clients · 3 Jun, 16:02 · iPad Oliver
 
   A withdrawn consent is asked again the next time its action runs.
 
-Withdraw: 1-4   q) leave   ?   › 2 4
-    2) check whether a harness is logged in   ✎ withdraw
-    4) approve the cost of a role task        ✎ withdraw
-Withdraw 2 consents? [Enter]   toggle: 1-4   q) leave   ?   › ⏎
+Withdraw: 1-6   q) leave   ?   › 3 6
 ✓ 2 consents withdrawn; they are asked again the next time.
+pm ›
 ----
 
-* The list is what the runtime remembers: the action, its consent kind, the project for a consent of a project (`model_cost`), and when it was given. A consent is never given here; it is given only where its action asks (xref:03-dialogues.adoc#consent[Consent]).
-* With no remembered consent the verb prints `No consent is remembered.` and returns.
+* One entry per remembered consent: the title of its kind (`common.consent.kind.<kind>`) and the kind; below it the project for a kind of a project (`inspect_checkout`, `run_checkout_scripts`, `model_cost`), for `run_checkout_scripts` the number of scripts it covers, when it was given, and where: `terminal`, or the label of the paired device that gave it in the web app. `?5` lists each script of the consent with its arguments and digest.
+* Numbers withdraw at once, without a confirmation: withdrawing only brings back a question. Withdrawing is audited with the channel `cli`.
+* A consent is never given here; it is given only where its action asks (xref:03-dialogues.adoc#consent[Consent]). With no remembered consent the verb prints `No consent is remembered.` and returns.
 
 [#t-providers-verify]
 === Providers Checked Again (`config providers --verify`)
@@ -222,18 +279,22 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 
 |`harness.consent`, `harness.scan`
 |`[O]`, `[S]`
-|xref:06-transcripts-steps-1-3.adoc#t-harness-consent[Consent and Scan (harness.consent, harness.scan)], <<t-config-no-input>>
+|xref:06-transcripts-steps-1-3.adoc#t-harness-consent[Consent and Scan (harness.consent, harness.scan)], <<t-config-no-input>>, <<t-config-harness>>
 
 |`harness.none`
 |`[S]`
 |xref:06-transcripts-steps-1-3.adoc#t-harness-none[None Found (harness.none)]
 
+|`harness.icons-consent`, `harness.fetch-icons`
+|`[O]`, `[S]`
+|xref:06-transcripts-steps-1-3.adoc#t-harness-icons[Icons (harness.icons-consent, harness.fetch-icons)], <<t-config-harness>>
+
 |`harness.choose`
 |`[O]`
-|xref:06-transcripts-steps-1-3.adoc#t-harness-choose[Choose (harness.choose)]
+|xref:06-transcripts-steps-1-3.adoc#t-harness-choose[Choose (harness.choose)], <<t-config-harness>>
 
 |`harness.probe-consent`, `harness.probe`, `harness.blocked`
-|`[O]`, `[S]`, `[S]`
+|`[O]`, `[S]`, `[O]`
 |xref:06-transcripts-steps-1-3.adoc#t-harness-probe[Check (harness.probe-consent, harness.probe, harness.blocked)], xref:05-transcripts-entry.adoc#t-auto[Automatic (auto.consent, auto.run, auto.result)]
 
 |`harness.confirm`, `harness.enrol`, `harness.done`
@@ -244,9 +305,9 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |`[O]`, `[O]`, `[S]`, `[O]`, `[S]`
 |xref:06-transcripts-steps-1-3.adoc#t-harness-add[Add a Harness That Is Not Listed (harness.add, harness.add-consent, harness.verify-profile, harness.add-confirm, harness.install-profile)]
 
-|`catalogue.consent`, `catalogue.scan`, `catalogue.advise`, `catalogue.select`, `catalogue.enrol`, `catalogue.record`, `catalogue.done`
-|`[O]`, `[S]`, `[M]`, `[O]`, `[S]`, `[S]`, end
-|xref:06-transcripts-steps-1-3.adoc#t-models[3 Models (catalogue.consent, catalogue.scan, catalogue.advise, catalogue.select, catalogue.enrol, catalogue.record, catalogue.done)]
+|`catalogue.consent`, `catalogue.models`, `catalogue.advise`, `catalogue.select`, `catalogue.record`, `catalogue.done`
+|`[O]`, `[S]`, `[M]`, `[O]`, `[S]`, end
+|xref:06-transcripts-steps-1-3.adoc#t-models[3 Models (catalogue.consent, catalogue.models, catalogue.advise, catalogue.select, catalogue.record, catalogue.done)]
 
 |`roles.load`, `roles.default`, `roles.review`, `roles.validate`, `roles.write`, `roles.done`
 |`[S]`, `[S]`, `[O]`, `[S]`, `[S]`, end
@@ -366,13 +427,17 @@ The terminal's lines of `web devices`, `config consents`, and `config providers 
 |Withdraw: {range}
 |Nimm zurück: {range}
 
-|`operator.consents.withdraw_mark`
-|withdraw
-|zurücknehmen
+|`operator.consents.channel_terminal`
+|terminal
+|Terminal
 
-|`operator.consents.withdraw_action`
-|Withdraw {count, plural, one {# consent} other {# consents}}
-|Nimm {count, plural, one {# Zustimmung} other {# Zustimmungen}} zurück
+|`operator.consents.scripts`
+|{count, plural, one {# script} other {# scripts}}
+|{count, plural, one {# Skript} other {# Skripte}}
+
+|`operator.consents.list_scripts`
+|lists them
+|listet sie auf
 
 |`operator.consents.withdrawn`
 |{count, plural, one {# consent withdrawn; it is} other {# consents withdrawn; they are}} asked again the next time.

@@ -126,8 +126,8 @@ plan-marshall is running. This machine is not set up yet.
   or the web app, continues where you stopped.
 
     1  Language     the language of plan-marshall and of the models' texts
-    2  Harness      the coding agent the server works with first
-    3  Models       the coding agents and models other plans may use
+    2  Harnesses    the coding agents the server works with, one of them the default
+    3  Models       the models plans may use on each coding agent
     4  Roles        a coding agent and a model for every role
     5  Credentials  where this machine keeps its tokens
     6  Providers    the git hosts, CI and analysis services this machine uses
@@ -177,7 +177,7 @@ plan-marshall is running. This machine is set up up to step 2 of 7; it
 stopped at [3/7] Models.
 
 Where do you want to go on?   h) here, in the terminal [Enter]   w) in the web app   ?   › ⏎
-[3/7] Models · Choose the harnesses and models other plans may use
+[3/7] Models · Choose the models plans may use
 …
 ----
 
@@ -228,22 +228,22 @@ pm ›
 
 [source,text]
 ----
-[3/7] Models · Choose the harnesses and models other plans may use
+[3/7] Models · Choose the models plans may use
   …
-Enrol OpenCode and allow 3 models? [Enter]   toggle: 1-6   b) back   ?   › 3
+Allow 4 models? [Enter]   toggle: 1-5   b) back   ?   › 3
 ◆ 1 question waiting: Q-007 · fix-relay · blocks the plan   ! shows it
     3) [x] haiku-5.5        ✎
-Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   › !
+Allow 5 models? [Enter]   toggle: 1-5   b) back   ?   › !
   [3/7] Models stays where it is; nothing was sent.
 Question Q-007 · plan fix-relay · blocks the plan
   …
 Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
 ✓ Q-007 answered: Rebase onto main.
 Back to [3/7] Models.
-[3/7] Models · Choose the harnesses and models other plans may use
+[3/7] Models · Choose the models plans may use
   …
     3) [x] haiku-5.5        ✎
-Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   ›
+Allow 5 models? [Enter]   toggle: 1-5   b) back   ?   ›
 ----
 
 [#t-console-kinds]
@@ -323,16 +323,27 @@ $
 ----
 Begin with step 1? [Enter]   a) decide everything for me   ?   › a
 Decide everything for me?
-  looks for   the harnesses claude, opencode, codex, agy in your PATH,
-              ~/.local/bin, /Applications, /opt/homebrew/bin
-              the tools git, gh, glab and the tokens already stored
-  runs        the version and login probe of each harness found,
-              the model probe of each harness that can list its models,
-              the version probe of each tool found
+  For this run only, without asking again, the server will:
+    look for harnesses             claude, opencode, codex, agy in your PATH,
+                                   ~/.local/bin, /Applications,
+                                   /opt/homebrew/bin, with the version probe
+                                   of each one found
+    fetch the icons of the harnesses
+                                   of the supported harnesses found, once, by
+                                   the runtime; only the web app shows them
+    check whether a harness is logged in
+                                   of each supported harness found; for one
+                                   without a login probe a short headless
+                                   call, paid with tokens of its account
+    ask the harnesses for their models
+                                   of each enrolled harness that can list them
+    look for CLI tools and stored tokens
+                                   the tools git, gh, glab and the tokens
+                                   already stored, with the version probe of
+                                   each tool found
   never       asks a model for advice, reads other files, sends anything over
-              the network except the provider checks
-  cost        none; for a harness that has no login probe, one short headless
-              call, paid with tokens of its account
+              the network except the provider checks and the icons
+  cost        none but the headless calls named above
   This consent is for this run only.
 
 y) yes   n) not now   ? lists every action   › n
@@ -344,9 +355,11 @@ Decide everything for me?
 y) yes   n) not now   ? lists every action   › y
 
 [1/7] Language     ✓ Deutsch, models too           from your system
-[2/7] Harness      ✓ Claude Code 2.4.1             the first supported one
-                     ✓ version   ✓ logged in
-[3/7] Models       ✓ 3 models on 2 harnesses       all found
+[2/7] Harnesses    ✓ Claude Code 2.4.1 (default), OpenCode 1.9.0
+                                                   every supported one found;
+                                                   the first the default
+                     ✓ icons   ✓ versions   ✓ logged in
+[3/7] Models       ✓ 8 models on 2 harnesses       all found
 [4/7] Roles        ✓ default assignment, 31 roles  the default
 [5/7] Credentials  ✓ macOS Keychain                available here
                      ✓ write   ✓ read   ✓ delete
@@ -364,7 +377,7 @@ Store and check it? [Enter]   ?   › ⏎
 
 Everything is decided.
   No model was asked; ask the steward to refine the roles: pm-operator config roles
-  Change any of it: pm-operator config <language|harness|models|roles|credentials|providers|plan-defaults>
+  Change any of it: pm-operator config <language|harnesses|models|roles|credentials|providers|plan-defaults>
 
 Finish? [Enter]   1-7) change that step   ?   › ⏎
 ✓ This machine is ready. Next: add a project: pm-operator project add, in its checkout.
@@ -374,28 +387,33 @@ pm ›
 
 * The automatic run is the choice `a` of `onboard.mode`, after _here_ in `entry.where-to-onboard`; there is no option for it.
 * `auto.consent` has no `r`: the automatic run's consent is never remembered. `n` returns to `onboard.mode` with `Nothing was done.`; nothing of the run has happened.
-* The cost line names the headless call because the consent is asked before the scan: whether a harness without a login probe is found is not known yet (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-login-probe[Login Probe]).
+* `auto.consent` lists the consents the run needs, each by its kind's title (`common.consent.kind.<kind>`) with what it looks for and runs (link:../shared/consents.adoc#auto[Consents, The Automatic Run's One Consent]); `?` lists every check. It covers exactly these, for this run only, and remembers none of them. A kind remembered earlier is listed with `remembered` in place of its detail and is not part of this consent. The automatic run asks no model, so `model_advice` is not listed; `fetch_icons` is, since the runtime fetches the icons for the web app whichever client runs the onboarding.
+* The headless call is named because the consent is asked before the scan: whether a harness without a login probe is found is not known yet (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-login-probe[Login Probe]).
 * *A state that needs a token* stops the run there: `providers.credentials` is shown as in the guided run, and the run continues after it. It has no way to skip the provider; a provider can be left out after its check fails (`providers.failed`), or the operator leaves with `q` and the run waits at that state.
 * *A step that needs the operator* (`auto.run` stops in a state of a step): the state is shown as in the guided run, under its step line, and the run continues after it:
 
 [source,text]
 ----
-[2/7] Harness      ✓ Claude Code 2.4.1             the first supported one
-                     ✓ version   ✗ not logged in
+[2/7] Harnesses    Claude Code 2.4.1 (default), OpenCode 1.9.0
+                     ✓ icons   ✓ versions   ✗ Claude Code not logged in
 
-[2/7] Harness · Checking Claude Code
+[2/7] Harnesses · Checking 2 harnesses
+  Claude Code
     ✓  version 2.4.1 is supported (2.0 – 2.x)
     ✗  not logged in
        → log in to Claude Code in another terminal, then check again:
          claude login
 
-Check again? [Enter]   o) choose another harness   q) leave   ?   › ⏎
+Check Claude Code again? [Enter]   x) leave it out   o) choose again   q) leave   ?   › ⏎
+  Claude Code
     ✓  version 2.4.1 is supported (2.0 – 2.x)
     ✓  logged in
-[3/7] Models       ✓ 3 models on 2 harnesses       all found
+[2/7] Harnesses    ✓ Claude Code 2.4.1 (default), OpenCode 1.9.0
+[3/7] Models       ✓ 8 models on 2 harnesses       all found
 …
 ----
 
+* *Models in the automatic run*: every model a harness lists is allowed; a harness that cannot list its models gets none allowed, and the result names it (`OpenCode: no model allowed`) with `config models` to add its model ids.
 * `auto.result`: a number opens that step's choice state with the automatic value as its proposal, as `config <aspect>` would, and returns to the result.
 
 [#t-mode]

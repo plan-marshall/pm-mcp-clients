@@ -92,7 +92,7 @@ A word not in the glossary is translated. A new domain word is added here before
 
 * *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in.
 * *Areas*, each a pack; a client loads only the areas it shows, and the web app loads `common` and `web` at start and every other area when it first opens a view of it:
-** `common`: texts every view uses;
+** `common`: texts every view uses, among them the texts of the consent states (link:consents.adoc#texts[Consents, Texts]);
 ** `onboard`: the onboarding of the machine;
 ** `web`: the frame and navigation of the web app;
 ** `plan`: the plan view (link:plan-view.adoc#texts[Plan View]);

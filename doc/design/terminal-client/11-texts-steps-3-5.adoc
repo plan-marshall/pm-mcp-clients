@@ -1,13 +1,89 @@
-= Terminal Client: Texts: Steps 4 and 5
+= Terminal Client: Texts: Steps 3 to 5
 :toc: left
 :toclevels: 3
 :nofooter:
 
-link:README.adoc[Terminal Client] » Texts: Steps 4 and 5
+link:README.adoc[Terminal Client] » Texts: Steps 3 to 5
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7]_
 
 The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
+
+[#texts-onboard-models]
+== 3 Models
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.catalogue.consent.title`
+|Ask the harnesses for their models, and a model for advice?
+|Die Harnesses nach ihren Modellen fragen, und ein Modell um Rat?
+
+|`onboard.catalogue.consent.probe`
+|List the models of {harnesses}
+|Die Modelle von {harnesses} auflisten
+
+|`onboard.catalogue.consent.advice`
+|Ask the steward which models suit which work
+|Den steward fragen, welche Modelle zu welcher Arbeit passen
+
+|`onboard.catalogue.consent.advice_runs`
+|a steward task on the default harness, {harness} · {model}
+|eine Aufgabe des steward auf dem vorgegebenen Harness, {harness} · {model}
+
+|`onboard.catalogue.consent.yes_both`
+|yes to both
+|ja zu beidem
+
+|`onboard.catalogue.consent.yes_both_remember`
+|yes to both, and don't ask again
+|ja zu beidem, und merken
+
+|`onboard.catalogue.consent.probes_only`
+|only list the models
+|liste nur die Modelle auf
+
+|`onboard.catalogue.models.count`
+|{count, plural, one {# model} other {# models}}
+|{count, plural, one {# Modell} other {# Modelle}}
+
+|`onboard.catalogue.models.cannot_list`
+|cannot list its models
+|kann seine Modelle nicht auflisten
+
+|`onboard.catalogue.select.title`
+|Choose the models plans may use
+|Wähle die Modelle, die Pläne nutzen dürfen
+
+|`onboard.catalogue.select.recommendation`
+|Recommendation by steward: {text}
+|Empfehlung des steward: {text}
+
+|`onboard.catalogue.select.why`
+|why
+|warum
+
+|`onboard.catalogue.select.add_model`
+|add a model id
+|füge eine Modell-Id hinzu
+
+|`onboard.catalogue.select.model_id_prompt`
+|Model id for {harness}
+|Modell-Id für {harness}
+
+|`onboard.catalogue.select.action`
+|Allow {count, plural, one {# model} other {# models}}
+|Erlaube {count, plural, one {# Modell} other {# Modelle}}
+
+|`onboard.catalogue.select.none_allowed`
+|{harness}: no model allowed
+|{harness}: kein Modell erlaubt
+
+|`onboard.catalogue.done`
+|{models, plural, one {# model} other {# models}} allowed on {harnesses, plural, one {# harness} other {# harnesses}}
+|{models, plural, one {# Modell} other {# Modelle}} erlaubt auf {harnesses, plural, one {# Harness} other {# Harnesses}}
+|===
 
 [#texts-onboard-roles]
 == 4 Roles
@@ -161,8 +237,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Den steward die Vorgaben verfeinern lassen?
 
 |`onboard.roles.consent.runs`
-|a steward task on {harness} · {model}: it reads the roles, the catalogue, and the qualification records of your projects
-|eine Aufgabe des steward auf {harness} · {model}: er liest die Roles, den Katalog und die Qualifizierungsnachweise deiner Projekte
+|a steward task on the default harness, {harness} · {model}: it reads the roles, the catalogue, and the qualification records of your projects
+|eine Aufgabe des steward auf dem vorgegebenen Harness, {harness} · {model}: er liest die Roles, den Katalog und die Qualifizierungsnachweise deiner Projekte
 
 |`onboard.roles.consent.never`
 |changes a role: you accept or reject each proposal
