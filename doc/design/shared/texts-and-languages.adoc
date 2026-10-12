@@ -60,7 +60,7 @@ The domain vocabulary stays as it is in every language: it is what the operator 
 |Outline |das |the plan's outline phase and its result
 |Waiver |der |the operator's waiver of a gate
 |Lane |die |a planning lane
-|Workflow, State, Link |der, der, der |the workflow language and its parts
+|Workflow, Sub-Workflow, State, Link |der, der, der, der |the workflow language and its parts
 |===
 
 A word not in the glossary is translated. A new domain word is added here before it is used in a text.

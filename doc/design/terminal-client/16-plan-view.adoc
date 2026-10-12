@@ -1,0 +1,166 @@
+= Terminal Client: The Plan View
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » The Plan View
+
+What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan View], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]). This part is how the console draws it: as the third level of the full-screen view of xref:15-overview.adoc[The Overview], and as a tree in the scrollback. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
+
+[#plan-view-ways]
+== Two Ways
+
+* *In the full-screen view*: `Enter` on a plan in `plans` opens its plan view in the same view; `Esc` goes back to the project (<<full-screen>>).
+* *`plan <plan_id>`* prints the plan's process as a tree into the scrollback, opened down to where the plan is; `--all` opens every level, `--depth <n>` opens n levels (<<tree>>). It is the accessible path and the fallback of the full-screen view, as `status` is for the overview.
+
+[#full-screen]
+== In the Full-Screen View
+
+[#full-screen-tree]
+=== A Tree to Open and Close
+
+----
+ fix-relay › execute                                                   ● connected
+ ─────────────────────────────────────────────────────────────────────────────
+   ✓ phase  init                                    done · 2 min
+   ✓ phase  refine                                  done · 14 min
+   ✓ phase  outline                                 done · 31 min
+   ✓ phase  plan                                    done · 9 min
+ ▾ ▶ phase  execute                                 running · 25 min
+     ✓ envelope-ready                               done ×2
+▶  ▾ ▶ envelope-ready                               running · run 3
+         ▶ tasks  4 of 7 tasks done
+     ○ envelope-close                               planned
+ ▸ ○ phase  finalize                                planned
+     · not in this plan: land (deep lane)
+ ─────────────────────────────────────────────────────────────────────────────
+ ↑↓ move   → open   ← close   Enter details   . where it is   Esc back
+----
+
+* The plan view is a tree: `▸` a closed node, `▾` an open one; `→` (`l`) opens the selected node one level, `←` (`h`) closes it or moves to its parent.
+* It opens with the path to the plan's current position open and the selection on the running leaf; `.` jumps there again from anywhere.
+* The header is the path from the plan to the selected node.
+* `Enter` on a leaf shows its details below it (<<full-screen-leaf>>); on a node that waits for the operator it leaves the view and opens the decision, as `answer` does.
+
+[#full-screen-sub]
+=== Sub-Workflows
+
+----
+ fix-relay › finalize › remediation.ci-failure                         ● connected
+ ─────────────────────────────────────────────────────────────────────────────
+ ▾ ▶ phase  finalize                                running · 40 min
+     ✓ create-pr                                    done
+     ✓ automatic-review                             done
+   ▾ ▶ ↳ sub-workflow  remediation.ci-failure       running · run 2
+       ✓ analyze                                    done ×2
+     ▾ ▶ ↳ sub-workflow  git.commit_and_push        running
+▶        ▶ push                                     running · 0:12
+         ○ verify-remote                            planned
+       ○ await-ci                                   planned
+     – await-waiver                                 not taken
+     ○ merge                                        planned
+ ─────────────────────────────────────────────────────────────────────────────
+----
+
+* A sub-workflow's line carries `↳` and the word `sub-workflow`; it opens like a phase, through every level of nesting.
+* A branch not taken is `–` with `not taken`; it is shown where the workflow branched and opens to show what it would have run.
+
+[#full-screen-leaf]
+=== A Leaf
+
+----
+     ▾ ▶ envelope-ready                               running · run 3
+         tasks: 4 of 7 done
+           ✓ implement   Claude Code sonnet-5.5   attempt 1   submitted   18 min
+           ✓ implement   Claude Code sonnet-5.5   attempt 1   submitted   11 min
+           ▶ implement   Claude Code sonnet-5.5   attempt 2   executing    4 min
+           …
+         entered 14:02 (run 3), 13:31 (run 2, left 13:58), 13:07 (run 1, left 13:29)
+----
+
+[#full-screen-keys]
+=== Keys
+
+In addition to the keys of the overview (xref:15-overview.adoc#full-screen-keys[Keys]):
+
+[cols="1,3",options="header"]
+|===
+|Key |Action
+
+|`→`, `l`
+|open the selected node one level
+
+|`←`, `h`
+|close the selected node, or move to its parent
+
+|`.`
+|jump to where the plan is
+
+|`*`
+|open every level below the selected node
+
+|`n`
+|show or hide the nodes not in this plan
+|===
+
+[#full-screen-live]
+=== Live
+
+The tree follows the plan's events; the selection stays on its node. When the plan changes its composition, the view reads the process again and prints `The plan changed: replan` in the header for a moment; when the plan ends, the header says so and the tree stays as it ended.
+
+[#tree]
+== The Tree (`plan`)
+
+[source,text]
+----
+pm › plan fix-relay
+fix-relay · execute · running · 2 h 10 min
+  done      phase init                       2 min
+  done      phase refine                     14 min
+  done      phase outline                    31 min
+  done      phase plan                       9 min
+  running   phase execute                    25 min
+    done ×2   envelope-ready
+    running   envelope-ready                 run 3 · tasks: 4 of 7 done
+    planned   envelope-close
+  planned   phase finalize
+  not in this plan: land (deep lane)
+pm ›
+----
+
+* The tree uses words for the states, so that it reads the same without glyphs and colour; sub-workflows carry the word `sub-workflow`.
+* `plan fix-relay --all` opens every level; `--depth 2` opens two.
+
+[#plan-view-texts]
+== Texts of the Terminal
+
+The texts of the nodes are those of link:../shared/plan-view.adoc#texts[Plan View, Texts]; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.plan.keys.open`
+|open
+|öffnen
+
+|`operator.plan.keys.close`
+|close
+|schließen
+
+|`operator.plan.keys.details`
+|details
+|Details
+
+|`operator.plan.keys.where`
+|where it is
+|wo er steht
+
+|`operator.plan.keys.all`
+|open all
+|alle öffnen
+
+|`operator.plan.keys.not_in_plan`
+|not in this plan
+|nicht in diesem Plan
+|===

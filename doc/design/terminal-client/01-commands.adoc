@@ -39,6 +39,7 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
 
 In the console only:
   plans                       the overview of running work, full screen (15-overview)
+  plan <plan_id> [--all|--depth <n>]   a plan's process as a tree (16-plan-view)
   questions                   the open questions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a question as a dialogue, or answer it with an option
   web [pair|lan|copy [ssh]]   the ways into the web app; a new code; other devices; copy the URL or the ssh command

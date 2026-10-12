@@ -171,6 +171,24 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:decision-contract.adoc[`decision-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
 |epic clients
 
+|link:process-contract.adoc[`process-contract`]
+|A plan's process: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/phase-sub-workflows.adoc[`pm-mcp-core` / `phase-sub-workflows`]; UC-PLN-1 agreed (no work package)
+|epic clients
+
+|link:cli-plan-view.adoc[`cli-plan-view`]
+|A plan's process in the terminal
+|`blocked`
+|link:process-contract.adoc[`process-contract`]; link:cli-overview.adoc[`cli-overview`]
+|epic clients
+
+|link:web-plan-view.adoc[`web-plan-view`]
+|A plan's process in the web app
+|`blocked`
+|link:process-contract.adoc[`process-contract`]; link:web-overview.adoc[`web-overview`]
+|epic clients
+
 |link:overview-contract.adoc[`overview-contract`]
 |Overview of running work: contract and mock runtime
 |`blocked`

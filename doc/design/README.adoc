@@ -41,6 +41,10 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |What both clients show of the running work across projects: the projects with running work, a project by plan and by orchestrator, what a row shows, how plans and orchestrators are told apart, live updates, and where the operator left it.
 
+|link:shared/plan-view.adoc[Plan View]
+|`DRAFT`
+|What both clients show of one plan's process: its phases and sub-workflows down to the leaves, each with its state (done, running, planned, waiting for you, failed, not taken, not in this plan), loops, the path to where the plan is, and the leaves' jobs and tasks.
+
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`
 |What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).

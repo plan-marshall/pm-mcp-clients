@@ -1,0 +1,25 @@
+= A plan's process in the web app
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `web-plan-view`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]; no roadmap milestone yet
+Where:: `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* The view of a plan as designed: its process level by level, the kinds with the icons of the design system, the states as glyph and word, the path with its way back, the jump to where the plan is, a leaf's details, live updates; at desktop and phone width, light and dark.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+
+* Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]
+* Design: link:../design/shared/plan-view.adoc[Plan View]; the web app's views of `web-design`
+
+== Done When
+
+Every scenario of `process-contract` passes as a view test; the same scenarios pass in the terminal (`cli-plan-view`).
