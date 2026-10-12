@@ -1,11 +1,11 @@
-= Terminal Client: Texts: Steps 1 to 3
+= Terminal Client: Texts: Steps 1 and 2
 :toc: left
 :toclevels: 3
 :nofooter:
 
-link:README.adoc[Terminal Client] » Texts: Steps 1 to 3
+link:README.adoc[Terminal Client] » Texts: Steps 1 and 2
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]_
 
 The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
 
@@ -80,7 +80,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 The names of the languages are each written in their own language, in every pack, so the operator finds their own.
 
 [#texts-onboard-harness]
-== 2 Harness
+== 2 Harnesses
 
 [cols="3,3,3",options="header"]
 |===
@@ -114,9 +114,41 @@ The names of the languages are each written in their own language, in every pack
 |Looking for harnesses: {count, plural, =0 {none found} one {# found} other {# found}}
 |Suche nach Harnesses: {count, plural, =0 {keiner gefunden} one {# gefunden} other {# gefunden}}
 
+|`onboard.harness.icons_consent.title`
+|Fetch the makers' icons of the found harnesses?
+|Die Icons der Hersteller der gefundenen Harnesses laden?
+
+|`onboard.harness.icons_consent.looks_for`
+|the makers' icons of {harnesses}
+|die Icons der Hersteller von {harnesses}
+
+|`onboard.harness.icons_consent.runs`
+|one download of each, by the runtime, from the address in its profile; stored on this machine
+|einen Download je Icon, durch die Runtime, von der Adresse in seinem Profil; gespeichert auf dieser Maschine
+
+|`onboard.harness.icons_consent.never`
+|sends data of yours or of this machine; the maker's server sees only a download request from this machine's address (through the proxy, if one is set); your browser never loads them
+|sendet Daten von dir oder dieser Maschine; der Server des Herstellers sieht nur eine Download-Anfrage von der Adresse dieser Maschine (über den Proxy, falls einer eingestellt ist); dein Browser lädt sie nie
+
+|`onboard.harness.icons_consent.only_web`
+|Only the web app shows them. With {key} it shows monograms.
+|Nur die Web-App zeigt sie. Mit {key} zeigt sie Monogramme.
+
+|`onboard.harness.icons_consent.no`
+|Nothing was fetched; the web app shows monograms.
+|Es wurde nichts geladen; die Web-App zeigt Monogramme.
+
+|`onboard.harness.fetch_icons.done`
+|Icons fetched: {count}
+|Icons geladen: {count}
+
+|`onboard.harness.fetch_icons.failed`
+|The icon of {harness} was not fetched: {cause}. Its monogram stays.
+|Das Icon von {harness} wurde nicht geladen: {cause}. Sein Monogramm bleibt.
+
 |`onboard.harness.choose.title`
-|Choose the harness to start with
-|Wähle den Harness, mit dem du beginnst
+|Choose the harnesses to enrol
+|Wähle die Harnesses, die du registrierst
 
 |`onboard.harness.choose.found`
 |Found on this machine:
@@ -134,13 +166,45 @@ The names of the languages are each written in their own language, in every pack
 |not found
 |nicht gefunden
 
-|`onboard.harness.choose.note`
-|The first harness also runs the advice in the next steps. You can add the others in step 3, Models.
-|Der erste Harness führt auch die Beratung der nächsten Schritte aus. Die anderen kannst du in Schritt 3, Modelle, hinzufügen.
+|`onboard.harness.choose.default`
+|default
+|Vorgabe
 
-|`onboard.harness.choose.action_check`
-|Check {harness}
-|Prüfe {harness}
+|`onboard.harness.choose.default_moved`
+|{harness} is now the default.
+|{harness} ist jetzt die Vorgabe.
+
+|`onboard.harness.choose.new`
+|new since the last run
+|neu seit dem letzten Lauf
+
+|`onboard.harness.choose.missing`
+|missing: not found any more
+|fehlt: nicht mehr gefunden
+
+|`onboard.harness.choose.changed`
+|was {version}: checked and enrolled again
+|war {version}: wird geprüft und neu registriert
+
+|`onboard.harness.choose.used_by_roles`
+|used by {count, plural, one {# role} other {# roles}}; reassign them first: {command}
+|von {count, plural, one {# Role} other {# Roles}} benutzt; weise sie zuerst neu zu: {command}
+
+|`onboard.harness.choose.note`
+|The default runs the steward of the next steps and is proposed for new roles.
+|Die Vorgabe führt den steward der nächsten Schritte aus und wird für neue Roles vorgeschlagen.
+
+|`onboard.harness.choose.action`
+|Check {count, plural, one {# harness} other {# harnesses}}, {default} the default
+|Prüfe {count, plural, one {# Harness} other {# Harnesses}}, {default} als Vorgabe
+
+|`onboard.harness.choose.set_default`
+|set the default
+|lege die Vorgabe fest
+
+|`onboard.harness.choose.none_chosen`
+|Choose at least one
+|Wähle mindestens einen
 
 |`onboard.harness.choose.add`
 |add a harness that is not listed
@@ -163,8 +227,12 @@ The names of the languages are each written in their own language, in every pack
 |Oder füge einen Harness, der nicht aufgeführt ist, über sein Programm hinzu.
 
 |`onboard.harness.probe_consent.title`
-|Check whether {harness} is logged in?
-|Prüfen, ob {harness} angemeldet ist?
+|Check whether the chosen harnesses are logged in?
+|Prüfen, ob die gewählten Harnesses angemeldet sind?
+
+|`onboard.harness.probe_consent.runs_item`
+|{command}   ({harness})
+|{command}   ({harness})
 
 |`onboard.harness.probe_consent.never`
 |starts a session, sends a prompt
@@ -178,9 +246,13 @@ The names of the languages are each written in their own language, in every pack
 |one minimal headless call of {harness}
 |einen minimalen Aufruf von {harness} ohne Oberfläche
 
+|`onboard.harness.probe_consent.cost_call`
+|about {amount}, tokens of your {harness} account
+|etwa {amount}, Tokens deines {harness}-Kontos
+
 |`onboard.harness.probe.title`
-|Checking {harness}
-|Prüfe {harness}
+|Checking {count, plural, one {# harness} other {# harnesses}}
+|Prüfe {count, plural, one {# Harness} other {# Harnesses}}
 
 |`onboard.harness.probe.version_ok`
 |version {version} is supported ({range})
@@ -206,17 +278,29 @@ The names of the languages are each written in their own language, in every pack
 |install a version in {range}, then check again
 |installiere eine Version in {range} und prüfe dann erneut
 
-|`onboard.harness.blocked.choose_another`
-|choose another harness
-|wähle einen anderen Harness
+|`onboard.harness.blocked.action_recheck`
+|Check {harness} again
+|Prüfe {harness} erneut
+
+|`onboard.harness.blocked.leave_out`
+|leave it out
+|lass ihn weg
+
+|`onboard.harness.blocked.choose_again`
+|choose again
+|wähle andere aus
+
+|`onboard.harness.blocked.left_out`
+|left out
+|weggelassen
 
 |`onboard.harness.confirm.title`
-|Enrol {harness}
-|{harness} registrieren
+|Enrol {count, plural, one {# harness} other {# harnesses}}
+|Registriere {count, plural, one {# Harness} other {# Harnesses}}
 
 |`onboard.harness.confirm.intro`
-|The server will remember this program and start workers with it only while it is unchanged:
-|Der Server merkt sich dieses Programm und startet Worker damit nur, solange es unverändert ist:
+|The server will remember these programs and start workers with them only while they are unchanged:
+|Der Server merkt sich diese Programme und startet Worker damit nur, solange sie unverändert sind:
 
 |`onboard.harness.confirm.path`
 |Path
@@ -230,13 +314,25 @@ The names of the languages are each written in their own language, in every pack
 |SHA-256
 |SHA-256
 
+|`onboard.harness.confirm.remove`
+|Remove {harness}: its enrolment is deleted
+|Entferne {harness}: seine Registrierung wird gelöscht
+
+|`onboard.harness.confirm.keep`
+|Keep as it is
+|Lass es, wie es ist
+
 |`onboard.harness.confirm.action`
-|Enrol {harness}
-|Registriere {harness}
+|Enrol {count, plural, one {# harness} other {# harnesses}}, {default} the default
+|Registriere {count, plural, one {# Harness} other {# Harnesses}}, {default} als Vorgabe
 
 |`onboard.harness.done`
-|{harness} {version} enrolled
-|{harness} {version} registriert
+|{count, plural, one {# harness} other {# harnesses}} enrolled: {list}
+|{count, plural, one {# Harness} other {# Harnesses}} registriert: {list}
+
+|`onboard.harness.done.no_models`
+|{harness} has no model allowed yet: run ③ Models.
+|{harness} hat noch kein erlaubtes Modell: führe ③ Modelle aus.
 
 |`onboard.harness.add.title`
 |Add a harness
@@ -357,84 +453,4 @@ The names of the languages are each written in their own language, in every pack
 |`onboard.harness.install.done`
 |Profile of {harness} installed
 |Profil von {harness} installiert
-|===
-
-[#texts-onboard-models]
-== 3 Models
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`onboard.catalogue.consent.title`
-|Ask the harnesses for their models, and a model for advice?
-|Die Harnesses nach ihren Modellen fragen, und ein Modell um Rat?
-
-|`onboard.catalogue.consent.probe`
-|List the models of {harnesses}
-|Die Modelle von {harnesses} auflisten
-
-|`onboard.catalogue.consent.advice`
-|Ask the steward which harnesses and models suit which work
-|Den steward fragen, welche Harnesses und Modelle zu welcher Arbeit passen
-
-|`onboard.catalogue.consent.advice_runs`
-|a steward task on {harness} · {model}
-|eine Aufgabe des steward auf {harness} · {model}
-
-|`onboard.catalogue.consent.yes_both`
-|yes to both
-|ja zu beidem
-
-|`onboard.catalogue.consent.yes_both_remember`
-|yes to both, and don't ask again
-|ja zu beidem, und merken
-
-|`onboard.catalogue.consent.yes_one`
-|yes to that one only
-|ja nur zu diesem
-
-|`onboard.catalogue.scan.models`
-|{count, plural, one {# model} other {# models}}
-|{count, plural, one {# Modell} other {# Modelle}}
-
-|`onboard.catalogue.select.title`
-|Choose the harnesses and models other plans may use
-|Wähle die Harnesses und Modelle, die andere Pläne nutzen dürfen
-
-|`onboard.catalogue.select.recommendation`
-|Recommendation by steward: {text}
-|Empfehlung des steward: {text}
-
-|`onboard.catalogue.select.why`
-|why
-|warum
-
-|`onboard.catalogue.select.enrolled`
-|enrolled
-|registriert
-
-|`onboard.catalogue.select.found_not_enrolled`
-|found, not enrolled
-|gefunden, nicht registriert
-
-|`onboard.catalogue.select.enrol`
-|enrol {harness}
-|registriere {harness}
-
-|`onboard.catalogue.select.add_model`
-|add a model id
-|füge eine Modell-Id hinzu
-
-|`onboard.catalogue.select.model_id_prompt`
-|Model id for {harness}
-|Modell-Id für {harness}
-
-|`onboard.catalogue.select.action`
-|{enrol, select, none {} other {Enrol {enrol} and }}allow {count, plural, one {# model} other {# models}}
-|{enrol, select, none {Erlaube} other {Registriere {enrol} und erlaube}} {count, plural, one {# Modell} other {# Modelle}}
-
-|`onboard.catalogue.done`
-|{models, plural, one {# model} other {# models}} allowed on {harnesses, plural, one {# harness} other {# harnesses}}
-|{models, plural, one {# Modell} other {# Modelle}} erlaubt auf {harnesses, plural, one {# Harness} other {# Harnesses}}
 |===

@@ -200,6 +200,8 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set web.port <port>
 |===
 
+The `common.consent.*` keys above are the texts of the consent state of both clients (link:../shared/consents.adoc#pattern[Consents, The Consent State]); the title of each consent kind, `common.consent.kind.<kind>`, is defined with the kinds (link:../shared/consents.adoc#texts[Consents, Texts]).
+
 The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. `common.error.state_moved` is also the line the console prints when another channel answered the state it shows, with `{channel}` one of the shared `decision.channel.web` and `decision.channel.cli`; `common.error.credential_store_unavailable` is the text of `precondition_unmet` with `facts.reason: credential_store_unavailable`. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
 
 [#texts-onboard]
@@ -216,9 +218,9 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |Language
 |Sprache
 
-|`onboard.step.harness`
-|Harness
-|Harness
+|`onboard.step.harnesses`
+|Harnesses
+|Harnesses
 
 |`onboard.step.models`
 |Models
@@ -244,13 +246,13 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |the language of plan-marshall and of the models' texts
 |die Sprache von plan-marshall und der Texte der Modelle
 
-|`onboard.step.harness.summary`
-|the coding agent the server works with first
-|der Coding Agent, mit dem der Server zuerst arbeitet
+|`onboard.step.harnesses.summary`
+|the coding agents the server works with, one of them the default
+|die Coding Agents, mit denen der Server arbeitet, einer davon die Vorgabe
 
 |`onboard.step.models.summary`
-|the coding agents and models other plans may use
-|die Coding Agents und Modelle, die andere Pläne nutzen dürfen
+|the models plans may use on each coding agent
+|die Modelle, die Pläne auf jedem Coding Agent nutzen dürfen
 
 |`onboard.step.roles.summary`
 |a coding agent and a model for every role
@@ -304,6 +306,8 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 [#texts-onboard-auto]
 ==== Automatic Run
 
+`auto.consent` lists each consent of the run as the title of its kind (`common.consent.kind.<kind>`, link:../shared/consents.adoc#texts[Consents, Texts]) with its detail (`onboard.auto.consent.detail.<kind>`), or `onboard.auto.consent.remembered` where the kind is remembered (link:../shared/consents.adoc#auto[Consents, The Automatic Run's One Consent]).
+
 [cols="3,3,3",options="header"]
 |===
 |Key |English |German
@@ -312,21 +316,41 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |Decide everything for me?
 |Alles für mich entscheiden?
 
-|`onboard.auto.consent.looks_for`
-|the harnesses {programs} in {dirs}; the tools {tools} and the tokens already stored
-|die Harnesses {programs} in {dirs}; die Werkzeuge {tools} und die schon gespeicherten Tokens
+|`onboard.auto.consent.intro`
+|For this run only, without asking again, the server will:
+|Nur für diesen Lauf und ohne erneut zu fragen wird der Server:
 
-|`onboard.auto.consent.runs`
-|the version and login probe of each harness found, the model probe of each harness that can list its models, the version probe of each tool found
-|die Versions- und Anmeldeprüfung jedes gefundenen Harness, die Modellabfrage jedes Harness, der seine Modelle auflisten kann, die Versionsprüfung jedes gefundenen Werkzeugs
+|`onboard.auto.consent.detail.scan_harnesses`
+|{programs} in {dirs}, with the version probe of each one found
+|{programs} in {dirs}, mit der Versionsprüfung jedes gefundenen
+
+|`onboard.auto.consent.detail.fetch_icons`
+|of the supported harnesses found, once, by the runtime; only the web app shows them
+|der gefundenen unterstützten Harnesses, einmal, durch die Runtime; nur die Web-App zeigt sie
+
+|`onboard.auto.consent.detail.probe_harness_login`
+|of each supported harness found; for one without a login probe a short headless call, paid with tokens of its account
+|jedes gefundenen unterstützten Harness; für einen ohne Anmeldeprüfung ein kurzer Aufruf ohne Oberfläche, bezahlt mit Tokens seines Kontos
+
+|`onboard.auto.consent.detail.probe_harness_models`
+|of each enrolled harness that can list them
+|jedes registrierten Harness, der sie auflisten kann
+
+|`onboard.auto.consent.detail.scan_providers`
+|the tools {tools} and the tokens already stored, with the version probe of each tool found
+|die Werkzeuge {tools} und die schon gespeicherten Tokens, mit der Versionsprüfung jedes gefundenen Werkzeugs
+
+|`onboard.auto.consent.remembered`
+|remembered
+|gemerkt
 
 |`onboard.auto.consent.never`
-|asks a model for advice, reads other files, sends anything over the network except the provider checks
-|fragt ein Modell um Rat, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider
+|asks a model for advice, reads other files, sends anything over the network except the provider checks and the icons
+|fragt ein Modell um Rat, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider und den Icons
 
 |`onboard.auto.consent.cost`
-|none; for a harness that has no login probe, one short headless call, paid with tokens of its account
-|keine; für einen Harness ohne Anmeldeprüfung ein kurzer Aufruf ohne Oberfläche, bezahlt mit Tokens seines Kontos
+|none but the headless calls named above
+|keine außer den oben genannten Aufrufen ohne Oberfläche
 
 |`onboard.auto.consent.list_all`
 |lists every action
@@ -364,9 +388,9 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |the only supported one
 |der einzige unterstützte
 
-|`onboard.auto.reason.first_supported`
-|the first supported one
-|der erste unterstützte
+|`onboard.auto.reason.all_supported`
+|every supported one found; the first the default
+|jeder gefundene unterstützte; der erste als Vorgabe
 
 |`onboard.auto.reason.all_found`
 |all found

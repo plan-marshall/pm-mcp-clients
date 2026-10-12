@@ -202,11 +202,6 @@ The review goes through the items of one register, one at a time, open ones firs
 * *An item from outside the machine* (a finding from a review comment) carries `untrusted`, and its text is shown as text, never rendered.
 * *Finish* writes the decisions to the epic's ledger, where they are landed; leaving before keeps them, and the review opens where it stopped, in either client.
 
-[#open-points]
-== Open Points
-
-* Whether an epic can be paused as a whole (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]): today the operator pauses its plans one by one, and the epic starts no plan while its scope is full. Until it is decided, an epic offers no _Pause_.
-
 [#texts]
 == Texts
 

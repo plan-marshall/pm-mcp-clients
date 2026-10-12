@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » link:README.adoc[Web App] » Machine Settings
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect, the remembered consents), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect, the remembered consents), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4] (the harnesses again), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices)_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Onboarding, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal] (proposed)_
 
@@ -23,7 +23,7 @@ Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every 
 │                                                                              │
 │  How this machine is set up                                                  │
 │    ① Language     Deutsch, models English                        [ Change ]  │
-│    ② Harness      Claude Code 2.4.1 (+ OpenCode 1.9.0)           [ Change ]  │
+│    ② Harnesses    Claude Code 2.4.1 (default), OpenCode 1.9.0    [ Change ]  │
 │    ③ Models       4 models on 2 harnesses                        [ Change ]  │
 │    ④ Roles        31 roles · 1 ✎ steward    [ Ask the steward… ] [ Change ]  │
 │    ⑤ Credentials  macOS Keychain                                 [ Change ]  │
@@ -36,10 +36,11 @@ Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every 
 │                                                                 [ Check ]    │
 │                                                                              │
 │  Remembered consents                                                         │
-│    Look for harnesses on this machine          12 Oct · terminal [ Withdraw ]│
-│    Check whether Claude Code is logged in?     12 Oct · Firefox  [ Withdraw ]│
-│    Look for CLI tools and stored tokens?       12 Oct · terminal [ Withdraw ]│
-│    Run the scripts of pm-mcp-clients (3)       14 Oct · Firefox  [ Withdraw ]│
+│    look for harnesses                          12 Oct · terminal [ Withdraw ]│
+│    check whether a harness is logged in        12 Oct · Firefox  [ Withdraw ]│
+│    look for CLI tools and stored tokens        12 Oct · terminal [ Withdraw ]│
+│    run scripts of a project's checkout                                       │
+│      pm-mcp-clients · 3 scripts                14 Oct · Firefox  [ Withdraw ]│
 │                                                                              │
 │  Paired devices      3 devices · network listener off           [ Manage ]   │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -49,12 +50,51 @@ Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every 
 == A Later Run of One Aspect
 
 * *Change* runs the aspect's sub-workflow again as a later run (`onboard.entry` with `reconfigure <aspect>`): it opens in the frame of the onboarding (link:onboarding.adoc#frame[Onboarding, Frame]), the step bar showing only that aspect, the current values as the proposal. The screens are those of the first run, with the consents that are not remembered asked again; at its end the app returns here.
+* A later run of the harnesses offers the new ones and removes the missing ones (<<harnesses>>).
 * A later change of the credential store moves the tokens (link:onboarding-steps-4-7.adoc#store-move[Onboarding, A Later Change Moves the Tokens]).
 * *Ask the steward…* is the later run of the roles opened directly at the steward's consent (`roles.consent`); after the automatic run, it is where the operator asks a model for the first time.
 * The interface language changes the app at once, as in the first run.
 * An aspect a project sets for itself is changed in that project's setup, never here; the line says only what the machine provides.
 
 Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-later.adoc#t-later[Terminal Client, Later Changes]).
+
+[#harnesses]
+== The Harnesses Again
+
+*Change* on ② runs the harnesses' sub-workflow as a later run (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], variations): the scan runs again under its consent, and the icons' consent follows as in the first run (link:onboarding.adoc#harness[Onboarding, ② Harnesses]). The choice then starts from what is enrolled:
+
+[source,text]
+----
+  Choose the harnesses to enrol
+
+  Found on this machine:                                         default
+
+  [x] CC  Claude Code   2.5.0   ~/.local/bin/claude          ✓ supported   (•)
+                                was 2.4.1: checked and enrolled again
+  [ ] OC  OpenCode      —       /opt/homebrew/bin/opencode
+                                missing: not found any more
+  [ ] CX  Codex         0.40.0  /opt/homebrew/bin/codex      ✓ new since the
+                                                               last run    ( )
+      AG  Antigravity   —       not found
+
+  ▸ Advanced: add a harness that is not listed
+
+  [ Back to the settings ]   [ Look again ]
+                                  [ Check 1 harness, Claude Code the default ]
+----
+
+* *The proposal is the current state*: every enrolled harness that is found is ticked, the default as recorded. A harness found that is not enrolled is offered, marked `new since the last run` and not ticked; ticking it adds it.
+* *Missing*: an enrolled harness no longer found is shown with the path it was enrolled at, `missing: not found any more`, and unticked: it is offered for removal. Ticking it keeps it only once it is found again (*Look again*, or its path under _Advanced_).
+* *Used by roles*: a harness that roles use cannot be removed, neither by unticking it nor as missing. Its row stays ticked and locked, with `used by 6 roles; reassign them first:` and the link _Reassign them_ that opens the later run of the roles (link:onboarding-steps-4-7.adoc#roles[Onboarding, ④ Roles]) filtered to them; the harness keeps its roles until then. Its default mark can still move.
+* *Default*: any ticked harness can be made the default; the change is shown in the confirmation.
+* *Back to the settings* (`web.settings.back`) leaves the later run without a change.
+* *A changed program* (a new version or digest at the same path) is checked and enrolled again with the others; the line says what it was.
+* The check (link:onboarding.adoc#harness-probe[Onboarding, Check]) runs for every ticked harness, the consent `probe_harness_login` asked unless remembered. The confirmation (link:onboarding.adoc#harness-confirm[Onboarding, Confirm]) lists what changes: each harness to enrol with its path, version and digest, the new ones marked `new since the last run`, each one to remove as `Remove OpenCode: its enrolment is deleted`, and the default in the button; with nothing changed its button reads *Keep as it is*.
+* A harness added or removed changes what ③ Models can allow: the allowed models of a removed harness are removed with it, and a new one has none until ③ is run again, which the result says (`Codex has no model allowed yet: run ③ Models.`).
+
+The texts are those of the onboarding (link:onboarding-texts.adoc#texts-shared[Onboarding, Texts]).
+
+Terminal: `pm-operator config harnesses` (link:../terminal-client/08-transcripts-later.adoc#t-later[Terminal Client, Later Changes]).
 
 [#providers]
 == Providers Verified Again
@@ -81,7 +121,7 @@ Terminal: `pm-operator config providers --verify` (link:../terminal-client/08-tr
 [#consents]
 == Remembered Consents
 
-Every consent the operator remembered (_yes, and don't ask again_), from either client: the action by the title of its consent, when it was given, where (the terminal, or the label of the paired device), and for a consent of a project its project and, for the scripts of a checkout, how many scripts it covers.
+The list of link:../shared/consents.adoc#remembered[Consents, The Remembered Consents], the same in both clients: every consent the operator remembered (_yes, and don't ask again_), from either client, one line each: the action by its kind's title (`common.consent.kind.<kind>`, link:../shared/consents.adoc#kinds[Consents, The Kinds]), when it was given, where (`terminal`, or the label of the paired device), and for a kind of a project its project and, for `run_checkout_scripts`, how many scripts it covers.
 
 * *Withdraw* removes it at once; the line is replaced by `Withdrawn: you will be asked again next time.` Withdrawing asks nothing first: it only brings back a question. Both remembering and withdrawing are audited.
 * With none remembered, the section says `No consent is remembered: you are asked every time.`
@@ -98,7 +138,7 @@ Terminal: `pm-operator web devices` (link:../terminal-client/08-transcripts-late
 [#texts]
 == Texts
 
-Keys of the area `web`. The lines of the aspects use the summaries of the onboarding's result (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Done]) and the step names `onboard.step.*`; the check lines and the links of a provider are those of `providers.verify` and `providers.failed` (link:../terminal-client/12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]); a consent is named by the title of its consent state (`onboard.harness.consent.title`, …).
+Keys of the area `web`. The lines of the aspects use the summaries of the onboarding's result (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Done]) and the step names `onboard.step.*`; the check lines and the links of a provider are those of `providers.verify` and `providers.failed` (link:../terminal-client/12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]); a remembered consent is named by its kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -179,6 +219,14 @@ Keys of the area `web`. The lines of the aspects use the summaries of the onboar
 |`web.settings.consents.none`
 |No consent is remembered: you are asked every time.
 |Keine Zustimmung ist gemerkt: Du wirst jedes Mal gefragt.
+
+|`web.settings.back`
+|Back to the settings
+|Zurück zu den Einstellungen
+
+|`web.settings.harnesses.reassign`
+|Reassign them
+|Ordne sie neu zu
 
 |`web.settings.devices.title`
 |Paired devices

@@ -12,8 +12,8 @@ _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-a
 Status: `DRAFT`. The design of the web app, the specification its implementation follows (work packages link:../../plans/web-app-foundation.adoc[`web-app-foundation`] and link:../../plans/web-onboarding.adoc[`web-onboarding`]); the work package link:../../plans/web-design.adoc[`web-design`] works it out. Its parts:
 
 * link:entry.adoc[Entry]: the pairing page, the page a revoked device lands on, and where the app opens after pairing.
-* link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent pattern, the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
-* link:machine-settings.adoc[Machine Settings]: a later run of one aspect, the providers verified again, the remembered consents, the paired devices.
+* link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
+* link:machine-settings.adoc[Machine Settings]: a later run of one aspect, the harnesses again (new and missing ones, the default), the providers verified again, the remembered consents, the paired devices.
 * link:harness-icons.adoc[Harness Icons]: how a harness is shown, and the research behind it.
 
 Everything else the web app shows is designed once for both clients in the shared designs (<<structure>>).
@@ -22,8 +22,8 @@ Everything else the web app shows is designed once for both clients in the share
 == Principles
 
 * *The screen is the state.* Each screen renders one state of the onboarding workflow: what the server reports for it, and one control per link it offers. The app holds no step order and no rule of its own; reloading the page, closing the browser, or opening it on another paired device shows the same state.
-* *Nothing happens on its own.* No screen starts an action when it opens. Every action that looks at the machine, runs a program, or asks a model is behind a consent screen (link:onboarding.adoc#consent[Onboarding]); every other action is behind a button that names it.
-* *Say exactly what will happen.* A button is labelled with what it does ("Look for harnesses", "Enrol Claude Code"), never "Next" or "OK". A consent screen lists the directories, the commands, and the cost before it asks.
+* *Nothing happens on its own.* No screen starts an action when it opens. Every action that looks at the machine, runs a program, or asks a model is behind a consent screen (link:onboarding.adoc#consent[Onboarding], link:../shared/consents.adoc#pattern[Consents]); every other action is behind a button that names it.
+* *Say exactly what will happen.* A button is labelled with what it does ("Look for harnesses", "Enrol 2 harnesses"), never "Next" or "OK". A consent screen lists the directories, the commands, and the cost before it asks.
 * *Preselected, never hidden.* Every screen opens with the proposal filled in (defaults, found harnesses, detected tools), so accepting it is one click; the overview shows everything that will be recorded, and every part of it can be changed, the detail one click away.
 * *Every check reports back.* A check is a line that turns from a spinner into ✓ or ✗; a ✗ carries what failed, the answer received, and the fix. Nothing is marked done that was not checked.
 * *Saying no is safe.* "Not now" never ends in an error or a warning colour; the screen stays and says that nothing was done.
@@ -46,7 +46,7 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:onboarding.adoc[Onboarding] (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9])
 
 |Machine settings
-|link:machine-settings.adoc[Machine Settings]: the aspects run again, the providers verified again, the remembered consents
+|link:machine-settings.adoc[Machine Settings]: the aspects run again, the harnesses again, the providers verified again, the remembered consents (link:../shared/consents.adoc#remembered[Consents, The Remembered Consents])
 
 |Paired devices
 |link:../shared/paired-devices.adoc[Paired Devices] (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]), reached from the machine settings

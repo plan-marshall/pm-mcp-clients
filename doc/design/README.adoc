@@ -65,6 +65,10 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its settings, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and talk; what holds a plan (stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each; its texts in link:shared/work-actions-texts.adoc[a part of their own].
 
+|link:shared/consents.adoc[Consents]
+|`DRAFT`
+|What both clients show of a consent: the consent state with its fields, the answers yes, yes and don't ask again, and not now, and what not now does; the automatic run's one consent; every kind with where it is asked and whether it is remembered; the remembered consents in the machine settings and withdrawing them; the titles of the kinds.
+
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`
 |What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys, areas, and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).

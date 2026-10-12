@@ -16,11 +16,11 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 A state is printed as three parts, the counterpart of the web app's frame (link:../web-app/onboarding.adoc#frame[Web App, Onboarding, Frame]):
 
 ----
-[3/7] Models · Choose the harnesses and models other plans may use          ← step line
+[3/7] Models · Choose the models plans may use                               ← step line
 
   <content: the facts, the proposal, the choices>                           ← content
 
-Enrol and allow 3 models? [Enter]   other: 1-5   b) back   q) leave   ?      ← prompt line
+Allow 4 models? [Enter]   toggle: 1-5   b) back   q) leave   ?               ← prompt line
 ----
 
 * *Step line*: `[n/7]`, the step's name, `·`, and the title of the state. A later run of one aspect has no counter (`Models · …`); a run on a project or a plan adds its level (`Models · project pm-mcp-clients · …`). Server states print no step line of their own: their progress lines follow the step line of their step.
@@ -77,9 +77,19 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |`recheck` (look again, check again)
 |`harness.choose`, `harness.none`, `harness.blocked`, `store.unavailable`, `providers.failed`
 
+|`d`
+|`f`
+|`set_default` (the default harness)
+|`harness.choose`
+
+|`x`
+|`w`
+|`leave_out` (a harness whose check failed)
+|`harness.blocked`
+
 |`o`
 |`a`
-|`choose_another`
+|`choose_another` (choose again, choose another store)
 |`harness.blocked`, `store.unavailable`
 
 |`e`
@@ -178,11 +188,11 @@ Every choice state opens with its proposal filled in and marked `←` (link:../.
 [#consent]
 === Consent
 
-A consent state is printed as in link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent]: the action, what it looks at, what it runs, what it never does, and the cost, each a field. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. Nothing happens on the machine until the operator typed `y` or `r`. In German:
+A consent state is the shared pattern of both clients (link:../shared/consents.adoc#pattern[Consents, The Consent State]): the action as the title, then what it looks for, where, what it runs, what it never does, and the cost, each a field and each only where the server states it. Which kinds exist, which can be remembered, and what _no_ does for each is in link:../shared/consents.adoc#kinds[Consents, The Kinds]. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. A kind that cannot be remembered (`verify_harness_profile`, the automatic run) has no `r`. Nothing happens on the machine until the operator typed `y` or `r`. In German:
 
 [source,text]
 ----
-[2/7] Harness · Auf dieser Maschine nach Harnesses suchen?
+[2/7] Harnesses · Auf dieser Maschine nach Harnesses suchen?
   sucht nach   claude, opencode, codex, agy
   in           deinem PATH, ~/.local/bin, /Applications, /opt/homebrew/bin
   führt aus    <program> --version für jeden gefundenen
@@ -194,7 +204,11 @@ Gib j, m oder n ein.
 j) ja   m) ja, und merken   n) nicht jetzt   ?   › j
 ----
 
-`n` sends `no`: the state stays, the client prints `Nothing was done.` under the title, the prompt again, and the step does not move. It is never shown as an error (no `✗`, no colour of an error). A remembered consent passes its state without a question; the client prints one line, `✓ Consent remembered: look for harnesses   (withdraw: pm-operator config consents)`.
+* *`n` to a required action* sends `no`: the state stays, the client prints `Nothing was done.` under the title, the prompt again, and the step does not move.
+* *`n` to an optional action* (`fetch_icons`, `model_advice`; the column _With no_ of link:../shared/consents.adoc#kinds[The Kinds]) sends `no` too, and the process goes on without it; the client prints what it goes on with in place of `Nothing was done.` (`Nothing was fetched; the web app shows monograms.`, xref:06-transcripts-steps-1-3.adoc#t-harness-icons[Icons]).
+* A `no` is never shown as an error (no `✗`, no colour of an error).
+* *A remembered consent* passes its state without a question; the client prints one line with the title of its kind (`common.consent.kind.<kind>`, link:../shared/consents.adoc#texts[Consents, Texts]): `✓ Consent remembered: look for harnesses   (withdraw: pm-operator config consents)`. The remembered consents are listed and withdrawn with `config consents` (xref:08-transcripts-later.adoc#t-consents[The Remembered Consents], link:../shared/consents.adoc#remembered[Consents, The Remembered Consents]).
+* *The icons consent in the terminal*: the terminal shows no icons, but it asks `harness.icons-consent` like the web app, since the runtime fetches the icons once for the machine and the web app shows them whichever client ran the step.
 
 [#checks]
 === Check Lists
