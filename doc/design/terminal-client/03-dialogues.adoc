@@ -118,6 +118,21 @@ Input is read by the console's line editor (JLine, xref:04-console.adoc#line-edi
 |leave the dialogue to the console prompt (a client action, no link)
 |every dialogue
 
+|`w`, `m`, `x`, `l`
+|`w`, `n`, `x`, `s`
+|in my own words, add a note, none fits, later
+|`decision.answer`
+
+|`?r`
+|`?r`
+|show the recommendation that stands one step away
+|`decision.answer` of a decision that is not reversible
+
+|`e`, `o`
+|`b`, `o`
+|edit my words, choose an option instead
+|`decision.read-back`, `decision.clarify`
+
 |`!`
 |`!`
 |open what is waiting for the operator (a client action, no link)

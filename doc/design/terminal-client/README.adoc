@@ -35,6 +35,7 @@ A transcript of every state of the onboarding and of the entry, and of the conso
 * xref:06-transcripts-steps-1-3.adoc[Steps 1 to 3]: language, harness, models.
 * xref:07-transcripts-steps-4-7.adoc[Steps 4 to 7]: roles, credentials, providers, plans, done.
 * xref:08-transcripts-later.adoc[Later Changes, and Every State]: `config` with arguments, `--no-input`, a project's own values; the table of every state and its transcript.
+* xref:14-transcripts-decisions.adoc[Decisions]: every variant of a decision a plan asks: a clear majority, not reversible, in parts, in own words with read-back and clarification, not voted on, later, none fits, changed, expired, and a waiver request (link:../shared/decisions.adoc[Decisions] is what both clients show).
 
 [#texts]
 === Texts

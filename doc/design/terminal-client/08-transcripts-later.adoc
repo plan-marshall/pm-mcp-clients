@@ -183,6 +183,10 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |`[S]`, `[O]`, `[S]`, `[S]`, end
 |xref:07-transcripts-steps-4-7.adoc#t-defaults[7 Plans (defaults.load, defaults.review, defaults.validate, defaults.record, defaults.done)], <<t-config-direct>>
 
+|`decision.open`, `decision.announce`, `decision.answer`, `decision.interpret`, `decision.read-back`, `decision.clarify`, `decision.confirm`, `decision.record`, `decision.closed`
+|`[S]`, `[S]`, `[O]`, `[M]`, `[O]`, `[O]`, `[O]`, `[S]`, end
+|xref:14-transcripts-decisions.adoc#t-decisions[Decisions]
+
 |`onboard.completed`
 |rest
 |xref:07-transcripts-steps-4-7.adoc#t-completed[Done (onboard.completed)]

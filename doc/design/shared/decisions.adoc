@@ -1,0 +1,323 @@
+= Design: Decisions
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Decisions
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-decision-structure[The Decision Structure] and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-own-words[Answers in the Operator's Own Words] (proposed), link:../../../../plan-marshall-documentation/doc/specification/model-work/10-decision-quorum.adoc[Decision Quorum]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/README.adoc[Terminal Client] (transcripts: link:../terminal-client/14-transcripts-decisions.adoc[Decisions]), link:../web-app/README.adoc[Web App].
+
+A running plan leads to decisions, small and large, that the operator takes. They are the core interaction of `PM-MCP` with its operator. This document is the channel's side of them: what a client shows of a decision, in which order, and how it is answered, in the terminal and in the web app alike.
+
+[#channel]
+== The Channel, Not the Policy
+
+Whether a decision reaches the operator at all, whether a quorum voted on it first and below which confidence it escalates, whether it carries a recommendation, what happens at its deadline, whether the operator may answer in own words, and which role interprets them: all of this is modelled in the plan's workflow units and decision declarations (link:../../../../plan-marshall-documentation/doc/specification/model-work/10-decision-quorum.adoc#decision-declarations[Decision Declarations]). The clients are the channel: they show every variant a unit can produce and answer it with the links the state offers, and they add no rule of their own. Every rule below is about how a client shows what the decision carries, never about what it carries.
+
+The flow is the sub-workflow `decision.*` of link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]; each of its states is rendered like every other state (link:../terminal-client/03-dialogues.adoc#state-frame[The Frame of a State]; link:../web-app/README.adoc#principles[Web App, Principles]).
+
+[#elements]
+== What a Decision Carries
+
+[cols="1,3,3",options="header"]
+|===
+|Element |Always |Where the workflow supplies it
+
+|Decision
+|title, header, plan or epic, the asking phase and role, what it blocks (the plan, a task, nothing), reversibility (reversible, costly, irreversible), its parts
+|description and evidence; deadline and expiry rule (wait on, apply a default, escalate, cancel); a revision after it changed
+
+|Part
+|question, answer type (one option, several options, a value), options or the value's bounds
+|recommendation with rationale and who recommends it; dependency on options of another part; own words allowed; note allowed
+
+|Option
+|key, label, description of its trade-off
+|consequences; preview (a diff, a text); support from a quorum: votes for it, out of how many, from which roles and models; dissent with its reason; per vote a self-reported confidence
+|===
+
+A client shows an element when the decision carries it and leaves its place out when it does not; it never fills a gap with a guess (no recommendation is shown as "none", not as the first option; no votes is shown as "not voted on", not as zero support).
+
+[#order]
+== The Order of a Decision
+
+Both clients show a decision in the same order, top to bottom:
+
+. *What is asked*: the title; the plan or epic and the phase that asks; *why now*: what it blocks; how reversible it is; the deadline and what happens at it.
+. *The evidence*: the description, then the evidence it names (a file and its lines, a diff, a finding, a link). The evidence is what lets the operator decide without trusting the prose; it is one step away (expanded in the web app, `?` in the terminal), never hidden.
+. *The parts*, one at a time where there are several (<<parts>>), each with its question and its options in the order the workflow gives them: never sorted by support, so that the order itself recommends nothing.
+. *The recommendation and the votes*, where the decision carries them, placed by <<recommendation>>.
+. *The answer*: choose; answer in own words where allowed; add a note where allowed; or for the whole decision _none fits_ or _later_.
+
+A decision is self-contained: whoever opens it hours later finds in it what was asked, why, and what follows, without remembering the plan.
+
+[#support]
+== Support, Not Probability
+
+Where a quorum voted, each option shows its support as a count, never as a percentage:
+
+----
+  2) Rebase onto main        4 of 6 votes · 3 models    ← recommended
+  1) Merge main into branch  2 of 6 votes · 2 models
+  3) Stop and ask me later   —
+----
+
+* *Count and spread*: votes out of all votes, and from how many distinct models, because votes of one model, and of models of one maker, are not independent: their errors coincide.
+* *Band* beside the counts for the whole part: `unanimous`, `clear majority`, `split`, `no consensus`; always together with the counts, never alone.
+* *Dissent*: the strongest reason against the recommended option is shown with it, also when the vote was unanimous (where the quorum gave one): one visible dissent is what keeps a consensus from being taken for proof.
+* *Self-reported confidence* of a vote is a detail of that vote (`?` on the vote, expanded in the web app), labelled as the model's own estimate; it is never averaged, never shown as the confidence of an option, and never in decimals.
+* *Not voted on*: a part without a quorum shows the recommendation of the asking role as such (`recommended by outline`), without counts.
+
+[#recommendation]
+== Where the Recommendation Stands
+
+How prominently the recommendation stands depends on what is at stake, as the decision states it:
+
+[cols="2,3,2",options="header"]
+|===
+|The decision |The recommendation |`Enter` / the primary button
+
+|reversible, and the votes `unanimous` or a `clear majority`, or a recommendation without a quorum
+|shown first, marked, preselected
+|takes the recommendation
+
+|reversible, and the votes `split` or `no consensus`
+|shown with the options, marked; the dissent beside it
+|no preselection: the operator picks
+
+|costly or irreversible
+|behind one step: the options first, then the recommendation on request (`?r` in the terminal, a disclosure in the web app)
+|no preselection; the answer goes to `decision.confirm`, which restates what follows
+|===
+
+A recommendation is written as a recommendation (`Recommended by outline: …`), never as a label suffix, and a long rationale is shortened to its first sentence with the rest one step away: a longer explanation raises acceptance, not correctness.
+
+[#parts]
+== Decisions in Parts
+
+* A decision with several parts shows them one at a time, in the order of their dependencies, with a line of where the operator is (`part 2 of 3`) and the answers so far. Parts that depend on nothing may be answered in any order.
+* A part that depends on another is shown once that part is answered, with what it depends on (`depends on part 1: Rebase onto main`); changing the earlier answer reopens it, and the client says so.
+* `decision.confirm` shows every part with its answer and what follows from it; the operator confirms the whole, or goes back to a part.
+* A part may be left for later where it is not required; the decision stays open for it.
+
+[#own-words]
+== Answers in Own Words
+
+Where a part allows it, every client offers to answer in own words next to the options; the client offers it, never the workflow as an extra option.
+
+* *Entering*: the words are sent as they are; the client shows that the decision moved to `decision.interpret` and that a model is at work (the role, the time so far; xref:../terminal-client/03-dialogues.adoc#waiting[Waiting]).
+* *`decision.read-back`* shows one sentence of what was understood, beside the operator's words with the passages it rests on marked: `I understood: Rebase onto main, provided the release branch stays as it is.` The answers are _confirm_ (the primary one), _edit the words_, and _choose an option instead_. Nothing is recorded before _confirm_.
+* *Kinds of result*, each shown as what it is: an option; an option with a condition (the condition named); a new option in the operator's words (`your own answer: …`); a delegation (`you leave it to the recommendation: …`, only where the decision allows one); unclear, which leads to `decision.clarify`.
+* *`decision.clarify`* shows one question that names the readings it could not choose between, answered in words or by choosing one of them.
+* The interpretation never sees the recommendation or the votes, and the client never shows them inside the read-back, so the read-back is about the operator's words alone.
+
+[#announce]
+== Announcing a Decision
+
+* *Urgency* follows from what the decision carries: it interrupts (a notification, the bell) when it blocks the plan, is not reversible, or its deadline is near; otherwise it waits in the badge, the list of open decisions, and the next notice at a natural break (when a dialogue ends, when the operator returns to the prompt or the overview).
+* *Nothing is answered by accident*: an announcement never takes the focus, input typed before it was shown never answers it, and opening a decision discards input typed ahead (xref:../terminal-client/04-console.adoc#answering[Terminal Client, Answering a Question]).
+* *One reminder* before the deadline, then none; a decision that changed (a new revision) is announced again as changed.
+* A notification names the plan and the kind of decision, never its content.
+
+[#outcomes]
+== When It Ends Elsewhere
+
+* *Answered in another channel*: every client says where and how (`answered in the web app, iPad: Rebase onto main`), closes the decision if it is open, and drops what was typed into it.
+* *A newer revision*: an answer to an older revision is refused by the runtime; the client shows the changed decision with what changed, and the operator answers again.
+* *Deadline*: the client shows what the expiry rule did (`expired; the plan went on with its default: …`, `expired; escalated to …`, `expired; the plan waits on`), in the words of the rule the decision carried.
+* *None fits*: confirmed like an answer, then shown as `you asked the plan to think again`.
+
+[#safety]
+== Untrusted Text
+
+Every text of a decision may come from a model or a repository: the question, the description, the evidence, an option, a rationale, a vote. Every client shows it as text only, after removing every control sequence (link:../terminal-client/04-console.adoc#output-safety[Output Safety]; the web app renders no raw HTML), and the operator's own words reach a model only quoted, as data.
+
+[#texts]
+== Texts
+
+The texts both clients use for decisions, keys of the area `decision` (link:texts-and-languages.adoc#keys[Keys and Packs]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`decision.blocks.plan`
+|blocks the plan
+|blockiert den Plan
+
+|`decision.blocks.task`
+|blocks one task; the plan goes on
+|blockiert einen Task; der Plan läuft weiter
+
+|`decision.blocks.none`
+|blocks nothing
+|blockiert nichts
+
+|`decision.reversibility.reversible`
+|can be undone
+|lässt sich rückgängig machen
+
+|`decision.reversibility.costly`
+|costly to undo
+|nur mit Aufwand rückgängig zu machen
+
+|`decision.reversibility.irreversible`
+|cannot be undone
+|lässt sich nicht rückgängig machen
+
+|`decision.deadline`
+|answer by {time} (in {remaining})
+|Antwort bis {time} (in {remaining})
+
+|`decision.expiry.wait`
+|then the plan waits on
+|danach wartet der Plan weiter
+
+|`decision.expiry.default`
+|then the plan goes on with: {option}
+|danach geht der Plan weiter mit: {option}
+
+|`decision.expiry.escalate`
+|then it goes to {target}
+|danach geht sie an {target}
+
+|`decision.part.position`
+|part {n} of {total}
+|Teil {n} von {total}
+
+|`decision.part.depends_on`
+|depends on part {n}: {answer}
+|hängt von Teil {n} ab: {answer}
+
+|`decision.part.reopened`
+|Part {n} was opened again, because part {m} changed.
+|Teil {n} ist wieder offen, weil sich Teil {m} geändert hat.
+
+|`decision.support.votes`
+|{votes} of {total} votes · {models, plural, one {# model} other {# models}}
+|{votes} von {total} Stimmen · {models, plural, one {# Modell} other {# Modelle}}
+
+|`decision.support.band.unanimous`
+|unanimous
+|einstimmig
+
+|`decision.support.band.clear_majority`
+|clear majority
+|klare Mehrheit
+
+|`decision.support.band.split`
+|split
+|geteilt
+
+|`decision.support.band.no_consensus`
+|no consensus
+|keine Einigkeit
+
+|`decision.support.not_voted`
+|not voted on
+|nicht abgestimmt
+
+|`decision.support.self_reported`
+|the model's own estimate: {value} of 100; models tend to overrate themselves
+|die eigene Einschätzung des Modells: {value} von 100; Modelle schätzen sich meist zu hoch ein
+
+|`decision.recommendation.by`
+|Recommended by {role}: {option}
+|Empfohlen von {role}: {option}
+
+|`decision.recommendation.on_request`
+|The recommendation is one step away, so that you weigh the options first.
+|Die Empfehlung ist einen Schritt entfernt, damit du zuerst die Optionen abwägst.
+
+|`decision.dissent`
+|Against it ({role}): {reason}
+|Dagegen ({role}): {reason}
+
+|`decision.answer.own_words`
+|in my own words
+|in eigenen Worten
+
+|`decision.answer.note`
+|add a note
+|eine Notiz hinzufügen
+
+|`decision.answer.none_fits`
+|none fits: think again
+|nichts passt: neu überlegen
+
+|`decision.answer.later`
+|later
+|später
+
+|`decision.interpret.working`
+|{role} is reading your answer
+|{role} liest deine Antwort
+
+|`decision.readback.understood`
+|I understood: {reading}
+|Ich habe verstanden: {reading}
+
+|`decision.readback.condition`
+|{option}, provided {condition}
+|{option}, sofern {condition}
+
+|`decision.readback.own_option`
+|your own answer: {words}
+|deine eigene Antwort: {words}
+
+|`decision.readback.delegation`
+|you leave it to the recommendation: {option}
+|du überlässt es der Empfehlung: {option}
+
+|`decision.readback.confirm`
+|Correct
+|Stimmt so
+
+|`decision.readback.edit`
+|edit my words
+|meine Worte bearbeiten
+
+|`decision.readback.choose`
+|choose an option instead
+|stattdessen eine Option wählen
+
+|`decision.clarify.which`
+|Which do you mean?
+|Welches meinst du?
+
+|`decision.confirm.title`
+|Your decision
+|Deine Entscheidung
+
+|`decision.confirm.action`
+|Decide
+|Entscheide
+
+|`decision.outcome.answered_elsewhere`
+|answered in {channel} ({device}): {answer}
+|beantwortet in {channel} ({device}): {answer}
+
+|`decision.outcome.revised`
+|The decision changed: {change}. Please answer again.
+|Die Entscheidung hat sich geändert: {change}. Bitte antworte noch einmal.
+
+|`decision.outcome.expired_default`
+|expired; the plan went on with its default: {option}
+|abgelaufen; der Plan ist mit seiner Vorgabe weitergegangen: {option}
+
+|`decision.outcome.expired_escalated`
+|expired; it went to {target}
+|abgelaufen; sie ging an {target}
+
+|`decision.outcome.expired_wait`
+|the deadline passed; the plan waits on
+|die Frist ist abgelaufen; der Plan wartet weiter
+
+|`decision.outcome.rethink`
+|you asked the plan to think again
+|du hast den Plan gebeten, neu zu überlegen
+|===
