@@ -75,9 +75,6 @@ Three keys of the area `onboard` are new with this design and belong in the term
 |===
 |Key |English |German
 
-|`onboard.auto.consent.cost`
-|none; a harness without a login probe is checked by one headless call of it, which costs its tokens
-|keine; ein Harness ohne Anmeldeprüfung wird mit einem Headless-Aufruf geprüft, der seine Tokens kostet
 
 |`onboard.auto.reason.asked`
 |you were asked

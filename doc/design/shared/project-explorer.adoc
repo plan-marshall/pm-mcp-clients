@@ -117,6 +117,7 @@ The project's setup offers, after its aspects, _Release the project…_ and _Une
                                                   [Back]  [Release the project…]
 ----
 
+* *The reason*: the release asks it (it closes the pull requests and goes to the epics); unenrolling takes an optional one, recorded in the audit trail.
 * *Afterwards*: a released project stays listed with `released` and offers _Enrol again_; an unenrolled one leaves the list, and a client that shows it says so and moves to the list.
 
 [#marks]

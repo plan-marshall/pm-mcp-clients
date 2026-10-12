@@ -284,7 +284,7 @@ Release plan-marshall?
 Release the project? y) yes   n) no, keep it   ?   › y
     ✓  fix-sonar-gate cancelled and archived
     ✓  gate-timeouts cancelled and archived
-    ✓  gate-docs abandoned and archived
+    ✓  gate-docs cancelled and archived
     ✓  gate-hardening told
 ✓ plan-marshall released
 pm ›
