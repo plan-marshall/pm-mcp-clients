@@ -14,9 +14,9 @@ Structure Specification of the product (`doc/specification/module-structure.adoc
 `plan-marshall/plan-marshall-mcp`, later in `plan-marshall/plan-marshall-documentation`); name modules from there and
 never repeat the listing here. All project documentation (requirements, specifications, implementation watch,
 roadmap, concept, developer and user documentation) lives there, not in this repository. The one exception is the
-design of the two clients in `doc/design/` (the terminal client, and the web app once the package `web-design` delivers
-it): each is the specification its implementation follows and lives here, beside its code; the use cases it serves and
-the design documents both clients share stay there. Every concrete
+design of the two clients and of what they share, in `doc/design/` (index `doc/design/README.adoc`): it is the
+specification their implementation follows and lives here, beside the code. The use cases stay there, one set for both
+clients. Every concrete
 implementation follows the project skill `traced-implementation`, which lives there with `doc-review`; the skills of
 the same names here only point to them.
 

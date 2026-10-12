@@ -10,7 +10,7 @@ The plan of the client work of this repository: what it is for, how its work is 
 [#goal]
 == Goal
 
-The operator works with `PM-MCP` through two clients, the terminal (`pm-operator`) and the web app (`pm-web-app`), built in parallel from the same use cases: every state is designed for both, both render the same states with the same texts, and both are developed and tested against a mock runtime long before the real runtime serves the flow. The first flows are the onboarding of a machine and the start of the web app (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[UC-ONB], link:../../../plan-marshall-documentation/doc/use-cases/02-web-app.adoc#UC-WEB-1[UC-WEB-1]).
+The operator works with `PM-MCP` through two clients, the terminal (`pm-operator`) and the web app (`pm-web-app`), built in parallel from the same use cases: every state is designed for both, both render the same states with the same texts, and both are developed and tested against a mock runtime long before the real runtime serves the flow. The first flows are the onboarding of a machine and the start of the web app (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[UC-ONB], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]).
 
 The epic is done when every package below is `done` in the index.
 

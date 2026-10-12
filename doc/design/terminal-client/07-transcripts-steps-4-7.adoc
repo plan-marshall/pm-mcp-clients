@@ -54,7 +54,7 @@ Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   �
 ----
 
 * `e` from the overview lists every role, grouped by phase, with the columns of the web table as fields: number, role, class, harness, model, effort, origin (`default`, `✎ steward`, `✎ changed`, `⚠ <reason>`). A filter is typed as `/text`.
-* `?<n>` prints the advisory of role `n` in place (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#roles[Onboarding Screens, Roles]), here of `outline`:
+* `?<n>` prints the advisory of role `n` in place (link:../web-app/onboarding.adoc#roles[Web App, Onboarding, Roles]), here of `outline`:
 
 [source,text]
 ----

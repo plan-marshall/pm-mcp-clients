@@ -8,10 +8,10 @@ link:README.adoc[Terminal Client] » Texts: Common, Frame, Automatic Run
 [#texts]
 == Texts
 
-Every text of the onboarding and of the entry in the terminal, as keys of the message catalogue with the English and the German text (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). Arguments are ICU arguments; a plural is written `{n, plural, one {…} other {…}}`. German addresses the operator with _du_, and the words of the glossary stay as they are (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#glossary[Glossary]).
+Every text of the onboarding and of the entry in the terminal, as keys of the message catalogue with the English and the German text (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). Arguments are ICU arguments; a plural is written `{n, plural, one {…} other {…}}`. German addresses the operator with _du_, and the words of the glossary stay as they are (link:../shared/texts-and-languages.adoc#glossary[Glossary]).
 
 * *Shared with the web app*: the keys of the areas `common` and `onboard` are the texts both clients show; the web app adds keys of its own for what only it needs (a button, a tooltip), and the terminal adds the keys of the area `operator` for what only it needs (the prompt line, the keys, the result lines). The labels of links are shared: a button in the web app and a key's label in the terminal read the same.
-* *Titles are questions or names, links are actions* (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#style[How Texts Are Written]). The prompt of a primary link is the action as a question (`operator.prompt.primary` wraps the shared label: `{action}? [Enter]`).
+* *Titles are questions or names, links are actions* (link:../shared/texts-and-languages.adoc#style[How Texts Are Written]). The prompt of a primary link is the action as a question (`operator.prompt.primary` wraps the shared label: `{action}? [Enter]`).
 * The tables below are the content of the packs `common`, `onboard`, and `operator` for these flows. Where a text has a plural, the German has its own forms.
 
 [#texts-common]

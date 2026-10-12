@@ -1,0 +1,89 @@
+= Design: Texts and Languages
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » Texts and Languages
+
+_Shared by both clients: link:../terminal-client/README.adoc[Terminal Client], link:../web-app/README.adoc[Web App]._
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]; every use case with a screen or a terminal dialogue_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-i18n[Onboarding, Languages and Internationalisation] (proposed)_
+
+Status: `DRAFT`.
+
+How the texts of the web app and the command-line binaries are written, kept, and translated. The architecture (one catalogue in `pm-api`, served to the web app, packs checked at build time) is the change linked above; this document is about the texts themselves.
+
+[#two-languages]
+== Two Languages
+
+[cols="1,2,2",options="header"]
+|===
+|Setting |Governs |Never governs
+
+|Interface language
+|every text shown to the operator: the web app, the prompts and messages of `pm-operator` and `pm-mcp`, the explanations and facts of a state
+|command names, options, identifiers, state ids, store keys, log messages
+
+|Model language
+|the language a model is told to write in and the language of the content it is given (task content, questions, answers, summaries)
+|the instructions of the units and roles, which stay in English
+|===
+
+The few texts of `pm-mcp` (the relay's errors, which the host and its model read) stay in English for now, whatever the interface language.
+
+A question a model asks the operator is in the model language; the frame around it (buttons, the deadline, the recommendation label) is in the interface language.
+
+[#glossary]
+== Glossary: Words That Are Never Translated
+
+The domain vocabulary stays as it is in every language: it is what the operator reads in the provider, in git, and in the documentation, and a translation would make the same thing look like two. In German these words take the article in the column; they are written with a capital and inflected as German nouns where needed (_des Commits_, _die Pull Requests_).
+
+[cols="1,1,3",options="header"]
+|===
+|Term |German article |Meaning here
+
+|Request |der |an HTTP request, and a request to the runtime
+|Pull Request |der |the provider's pull request (also for GitLab's merge request in common text)
+|Merge, Merge Queue |der, die |the provider's merge and merge queue
+|Commit, Push, Branch, Rebase |der, der, der, der |the git operations and objects
+|Repository, Worktree, Remote |das, der, das |the git objects
+|Review, Reviewer |das, der |a review of a pull request, and who gives it
+|Build, CI |der, die |a build, and the provider's CI
+|Token |das |a credential's secret
+|Provider |der |a git host, CI, or analysis service
+|Harness |der |a coding agent that runs workers
+|Role, Worker |die, der |a configured role, and a harness process serving it
+|Plan, Epic |der, das |a plan and an epic of `PM-MCP`
+|Task, Deliverable, Finding |der, das, das |the parts of a plan
+|Outline |das |the plan's outline phase and its result
+|Waiver |der |the operator's waiver of a gate
+|Lane |die |a planning lane
+|Workflow, State, Link |der, der, der |the workflow language and its parts
+|===
+
+A word not in the glossary is translated. A new domain word is added here before it is used in a text.
+
+[#style]
+== How Texts Are Written
+
+* *Say what happens.* A button names its action ("Look for harnesses"), a message names what happened and what to do next. No "OK", "Next", "Submit".
+* *Short.* A title is one line; the explanation under it at most two sentences; detail goes behind _Why?_.
+* *No blame, no alarm.* An error says what failed, the answer received, and the fix; a "no" by the operator is never shown as an error.
+* *The same text in both clients.* A text is written once and used by the web app and the terminal; a text that only one client needs has a key only that client uses.
+* *German addresses the operator with _du_*, throughout and in every client; the imperative of a button follows it ("Suche nach Harnesses", "Prüfe erneut").
+* *Arguments, not concatenation.* Every variable part is an argument of the message (`{harness}`, `{count, plural, one {# role} other {# roles}}`), so that a translation can reorder it.
+
+[#keys]
+== Keys and Packs
+
+* *Key*: `<area>.<use case or view>.<state or element>.<part>`, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in.
+* *Areas*: `common` (texts every view uses), `onboard`, `web` (the frame and navigation of the web app), `plan`, `operator` (the verbs of `pm-operator`), `relay` (`pm-mcp`). A client loads only the areas it shows; the web app loads `common` and `web` at start and every other area when it first opens a view of it.
+* *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message format. English (`en`) is complete and the base; German (`de`) ships from the start.
+* *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
+* *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it.
+
+== Open Points
+
+* Enrolling a project in the web app and its texts, once the project enrolment has a use case.

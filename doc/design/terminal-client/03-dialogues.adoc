@@ -11,7 +11,7 @@ link:README.adoc[Terminal Client] » Dialogues
 [#state-frame]
 === The Frame of a State
 
-A state is printed as three parts, the counterpart of the web app's frame (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Frame]):
+A state is printed as three parts, the counterpart of the web app's frame (link:../web-app/onboarding.adoc#frame[Web App, Onboarding, Frame]):
 
 ----
 [3/7] Models · Choose the harnesses and models other plans may use          ← step line
@@ -22,7 +22,7 @@ Enrol and allow 3 models? [Enter]   other: 1-5   b) back   q) leave   ?      ←
 ----
 
 * *Step line*: `[n/7]`, the step's name, `·`, and the title of the state. A later run of one aspect has no counter (`Models · …`); a run on a project or a plan adds its level (`Models · project pm-mcp-clients · …`). Server states print no step line of their own: their progress lines follow the step line of their step.
-* *Content*: indented by two spaces, at most 80 columns; a web table is a list with the same columns as fields (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Principles]); a long value (a path, a digest) is shortened in the middle with `…` and shown in full by `?`.
+* *Content*: indented by two spaces, at most 80 columns; a web table is a list with the same columns as fields (link:../web-app/README.adoc#principles[Web App, Principles]); a long value (a path, a digest) is shortened in the middle with `…` and shown in full by `?`.
 * *Prompt line*: the primary link as a question with `[Enter]`, then the other links with their keys, then `?`. The prompt ends with `› ` where the operator types.
 * A new state is printed below the previous one, never over it: the scrollback is the transcript of the run. Only a check line and a progress line are rewritten in place while they run (<<checks>>).
 
@@ -137,7 +137,7 @@ Every choice state opens with its proposal filled in and marked `←` (link:../.
 [#consent]
 === Consent
 
-A consent state is printed as in link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#consent[Onboarding Screens, Consent]: the action, what it looks at, what it runs, what it never does, and the cost, each a field. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. Nothing happens on the machine until the operator typed `y` or `r`. In German:
+A consent state is printed as in link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent]: the action, what it looks at, what it runs, what it never does, and the cost, each a field. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. Nothing happens on the machine until the operator typed `y` or `r`. In German:
 
 [source,text]
 ----
@@ -174,7 +174,7 @@ A check is one line that starts with a spinner and ends in `✓` or `✗` (link:
 [#waiting]
 === Waiting, Progress, and a Model at Work
 
-While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the expected cost from earlier runs or `cost not known yet` (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#frame[Onboarding Screens, Frame], Model at work):
+While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the expected cost from earlier runs or `cost not known yet` (link:../web-app/onboarding.adoc#frame[Web App, Onboarding, Frame], Model at work):
 
 ----
   ⠼  steward is working on Claude Code · opus-5.5      0:42   about 0.08 USD
@@ -200,7 +200,7 @@ pm [setup 3/7] ›
 [#refusals]
 === Refusals and Errors
 
-A refused request is printed as a `✗` line with the text of its error code from the catalogue (`common.error.<code>`), the detail the runtime sent, and the fix (`→ …`); unless the state offers a way on, which it then prompts for, the console returns to its prompt (a verb run as one shell command exits with `1`). `internal_fault` prints its `audit_id` and `pm-operator status`. An error is never printed as a stack trace, and a refusal never ends in a colour or a word of alarm (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#style[Texts and Languages, How Texts Are Written]).
+A refused request is printed as a `✗` line with the text of its error code from the catalogue (`common.error.<code>`), the detail the runtime sent, and the fix (`→ …`); unless the state offers a way on, which it then prompts for, the console returns to its prompt (a verb run as one shell command exits with `1`). `internal_fault` prints its `audit_id` and `pm-operator status`. An error is never printed as a stack trace, and a refusal never ends in a colour or a word of alarm (link:../shared/texts-and-languages.adoc#style[Texts and Languages, How Texts Are Written]).
 
 [#no-input]
 === Without Prompts
@@ -220,4 +220,4 @@ A refused request is printed as a `✗` line with the text of its error code fro
 [#language]
 === Language of the Terminal
 
-The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. After `language.choose` the client switches at once: the state is printed again in the chosen language before it is recorded, so the operator sees it first (link:../../../../plan-marshall-documentation/doc/design/02-onboarding.adoc#language[Onboarding Screens, Language]). `pm-mcp` keeps English (link:../../../../plan-marshall-documentation/doc/design/03-texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).
+The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. After `language.choose` the client switches at once: the state is printed again in the chosen language before it is recorded, so the operator sees it first (link:../web-app/onboarding.adoc#language[Web App, Onboarding, Language]). `pm-mcp` keeps English (link:../shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).

@@ -1,0 +1,493 @@
+= Design: Web App, Onboarding
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Onboarding
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#changes[Onboarding, Changes to the Specification] (proposed), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
+
+Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
+
+[#frame]
+== Frame
+
+The onboarding fills the whole app until it is complete; the rest of the app is reached once `onboard.completed` is reached. A later run opens from the machine settings in the same frame.
+
+[source,text]
+----
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ plan-marshall                                   Machine: mbp-oliver   ⚙  ?   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ① Language ─ ② Harness ─ ③ Models ─ ④ Roles ─ ⑤ Credentials ─ ⑥ Providers   │
+│  ─ ⑦ Plans ─ ✓ Done                                                          │
+│  ━━━━━━━━━━━                                                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  <title of the state>                                                        │
+│  <one or two sentences: what this step is for>                               │
+│                                                                              │
+│  <content of the state>                                                      │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  <secondary links>                                   [ <primary link> ]      │
+└──────────────────────────────────────────────────────────────────────────────┘
+----
+
+* *Step bar*: the seven sub-workflows of `onboard.*`; done steps are ticked and can be opened to look at, never re-run from the bar (a re-run is a later change from the settings). The bar shows where the process is; it does not navigate ahead.
+* *One route*: the onboarding is one route of the app (`/onboarding`) that renders whichever state the server reports; the app has no route per state, so it cannot show a state the server is not in. A done step opened from the step bar is shown read-only beside the current one.
+* *Footer*: the links of the state; the primary one on the right. A state the server is working in (`[S]`) shows progress instead and no link.
+* *Terminal*: the console `pm-operator` prints the step line `[3/7] Models` above each state, the content below it, and the links as a prompt line; `?` shows the explanation the web app shows under the title (link:../terminal-client/03-dialogues.adoc#state-frame[Terminal Client, The Frame of a State]).
+* *Model at work* (`[M]` states): the content shows that a model task runs, on which harness and role, the time so far, and the expected cost; when it fails or the operator leaves it, the screen continues as the use case's variation says (without a recommendation).
+
+[#start]
+== Start (`onboard.entry`, `onboard.mode`)
+
+[source,text]
+----
+  Set up this machine for plan-marshall
+
+  Seven steps. Nothing on this machine is looked at, run, or changed until
+  you say so in that step.
+
+    ① Language    the language of this app and of the models' texts
+    ② Harness     choose the coding agent the server works with first
+    ③ Models      choose the agents and models other plans may use
+    ④ Roles       give every role an agent and a model
+    ⑤ Credentials where this machine keeps its tokens
+    ⑥ Providers   the git hosts, CI and analysis services this machine uses
+    ⑦ Plans       how plans run unless a project says otherwise
+
+  You can stop at any point; the next visit continues where you stopped.
+
+  [ Decide everything for me… ]                       [ Begin with ① ]
+----
+
+* *Decide everything for me…* is the automatic run (<<auto>>); it opens its consent first.
+
+Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-entry-first[Terminal Client, transcript].
+
+[#consent]
+== Consent
+
+One pattern for every `<step>.consent` state. Its content comes from the consent kind (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Consent Before Acting]); the screen adds nothing the server did not state.
+
+[source,text]
+----
+  Look for harnesses on this machine?
+
+  The server would
+    • look for these programs:  claude, opencode, codex, agy
+    • in:  the directories of your PATH,
+           ~/.local/bin, /Applications, /opt/homebrew/bin
+    • run for each one found:   <program> --version
+
+  It would not
+    • read any other file, or start a harness session
+    • send anything over the network
+
+  Cost: none.
+
+  ( ) Ask me again next time
+  ( ) Don't ask again for this action      (you can withdraw it in ⚙ Settings)
+
+  [ Not now ]                                       [ Look for harnesses ]
+----
+
+Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-harness-consent[Terminal Client, transcript].
+
+* *Not now* (link `no`): the screen stays and shows "Nothing was done." under the title, with the same two buttons. The step bar does not move.
+* The remember choice is a choice inside the screen, not a third button, so the primary button stays one action: `yes` or `yes_remember` by the choice.
+* A consent with a model cost names the role, the harness, and the expected cost from earlier runs, or "not known yet" for the first run.
+
+[#language]
+== ① Language (`language.choose`)
+
+[source,text]
+----
+  Choose your languages
+
+  This app and pm-operator      ( ) English  (•) Deutsch
+                                from your system: de_DE
+
+  What models write and read    (•) same as above
+                                ( ) English
+                                ( ) Deutsch
+
+  Models do not work equally well in every language; you can let them
+  work in English while this app speaks German.            [ Why? ]
+
+  Words like Pull Request, Commit, Merge and Request stay as they are.
+
+                                                 [ Use Deutsch ]
+----
+
+* The screen switches to the chosen language at once, before the button is pressed, so the operator sees what it will look like.
+
+Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-language[Terminal Client, transcript].
+
+[#harness]
+== ② Harness
+
+[#harness-choose]
+=== Choose (`harness.choose`)
+
+[source,text]
+----
+  Choose the harness to start with
+
+  Found on this machine:
+
+  (•) Claude Code   2.4.1   /Users/oliver/.local/bin/claude   ✓ supported
+  ( ) OpenCode      1.9.0   /opt/homebrew/bin/opencode        ✓ supported
+      Codex         0.31.2  /opt/homebrew/bin/codex           ✗ cannot run workers
+      Antigravity   —       not found
+
+  The first harness also runs the advice in the next steps. You can add
+  the others in ③ Models.
+
+  ▸ Advanced: add a harness that is not listed
+
+  [ Look again ]                              [ Check Claude Code ]
+----
+
+* Each harness is shown with its icon (link:harness-icons.adoc#icons[Harness Icons]), or with its monogram where no icon is available.
+* Harnesses that cannot run workers are listed, greyed, with the reason; harnesses not found are listed so the operator sees what was looked for.
+* *No harness found* (`harness.none`): the list is replaced by what was looked for, *Add a harness that is not listed* as the primary action, and a short install hint per harness with a link to its own installation page, and *Look again*.
+
+[#harness-add]
+=== Add a Harness That Is Not Listed (`harness.add`, `harness.verify-profile`)
+
+[source,text]
+----
+  Add a harness
+
+  Executable   [ /usr/local/bin/aider                         ] [ Browse ]
+  Name         [ Aider              ]   id [ aider ]
+  Start from   [ OpenCode ▾ ]   the closest known harness; its settings
+                                are filled in below
+
+  ▾ How it is called headless                      (from OpenCode, edit)
+    Arguments      [ --message {prompt} --yes --no-pretty            ]
+    MCP config     [ --mcp-config {mcp_config_file}                  ]
+    Output         ( ) text  (•) JSON lines        Usage  [ field: usage ]
+    Version probe  [ --version ]
+  ▸ Environment, tools, commands (4 more)
+
+  [ Cancel ]                                       [ Verify this harness ]
+----
+
+*Verify this harness* leads through its consent screen (the stages, their token cost) to the verification:
+
+[source,text]
+----
+  Verifying Aider
+
+    ✓  identity      aider 0.86.1
+    ✓  detection
+    ✓  launch        a headless call answered in 4.1 s
+    ✗  isolation     the MCP configuration was not used: the harness
+                     read ~/.aider.conf.yml instead
+                     → set "Arguments" to include --no-config        [ Edit ]
+    ·  classes, limits, paths, faults   not run
+
+  [ Cancel ]                                   [ Edit the settings ]
+----
+
+* A ✗ links to the field it concerns; the stages after it are listed as not run. A pass of every stage leads to the confirmation of the profile and then to <<harness-confirm>>.
+* A known harness found nowhere is added the same way with its path only; the settings are its shipped ones and are not shown.
+
+[#harness-probe]
+=== Check (`harness.probe`, `harness.blocked`)
+
+[source,text]
+----
+  Checking Claude Code
+
+    ✓  version 2.4.1 is supported (2.0 – 2.x)
+    ✗  not logged in
+
+  Log in to Claude Code in a terminal, then check again:
+
+      claude login                                             [ Copy ]
+
+  [ Choose another harness ]                          [ Check again ]
+----
+
+* Each check is a line that turns from a spinner to ✓ or ✗; a failing check names its fix and a command where one exists. The checks that need a consent of their own (the login probe) show their consent screen first.
+
+[#harness-confirm]
+=== Confirm (`harness.confirm`)
+
+[source,text]
+----
+  Enrol Claude Code
+
+  The server will remember this program and start workers with it only
+  while it is unchanged:
+
+    Path      /Users/oliver/.local/bin/claude
+    Version   2.4.1
+    SHA-256   9f2c…41ab                                         [ Show ]
+
+  [ Back ]                                         [ Enrol Claude Code ]
+----
+
+[#models]
+== ③ Models (`catalogue.select`)
+
+[source,text]
+----
+  Choose the harnesses and models other plans may use
+
+  ┌ Recommendation ──────────────────────────────────── by steward ┐
+  │ Use Claude Code for writing roles and OpenCode with a small    │
+  │ model for screening; allow the three models below.  [ Why? ]   │
+  └────────────────────────────────────────────────────────────────┘
+
+  Claude Code   enrolled
+    [x] opus-5.5          ★ recommended
+    [x] sonnet-5.5        ★ recommended
+    [ ] haiku-5.5
+
+  OpenCode      found, not enrolled                  [x] enrol
+    [x] qwen-coder-32b    ★ recommended
+    [ ] + add a model id
+
+  [ Back ]                                   [ Enrol and allow 3 models ]
+----
+
+* The recommendation is preselected and marked; the operator's change of a preselected box removes the mark from it. *Why?* opens the rationale with cost and limits per model.
+* A harness that cannot list its models shows an input for model ids instead of the list.
+* Enrolling a further harness runs its checks and confirmation (<<harness-probe>>, <<harness-confirm>>) inline before the step completes.
+
+[#roles]
+== ④ Roles (`roles.review`)
+
+The step opens with the default assignment applied, as an overview; accepting it is one click.
+
+[source,text]
+----
+  Give every role a harness and a model
+
+  The default assignment is applied to all 31 roles.
+
+    Claude Code · opus-5.5      7 roles   planning and decisions   ⓘ
+    Claude Code · sonnet-5.5   16 roles   execution and review     ⓘ
+    OpenCode · qwen-coder       6 roles   screening and checks     ⓘ
+    ⚠ not assignable            2 roles   no fast model allowed    → assign
+
+  [ Adjust roles ]   [ Ask the steward to refine… ]     [ Use the defaults ]
+----
+
+* Each line is one harness and model with its roles, grouped by what they do; ⓘ lists the roles and the advisory of the group. A ⚠ line opens the table filtered to its roles.
+* *Use the defaults* is disabled while a ⚠ line remains; it saves the assignment.
+* *Ask the steward to refine…* goes through its consent screen; the proposed departures then appear in the table, marked, each to accept or reject.
+* *Adjust roles* opens the table:
+
+[source,text]
+----
+  Give every role a harness and a model                 31 roles · 2 to look at
+
+  Group: [ by phase ▾ ]   Filter: [            ]   [ Assign to selection… ]
+
+  ▾ Planning
+    [ ] refine      writer     Claude Code  sonnet-5.5  medium   default        ⓘ
+    [ ] outline     writer     Claude Code  opus-5.5    high     default        ⓘ
+  ▾ Review
+    [ ] qgate       read_only  OpenCode     qwen-coder  —        ✎ steward      ⓘ
+    [ ] screener    zero_tool  —            —           —        ⚠ no model     ⓘ
+                                                                   of tier fast
+  ▸ Execution (8)   ▸ Finalize (6)   ▸ Decisions (5)
+
+  [ Back ]                                              [ Save 31 roles ]
+----
+
+The advisory of a role (ⓘ, opened in place below its row):
+
+[source,text]
+----
+    outline     writer     Claude Code  opus-5.5    high     default        ⓘ
+    ┌───────────────────────────────────────────────────────────────────────┐
+    │ What it does   Turns the refined request into deliverables and the    │
+    │                plan's lane; reads the whole affected codebase.        │
+    │ What it needs  Deep reasoning over a large context; few tool calls.   │
+    │ Why frontier   A weak outline costs more later than the model costs   │
+    │                here: every later phase builds on it.                  │
+    │ If cheaper     More loop-backs from the Q-Gate; standard tier passed  │
+    │                71 % of the qualification items (frontier 92 %).       │
+    │ Steward        no departure                                           │
+    │                                                 [ Reset to default ]  │
+    └───────────────────────────────────────────────────────────────────────┘
+----
+
+* Each row: role, class, harness, model, effort, and where the value comes from: `default`, `✎ steward` (a proposed departure, its reason in the advisory under _Steward_), `✎ changed` (the operator's), or `⚠` with the validation reason of `roles.validate` or a default that cannot be met here.
+* The advisory always shows the default's what and why, also when the value departs from it; *Reset to default* per row and for all.
+* *Assign to selection…* sets harness, model, and effort for the selected rows in one go; the advisories of the rows stay.
+* *Save* is disabled while a row is marked ⚠; the header counts them.
+
+[#credential-store]
+== ⑤ Credentials (`store.choose`)
+
+[source,text]
+----
+  Where should this machine keep its tokens?
+
+  (•) macOS Keychain                                         ★ recommended
+      Only plan-marshall's runtime reads them without asking you; any
+      other program that tries makes macOS ask first.
+
+  ( ) Files in ~/.plan-marshall-mcp/credentials/
+      Readable by every program you run (mode 0600). Works everywhere,
+      also without a desktop session.
+
+  The choice holds until you change it in ⚙ Settings; a change moves the
+  tokens, it never leaves a copy behind.
+
+  [ Back ]                                     [ Use the macOS Keychain ]
+----
+
+* On Linux the first option is the Secret Service, with its own text: every program of the user can read it while it is unlocked. When it is not available now (locked, or no session bus over SSH), the option is shown greyed with the reason and how to fix it, and *Check again*.
+* The primary button names the store it will use.
+
+[#providers]
+== ⑥ Providers
+
+[#providers-select]
+=== Select (`providers.select`)
+
+[source,text]
+----
+  Choose what this machine works with
+
+  GitHub        [x] available   variant ( ) native  (•) gh 2.71   credential ✓ stored
+  GitLab        [ ] available
+  SonarCloud    [x] available   native only                       credential ✗ missing
+  Review bots   [x] CodeRabbit  [x] Sourcery  [ ] cuioss-review-bot
+
+  These are the defaults for every project; a project's setup and a single
+  plan can override them.
+
+  [ Back ]                                 [ Continue with 2 providers ]
+----
+
+[#providers-credentials]
+=== Credentials (`providers.credentials`)
+
+[source,text]
+----
+  SonarCloud needs a token
+
+  Token   [ •••••••••••••••••••••••••••••• ]
+          Stored in the machine's credential store; it is never shown
+          again and never reaches a model or a log.
+
+  [ Skip SonarCloud ]                                [ Store and verify ]
+----
+
+* On the LAN listener the input is replaced by the command to run in a terminal (`pm-operator credentials set sonar`) and *Check again* (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-web-credentials[Credentials in the Web App]).
+* *Store and verify* stores the token and leads to the check (<<providers-verify>>).
+
+[#providers-verify]
+=== Check (`providers.verify`, `providers.failed`)
+
+[source,text]
+----
+  Checking the providers
+
+  GitHub                                                       ✓ ready
+    ✓  github.com reachable
+    ✓  token authenticates as oliver-wolff (fine-grained, expires in 41 days)
+    ✓  permissions: contents, pull requests, checks (read and write)
+    ✓  gh 2.71 is logged in as the same account
+
+  SonarCloud                                                   ✗ not ready
+    ✓  sonarcloud.io reachable
+    ✗  token refused: 401 "Invalid token"
+       → enter the token again                         [ Enter token ]
+
+  [ Continue without SonarCloud ]   [ Check again ]
+----
+
+* Every provider and every check has its own line; a provider is ✓ only when all its checks are. A ✗ shows the provider's answer and the fix.
+* *Continue without SonarCloud* records it as not available after a confirmation; all ✓ continues on its own to <<done>>.
+
+[#plan-defaults]
+== ⑦ Plans (`defaults.review`)
+
+[source,text]
+----
+  How should plans run on this machine?
+
+  A project's setup and a single plan can choose otherwise.
+
+  Landing    (•) Branch and Pull Request    review and merge on the provider
+             ( ) Commit on main             no Pull Request, pushed directly
+             ( ) Files only                 nothing is committed; you take over
+
+  Method     (•) Test first                 tests are written before the code
+             ( ) Tests after
+
+  Asking     ( ) At every phase             you confirm each phase
+             (•) At the key points          the outline, and before the Merge
+             ( ) Only questions             you are asked only what needs you
+
+  [ Back ]                                         [ Use these defaults ]
+----
+
+* The preselection is the shipped default; each line says in a few words what the variant does, and *Why?* beside an axis explains its consequences.
+* A variant that cannot run on this machine is greyed with its reason (`Branch and Pull Request` without a provider).
+
+Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-defaults[Terminal Client, transcript].
+
+[#auto]
+== Automatic Run (`auto.consent`, `auto.result`)
+
+The consent lists everything the run does, in the form of <<consent>>, in one list; the run itself shows the step bar moving and each check as it reports. At the end:
+
+[source,text]
+----
+  Everything is decided
+
+  ① Language     Deutsch, models too           from your system      [ Change ]
+  ② Harness      Claude Code 2.4.1  ✓          the only supported one [ Change ]
+  ③ Models       3 models on 2 harnesses  ✓    all found              [ Change ]
+  ④ Roles        default assignment, 31 roles  the default            [ Change ]
+  ⑤ Credentials  macOS Keychain  ✓             available here         [ Change ]
+  ⑥ Providers    GitHub (gh)  ✓                gh logged in           [ Change ]
+                 SonarCloud  —                  no token: skipped     [ Add ]
+  ⑦ Plans        Pull Request · Test first · key points   the default [ Change ]
+
+  No model was asked; ask the steward to refine the roles in ⚙ Settings.
+
+                                                 [ Finish ]
+----
+
+Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, transcript].
+
+[#done]
+== Done (`onboard.completed`)
+
+[source,text]
+----
+  This machine is ready
+
+    ✓ Language    Deutsch, models too
+    ✓ Harness     Claude Code 2.4.1 (+ OpenCode 1.9.0)
+    ✓ Models      3 models allowed
+    ✓ Roles       31 roles assigned
+    ✓ Credentials macOS Keychain
+    ✓ Providers   GitHub (gh), SonarCloud
+    ✓ Plans       Pull Request · Test first · key points
+
+  Next: enrol a project and set it up.
+
+  [ Machine settings ]                               [ Enrol a project ]
+----
+
+== Open Points
+
+* *Enrol a project* needs the project enrolment in the web app; today it is the CLI verb `pm-operator enrol`.
+

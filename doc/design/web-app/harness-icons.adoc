@@ -1,0 +1,24 @@
+= Design: Web App, Harness Icons
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Harness Icons
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-harness-icons[Harness Icons]_
+
+[#icons]
+== Harness Icons
+
+Where a harness is shown (the harness list, the role assignment, a worker in the plan views), it carries its icon: bundled, or fetched by the runtime from the maker's own URL after the operator's consent (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-harness-icons[Harness Icons]), else a monogram. The terminal shows the harness's name only.
+
+*Research note (not legal advice).* The question was whether icons the project may not bundle can instead be referenced by URL so that the browser loads them from the maker. What was found:
+
+* *Copyright of the file.* Under EU law, embedding a work that its owner made freely available on the web is not a new communication to the public (CJEU _Svensson_, C-466/12, and _BestWater_, C-348/13), unless the owner restricted access by technical means (C-392/19). Loading a maker's own, freely available icon from the maker's URL is therefore unlikely to infringe its copyright; bundling a copy is a distribution and needs a licence. Icon collections such as Simple Icons are CC0 for their files but state that this grants no trademark right.
+* *Trademark.* Where the icon is hosted does not change the trademark question. EU law lets a third party use a mark to identify or refer to the proprietor's goods in accordance with honest practices (Art. 14(1)(c) EUTMR); commentary holds this applies to logos as to word marks. The makers' own rules are narrower: Anthropic's terms for Claude Code allow stating in plain text that a product runs Claude Code and require written permission for other uses of its names or logos; Google's brand rules forbid any use that suggests affiliation or endorsement.
+* *Privacy.* A browser that loads an icon from the maker's server sends the operator's IP address there on every view. A German court awarded damages for exactly this with web fonts loaded from Google (LG München I, 3 O 17493/20, 20 January 2022), holding that a local copy was possible. It would also break the content security policy of the web listener.
+
+*Consequence for the design.* Until the legal question is settled every harness is shown with its monogram. The browser never loads from a maker's server; the runtime fetches once, on consent, and serves the icon itself, which avoids the privacy and policy problem and keeps the copyright position of embedding (the copy stays on the operator's machine and is not redistributed). The trademark question remains for every icon, bundled or fetched, and needs each maker's terms checked or permission asked; until then the monogram is the safe default.
+
+Sources: link:https://github.com/simple-icons/simple-icons/blob/develop/DISCLAIMER.md[Simple Icons disclaimer]; link:https://docs.anthropic.com/en/docs/claude-code/legal-and-compliance[Claude Code, Legal and compliance]; link:https://about.google/brand-resource-center/guidance/[Google Brand Resource Center]; link:https://www.hoganlovells.com/en/publications/from-bestwater-to-prussian-palaces-cjeu-provides-further-clarity-for-online-framing-of-copyright-protected-content[Hogan Lovells on BestWater and C-392/19]; link:https://www.lexisnexis.com/en-gb/legal/news/court-of-justice-confirms-the-expansion-of-the-fair-use-trade-mark-defence-inditex-v-buongiorno-myalert[Inditex v Buongiorno on Art. 14 EUTMR]; link:https://www.dr-datenschutz.de/schadensersatz-urteil-google-fonts-und-die-dsgvo/[LG München I on Google Fonts].
+
