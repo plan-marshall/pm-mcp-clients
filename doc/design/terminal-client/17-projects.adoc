@@ -83,7 +83,7 @@ A released project offers instead `a  Enrol again`, which runs its onboarding ag
 |add a project: leaves the view and starts `project add`
 |===
 
-The keys of the explorer are keys of navigation, the same in every language, like those of the overview (xref:15-overview.adoc#full-screen-keys[Keys]). The two _Add_ actions leave the view and start the dialogues of starting an orchestrator and a plan, designed with their use cases.
+The keys of the explorer are keys of navigation, the same in every language, like those of the overview (xref:15-overview.adoc#full-screen-keys[Keys]). The two _Add_ actions leave the view and start `orchestrator add` and `plan add` for the project (xref:18-starting.adoc[Starting Work]); while an entry of the project is open, `Enter` offers `s  Continue starting` first.
 
 [#onboarding]
 == Onboarding a Project

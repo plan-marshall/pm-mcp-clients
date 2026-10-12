@@ -30,6 +30,11 @@ pm-operator projects [--list]                             [op]  the explorer of 
 pm-operator project add [<path>]                          [op]  onboard a project; the working directory is the proposed checkout
 pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
+pm-operator plan add [--project <project_id>|.] [<source>]... [op]  start a plan from its sources (18-starting)
+pm-operator orchestrator add [--project <project_id>|.] [<source>]...
+                                                          [op]  start an orchestrator from its sources (18-starting)
+pm-operator recipe run [<recipe_key>] [--param <name>=<value>]...
+                                                          [op]  run a recipe of the project (18-starting)
 pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
 pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
 pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies

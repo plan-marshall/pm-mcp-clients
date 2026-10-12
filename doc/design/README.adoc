@@ -53,6 +53,10 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |What both clients show of one plan's process: its phases and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, and the leaves' jobs and tasks.
 
+|link:shared/starting-work.adoc[Starting Work]
+|`DRAFT`
+|What both clients show while a plan or an orchestrator is started: the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request), their progress through fetching and screening, a flagged issue, the ready step with title and id, a recipe and its parameters, leaving and continuing.
+
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`
 |What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).
