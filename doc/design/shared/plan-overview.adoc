@@ -1,0 +1,265 @@
+= Design: Plan Overview
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Plan Overview
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], leading into link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-overview-resource[The Overview Resource and Its Events] (proposed)_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
+
+`PM-MCP` runs many plans and orchestrators over many projects. The overview is where the operator sees what runs and what needs attention, in two dimensions: the projects, and in a project its plans and orchestrators. This document is what both clients show; how each draws it is its own design.
+
+[#levels]
+== Two Levels, Two Views
+
+----
+  Projects                          A project
+  ─────────                         ───────────────────────────────────────────
+  ! pm-mcp-clients   3 · 1  2 ◀──── by plan:          by orchestrator:
+    pm-mcp-core      2 · 0            plans, flat,      orchestrators, each with
+    plan-marshall    0 · 1            each naming its   its plans below it; the
+                                      orchestrator      plans of none at the end
+----
+
+* *Projects*: only those with running work (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work]): an active plan or orchestrator, or an open decision of the project's setup. Ended and archived plans never appear; a project with nothing running does not either.
+* *A project, by plan*: its active plans, flat. Each plan names the orchestrator it belongs to; in the web app the name is a link to that orchestrator, in the terminal a key moves there.
+* *A project, by orchestrator*: its active orchestrators, each with its active plans below it; the plans that belong to no orchestrator follow as a group of their own (`without orchestrator`), so both views hold the same plans.
+* The operator switches between the two views of a project at any time; the view is part of where the operator left the overview (<<persistence>>).
+
+[#project-row]
+== A Project
+
+[cols="1,3",options="header"]
+|===
+|Element |Shown as
+
+|Needs the operator
+|a marker with the count (`! 2`), first in the row; absent when nothing needs the operator
+
+|Name
+|the project's display name; its id where it has none
+
+|Active work
+|plans and orchestrators, counted apart (`3 plans · 1 orchestrator`)
+
+|Setup
+|`setup needs you` when only its setup waits for the operator
+|===
+
+Order: projects that need the operator first, then by their latest activity. A project whose running work ends (its last active plan and orchestrator ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
+
+[#item-rows]
+== A Plan, an Orchestrator
+
+[cols="1,2,2",options="header"]
+|===
+|Element |Plan |Orchestrator
+
+|Kind
+|its icon, colour, and the word `plan`
+|its icon, colour, and the word `orchestrator`
+
+|Needs the operator
+|the marker with the count and the kind of the first (`! decision`, `! stalled`, `! paused`, `! waiver`)
+|the same, counting its plans' items too
+
+|Title
+|the plan's title
+|the orchestrator's title
+
+|Where it is
+|the current phase and the state in it: `working`, `waiting for you`, `stalled`, `paused`
+|its plans: `2 running · 3 staged`
+
+|Time
+|since when it runs, and since when it is in the current phase (`2 h 10 min · in execute 25 min`)
+|since when it runs
+
+|Progress
+|tasks done of all (`7 of 12 tasks`)
+|plans shipped of all (`4 of 9 plans`)
+
+|Belongs to
+|its orchestrator, or nothing
+|—
+|===
+
+* Order within a project: those that need the operator first, then the most recently active; the plans below an orchestrator in the same order.
+* Times are shown as durations, rounded to what matters (`25 min`, `2 h 10 min`, `3 d`), and computed at each redraw; nothing counts in place by the second.
+* Selecting a plan or an orchestrator leads into its own view (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]); selecting its marker leads to what waits (link:decisions.adoc[Decisions]).
+
+[#distinction]
+== Telling Them Apart
+
+A plan and an orchestrator differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (link:../../plans/web-design.adoc[`web-design`], under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
+
+[cols="1,1,1,2",options="header"]
+|===
+|Kind |Terminal glyph |ASCII |Colour
+
+|Plan
+|`▸`
+|`>`
+|the plan colour of the design system (terminal: cyan)
+
+|Orchestrator
+|`◇`
+|`<>`
+|the orchestrator colour (terminal: magenta)
+
+|Needs the operator
+|`!`
+|`!`
+|the attention colour (terminal: yellow), always with the count
+|===
+
+[#live]
+== Live
+
+The overview follows the runtime's events and changes in place: a plan that starts or ends, a phase change, a decision that arrives or is answered, an orchestrator's plan that starts. The selection is anchored to the selected item's id, never to its row: rows that move do not move the selection. A client that lost the connection says so on the overview and reads everything again when it is back.
+
+[#persistence]
+== Where the Operator Left It
+
+The overview remembers the project, the view (by plan, by orchestrator), and the selected plan or orchestrator, and opens there the next time:
+
+* the web app per browser, in its local storage beside its device secret;
+* the terminal client per user, in its state directory (link:../terminal-client/15-overview.adoc[The Overview]).
+
+A remembered plan that has ended falls back to its project; a project that no longer has running work falls back to the list of projects.
+
+[#texts]
+== Texts
+
+Keys of the area `overview`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`overview.title`
+|Running work
+|Laufende Arbeit
+
+|`overview.projects.empty`
+|Nothing runs. Start a plan in a project, or enrol one.
+|Es läuft nichts. Starte einen Plan in einem Projekt, oder melde eines an.
+
+|`overview.project.counts`
+|{plans, plural, one {# plan} other {# plans}} · {orchestrators, plural, one {# orchestrator} other {# orchestrators}}
+|{plans, plural, one {# Plan} other {# Pläne}} · {orchestrators, plural, one {# Orchestrator} other {# Orchestratoren}}
+
+|`overview.project.setup`
+|setup needs you
+|die Einrichtung braucht dich
+
+|`overview.project.left`
+|{project} has nothing running any more.
+|In {project} läuft nichts mehr.
+
+|`overview.view.by_plan`
+|by plan
+|nach Plan
+
+|`overview.view.by_orchestrator`
+|by orchestrator
+|nach Orchestrator
+
+|`overview.kind.plan`
+|plan
+|Plan
+
+|`overview.kind.orchestrator`
+|orchestrator
+|Orchestrator
+
+|`overview.without_orchestrator`
+|without orchestrator
+|ohne Orchestrator
+
+|`overview.needs.decision`
+|decision
+|Entscheidung
+
+|`overview.needs.waiver_request`
+|waiver
+|Waiver
+
+|`overview.needs.integrity_pause`
+|paused
+|pausiert
+
+|`overview.needs.stalled`
+|stalled
+|steht
+
+|`overview.needs.condition`
+|needs a fix
+|braucht eine Korrektur
+
+|`overview.needs.held`
+|held for you
+|wartet auf dich
+
+|`overview.needs.landing_failed`
+|landing failed
+|Landen fehlgeschlagen
+
+|`overview.needs.setup`
+|setup
+|Einrichtung
+
+|`overview.state.working`
+|working
+|arbeitet
+
+|`overview.state.waiting`
+|waiting for you
+|wartet auf dich
+
+|`overview.state.stalled`
+|stalled
+|steht
+
+|`overview.state.paused`
+|paused
+|pausiert
+
+|`overview.time.running`
+|{duration}
+|{duration}
+
+|`overview.time.in_phase`
+|in {phase} {duration}
+|in {phase} seit {duration}
+
+|`overview.progress.tasks`
+|{done} of {total} tasks
+|{done} von {total} Tasks
+
+|`overview.progress.plans`
+|{done} of {total} plans
+|{done} von {total} Plänen
+
+|`overview.orchestrator.plans`
+|{running} running · {staged} staged
+|{running} laufen · {staged} vorgesehen
+
+|`overview.belongs_to`
+|in {orchestrator}
+|in {orchestrator}
+
+|`overview.connection.lost`
+|Not connected to the runtime; reconnecting …
+|Keine Verbindung zur Runtime; verbinde neu …
+
+|`overview.fallback.ended`
+|{item} has ended; showing its project.
+|{item} ist beendet; sein Projekt wird gezeigt.
+|===
+
+The word _Orchestrator_ stays as it is in German, as a domain word of `PM-MCP`, and is added to the glossary (link:texts-and-languages.adoc#glossary[Glossary]).

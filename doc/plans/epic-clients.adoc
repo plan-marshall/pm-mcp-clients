@@ -36,13 +36,13 @@ Two packages of this repository are on the critical path of the core epic: `prof
 |Workstream |Packages
 
 |Mock runtime and test infrastructure
-|`mock-runtime`, `cli-test-infra`, `message-catalogue`
+|`mock-runtime`, `cli-test-infra`, `message-catalogue`, `overview-contract`
 
 |Terminal client
-|`cli-design`, `cli-onboarding`
+|`cli-design`, `cli-onboarding`, `cli-overview`
 
 |Web app
-|`web-design`, `web-app-foundation`, `web-onboarding`
+|`web-design`, `web-app-foundation`, `web-onboarding`, `web-overview`
 |===
 
 [#rules]

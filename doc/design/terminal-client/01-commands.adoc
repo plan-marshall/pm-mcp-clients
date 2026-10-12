@@ -29,6 +29,8 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
 pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
 pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
 pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies
+pm-operator status [--project <project_id>] [--by orchestrator] [--watch]
+                                                                the running work as a tree, and the runtime (15-overview)
 
 <level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
 common:    --no-input   never ask; stop at the first choice not given (exit code 3)
@@ -36,6 +38,7 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
            --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
 
 In the console only:
+  plans                       the overview of running work, full screen (15-overview)
   questions                   the open questions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a question as a dialogue, or answer it with an option
   web [pair|lan|copy [ssh]]   the ways into the web app; a new code; other devices; copy the URL or the ssh command
@@ -50,7 +53,8 @@ In the console only:
 * *`config <aspect>`* starts the sub-workflow of one aspect as a later run (`onboard_run: reconfigure`), with the current values as the proposal, and answers each choice state from its arguments where they give one (<<direct-verbs>>). The aspects are the seven steps of the onboarding: `language`, `harness`, `models`, `roles`, `credentials`, `providers`, `plan-defaults`.
 * *Other verbs* never ask where to onboard. A verb that needs a step of the onboarding that is not done yet (a credential before the credential store is chosen, a role before the catalogue exists) is refused, and the refusal names the console (`pm-operator`).
 * *`config show|set|unset`* keep what `pm-operator config` already is: the operator's configuration keys of `machine-config.json` and `local-config.json`. A key that an aspect owns (`language.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, the role assignment) is changed only through its aspect, because the aspect validates and checks it; `config set` refuses it and names the aspect verb. `show` lists every key, the aspect-owned ones included.
-* *The console commands* (`questions`, `answer`, `web`, `help`, `exit`) exist only inside the console; they are not shell verbs.
+* *`status`* prints the overview of running work as a tree, `--project <project_id>` for one project and `--by orchestrator` with the plans below their orchestrators (xref:15-overview.adoc#status-tree[The Tree]).
+* *The console commands* (`plans`, `questions`, `answer`, `web`, `help`, `exit`) exist only inside the console; they are not shell verbs.
 
 [#one-surface]
 === One Surface in Every Language

@@ -37,6 +37,10 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |What both clients show of a decision a plan asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, announcing, and how it ends.
 
+|link:shared/plan-overview.adoc[Plan Overview]
+|`DRAFT`
+|What both clients show of the running work across projects: the projects with running work, a project by plan and by orchestrator, what a row shows, how plans and orchestrators are told apart, live updates, and where the operator left it.
+
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`
 |What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).
