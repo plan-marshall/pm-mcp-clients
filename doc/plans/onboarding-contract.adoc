@@ -13,6 +13,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 * *Specification first*: the package writes its part of the specification into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), from the use case once it is agreed, and opens that pull request beside its own; the proposal's rows it writes are removed from the proposal.
 * *Contract*: the onboarding's stores and steps: consents, languages as far as `message-catalogue` leaves them, the first harness and the harness scan, login probe and unknown harness, the model catalogue, the steward, the default and machine role assignment, the credential store, the providers and their verification, the plan axes, the plan overrides, the harness icons; the onboarding scenarios of the mock runtime (`onboarding-<case>`).
+* *Automatic onboarding*: `auto.consent`, the closed list of reasons and the item schema of `auto.result`.
 
 == Trace
 

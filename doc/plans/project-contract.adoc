@@ -4,7 +4,7 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `project-contract`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]; no roadmap milestone yet
 Where:: `pm-api` (the projects of the machine, the onboarding's states for clients); `pm-mock-runtime` (routes and scenarios)
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -14,13 +14,14 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * *Specification first*: the package writes the change The Projects of the Machine, and the client side of Onboarding a Project as One Process, into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), once the use cases are agreed, and opens that pull request beside its own.
 * The resource records of every enrolled project (display name, remote, ready or what its setup needs, `needs_operator`, counts, last activity, released), the favourites with their order, recent and most used; the writes of a favourite and of its order.
 * The representation of the project onboarding's states for both clients, on the scheme of `operator-interaction-contract`.
+* The release and the unenrolment of a project: the confirmation with what they end, the refusal of an unenrolment while work runs.
 * The scenarios of the mock runtime: no project, projects with favourites and recent ones, a project not ready, a released project, an onboarding run to the end, one stopped at a failing check, a script of the checkout run on consent and one refused, an enrichment refused (the architecture without descriptions, the project ready), a later run of one step; scenario names `projects-<case>`.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2] and their changes
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3] and their changes
 * Design: link:../design/shared/project-explorer.adoc[Project Explorer]; link:../design/shared/project-onboarding.adoc[Project Onboarding]
 
 == Done When

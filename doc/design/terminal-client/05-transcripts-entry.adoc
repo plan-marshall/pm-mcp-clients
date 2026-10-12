@@ -14,7 +14,7 @@ One transcript per state or per short sequence of states; the states each one sh
 === The Entry `pm-operator`
 
 [#t-entry-desktop]
-==== Onboarded, on the Desktop (`start.runtime`, `start.pairing`, `start.where`, `start.browser`, `start.show`, `start.wait`)
+==== Onboarded, on the Desktop (`entry.runtime`, `entry.pairing`, `entry.where`, `entry.browser`, `entry.show`, `entry.wait`)
 
 The first console after the onboarding, with no browser of this machine paired yet:
 
@@ -43,12 +43,12 @@ $ pm-operator
 pm [1 question] ›
 ----
 
-* `start.runtime` prints `✓ Runtime running` when one was running already. `start.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one).
-* `start.browser` that cannot start the browser prints `– No browser opened: <reason>` and shows the ways in as over SSH.
-* `start.wait` is the console itself: a pairing is reported above the prompt (`✓ Paired: …`), and a redeemed code is replaced by a new one for a further device, which `web` shows.
+* `entry.runtime` prints `✓ Runtime running` when one was running already. `entry.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one).
+* `entry.browser` that cannot start the browser prints `– No browser opened: <reason>` and shows the ways in as over SSH.
+* `entry.wait` is the console itself: a pairing is reported above the prompt (`✓ Paired: …`), and a redeemed code is replaced by a new one for a further device, which `web` shows.
 
 [#t-entry-ssh]
-==== Onboarded, over SSH (`start.where`, `start.show`, `start.wait`)
+==== Onboarded, over SSH (`entry.where`, `entry.show`, `entry.wait`)
 
 [source,text]
 ----
@@ -71,7 +71,7 @@ pm ›
 ----
 
 [#t-entry-other]
-==== Another Device (`start.other-device`, `start.lan`)
+==== Another Device (`entry.other-device`, `entry.lan`)
 
 [source,text]
 ----
@@ -99,7 +99,7 @@ Open to the network? y) yes   n) no, keep it on this machine [Enter]   › y
 pm ›
 ----
 
-* `start.other-device` is a choice of the network exposure, not a consent of the onboarding: its default is the safe answer `n`, which `Enter` takes, as the use case says (`no (default)`).
+* `entry.other-device` is a choice of the network exposure, not a consent of the onboarding: its default is the safe answer `n`, which `Enter` takes, as the use case says (`no (default)`).
 
 [#t-entry-first]
 ==== Not Fully Onboarded (`onboard.entry`, `onboard.mode`)

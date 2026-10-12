@@ -14,6 +14,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * `projects` as the first level of the full-screen view, with its groups, the actions of a project, favourites and their order, sort and filter; `projects --list`.
 * `project add`, `project setup`, `project favourite`: the onboarding of a project as a dialogue, the working directory as the proposed checkout, the build environment captured from the operator's login.
 * `--project ?` showing the explorer's list.
+* `project release` and `project unenrol` with their confirmation (UC-PRJ-3).
 
 == Trace
 

@@ -99,13 +99,13 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |===
 |State |Kind |Transcript
 
-|`start.runtime`, `start.pairing`, `start.where`, `start.browser`, `start.show`, `start.wait`
+|`entry.runtime`, `entry.pairing`, `entry.where`, `entry.browser`, `entry.show`, `entry.wait`
 |`[S]`, `[S]`, `[S]`, `[S]`, `[S]`, `[O]`
-|xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop (start.runtime, start.pairing, start.where, start.browser, start.show, start.wait)], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH (start.where, start.show, start.wait)]
+|xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop (entry.runtime, entry.pairing, entry.where, entry.browser, entry.show, entry.wait)], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH (entry.where, entry.show, entry.wait)]
 
-|`start.other-device`, `start.lan`
+|`entry.other-device`, `entry.lan`
 |`[O]`, `[S]`
-|xref:05-transcripts-entry.adoc#t-entry-other[Another Device (start.other-device, start.lan)]
+|xref:05-transcripts-entry.adoc#t-entry-other[Another Device (entry.other-device, entry.lan)]
 
 |pushed questions, answers elsewhere, the connection, leaving the console
 |console
