@@ -452,7 +452,7 @@ The consent lists everything the run does, in the form of <<consent>>, in one li
   Everything is decided
 
   ① Language     Deutsch, models too           from your system      [ Change ]
-  ② Harness      Claude Code 2.4.1  ✓          the only supported one [ Change ]
+  ② Harness      Claude Code 2.4.1  ✓          the first supported one [ Change ]
   ③ Models       3 models on 2 harnesses  ✓    all found              [ Change ]
   ④ Roles        default assignment, 31 roles  the default            [ Change ]
   ⑤ Credentials  macOS Keychain  ✓             available here         [ Change ]
@@ -479,7 +479,7 @@ Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Clie
     ✓ Models      3 models allowed
     ✓ Roles       31 roles assigned
     ✓ Credentials macOS Keychain
-    ✓ Providers   GitHub (gh), SonarCloud
+    ✓ Providers   GitHub (gh); SonarCloud not available
     ✓ Plans       Pull Request · Test first · key points
 
   Next: enrol a project and set it up.

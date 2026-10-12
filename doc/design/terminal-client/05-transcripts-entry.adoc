@@ -276,7 +276,7 @@ Decide everything for me?
 y) yes   n) not now   ? lists every action   › y
 
 [1/7] Language     ✓ Deutsch, models too           from your system
-[2/7] Harness      ✓ Claude Code 2.4.1             the only supported one
+[2/7] Harness      ✓ Claude Code 2.4.1             the first supported one
                      ✓ version   ✓ logged in
 [3/7] Models       ✓ 3 models on 2 harnesses       all found
 [4/7] Roles        ✓ default assignment, 31 roles  the default
@@ -304,7 +304,7 @@ pm ›
 
 [source,text]
 ----
-[2/7] Harness      ✓ Claude Code 2.4.1             the only supported one
+[2/7] Harness      ✓ Claude Code 2.4.1             the first supported one
                      ✓ version   ✗ not logged in
 
 [2/7] Harness · Checking Claude Code
