@@ -1,0 +1,193 @@
+= Terminal Client: Projects
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Projects
+
+What the explorer and a project's onboarding show is link:../shared/project-explorer.adoc[Project Explorer] and link:../shared/project-onboarding.adoc[Project Onboarding], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc[Use Cases, Projects]). This part is how the console draws them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
+
+[#commands]
+== Commands
+
+----
+  projects [--list]                     the explorer, full screen; --list prints it into the scrollback
+  project add [<path>]                  onboard a project; the working directory is the proposed checkout
+  project setup <project_id> [<step>]   a later run of a project's onboarding, at a step (team, own, roles, commit)
+  project favourite <project_id> [--off]
+----
+
+* All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `pm-operator enrol` stays the direct verb of a project's enrolment, with its arguments as the answers of `project.identity` to `project.enrol`.
+* `--project ?` of every other verb shows the same list as the explorer, favourites first (xref:02-levels.adoc#addressing[Addressing a Level]).
+
+[#explorer]
+== The Explorer, Full Screen
+
+`projects` opens the explorer as the first level of the full-screen view of xref:15-overview.adoc[The Overview]: from a project, its actions; from _Running work_, the project's level of the overview; from a plan, its plan view (xref:16-plan-view.adoc[The Plan View]).
+
+----
+ Projects                                                         ● connected
+ ─────────────────────────────────────────────────────────────────────────────
+ Favourites
+▶ ★ pm-mcp-clients    ready      ! 2   3 plans · 1 orchestrator    2 min ago
+  ★ pm-mcp-core       ready            2 plans                     9 min ago
+ Recent
+    plan-marshall     setup needs: credential sonar                yesterday
+    cui-http          ready                                        3 d ago
+ All projects · by name
+    API-Sheriff       ready                                        5 weeks ago
+    …
+ ─────────────────────────────────────────────────────────────────────────────
+ ↑↓ move   Enter actions   * favourite   s sort   / filter   + add   q leave
+----
+
+`Enter` on a project opens its actions in place:
+
+----
+▶ ★ pm-mcp-clients    ready      ! 2   3 plans · 1 orchestrator    2 min ago
+      o  Add an orchestrator
+      p  Add a plan
+      r  Running work
+      e  Setup
+      *  Remove from favourites
+----
+
+[cols="1,3",options="header"]
+|===
+|Key |Action
+
+|`Enter`
+|the actions of the selected project; on an action, that action
+
+|`o`, `p`, `r`, `e`
+|add an orchestrator, add a plan, running work, setup: directly from the row
+
+|`*`
+|mark or unmark the selected project as a favourite
+
+|`J`, `K`
+|move a favourite down or up in the favourites
+
+|`s`
+|sort _All projects_ by name or by most used
+
+|`/`
+|filter by name and id; the groups become one list of matches
+
+|`+`
+|add a project: leaves the view and starts `project add`
+|===
+
+The keys of the explorer are keys of navigation, the same in every language, like those of the overview (xref:15-overview.adoc#full-screen-keys[Keys]). The two _Add_ actions leave the view and start the dialogues of starting an orchestrator and a plan, designed with their use cases.
+
+[#onboarding]
+== Onboarding a Project
+
+The onboarding is a dialogue of the console, with the frame, the step line, consent, and check lines of xref:03-dialogues.adoc[Dialogues]:
+
+[source,text]
+----
+pm › project add
+[1/7] Checkout · Which checkout is the project?
+  Path of the checkout   [/home/oliver/git/pm-mcp-clients] ← the working directory
+Use this checkout? [Enter]   e) edit the path   ?   › ⏎
+
+[1/7] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
+  reads       its git configuration, build wrappers, host tools, language
+              servers, and scripts
+  runs        the version probe of each wrapper and tool found
+  never       changes a file, uses the network
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
+    ✓  remote plan-marshall/pm-mcp-clients, base branch main
+    ✓  build wrapper mvnw (Maven 3.9.11)
+    ✓  host tools git 2.47, gh 2.71
+    ·  language servers   none found
+
+[2/7] Identity · How should the project be named?
+  Id     [pm-mcp-clients] ← from the remote
+  Name   [plan-marshall/pm-mcp-clients] ← from the remote
+  Pilot  this release runs plans only in pilot projects   1) yes ←   2) no
+Use these? [Enter]   e) edit   ?   › ⏎
+
+[3/7] Enrolment · Enrol pm-mcp-clients with these settings?
+  root             /home/oliver/git/pm-mcp-clients            detected
+  build wrapper    mvnw, pinned .mvn/wrapper/maven-wrapper.properties   detected
+  host tools       git, gh                                     detected
+  build env        12 variables (?3 lists them)                from your login
+  budgets, paths   the defaults                                default
+  containers       off   (?c explains, c) turn on)
+Enrol pm-mcp-clients? [Enter]   e) edit a line   ?   › ⏎
+✓ pm-mcp-clients enrolled
+…
+[5/7] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
+  1) Model language     English              ← from machine
+  2) Allowed models     4 models             ← from machine
+  3) Providers          GitHub (gh)          ← from machine
+  4) Plan defaults      Pull Request · Test first · key points   ← from machine
+  5) Commit identity    Oliver Wolff <…>     ← from machine
+Use the machine's values? [Enter]   change: 1-5   ?   › 4
+  Plan defaults · project pm-mcp-clients
+    Method   1) Test first ← from machine   2) Tests after
+  …
+Save 1 own value? [Enter]   change: 1-5   ?   › ⏎
+…
+✓ pm-mcp-clients is ready
+    o) Add an orchestrator   p) Add a plan   r) Running work
+pm ›
+----
+
+* `project add <path>` starts with that path; in a checkout, the working directory is the proposal.
+* A later run (`project setup pm-mcp-clients own`) opens the same states with the project's current values; a project that is not ready continues where its setup stopped.
+
+[#list]
+== The List (`projects --list`)
+
+[source,text]
+----
+pm › projects --list
+Favourites
+  ★ pm-mcp-clients    ready   needs you: 2   3 plans · 1 orchestrator   2 min ago
+  ★ pm-mcp-core       ready   2 plans   9 min ago
+Recent
+    plan-marshall     setup needs: credential sonar   yesterday
+All projects (by name)
+    API-Sheriff       ready   5 weeks ago
+    …
+pm ›
+----
+
+The list uses words for every mark, so that it reads the same without glyphs and colour.
+
+[#projects-texts]
+== Texts of the Terminal
+
+The texts of the rows and steps are those of the shared designs; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.projects.keys.actions`
+|actions
+|Aktionen
+
+|`operator.projects.keys.favourite`
+|favourite
+|Favorit
+
+|`operator.projects.keys.sort`
+|sort
+|sortieren
+
+|`operator.projects.keys.add`
+|add
+|hinzufügen
+
+|`operator.projects.working_directory`
+|the working directory
+|das Arbeitsverzeichnis
+
+|`operator.projects.from_login`
+|from your login
+|aus deiner Anmeldung
+|===

@@ -50,10 +50,10 @@ Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a mac
 |`exec-read-denied-paths`, `landlock-on-wsl2`
 
 |Mock runtime and test infrastructure
-|`mock-runtime`, `message-catalogue`, `cli-test-infra`, `operator-interaction-contract`, `overview-contract`, `process-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`
+|`mock-runtime`, `message-catalogue`, `cli-test-infra`, `operator-interaction-contract`, `overview-contract`, `process-contract`, `project-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`
 
 |Clients
-|`cli-onboarding`, `web-app-foundation`, `web-onboarding`, `cli-decisions`, `web-decisions`, `cli-overview`, `web-overview`, `cli-plan-view`, `web-plan-view`
+|`cli-onboarding`, `web-app-foundation`, `web-onboarding`, `cli-decisions`, `web-decisions`, `cli-overview`, `web-overview`, `cli-plan-view`, `web-plan-view`, `cli-projects`, `web-projects`
 |===
 
 [#constraints]

@@ -24,6 +24,7 @@ The client holds no step order and no rule of its own: it renders the state the 
 * xref:01-commands.adoc[Command Model]: the console as the entry, the verbs and the console commands, `config` and its aspects, arguments as answers, exit codes.
 * xref:02-levels.adoc[Levels]: machine, project, and plan; addressing a level; where a value comes from.
 * xref:03-dialogues.adoc[Dialogues]: how a state is rendered and answered, keys and numbers, consent, checks, waiting, resume, refusals.
+* xref:17-projects.adoc[Projects]: the explorer of the machine's projects (favourites, recent, all), a project's actions, and the onboarding of a project; `projects`, `project add`, `project setup`.
 * xref:16-plan-view.adoc[The Plan View]: a plan's process level by level, its phases and sub-workflows down to the leaves, each with its state; in the full-screen view and as a tree (`plan`).
 * xref:15-overview.adoc[The Overview]: the overview of running work across projects, as a full-screen view (`plans`) and as a tree (`status`); keys, live updates, where the operator left it.
 * xref:04-console.adoc[The Console]: the prompt and its badges, what the runtime pushes, answering questions, connection, keys, notifications, output safety, the line editor.

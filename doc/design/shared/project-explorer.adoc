@@ -1,0 +1,178 @@
+= Design: Project Explorer
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Project Explorer
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], leading into link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-explorer[The Projects of the Machine] (proposed)_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects], link:../web-app/README.adoc[Web App].
+
+The explorer is where the operator finds a project among all the machine's projects, and goes from it to its work. It is the counterpart of _Running Work_ (link:plan-overview.adoc[Plan Overview]): Running Work shows only what runs, the explorer every enrolled project.
+
+[#layout]
+== Favourites, Recent, All
+
+----
+  Projects                                                     + Add a project
+  ─────────────────────────────────────────────────────────────────────────────
+  ★ Favourites
+    ★ pm-mcp-clients     ready    ! 2   3 plans · 1 orchestrator   2 min ago
+    ★ pm-mcp-core        ready          2 plans                    9 min ago
+  Recent
+      plan-marshall      setup needs: credential sonar             yesterday
+      cui-http           ready                                     3 d ago
+  All projects                                    [ filter ]   by name ▾
+      API-Sheriff        ready                                     5 weeks ago
+      cui-http           ready                                     3 d ago
+      …
+----
+
+* *Favourites*: the projects the operator marked, in the operator's order; always first.
+* *Recent*: the projects the operator worked with last, newest first, at most five; a favourite is not repeated here.
+* *All projects*: every enrolled project, by name, or by _most used_ (how often the operator worked in it over the last four weeks); a filter on name and id narrows the list, and with a filter the three groups become one list of matches.
+* *Add a project* starts the onboarding of a project (link:project-onboarding.adoc[Project Onboarding]).
+* A released project is listed with `released` and offers to be enrolled again; an unenrolled one is not listed.
+
+[#project-row]
+== A Project
+
+[cols="1,3",options="header"]
+|===
+|Element |Shown as
+
+|Favourite
+|`★` when marked
+
+|Name
+|the display name; the id where it differs, after it
+
+|Ready
+|`ready`, or `setup needs: <what>`, or `released`
+
+|Needs the operator
+|the marker with its count, as in Running Work (link:plan-overview.adoc#project-row[A Project])
+
+|Work
+|its active plans and orchestrators, counted apart; nothing when none runs
+
+|Last active
+|when the operator or its plans last worked in it, as a duration (`2 min ago`, `yesterday`)
+|===
+
+[#actions]
+== Actions of a Project
+
+Selecting a project offers, in this order:
+
+. *Add an orchestrator*: starts an orchestrator in the project.
+. *Add a plan*: starts a plan in the project.
+. *Running work*: the project's level of Running Work, its plans and orchestrators (link:plan-overview.adoc#levels[Two Levels, Two Views]).
+. *Setup*: a later run of the project's onboarding, opened at what the operator chooses (link:project-onboarding.adoc#steps[Steps]).
+. *Favourite*: mark or unmark it.
+
+A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an orchestrator and of a plan, whose use cases follow.
+
+[#marks]
+== Favourites, Recent, Most Used
+
+* The operator marks a favourite from the project's actions, or with one key or click on its row, and orders the favourites by moving them; the marks are the runtime's, so both clients and every paired browser show the same.
+* _Recent_ and _most used_ come from the runtime: it counts what the operator does in a project in either client (opening it, starting an orchestrator or a plan, answering a decision, changing its configuration); a client never counts on its own.
+* Where the operator left the explorer (the group, the filter, the selected project) is remembered like the overview's start point: per browser, and per terminal user (link:plan-overview.adoc#persistence[Where the Operator Left It]).
+
+[#texts]
+== Texts
+
+Keys of the area `project`, shared by both clients.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`project.explorer.title`
+|Projects
+|Projekte
+
+|`project.explorer.add`
+|Add a project
+|Ein Projekt hinzufügen
+
+|`project.explorer.favourites`
+|Favourites
+|Favoriten
+
+|`project.explorer.recent`
+|Recent
+|Zuletzt
+
+|`project.explorer.all`
+|All projects
+|Alle Projekte
+
+|`project.explorer.by_name`
+|by name
+|nach Name
+
+|`project.explorer.most_used`
+|most used
+|meistgenutzt
+
+|`project.explorer.filter`
+|filter
+|filtern
+
+|`project.explorer.empty`
+|No project is enrolled yet.
+|Noch ist kein Projekt angemeldet.
+
+|`project.state.ready`
+|ready
+|bereit
+
+|`project.state.setup_needs`
+|setup needs: {need}
+|Einrichtung braucht: {need}
+
+|`project.state.released`
+|released
+|abgegeben
+
+|`project.last_active`
+|{duration} ago
+|vor {duration}
+
+|`project.action.add_orchestrator`
+|Add an orchestrator
+|Einen Orchestrator hinzufügen
+
+|`project.action.add_plan`
+|Add a plan
+|Einen Plan hinzufügen
+
+|`project.action.running_work`
+|Running work
+|Laufende Arbeit
+
+|`project.action.setup`
+|Setup
+|Einrichtung
+
+|`project.action.favourite`
+|Mark as favourite
+|Als Favorit markieren
+
+|`project.action.unfavourite`
+|Remove from favourites
+|Aus den Favoriten entfernen
+
+|`project.action.enrol_again`
+|Enrol again
+|Erneut anmelden
+
+|`project.action.disabled_not_ready`
+|{project} is not ready: {need}
+|{project} ist nicht bereit: {need}
+|===

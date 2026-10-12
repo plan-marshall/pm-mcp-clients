@@ -38,6 +38,8 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
            --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
 
 In the console only:
+  projects [--list]           the explorer of the machine's projects, full screen (17-projects)
+  project add|setup|favourite  onboard a project, a later run of its onboarding, mark a favourite (17-projects)
   plans                       the overview of running work, full screen (15-overview)
   plan <plan_id> [--all|--depth <n>]   a plan's process as a tree (16-plan-view)
   questions                   the open questions and waiver requests, with what they block and the recommendation
