@@ -13,7 +13,7 @@ What starting a plan or an orchestrator shows is link:../shared/starting-work.ad
 ----
   plan add [--project <project_id>|.] [<source>]... [--title <title>] [--id <plan_id>]
   orchestrator add [--project <project_id>|.] [<source>]... [--title <title>] [--id <epic_id>]
-  recipe run <recipe_key> [--project <project_id>|.] [--param <name>=<value>]...
+  recipe run [<recipe_key>] [--project <project_id>|.] [--param <name>=<value>]...
 
   <source>:  --description <text>|-        a description; - reads it from standard input
              --document <path>             a file or a directory; repeatable
@@ -25,6 +25,7 @@ What starting a plan or an orchestrator shows is link:../shared/starting-work.ad
 ----
 
 * All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); they are direct verbs: each argument answers the state that asks for it, and a state without an answer is asked as a dialogue, or with `--no-input` stops the run (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
+* The verb answers `start.choose`: `plan add` is a plan from sources, `recipe run` a recipe, so the console never asks that choice; `recipe run` without a key asks which recipe (`recipe.choose`), with a key goes on to its parameters.
 * Without `--project` the project of the working directory is the proposal, else `--project ?` lists the projects (xref:02-levels.adoc#addressing[Addressing a Level]).
 * `plan add` with an open entry of the project asks first whether to continue it (`c`) or begin a new one (`n`).
 * In the console, `plan add` is the verb and not the plan `add`; a plan whose id is `add` is opened with `plan -- add`.
