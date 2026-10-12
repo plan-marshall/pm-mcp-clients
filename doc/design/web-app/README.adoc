@@ -30,11 +30,11 @@ The sections below are the subjects still to work out; none is designed yet.
 
 == Structure and Navigation
 
-How the app is organised and how one moves from the overview to a part and back.
+How the app is organised and how one moves from the overview to a part and back. The overview of running work and its two levels are link:../shared/plan-overview.adoc[Plan Overview]; the web app draws it as its start view once the machine is onboarded.
 
 == Plan Views
 
-The views of an epic and a plan and the levels of the drill-down (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]).
+The views of an epic and a plan and the levels of the drill-down (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]). They are reached from the overview (link:../shared/plan-overview.adoc[Plan Overview]); a plan's link to its orchestrator is a link in the web app.
 
 == Plan Designer
 

@@ -55,7 +55,7 @@ The domain vocabulary stays as it is in every language: it is what the operator 
 |Provider |der |a git host, CI, or analysis service
 |Harness |der |a coding agent that runs workers
 |Role, Worker |die, der |a configured role, and a harness process serving it
-|Plan, Epic |der, das |a plan and an epic of `PM-MCP`
+|Plan, Epic, Orchestrator |der, das, der |a plan and an epic of `PM-MCP`; the orchestrator is how the clients name an epic and its coordination
 |Task, Deliverable, Finding |der, das, das |the parts of a plan
 |Outline |das |the plan's outline phase and its result
 |Waiver |der |the operator's waiver of a gate
