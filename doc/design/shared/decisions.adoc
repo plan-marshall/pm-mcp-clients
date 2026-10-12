@@ -16,7 +16,7 @@ A running plan leads to decisions, small and large, that the operator takes. The
 [#channel]
 == The Channel, Not the Policy
 
-Whether a decision reaches the operator at all, whether a quorum voted on it first and below which confidence it escalates, whether it carries a recommendation, what happens at its deadline, whether the operator may answer in own words, and which role interprets them: all of this is modelled in the plan's workflow units and decision declarations (link:../../../../plan-marshall-documentation/doc/specification/model-work/10-decision-quorum.adoc#decision-declarations[Decision Declarations]). The clients are the channel: they show every variant a unit can produce and answer it with the links the state offers, and they add no rule of their own. Every rule below is about how a client shows what the decision carries, never about what it carries.
+Whether a decision reaches the operator at all, whether a quorum voted on it first and below which confidence it escalates, whether it carries a recommendation, whether the operator may answer in own words, and which role interprets them: all of this is modelled in the plan's workflow units and decision declarations (link:../../../../plan-marshall-documentation/doc/specification/model-work/10-decision-quorum.adoc#decision-declarations[Decision Declarations]). The clients are the channel: they show every variant a unit can produce and answer it with the links the state offers, and they add no rule of their own. Every rule below is about how a client shows what the decision carries, never about what it carries.
 
 The flow is the sub-workflow `decision.*` of link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]; each of its states is rendered like every other state (link:../terminal-client/03-dialogues.adoc#state-frame[The Frame of a State]; link:../web-app/README.adoc#principles[Web App, Principles]).
 
@@ -29,7 +29,7 @@ The flow is the sub-workflow `decision.*` of link:../../../../plan-marshall-docu
 
 |Decision
 |title, header, plan or epic, the asking phase and role, what it blocks (the plan, a task, nothing), reversibility (reversible, costly, irreversible), its parts
-|description and evidence; deadline and expiry rule (wait on, apply a default, escalate, cancel); a revision after it changed
+|description and evidence; a revision after it changed
 
 |Part
 |question, answer type (one option, several options, a value), options or the value's bounds
@@ -47,7 +47,7 @@ A client shows an element when the decision carries it and leaves its place out 
 
 Both clients show a decision in the same order, top to bottom:
 
-. *What is asked*: the title; the plan or epic and the phase that asks; *why now*: what it blocks; how reversible it is; the deadline and what happens at it.
+. *What is asked*: the title; the plan or epic and the phase that asks; *why now*: what it blocks; how reversible it is; and that the plan waits for the answer.
 . *The evidence*: the description, then the evidence it names (a file and its lines, a diff, a finding, a link). The evidence is what lets the operator decide without trusting the prose; it is one step away (expanded in the web app, `?` in the terminal), never hidden.
 . *The parts*, one at a time where there are several (<<parts>>), each with its question and its options in the order the workflow gives them: never sorted by support, so that the order itself recommends nothing.
 . *The recommendation and the votes*, where the decision carries them, placed by <<recommendation>>.
@@ -118,9 +118,9 @@ Where a part allows it, every client offers to answer in own words next to the o
 [#announce]
 == Announcing a Decision
 
-* *Urgency* follows from what the decision carries: it interrupts (a notification, the bell) when it blocks the plan, is not reversible, or its deadline is near; otherwise it waits in the badge, the list of open decisions, and the next notice at a natural break (when a dialogue ends, when the operator returns to the prompt or the overview).
+* *Urgency* follows from what the decision carries: it interrupts (a notification, the bell) when it blocks the plan or is not reversible; otherwise it waits in the badge, the list of open decisions, and the next notice at a natural break (when a dialogue ends, when the operator returns to the prompt or the overview).
 * *Nothing is answered by accident*: an announcement never takes the focus, input typed before it was shown never answers it, and opening a decision discards input typed ahead (xref:../terminal-client/04-console.adoc#answering[Terminal Client, Answering a Question]).
-* *One reminder* before the deadline, then none; a decision that changed (a new revision) is announced again as changed.
+* *No time limit*: a decision delivered to the operator waits until the operator answers it, and the plan waits with it (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-no-expiry[No Time Limit on a Decision]); the clients show how long it has waited, never a countdown, and never answer it on their own. A decision that changed (a new revision) is announced again as changed.
 * A notification names the plan and the kind of decision, never its content.
 
 [#outcomes]
@@ -128,7 +128,6 @@ Where a part allows it, every client offers to answer in own words next to the o
 
 * *Answered in another channel*: every client says where and how (`answered in the web app, iPad: Rebase onto main`), closes the decision if it is open, and drops what was typed into it.
 * *A newer revision*: an answer to an older revision is refused by the runtime; the client shows the changed decision with what changed, and the operator answers again.
-* *Deadline*: the client shows what the expiry rule did (`expired; the plan went on with its default: …`, `expired; escalated to …`, `expired; the plan waits on`), in the words of the rule the decision carried.
 * *None fits*: confirmed like an answer, then shown as `you asked the plan to think again`.
 
 [#safety]
@@ -169,21 +168,13 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |cannot be undone
 |lässt sich nicht rückgängig machen
 
-|`decision.deadline`
-|answer by {time} (in {remaining})
-|Antwort bis {time} (in {remaining})
 
-|`decision.expiry.wait`
-|then the plan waits on
-|danach wartet der Plan weiter
 
-|`decision.expiry.default`
-|then the plan goes on with: {option}
-|danach geht der Plan weiter mit: {option}
 
-|`decision.expiry.escalate`
-|then it goes to {target}
-|danach geht sie an {target}
+
+|`decision.waiting`
+|the plan waits for your answer, since {time}
+|der Plan wartet seit {time} auf deine Antwort
 
 |`decision.part.position`
 |part {n} of {total}
@@ -305,17 +296,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |The decision changed: {change}. Please answer again.
 |Die Entscheidung hat sich geändert: {change}. Bitte antworte noch einmal.
 
-|`decision.outcome.expired_default`
-|expired; the plan went on with its default: {option}
-|abgelaufen; der Plan ist mit seiner Vorgabe weitergegangen: {option}
 
-|`decision.outcome.expired_escalated`
-|expired; it went to {target}
-|abgelaufen; sie ging an {target}
 
-|`decision.outcome.expired_wait`
-|the deadline passed; the plan waits on
-|die Frist ist abgelaufen; der Plan wartet weiter
 
 |`decision.outcome.rethink`
 |you asked the plan to think again

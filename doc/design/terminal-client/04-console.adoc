@@ -31,7 +31,7 @@ A notice is printed *above* the prompt: the line the operator is typing is taken
 
 ----
 pm › config roles --pro
-◆ Question Q7 · plan fix-relay · answer by 14:52 (in 18 min)
+◆ Question Q7 · plan fix-relay · blocks the plan
   The change conflicts with main in RelayServer.java.
   Recommended: 2) Rebase onto main
   answer Q7   ·   questions
@@ -43,7 +43,7 @@ pm [1 question] › config roles --pro
 
 A pushed item never takes the focus: no keystroke typed before it was shown can answer it, and a bare number at the prompt is no answer (`2 is not a command here; help lists them`).
 
-* `questions` lists what waits: id, plan or epic, the question in one line, the recommendation, and the deadline.
+* `questions` lists what waits: id, plan or epic, the question in one line, the recommendation, and since when the plan waits.
 * `answer Q7` opens the decision as the states of its sub-workflow `decision.*`, shown as link:../shared/decisions.adoc[Decisions] says for every client: what is asked and why, the evidence on `?`, the parts one at a time, the options in the workflow's order with their support, and the recommendation placed by what is at stake (preselected only where the decision is reversible and the votes agree). Input typed ahead before it opened is discarded, so a stray `Enter` cannot take a recommendation (transcripts: xref:14-transcripts-decisions.adoc[Decisions]).
 * `answer Q7 2` answers a single-part decision at once with option 2, after printing the option it chose; where the decision asks for `decision.confirm` (several parts, or not reversible), the confirmation is still shown.
 * A waiver request is opened the same way and answered by a waiver with its reason; it has no `Enter` default, like a consent (xref:03-dialogues.adoc#consent[Consent]; xref:14-transcripts-decisions.adoc#t-decision-waiver[A Waiver Request]).
@@ -55,17 +55,10 @@ A pushed item never takes the focus: no keystroke typed before it was shown can 
 A dialogue is never interrupted. When something arrives while a dialogue runs, the console prints one line at the next state of the dialogue, before its prompt:
 
 ----
-◆ 1 question waiting: Q7 · fix-relay · answer by 14:52 (in 11 min)   ! shows it
+◆ 1 question waiting: Q7 · fix-relay · blocks the plan   ! shows it
 ----
 
-`!` leaves the dialogue where it is (nothing is sent; its state stays in the runtime), opens what waits, and afterwards reads the dialogue's state again and prints it. The line is repeated at every state of the dialogue while the deadline is within its last reminder (<<deadlines>>).
-
-[#deadlines]
-=== Deadlines
-
-* A deadline is shown as the time and the time left (`answer by 14:52 (in 18 min)`), computed each time it is printed. Nothing ticks in place: a counting line breaks screen readers and plain terminals.
-* A reminder is printed above the prompt at half the time, at 5 minutes, and at 1 minute before the deadline, with the bell.
-* At the deadline the console prints what the runtime did: `Q7 expired; the plan went on with the recommendation: Rebase onto main.`
+`!` leaves the dialogue where it is (nothing is sent; its state stays in the runtime), opens what waits, and afterwards reads the dialogue's state again and prints it.
 
 [#answered-elsewhere]
 === Answered Elsewhere
@@ -118,7 +111,7 @@ The first valid answer wins, from the web app, the console, or an entry session.
 [#notifications]
 === Notifications
 
-* What waits for the operator rings the terminal bell once when it arrives and at each reminder.
+* What waits for the operator rings the terminal bell once, when it arrives.
 * A desktop notification is sent instead where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
 * The machine configuration key `console.notify` chooses `auto` (the default: the desktop notification where known, else the bell), `bell`, or `off`.
 * A notification carries the plan and the kind (`plan fix-relay asks a question`), never the text of the question, which may hold content of the project.

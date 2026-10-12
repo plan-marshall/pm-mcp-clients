@@ -164,7 +164,7 @@ Where do you want to go on?   h) here, in the terminal [Enter]   w) in the web a
 [source,text]
 ----
 pm › config roles --pro
-◆ Question Q7 · plan fix-relay · answer by 14:52 (in 18 min)
+◆ Question Q7 · plan fix-relay · blocks the plan
   The change conflicts with main in RelayServer.java.
   Recommended: 2) Rebase onto main
   answer Q7   ·   questions
@@ -173,9 +173,9 @@ Roles · project pm-mcp-clients · Give every role a harness and a model
 …
 pm [1 question] › questions
   Q7   fix-relay   The change conflicts with main in RelayServer.java.
-       recommended: Rebase onto main        answer by 14:52 (in 16 min)
+       recommended: Rebase onto main        waiting since 14:34
 pm [1 question] › answer Q7
-Question Q7 · plan fix-relay · phase 5 execute · answer by 14:52 (in 16 min)
+Question Q7 · plan fix-relay · phase 5 execute · blocks the plan
   The change conflicts with main in RelayServer.java.
     1) Merge main into the branch
     2) Rebase onto main ← recommended: keeps the history linear
@@ -196,11 +196,11 @@ pm ›
 [3/7] Models · Choose the harnesses and models other plans may use
   …
 Enrol OpenCode and allow 3 models? [Enter]   toggle: 1-6   b) back   ?   › 3
-◆ 1 question waiting: Q7 · fix-relay · answer by 14:52 (in 11 min)   ! shows it
+◆ 1 question waiting: Q7 · fix-relay · blocks the plan   ! shows it
     3) [x] haiku-5.5        ✎
 Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   › !
   [3/7] Models stays where it is; nothing was sent.
-Question Q7 · plan fix-relay · answer by 14:52 (in 11 min)
+Question Q7 · plan fix-relay · blocks the plan
   …
 Rebase onto main? [Enter]   other: 1-3   q) not now   ?   › ⏎
 ✓ Q7 answered: Rebase onto main.
@@ -217,7 +217,7 @@ Enrol OpenCode and allow 4 models? [Enter]   toggle: 1-6   b) back   ?   ›
 [source,text]
 ----
 pm [1 question] › answer Q7
-Question Q7 · plan fix-relay · answer by 14:52 (in 9 min)
+Question Q7 · plan fix-relay · blocks the plan
     1) Merge main into the branch
     2) Rebase onto main ← recommended
     3) Stop the plan and ask me later

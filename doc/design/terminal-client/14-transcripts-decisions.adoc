@@ -17,7 +17,7 @@ The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#t
 ----
 pm [1 question] › answer Q7
 Question Q7 · plan fix-relay · execute · blocks the plan · can be undone
-  The change conflicts with main in RelayServer.java.     answer by 14:52 (in 16 min)
+  The change conflicts with main in RelayServer.java.
   ? shows the evidence: the conflict, both versions of the method
 
     2) Rebase onto main ←          4 of 6 votes · 3 models   clear majority
@@ -41,7 +41,7 @@ pm ›
 ----
 pm [1 question] › answer Q9
 Question Q9 · plan drop-legacy-api · finalize · blocks the plan · cannot be undone
-  Delete the published v1 endpoints from the release branch?   answer by 18:00 (in 3 h)
+  Delete the published v1 endpoints from the release branch?
 
     1) Delete them now                 3 of 6 votes · 3 models
     2) Deprecate them, delete in 0.11  3 of 6 votes · 2 models
@@ -158,12 +158,12 @@ Commands only? [Enter]   other: 1-2   w) in my own words   m) ✎ note   x) none
 ----
 
 [#t-decision-ends]
-=== Later, None Fits, Changed, Expired
+=== Later, None Fits, Changed
 
 [source,text]
 ----
 …   x) none fits   l) later   ?   › l
-Q7 stays open; answer by 14:52. questions lists it.
+Q7 stays open; the plan waits for it. questions lists it.
 pm [1 question] › answer Q7
 …   x) none fits   l) later   ?   › x
 None fits: the plan thinks again and asks anew. Send? [Enter]   b) back   › ⏎
@@ -172,11 +172,9 @@ None fits: the plan thinks again and asks anew. Send? [Enter]   b) back   › �
 pm [1 question] ›
 ◆ Q8 changed: a third option was added. Please answer again.
 pm [1 question] ›
-◆ Q8 expired; the plan went on with its default: Merge main into the branch.
-pm ›
 ----
 
-* What happens at a deadline is the decision's expiry rule: `the plan waits on`, `the plan went on with its default: …`, or `it went to …`.
+* No decision expires: the plan waits until the operator answers it, and `questions` shows since when.
 
 [#t-decision-waiver]
 === A Waiver Request
@@ -185,7 +183,7 @@ pm ›
 ----
 pm [1 waiver request] › questions
   WR-2  plan fix-relay  waiver request: ci_check:integration-tests
-        "The test needs a second machine the CI does not have."   answer by 16:00
+        "The test needs a second machine the CI does not have."   waiting since 13:10
 pm [1 waiver request] › answer WR-2
 Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests
   The test needs a second machine the CI does not have.
