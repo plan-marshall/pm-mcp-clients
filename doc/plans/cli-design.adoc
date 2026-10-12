@@ -36,7 +36,7 @@ The design document is merged in this repository and the operator has accepted i
 [#run]
 == How It Is Run
 
-This package is design work and is run directly in a Claude Code session, without plan-marshall and outside the orchestrator epic:
+This package is design work and is run directly in a Claude Code session, without plan-marshall and outside the epic:
 
 . Start a Claude Code session in this repository, with a worktree of `plan-marshall-documentation` of its own for the use-case corrections (beside the checkouts other sessions use), and give it this file: "Work the package `cli-design` of `pm-mcp-clients` (`doc/plans/cli-design.adoc`)".
 . The session reads the use cases, the design documents, and the specification sections of the trace above, works out the design thoroughly, and opens a pull request here with the design document in `doc/design/`, and one in `plan-marshall-documentation` with the corrections of the use cases the design needs.

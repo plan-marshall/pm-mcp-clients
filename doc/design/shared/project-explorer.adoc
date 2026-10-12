@@ -20,7 +20,7 @@ The explorer is where the operator finds a project among all the machine's proje
   Projects                                                     + Add a project
   ─────────────────────────────────────────────────────────────────────────────
   ★ Favourites
-    ★ pm-mcp-clients     ready    ! 2   3 plans · 1 orchestrator   2 min ago
+    ★ pm-mcp-clients     ready    ! 2   3 plans · 1 epic   2 min ago
     ★ pm-mcp-core        ready          2 plans                    9 min ago
   Recent
       plan-marshall      setup needs: credential sonar             yesterday
@@ -57,7 +57,7 @@ The explorer is where the operator finds a project among all the machine's proje
 |the marker with its count, as in Running Work (link:plan-overview.adoc#project-row[A Project])
 
 |Work
-|its active plans and orchestrators, counted apart; nothing when none runs
+|its active plans and epics, counted apart; nothing when none runs
 
 |Last active
 |when the operator or its plans last worked in it, as a duration (`2 min ago`, `yesterday`)
@@ -68,19 +68,19 @@ The explorer is where the operator finds a project among all the machine's proje
 
 Selecting a project offers, in this order:
 
-. *Add an orchestrator*: starts an orchestrator in the project.
+. *Add an epic*: starts an epic in the project.
 . *Add a plan*: starts a plan in the project.
-. *Running work*: the project's level of Running Work, its plans and orchestrators (link:plan-overview.adoc#levels[Two Levels, Two Views]).
+. *Running work*: the project's level of Running Work, its plans and epics (link:plan-overview.adoc#levels[Two Levels, Two Views]).
 . *Setup*: a later run of the project's onboarding, opened at what the operator chooses (link:project-onboarding.adoc#steps[Steps]).
 . *Favourite*: mark or unmark it.
 
-A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, and _Running work_ while plans of it still show. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an orchestrator and of a plan (link:starting-work.adoc[Starting Work]); while an entry of the project is open, _Continue starting_ comes first (link:starting-work.adoc#leaving[Leaving and Coming Back]).
+A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, and _Running work_ while plans of it still show. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an epic and of a plan (link:starting-work.adoc[Starting Work]); while an entry of the project is open, _Continue starting_ comes first (link:starting-work.adoc#leaving[Leaving and Coming Back]).
 
 [#marks]
 == Favourites, Recent, Most Used
 
 * The operator marks a favourite from the project's actions, or with one key or click on its row, and orders the favourites by moving them; the marks are the runtime's, so both clients and every paired browser show the same.
-* _Recent_ and _most used_ come from the runtime: it counts what the operator does in a project in either client (opening it, starting an orchestrator or a plan, answering a decision, changing its configuration); a client never counts on its own.
+* _Recent_ and _most used_ come from the runtime: it counts what the operator does in a project in either client (opening it, starting an epic or a plan, answering a decision, changing its configuration); a client never counts on its own.
 * Where the operator left the explorer (the group, the filter, the selected project) is remembered like the overview's start point: per browser, and per terminal user (link:plan-overview.adoc#persistence[Where the Operator Left It]).
 
 [#texts]
@@ -144,9 +144,9 @@ Keys of the area `project`, shared by both clients.
 |{duration} ago
 |vor {duration}
 
-|`project.action.add_orchestrator`
-|Add an orchestrator
-|Einen Orchestrator hinzufügen
+|`project.action.add_epic`
+|Add an epic
+|Ein Epic hinzufügen
 
 |`project.action.add_plan`
 |Add a plan

@@ -5,7 +5,7 @@
 
 link:README.adoc[Work packages of `pm-mcp-clients`] » The Client Work
 
-The plan of the client work of this repository: what it is for, how its work is cut, the gate between design and implementation, and the rules every package of it follows. The design packages are run directly in Claude Code sessions; the other packages are implemented through plan-marshall in an orchestrator epic, which is bootstrapped from its own brief, link:orchestrator-brief.adoc[Orchestrator Brief]. The packages it covers are rows of the link:README.adoc#packages[index], which stays the only place that states their status and dependencies; this file never repeats either.
+The plan of the client work of this repository: what it is for, how its work is cut, the gate between design and implementation, and the rules every package of it follows. The design packages are run directly in Claude Code sessions; the other packages are implemented through plan-marshall in an epic, which is bootstrapped from its own brief, link:orchestrator-brief.adoc[Orchestrator Brief]. The packages it covers are rows of the link:README.adoc#packages[index], which stays the only place that states their status and dependencies; this file never repeats either.
 
 [#goal]
 == Goal
@@ -17,7 +17,7 @@ The epic is done when every package below is `done` in the index.
 [#parallel]
 == Parallel to `pm-mcp-core`
 
-The clients depend on the contract `pm-api` only (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#dependency-rules[Dependency Rules]), and the mock runtime serves that contract from scenario files (link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]). The epic therefore needs nothing of the engine work in `pm-mcp-core` and runs beside its epic `pm-mcp-core-m2-m4`. The server side of the onboarding (the machine scope and its workflow) is not part of this epic: it is planned in `pm-mcp-core` and `plan-marshall-mcp` once the use cases are agreed, and the scenarios of this epic are replayed against it there.
+The clients depend on the contract `pm-api` only (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#dependency-rules[Dependency Rules]), and the mock runtime serves that contract from scenario files (link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]). The client implementations therefore need nothing of the engine work in `pm-mcp-core`, and the epic runs beside its epic `pm-mcp-core-m2-m4`; the exception are the contract packages that write a specification the engine must implement first (`process-contract`, `project-contract`, `start-contract`, `control-contract`), each waiting for its package of `pm-mcp-core`, as the index says. The server side of the onboarding (the machine scope and its workflow) is not part of this epic: it is planned in `pm-mcp-core` and `plan-marshall-mcp` once the use cases are agreed, and the scenarios of this epic are replayed against it there.
 
 Two packages of this repository are on the critical path of the core epic: `profile-documents` (core waits on it for `profile-loader` and, through it, most of its roles and tasks) and `exec-read-denied-paths` (core waits on it for `job-confinement-and-environment`). They are not part of this epic but take precedence over it when slots are short.
 
@@ -26,7 +26,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 
 . *Foundation*, without a gate: `mock-runtime`, `message-catalogue`, then `cli-test-infra`. They need no design decision and unblock both clients.
 . *Design*, in parallel, each thorough and complete before any client code, each run directly in a Claude Code session without plan-marshall: `cli-design` (the logical design of the terminal client) and `web-design` (the visual design of the web app, made with Claude Design). Each ends with the operator's review; a design package is `done` only when the operator accepted it. An accepted design is the specification of its client's implementation and lives in this repository, `doc/design/` (link:../design/terminal-client/README.adoc[Terminal Client], and the web app's from `web-design`). The design can start now: it waits for nothing.
-. *Contracts*, each once its use case is agreed: `operator-interaction-contract` first, on the foundations of `pm-mcp-core` (`operator-wait-and-machine-scope`), then `overview-contract`, `process-contract` (also on `pm-mcp-core`'s `phase-sub-workflows`), `project-contract` (also on `pm-mcp-core`'s `project-onboarding-unit`), `decision-contract`, `onboarding-contract`, `entry-contract`, `start-contract` (also on `pm-mcp-core`'s `start-from-clients`). Each writes its part of the specification as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients]).
+. *Contracts*, each once its use case is agreed: `operator-interaction-contract` first, on the foundations of `pm-mcp-core` (`operator-wait-and-machine-scope`), then `overview-contract`, `process-contract` (also on `pm-mcp-core`'s `phase-sub-workflows`), `project-contract` (also on `pm-mcp-core`'s `project-onboarding-unit`), `decision-contract`, `onboarding-contract`, `entry-contract`, `start-contract` (also on `pm-mcp-core`'s `start-from-clients`), `control-contract` (also on `pm-mcp-core`'s `plan-and-epic-control` and `epic-findings-review`). Each writes its part of the specification as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients]).
 . *Implementation*, after the gate: `cli-onboarding` after `cli-design`; `web-app-foundation` and then `web-onboarding` after `web-design`. Both run against the mock runtime and its scenarios.
 
 [#workstreams]
@@ -37,13 +37,13 @@ Two packages of this repository are on the critical path of the core epic: `prof
 |Workstream |Packages
 
 |Mock runtime and test infrastructure
-|`mock-runtime`, `cli-test-infra`, `message-catalogue`, `operator-interaction-contract`, `overview-contract`, `process-contract`, `project-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`, `start-contract`
+|`mock-runtime`, `cli-test-infra`, `message-catalogue`, `operator-interaction-contract`, `overview-contract`, `process-contract`, `project-contract`, `decision-contract`, `onboarding-contract`, `entry-contract`, `start-contract`, `control-contract`
 
 |Terminal client
-|`cli-design`, `cli-onboarding`, `cli-decisions`, `cli-overview`, `cli-plan-view`, `cli-projects`, `cli-start`
+|`cli-design`, `cli-onboarding`, `cli-decisions`, `cli-overview`, `cli-plan-view`, `cli-projects`, `cli-start`, `cli-actions`
 
 |Web app
-|`web-design`, `web-app-foundation`, `web-onboarding`, `web-decisions`, `web-overview`, `web-plan-view`, `web-projects`, `web-start`
+|`web-design`, `web-app-foundation`, `web-onboarding`, `web-decisions`, `web-overview`, `web-plan-view`, `web-projects`, `web-start`, `web-actions`
 |===
 
 [#rules]
@@ -62,4 +62,4 @@ Beside the rules of `CLAUDE.md` and of link:README.adoc#how[How to Work a Packag
 == Starting the Work
 
 * *Design*: now, in two Claude Code sessions, as each design package's file says under _How It Is Run_.
-* *Implementation*: once plan-marshall is set up for this repository (by the operator), through the orchestrator epic bootstrapped from link:orchestrator-brief.adoc[Orchestrator Brief]. Its foundation packages need no design and can start before the design gate.
+* *Implementation*: once plan-marshall is set up for this repository (by the operator), through the epic bootstrapped from link:orchestrator-brief.adoc[Orchestrator Brief]. Its foundation packages need no design and can start before the design gate.

@@ -1,0 +1,339 @@
+= Design: Actions on Plans and Epics
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Actions on Plans and Epics
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#changes[Controlling Work, Changes] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
+
+A plan and an epic carry their actions wherever they are shown: their row in Running Work (link:plan-overview.adoc[Plan Overview]), the head of the plan view (link:plan-view.adoc[Plan View]), and an epic's level of Running Work. The actions are those of the current state only; the client takes them from the runtime and never decides itself what applies.
+
+[#plan-actions]
+== A Plan's Actions
+
+[cols="1,2,3",options="header"]
+|===
+|State |Actions |Shown as
+
+|running
+|Pause, Cancel
+|`running`; _Pause_ first
+
+|idle: paused
+|Start, Abandon
+|`paused` since when, by the operator
+
+|idle: emitted
+|Start, Abandon
+|`not started` since when, by its epic
+
+|ended
+|none
+|its outcome; the plan view only
+|===
+
+* *Pause* and *Start* act at once, without a confirmation: both are undone by the other. A paused plan's row says what it still holds (`a job finishes: build · 2 min`).
+* *Cancel* and *Abandon* confirm first (<<confirm-end>>).
+* *A plan of an epic* says on every action which epic is told (`fix-relay-epic is told`), and after it, that it was (<<epic-told>>).
+* An action that applies but cannot run now is disabled with its reason (`the runtime is reconnecting`).
+
+[#confirm-end]
+=== Ending a Plan
+
+----
+  Cancel fix-relay?
+  ─────────────────────────────────────────────────────────────────────────────
+  What ends      the running work: 1 job, 2 tasks
+  Pull request   #214 is open   (●) Close it, with the reason   ( ) Leave it open
+  Its epic       relay-hardening is told
+  Reason         [the approach is replaced by plan relay-v2              ]
+  Afterwards     the plan is archived as cancelled; its branch stays
+                                                  [Keep it running]  [Cancel the plan]
+----
+
+* The reason is required; it goes to the plan's archive, to the epic, and to the pull request's closing comment.
+* _Abandon_ is the same dialogue for an idle plan, without _What ends_.
+
+[#epic-told]
+=== The Epic Is Told
+
+After an action on a plan of an epic, the row of the plan shows for a moment `relay-hardening told`, and the epic's level shows the act among its events. What the epic does with it comes later, as any epic event, and a decision it raises reaches the operator as every decision does (link:decisions.adoc[Decisions]).
+
+[#epic-actions]
+== An Epic's Actions
+
+----
+  relay-hardening · epic                         3 running · 1 idle · 4 staged
+  ─────────────────────────────────────────────────────────────────────────────
+  [▶ Next plan: relay-reconnect-backoff]   [Findings review · 3 new]
+  [Watches review · 5]   [Archive]   [Cancel]
+----
+
+* *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs: the surface overlaps a running plan`); with the epic's scope full it offers _Start it anyway: run 4 at once_.
+* *Findings review* and *Watches review* carry their counts; new findings since the last review are also a `needs you` of the epic in Running Work.
+* *Archive* runs the check first (<<archive-check>>).
+* *Cancel* confirms with the choice for its plans (<<cancel-epic>>).
+
+[#archive-check]
+=== Archiving: Is It Through?
+
+----
+  Archive relay-hardening?
+  ─────────────────────────────────────────────────────────────────────────────
+    ✓  no plan running or idle
+    ✓  every plan shipped or ended                       11 shipped · 1 cancelled
+    ✗  open findings                                     2   [Review the findings]
+    ✓  the ledger is landed
+    ✓  the completion review is done
+    ·  watches still open                                1   go into the archive
+                                                                   [Not yet]
+----
+
+Each line is a check of the runtime; a failing one leads to what is open. _Archive the epic_ is offered only when every check passes.
+
+[#cancel-epic]
+=== Cancelling an Epic
+
+----
+  Cancel relay-hardening?
+  ─────────────────────────────────────────────────────────────────────────────
+  Its plans      3 running · 1 idle
+                 (●) Cancel them too   ( ) Let them run on without the epic
+  Reason         [                                                        ]
+  Afterwards     the epic is archived as aborted
+                                                  [Keep it]  [Cancel the epic]
+----
+
+[#review]
+== Reviewing Findings or Watches
+
+The review goes through the items of one register, one at a time, open ones first; the list beside it shows each item's disposition so far.
+
+----
+  relay-hardening · findings review                               3 of 7 decided
+  ─────────────────────────────────────────────────────────────────────────────
+  F-0004  Reconnect loses the last event                                   open
+  ─────────────────────────────────────────────────────────────────────────────
+  Statement   After a reconnect the relay resends from the stored cursor, but
+              the cursor is written after the event is delivered.
+  Rules       a fix must hold for every transport; covered by a test that
+              drops the connection between delivery and cursor write
+  Origin      landing of relay-reconnect (#211) · 2 days ago
+  Proposal    Promote to a plan: it needs a change across two modules
+              (the planning role)
+  ─────────────────────────────────────────────────────────────────────────────
+  [Keep ▾ as defect | as watch]  [Drop]  [Promote to a plan]  [Edit]  [Talk]
+                                       [Accept the remaining 4 proposals]
+----
+
+* *Keep* as a defect (a finding) or as a watch: the item may change its register.
+* *Drop* asks for the reason in one line.
+* *Promote to a plan* shows the planning role at work, then its draft of the staged plan (objective, deliverables, surface, dependencies) with _Stage it_, _Edit_, and _Back_.
+* *Edit* asks what to adapt or add, in the operator's words; the planning role rewrites the statement and the rules, and the read-back shows old against new with _Accept_, _Instruct again_, and _Discard_.
+* *Talk* opens a conversation with the planning role about this item or the whole register; each change it proposes is shown as a read-back, and nothing changes without _Accept_.
+* *Accept the remaining proposals* lists them all once for one confirmation.
+* *An item from outside the machine* (a finding from a review comment) carries `untrusted`, and its text is shown as text, never rendered.
+* *Finish* writes the decisions to the epic's ledger; leaving before keeps them, and the review opens where it stopped.
+
+[#texts]
+== Texts
+
+Keys of the area `control`, shared by both clients.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`control.plan.pause`
+|Pause
+|Anhalten
+
+|`control.plan.start`
+|Start
+|Starten
+
+|`control.plan.cancel`
+|Cancel
+|Abbrechen
+
+|`control.plan.abandon`
+|Abandon
+|Aufgeben
+
+|`control.plan.state.paused`
+|paused since {time}
+|angehalten seit {time}
+
+|`control.plan.state.emitted`
+|not started, since {time}
+|nicht gestartet, seit {time}
+
+|`control.plan.still_holds`
+|a job finishes: {job} · {duration}
+|ein Job läuft zu Ende: {job} · {duration}
+
+|`control.end.title`
+|{action, select, cancel {Cancel} other {Abandon}} {plan}?
+|{plan} {action, select, cancel {abbrechen} other {aufgeben}}?
+
+|`control.end.what_ends`
+|the running work: {jobs, plural, one {# job} other {# jobs}}, {tasks, plural, one {# task} other {# tasks}}
+|die laufende Arbeit: {jobs, plural, one {# Job} other {# Jobs}}, {tasks, plural, one {# Task} other {# Tasks}}
+
+|`control.end.pr_close`
+|Close it, with the reason
+|Schließen, mit dem Grund
+
+|`control.end.pr_leave`
+|Leave it open
+|Offen lassen
+
+|`control.end.reason`
+|Reason
+|Grund
+
+|`control.end.afterwards`
+|the plan is archived as {outcome}; its branch stays
+|der Plan wird als {outcome} archiviert; sein Branch bleibt
+
+|`control.epic_told`
+|{epic} is told
+|{epic} wird informiert
+
+|`control.epic.next`
+|Next plan: {plan}
+|Nächster Plan: {plan}
+
+|`control.epic.next_none`
+|No plan can start: {reasons}
+|Kein Plan kann starten: {reasons}
+
+|`control.epic.next_raise`
+|Start it anyway: run {count} at once
+|Trotzdem starten: {count} gleichzeitig
+
+|`control.epic.findings_review`
+|Findings review
+|Findings prüfen
+
+|`control.epic.watches_review`
+|Watches review
+|Beobachtungen prüfen
+
+|`control.epic.archive`
+|Archive
+|Archivieren
+
+|`control.epic.cancel`
+|Cancel
+|Abbrechen
+
+|`control.archive.title`
+|Archive {epic}?
+|{epic} archivieren?
+
+|`control.archive.no_plan_active`
+|no plan running or idle
+|kein Plan läuft oder wartet
+
+|`control.archive.rows_ended`
+|every plan shipped or ended
+|jeder Plan ausgeliefert oder beendet
+
+|`control.archive.open_findings`
+|open findings
+|offene Findings
+
+|`control.archive.ledger_landed`
+|the ledger is landed
+|das Ledger ist gelandet
+
+|`control.archive.completion_reviewed`
+|the completion review is done
+|die Abschlussprüfung ist erledigt
+
+|`control.archive.open_watches`
+|watches still open: they go into the archive
+|noch offene Beobachtungen: sie kommen ins Archiv
+
+|`control.archive.action`
+|Archive the epic
+|Das Epic archivieren
+
+|`control.cancel_epic.plans_too`
+|Cancel them too
+|Mit abbrechen
+
+|`control.cancel_epic.plans_on`
+|Let them run on without the epic
+|Ohne das Epic weiterlaufen lassen
+
+|`control.review.title`
+|{epic} · {register, select, findings {findings review} other {watches review}}
+|{epic} · {register, select, findings {Findings prüfen} other {Beobachtungen prüfen}}
+
+|`control.review.progress`
+|{done} of {total} decided
+|{done} von {total} entschieden
+
+|`control.review.statement`
+|Statement
+|Aussage
+
+|`control.review.rules`
+|Rules
+|Regeln
+
+|`control.review.origin`
+|Origin
+|Herkunft
+
+|`control.review.proposal`
+|Proposal
+|Vorschlag
+
+|`control.review.keep_defect`
+|Keep as defect
+|Als Defekt behalten
+
+|`control.review.keep_watch`
+|Keep as watch
+|Als Beobachtung behalten
+
+|`control.review.drop`
+|Drop
+|Verwerfen
+
+|`control.review.promote`
+|Promote to a plan
+|Zu einem Plan machen
+
+|`control.review.edit`
+|Edit
+|Bearbeiten
+
+|`control.review.talk`
+|Talk
+|Besprechen
+
+|`control.review.accept_remaining`
+|Accept the remaining {count, plural, one {# proposal} other {# proposals}}
+|{count, plural, one {Den übrigen Vorschlag} other {Die übrigen # Vorschläge}} annehmen
+
+|`control.review.stage`
+|Stage it
+|Vormerken
+
+|`control.review.instruct_again`
+|Instruct again
+|Neu anweisen
+
+|`control.review.discard`
+|Discard
+|Verwerfen
+|===

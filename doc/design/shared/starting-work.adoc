@@ -11,7 +11,7 @@ _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/05-starti
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/18-starting.adoc[Terminal Client, Starting Work], link:../web-app/README.adoc[Web App].
 
-Starting a plan or an orchestrator is one guided run in which the operator only says what the work comes from. The server gathers each source, stores it, and screens what came from outside; the client shows each source's progress as a check line, like the onboarding's (link:project-onboarding.adoc[Project Onboarding]). Everything else the work needs is asked later, where it is needed.
+Starting a plan or an epic is one guided run in which the operator only says what the work comes from. The server gathers each source, stores it, and screens what came from outside; the client shows each source's progress as a check line, like the onboarding's (link:project-onboarding.adoc[Project Onboarding]). Everything else the work needs is asked later, where it is needed.
 
 [#steps]
 == Steps
@@ -20,9 +20,9 @@ Starting a plan or an orchestrator is one guided run in which the operator only 
   ① Sources ─ ② Ready ─ ✓ Started
 ----
 
-* *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where the project has a recipe; an orchestrator starts from sources only.
-* *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the orchestrator_.
-* *✓ Started*: the plan or the orchestrator, with _Follow it_ (its plan view, link:plan-view.adoc[Plan View]; for an orchestrator its level of link:plan-overview.adoc[Running Work]) and _Back to the project_.
+* *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where the project has a recipe; an epic starts from sources only.
+* *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the epic_.
+* *✓ Started*: the plan or the epic, with _Follow it_ (its plan view, link:plan-view.adoc[Plan View]; for an epic its level of link:plan-overview.adoc[Running Work]) and _Back to the project_.
 
 [#sources]
 == The List of Sources
@@ -34,8 +34,9 @@ Starting a plan or an orchestrator is one guided run in which the operator only 
 
     ✓  Description   "Add a Codeberg provider for issues"           stored
     ✓  Documents     doc/concepts/forgejo.adoc, 1 file              copied
-    ▶  Issue         codeberg.org/forgejo/forgejo#4711              screening
-    ✗  Issue         #212                       not found   [Try again] [Remove]
+    ▶  Issue         https://codeberg.org/forgejo/forgejo/issues/4711         screening
+    ✗  Issue         https://github.com/plan-marshall/pm-mcp-clients/issues/212
+                                                not found   [Try again] [Remove]
 
   + Description   + Documents   + Issue   + Lesson   + Local changes   + Pull request
   ─────────────────────────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ Starting a plan or an orchestrator is one guided run in which the operator only 
 ----
 
 * *A source's line*: its kind, what it is (the start of a description, the paths, an issue's reference and, once fetched, its title), and its state: `checking`, `fetching`, `screening`, `stored`, `copied`, `moved`, `flagged`, or the cause of a failure with _Try again_ and _Remove_. A stored source can be removed until the start.
-* *What may be added*: an orchestrator offers description, documents, and issue; a plan also lesson (only when the project has unclaimed lessons), local changes (only when the checkout has some), and pull request. A plan with local changes or a pull request takes no issue and no lesson besides, and the line says why another kind is not offered (`a plan that adopts a pull request starts from it alone`).
+* *What may be added*: an epic offers description, documents, and issue; a plan also lesson (only when the project has unclaimed lessons), local changes (only when the checkout has some), and pull request. A plan with local changes or a pull request takes no issue and no lesson besides, and the line says why another kind is not offered (`a plan that adopts a pull request starts from it alone`).
 * *Continue* is offered once there is at least one source and every source is stored, screened or accepted; until then it names what it waits for.
 * *Trust*: a source from outside the machine shows `untrusted` until its screening passed, then nothing; the operator's own sources never show a mark.
 
@@ -57,21 +58,23 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 
 * *Picking*: files or one directory. The web app browses the checkout first, then the operator's home directory, through the server's listing; the terminal client takes paths, completed against its working directory. A directory shows what it holds (`12 files: 9 adoc, 3 svg`) before it is added.
 * *Checked*: each file with a check line; a file that cannot be used names its cause (`not readable`, `larger than 10 MB`, `a link that leads outside`), and the others can be added without it.
-* *Copy or move* (`source.documents.mode`): the machine's default chosen, _always_ beside it; a file of the checkout that git tracks is copied in either case, and the line says so (`tracked by git: copied`).
+* *Copy or move* (`source.documents.mode`): the machine's default chosen, _always_ beside it.
+** *Copy*: the originals stay where they are; the copy is not kept in step with them, and the dialogue says so.
+** *Move*: the documents leave where they were. A file git tracks is removed from git by a short landing (`git.land-removal`, one commit landed as the project lands); the source's line shows `moved · removing from git`, then `moved`, and the work may start meanwhile. Until it is landed, the landing is a row of the project's running work; if it fails, it waits for the operator there.
 
 ----
   Copy or move the documents?
-    (●) Copy     they stay where they are                 ← the machine's default
-    ( ) Move     they are taken out of where they are
+    (●) Copy     they stay where they are; the copy is not kept in step   ← the machine's default
+    ( ) Move     they leave where they are
     [ ] Always do this, don't ask again
-    3 files tracked by git are copied in either case.
+    With Move, 3 files tracked by git are removed from git by a short landing.
                                                                    [Add documents]
 ----
 
 [#issue]
 === An Issue
 
-* *Naming*: one field that takes a number (`212`, `#212`: the project's own repository) or a URL of GitHub, GitLab, or a Forgejo forge such as Codeberg; the forge is shown as soon as it is recognised (`Codeberg · forgejo/forgejo`).
+* *Naming*: one field that takes a number (`212`, `#212`: the project's own repository) or a URL; a number is shown at once as the URL of the issue in the project's repository, and the URL is what is stored and shown from then on, also for a pull request. The field takes a URL of GitHub, GitLab, or a Forgejo forge such as Codeberg; the forge is shown as soon as it is recognised (`Codeberg · forgejo/forgejo`).
 * *Another repository* asks first (`source.issue.grant`): _Read issues of forgejo/forgejo?_ with _this time_ and _for this project_; a forge without a credential says that only a public issue can be read, and where a credential is added.
 * *Progress*: `fetching`, then `screening`, each as a check line; then the issue's title, labels, and state.
 * *Flagged* (`source.issue.flagged`): the spans the screener flagged, quoted as text with their reason, and _Use it anyway_ (with a reason, which is recorded) or _Remove it_. The flagged text is never rendered as Markdown and its links are inert.
@@ -100,7 +103,7 @@ A number of the project's own repository; fetched, checked (open, its head writa
   The plan starts from
     Description   "Add a Codeberg provider for issues"
     Documents     doc/concepts/forgejo.adoc
-    Issue         codeberg.org/forgejo/forgejo#4711 · Issue comments API
+    Issue         https://codeberg.org/forgejo/forgejo/issues/4711 · Issue comments API
 
   Title   [Codeberg provider for issues                         ]
   Id      [codeberg-provider-issues     ]  ← from the title
@@ -109,7 +112,7 @@ A number of the project's own repository; fetched, checked (open, its head writa
 
 * The title is proposed from the first description, else from the first issue's title, else from the first document's name; the id from the title, or `issue-<number>` for a plan from one issue alone.
 * An id that is taken or refused shows why, with a free proposal (`codeberg-provider-issues-2`).
-* *What is not asked here*: posture, base branch, outline review, how many plans an orchestrator runs at once. Each is asked where the plan or the orchestrator first needs it, and not at all where the project or the machine sets it; the operator meets it as a decision (link:decisions.adoc[Decisions]).
+* *What is not asked here*: posture, base branch, outline review, how many plans an epic runs at once. Each is asked where the plan or the epic first needs it, and not at all where the project or the machine sets it; the operator meets it as a decision (link:decisions.adoc[Decisions]).
 
 [#recipe]
 == A Recipe
@@ -137,8 +140,8 @@ Keys of the area `start`, shared by both clients.
 |Einen Plan in {project} starten
 
 |`start.epic.title`
-|Start an orchestrator in {project}
-|Einen Orchestrator in {project} starten
+|Start an epic in {project}
+|Ein Epic in {project} starten
 
 |`start.step.sources`
 |Sources
@@ -161,8 +164,8 @@ Keys of the area `start`, shared by both clients.
 |Ein Rezept
 
 |`start.sources.title`
-|What does the {kind, select, plan {plan} other {orchestrator}} start from?
-|Woraus startet {kind, select, plan {der Plan} other {der Orchestrator}}?
+|What does the {kind, select, plan {plan} other {epic}} start from?
+|Woraus startet {kind, select, plan {der Plan} other {das Epic}}?
 
 |`start.source.description`
 |Description
@@ -253,11 +256,11 @@ Keys of the area `start`, shared by both clients.
 |Die Dokumente kopieren oder verschieben?
 
 |`start.documents.mode.copy`
-|Copy: they stay where they are
-|Kopieren: sie bleiben, wo sie sind
+|Copy: they stay where they are; the copy is not kept in step
+|Kopieren: sie bleiben, wo sie sind; die Kopie wird nicht synchronisiert
 
 |`start.documents.mode.move`
-|Move: they are taken out of where they are
+|Move: they leave where they are
 |Verschieben: sie werden dort entfernt
 
 |`start.documents.mode.always`
@@ -265,8 +268,12 @@ Keys of the area `start`, shared by both clients.
 |Immer so, nicht mehr fragen
 
 |`start.documents.tracked`
-|{count, plural, one {# file tracked by git is} other {# files tracked by git are}} copied in either case.
-|{count, plural, one {# Datei unter Git wird} other {# Dateien unter Git werden}} in jedem Fall kopiert.
+|With Move, {count, plural, one {# file tracked by git is} other {# files tracked by git are}} removed from git by a short landing.
+|Beim Verschieben {count, plural, one {wird # Datei unter Git} other {werden # Dateien unter Git}} durch eine kurze Landung aus Git entfernt.
+
+|`start.state.removing_from_git`
+|removing from git
+|wird aus Git entfernt
 
 |`start.documents.add`
 |Add documents
@@ -313,8 +320,8 @@ Keys of the area `start`, shared by both clients.
 |Die lokalen Änderungen hinzufügen
 
 |`start.ready.starts_from`
-|The {kind, select, plan {plan} other {orchestrator}} starts from
-|{kind, select, plan {Der Plan} other {Der Orchestrator}} startet aus
+|The {kind, select, plan {plan} other {epic}} starts from
+|{kind, select, plan {Der Plan} other {Das Epic}} startet aus
 
 |`start.ready.title`
 |Title
@@ -329,8 +336,8 @@ Keys of the area `start`, shared by both clients.
 |Den Plan starten
 
 |`start.ready.start_epic`
-|Start the orchestrator
-|Den Orchestrator starten
+|Start the epic
+|Das Epic starten
 
 |`start.started.title`
 |{name} has started

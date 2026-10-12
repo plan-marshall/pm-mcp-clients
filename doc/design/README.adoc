@@ -39,11 +39,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/plan-overview.adoc[Plan Overview]
 |`DRAFT`
-|What both clients show of the running work across projects: the projects with running work, a project by plan and by orchestrator, what a row shows, how plans and orchestrators are told apart, live updates, and where the operator left it.
+|What both clients show of the running work across projects: the projects with running work, a project by plan and by epic, what a row shows, how plans and epics are told apart, live updates, and where the operator left it.
 
 |link:shared/project-explorer.adoc[Project Explorer]
 |`DRAFT`
-|What both clients show of the machine's projects: favourites, recent, all projects by name or most used, a project's row, and its actions (add an orchestrator, add a plan, running work, setup).
+|What both clients show of the machine's projects: favourites, recent, all projects by name or most used, a project's row, and its actions (add an epic, add a plan, running work, setup).
 
 |link:shared/project-onboarding.adoc[Project Onboarding]
 |`DRAFT`
@@ -55,7 +55,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/starting-work.adoc[Starting Work]
 |`DRAFT`
-|What both clients show while a plan or an orchestrator is started: the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request), their progress through fetching and screening, a flagged issue, the ready step with title and id, a recipe and its parameters, leaving and continuing.
+|What both clients show while a plan or an epic is started: the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request), their progress through fetching and screening, a flagged issue, the ready step with title and id, a recipe and its parameters, leaving and continuing.
+
+|link:shared/work-actions.adoc[Actions on Plans and Epics]
+|`DRAFT`
+|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and talk.
 
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`

@@ -31,14 +31,18 @@ pm-operator project add [<path>]                          [op]  onboard a projec
 pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
 pm-operator plan add [--project <project_id>|.] [<source>]... [op]  start a plan from its sources (18-starting)
-pm-operator orchestrator add [--project <project_id>|.] [<source>]...
-                                                          [op]  start an orchestrator from its sources (18-starting)
+pm-operator epic add [--project <project_id>|.] [<source>]...
+                                                          [op]  start an epic from its sources (18-starting)
 pm-operator recipe run [<recipe_key>] [--param <name>=<value>]...
                                                           [op]  run a recipe of the project (18-starting)
+pm-operator plan pause|start|cancel|abandon <plan_id> [op]  act on a plan by its state (19-actions)
+pm-operator epic next|archive|cancel|findings|watches <epic_id>
+                                                          [op]  act on an epic, review its findings or watches (19-actions)
+pm-operator abort plan|epic <id> --reason <text>        [op]  the existing verb: as plan cancel or abandon, and epic cancel (19-actions)
 pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
 pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
 pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies
-pm-operator status [--project <project_id>] [--by orchestrator] [--watch]
+pm-operator status [--project <project_id>] [--by epic] [--watch]
                                                                 the running work as a tree, and the runtime (15-overview)
 
 <level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
@@ -63,7 +67,7 @@ In the console only:
 * *`config <aspect>`* starts the sub-workflow of one aspect as a later run (`onboard_run: reconfigure`), with the current values as the proposal, and answers each choice state from its arguments where they give one (<<direct-verbs>>). The aspects are the seven steps of the onboarding: `language`, `harness`, `models`, `roles`, `credentials`, `providers`, `plan-defaults`.
 * *Other verbs* never ask where to onboard. A verb that needs a step of the onboarding that is not done yet (a credential before the credential store is chosen, a role before the catalogue exists) is refused, and the refusal names the console (`pm-operator`).
 * *`config show|set|unset`* keep what `pm-operator config` already is: the operator's configuration keys of `machine-config.json` and `local-config.json`. A key that an aspect owns (`language.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, the role assignment) is changed only through its aspect, because the aspect validates and checks it; `config set` refuses it and names the aspect verb. `show` lists every key, the aspect-owned ones included.
-* *`status`* prints the overview of running work as a tree, `--project <project_id>` for one project and `--by orchestrator` with the plans below their orchestrators (xref:15-overview.adoc#status-tree[The Tree]).
+* *`status`* prints the overview of running work as a tree, `--project <project_id>` for one project and `--by epic` with the plans below their epics (xref:15-overview.adoc#status-tree[The Tree]).
 * *The console commands* (`plans`, `questions`, `answer`, `web`, `help`, `exit`) exist only inside the console; they are not shell verbs.
 
 [#one-surface]

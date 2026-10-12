@@ -31,7 +31,7 @@ The step line counts the project's steps as the machine's onboarding counts its 
 * *⑥ Architecture* (`setup.detect-domains`, `setup.discover-modules`, `setup.seed-build-map`, and later `setup.enrich-architecture`): the project's type as the setup found it: the domains that apply, each with what made it apply (a descriptor, files), changeable where the team's `domains.json` allows; the modules each build system's parser found, as a tree with their build system and packaging; the build map to confirm. The enrichment runs after the roles are qualified: one line per module turning from waiting to running to ✓ as the role `enrich` describes it, behind its consent with its expected cost. What it writes is `.marshall/project-architecture/`, committed in ⑧. When the operator says no to the enrichment's consent, the setup goes on without it: the architecture keeps what discovery found, `.marshall/project-architecture/` gets no descriptions of the modules, the project is ready, and a later run of its onboarding offers the enrichment again.
 * *⑦ Roles* (`setup.qualify-roles`): the role assignment proposed from the machine like ⑤, then the qualification, behind its consent with its expected cost, with its progress.
 * *⑧ Commit* (`setup.commit-changes`): the team's configuration as a list of files, to commit and push, or to leave in the checkout.
-* *✓ Ready* (`project.completed`): what is ready, and the three actions of a project: add an orchestrator, add a plan, its running work (link:project-explorer.adoc#actions[Project Explorer]).
+* *✓ Ready* (`project.completed`): what is ready, and the three actions of a project: add an epic, add a plan, its running work (link:project-explorer.adoc#actions[Project Explorer]).
 
 [#not-ready]
 == Not Ready Yet

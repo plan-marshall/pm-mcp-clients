@@ -12,7 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * `plans`: the full-screen view of the overview on JLine 4 alone (`Display`, `BindingReader`, `KeyMap`), its two levels and two views of a project, the keys, live updates from the event stream with the selection anchored by id, notices held while it is open and summarised when it is left, `console.full_screen`, and the selection stored in the user's state directory.
-* `status` as the tree of running work (`--project`, `--by orchestrator`), the accessible path and the fallback of `plans`.
+* `status` as the tree of running work (`--project`, `--by epic`), the accessible path and the fallback of `plans`.
 * The view model kept apart from the drawing; texts from the catalogue only.
 
 == Trace
