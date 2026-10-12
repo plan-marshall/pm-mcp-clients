@@ -210,7 +210,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:control-contract.adoc[`control-contract`]
 |Controlling work: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; UC-CTL-1 to UC-CTL-3 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; UC-CTL-1 to UC-CTL-3 and UC-STA-6 agreed (no work package)
 |epic clients
 
 |link:cli-actions.adoc[`cli-actions`]
@@ -234,13 +234,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-start.adoc[`cli-start`]
 |Starting work in the terminal
 |`blocked`
-|link:start-contract.adoc[`start-contract`]; link:cli-projects.adoc[`cli-projects`]
+|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:cli-projects.adoc[`cli-projects`]
 |epic clients
 
 |link:web-start.adoc[`web-start`]
 |Starting work in the web app
 |`blocked`
-|link:start-contract.adoc[`start-contract`]; link:web-projects.adoc[`web-projects`]
+|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:web-projects.adoc[`web-projects`]
 |epic clients
 
 |link:overview-contract.adoc[`overview-contract`]

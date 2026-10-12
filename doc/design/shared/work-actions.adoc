@@ -24,23 +24,41 @@ A plan and an epic carry their actions wherever they are shown: their row in Run
 |Pause, Cancel
 |`running`; _Pause_ first
 
-|idle: paused
+|pausing
+|Start, Cancel
+|`pausing after the task` or `after the phase`; _Start_ withdraws the pause
+
+|paused
 |Start, Abandon
 |`paused` since when, by the operator
-
-|idle: emitted
-|Start, Abandon
-|`not started` since when, by its epic
 
 |ended
 |none
 |its outcome; the plan view only
 |===
 
-* *Pause* and *Start* act at once, without a confirmation: both are undone by the other. A paused plan's row says what it still holds (`a job finishes: build · 2 min`).
+* *Pause* asks where the plan holds, _after the current task_ preselected (<<pause>>); *Start* acts at once. Neither needs a confirmation: each is undone by the other.
+* A plan always runs once it exists: a plan an epic starts is created and run in one act, so there is no state of a plan that waits to be started.
 * *Cancel* and *Abandon* confirm first (<<confirm-end>>).
 * *A plan of an epic* says on every action which epic is told (`fix-relay-epic is told`), and after it, that it was (<<epic-told>>).
 * An action that applies but cannot run now is disabled with its reason (`the runtime is reconnecting`).
+
+[#pause]
+=== Pausing a Plan
+
+----
+  Pause fix-relay?
+  ─────────────────────────────────────────────────────────────────────────────
+    ( ) Now                        2 tasks are withdrawn and 1 job is stopped;
+                                   they run again when the plan starts
+    (●) After the current task     what runs finishes: implement · 4 min,
+                                   build · 2 min; nothing new starts
+    ( ) After the current phase    execute runs to its end: 3 of 7 tasks left
+  Its epic       relay-hardening is told
+                                                       [Keep it running]  [Pause]
+----
+
+While it is pausing, its row says where it will hold and what still runs (`pausing after the task · build · 2 min`).
 
 [#confirm-end]
 === Ending a Plan
@@ -57,7 +75,7 @@ A plan and an epic carry their actions wherever they are shown: their row in Run
 ----
 
 * The reason is required; it goes to the plan's archive, to the epic, and to the pull request's closing comment.
-* _Abandon_ is the same dialogue for an idle plan, without _What ends_.
+* _Abandon_ is the same dialogue for a paused plan, without _What ends_.
 
 [#epic-told]
 === The Epic Is Told
@@ -68,13 +86,14 @@ After an action on a plan of an epic, the row of the plan shows for a moment `re
 == An Epic's Actions
 
 ----
-  relay-hardening · epic                         3 running · 1 idle · 4 staged
+  relay-hardening · epic                       3 running · 1 paused · 4 staged
   ─────────────────────────────────────────────────────────────────────────────
   [▶ Next plan: relay-reconnect-backoff]   [Findings review · 3 new]
-  [Watches review · 5]   [Archive]   [Cancel]
+  [Decompose again]   [Watches review · 5]   [Archive]   [Cancel]
 ----
 
 * *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs: the surface overlaps a running plan`); with the epic's scope full it offers _Start it anyway: run 4 at once_.
+* *Decompose again* asks for the instruction (`split the auth workstream; drop the docs plan`) and opens the decomposition with it (link:starting-work.adoc#decomposition[The Decomposition]).
 * *Findings review* and *Watches review* carry their counts; new findings since the last review are also a `needs you` of the epic in Running Work.
 * *Archive* runs the check first (<<archive-check>>).
 * *Cancel* confirms with the choice for its plans (<<cancel-epic>>).
@@ -85,7 +104,7 @@ After an action on a plan of an epic, the row of the plan shows for a moment `re
 ----
   Archive relay-hardening?
   ─────────────────────────────────────────────────────────────────────────────
-    ✓  no plan running or idle
+    ✓  no plan running or paused
     ✓  every plan shipped or ended                       11 shipped · 1 cancelled
     ✗  open findings                                     2   [Review the findings]
     ✓  the ledger is landed
@@ -102,7 +121,7 @@ Each line is a check of the runtime; a failing one leads to what is open. _Archi
 ----
   Cancel relay-hardening?
   ─────────────────────────────────────────────────────────────────────────────
-  Its plans      3 running · 1 idle
+  Its plans      3 running · 1 paused
                  (●) Cancel them too   ( ) Let them run on without the epic
   Reason         [                                                        ]
   Afterwards     the epic is archived as aborted
@@ -169,9 +188,33 @@ Keys of the area `control`, shared by both clients.
 |paused since {time}
 |angehalten seit {time}
 
-|`control.plan.state.emitted`
-|not started, since {time}
-|nicht gestartet, seit {time}
+|`control.plan.state.pausing`
+|pausing {point, select, task {after the task} other {after the phase}}
+|hält an {point, select, task {nach dem Task} other {nach der Phase}}
+
+|`control.pause.title`
+|Pause {plan}?
+|{plan} anhalten?
+
+|`control.pause.now`
+|Now
+|Sofort
+
+|`control.pause.after_task`
+|After the current task
+|Nach dem laufenden Task
+
+|`control.pause.after_phase`
+|After the current phase
+|Nach der laufenden Phase
+
+|`control.pause.keep_running`
+|Keep it running
+|Weiterlaufen lassen
+
+|`control.epic.decompose_again`
+|Decompose again
+|Neu zerlegen
 
 |`control.plan.still_holds`
 |a job finishes: {job} · {duration}
@@ -238,8 +281,8 @@ Keys of the area `control`, shared by both clients.
 |{epic} archivieren?
 
 |`control.archive.no_plan_active`
-|no plan running or idle
-|kein Plan läuft oder wartet
+|no plan running or paused
+|kein Plan läuft oder ist angehalten
 
 |`control.archive.rows_ended`
 |every plan shipped or ended

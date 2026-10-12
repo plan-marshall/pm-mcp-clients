@@ -12,7 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * `plan add`, `epic add`, `recipe run` as direct verbs: the sources as arguments, the dialogue for every state without one, `--no-input` stopping with the state it needs.
-* The list of sources with lines updated in place while a source is fetched and screened; a flagged issue printed as plain text; an open entry offered to continue; the explorer's actions `p`, `e`, and _Continue starting_.
+* The list of sources with lines updated in place while a source is fetched and screened; a flagged issue printed as plain text; an open entry offered to continue; the decomposition of a new epic as the third step, with its checks, read-back, and talk; the explorer's actions `p`, `e`, and _Continue starting_.
 
 == Trace
 
