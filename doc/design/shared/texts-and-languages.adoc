@@ -60,6 +60,7 @@ The domain vocabulary stays as it is in every language: it is what the operator 
 |Outline |das |the plan's outline phase and its result
 |Waiver |der |the operator's waiver of a gate
 |Lane |die |a planning lane
+|Issue, Lesson |das, die |an issue of a forge; a lesson recorded from a plan's work
 |Workflow, Sub-Workflow, State, Link |der, der, der, der |the workflow language and its parts
 |===
 
@@ -79,7 +80,7 @@ A word not in the glossary is translated. A new domain word is added here before
 == Keys and Packs
 
 * *Key*: `<area>.<use case or view>.<state or element>.<part>`, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in.
-* *Areas*: `common` (texts every view uses), `onboard`, `web` (the frame and navigation of the web app), `plan`, `decision` (what both clients show of a decision, link:decisions.adoc#texts[Decisions]), `overview` (the overview of running work, link:plan-overview.adoc#texts[Plan Overview]), `operator` (the verbs of `pm-operator`), `relay` (`pm-mcp`). A client loads only the areas it shows; the web app loads `common` and `web` at start and every other area when it first opens a view of it.
+* *Areas*: `common` (texts every view uses), `onboard`, `web` (the frame and navigation of the web app), `plan`, `decision` (what both clients show of a decision, link:decisions.adoc#texts[Decisions]), `overview` (the overview of running work, link:plan-overview.adoc#texts[Plan Overview]), `project` (the projects and their onboarding, link:project-explorer.adoc#texts[Project Explorer], link:project-onboarding.adoc#texts[Project Onboarding]), `start` (starting a plan or an orchestrator, link:starting-work.adoc#texts[Starting Work]), `operator` (the verbs of `pm-operator`), `relay` (`pm-mcp`). A client loads only the areas it shows; the web app loads `common` and `web` at start and every other area when it first opens a view of it.
 * *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message format. English (`en`) is complete and the base; German (`de`) ships from the start.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it.

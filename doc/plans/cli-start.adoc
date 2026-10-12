@@ -1,0 +1,26 @@
+= Starting work in the terminal
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-start`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5]; no roadmap milestone yet
+Where:: `pm-operator`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* `plan add`, `orchestrator add`, `recipe run` as direct verbs: the sources as arguments, the dialogue for every state without one, `--no-input` stopping with the state it needs.
+* The list of sources with lines updated in place while a source is fetched and screened; a flagged issue printed as plain text; an open entry offered to continue; the explorer's actions `p`, `o`, and _Continue starting_.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-5]
+* Design: link:../design/shared/starting-work.adoc[Starting Work]; link:../design/terminal-client/18-starting.adoc[Terminal Client, Starting Work]
+
+== Done When
+
+Every scenario of `start-contract` passes as a transcript test of `plan add`, `orchestrator add`, and `recipe run`, in the console and as one shell command, in the JVM and native.

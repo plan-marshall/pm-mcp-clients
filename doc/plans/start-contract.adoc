@@ -1,0 +1,29 @@
+= Starting work: contract and mock runtime
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `start-contract`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5]; no roadmap milestone yet
+Where:: `pm-api` (the entry of a plan or an orchestrator, its sources and their states, the listing of files); `pm-mock-runtime` (routes and scenarios)
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* *Specification first*: the package writes the client side of Starting from the Clients and The Source Directory into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), once the use cases are agreed, and opens that pull request beside its own.
+* The records of an entry (its kind, its project, its sources with their kind, reference, state, trust, and screening verdict, the proposed title and id), of a source's failure and of a flagged source with its spans; the request that opens an entry and the one that adds each kind of source.
+* The listing of files for the web app's picker, confined as the specification says.
+* The representation of the entry's states for both clients (`start.choose`, `start.sources`, `start.ready`, the source sub-workflows, `recipe.choose`, `recipe.parameters`), on the scheme of `operator-interaction-contract`.
+* The scenarios of the mock runtime: a plan from one description; a plan from description, documents, and an issue of another repository on Codeberg with its grant; documents copied and moved, a directory, a file tracked by git, a file refused; an issue not found and tried again; a flagged issue accepted and one removed; a lesson whose premise no longer holds; local changes; a pull request; an orchestrator from documents; a recipe with parameters; an entry left and continued; scenario names `start-<case>`.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-5] and their changes
+* Design: link:../design/shared/starting-work.adoc[Starting Work]
+
+== Done When
+
+The specification of the changes is merged in `plan-marshall-documentation`; every record has a round-trip test of its codec; every scenario loads and is served by the mock runtime, and a test per scenario asserts the representation a client receives.

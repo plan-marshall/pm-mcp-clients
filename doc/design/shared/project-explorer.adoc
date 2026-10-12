@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Project Explorer
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], leading into link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], leading into link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-explorer[The Projects of the Machine] (proposed)_
 
@@ -74,7 +74,7 @@ Selecting a project offers, in this order:
 . *Setup*: a later run of the project's onboarding, opened at what the operator chooses (link:project-onboarding.adoc#steps[Steps]).
 . *Favourite*: mark or unmark it.
 
-A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, and _Running work_ while plans of it still show. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an orchestrator and of a plan, whose use cases follow.
+A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, and _Running work_ while plans of it still show. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an orchestrator and of a plan (link:starting-work.adoc[Starting Work]); while an entry of the project is open, _Continue starting_ comes first (link:starting-work.adoc#leaving[Leaving and Coming Back]).
 
 [#marks]
 == Favourites, Recent, Most Used

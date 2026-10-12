@@ -65,8 +65,8 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:enter-command.adoc[`enter-command`]
 |`pm-mcp enter` as an API request
-|`open`
-|link:api-contract.adoc[`api-contract`]; link:profile-documents.adoc[`profile-documents`]
+|`blocked`
+|link:api-contract.adoc[`api-contract`]; link:profile-documents.adoc[`profile-documents`]; the decision on link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-clients-only[All Interaction in the Operator's Clients], which removes `pm-mcp enter` as the operator's way to start work (no work package)
 |Milestone 3
 
 |link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]
@@ -205,6 +205,24 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |A plan's process in the web app
 |`blocked`
 |link:process-contract.adoc[`process-contract`]; link:web-overview.adoc[`web-overview`]
+|epic clients
+
+|link:start-contract.adoc[`start-contract`]
+|Starting work: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`]; UC-STA-1 to UC-STA-5 agreed (no work package)
+|epic clients
+
+|link:cli-start.adoc[`cli-start`]
+|Starting work in the terminal
+|`blocked`
+|link:start-contract.adoc[`start-contract`]; link:cli-projects.adoc[`cli-projects`]
+|epic clients
+
+|link:web-start.adoc[`web-start`]
+|Starting work in the web app
+|`blocked`
+|link:start-contract.adoc[`start-contract`]; link:web-projects.adoc[`web-projects`]
 |epic clients
 
 |link:overview-contract.adoc[`overview-contract`]

@@ -1,0 +1,358 @@
+= Design: Starting Work
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Starting Work
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-start-from-clients[Starting from the Clients], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-source-directory[The Source Directory], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-screen-stored[Screened Once Stored] (proposed); link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc[Bootstrap & Lessons States]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/18-starting.adoc[Terminal Client, Starting Work], link:../web-app/README.adoc[Web App].
+
+Starting a plan or an orchestrator is one guided run in which the operator only says what the work comes from. The server gathers each source, stores it, and screens what came from outside; the client shows each source's progress as a check line, like the onboarding's (link:project-onboarding.adoc[Project Onboarding]). Everything else the work needs is asked later, where it is needed.
+
+[#steps]
+== Steps
+
+----
+  ① Sources ─ ② Ready ─ ✓ Started
+----
+
+* *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where the project has a recipe; an orchestrator starts from sources only.
+* *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the orchestrator_.
+* *✓ Started*: the plan or the orchestrator, with _Follow it_ (its plan view, link:plan-view.adoc[Plan View]; for an orchestrator its level of link:plan-overview.adoc[Running Work]) and _Back to the project_.
+
+[#sources]
+== The List of Sources
+
+----
+  Start a plan in pm-mcp-clients                              ① Sources ─ ② Ready
+  ─────────────────────────────────────────────────────────────────────────────
+  What does the plan start from?
+
+    ✓  Description   "Add a Codeberg provider for issues"           stored
+    ✓  Documents     doc/concepts/forgejo.adoc, 1 file              copied
+    ▶  Issue         codeberg.org/forgejo/forgejo#4711              screening
+    ✗  Issue         #212                       not found   [Try again] [Remove]
+
+  + Description   + Documents   + Issue   + Lesson   + Local changes   + Pull request
+  ─────────────────────────────────────────────────────────────────────────────
+                                                      [Continue]  (waits for 1 source)
+----
+
+* *A source's line*: its kind, what it is (the start of a description, the paths, an issue's reference and, once fetched, its title), and its state: `checking`, `fetching`, `screening`, `stored`, `copied`, `moved`, `flagged`, or the cause of a failure with _Try again_ and _Remove_. A stored source can be removed until the start.
+* *What may be added*: an orchestrator offers description, documents, and issue; a plan also lesson (only when the project has unclaimed lessons), local changes (only when the checkout has some), and pull request. A plan with local changes or a pull request takes no issue and no lesson besides, and the line says why another kind is not offered (`a plan that adopts a pull request starts from it alone`).
+* *Continue* is offered once there is at least one source and every source is stored, screened or accepted; until then it names what it waits for.
+* *Trust*: a source from outside the machine shows `untrusted` until its screening passed, then nothing; the operator's own sources never show a mark.
+
+[#description]
+=== A Description
+
+An editor of several lines: the operator writes what the work is. _Add_ stores it as a source; several descriptions are several sources. The text is the operator's, never screened (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-local-trusted[What Is on This Machine Is Trusted]).
+
+[#documents]
+=== Documents
+
+* *Picking*: files or one directory. The web app browses the checkout first, then the operator's home directory, through the server's listing; the terminal client takes paths, completed against its working directory. A directory shows what it holds (`12 files: 9 adoc, 3 svg`) before it is added.
+* *Checked*: each file with a check line; a file that cannot be used names its cause (`not readable`, `larger than 10 MB`, `a link that leads outside`), and the others can be added without it.
+* *Copy or move* (`source.documents.mode`): the machine's default chosen, _always_ beside it; a file of the checkout that git tracks is copied in either case, and the line says so (`tracked by git: copied`).
+
+----
+  Copy or move the documents?
+    (●) Copy     they stay where they are                 ← the machine's default
+    ( ) Move     they are taken out of where they are
+    [ ] Always do this, don't ask again
+    3 files tracked by git are copied in either case.
+                                                                   [Add documents]
+----
+
+[#issue]
+=== An Issue
+
+* *Naming*: one field that takes a number (`212`, `#212`: the project's own repository) or a URL of GitHub, GitLab, or a Forgejo forge such as Codeberg; the forge is shown as soon as it is recognised (`Codeberg · forgejo/forgejo`).
+* *Another repository* asks first (`source.issue.grant`): _Read issues of forgejo/forgejo?_ with _this time_ and _for this project_; a forge without a credential says that only a public issue can be read, and where a credential is added.
+* *Progress*: `fetching`, then `screening`, each as a check line; then the issue's title, labels, and state.
+* *Flagged* (`source.issue.flagged`): the spans the screener flagged, quoted as text with their reason, and _Use it anyway_ (with a reason, which is recorded) or _Remove it_. The flagged text is never rendered as Markdown and its links are inert.
+
+[#lesson]
+=== A Lesson
+
+The unclaimed lessons of the project, newest first, each with its title and when it was recorded. A lesson whose premise no longer holds shows the evidence (`ConfigLoader.java no longer exists`) with _Use it anyway_ and _Retire it_.
+
+[#local-changes]
+=== Local Changes
+
+What the checkout has changed against its branch, as files with their counts of lines, and _Add the local changes_; they are captured when the plan starts.
+
+[#pull-request]
+=== A Pull Request
+
+A number of the project's own repository; fetched, checked (open, its head writable), and screened like an issue, then shown with its title and its changed files.
+
+[#ready]
+== Ready
+
+----
+  Start a plan in pm-mcp-clients                              ① Sources ─ ② Ready
+  ─────────────────────────────────────────────────────────────────────────────
+  The plan starts from
+    Description   "Add a Codeberg provider for issues"
+    Documents     doc/concepts/forgejo.adoc
+    Issue         codeberg.org/forgejo/forgejo#4711 · Issue comments API
+
+  Title   [Codeberg provider for issues                         ]
+  Id      [codeberg-provider-issues     ]  ← from the title
+                                                                 [Start the plan]
+----
+
+* The title is proposed from the first description, else from the first issue's title, else from the first document's name; the id from the title, or `issue-<number>` for a plan from one issue alone.
+* An id that is taken or refused shows why, with a free proposal (`codeberg-provider-issues-2`).
+* *What is not asked here*: posture, base branch, outline review, how many plans an orchestrator runs at once. Each is asked where the plan or the orchestrator first needs it, and not at all where the project or the machine sets it; the operator meets it as a decision (link:decisions.adoc[Decisions]).
+
+[#recipe]
+== A Recipe
+
+* *Choosing* (`recipe.choose`): the project's recipes, each with its name, what it does in one line, and where it comes from (a domain, the project).
+* *Parameters* (`recipe.parameters`): one line per parameter, with the options the server resolved (`modules: 9 found`) and its proposal preselected, as the onboarding's choices are (link:../web-app/onboarding.adoc[Web App, Onboarding]). A recipe that takes a request asks its sources first, as in <<sources>>.
+* *Started*: the plan, its id from the recipe and the time (`recipe-coverage-2026-10-12-14-05-00`).
+
+[#leaving]
+== Leaving and Coming Back
+
+The entry waits with its sources while the operator is away, in either client; a source still being fetched or screened goes on. The project's actions show _Continue starting_ (with the entry's kind and its number of sources) as their first action while an entry is open, and _Abandon_ deletes the entry and its source directory.
+
+[#texts]
+== Texts
+
+Keys of the area `start`, shared by both clients.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`start.plan.title`
+|Start a plan in {project}
+|Einen Plan in {project} starten
+
+|`start.epic.title`
+|Start an orchestrator in {project}
+|Einen Orchestrator in {project} starten
+
+|`start.step.sources`
+|Sources
+|Quellen
+
+|`start.step.ready`
+|Ready
+|Bereit
+
+|`start.choose.title`
+|What should the plan be?
+|Was soll der Plan sein?
+
+|`start.choose.sources`
+|A plan from sources
+|Ein Plan aus Quellen
+
+|`start.choose.recipe`
+|A recipe
+|Ein Rezept
+
+|`start.sources.title`
+|What does the {kind, select, plan {plan} other {orchestrator}} start from?
+|Woraus startet {kind, select, plan {der Plan} other {der Orchestrator}}?
+
+|`start.source.description`
+|Description
+|Beschreibung
+
+|`start.source.documents`
+|Documents
+|Dokumente
+
+|`start.source.issue`
+|Issue
+|Issue
+
+|`start.source.lesson`
+|Lesson
+|Lesson
+
+|`start.source.local_changes`
+|Local changes
+|Lokale Änderungen
+
+|`start.source.pull_request`
+|Pull request
+|Pull Request
+
+|`start.source.add`
+|+ {kind}
+|+ {kind}
+
+|`start.source.remove`
+|Remove
+|Entfernen
+
+|`start.source.retry`
+|Try again
+|Erneut versuchen
+
+|`start.state.checking`
+|checking
+|wird geprüft
+
+|`start.state.fetching`
+|fetching
+|wird geholt
+
+|`start.state.screening`
+|screening
+|wird geprüft auf Anweisungen
+
+|`start.state.stored`
+|stored
+|gespeichert
+
+|`start.state.copied`
+|copied
+|kopiert
+
+|`start.state.moved`
+|moved
+|verschoben
+
+|`start.state.flagged`
+|flagged
+|auffällig
+
+|`start.state.untrusted`
+|untrusted
+|nicht vertrauenswürdig
+
+|`start.sources.waits`
+|waits for {count, plural, one {# source} other {# sources}}
+|wartet auf {count, plural, one {# Quelle} other {# Quellen}}
+
+|`start.sources.alone`
+|a plan that {kind, select, pull_request {adopts a pull request} other {lands local changes}} starts from it alone
+|ein Plan, der {kind, select, pull_request {einen Pull Request übernimmt} other {lokale Änderungen landet}}, startet nur daraus
+
+|`start.continue`
+|Continue
+|Weiter
+
+|`start.documents.directory`
+|{count, plural, one {# file} other {# files}}: {types}
+|{count, plural, one {# Datei} other {# Dateien}}: {types}
+
+|`start.documents.mode.title`
+|Copy or move the documents?
+|Die Dokumente kopieren oder verschieben?
+
+|`start.documents.mode.copy`
+|Copy: they stay where they are
+|Kopieren: sie bleiben, wo sie sind
+
+|`start.documents.mode.move`
+|Move: they are taken out of where they are
+|Verschieben: sie werden dort entfernt
+
+|`start.documents.mode.always`
+|Always do this, don't ask again
+|Immer so, nicht mehr fragen
+
+|`start.documents.tracked`
+|{count, plural, one {# file tracked by git is} other {# files tracked by git are}} copied in either case.
+|{count, plural, one {# Datei unter Git wird} other {# Dateien unter Git werden}} in jedem Fall kopiert.
+
+|`start.documents.add`
+|Add documents
+|Dokumente hinzufügen
+
+|`start.issue.field`
+|Number or URL of the issue
+|Nummer oder URL des Issues
+
+|`start.issue.grant.title`
+|Read issues of {repository}?
+|Issues von {repository} lesen?
+
+|`start.issue.grant.once`
+|this time
+|dieses Mal
+
+|`start.issue.grant.project`
+|for this project
+|für dieses Projekt
+
+|`start.issue.public_only`
+|No credential for {forge}: only a public issue can be read.
+|Kein Zugang für {forge}: nur ein öffentliches Issue kann gelesen werden.
+
+|`start.issue.flagged.title`
+|This text may contain instructions to a model
+|Dieser Text enthält möglicherweise Anweisungen an ein Modell
+
+|`start.issue.flagged.accept`
+|Use it anyway
+|Trotzdem verwenden
+
+|`start.lesson.premise`
+|Its premise no longer holds: {evidence}
+|Seine Voraussetzung gilt nicht mehr: {evidence}
+
+|`start.lesson.retire`
+|Retire it
+|Ausmustern
+
+|`start.local_changes.add`
+|Add the local changes
+|Die lokalen Änderungen hinzufügen
+
+|`start.ready.starts_from`
+|The {kind, select, plan {plan} other {orchestrator}} starts from
+|{kind, select, plan {Der Plan} other {Der Orchestrator}} startet aus
+
+|`start.ready.title`
+|Title
+|Titel
+
+|`start.ready.id`
+|Id
+|Id
+
+|`start.ready.start_plan`
+|Start the plan
+|Den Plan starten
+
+|`start.ready.start_epic`
+|Start the orchestrator
+|Den Orchestrator starten
+
+|`start.started.title`
+|{name} has started
+|{name} ist gestartet
+
+|`start.started.follow`
+|Follow it
+|Verfolgen
+
+|`start.recipe.choose.title`
+|Which recipe?
+|Welches Rezept?
+
+|`start.recipe.parameters.title`
+|{recipe}: its parameters
+|{recipe}: seine Parameter
+
+|`start.continue_entry`
+|Continue starting ({count, plural, one {# source} other {# sources}})
+|Weiter starten ({count, plural, one {# Quelle} other {# Quellen}})
+
+|`start.abandon`
+|Abandon
+|Verwerfen
+|===
