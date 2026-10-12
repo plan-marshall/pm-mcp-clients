@@ -88,11 +88,11 @@ The onboarding is a dialogue of the console, with the frame, the step line, cons
 [source,text]
 ----
 pm › project add
-[1/7] Checkout · Which checkout is the project?
+[1/8] Checkout · Which checkout is the project?
   Path of the checkout   [/home/oliver/git/pm-mcp-clients] ← the working directory
 Use this checkout? [Enter]   e) edit the path   ?   › ⏎
 
-[1/7] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
+[1/8] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
   reads       its git configuration, build wrappers, host tools, language
               servers, and scripts
   runs        the version probe of each wrapper and tool found
@@ -103,13 +103,13 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
     ✓  host tools git 2.47, gh 2.71
     ·  language servers   none found
 
-[2/7] Identity · How should the project be named?
+[2/8] Identity · How should the project be named?
   Id     [pm-mcp-clients] ← from the remote
   Name   [plan-marshall/pm-mcp-clients] ← from the remote
   Pilot  this release runs plans only in pilot projects   1) yes ←   2) no
 Use these? [Enter]   e) edit   ?   › ⏎
 
-[3/7] Enrolment · Enrol pm-mcp-clients with these settings?
+[3/8] Enrolment · Enrol pm-mcp-clients with these settings?
   root             /home/oliver/git/pm-mcp-clients            detected
   build wrapper    mvnw, pinned .mvn/wrapper/maven-wrapper.properties   detected
   host tools       git, gh                                     detected
@@ -119,7 +119,7 @@ Use these? [Enter]   e) edit   ?   › ⏎
 Enrol pm-mcp-clients? [Enter]   e) edit a line   ?   › ⏎
 ✓ pm-mcp-clients enrolled
 …
-[5/7] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
+[5/8] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
   1) Model language     English              ← from machine
   2) Allowed models     4 models             ← from machine
   3) Providers          GitHub (gh)          ← from machine
@@ -130,6 +130,20 @@ Use the machine's values? [Enter]   change: 1-5   ?   › 4
     Method   1) Test first ← from machine   2) Tests after
   …
 Save 1 own value? [Enter]   change: 1-5   ?   › ⏎
+
+[6/8] Architecture · What pm-mcp-clients is made of
+  Domains     java (pom.xml), documentation (doc/**/*.adoc)
+  Modules     9 modules found by Maven
+                pm-api · jar        pm-operator · jar     pm-relay · jar
+                pm-exec · jar       pm-mock-runtime · jar …
+  Build map   9 modules, 412 files attributed, 0 unattributed
+Confirm the build map? [Enter]   e) edit a route   ?   › ⏎
+…
+[6/8] Architecture · Describing the modules
+    ✓  pm-api              enrich · Claude Code sonnet-5.5
+    ▶  pm-operator         running 0:41
+    ○  pm-relay            waiting
+    …
 …
 ✓ pm-mcp-clients is ready
     o) Add an orchestrator   p) Add a plan   r) Running work

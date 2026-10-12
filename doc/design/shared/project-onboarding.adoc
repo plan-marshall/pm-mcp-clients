@@ -19,7 +19,8 @@ Onboarding a project is one guided run: the checkout, a look at it on consent, t
 The step line counts the project's steps as the machine's onboarding counts its own:
 
 ----
-  ① Checkout ─ ② Identity ─ ③ Enrolment ─ ④ Team settings ─ ⑤ Own settings ─ ⑥ Roles ─ ⑦ Commit ─ ✓ Ready
+  ① Checkout ─ ② Identity ─ ③ Enrolment ─ ④ Team settings ─ ⑤ Own settings ─ ⑥ Architecture
+  ─ ⑦ Roles ─ ⑧ Commit ─ ✓ Ready
 ----
 
 * *① Checkout* (`project.checkout`, `project.consent`, `project.detect`): the path of the checkout, the terminal client proposing its working directory; the consent to look at it, listing what is read and the version probes that run; the check lines of what was found.
@@ -27,8 +28,9 @@ The step line counts the project's steps as the machine's onboarding counts its 
 * *③ Enrolment* (`project.enrolment`, `project.enrol`): everything to be enrolled as a list, each line with where it comes from (`detected`, `from machine`, `default`): the root, the build wrappers and their pinned files, the host tools, the language servers, the scripts, the budgets, the write paths, the build environment; the container engine is not in the list but a choice of its own, off, with its warning before it can be turned on.
 * *④ Team settings* (the setup's choices that write the team's configuration): base branch and branch prefix, the lanes, the providers of the team's CI and analysis, the build map, the finalize steps; each preselected from what the setup derived, each marked `team` because it is committed for everyone who works on the project.
 * *⑤ Own settings* (`project.operator`): every aspect the project may set, with the machine's value preselected and marked `from machine`: the model language, the allowed models, the providers and their credentials, the plan defaults, the integration variants, the commit identity (link:../terminal-client/02-levels.adoc#origins[Where a Value Comes From]). Accepting a line as proposed records nothing for the project; only a changed line is the project's.
-* *⑥ Roles* (`setup.qualify-roles`, `setup.enrich-architecture`): the role assignment proposed from the machine like ⑤, then the qualification and the enrichment, each behind its consent with its expected cost, each with its progress.
-* *⑦ Commit* (`setup.commit-changes`): the team's configuration as a list of files, to commit and push, or to leave in the checkout.
+* *⑥ Architecture* (`setup.detect-domains`, `setup.discover-modules`, `setup.seed-build-map`, and later `setup.enrich-architecture`): the project's type as the setup found it: the domains that apply, each with what made it apply (a descriptor, files), changeable where the team's `domains.json` allows; the modules each build system's parser found, as a tree with their build system and packaging; the build map to confirm. The enrichment runs after the roles are qualified: one line per module turning from waiting to running to ✓ as the role `enrich` describes it, behind its consent with its expected cost. What it writes is `.marshall/project-architecture/`, committed in ⑧.
+* *⑦ Roles* (`setup.qualify-roles`): the role assignment proposed from the machine like ⑤, then the qualification, behind its consent with its expected cost, with its progress.
+* *⑧ Commit* (`setup.commit-changes`): the team's configuration as a list of files, to commit and push, or to leave in the checkout.
 * *✓ Ready* (`project.completed`): what is ready, and the three actions of a project: add an orchestrator, add a plan, its running work (link:project-explorer.adoc#actions[Project Explorer]).
 
 [#not-ready]
@@ -64,6 +66,30 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |`project.step.own`
 |Own settings
 |Eigene Einstellungen
+
+|`project.step.architecture`
+|Architecture
+|Architektur
+
+|`project.architecture.title`
+|What {project} is made of
+|Woraus {project} besteht
+
+|`project.architecture.domains`
+|Domains: {list}
+|Domänen: {list}
+
+|`project.architecture.domain_because`
+|{domain}, because of {evidence}
+|{domain}, wegen {evidence}
+
+|`project.architecture.modules`
+|{count, plural, one {# module} other {# modules}} found by {build_systems}
+|{count, plural, one {# Modul} other {# Module}} gefunden von {build_systems}
+
+|`project.architecture.enriching`
+|Describing {done} of {total} modules
+|Beschreibe {done} von {total} Modulen
 
 |`project.step.roles`
 |Roles
