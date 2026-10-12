@@ -15,6 +15,8 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * *A state for a client*: the representation of a state the operator acts on (its id, kind, step, level, facts, proposal, items with what is not offered and why, links), the scheme of the operator's links over the local API and how a client follows one, and the refusal of a link to a state that moved on (`state_moved`).
 * *The event catalogue*: the envelope, closed type names, payload schemas, `Last-Event-ID` and `reset` per stream; the streams of a plan, an epic, the workspace, and the machine.
 * *Texts of the runtime*: which fields are message keys with arguments and which are verbatim external or model text.
+* *Configuration and levels*: every value with its origin and what it overrides, `set` and `unset` per key and level, a later run of an aspect for a project or a plan, and the refusals of an aspect-owned key and of a verb whose onboarding step is not done.
+* *The mock runtime's specification*: its socket name as everywhere else, scenario links keyed by the operator link's id, events named from the catalogue.
 * *Client inputs and files*: the client's locale, login `PATH`, and SSH session as request fields; the client-owned files outside `<PM_MCP_BASE>` as an exception to the closed list of direct file reads; `console.notify` and `console.full_screen` in `machine-config.json`.
 
 == Trace
