@@ -333,7 +333,7 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
 
 * *Not now* goes back to xref:onboarding.adoc#start[start] (`onboard.mode`) with the line `Nothing was done.`; nothing was looked at.
 * *List every action* lists each scan and probe with its command, in place.
-* The run fetches no icon: it uses the network for the provider checks only, so the harnesses keep their monograms; the icons can be fetched with a later run of ② from the settings.
+* The run fetches the icons of the supported harnesses found (`fetch_icons` is one of its consents, as in the terminal, xref:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, The Automatic Run]); apart from them it uses the network for the provider checks only.
 
 [#auto-run]
 === The Run (`auto.run`)

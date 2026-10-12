@@ -57,7 +57,7 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |`common.consent.kind.scan_harnesses`
 
 |`fetch_icons`
-|download the makers' icons of the found harnesses once, through the runtime
+|download the makers' icons of the found harnesses once, through the runtime (and the proxy, if one is set); the maker's server sees a download request from this machine's address and nothing else
 |`harness.icons-consent`
 |machine
 |goes on with the monograms

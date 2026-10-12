@@ -101,8 +101,9 @@ The terminal shows no icon. It asks the consent all the same, because the runtim
   looks for   the makers' icons of Claude Code, OpenCode, Codex
   runs        one download of each, by the runtime, from the address in its
               profile; stored on this machine
-  never       sends anything about you or this machine; your browser never
-              loads them from the maker
+  never       sends data of yours or of this machine; the maker's server sees
+              only a download request from this machine's address (through
+              the proxy, if one is set); your browser never loads them
   cost        none
   Only the web app shows them. With n it shows monograms.
 
@@ -281,7 +282,8 @@ The harnesses are enrolled in step 2; this step only asks them for their models 
        runs   a steward task on the default harness, Claude Code · opus-5.5
        cost   about 0.10 USD (not known yet: first run)
 
-y) yes to both   r) yes to both, and don't ask again   1) only list the models   n) not now   ?   › y
+  1  List the models?   y) yes   r) yes, and don't ask again   n) not now   ?   › y
+  2  Ask the steward?    y) yes   r) yes, and don't ask again   n) no, without advice   ?   › y
   ✓  Claude Code    3 models
   ✓  OpenCode       5 models
   ⠴  steward is working on Claude Code · opus-5.5      0:18   about 0.10 USD
@@ -305,7 +307,7 @@ Allow 5 models? [Enter]   toggle: 1-5   b) back   ?   › ⏎
 ✓ 5 models allowed on 2 harnesses
 ----
 
-* The two consents of `catalogue.consent` are the kinds `probe_harness_models` and `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]). `y` and `r` answer both; `1` gives the model probes alone, and the state after them is `catalogue.select` without a recommendation. The advice without the probes is not offered: `n` to the probes leaves the step where it is (`Nothing was done.`).
+* The two consents of `catalogue.consent` are the kinds `probe_harness_models` and `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]), answered one after the other, each with `y`, `r` (remembered for its own kind), and `n`. `n` to the model probes leaves the step where it is (`Nothing was done.`) and the second is not asked; `n` to the advice goes on to `catalogue.select` without a recommendation. A remembered consent is shown as its line and not asked; with both remembered the state is passed.
 * The steward runs on the default harness chosen in step 2, with that harness's default model (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-steward-role[Steward Role]); a failed or left task leads to `catalogue.select` without a recommendation and the line `– The steward gave no proposal: <reason>.`
 * `?0` is the recommendation's rationale, `?n` the rationale of item `n` with cost and limits.
 * A harness that cannot list its models shows `a) add a model id` as its only entry; `a` asks `Model id for OpenCode › `. A harness of which no model is allowed stays enrolled and is used by no role; the result line names it (`OpenCode: no model allowed`).

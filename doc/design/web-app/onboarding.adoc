@@ -164,8 +164,10 @@ Right after the scan, before the choice, when at least one found harness's profi
                 OpenCode (opencode.ai)
     runs        one download of each, by the runtime, from the address in
                 its profile; stored on this machine
-    never       sends anything about you or this machine; your browser
-                never loads them from the maker
+    never       sends data of yours or of this machine; the maker's server
+                sees only a download request from this machine's address
+                (through the proxy, if one is set); your browser never
+                loads them
     cost        none
 
     (•) yes
@@ -410,14 +412,14 @@ Two consents in one screen, each with its own cost (consent kinds `probe_harness
        runs   a steward task on the default harness, Claude Code · opus-5.5
        cost   about 0.10 USD (not known yet: first run)
 
-    (•) yes to both
-    ( ) yes to both, and don't ask again    you can withdraw it in the settings
-    ( ) only list the models
+    1  (•) yes   ( ) yes, and don't ask again   ( ) not now
+    2  (•) yes   ( ) yes, and don't ask again   ( ) no, without advice
+       you can withdraw a remembered consent in the settings
 
   [ Not now ]                       [ List the models and ask the steward ]
 ----
 
-* The model probes are needed: *Not now* stays, nothing was done. The advice is optional: _only list the models_ leads to <<models-select>> without a recommendation.
+* Each consent is answered on its own, and _don't ask again_ remembers its own kind only. The model probes are needed: _not now_ for them (or *Not now*) stays, nothing was done. The advice is optional: _no, without advice_ leads to <<models-select>> without a recommendation.
 * The primary button follows the choice: `List the models and ask the steward`, or `List the models`.
 * A remembered consent shows as one line in place of its item (`Consent remembered: ask the harnesses for their models`, with the kind's title `common.consent.kind.probe_harness_models`); with both remembered the screen is skipped.
 

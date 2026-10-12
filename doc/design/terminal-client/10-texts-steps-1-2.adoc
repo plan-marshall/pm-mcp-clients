@@ -127,8 +127,8 @@ The names of the languages are each written in their own language, in every pack
 |einen Download je Icon, durch die Runtime, von der Adresse in seinem Profil; gespeichert auf dieser Maschine
 
 |`onboard.harness.icons_consent.never`
-|sends anything about you or this machine; your browser never loads them from the maker
-|sendet etwas über dich oder diese Maschine; dein Browser lädt sie nie beim Hersteller
+|sends data of yours or of this machine; the maker's server sees only a download request from this machine's address (through the proxy, if one is set); your browser never loads them
+|sendet Daten von dir oder dieser Maschine; der Server des Herstellers sieht nur eine Download-Anfrage von der Adresse dieser Maschine (über den Proxy, falls einer eingestellt ist); dein Browser lädt sie nie
 
 |`onboard.harness.icons_consent.only_web`
 |Only the web app shows them. With {key} it shows monograms.
