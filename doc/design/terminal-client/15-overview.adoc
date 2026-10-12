@@ -159,7 +159,6 @@ Runtime pm-mcpd 0.9.1, running since 08:14 · 2 workers · 1 of 2 build slots in
                        in orchestrator client work · 7 of 12 tasks
                  plan  Message catalogue   outline · working · 1 h 5 min
                        in orchestrator client work
-                 orchestrator  client work   2 running · 3 staged · 3 d · 4 of 9 plans
      pm-mcp-core · 2 plans
                  plan  Session log and generations   execute · working · 4 h
                  plan  Profile loader   finalize · working · 6 h
@@ -168,7 +167,7 @@ pm [1 question] ›
 ----
 
 * The same rows, in the same order, as words: the kind is a word (`plan`, `orchestrator`), the marker `!` is followed by its kind, and no meaning is in a colour or a glyph alone.
-* `status --project <id>` prints one project, `status --by orchestrator` orders its plans below their orchestrators, as the full-screen view does.
+* By default the tree is the view by plan: plans flat, each naming its orchestrator. `status --by orchestrator` prints the view by orchestrator: the orchestrators with their running and staged plans, and their plans below them; `status --project <id>` prints one project.
 * The tree is printed once; it is the view of a screen reader, of a terminal without cursor control, and of a narrow one.
 
 [#overview-texts]

@@ -50,7 +50,7 @@ Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.ado
 |`setup needs you` when only its setup waits for the operator
 |===
 
-Order: projects that need the operator first, then by their latest activity. A project whose last plan ends leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
+Order: projects that need the operator first, then by their latest activity. A project whose running work ends (its last active plan and orchestrator ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
 
 [#item-rows]
 == A Plan, an Orchestrator

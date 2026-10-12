@@ -29,6 +29,8 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
 pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
 pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
 pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies
+pm-operator status [--project <project_id>] [--by orchestrator] [--watch]
+                                                                the running work as a tree, and the runtime (15-overview)
 
 <level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
 common:    --no-input   never ask; stop at the first choice not given (exit code 3)
