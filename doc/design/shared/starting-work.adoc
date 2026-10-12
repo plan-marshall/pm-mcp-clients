@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Starting Work
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-start-from-clients[Starting from the Clients], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-source-directory[The Source Directory], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-screen-stored[Screened Once Stored] (proposed); link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc[Bootstrap & Lessons States]_
 
@@ -145,7 +145,7 @@ A number of the project's own repository; fetched, checked (open, its head writa
 * *The checks* of the server are marks on the plans concerned (`✗` with the reason); _Agree_ is disabled while one fails and says how many.
 * *Talk* opens a conversation with the planning role about the whole cut; each change it proposes is a read-back.
 * *Draft again* asks for an instruction and replaces the draft, keeping what the operator decided where the plan is still in it.
-* *A later run* (_Decompose again_, or the epic's own recut) shows the shipped and running plans locked and greyed, and marks each staged plan as `unchanged`, `changed`, `new`, or `dropped`, a change opening to old against new.
+* *A later run* (_Decompose again_, or the epic's own recut) shows the shipped, running, pausing, and paused plans locked and greyed (a paused plan is the operator's to start or abandon, never the decomposition's), and marks each staged plan as `unchanged`, `changed`, `new`, or `dropped`, a change opening to old against new.
 * *Agree* commits the cut; the epic then starts the plans that can start.
 
 [#leaving]

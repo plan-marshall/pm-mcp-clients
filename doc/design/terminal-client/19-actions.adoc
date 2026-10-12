@@ -92,7 +92,7 @@ pm › epic next relay-hardening
 
 pm › epic archive relay-hardening
 Archive relay-hardening?
-    ✓  no plan running or paused
+    ✓  no plan running, pausing, or paused
     ✓  every plan shipped or ended            11 shipped · 1 cancelled
     ✗  open findings                          2   (epic findings relay-hardening)
     ✓  the ledger is landed

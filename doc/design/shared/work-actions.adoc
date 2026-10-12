@@ -104,7 +104,7 @@ After an action on a plan of an epic, the row of the plan shows for a moment `re
 ----
   Archive relay-hardening?
   ─────────────────────────────────────────────────────────────────────────────
-    ✓  no plan running or paused
+    ✓  no plan running, pausing, or paused
     ✓  every plan shipped or ended                       11 shipped · 1 cancelled
     ✗  open findings                                     2   [Review the findings]
     ✓  the ledger is landed
@@ -281,8 +281,8 @@ Keys of the area `control`, shared by both clients.
 |{epic} archivieren?
 
 |`control.archive.no_plan_active`
-|no plan running or paused
-|kein Plan läuft oder ist angehalten
+|no plan running, pausing, or paused
+|kein Plan läuft, hält an oder ist angehalten
 
 |`control.archive.rows_ended`
 |every plan shipped or ended
