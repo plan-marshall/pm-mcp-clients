@@ -33,6 +33,10 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |The web app: its principles, the onboarding screens, the harness icons; its structure, plan views, plan designer, and visual language are still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
 
+|link:shared/decisions.adoc[Decisions]
+|`DRAFT`
+|What both clients show of a decision a plan asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, announcing, and how it ends.
+
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`
 |What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).

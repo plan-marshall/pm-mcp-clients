@@ -1,0 +1,197 @@
+= Terminal Client: Transcripts: Decisions
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Transcripts: Decisions
+
+The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts]. What a decision carries and how every client shows it is link:../shared/decisions.adoc[Decisions]; these transcripts show each variant in the console. The states are those of the sub-workflow `decision.*` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]).
+
+[#t-decisions]
+== Decisions
+
+[#t-decision-clear]
+=== Reversible, a Clear Majority (`decision.answer`, `decision.record`)
+
+[source,text]
+----
+pm [1 question] › answer Q7
+Question Q7 · plan fix-relay · execute · blocks the plan · can be undone
+  The change conflicts with main in RelayServer.java.
+  ? shows the evidence: the conflict, both versions of the method
+
+    2) Rebase onto main ←          4 of 6 votes · 3 models   clear majority
+    1) Merge main into the branch  2 of 6 votes · 2 models
+    3) Stop the plan and ask me later
+  Recommended by quorum: Rebase onto main. Keeps the history linear.
+  Against it (reviewer): the branch was pushed; a rebase rewrites what others pulled.
+
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
+✓ Q7 answered: Rebase onto main. The plan goes on.
+pm ›
+----
+
+* The options keep the workflow's order; the recommended one is marked, not moved.
+* `?2` shows the votes for option 2, each with its role, model, reason, and the model's own estimate, labelled as such.
+
+[#t-decision-irreversible]
+=== Not Reversible (`decision.answer`, `decision.confirm`)
+
+[source,text]
+----
+pm [1 question] › answer Q9
+Question Q9 · plan drop-legacy-api · finalize · blocks the plan · cannot be undone
+  Delete the published v1 endpoints from the release branch?
+
+    1) Delete them now                 3 of 6 votes · 3 models
+    2) Deprecate them, delete in 0.11  3 of 6 votes · 2 models
+    3) Keep them
+  Votes: split. The recommendation is one step away, so that you weigh the
+  options first: ?r
+
+Choose: 1-3   w) in my own words   x) none fits   l) later   ?   › ?r
+  Recommended by quorum: Deprecate them, delete in 0.11.
+  Against it (architect): two clients of v1 are known; both migrated last week.
+Choose: 1-3   w) in my own words   x) none fits   l) later   ?   › 2
+
+Your decision · Q9 · cannot be undone
+  Deprecate the v1 endpoints, delete them in 0.11.
+  Follows: a deprecation header on every v1 response; a task for 0.11.
+Decide? [Enter]   b) back   ?   › ⏎
+✓ Q9 answered: Deprecate them, delete in 0.11.
+----
+
+* No option is preselected and `Enter` alone asks for a choice; `decision.confirm` restates what follows before the answer is sent.
+
+[#t-decision-parts]
+=== In Parts (`decision.answer` per part, `decision.confirm`)
+
+[source,text]
+----
+pm [1 question] › answer Q12
+Question Q12 · plan storage-v2 · outline · blocks the plan · can be undone
+  How should the new store be introduced?                  3 parts
+  ? shows the evidence: the outline, the measurements of the current store
+
+[part 1 of 3] Where does the data live?
+    1) A file per plan ←           recommended by outline
+    2) One database for the machine
+Use a file per plan? [Enter]   other: 1-2   w) in my own words   l) later   ?   › ⏎
+[part 2 of 3] How is it migrated?          depends on part 1: A file per plan
+    1) At the first start of the new release ←
+    2) By a verb the operator runs
+At the first start? [Enter]   other: 1-2   b) back   ?   › 2
+[part 3 of 3] Which format?
+    1) JSON lines ←
+    2) SQLite per plan
+JSON lines? [Enter]   other: 1-2   b) back   ?   › b
+[part 2 of 3] How is it migrated?          depends on part 1: A file per plan
+    2) By a verb the operator runs ✎
+…   › ⏎
+
+Your decision · Q12
+  1  A file per plan
+  2  By a verb the operator runs
+  3  JSON lines
+  Follows: the outline is revised; a task for the migration verb.
+Decide? [Enter]   1-3) change a part   ?   › ⏎
+✓ Q12 answered.
+----
+
+* Changing part 1 would reopen part 2 with `Part 2 was opened again, because part 1 changed.`
+
+[#t-decision-own-words]
+=== In Own Words (`decision.interpret`, `decision.read-back`, `decision.clarify`)
+
+[source,text]
+----
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › w
+Your answer (Enter sends it): › rebase, but leave release/0.9 alone, it is frozen
+  ⠴  interpreter is reading your answer       0:03
+
+I understood: Rebase onto main, provided release/0.9 stays as it is.
+  your words: rebase, but leave release/0.9 alone, it is frozen
+              ^^^^^^          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
+✓ Q7 answered: Rebase onto main, provided release/0.9 stays as it is.
+----
+
+Unclear, then a new option in the operator's words:
+
+[source,text]
+----
+Your answer (Enter sends it): › do whatever the reviewer would do
+  ⠴  interpreter is reading your answer       0:02
+Which do you mean?
+    1) Merge main into the branch, as the reviewer voted
+    2) Leave it to the recommendation: Rebase onto main
+Choose: 1-2   w) in my own words   o) choose an option instead   ?   › w
+Your answer (Enter sends it): › neither: squash the branch into one commit on main
+  ⠴  interpreter is reading your answer       0:03
+
+I understood: your own answer: squash the branch into one commit on main.
+Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
+✓ Q7 answered in your own words.
+----
+
+* The read-back marks the passages it rests on; nothing is recorded before `Enter`.
+* A delegation is read back as `you leave it to the recommendation: …` and offered only where the decision allows one.
+* How often the interpreter may ask back is the decision's. A read-back of an understood answer always offers `e)` and `o)`; only when the answer stays unclear after the last question the decision allows does the console offer `o)` alone, back to the options.
+
+[#t-decision-not-voted]
+=== Not Voted On, and a Note
+
+[source,text]
+----
+pm [1 question] › answer Q3
+Question Q3 · plan cli-onboarding · refine · blocks the plan · can be undone
+  Should the console keep a history of answers to questions?
+
+    1) Commands only ←                      not voted on
+    2) Commands and answers
+  Recommended by refine: Commands only. Answers can hold content of the project.
+
+Commands only? [Enter]   other: 1-2   w) in my own words   m) add a note   x) none fits   l) later   ?   › m
+Your note: › and say so in the help text
+Commands only? [Enter]   other: 1-2   w) in my own words   m) ✎ note   x) none fits   l) later   ?   › ⏎
+✓ Q3 answered: Commands only (with your note).
+----
+
+[#t-decision-ends]
+=== Later, None Fits, Changed
+
+[source,text]
+----
+…   x) none fits   l) later   ?   › l
+Q7 stays open; the plan waits for it. questions lists it.
+pm [1 question] › answer Q7
+…   x) none fits   l) later   ?   › x
+None fits: the plan thinks again and asks anew. Send? [Enter]   b) back   › ⏎
+✓ Q7: you asked the plan to think again.
+
+pm [1 question] ›
+◆ Q8 changed: a third option was added. Please answer again.
+pm [1 question] ›
+----
+
+* No decision expires: the plan waits until the operator answers it, and `questions` shows since when.
+
+[#t-decision-waiver]
+=== A Waiver Request
+
+[source,text]
+----
+pm [1 waiver request] › questions
+  WR-2  plan fix-relay  waiver request: ci_check:integration-tests
+        "The test needs a second machine the CI does not have."   waiting since 13:10
+pm [1 waiver request] › answer WR-2
+Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests
+  The test needs a second machine the CI does not have.
+  ? shows the evidence: the failing run, the test
+
+Waive the gate? y) yes, with a reason   n) not now   ?   › y
+Reason: › covered by the manual run on the build box, log attached to the PR
+✓ Waived ci_check:integration-tests for fix-relay.
+----
+
+* A waiver request is answered by a waiver, an operator override: no preselection, no own words, a reason is required.

@@ -160,16 +160,16 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |{count, plural, one {# Frage bleibt offen} other {# Fragen bleiben offen}}; du kannst sie in der Web-App beantworten. exit oder Strg+D noch einmal verlässt die Konsole.
 
 |`operator.console.question.notice`
-|Question {id} · plan {plan} · answer by {time} (in {remaining})
-|Frage {id} · Plan {plan} · Antwort bis {time} (in {remaining})
+|Question {id} · plan {plan} · {blocks}
+|Frage {id} · Plan {plan} · {blocks}
 
 |`operator.console.question.recommended`
 |Recommended: {option}
 |Empfohlen: {option}
 
 |`operator.console.question.waiting`
-|{count, plural, one {# question waiting} other {# questions waiting}}: {id} · {plan} · answer by {time} (in {remaining})   ! shows it
-|{count, plural, one {# Frage wartet} other {# Fragen warten}}: {id} · {plan} · Antwort bis {time} (in {remaining})   ! zeigt sie
+|{count, plural, one {# question waiting} other {# questions waiting}}: {id} · {plan} · {blocks}   ! shows it
+|{count, plural, one {# Frage wartet} other {# Fragen warten}}: {id} · {plan} · {blocks}   ! zeigt sie
 
 |`operator.console.question.not_now`
 |not now
@@ -183,13 +183,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |{id} was answered in {channel} ({device}): {option}. Nothing was sent from here.
 |{id} wurde in {channel} ({device}) beantwortet: {option}. Von hier wurde nichts gesendet.
 
-|`operator.console.question.expired`
-|{id} expired; the plan went on with the recommendation: {option}.
-|{id} ist abgelaufen; der Plan ist mit der Empfehlung weitergegangen: {option}.
 
-|`operator.console.question.reminder`
-|{id} still needs your answer: answer by {time} (in {remaining})
-|{id} braucht noch deine Antwort: Antwort bis {time} (in {remaining})
 
 |`operator.console.questions.none`
 |No open questions.
@@ -203,9 +197,6 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Back to {step}.
 |Zurück zu {step}.
 
-|`operator.console.remaining.minutes`
-|{minutes, plural, one {# min} other {# min}}
-|{minutes, plural, one {# Min.} other {# Min.}}
 
 |`operator.console.connection.lost`
 |Lost the connection to the runtime ({reason}). Reconnecting …
@@ -301,6 +292,30 @@ One letter per link relation, the mnemonic of its label; the build checks of the
 |`operator.key.leave`
 |q
 |v
+
+|`operator.key.own_words`
+|w
+|w
+
+|`operator.key.note`
+|m
+|n
+
+|`operator.key.none_fits`
+|x
+|x
+
+|`operator.key.later`
+|l
+|s
+
+|`operator.key.edit_words`
+|e
+|b
+
+|`operator.key.choose_option`
+|o
+|o
 |===
 
 [#texts-operator-start]

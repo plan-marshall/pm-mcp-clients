@@ -39,6 +39,8 @@ Input is read by the console's line editor (JLine, xref:04-console.adoc#line-edi
 * *`!`* opens what is waiting for the operator (a question, a waiver request) while a dialogue runs, and returns to the same state afterwards; like `?` it is the same in every language (xref:04-console.adoc#during-dialogue[A Question During a Dialogue]).
 * An input the state does not offer is answered with one line (`3 is not offered here: 1-2, a, l, q`) and the same prompt; nothing is sent.
 
+This table names the keys for reading; their values are texts of the catalogue, defined once with their texts (xref:13-texts-operator.adoc#texts-operator-keys[Keys]), and the collision test of the implementation (work package `cli-onboarding`) checks the catalogue, not this table.
+
 [cols="1,1,2,3",options="header"]
 |===
 |English |German |Link relation |Used in
@@ -117,6 +119,21 @@ Input is read by the console's line editor (JLine, xref:04-console.adoc#line-edi
 |`v`
 |leave the dialogue to the console prompt (a client action, no link)
 |every dialogue
+
+|`w`, `m`, `x`, `l`
+|`w`, `n`, `x`, `s`
+|in my own words, add a note, none fits, later
+|`decision.answer`
+
+|`?r`
+|`?r`
+|show the recommendation that stands one step away
+|`decision.answer` of a decision that is costly to undo or cannot be undone
+
+|`e`, `o`
+|`b`, `o`
+|edit my words, choose an option instead
+|`decision.read-back`, `decision.clarify`
 
 |`!`
 |`!`

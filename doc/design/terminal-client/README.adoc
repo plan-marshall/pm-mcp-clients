@@ -24,7 +24,7 @@ The client holds no step order and no rule of its own: it renders the state the 
 * xref:01-commands.adoc[Command Model]: the console as the entry, the verbs and the console commands, `config` and its aspects, arguments as answers, exit codes.
 * xref:02-levels.adoc[Levels]: machine, project, and plan; addressing a level; where a value comes from.
 * xref:03-dialogues.adoc[Dialogues]: how a state is rendered and answered, keys and numbers, consent, checks, waiting, resume, refusals.
-* xref:04-console.adoc[The Console]: the prompt and its badges, what the runtime pushes, answering questions, deadlines, connection, keys, notifications, output safety, the line editor.
+* xref:04-console.adoc[The Console]: the prompt and its badges, what the runtime pushes, answering questions, connection, keys, notifications, output safety, the line editor.
 
 [#transcripts]
 === Transcripts
@@ -35,6 +35,7 @@ A transcript of every state of the onboarding and of the entry, and of the conso
 * xref:06-transcripts-steps-1-3.adoc[Steps 1 to 3]: language, harness, models.
 * xref:07-transcripts-steps-4-7.adoc[Steps 4 to 7]: roles, credentials, providers, plans, done.
 * xref:08-transcripts-later.adoc[Later Changes, and Every State]: `config` with arguments, `--no-input`, a project's own values; the table of every state and its transcript.
+* xref:14-transcripts-decisions.adoc[Decisions]: every variant of a decision a plan asks: a clear majority, not reversible, in parts, in own words with read-back and clarification, not voted on, later, none fits, changed, and a waiver request (link:../shared/decisions.adoc[Decisions] is what both clients show).
 
 [#texts]
 === Texts

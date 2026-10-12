@@ -93,7 +93,7 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 [#state-coverage]
 == Every State and Its Transcript
 
-The states are those of the use cases' flows (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Onboarding], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]); the kinds are listed one per state, in the same order, and `end` marks the done state of a sub-workflow.
+The states are those of the use cases' flows (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Onboarding], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]); the kinds are listed one per state, in the same order, and `end` marks the done state of a sub-workflow.
 
 [cols="2,1,3",options="header"]
 |===
@@ -182,6 +182,10 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`
 |`[S]`, `[O]`, `[S]`, `[S]`, end
 |xref:07-transcripts-steps-4-7.adoc#t-defaults[7 Plans (defaults.load, defaults.review, defaults.validate, defaults.record, defaults.done)], <<t-config-direct>>
+
+|`decision.open`, `decision.announce`, `decision.answer`, `decision.interpret`, `decision.read-back`, `decision.clarify`, `decision.confirm`, `decision.record`, `decision.closed`
+|`[S]`, `[S]`, `[O]`, `[M]`, `[O]`, `[O]`, `[O]`, `[S]`, end
+|xref:14-transcripts-decisions.adoc#t-decisions[Decisions]
 
 |`onboard.completed`
 |rest

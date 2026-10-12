@@ -33,7 +33,7 @@ How the texts of the web app and the command-line binaries are written, kept, an
 
 The few texts of `pm-mcp` (the relay's errors, which the host and its model read) stay in English for now, whatever the interface language.
 
-A question a model asks the operator is in the model language; the frame around it (buttons, the deadline, the recommendation label) is in the interface language.
+A question a model asks the operator is in the model language; the frame around it (buttons, what it blocks, the recommendation label) is in the interface language.
 
 [#glossary]
 == Glossary: Words That Are Never Translated

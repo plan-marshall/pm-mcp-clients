@@ -36,7 +36,7 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
            --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
 
 In the console only:
-  questions                   the open questions and waiver requests, with deadline and recommendation
+  questions                   the open questions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a question as a dialogue, or answer it with an option
   web [pair|lan|copy [ssh]]   the ways into the web app; a new code; other devices; copy the URL or the ssh command
   help [<verb>]               the verbs and console commands
