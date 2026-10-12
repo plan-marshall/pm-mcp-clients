@@ -26,4 +26,4 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 == Done When
 
-Every record and event type has a round-trip test of its codec, and the closed list of `needs_operator` kinds is an enumeration a test compares with the specification; every scenario loads and is served by the mock runtime, and a test per scenario asserts the representation a client receives.
+The specification of the changes of UC-PLN-4 is merged in `plan-marshall-documentation`; every record and event type has a round-trip test of its codec, and the closed list of `needs_operator` kinds is an enumeration a test compares with the specification; every scenario loads and is served by the mock runtime, and a test per scenario asserts the representation a client receives.
