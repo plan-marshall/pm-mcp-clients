@@ -135,6 +135,24 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
 |epic clients
 
+|link:overview-contract.adoc[`overview-contract`]
+|Overview of running work: contract and mock runtime
+|`blocked`
+|link:api-contract.adoc[`api-contract`]; link:mock-runtime.adoc[`mock-runtime`]; the specification of the changes of link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (no work package)
+|epic clients
+
+|link:cli-overview.adoc[`cli-overview`]
+|Overview of running work in the terminal
+|`blocked`
+|link:overview-contract.adoc[`overview-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]
+|epic clients
+
+|link:web-overview.adoc[`web-overview`]
+|Overview of running work in the web app
+|`blocked`
+|link:overview-contract.adoc[`overview-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
+|epic clients
+
 |===
 
 The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
