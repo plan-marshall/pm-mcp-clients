@@ -156,7 +156,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |exit oder Strg+D verlässt die Konsole
 
 |`operator.console.exit_open`
-|{count, plural, one {# question stays open} other {# questions stay open}}; you can answer them in the web app. exit or Ctrl+D again leaves.
+|{count, plural, one {# question stays open} other {# questions stay open}}; you can answer {count, plural, one {it} other {them}} in the web app. exit or Ctrl+D again leaves.
 |{count, plural, one {# Frage bleibt offen} other {# Fragen bleiben offen}}; du kannst sie in der Web-App beantworten. exit oder Strg+D noch einmal verlässt die Konsole.
 
 |`operator.console.question.notice`

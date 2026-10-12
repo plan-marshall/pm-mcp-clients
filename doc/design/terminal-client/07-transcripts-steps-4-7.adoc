@@ -211,7 +211,7 @@ Token (not shown while you type): ›
 Store and check it? [Enter]   k) skip SonarCloud   ?   › ⏎
 ----
 
-* The token is read with the echo off (`readPassword`) and sent in the body of one request; nothing of it is printed. `--no-input` stops here and names `pm-operator credentials set sonar`.
+* The token is read with the echo off into a `char[]` (xref:04-console.adoc#line-editor[Line Editor]) and sent in the body of one request to the runtime over its Unix domain socket, which only the user can open; it never crosses a network on its way to the credential store, and nothing of it is printed. `--no-input` stops here and names `pm-operator credentials set sonar`.
 
 [#t-providers-verify]
 === Check (`providers.verify`, `providers.failed`, `providers.record`, `providers.done`)

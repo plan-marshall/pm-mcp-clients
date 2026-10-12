@@ -93,12 +93,14 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 [#state-coverage]
 == Every State and Its Transcript
 
+The states are those of the use cases' flows (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Onboarding], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]); the kinds are listed one per state, in the same order, and `end` marks the done state of a sub-workflow.
+
 [cols="2,1,3",options="header"]
 |===
 |State |Kind |Transcript
 
 |`start.runtime`, `start.pairing`, `start.where`, `start.browser`, `start.show`, `start.wait`
-|`[S]`, `[O]`
+|`[S]`, `[S]`, `[S]`, `[S]`, `[S]`, `[O]`
 |xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop (start.runtime, start.pairing, start.where, start.browser, start.show, start.wait)], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH (start.where, start.show, start.wait)]
 
 |`start.other-device`, `start.lan`
@@ -118,7 +120,7 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 |xref:05-transcripts-entry.adoc#t-auto[Automatic (auto.consent, auto.run, auto.result)]
 
 |`language.detect`, `language.choose`, `language.record`, `language.done`
-|`[S]`, `[O]`, `[S]`
+|`[S]`, `[O]`, `[S]`, end
 |xref:06-transcripts-steps-1-3.adoc#t-language[1 Language (language.detect, language.choose, language.record, language.done)], <<t-config-project>>
 
 |`harness.consent`, `harness.scan`
@@ -138,7 +140,7 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 |xref:06-transcripts-steps-1-3.adoc#t-harness-probe[Check (harness.probe-consent, harness.probe, harness.blocked)], xref:05-transcripts-entry.adoc#t-auto[Automatic (auto.consent, auto.run, auto.result)]
 
 |`harness.confirm`, `harness.enrol`, `harness.done`
-|`[O]`, `[S]`
+|`[O]`, `[S]`, end
 |xref:06-transcripts-steps-1-3.adoc#t-harness-confirm[Confirm and Enrol (harness.confirm, harness.enrol, harness.done)]
 
 |`harness.add`, `harness.add-consent`, `harness.verify-profile`, `harness.add-confirm`, `harness.install-profile`
@@ -146,11 +148,11 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 |xref:06-transcripts-steps-1-3.adoc#t-harness-add[Add a Harness That Is Not Listed (harness.add, harness.add-consent, harness.verify-profile, harness.add-confirm, harness.install-profile)]
 
 |`catalogue.consent`, `catalogue.scan`, `catalogue.advise`, `catalogue.select`, `catalogue.enrol`, `catalogue.record`, `catalogue.done`
-|`[O]`, `[S]`, `[M]`, `[O]`, `[S]`, `[S]`
+|`[O]`, `[S]`, `[M]`, `[O]`, `[S]`, `[S]`, end
 |xref:06-transcripts-steps-1-3.adoc#t-models[3 Models (catalogue.consent, catalogue.scan, catalogue.advise, catalogue.select, catalogue.enrol, catalogue.record, catalogue.done)]
 
 |`roles.load`, `roles.default`, `roles.review`, `roles.validate`, `roles.write`, `roles.done`
-|`[S]`, `[S]`, `[O]`, `[S]`, `[S]`
+|`[S]`, `[S]`, `[O]`, `[S]`, `[S]`, end
 |xref:07-transcripts-steps-4-7.adoc#t-roles-review[The Overview (roles.load, roles.default, roles.review, roles.validate, roles.write, roles.done)], xref:07-transcripts-steps-4-7.adoc#t-roles-adjust[Adjust Roles (roles.review, edit)], <<t-config-project-roles>>
 
 |`roles.consent`, `roles.propose`
@@ -158,7 +160,7 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 |xref:07-transcripts-steps-4-7.adoc#t-roles-steward[Ask the Steward (roles.consent, roles.propose)]
 
 |`store.detect`, `store.choose`, `store.check`, `store.record`, `store.done`
-|`[S]`, `[O]`, `[S]`, `[S]`
+|`[S]`, `[O]`, `[S]`, `[S]`, end
 |xref:07-transcripts-steps-4-7.adoc#t-store-choose[Choose (store.detect, store.choose, store.check, store.record, store.done)], xref:07-transcripts-steps-4-7.adoc#t-store-move[A Later Change Moves the Tokens (config credentials)]
 
 |`store.unavailable`
@@ -174,11 +176,11 @@ Save 1 role for pm-mcp-clients? [Enter]   e) adjust more   d) reset to the machi
 |xref:07-transcripts-steps-4-7.adoc#t-providers-credentials[A Missing Token (providers.credentials)]
 
 |`providers.verify`, `providers.failed`, `providers.record`, `providers.done`
-|`[S]`, `[O]`, `[S]`
+|`[S]`, `[O]`, `[S]`, end
 |xref:07-transcripts-steps-4-7.adoc#t-providers-verify[Check (providers.verify, providers.failed, providers.record, providers.done)]
 
 |`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`
-|`[S]`, `[O]`, `[S]`, `[S]`
+|`[S]`, `[O]`, `[S]`, `[S]`, end
 |xref:07-transcripts-steps-4-7.adoc#t-defaults[7 Plans (defaults.load, defaults.review, defaults.validate, defaults.record, defaults.done)], <<t-config-direct>>
 
 |`onboard.completed`

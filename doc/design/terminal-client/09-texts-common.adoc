@@ -75,7 +75,7 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 
 |`common.consent.cost.estimate_runs`
 |about {amount} (from {runs, plural, one {# earlier run} other {# earlier runs}})
-|etwa {amount} (aus {runs, plural, one {# früheren Lauf} other {# früheren Läufen}})
+|etwa {amount} (aus {runs, plural, one {einem früheren Lauf} other {# früheren Läufen}})
 
 |`common.consent.cost.unknown`
 |not known yet: first run
@@ -194,7 +194,7 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set web.port <port>
 |===
 
-The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them; the two above that the onboarding can meet are complete.
+The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
 
 [#texts-onboard]
 === `onboard`: The Onboarding

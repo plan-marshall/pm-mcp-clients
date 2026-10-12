@@ -16,7 +16,7 @@ A thorough logical design of `pm-operator` as the operator's second client, revi
 
 * *Command model*: the console `pm-operator` as the entry, its commands, and `config <aspect>`, their arguments, and the rule that command names and options are the same in every language; how a direct verb runs a sub-workflow and stops at the first choice it was not given.
 * *Levels*: how the terminal shows and addresses the levels of configuration (machine, project, plan) and a running plan; how a value shows where it comes from (default, machine, project, plan) and what overrides it; how the operator picks a project or plan to act on.
-* *Dialogues*: the rendering of a state (step line, content, links as keys or numbers, preselection on `Enter`, `?` for the explanation), consent, check lists with checkmark or error, waiting and progress, interruption and resume, non-interactive use and `--json`.
+* *Dialogues*: the rendering of a state (step line, content, links as keys or numbers, preselection on `Enter`, `?` for the explanation), consent, check lists with checkmark or error, waiting and progress, interruption and resume, non-interactive use (`--no-input`); no machine-readable output.
 * *Console*: the prompt, pushed questions and how they are answered, deadlines, answers given elsewhere, connection, keys, notifications, and the line editor.
 * *Texts*: every text of the onboarding, the entry, and the console as keys of the catalogue with the English and the German text.
 * *Transcripts*: a terminal transcript for every state of the onboarding and of the entry, and of the console at work, complementing the web wireframes of the design.
