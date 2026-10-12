@@ -28,7 +28,7 @@ Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a mac
 * The order is the dependency order of the index; ready packages run in parallel within the parallelization scope.
 * *First*: `profile-documents` and `exec-read-denied-paths`. The sibling epic in `pm-mcp-core` waits on both (its `profile-loader` and, through it, most of its roles and tasks; its `job-confinement-and-environment`); they take the first free slots.
 * *Then*: `api-contract`, which opens `mock-runtime` and the operator verbs; `mock-runtime`, `message-catalogue` and `cli-test-infra` need no design and run before the design gate.
-* *After the gate*: `cli-onboarding`, `web-app-foundation`, `web-onboarding`, each as soon as its design package is `done`; then the other client packages of both clients, each after its contract (see the index).
+* *After the gate*: `cli-onboarding`, `web-app-foundation`, `web-onboarding`, each as soon as its design package and `onboarding-contract` are `done`; then the other client packages of both clients, each after its contract (see the index).
 
 [#workstreams]
 == Suggested Workstreams
@@ -44,7 +44,7 @@ Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a mac
 |`operator-checks`, `command-tree`, `operator-enrolment-verbs`, `operator-harness-and-roles-verbs`
 
 |Relay and entry
-|`relay-generation-and-markers`, `integration-layers` (`enter-command` waits for the decision of All Interaction in the Operator's Clients)
+|`relay-generation-and-markers`, `enter-command` (waits for the decision of All Interaction in the Operator's Clients), `integration-layers`
 
 |Job launcher
 |`exec-read-denied-paths`, `landlock-on-wsl2`
