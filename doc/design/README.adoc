@@ -43,7 +43,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/plan-view.adoc[Plan View]
 |`DRAFT`
-|What both clients show of one plan's process: its phases and sub-workflows down to the leaves, each with its state (done, running, planned, waiting for you, failed, not taken, not in this plan), loops, the path to where the plan is, and the leaves' jobs and tasks.
+|What both clients show of one plan's process: its phases and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, and the leaves' jobs and tasks.
 
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`

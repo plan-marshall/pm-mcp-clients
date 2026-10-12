@@ -207,8 +207,12 @@ Keys of the area `plan`, shared by both clients.
 |{done} von {total} Tasks fertig
 
 |`plan.leaf.task`
-|{role} · {harness} {model} · attempt {attempt} · {status}
-|{role} · {harness} {model} · Versuch {attempt} · {status}
+|{role} · {harness} {model} · attempt {attempt} · {status} · {outcome}
+|{role} · {harness} {model} · Versuch {attempt} · {status} · {outcome}
+
+|`plan.leaf.job`
+|{kind} · {status} · {duration} · {outcome}
+|{kind} · {status} · {duration} · {outcome}
 
 |`plan.leaf.fired`
 |fired {count}×: {outcomes}
@@ -231,4 +235,4 @@ Keys of the area `plan`, shared by both clients.
 |Der Plan ist beendet: {outcome}.
 |===
 
-The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, added with the contract (link:../../plans/process-contract.adoc[`process-contract`]); _Sub-Workflow_ joins the glossary as a word of the workflow language.
+The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]); _Sub-Workflow_ joins the glossary as a word of the workflow language.
