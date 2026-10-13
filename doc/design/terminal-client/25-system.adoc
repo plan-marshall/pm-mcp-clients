@@ -1,0 +1,325 @@
+= Terminal Client: System
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » System
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics] (proposed)_
+
+What the system view shows and what the acts on the runtime do is link:../shared/system.adoc[System], for both clients. This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
+
+[#commands]
+== Commands
+
+The verbs of the specification stay as they are: `status` (the running work, with the runtime's line), `drain` (the signal), and `runtime start|install|uninstall`. The system view and the operator's acts are added beside them, the acts under the existing `runtime`:
+
+----
+  system [--project <project_id>|.] [--window hour|today|7d] [--by model|role] [--watch]
+                                            the system view; full screen in the console
+  runtime start                             start the runtime (the existing verb)
+  runtime stop [--drain|--now] [--yes]      [op]  stop it: when what runs is done, or now
+  runtime stop --withdraw                   [op]  withdraw a drain asked from a client
+  runtime restart [--drain|--now] [--yes]   [op]  stop it and start it again
+  runtime upgrade --check                   [op]  ask the registry for a newer version
+  runtime upgrade [<version>] [--drain|--now] [--yes]
+                                            [op]  upgrade to the newest version, or the one named
+  runtime upgrade --withdraw                [op]  withdraw an upgrade before its links are switched
+  runtime upgrade --notes                         the release notes of the newest version known
+----
+
+* *`system`* is a read, like `status`, and no operator verb: in the console it opens the full-screen view (<<full-screen>>), as a shell command, or where the full-screen view is not available, it prints the view once (<<print>>); `--watch` prints it again as figures change, as `status --watch` does. `--window` and `--by` choose the models' window and grouping (default `hour` and `model`), `--project` one project.
+* *`runtime stop|restart|upgrade`* are operator verbs: privileged requests of the operator's channel, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). Each shows its confirmation (`runtime.confirm-stop`, `runtime.confirm-upgrade`) as a dialogue; `--drain` or `--now` answer its choice of when, `--yes` accepts it. With `--no-input` and no `--drain` or `--now`, the verb stops at the choice with exit code `3`, as every direct verb (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]); `--yes` never chooses when.
+* *`runtime upgrade --check`* asks the consent `check_updates` where it is not remembered (`runtime.update-consent`; `--consent check_updates` answers it for this run) and prints the answer (`runtime.check-update`); `runtime upgrade` without a version upgrades to the newest version known and checks first where none is.
+* *`drain`* stays the signal of the specification: it asks nothing, cannot be withdrawn, and works when the runtime does not answer. A refusal of `runtime stop` because the runtime does not answer names it (`operator.system.not_answering`).
+* *`status`* keeps its tree; its runtime line carries the lifecycle state while there is one (`Runtime pm-mcpd 0.9.1, stopping when what runs is done (2 left)`) and names `system` for the rest.
+
+[#print]
+== The View, Printed
+
+[source,text]
+----
+pm › system
+System
+Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d) · 0.10.0 available: runtime upgrade
+          running since today 08:14 · 6 h 12 min
+          memory 412 MB in use of 1 GB · 680 MB resident · CPU not available (not measured on this platform)
+          machine store 2.3 GB · 38 GB free on its disk · measured 13:40
+          listeners  socket · web on the network 192.168.1.20:47613 (2 devices)
+Work      plans    3 running · 1 waiting for you · 1 held · 2 paused
+          epics    1 running · 1 waiting for you
+          tasks    4 running · 6 queued
+          projects 3 with running work
+Workers   5 · 3 busy · 2 idle
+          planner       claude  opus-4.5    busy  fix-relay
+          implementer   claude  sonnet-4.5  busy  relay-docs
+          implementer   codex   gpt-5       idle
+Jobs      build  1 of 2 slots · 1 queued     test  0 of 1 slot
+          locks  3 held
+Models    last hour, per model
+          claude:opus-4.5      42 calls   1.9 M in · 120 k out   $ 18.40   1 retry
+          claude:sonnet-4.5   118 calls   3.2 M in · 410 k out   $ 11.75
+          codex:gpt-5          12 calls   0.4 M in ·  30 k out   cost not reported   1 error
+plans · system --window today · system --by role
+pm ›
+----
+
+* The same parts in the same order as link:../shared/system.adoc#view[System, The System View], as words: no meaning is in a colour or a glyph alone, a figure not available says so with its reason.
+* *One step* is a command: the last line names the commands of the figures that lead somewhere (link:../shared/system.adoc#one-step[System, One Step to What a Figure Counts]); `plans` opens the overview of running work, `plan <plan_id>` a plan at its task or job.
+* `--project <project_id>` prints the work of that project; without it, every project's together, and a project still recovering says `recovering`.
+
+[#full-screen]
+== Full Screen
+
+`system` in the console opens the view on the alternate screen, built as the overview is (xref:15-overview.adoc#full-screen-build[The Overview, How It Is Built]); `S` in the overview of running work opens it as a level of that view, and `Esc` goes back there.
+
+----
+ System · pm-mcpd 0.9.1                                           ● connected
+ ─────────────────────────────────────────────────────────────────────────────
+  Runtime   running since today 08:14 · 6 h 12 min       0.10.0 available
+            memory 412 MB of 1 GB · 680 MB resident · CPU 4 %
+▶ Work      plans  3 running · 1 waiting for you · 1 held · 2 paused
+            epics  1 running · 1 waiting for you
+            tasks  4 running · 6 queued
+            projects 3 with running work
+  Workers   5 · 3 busy · 2 idle
+  Jobs      build 1 of 2 slots · 1 queued · test 0 of 1 · locks 3 held
+  Models    last hour · per model   42 + 118 + 12 calls · $ 32.25 · 1 error
+ ─────────────────────────────────────────────────────────────────────────────
+ ↑↓ move  Enter open  w window  b by role  p per project  a actions  ? help  q leave
+----
+
+[cols="1,3",options="header"]
+|===
+|Key |Action
+
+|`↑` `↓`, `k` `j`
+|move between the figures
+
+|`Enter`, `→`, `l`
+|follow the selected figure: the workers, the jobs, the locks, or a model's calls as a level of the view; plans in a state as the overview filtered to it; `Esc` back
+
+|`w`
+|the models' window: last hour, today, 7 days
+
+|`b`
+|the models per model or per role
+
+|`p`
+|all projects or per project
+
+|`a`
+|the acts on the runtime below the runtime's line: _Stop…_, _Restart…_, _Upgrade…_, _Check for a newer version_, each only where the runtime offers it; the confirmation leaves the full-screen view and runs as the dialogue of its verb, and `q` after it returns to the view
+
+|`r`
+|read the snapshot again
+
+|`?`
+|all keys, and the details of the selected figure (what it measures, since when)
+
+|`q`
+|leave the view to the prompt
+|===
+
+* *Live*: the view follows the runtime's stream and redraws only the figures that changed; the selection stays on its figure. While the runtime drains or upgrades, the progress line stands below the header (link:../shared/system.adoc#draining[System, While It Stops]).
+* *Narrow*: below 80 columns the details lines are left out and `?` shows them; below 60 columns the view does not open and `system` prints the snapshot instead, after `operator.system.too_narrow`.
+* *Where it was left*: the window, the grouping, and _per project_ are kept with the overview's state in `$XDG_STATE_HOME/pm-operator/overview.json` (xref:15-overview.adoc#overview-persistence[The Overview, Where the Operator Left It]).
+
+[#t-stop]
+== Stopping
+
+[source,text]
+----
+pm › runtime stop
+Stop the runtime?
+  Running now: 3 plans · 1 epic · 4 tasks · 2 jobs (1 build, 1 test) · 5 workers, 3 busy
+  When
+    1) When what runs is done   Nothing new starts. Each running task and job finishes,
+                                then the runtime stops.
+    2) Now                      Running tasks are withdrawn and jobs stopped. Everything
+                                goes on from its last committed state at the next start.
+  Every client sees that it stops. Start it again on this machine: pm-operator runtime start.
+  1) Stop when done   2) Stop now   k) keep it running                          [1] ›
+◐ Stopping when what runs is done · 2 left: execute task of fix-relay, build of fix-relay
+  runtime stop --now · runtime stop --withdraw
+pm [stopping] ›
+----
+
+* `Enter` takes `1`, the drain, the preselection of link:../shared/system.adoc#stop[System, Stopping]; `k` (German `l`) sends nothing.
+* *In the console* the prompt returns at once with the badge `stopping`; the progress is a quiet line above the prompt each time what is left changes, and the line of the stop itself when it stops. *As a shell command* the verb waits, printing the same lines, bounded as `drain` waits (the bound defined with the drain timeout), and exits `0` when the runtime stopped, or `0` with `The runtime is still draining (PID 48211).` when the bound passed first.
+* *Nothing runs*: no choice, `Stop the runtime? Nothing runs.  y) stop  k) keep it running`.
+
+[source,text]
+----
+pm [stopping] › runtime stop --withdraw
+✓ The runtime keeps running; the stop was withdrawn.
+pm ›
+----
+
+[source,text]
+----
+pm [stopping] ›
+▪ The runtime is stopped (by the console, 14:12). runtime start starts it.
+pm (stopped) › runtime start
+Starting the runtime …
+✓ Runtime pm-mcpd 0.9.1 running since 14:13. 3 plans running again.
+pm ›
+----
+
+* `runtime stop --withdraw` for a drain of a signal is refused with `The drain was started by a signal; it cannot be withdrawn.` (`operator.system.signal_drain`); too late, it prints `system.stopping.too_late`.
+* *Stopped*: the console stays open and does not reconnect by itself (link:../shared/system.adoc#stopped[System, Stopped, and Starting Again]); a verb that needs the runtime starts it and prints `Starting the runtime …` first.
+
+[#t-restart]
+== Restarting
+
+[source,text]
+----
+pm › runtime restart --now
+Restart the runtime?
+  Running now: 1 plan · 1 task · 1 job (1 build)
+  Now: running tasks are withdrawn and jobs stopped; everything goes on from its last committed
+  state at the next start. Every client connects again by itself.
+  y) restart now   k) keep it running                                         ›  y
+◐ Restarting … the clients connect again by themselves.
+✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 1 plan running.
+pm [1 question] ›
+----
+
+* `--now` answers the choice of when, so the confirmation asks only yes; with `--yes` too it asks nothing.
+* *Not back in time*: `The runtime did not come back. On the machine: pm-operator status.`, and the prompt shows `(reconnecting)` (xref:04-console.adoc#connection[The Console, Connection]).
+
+[#t-upgrade]
+== Upgrading
+
+[source,text]
+----
+pm › runtime upgrade --check
+Check for a newer version?
+  asks    the organisation's registry, for the newest release of linux-x86_64
+  never   sends anything about this machine beyond the request itself
+  cost    none
+  y) yes   r) yes, and don't ask again   n) not now                            ›  r
+✓ 0.10.0 available (2026-10-11), installed 0.9.1. Release notes: runtime upgrade --notes
+pm › runtime upgrade
+Upgrade to 0.10.0?
+  installed 0.9.1 → 0.10.0 (2026-10-11)
+  Running now: 3 plans · 2 jobs
+  When  1) when what runs is done   2) now
+  0.10.0 is fetched, verified, and installed beside 0.9.1, and the links switched. Then the
+  runtime stops as you chose and starts on 0.10.0; running work goes on from its last
+  committed state. If any step fails, 0.9.1 stays or is restored, and you are told why.
+  Afterwards: pm-operator client update for 2 hosts.
+  1) Upgrade when done   2) Upgrade now   n) not now                            [1] ›
+Upgrading to 0.10.0
+  ✓ fetched   ✓ verified   ✓ installed beside 0.9.1, links switched
+  ◐ waiting for what runs · 1 left: build of fix-relay              runtime upgrade --now
+pm [upgrading] ›
+✓ Reconnected: pm-mcpd 0.10.0, restarted at 15:02.
+▪ The runtime runs 0.10.0, this console 0.9.1. Leave it and open pm-operator again.
+pm ›
+----
+
+* The consent is the dialogue of every consent (xref:03-dialogues.adoc#consent[Dialogues, Consent]); remembered, it is not asked again, and the line `Consent remembered: check for a newer version` stands in its place.
+* `runtime upgrade --notes` prints the release notes of the version known, as plain text.
+* `runtime upgrade --withdraw` is accepted while the release is fetched and verified; once the links are switched it is refused with the reason, and `runtime upgrade --now` shortens the wait.
+* *An installation the runtime cannot upgrade*: `runtime upgrade` is refused with `system.upgrade.disabled` and prints the steps by hand of the specification.
+
+[source,text]
+----
+pm [upgrading] ›
+✗ 0.10.0 did not start: no answer within 30 s. 0.9.1 was restored and runs again; running work
+  goes on from its last committed state.
+✓ Reconnected: pm-mcpd 0.9.1, restarted at 15:03.
+pm ›
+----
+
+* A failure before the links are switched prints `system.upgrade.failed_before` and the prompt returns without a reconnect; `runtime upgrade` again is _Try again_.
+
+[#t-not-running]
+== Not Running
+
+[source,text]
+----
+$ pm-operator system
+The runtime is not running. pm-operator runtime start starts it.
+$ pm-operator runtime stop
+The runtime is not running; there is nothing to stop.
+----
+
+* `system` never starts the runtime, as `status` does not; it exits `0`. `runtime stop` (with `--withdraw` too) never starts it either and exits `0` with its line; `runtime restart` without a runtime starts it (`Starting the runtime …`), as every other verb that needs the runtime does (link:../shared/system.adoc#channels[System, Who May]).
+
+[#texts]
+== Texts of the Terminal
+
+The texts of the view and of the acts are those of link:../shared/system-texts.adoc#texts[System, Texts]; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.system.badge`
+|{state, select, stopping {stopping} upgrading {upgrading} other {{state}}}
+|{state, select, stopping {stoppt} upgrading {aktualisiert} other {{state}}}
+
+|`operator.system.prompt_stopped`
+|stopped
+|gestoppt
+
+|`operator.system.keys.window`
+|window
+|Zeitraum
+
+|`operator.system.keys.by`
+|{by, select, role {by role} other {by model}}
+|{by, select, role {pro Role} other {pro Modell}}
+
+|`operator.system.keys.per_project`
+|per project
+|pro Projekt
+
+|`operator.system.follow`
+|{commands}
+|{commands}
+
+|`operator.system.not_running`
+|The runtime is not running. pm-operator runtime start starts it.
+|Die Runtime läuft nicht. pm-operator runtime start startet sie.
+
+|`operator.system.nothing_to_stop`
+|The runtime is not running; there is nothing to stop.
+|Die Runtime läuft nicht; es gibt nichts zu stoppen.
+
+|`operator.system.starting`
+|Starting the runtime …
+|Starte die Runtime …
+
+|`operator.system.started`
+|Runtime pm-mcpd {version} running since {time}. {plans, plural, =0 {No plan running} one {# plan running again} other {# plans running again}}.
+|Runtime pm-mcpd {version} läuft seit {time}. {plans, plural, =0 {Kein Plan läuft} one {# Plan läuft wieder} other {# Pläne laufen wieder}}.
+
+|`operator.system.still_draining`
+|The runtime is still draining (PID {pid}).
+|Die Runtime leert sich noch (PID {pid}).
+
+|`operator.system.signal_drain`
+|The drain was started by a signal; it cannot be withdrawn.
+|Die Leerung wurde durch ein Signal gestartet; sie kann nicht zurückgenommen werden.
+
+|`operator.system.not_answering`
+|The runtime does not answer. pm-operator drain stops it by a signal.
+|Die Runtime antwortet nicht. pm-operator drain stoppt sie durch ein Signal.
+
+|`operator.system.console_older`
+|The runtime runs {runtime}, this console {console}. Leave it and open pm-operator again.
+|Die Runtime läuft mit {runtime}, diese Konsole mit {console}. Verlasse sie und öffne pm-operator erneut.
+
+|`operator.system.too_narrow`
+|The system view needs {columns} columns; here is a snapshot instead.
+|Die Systemansicht braucht {columns} Spalten; hier ist stattdessen eine Momentaufnahme.
+
+|`operator.system.keep`
+|k) keep it running
+|l) lass sie laufen
+|===

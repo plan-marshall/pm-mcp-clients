@@ -133,6 +133,13 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |goes on without: the step is skipped with its reason and can be run later
 |`common.consent.kind.model_cost`
 
+|`check_updates`
+|ask the organisation's registry for the newest release of this machine's platform, through the runtime (and the proxy, if one is set); nothing about the machine is sent beyond the request itself
+|`runtime.update-consent`, on the system view's _Check now_ (link:system.adoc#version-check[System, Is There a Newer Version?])
+|machine; remembered, the runtime checks at most once a day and on the operator's request
+|goes on without: `newer version not checked`, no upgrade offered
+|`common.consent.kind.check_updates`
+
 |the automatic run (no kind of its own)
 |every consent of the steps the run needs, listed in full, for this run only (<<auto>>)
 |`auto.consent`
@@ -219,6 +226,10 @@ The consent texts both clients show are keys of the area `common` (link:texts-an
 |`common.consent.kind.model_cost`
 |approve the cost of a role task
 |die Kosten einer Aufgabe einer Role freigeben
+
+|`common.consent.kind.check_updates`
+|check for a newer version
+|nach einer neueren Version suchen
 
 |`common.consent.withdraw.title`
 |Withdraw "{action}"?

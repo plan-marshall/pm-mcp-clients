@@ -279,6 +279,24 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:report-contract.adoc[`report-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
+|link:system-contract.adoc[`system-contract`]
+|The system view and the runtime's lifecycle: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/runtime-metrics.adoc[`pm-mcp-core` / `runtime-metrics`]; link:../../../pm-mcp-core/doc/plans/runtime-control.adoc[`pm-mcp-core` / `runtime-control`]; UC-SYS-1 and UC-SYS-2 agreed (no work package)
+|epic clients
+
+|link:cli-system.adoc[`cli-system`]
+|The system view and the runtime's lifecycle in the terminal
+|`blocked`
+|link:system-contract.adoc[`system-contract`]; link:cli-overview.adoc[`cli-overview`] (the full-screen view)
+|epic clients
+
+|link:web-system.adoc[`web-system`]
+|The system view and the runtime's lifecycle in the web app
+|`blocked`
+|link:system-contract.adoc[`system-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-design.adoc[`web-design`]
+|epic clients
+
 |===
 
 The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].

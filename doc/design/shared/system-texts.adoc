@@ -1,0 +1,429 @@
+= Design: System, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:system.adoc[System] » Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]_
+
+Status: `DRAFT`. The texts of link:system.adoc[System], shared by both clients.
+
+[#texts]
+== Texts
+
+Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). Sizes, durations, and times are arguments formatted by the client in the interface language (`412 MB`, `6 h 12 min`, `today 08:14`); the plans' and epics' states are the texts `overview.state.*` of link:plan-overview.adoc#texts[Plan Overview, Texts]. The terminal's own texts are in link:../terminal-client/25-system.adoc#texts[Terminal Client, System].
+
+[#texts-view]
+=== The View
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`system.view.title`
+|System
+|System
+
+|`system.runtime.title`
+|Runtime
+|Runtime
+
+|`system.runtime.version`
+|pm-mcpd {version} · build {date} ({commit})
+|pm-mcpd {version} · Build {date} ({commit})
+
+|`system.runtime.available`
+|{version} available
+|{version} verfügbar
+
+|`system.runtime.not_checked`
+|newer version not checked
+|neuere Version nicht geprüft
+
+|`system.runtime.checked_at`
+|checked {time}
+|geprüft {time}
+
+|`system.runtime.check_now`
+|Check now
+|Prüfe jetzt
+
+|`system.runtime.since`
+|running since {time} · {uptime}
+|läuft seit {time} · {uptime}
+
+|`system.runtime.memory`
+|memory {used} in use of {max} · {resident} resident
+|Arbeitsspeicher {used} von {max} belegt · {resident} im RAM
+
+|`system.runtime.cpu`
+|CPU {percent} %
+|CPU {percent} %
+
+|`system.runtime.store`
+|machine store {size} · {free} free on its disk · measured {time}
+|Maschinenablage {size} · {free} frei auf ihrem Datenträger · gemessen {time}
+
+|`system.runtime.listeners`
+|listeners  socket · {web, select, off {web off} loopback {web on loopback {address}} other {web on the network {address} ({devices, plural, one {# device} other {# devices}})}}
+|Listener  Socket · {web, select, off {Web aus} loopback {Web auf Loopback {address}} other {Web im Netzwerk {address} ({devices, plural, one {# Gerät} other {# Geräte}})}}
+
+|`system.runtime.relays_behind`
+|{count, plural, one {# host session runs} other {# host sessions run}} pm-mcp {version} · pm-operator client update
+|{count, plural, one {# Host-Sitzung läuft} other {# Host-Sitzungen laufen}} mit pm-mcp {version} · pm-operator client update
+
+|`system.work.title`
+|Work
+|Arbeit
+
+|`system.work.plans`
+|plans
+|Pläne
+
+|`system.work.epics`
+|epics
+|Epics
+
+|`system.work.state_count`
+|{count} {state}
+|{count} {state}
+
+|`system.work.none_running`
+|none running
+|keiner läuft
+
+|`system.work.tasks`
+|tasks  {running} running · {queued} queued
+|Tasks  {running} laufen · {queued} in der Warteschlange
+
+|`system.work.projects`
+|{count, plural, one {# project} other {# projects}} with running work
+|{count, plural, one {# Projekt} other {# Projekte}} mit laufender Arbeit
+
+|`system.work.recovering`
+|recovering
+|wird wiederhergestellt
+
+|`system.work.all`
+|All
+|Alle
+
+|`system.work.per_project`
+|Per project
+|Pro Projekt
+
+|`system.workers.title`
+|Workers
+|Worker
+
+|`system.workers.count`
+|{count} · {busy} busy · {idle} idle
+|{count} · {busy} beschäftigt · {idle} frei
+
+|`system.workers.state`
+|{state, select, busy {busy} idle {idle} starting {starting} restarting {restarting} other {{state}}}
+|{state, select, busy {beschäftigt} idle {frei} starting {startet} restarting {startet neu} other {{state}}}
+
+|`system.jobs.title`
+|Jobs
+|Jobs
+
+|`system.jobs.slots`
+|{kind}  {used} of {total, plural, one {# slot} other {# slots}}{queued, plural, =0 {} other { · # queued}}
+|{kind}  {used} von {total, plural, one {# Slot} other {# Slots}}{queued, plural, =0 {} other { · # wartend}}
+
+|`system.jobs.locks`
+|locks  {count} held
+|Locks  {count} gehalten
+
+|`system.models.title`
+|Models
+|Modelle
+
+|`system.models.window`
+|{window, select, hour {Last hour} today {Today} week {7 days} other {{window}}}
+|{window, select, hour {Letzte Stunde} today {Heute} week {7 Tage} other {{window}}}
+
+|`system.models.per_model`
+|Per model
+|Pro Modell
+
+|`system.models.per_role`
+|Per role
+|Pro Role
+
+|`system.models.line`
+|{calls, plural, one {# call} other {# calls}}   {tokens_in} in · {tokens_out} out   {cost}
+|{calls, plural, one {# Aufruf} other {# Aufrufe}}   {tokens_in} rein · {tokens_out} raus   {cost}
+
+|`system.models.errors`
+|{errors, plural, =0 {} one {# error} other {# errors}}{retries, plural, =0 {} one { # retry} other { # retries}}
+|{errors, plural, =0 {} one {# Fehler} other {# Fehler}}{retries, plural, =0 {} one { # Wiederholung} other { # Wiederholungen}}
+
+|`system.models.cost_not_reported`
+|cost not reported
+|Kosten nicht gemeldet
+
+|`system.models.unmeasured`
+|{count, plural, one {# call not measured} other {# calls not measured}}
+|{count, plural, one {# Aufruf nicht gemessen} other {# Aufrufe nicht gemessen}}
+
+|`system.models.none`
+|No model calls in this window.
+|Keine Modellaufrufe in diesem Zeitraum.
+
+|`system.figure.unavailable`
+|not available
+|nicht verfügbar
+
+|`system.figure.unavailable_reason`
+|not measured on this platform
+|auf dieser Plattform nicht gemessen
+
+|`system.figure.stale`
+|as of {time}; reconnecting
+|Stand {time}; verbinde neu
+|===
+
+[#texts-lifecycle]
+=== Acting on the Runtime
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`system.action.stop`
+|Stop…
+|Stoppe…
+
+|`system.action.restart`
+|Restart…
+|Starte neu…
+
+|`system.action.upgrade`
+|Upgrade…
+|Aktualisiere…
+
+|`system.confirm.title`
+|{act, select, stop {Stop the runtime?} restart {Restart the runtime?} other {Upgrade to {version}?}}
+|{act, select, stop {Runtime stoppen?} restart {Runtime neu starten?} other {Auf {version} aktualisieren?}}
+
+|`system.confirm.running`
+|Running now: {what}
+|Läuft gerade: {what}
+
+|`system.confirm.what`
+|{plans, plural, =0 {} one {# plan} other {# plans}}{epics, plural, =0 {} one { · # epic} other { · # epics}}{jobs, plural, =0 {} one { · # job} other { · # jobs}}{workers, plural, =0 {} one { · # worker} other { · # workers}}
+|{plans, plural, =0 {} one {# Plan} other {# Pläne}}{epics, plural, =0 {} one { · # Epic} other { · # Epics}}{jobs, plural, =0 {} one { · # Job} other { · # Jobs}}{workers, plural, =0 {} one { · # Worker} other { · # Worker}}
+
+|`system.confirm.nothing_runs`
+|Nothing runs.
+|Nichts läuft.
+
+|`system.confirm.when`
+|When
+|Wann
+
+|`system.confirm.drain`
+|When what runs is done
+|Wenn fertig ist, was läuft
+
+|`system.confirm.drain_explain`
+|Nothing new starts. Each running task and job finishes, then the runtime stops.
+|Nichts Neues startet. Jeder laufende Task und Job wird fertig, dann stoppt die Runtime.
+
+|`system.confirm.now`
+|Now
+|Jetzt
+
+|`system.confirm.now_explain`
+|Running tasks are withdrawn and jobs stopped. Everything goes on from its last committed state at the next start.
+|Laufende Tasks werden zurückgezogen und Jobs gestoppt. Alles geht beim nächsten Start vom letzten gespeicherten Stand weiter.
+
+|`system.confirm.stop_note`
+|Every client sees that it stops. Start it again on this machine: pm-operator runtime start.
+|Jeder Client sieht, dass sie stoppt. Starte sie auf dieser Maschine wieder: pm-operator runtime start.
+
+|`system.confirm.restart_note`
+|Every client connects again by itself.
+|Jeder Client verbindet sich von selbst wieder.
+
+|`system.confirm.do`
+|{act, select, stop {Stop} restart {Restart} other {Upgrade}}{when, select, drain { when done} now { now} other {}}
+|{act, select, stop {Stoppe} restart {Starte neu} other {Aktualisiere}}{when, select, drain {, wenn fertig} now { jetzt} other {}}
+
+|`system.confirm.keep`
+|Keep it running
+|Lass sie laufen
+
+|`system.confirm.not_now`
+|Not now
+|Nicht jetzt
+
+|`system.stopping.line`
+|Stopping when what runs is done · {count} left: {what}
+|Stoppt, wenn fertig ist, was läuft · noch {count}: {what}
+
+|`system.stopping.since`
+|since {time} · by {who}
+|seit {time} · durch {who}
+
+|`system.stopping.overdue`
+|Still draining after {duration}: {what}
+|Leert sich noch nach {duration}: {what}
+
+|`system.stopping.by_signal`
+|by a signal
+|durch ein Signal
+
+|`system.stopping.too_late`
+|Too late to keep it running; the runtime is stopping.
+|Zu spät, um sie weiterlaufen zu lassen; die Runtime stoppt.
+
+|`system.stopping.stop_now`
+|Stop now
+|Stoppe jetzt
+
+|`system.stopping.confirm_now`
+|Withdraw {tasks, plural, one {# task} other {# tasks}} and stop {jobs, plural, one {# job} other {# jobs}} now?
+|{tasks, plural, one {# Task} other {# Tasks}} zurückziehen und {jobs, plural, one {# Job} other {# Jobs}} jetzt stoppen?
+
+|`system.stopping.withdrawn`
+|The runtime keeps running; the stop was withdrawn.
+|Die Runtime läuft weiter; der Stopp wurde zurückgenommen.
+
+|`system.stopping.refused`
+|The runtime is stopping; nothing new starts.
+|Die Runtime stoppt; nichts Neues startet.
+
+|`system.stopped.title`
+|The runtime is stopped ({who}, {time}).
+|Die Runtime ist gestoppt ({who}, {time}).
+
+|`system.stopped.start_hint`
+|The runtime is stopped. runtime start starts it.
+|Die Runtime ist gestoppt. runtime start startet sie.
+
+|`system.stopped.unexpected`
+|The runtime ended unexpectedly at {time}.
+|Die Runtime wurde um {time} unerwartet beendet.
+
+|`system.stopped.how`
+|Start it on this machine: {command}, or any verb of pm-operator. This page connects again by itself once it runs.
+|Starte sie auf dieser Maschine: {command} oder ein beliebiges Verb von pm-operator. Diese Seite verbindet sich von selbst wieder, sobald sie läuft.
+
+|`system.stopped.copy`
+|Copy the command
+|Kopiere den Befehl
+
+|`system.restart.running`
+|Restarting … the clients connect again by themselves.
+|Startet neu … die Clients verbinden sich von selbst wieder.
+
+|`system.restart.back`
+|Reconnected: pm-mcpd {version}, restarted at {time}.
+|Wieder verbunden: pm-mcpd {version}, neu gestartet um {time}.
+
+|`system.restart.not_back`
+|The runtime did not come back. On the machine: pm-operator status.
+|Die Runtime ist nicht zurückgekommen. Auf der Maschine: pm-operator status.
+
+|`system.by`
+|{channel, select, web {the web app ({device})} cli {the console} other {{channel}}}
+|{channel, select, web {die Web-App ({device})} cli {die Konsole} other {{channel}}}
+
+|`system.busy.stopping`
+|The runtime is already stopping (by {who}, {time}).
+|Die Runtime stoppt bereits (durch {who}, {time}).
+
+|`system.busy.stop_first`
+|The runtime is stopping; keep it running first.
+|Die Runtime stoppt; lass sie zuerst weiterlaufen.
+
+|`system.busy.upgrade_runs`
+|An upgrade runs; Upgrade now shortens it.
+|Eine Aktualisierung läuft; Aktualisiere jetzt verkürzt sie.
+|===
+
+[#texts-upgrade]
+=== Upgrading
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`system.upgrade.check_failed`
+|Could not check for a newer version: {reason}.
+|Konnte nicht nach einer neueren Version suchen: {reason}.
+
+|`system.upgrade.check_again`
+|Check again
+|Prüfe erneut
+
+|`system.upgrade.versions`
+|installed {installed} → {version} ({date}) · release notes
+|installiert {installed} → {version} ({date}) · Release Notes
+
+|`system.upgrade.explain`
+|{version} is fetched, verified, and installed beside {installed}, and the links switched. Then the runtime stops as you chose and starts on {version}; running work goes on from its last committed state. If any step fails, {installed} stays or is restored, and you are told why.
+|{version} wird geholt, geprüft und neben {installed} installiert, und die Links werden umgestellt. Dann stoppt die Runtime, wie du gewählt hast, und startet mit {version}; laufende Arbeit geht vom letzten gespeicherten Stand weiter. Schlägt ein Schritt fehl, bleibt {installed} oder wird wiederhergestellt, und du erfährst warum.
+
+|`system.upgrade.afterwards`
+|Afterwards: pm-operator client update for {count, plural, one {# host} other {# hosts}}.
+|Danach: pm-operator client update für {count, plural, one {# Host} other {# Hosts}}.
+
+|`system.upgrade.title`
+|Upgrading to {version}
+|Aktualisiere auf {version}
+
+|`system.upgrade.step`
+|{step, select, fetch {fetched} verify {verified} install {installed beside {installed}, links switched} wait {waiting for what runs} stop {stopping} start {starting {version}} other {{step}}}
+|{step, select, fetch {geholt} verify {geprüft} install {neben {installed} installiert, Links umgestellt} wait {wartet auf das, was läuft} stop {stoppt} start {startet {version}} other {{step}}}
+
+|`system.upgrade.now`
+|Upgrade now
+|Aktualisiere jetzt
+
+|`system.upgrade.withdraw`
+|Withdraw the upgrade
+|Nimm die Aktualisierung zurück
+
+|`system.upgrade.disabled`
+|This installation is not upgraded by the runtime: {reason}.
+|Diese Installation wird nicht von der Runtime aktualisiert: {reason}.
+
+|`system.upgrade.withdrawn`
+|The upgrade was withdrawn; {installed} keeps running.
+|Die Aktualisierung wurde zurückgenommen; {installed} läuft weiter.
+
+|`system.upgrade.done`
+|The runtime runs {version}.
+|Die Runtime läuft mit {version}.
+
+|`system.upgrade.failed_before`
+|The upgrade to {version} failed while {step}: {reason}. {installed} keeps running; nothing was changed.
+|Die Aktualisierung auf {version} ist beim Schritt „{step}" fehlgeschlagen: {reason}. {installed} läuft weiter; nichts wurde geändert.
+
+|`system.upgrade.failed_start`
+|{version} did not start: {reason}. {installed} was restored and runs again; running work goes on from its last committed state.
+|{version} ist nicht gestartet: {reason}. {installed} wurde wiederhergestellt und läuft wieder; laufende Arbeit geht vom letzten gespeicherten Stand weiter.
+
+|`system.upgrade.failed_both`
+|Neither {version} nor {installed} started: {reason}.
+|Weder {version} noch {installed} ist gestartet: {reason}.
+
+|`system.upgrade.try_again`
+|Try again
+|Versuche es erneut
+
+|`system.mismatch.web`
+|The runtime now runs {version}; the web app loads again.
+|Die Runtime läuft jetzt mit {version}; die Web-App lädt neu.
+
+|`system.mismatch.load_again`
+|Load again
+|Lade neu
+|===
+
+The title of the consent kind `check_updates` is `common.consent.kind.check_updates` (link:consents.adoc#texts[Consents, Texts]); the step names in `system.upgrade.failed_before` are those of `system.upgrade.step`.

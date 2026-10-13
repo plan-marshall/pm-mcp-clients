@@ -81,6 +81,10 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |`DRAFT`
 |What both clients show of how an ended plan went: outcome and reason, pull request, duration, deliverables, re-planning, decisions, spend; reached from the report of its end and from the ended plan view.
 
+|link:shared/system.adoc[System]
+|`DRAFT`
+|What both clients show of the runtime itself: the system view with its identity and health (version, uptime, memory, CPU, disk, listeners), the work (plans and epics by state, tasks, workers, jobs with their slots, locks), and the models (calls, tokens, cost, errors per model or role over a window), live, each figure one step from what it counts; stopping by drain or now with its confirmation, withdrawing a drain, stopped and started again, restarting with the clients reconnecting, checking for a newer version behind its consent, upgrading with its steps and its failures, a client of another release, several clients at once; its texts in link:shared/system-texts.adoc[a part of their own].
+
 |link:shared/paired-devices.adoc[Paired Devices]
 |`DRAFT`
 |What both clients show of the browsers paired with the machine: the list with label, when paired and last used, from where, and this one; rename, revoke, revoke all others (from the terminal client every device), turn the network listener off with the loopback listener left open; and the page of a revoked device.
