@@ -102,6 +102,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |checked against {project}
 |geprüft gegen {project}
 
+|`designer.checked_against_machine`
+|checked against this machine's projects
+|geprüft gegen die Projekte dieser Maschine
+
 |`designer.pane.text`
 |Text
 |Text
@@ -122,9 +126,57 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Search the building blocks
 |Durchsuche die Bausteine
 
+|`designer.blocks.scope`
+|{scope, select, machine {Building blocks of this machine} other {Building blocks of {project}}}
+|{scope, select, machine {Bausteine dieser Maschine} other {Bausteine von {project}}}
+
 |`designer.blocks.group`
-|{group, select, primitive {primitives} role {roles} sub_workflow {sub-workflows} other {compiled units}}
-|{group, select, primitive {Primitive} role {Rollen} sub_workflow {Sub-Workflows} other {eingebaute Einheiten}}
+|{group, select, keyword {keywords and clauses} primitive {primitives} guard {guards} link {links} condition {conditions} sub_workflow {sub-workflows} role {roles} other {parameters}}
+|{group, select, keyword {Schlüsselwörter und Klauseln} primitive {Primitive} guard {Guards} link {Links} condition {Bedingungen} sub_workflow {Sub-Workflows} role {Rollen} other {Parameter}}
+
+|`designer.blocks.no_match`
+|Nothing matches "{query}".
+|Nichts passt zu „{query}“.
+
+|`designer.blocks.compiled_only`
+|compiled only: called, never replaced
+|nur eingebaut: aufgerufen, nie ersetzt
+
+|`designer.blocks.detail.parameters`
+|Parameters
+|Parameter
+
+|`designer.blocks.detail.outcomes`
+|Outcomes
+|Ergebnisse
+
+|`designer.blocks.detail.needs`
+|Needs
+|Braucht
+
+|`designer.blocks.detail.used_in`
+|May be used
+|Verwendbar
+
+|`designer.blocks.detail.forms`
+|Forms (default {form})
+|Formen (Standard {form})
+
+|`designer.blocks.detail.bounds`
+|from {min} to {max}
+|von {min} bis {max}
+
+|`designer.blocks.detail.inserts`
+|Inserts
+|Fügt ein
+
+|`designer.blocks.version`
+|runtime {version}
+|Runtime {version}
+
+|`designer.blocks.reloaded`
+|The building blocks changed: they are loaded again. Your draft is unchanged.
+|Die Bausteine haben sich geändert: Sie sind neu geladen. Dein Entwurf ist unverändert.
 
 |`designer.blocks.insert`
 |Insert
@@ -157,6 +209,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`designer.validate.finding`
 |{rule} · line {line}, column {column}: {message}
 |{rule} · Zeile {line}, Spalte {column}: {message}
+
+|`designer.validate.no_project`
+|No project is enrolled: the composition is not run.
+|Kein Projekt ist eingetragen: Die Zusammensetzung wird nicht ausgeführt.
 
 |`designer.validate.outdated`
 |The text changed since: validate again.
@@ -195,8 +251,8 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Im Projekt {project}
 
 |`designer.place.project_hint`
-|the team's file .marshall/config/{file}, committed and pushed as a short landing
-|die Datei des Teams .marshall/config/{file}, committet und gepusht in einer kurzen Landung
+|{landing, select, files {the team's file .marshall/config/{file}, written and left uncommitted in your checkout} other {the team's file .marshall/config/{file}, committed and landed as the project lands}}
+|{landing, select, files {die Datei des Teams .marshall/config/{file}, geschrieben und nicht committet in deinem Checkout} other {die Datei des Teams .marshall/config/{file}, committet und gelandet, wie das Projekt landet}}
 
 |`designer.place.order`
 |In force: the project's copy, else this machine's, else the compiled default.
@@ -225,6 +281,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`designer.confirm.uncommitted`
 |The project's landing hands changes back: it stays uncommitted in your checkout until you commit it.
 |Die Landung des Projekts gibt Änderungen zurück: Sie bleibt nicht committet in deinem Checkout, bis du sie committest.
+
+|`designer.place.name_invalid`
+|{unit} is not a unit that can be placed here: the runtime refused its name.
+|{unit} ist keine Einheit, die hier platziert werden kann: Die Runtime hat ihren Namen abgelehnt.
 
 |`designer.place.recipe_project_only`
 |A recipe lives in its project: it cannot be placed on the machine.

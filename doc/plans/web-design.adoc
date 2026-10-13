@@ -30,7 +30,7 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 == Done When
 
-The operator has accepted the design; every state of the onboarding and of the start of the web app (UC-ENT-1) has its view at both widths and in light and dark, and the first views of the plan drill-down (UC-PLN-1) and the plan designer (UC-PLN-3) exist at both widths; the spike's result and the requested dependencies are recorded; the design document is merged in this repository, and the corrections of the use cases it needed are merged in `plan-marshall-documentation`.
+The operator has accepted the design; every state of the onboarding and of the start of the web app (UC-ENT-1) has its view at both widths and in light and dark, and the first views of the plan drill-down (UC-PLN-1) and the process designer (UC-PLN-3) exist at both widths; the spike's result and the requested dependencies are recorded; the design document is merged in this repository, and the corrections of the use cases it needed are merged in `plan-marshall-documentation`.
 
 [#run]
 == How It Is Run

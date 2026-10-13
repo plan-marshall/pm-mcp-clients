@@ -42,11 +42,13 @@ A workflow unit the operator may own. Which units those are is the runtime's, se
 [#entry]
 == Where It Opens
 
-The designer is a route of its own, `/designer`, with the project it checks against and, where one is open, the unit (`/designer?project=pm-mcp-clients&unit=finalize&level=project`). It opens from:
+The designer is a route of its own, `/designer`, with the project it checks against and, where one is open, the unit (`/designer?project=pm-mcp-clients&unit=finalize&level=project`); without a project it designs for this machine (`/designer?unit=landing.pull-request&level=machine`). It opens from:
 
 * *A project's settings* (its setup): the section _Process_ lists the project's units with the level in force (`finalize · the project's copy`), each with _Open in the designer_, and _Design a unit_ opens the input choice for that project.
 * *The plan view*: the unit a phase or a sub-workflow came from is one step away: the node offers _Open in the designer_, which opens that unit at the level it came from in the plan's project (link:../shared/plan-view.adoc#kinds[Plan View, Phase, Sub-Workflow, State]); the plan itself is not changed by it.
-* *The machine settings*: _Workflow units of this machine_ lists the machine's copies, each with _Open in the designer_ and _Remove…_ (link:machine-settings.adoc[Machine Settings]).
+* *The machine settings*: _Workflow units of this machine_ lists the machine's copies, each with _Open in the designer_ and _Remove…_, and _Design a unit_ (link:machine-settings.adoc[Machine Settings]). It opens with no project chosen: the installed units are the machine's (`GET /api/v1/workflows`), the building blocks those of the machine scope (<<blocks>>), and the head reads _checked against this machine's projects_ (`designer.checked_against_machine`); choosing a project in the head is possible, never required.
+
+*No CLI in between*: every request of the designer goes to the runtime's own `/api/v1/` on the web listener with the device's secret (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-proxy[API Access & Device Secret]); none of them is `cli_only`, so a paired device and the browser on this machine's loopback listener read, validate, place, and remove alike. Placing and removing are operator acts of the web channel, audited with the device.
 
 [#layout]
 == Layout
@@ -61,13 +63,15 @@ The designer is a route of its own, `/designer`, with the project it checks agai
 ├────────────────────┬──────────────────────────────┬──────────────────────────────┤
 │ Building blocks    │ Text                         │ Structure                    │
 │ [ search…        ] │  1 workflow finalize version │ finalize            sub-wf   │
-│ ▸ primitives  42   │  2 scope subworkflow         │ ├─ finalize.prepare          │
-│ ▸ roles       31   │  3 start finalize.prepare    │ │    done → finalize.review  │
-│ ▾ sub-workflows    │  …                           │ ├─ ↳ sub-workflow            │
-│   git.commit_and_… │ 41 state finalize.sbom       │ │    git.commit_and_push     │
-│   remediation.ci-… │ 42   phase finalize      ✗   │ ├─ ✗ finalize.sbom   Rule 6  │
-│   [ Insert ]       │ 43   job project.run-step    │ └─ finalize.archive-plan     │
-│ ▸ compiled units   │                              │                              │
+│ ▸ keywords    24   │  2 scope subworkflow         │ ├─ finalize.prepare          │
+│ ▸ primitives  42   │  3 start finalize.prepare    │ │    done → finalize.review  │
+│ ▸ guards       9   │  …                           │ ├─ ↳ sub-workflow            │
+│ ▸ links       14   │ 41 state finalize.sbom       │ │    git.commit_and_push     │
+│ ▸ conditions   7   │ 42   phase finalize      ✗   │ ├─ ✗ finalize.sbom   Rule 6  │
+│ ▾ sub-workflows    │ 43   job project.run-step    │ └─ finalize.archive-plan     │
+│   git.commit_and_… │                              │                              │
+│ ▸ roles       31   │                              │                              │
+│ ▸ parameters  12   │                              │                              │
 ├────────────────────┴──────────────────────────────┴──────────────────────────────┤
 │ Validation   ✓ parses  ✓ static rules  ✗ compiled invariants  – composition      │
 │   ✗ INV-GEN-4 · line 42, column 3: a mandatory finalize step is missing          │
@@ -99,7 +103,7 @@ The head names the unit and where it came from, the project it is checked agains
 
 * *Upload*: a file chosen in the browser, read by the browser; it must be UTF-8 text no larger than the limit the runtime states for a unit (the line says it). Nothing is uploaded to the runtime until it is validated (<<validate>>).
 * *Paste*: the text as pasted; one paste, then edited in the text pane.
-* *An installed unit*: the units of the project (`GET /api/v1/projects/{project_id}/workflows`), each with every level that has it and the one in force first; _Open_ opens a copy's text, _Start from a copy_ the compiled default's text as a new draft for this project or machine. A compiled-only unit opens read only.
+* *An installed unit*: the units of the project (`GET /api/v1/projects/{project_id}/workflows`), or with no project chosen the machine's units and the compiled defaults (`GET /api/v1/workflows`), each with every level that has it and the one in force first; _Open_ opens a copy's text, _Start from a copy_ the compiled default's text as a new draft for this project or machine. A compiled-only unit opens read only.
 * *Its name*: the unit's name comes from its header (`workflow finalize version 5 format 1`); a text without a header that parses is refused before editing (`designer.input.no_header`).
 * *The operator's own*: what is uploaded or pasted is the operator's content, trusted like code on this machine and never screened (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-local-trusted[What Is on This Machine Is Trusted]); it never runs before it is validated and placed.
 * *The marker line* of an earlier invalid download (<<download>>) is dropped on input.
@@ -120,14 +124,42 @@ The one exception to _The screen is the state_: until it is placed, the unit bei
 [#blocks]
 == Building Blocks
 
-The catalogue of the project (`GET /api/v1/projects/{project_id}/workflows/catalogue`), in four groups with a search field:
+The catalogue of the runtime, in the scope the designer is in: a project's as that project resolves it (`GET /api/v1/projects/{project_id}/workflows/catalogue`), or, with no project chosen, the machine's: the compiled and the machine's units and the machine's role set (`GET /api/v1/workflows/catalogue`). The pane's head names the scope (`designer.blocks.scope`). The catalogue is every element the language can use, generated by the runtime from the registries its validation uses; the app keeps no list of its own, so a block it offers is one validation accepts.
 
-* *Primitives*: by name, with their parameters and outcomes.
-* *Roles*: those of the project's effective role set, for a task state.
-* *Sub-workflows*: the reusable sub-workflows with their parameters and exit contract.
-* *Compiled units*: read only, to look at.
+[source,text]
+----
+  Building blocks of pm-mcp-clients               runtime 0.9.0
+  [ commit                                    ]
+  ▾ primitives                                1
+      git.stage-and-commit    auto
+  ▾ sub-workflows                             1
+      git.commit_and_push     reusable
+  ─────────────────────────────────────────────
+  git.commit_and_push                      sub-workflow
+  Commits the worktree and pushes it as the project lands.
+  Parameters   message_mode  enum[auto_deliverable|step_or_fallback|…]
+               push_mode     enum[never|if_push_remote|always|…]
+  Outcomes     done (success, commit-result) · stepped_out
+  May be used  the call clause of a state, in any unit kind
+  Inserts      call git.commit_and_push (message_mode=…, push_mode=…)
+                 done        -> …
+                 stepped_out -> …
+                                                         [ Insert ]
+----
 
-_Insert_ puts the block's text at the cursor, as the catalogue gives it (a state with its outcomes, a call with its parameters to fill in); the structure follows. A block the unit cannot use is shown with its reason and cannot be inserted (`designer.blocks.not_here`).
+* *Groups*, each with its count, in the order a unit is written:
+** *Keywords and clauses*: `state`, `skill`, `link`, `call`, `declare`, `migrate`, `start`, `question`, … each with a template.
+** *Primitives*: those of `do`, `auto`, `job`, and `guard`, each with the clauses that take it, its parameter record, and its outcomes.
+** *Guards*: the guard primitives with what they read, and `depends_on_config` with its keys.
+** *Links*: the link relations, each with its forms and its default form.
+** *Conditions*: the condition kinds (`in_worktree`, `has_open_findings`, `all_tasks_completed`, `predicate`) and their combination with `and`, `or`, `not`.
+** *Sub-workflows*: the phases as sub-workflows, the reusable sub-workflows, and the compiled ones (marked _compiled only: called, never replaced_), each with its parameters and outcomes.
+** *Roles*: those of the effective role set of the scope, each with its class, for a task state and a `consult`.
+** *Parameters*: the declarable parameters of the unit open, each with its compiled bounds, for a `declare`.
+* *Search*: one field over names, summaries, and parameter names of every group; the groups with a match open, the others close, each count then the number of matches; nothing matching says so (`designer.blocks.no_match`).
+* *A block's details*: selecting a block shows its summary, its parameters with their types and bounds, its outcomes (with their classes), what it needs (a role, a skill, a configuration key), where it may be used (the clauses and the unit kinds that take it), and the text it inserts (`designer.blocks.detail.*`).
+* *Insert* puts the block's text at the cursor, as the catalogue gives it (a state with its outcomes, a call with its parameters to fill in); the structure follows. A block the open unit cannot use shows its reason and cannot be inserted (`designer.blocks.not_here`).
+* *Kept current*: the catalogue carries the runtime's version and a digest. When the digest the app holds differs from the one the units' record or the event of a placing names (after an upgrade, or after a placing that changes a sub-workflow or a role set), the app loads it again and says so in one line (`designer.blocks.reloaded`); a draft is never changed by it, and a block it used that is gone shows at its next validation as a finding.
 
 [#validate]
 == Validating (`designer.validate`)
@@ -148,6 +180,7 @@ _Validate_ sends the text, the unit's kind and name, and the project it is check
 * *The composed process*: when valid, the process a plan of the project would run with this unit, shown as the plan view shows a process (link:../shared/plan-view.adoc#levels[Plan View]), every node `planned`, the nodes the composition left out in their group with their reasons, under _If a plan started now in pm-mcp-clients_; nothing starts.
 * *Outdated*: a change of the text after the validation marks the result `The text changed since: validate again.`; _Place…_ is enabled only for a valid result of the current text.
 * *Another project*: the project it is checked against is chosen in the head; a change validates again on demand.
+* *No project chosen*: a unit designed for this machine is validated against the machine target: the parse, the rules, and the invariants once, the composition against every enrolled project the unit would reach, each finding naming its project (`designer.place.project_findings`), the composed process shown per project with a choice among them. With no project enrolled the composition is `not run` and says why (`designer.validate.no_project`).
 
 [#download]
 == Download (`designer.download`)
@@ -201,11 +234,12 @@ The confirmation shows the difference first, line by line (side by side at deskt
 ----
 
 * *On this machine* (`PUT /api/v1/workflows/{unit}`): the confirmation lists the projects in which it comes into force and those that keep their own copy. The runtime validates it against every enrolled project it would reach and refuses it while any fails; the findings name each project (`designer.place.project_findings`). It is in force at once. For a recipe this target is disabled with its reason (`designer.place.recipe_project_only`).
-* *In the project* (`PUT /api/v1/projects/{project_id}/workflows/{unit}`): written in the project's checkout and landed as a short landing (one commit, pushed as the project lands); a recipe's file is `.marshall/recipes/<id>.pmwf`. It takes effect for a plan when the plan's checkout or worktree has it: new plans once it has landed on the base branch. In a project whose landing is `landing.files` it is written and stays uncommitted in the operator's checkout until it is committed, which the confirmation and the result say. The lines of the landing turn into ✓ as they happen: `written to .marshall/config/finalize.pmwf`, `committed a1b2c3d`, `landed: in force from now on`. A failed landing says why, leaves the unit not in force, and offers _Try again_.
+* *In the project* (`PUT /api/v1/projects/{project_id}/workflows/{unit}`): written in the project's checkout and landed as a short landing (one commit, pushed as the project lands); a recipe's file is `.marshall/recipes/<id>.pmwf`. It takes effect for a plan when the plan's checkout or worktree has it: new plans once it has landed on the base branch. In a project whose landing is `landing.files` it is written and stays uncommitted in the operator's checkout until it is committed, which the target's hint (`designer.place.project_hint`, by the project's landing), the confirmation, and the result say. The lines of the landing turn into ✓ as they happen: `written to .marshall/config/finalize.pmwf`, `committed a1b2c3d`, `landed: in force from now on`. A failed landing says why, leaves the unit not in force, and offers _Try again_.
 * *Adoption*: a running plan adopts the new unit through the existing adoption (`config_drift`) at its next sync with the base, only where its rule allows; each plan's view says when it did (link:../shared/plan-view.adoc#live[Plan View, Live]).
 * *Validated again*: placing validates the unit again; a finding refuses it and shows the findings (<<validate>>).
 * *Changed meanwhile*: placing carries the digest of the unit it replaces; if that unit changed since the difference was shown, it is refused with `conflict`, nothing placed, and the new difference is shown to confirm again (`designer.place.conflict`).
 * *Never a compiled-only unit*: such a unit has no _Place…_; the runtime refuses it as well.
+* *Only a designable name*: the unit's name, from its header, must be one the runtime lists as designable for the target, in the canonical unit-name grammar; the runtime refuses any other, and any whose file would lie outside its directory, with `unit_name_invalid` (`designer.place.name_invalid`), nothing placed or removed.
 * *Audited*: who, when, the channel and the device, the digest; the result says it (`Placed by you, 13 Oct 14:05, Firefox on mbp-oliver · sha256:3f9a…`).
 
 [#remove]
