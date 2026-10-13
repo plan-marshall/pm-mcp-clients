@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The explorer of the projects as the web app's first view: groups, a project's row and actions, favourites and their order, sort and filter; the onboarding of a project as its screens in its ten steps, with the build environment the terminal client last captured; at desktop and phone width, light and dark.
+* The explorer of the projects as the web app's first view: groups, a project's row and actions, favourites and their order, sort and filter; the onboarding of a project as its screens in its ten steps, with the build environment the terminal client last captured, an own value changed meanwhile (`conflict`), a question of the setup with its chat or the chat disabled with its reason; at desktop and phone width, light and dark.
 * The release and the unenrolment of a project with their confirmation (UC-PRJ-3), the release's wait for a removal from git and its refusal.
 * The web app's views of these use cases are designed by this package (the use cases name it as their web design).
 

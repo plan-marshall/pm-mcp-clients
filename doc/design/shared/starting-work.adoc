@@ -91,7 +91,8 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 * *Another repository* asks first (`source-issue.grant`): _Read issues of forgejo/forgejo?_ with _this time_, _for this project_, and _No_; _No_ fails the source with the cause `not granted` (`source-issue.failed`).
 * *A forge without a credential* fetches without one: a public issue is read, the line saying `no credential for Codeberg: only a public issue can be read`; another fails with the cause `no credential for Codeberg`, naming where a credential is added.
 * *Progress* (`source-issue.fetch`, `source-issue.store`, `source-issue.screen`): `fetching`, then `screening`, each as a check line; then the issue's title, labels, and state.
-* *Failed* (`source-issue.failed`): the cause (`not found`, `not readable`, `not granted`, `no credential for <forge>`, `provider unavailable`) with _Try again_ and _Remove it_.
+* *Failed* (`source-issue.failed`): the cause (`not found`, `not readable`, `not granted`, `no credential for <forge>`, `rate limited until <time>`, `provider unavailable`) with _Try again_ and _Remove it_.
+* *Rate limited*: a fetch the forge refuses for its rate limit, with or without a credential, fails with the cause `rate_limited` and the time the limit resets (`resets_at`): `rate limited until 14:40`. It is not retried by itself; the operator tries again then, or, where it ran without a credential, adds one for the forge, whose limit is higher (link:../web-app/machine-settings.adoc#credentials[Machine Settings, Credentials]; terminal `config credentials`), and the line says so (`add a credential for Codeberg for a higher limit`).
 * *Flagged* (`source-issue.flagged`): the spans the screener flagged, quoted as text with their reason, and _Use it anyway_ (with a reason, which is recorded) or _Remove it_. The flagged text is never rendered as Markdown and its links are inert.
 * *Unscreened* (`source-issue.unscreened`): the screening fails closed. Where the screener failed, or no configuration of the role `screener` qualifies, the source stays unscreened with the cause (`the screening failed: <cause>`, `no configuration of the role screener qualifies`) and no model reads it; _Try again_, _Remove it_, or _Accept it as untrusted_ (with a reason, which is recorded like that of a flagged source). An accepted source keeps its `untrusted` mark (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-screen-stored[Screened Once Stored]).
 
@@ -100,8 +101,8 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 
 * *Choosing* (`source-lesson.choose`): the unclaimed lessons of the project, newest first, each with its title and when it was recorded.
 * *Checked* (`source-lesson.resolve`): the lesson is read and its premise checked against the checkout, as a check line.
-* *Unavailable*: a lesson claimed by another plan meanwhile, retired, or in a damaged store shows the cause (`claimed by another plan`, `retired`, `the lesson store is damaged`) with _Choose another_.
-* *Its premise no longer holds* (`source-lesson.premise`): the evidence (`ConfigLoader.java no longer exists`) with _Use it anyway_ (the evidence goes into the plan), _Retire it_, and _Remove it_.
+* *Unavailable*: a lesson claimed by another plan meanwhile, retired, or in a damaged store is not stored; the choice (`source-lesson.choose`) is shown again with the cause (`claimed by another plan`, `retired`, `the lesson store is damaged`), to choose another lesson or leave the choice.
+* *Its premise no longer holds* (`source-lesson.premise`): the evidence (`ConfigLoader.java no longer exists`) with _Use it anyway_, which stores the lesson with the evidence (`source-lesson.store`), _Retire it_, which retires it in the lesson store, and _Remove it_, which leaves it as it is for a later plan; after either of the two nothing is added.
 * *Stored* (`source-lesson.store`): the lesson is claimed for the plan when the plan is created. It is retired when the plan lands its changes (the merge of `landing.pull-request`, the push of `landing.main`), and released when the plan ends without landing them (handed back with `landing.files`, cancelled, abandoned, released, or aborted).
 
 [#local-changes]
@@ -118,7 +119,7 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 
 * *Naming* (`source-pr.name`): one field that takes a number or the URL of a pull request of the project's own repository; a number is shown at once as its URL, and the URL is what is stored and shown.
 * *Checked* (`source-pr.observe`): fetched and checked as check lines: it is open, its head branch is writable by the agent identity.
-* *Failed* (`source-pr.failed`): the cause (`not open`, `its head branch is not writable`, `not found`) with _Try again_ and _Remove it_.
+* *Failed* (`source-pr.failed`): the cause (`not open`, `its head branch is not writable`, `not found`, `rate limited until <time>` as for an issue, <<issue>>) with _Try again_ and _Remove it_.
 * *Stored and screened* (`source-pr.store`, `source-pr.screen`): its title and body like an issue's; its changed files are stored as the pull request's head and are code from outside, possibly from a fork: the line shows them marked `untrusted` (`3 changed files · untrusted`) unless the operator authored the pull request. They are never screened and never read by a model as instructions; the plan's own gates (its review, its integrity checks) apply to them as to every change it lands (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-local-trusted[What Is on This Machine Is Trusted]).
 * *Flagged* (`source-pr.flagged`) and *unscreened* (`source-pr.unscreened`): as an issue's (<<issue>>): _Use it anyway_ or _Accept it as untrusted_ (each with a reason), _Try again_ where unscreened, or _Remove it_.
 
@@ -211,7 +212,7 @@ A plan from the local changes needs a landing that commits them. Where the proje
 [#leaving]
 == Leaving and Coming Back
 
-The entry waits with its sources (a recipe's with its parameters) while the operator is away, in either client; a source still being fetched or screened goes on. The project's actions show _Continue starting_ (with the entry's kind and its number of sources) as their first action while an entry is open, and _Abandon_ deletes the entry and its source directory.
+The entry waits with its sources (a recipe's with its parameters) while the operator is away, in either client; a source still being fetched or screened goes on. An entry never expires: it has no time limit, like a decision, and stays among the project's open entries until it is started or abandoned, or deleted with the release of its project. The project's actions show _Continue starting_ (with the entry's kind and its number of sources) as their first action while an entry is open, and _Abandon_ deletes the entry and its source directory.
 
 [#texts]
 == Texts

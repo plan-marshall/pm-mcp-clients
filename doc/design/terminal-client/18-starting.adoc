@@ -101,7 +101,7 @@ pm ›
 ----
 
 * *Copy or move* is asked only while the machine's `sources.documents_mode` is `ask`, its default, with `copy` preselected; `a` stores the answer as the machine's mode, after which the line just says `copied` or `moved` (`config set sources.documents_mode ask` asks again, xref:01-commands.adoc#command-tree[The Verbs]).
-* *The grant* of another repository's issues answers `1` for this time, `2` for this project; `n` fails the source with `not granted`, to be tried again or removed. A forge without a credential reads a public issue without one and fails another with `no credential for <forge>`.
+* *The grant* of another repository's issues answers `1` for this time, `2` for this project; `n` fails the source with `not granted`, to be tried again or removed. A forge without a credential reads a public issue without one and fails another with `no credential for <forge>`. A fetch refused for the forge's rate limit fails with `rate limited until <time>` (`start.cause.rate_limited`), adding `add a credential for <forge> for a higher limit` where it ran without one; it is not retried by itself, and `r) try again` fetches again (link:../shared/starting-work.adoc#issue[Starting Work, An Issue]).
 * The source line updates in place while it is fetched and screened; the prompt stays usable, and a source still at work is shown by `Enter) continue` as `waits for 1 source`.
 * *The keys that still apply* (the rule of `start.sources`): after a description and a document every kind is still offered; once an issue or a lesson is added, `c` (local changes) and `p` (pull request) are no longer offered, since a plan that lands local changes or adopts a pull request starts from it alone, with descriptions and documents at most; once local changes or a pull request are added, `i`, `l`, and the other of the two are no longer offered, and a line says why (<<pull-request>>). A kind the project does not have (no unclaimed lesson, no local changes) is never shown.
 * `h) chat` is offered once a source is stored and every source from outside the machine is screened, for a plan and an epic, never for a recipe (<<chat>>).
@@ -221,8 +221,8 @@ With `--no-input` an unscreened source stops the run like a flagged one.
 ----
 
 * `source-lesson.resolve` checks the premise against the current checkout: whether the files and symbols the lesson cites still exist.
-* *Its premise no longer holds*: the evidence, with _use it anyway_ (the evidence goes into the plan with the lesson), _retire the lesson_ (it is retired in the lesson store and not added), and _remove it_ (not added; the lesson stays unclaimed).
-* *Unavailable*: `claimed by plan <plan_id> meanwhile`, `retired meanwhile`, `the lesson store cannot be read: <cause>`; the lesson is not added, and _choose another_ lists the lessons again.
+* *Its premise no longer holds*: the evidence, with _use it anyway_ (stored, the evidence goes into the plan with the lesson), _retire the lesson_ (it is retired in the lesson store), and _remove it_ (the lesson stays unclaimed, for a later plan); after either of the two nothing is added.
+* *Unavailable*: `claimed by plan <plan_id> meanwhile`, `retired meanwhile`, `the lesson store cannot be read: <cause>`; the lesson is not added, and _choose another_ is the choice again (`source-lesson.choose`), with the cause; _back_ leaves the choice.
 * The lesson is claimed for the plan when the plan is created; it is retired when the plan lands its changes (merged, or pushed on the base branch), and released when the plan ends without landing them (link:../shared/starting-work.adoc#lesson[Starting Work, A Lesson]). As a direct verb: `plan add --lesson <lesson_id>`.
 
 [#local-changes]

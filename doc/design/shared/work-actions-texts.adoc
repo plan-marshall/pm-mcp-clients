@@ -290,3 +290,33 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Cancel the epic
 |Brich das Epic ab
 |===
+
+[#texts-conflict]
+=== `common`: Changed Meanwhile
+
+Keys of the area `common`, since a machine setting, a project's own value, and a plan's value use them alike (link:work-actions.adoc#conflict[Changed in Two Clients at Once]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`common.conflict.changed`
+|Changed meanwhile: it is now {value}. Yours was not applied.
+|Inzwischen geändert: jetzt {value}. Deine Änderung wurde nicht angewendet.
+
+|`common.conflict.yours`
+|Yours
+|Deine
+
+|`common.conflict.apply_again`
+|Apply yours again
+|Wende deine Änderung erneut an
+
+|`common.conflict.keep`
+|Keep the current value
+|Behalte den aktuellen Wert
+
+|`common.conflict.no_input`
+|Changed meanwhile: it is now {value}; --no-input stops here.
+|Inzwischen geändert: jetzt {value}; --no-input hält hier an.
+|===

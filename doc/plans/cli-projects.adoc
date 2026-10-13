@@ -12,7 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * `projects` as the first level of the full-screen view, with its groups, the actions of a project, favourites and their order, sort and filter; `projects --list`.
-* `project add`, `project setup`, `project favourite`: the onboarding of a project as a dialogue in its ten steps, the working directory as the proposed checkout, the build environment captured from the operator's login, the consent to run scripts with _yes, for this project_, the landing step, a skipped step, a step waiting for repair.
+* `project add`, `project setup`, `project favourite`: the onboarding of a project as a dialogue in its ten steps, the working directory as the proposed checkout, the build environment captured from the operator's login, the consent to run scripts with _yes, for this project_, the landing step, a skipped step, a step waiting for repair, an own value changed meanwhile (`conflict`), a question of the setup with its chat or the chat disabled with its reason.
 * `--project ?` showing the explorer's list.
 * `project release` and `project unenrol` with their confirmation (UC-PRJ-3), the release's wait for a removal from git and its refusal, and the badge of an onboarding the release ended.
 

@@ -160,6 +160,26 @@ _Settings_ gives one plan its own value of an aspect without changing the projec
 * *Too late*: a change whose new version would not contain where the plan is (its state and its call stack: the landing variant while the plan lands) is refused with the reason (`Too late: fix-relay is landing; the new version would not contain where it is. Nothing changed.`) and returns to the list of aspects.
 * A value set where the plan first needs it (link:starting-work.adoc[Starting Work], the options asked when needed) is the same plan value; setting it here before it is asked means it is not asked.
 * *A plan of an epic*: the epic is told (`settings changed`, with the aspect; <<epic-told>>).
+* *Changed meanwhile*: `plan-settings.apply` refused with `conflict` returns to `plan-settings.value` with the current value (<<conflict>>).
+
+[#conflict]
+=== Changed in Two Clients at Once
+
+One rule for every recorded value the operator changes: a machine setting (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]; link:../web-app/machine-settings.adoc#conflict[Web App, Machine Settings], link:../terminal-client/08-transcripts-later.adoc#t-documents[Terminal Client, The Documents Mode]), a project's own value (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:project-onboarding.adoc#steps[Project Onboarding, ④ Own settings]), and a plan's value (<<settings>>) (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#concurrent-changes[Concurrent Changes of a Setting], proposed).
+
+----
+  Landing · fix-relay
+  ─────────────────────────────────────────────────────────────────────────────
+  Changed meanwhile: it is now landing.main. Yours was not applied.
+  Yours        landing.files
+                                [Keep the current value]  [Apply yours again]
+----
+
+* *The revision travels with the change*: the dialogue of a value keeps the revision of the settings it was opened with, and the change is sent against it. The client never compares values itself.
+* *The first change wins*: a change against an older revision is refused with `conflict` (`409`), and nothing of it is applied. The dialogue stays open with the current value and the operator's own choice beside it, still selected.
+* *Apply yours again* sends the same choice against the current revision, through the same checks (a refused value, too late); *Keep the current value* closes the dialogue. Nothing is merged, nothing is overwritten unseen, and the runtime never retries by itself.
+* *In the terminal* the line is printed above the question again, `Apply yours again? [Enter]   k) keep the current value` (`operator.actions.key.keep_current`, link:../terminal-client/22-texts-actions.adoc#actions-keys[Terminal Client, Keys of the Actions]); with `--no-input` the verb stops there with `common.conflict.no_input`.
+* Texts: `common.conflict.*` (link:work-actions-texts.adoc#texts-conflict[Texts, Changed Meanwhile]).
 
 [#epic-actions]
 == An Epic's Actions
@@ -266,6 +286,7 @@ A plan, an epic, or a landing that does not go on without a decision being asked
 |_Retry now_, _Show the pull request_ (by its number, with a link), and for a move's removal _Give up the removal…_; for an epic's, _Cancel the epic…_
 |===
 
+* *After the act* (`hold.apply`): released (`hold.released`), the plan, the epic, or the landing goes on, and the view says so (`fix-relay goes on`); still held, the hold is shown again (`hold.show`) with what still holds and its cause (`Still held: the plan reads cui-http, which this project may not read`), its acts offered again.
 * Every act is offered in both clients; a hold that clears by itself (a provider is back) leaves with a line in the events (`the provider answered again`).
 * An act that cannot be undone (_Accept the change_, _End the plan_, _Abort the plan_, _Cancel the epic_, _Give up the removal_) confirms first and names what follows.
 * *Give up the removal* ends the short landing that removes moved documents from git: the removal's branch is dropped and the files remain tracked in git where they were, and the source keeps its copy; the two are no longer one, and the dialogue says so.
