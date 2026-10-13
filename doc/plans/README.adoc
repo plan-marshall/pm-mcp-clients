@@ -144,7 +144,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:decision-contract.adoc[`decision-contract`]
 |Decisions: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/decision-engine.adoc[`pm-mcp-core` / `decision-engine`]; UC-PLN-2 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records); link:../../../pm-mcp-core/doc/plans/decision-engine.adoc[`pm-mcp-core` / `decision-engine`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; UC-PLN-2 agreed (no work package)
 |epic clients
 
 |link:onboarding-contract.adoc[`onboarding-contract`]
@@ -162,13 +162,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-decisions.adoc[`cli-decisions`]
 |Decisions in the terminal
 |`blocked`
-|link:decision-contract.adoc[`decision-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]
+|link:decision-contract.adoc[`decision-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
 |epic clients
 
 |link:web-decisions.adoc[`web-decisions`]
 |Decisions in the web app
 |`blocked`
-|link:decision-contract.adoc[`decision-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
+|link:decision-contract.adoc[`decision-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
 |epic clients
 
 |link:project-contract.adoc[`project-contract`]
@@ -228,7 +228,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:start-contract.adoc[`start-contract`]
 |Starting work: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`]; link:../../../pm-mcp-core/doc/plans/recipe-workflows.adoc[`pm-mcp-core` / `recipe-workflows`]; link:../../../pm-mcp-core/doc/plans/forgejo-provider.adoc[`pm-mcp-core` / `forgejo-provider`]; UC-STA-1 to UC-STA-5 and UC-STA-7 to UC-STA-9 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records); link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`]; link:../../../pm-mcp-core/doc/plans/recipe-workflows.adoc[`pm-mcp-core` / `recipe-workflows`]; link:../../../pm-mcp-core/doc/plans/forgejo-provider.adoc[`pm-mcp-core` / `forgejo-provider`]; UC-STA-1 to UC-STA-5 and UC-STA-7 to UC-STA-9 agreed (no work package)
 |epic clients
 
 |link:cli-start.adoc[`cli-start`]

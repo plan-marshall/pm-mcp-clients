@@ -201,7 +201,7 @@ What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, 
   ▸ plan  Message catalogue v0              abandoned   3 weeks ago
             superseded by the shared texts
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   / filter   Esc back
+ ↑↓ move   Enter open   a actions   / filter   Esc back
 ----
 
 [source,text]
@@ -219,7 +219,7 @@ pm ›
 ----
 
 * Each row is the plan or epic with its outcome (a plan: `completed`, `cancelled`, `abandoned`; an epic: `archived`, `cancelled`), its reason where it has one, and when it ended; newest first; the client reads the runtime's pages as the operator scrolls (full screen) or as it prints (`status --ended`).
-* `Enter` on an ended plan opens its plan view as it ended (xref:16-plan-view.adoc#ended[An Ended Plan]), on an ended epic its epic view as it ended (link:../shared/epic-view.adoc[Epic View]); both are read-only: no actions, no live updates, and `a` says `fix-relay has ended: its view only`. `plan <plan_id>` and `epic <epic_id>` print an ended plan or epic the same way, with `ended` in its first line.
+* `Enter` on an ended plan opens its plan view as it ended (xref:16-plan-view.adoc#ended[An Ended Plan]), on an ended epic its epic view as it ended (link:../shared/epic-view.adoc[Epic View]); both are read-only: no live updates, and no action but _Chat…_, which `a` offers with `fix-relay has ended: its view, and a chat about it` (xref:19-actions.adoc#chat-ended[A Chat About Ended Work]). `a` on a row of ended work opens the same menu. `plan <plan_id>` and `epic <epic_id>` print an ended plan or epic the same way, with `ended` in its first line.
 
 [#overview-texts]
 == Texts of the Terminal
@@ -294,9 +294,9 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |ended work
 |beendete Arbeit
 
-|`operator.overview.ended_view_only`
-|{name} has ended: its view only
-|{name} ist beendet: nur seine Ansicht
+|`operator.overview.ended_view_chat`
+|{name} has ended: its view, and a chat about it
+|{name} ist beendet: seine Ansicht und ein Chat darüber
 
 |`operator.status.ended_title`
 |{project} · ended work

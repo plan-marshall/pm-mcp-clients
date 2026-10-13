@@ -122,7 +122,7 @@ The tree follows the plan's events; the selection stays on its node. When the pl
 [#ended]
 === An Ended Plan
 
-A plan that has ended, opened from ended work (xref:15-overview.adoc#ended[Ended Work]) or by `plan <plan_id>`, shows as it ended, read from the archive: the header names its outcome, its reason, and when it ended (`fix-relay · cancelled 2 d ago · the approach is replaced by plan relay-v2`); the tree is the process as it was when the plan ended, opened down to where it stopped; nothing updates, and `a` offers no action (`fix-relay has ended: its view only`).
+A plan that has ended, opened from ended work (xref:15-overview.adoc#ended[Ended Work]) or by `plan <plan_id>`, shows as it ended, read from the archive: the header names its outcome, its reason, and when it ended (`fix-relay · cancelled 2 d ago · the approach is replaced by plan relay-v2`); the tree is the process as it was when the plan ended, opened down to where it stopped; nothing updates, and `a` offers _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; xref:19-actions.adoc#chat-ended[A Chat About Ended Work]).
 
 [#tree]
 == The Tree (`plan`)

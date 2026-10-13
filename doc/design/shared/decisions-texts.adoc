@@ -1,0 +1,280 @@
+= Design: Decisions, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:decisions.adoc[Decisions] » Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+
+Status: `DRAFT`. The texts of link:decisions.adoc[Decisions]; the texts of the chat itself are link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+
+[#texts]
+== Texts
+
+The texts both clients use for decisions, keys of the area `decision` (link:texts-and-languages.adoc#keys[Keys and Packs]); the keys `decision.chat.*` and `decision.answer.chat` are those of link:decisions.adoc#chat[A Chat Before Answering].
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`decision.blocks.plan`
+|blocks the plan
+|blockiert den Plan
+
+|`decision.blocks.epic`
+|blocks the epic
+|blockiert das Epic
+
+|`decision.blocks.task`
+|blocks one task; the plan goes on
+|blockiert einen Task; der Plan läuft weiter
+
+|`decision.blocks.none`
+|blocks nothing
+|blockiert nichts
+
+|`decision.reversibility.reversible`
+|can be undone
+|lässt sich rückgängig machen
+
+|`decision.reversibility.costly`
+|costly to undo
+|nur mit Aufwand rückgängig zu machen
+
+|`decision.reversibility.irreversible`
+|cannot be undone
+|lässt sich nicht rückgängig machen
+
+|`decision.waiting`
+|the plan waits for your answer, since {time}
+|der Plan wartet seit {time} auf deine Antwort
+
+|`decision.part.position`
+|part {n} of {total}
+|Teil {n} von {total}
+
+|`decision.part.depends_on`
+|depends on part {n}: {answer}
+|hängt von Teil {n} ab: {answer}
+
+|`decision.part.reopened`
+|Part {n} was opened again, because part {m} changed.
+|Teil {n} ist wieder offen, weil sich Teil {m} geändert hat.
+
+|`decision.support.votes`
+|{votes} of {total} votes · {models, plural, one {# model} other {# models}}
+|{votes} von {total} Stimmen · {models, plural, one {# Modell} other {# Modelle}}
+
+|`decision.support.band.unanimous`
+|unanimous
+|einstimmig
+
+|`decision.support.band.clear_majority`
+|clear majority
+|klare Mehrheit
+
+|`decision.support.band.split`
+|split
+|geteilt
+
+|`decision.support.band.no_consensus`
+|no consensus
+|keine Einigkeit
+
+|`decision.support.not_voted`
+|not voted on
+|nicht abgestimmt
+
+|`decision.support.self_reported`
+|the model's own estimate: {value} of 100; models tend to overrate themselves
+|die eigene Einschätzung des Modells: {value} von 100; Modelle schätzen sich meist zu hoch ein
+
+|`decision.recommendation.by`
+|Recommended by {role}: {option}
+|Empfohlen von {role}: {option}
+
+|`decision.recommendation.on_request`
+|The recommendation is one step away, so that you weigh the options first.
+|Die Empfehlung ist einen Schritt entfernt, damit du zuerst die Optionen abwägst.
+
+|`decision.dissent`
+|Against it ({role}): {reason}
+|Dagegen ({role}): {reason}
+
+|`decision.answer.own_words`
+|in my own words
+|Antworte in eigenen Worten
+
+|`decision.answer.note`
+|add a note
+|Füge eine Notiz hinzu
+
+|`decision.answer.none_fits`
+|none fits: think again
+|Nichts passt: lass den Plan neu überlegen
+
+|`decision.answer.later`
+|later
+|später
+
+|`decision.interpret.working`
+|{role} is reading your answer
+|{role} liest deine Antwort
+
+|`decision.readback.understood`
+|I understood: {reading}
+|Ich habe verstanden: {reading}
+
+|`decision.readback.condition`
+|{option}, provided {condition}
+|{option}, sofern {condition}
+
+|`decision.readback.own_option`
+|your own answer: {words}
+|deine eigene Antwort: {words}
+
+|`decision.readback.delegation`
+|you leave it to the plan
+|du überlässt es dem Plan
+
+|`decision.readback.confirm`
+|Correct
+|Stimmt so
+
+|`decision.readback.edit`
+|edit my words
+|Bearbeite deine Worte
+
+|`decision.readback.choose`
+|choose an option instead
+|Wähle stattdessen eine Option
+
+|`decision.clarify.which`
+|Which do you mean?
+|Welches meinst du?
+
+|`decision.confirm.title`
+|Your decision
+|Deine Entscheidung
+
+|`decision.confirm.action`
+|Decide
+|Entscheide
+
+|`decision.outcome.answered_elsewhere`
+|answered in {channel} ({device}): {answer}
+|beantwortet über {channel} ({device}): {answer}
+
+|`decision.outcome.revised`
+|The decision changed: {change}. Please answer again.
+|Die Entscheidung hat sich geändert: {change}. Bitte antworte noch einmal.
+
+|`decision.outcome.rethink`
+|you asked the plan to think again
+|du hast den Plan gebeten, neu zu überlegen
+
+|`decision.channel.web`
+|the web app
+|die Web-App
+
+|`decision.channel.cli`
+|the console
+|die Konsole
+
+|`decision.notify.ask`
+|Should the web app notify you when a plan asks a decision? It shows the plan and the kind of decision, never its content.
+|Soll die Web-App dich benachrichtigen, wenn ein Plan eine Entscheidung braucht? Sie zeigt den Plan und die Art der Entscheidung, nie ihren Inhalt.
+
+|`decision.notify.allow`
+|Allow notifications
+|Erlaube Benachrichtigungen
+
+|`decision.notify.deny`
+|Not now
+|Nicht jetzt
+
+|`decision.notify.title`
+|{plan} asks {kind, select, waiver {for a waiver} other {a decision}}
+|{plan} {kind, select, waiver {bittet um einen Waiver} other {braucht eine Entscheidung}}
+
+|`decision.notify.tab_title`
+|({count}) {title}
+|({count}) {title}
+
+|`decision.waiver.title`
+|{plan} asks for a waiver
+|{plan} bittet um einen Waiver
+
+|`decision.waiver.gate`
+|Gate
+|Prüfschritt
+
+|`decision.waiver.result`
+|Result
+|Ergebnis
+
+|`decision.waiver.asked_by`
+|Asked by
+|Gefragt von
+
+|`decision.waiver.its_reason`
+|Its reason
+|Seine Begründung
+
+|`decision.waiver.reason`
+|Your reason
+|Dein Grund
+
+|`decision.waiver.reason_required`
+|Give your reason first.
+|Gib zuerst deinen Grund an.
+
+|`decision.waiver.waive`
+|Waive the gate
+|Erteile den Waiver
+
+|`decision.waiver.decline`
+|Decline
+|Lehne ab
+
+|`decision.waiver.later`
+|Later
+|Später
+
+|`decision.answer.chat`
+|chat about it first
+|Chatte zuerst darüber
+
+|`decision.chat.no_own_words`
+|this decision takes no answer in your own words: the chat explains, you choose
+|diese Entscheidung nimmt keine Antwort in eigenen Worten: der Chat erklärt, du wählst
+
+|`decision.chat.proposed_answer`
+|Proposed answer{part, select, none {} other {, part {part}}}
+|Vorgeschlagene Antwort{part, select, none {} other {, Teil {part}}}
+
+|`decision.chat.use_words`
+|Answer in these words
+|Antworte mit diesen Worten
+
+|`decision.chat.stays_open`
+|{id} stays open; answer it once the chat has ended.
+|{id} bleibt offen; beantworte sie, wenn der Chat beendet ist.
+
+|`decision.chat.withdrawn`
+|{id} is closed: the revision removed the need for it ({reason}).
+|{id} ist geschlossen: die Überarbeitung hat sie überflüssig gemacht ({reason}).
+
+|`decision.chat.closed_elsewhere`
+|{id} was answered in {channel} ({device}); the chat has ended.
+|{id} wurde über {channel} ({device}) beantwortet; der Chat ist beendet.
+
+|`decision.chat.after_chat`
+|answered after a chat
+|nach einem Chat beantwortet
+
+|`decision.chat.none_for_waiver`
+|A waiver request offers no chat: the waiver is your override, not an answer to its content.
+|Eine Waiver-Anfrage bietet keinen Chat: der Waiver ist deine Entscheidung über den Prüfschritt, keine Antwort auf seinen Inhalt.
+|===

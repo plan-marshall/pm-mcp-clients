@@ -140,7 +140,8 @@ A project's ended plans and epics are a list of their own, apart from Running Wo
 * *Where*: per project, opened from the project's level of Running Work (_Ended work_) and from the project's actions in the explorer (link:project-explorer.adoc#actions[Actions of a Project]), also for a project with nothing running.
 * *A row*: the kind as in Running Work (<<distinction>>), the title, the outcome (a plan: completed, cancelled, abandoned; an epic: archived, cancelled), the plan's own pull request by its number with a link, the reason where the operator gave one, and when it ended.
 * *Order and paging*: newest first, a page at a time, with _Newer_ and _Older_; the runtime pages, the client never loads the whole archive.
-* *Opening one*: an ended plan opens its plan view, an ended epic its epic view, both read-only and as it ended: the last state of every node, the outcome, the reason, and the end time in the head, and no action (link:plan-view.adoc#live[Plan View, Live]; link:epic-view.adoc#layout[Epic View]).
+* *Opening one*: an ended plan opens its plan view, an ended epic its epic view, both read-only and as it ended: the last state of every node, the outcome, the reason, and the end time in the head, and no action but _Chat_ (link:plan-view.adoc#live[Plan View, Live]; link:epic-view.adoc#layout[Epic View]).
+* *Chat*, on a row and in the view, opens a read-only chat about the ended plan or epic, whose one proposal is a follow-up plan (link:work-actions.adoc#chat-ended[A Chat About Ended Work]).
 * A plan that ends while the operator looks at Running Work leaves it and appears at the top of its project's ended work.
 
 [#live]

@@ -216,7 +216,7 @@ Question Q-007 · plan fix-relay · phase 5 execute · blocks the plan
     2) Rebase onto main ← recommended: keeps the history linear
     3) Stop the plan and ask me later
 
-Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › ⏎
 ✓ Q-007 answered: Rebase onto main. The plan goes on.
 pm ›
 ----
@@ -237,7 +237,7 @@ Allow 5 models? [Enter]   toggle: 1-5   b) back   ?   › !
   [3/7] Models stays where it is; nothing was sent.
 Question Q-007 · plan fix-relay · blocks the plan
   …
-Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › ⏎
 ✓ Q-007 answered: Rebase onto main.
 Back to [3/7] Models.
 [3/7] Models · Choose the models plans may use
@@ -282,7 +282,7 @@ Question Q-007 · plan fix-relay · blocks the plan
     1) Merge main into the branch
     2) Rebase onto main ← recommended
     3) Stop the plan and ask me later
-Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › 1
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › 1
 – Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.
 pm ›
 ----

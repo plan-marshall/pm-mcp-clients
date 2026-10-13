@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#changes[Controlling Work, Changes] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
@@ -33,12 +33,12 @@ A plan and an epic carry their actions wherever they are shown: their row in Run
 |`paused` since when, by the operator
 
 |ended
-|none
-|its outcome; its plan view, read-only (link:plan-view.adoc#ended[An Ended Plan])
+|Chat
+|its outcome; its plan view, read-only (link:plan-view.adoc#ended[An Ended Plan]); a chat about it (<<chat-ended>>)
 |===
 
 * *Settings* opens the plan's own values (its overrides, link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]) in every state of a plan that runs, each with where its value comes from (the plan, the project, the machine). A value may be set where the plan first needs it, or later here; it applies from where the plan next reads it.
-* *Chat* opens a chat with the plan's planning role about the whole plan (<<chat>>), in every state of a plan that has not ended: running, pausing, paused, waiting for you, and held alike.
+* *Chat* opens a chat with the plan's planning role about the whole plan (<<chat>>), in every state of a plan that has not ended: running, pausing, paused, waiting for you, and held alike. An ended plan offers it alone, read-only, about its archived record (<<chat-ended>>).
 * *Pause* asks where the plan holds, _after the current task_ preselected (<<pause>>); *Start* acts at once. Neither needs a confirmation: each is undone by the other.
 * A plan always runs once it exists: a plan an epic starts is created and run in one act, so there is no state of a plan that waits to be started.
 * *Cancel* and *Abandon* confirm first (<<confirm-end>>).
@@ -100,7 +100,7 @@ After an action on a plan of an epic, the row of the plan shows for a moment `re
 
 * *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs: the surface overlaps a running plan`); with the epic's scope full it offers _Raise to 4 at once and start it_, which raises the epic's `parallelization_scope` by one and starts the plan.
 * *Decompose again* asks for the instruction (`split the auth workstream; drop the docs plan`) and opens the decomposition with it (link:starting-work.adoc#decomposition[The Decomposition]).
-* *Chat* opens a chat with the epic's planning role about the whole epic (<<chat>>), in every state of an epic that has not ended.
+* *Chat* opens a chat with the epic's planning role about the whole epic (<<chat>>), in every state of an epic that has not ended; an ended epic offers it alone, about its archived record (<<chat-ended>>).
 * *Findings review* and *Watches review* carry their counts; new findings since the last review are also a `needs you` of the epic in Running Work.
 * *Archive* runs the check first (<<archive-check>>).
 * *Cancel* confirms with the choice for its plans (<<cancel-epic>>).
@@ -207,7 +207,7 @@ The review goes through the items of one register, one at a time, open ones firs
 [#chat]
 == Chatting with the Planning Role
 
-In a chat the operator discusses a plan or an epic with its planning role, asks, and has it propose changes. It is one dialogue wherever it is opened: from a plan's actions (the whole plan), from an epic's actions (the whole epic), from the decomposition (the draft, link:starting-work.adoc#decomposition[The Decomposition]), and from a review (one item or the whole register, <<review>>). The runtime routes it: a plan's chat to the plan's planning role `replan`, an epic's chat, also in its decomposition and its review, to the epic's planning role `decompose`.
+In a chat the operator discusses a plan or an epic with its planning role, asks, and has it propose changes. It is one dialogue wherever it is opened: from a plan's actions (the whole plan), from an epic's actions (the whole epic), from the decomposition (the draft, link:starting-work.adoc#decomposition[The Decomposition]), and from a review (one item or the whole register, <<review>>), and in the three places of <<chat-places>>: inside a decision, while starting, and about ended work. The runtime routes it: a plan's chat to the plan's planning role `replan`, an epic's chat, also in its decomposition and its review, to the epic's planning role `decompose`.
 
 ----
   Chat · fix-relay · with replan                                 the whole plan
@@ -234,6 +234,54 @@ In a chat the operator discusses a plan or an epic with its planning role, asks,
 * *End the chat* closes it; a proposal not yet accepted is dropped with it. The transcript is kept with the plan or the epic, among its events, and is never sent elsewhere.
 * *Chat is disabled* with its reason while no configuration of the routed role qualifies (`no configuration of replan qualifies yet`).
 * *In the web app* the chat is a panel beside the view it was opened from (the plan view, the epic view, the decomposition, the review), the message field at its bottom; at phone width it takes the screen, and _End the chat_ returns to the view.
+
+[#chat-places]
+=== The Same Chat in Three More Places
+
+Each place changes only the chat's scope, the role it is routed to, and what an accepted proposal does there; the dialogue, the read-back of every proposal, and the rule that nothing changes without _Accept_ are those above.
+
+[cols="2,3,2,4",options="header"]
+|===
+|Place |Scope |Role |What a proposal does
+
+|Inside a decision, at `decision.answer` (link:decisions.adoc#chat[A Chat Before Answering])
+|the decision: question, why now, evidence, what it blocks, reversibility, parts and options, the recommendation and the votes
+|the role of the task that asked; for one a server rule raised or a quorum escalated, `replan` or `decompose`
+|a proposed answer becomes the operator's own words and goes through `decision.interpret` and `decision.read-back`; a revision is applied as on a plan, and the decision stays open unless the revision removes the need for it. The chat never answers.
+
+|While starting, at `start.sources` (link:starting-work.adoc#chat[Chatting About the Request])
+|the entry: its stored sources, untrusted ones marked, and its description
+|`refine` for a plan, `decompose` for an epic; not for a recipe
+|a rewrite of the description or an addition to it, stored through `start.store-description`; never another source
+
+|About ended work (<<chat-ended>>)
+|the archived record: outcome, reason, history, decisions, re-planning records, events
+|`replan` for a plan, `decompose` for an epic
+|a follow-up plan: its description, which opens the start of a new plan; the archive never changes
+|===
+
+[#chat-ended]
+=== A Chat About Ended Work
+
+An ended plan or epic offers one action, _Chat_: a read-only chat about how it went (`why was it handed back?`, `what did the re-planning decide?`). It is opened from the ended work's row, from the ended plan view, and from the ended epic view (link:plan-overview.adoc#ended[Ended Work]).
+
+----
+  Chat · codeberg-issues · with replan                        its archived record
+  ─────────────────────────────────────────────────────────────────────────────
+  You      Why was it cancelled, and what would a new attempt need?
+  replan   You cancelled it: replaced by relay-v2. Its outline was done; the
+           provider's tests waited for the relay's new event API.
+  ─────────────────────────────────────────────────────────────────────────────
+  Proposed follow-up plan                 read only: the archive stays as it is
+  + Add the Codeberg issue provider on top of relay-v2.
+  + follows codeberg-issues, cancelled: replaced by relay-v2
+                                               [Reject]  [Start a plan with it]
+----
+
+* *Scope and role*: the archived record, read from the archive: the outcome, the reason, the history, the decisions, the re-planning records, the events. An ended plan's chat goes to `replan`, an ended epic's to `decompose`; it runs at the project's scope and never changes the archive.
+* *The one proposal is a follow-up plan*: a description drafted in the chat that names the ended plan or epic, read back. _Start a plan with it_ ends the chat and opens the start of a new plan in the same project with that description stored (link:starting-work.adoc#sources[The List of Sources]); the operator goes on from ① Sources as with any start, and nothing starts before _Start the plan_.
+* *The transcript* is kept beside the archive entry, outside the archived record, which stays as it ended.
+* *Disabled* with its reason while no configuration of the routed role qualifies, as every chat.
 
 [#texts]
 == Texts

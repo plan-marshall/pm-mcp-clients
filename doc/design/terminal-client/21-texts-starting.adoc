@@ -38,6 +38,10 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 |continue
 |mach weiter
 
+|`operator.start.chat`
+|chat
+|chatte
+
 |`operator.start.path`
 |Path
 |Pfad
@@ -238,7 +242,7 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 [#starting-keys]
 === Keys of the Prompts
 
-The mnemonics of starting work, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `n) no`, and `o) choose another` are the common ones there. _Chat_ has the letters of the actions (xref:22-texts-actions.adoc#actions-keys[Actions, Keys]). Within each state every key is unique, in both languages.
+The mnemonics of starting work, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `n) no`, and `o) choose another` are the common ones there. _Chat_ has the letters of the actions (xref:22-texts-actions.adoc#actions-keys[Actions, Keys]), in the list of sources (`start.sources`, free there: `d f i l c p x` in English, `b d i l a p x` in German) as in the decomposition. Within each state every key is unique, in both languages.
 
 [cols="3,3,3",options="header"]
 |===

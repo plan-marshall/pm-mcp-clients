@@ -26,8 +26,8 @@ The client holds no step order and no rule of its own: it renders the state the 
 * xref:03-dialogues.adoc[Dialogues]: how a state is rendered and answered, keys and numbers, consent, checks, waiting, resume, refusals.
 * xref:17-projects.adoc[Projects]: the explorer of the machine's projects (favourites, recent, all), a project's actions, and the onboarding of a project; `projects`, `project add`, `project setup`.
 * xref:16-plan-view.adoc[The Plan View]: a plan's process level by level, its phases and sub-workflows down to the leaves, each with its state; in the full-screen view and as a tree (`plan`).
-* xref:18-starting.adoc[Starting Work]: starting a plan or an epic from its sources, and running a recipe; `plan add`, `epic add`, `recipe run`.
-* xref:19-actions.adoc[Actions on Plans and Epics]: pause, start, cancel, abandon a plan; an epic's next plan, decompose again, archive, cancel, and its reviews; the chat with the planning role of a plan or an epic; `plan pause|start|cancel|abandon|chat`, `epic next|decompose|archive|cancel|findings|watches|chat`.
+* xref:18-starting.adoc[Starting Work]: starting a plan or an epic from its sources, with a chat about the request, and running a recipe; `plan add`, `epic add`, `recipe run`.
+* xref:19-actions.adoc[Actions on Plans and Epics]: pause, start, cancel, abandon a plan; an epic's next plan, decompose again, archive, cancel, and its reviews; the chat with the planning role of a plan or an epic, also about ended work; `plan pause|start|cancel|abandon|chat`, `epic next|decompose|archive|cancel|findings|watches|chat`.
 * xref:20-texts-projects.adoc[Texts: Projects], xref:21-texts-starting.adoc[Texts: Starting Work], xref:22-texts-actions.adoc[Texts: Actions]: the terminal's own texts of parts 17 to 19, in English and German.
 * xref:15-overview.adoc[The Overview]: the overview of running work across projects, as a full-screen view (`plans`) and as a tree (`status`); keys, live updates, where the operator left it.
 * xref:04-console.adoc[The Console]: the prompt and its badges, what the runtime pushes, answering questions, connection, keys, notifications, output safety, the line editor.
@@ -41,7 +41,7 @@ A transcript of every state of the onboarding and of the entry, and of the conso
 * xref:06-transcripts-steps-1-3.adoc[Steps 1 to 3]: language; the harnesses, from one scan, with the icons consent and the default; the models of the enrolled harnesses.
 * xref:07-transcripts-steps-4-7.adoc[Steps 4 to 7]: roles, credentials, providers, plans, done.
 * xref:08-transcripts-later.adoc[Later Changes, and Every State]: `config` with arguments, `--no-input`, the harnesses again, a project's own values, the remembered consents, the providers checked again, the paired devices; the table of every state and its transcript.
-* xref:14-transcripts-decisions.adoc[Decisions]: every variant of a decision a plan asks: a clear majority, not reversible, in parts, in own words with read-back and clarification, not voted on, later, none fits, changed, and a waiver request (link:../shared/decisions.adoc[Decisions] is what both clients show).
+* xref:14-transcripts-decisions.adoc[Decisions]: every variant of a decision a plan asks: a clear majority, not reversible, in parts, in own words with read-back and clarification, not voted on, later, none fits, changed, a chat before answering, and a waiver request (link:../shared/decisions.adoc[Decisions] is what both clients show).
 
 [#texts]
 === Texts

@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Decisions
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-decision-structure[The Decision Structure] and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-own-words[Answers in the Operator's Own Words] (proposed), link:../../../../plan-marshall-documentation/doc/specification/model-work/10-decision-quorum.adoc[Decision Quorum]_
 
@@ -51,7 +51,7 @@ Both clients show a decision in the same order, top to bottom:
 . *The evidence*: the description, then the evidence it names (a file and its lines, a diff, a finding, a link). The evidence is what lets the operator decide without trusting the prose; it is one step away (expanded in the web app, `?` in the terminal), never hidden.
 . *The parts*, one at a time where there are several (<<parts>>), each with its question and its options in the order the workflow gives them: never sorted by support, so that the order itself recommends nothing.
 . *The recommendation and the votes*, where the decision carries them, placed by <<recommendation>>.
-. *The answer*: choose; answer in own words where allowed; add a note where allowed; or for the whole decision _none fits_ or _later_.
+. *The answer*: choose; answer in own words where allowed; add a note where allowed; or for the whole decision _chat about it first_ (<<chat>>), _none fits_, or _later_.
 
 A decision is self-contained: whoever opens it hours later finds in it what was asked, why, and what follows, without remembering the plan.
 
@@ -115,6 +115,21 @@ Where a part allows it, every client offers to answer in own words next to the o
 * *`decision.clarify`* shows one question that names the readings it could not choose between, answered in words or by choosing one of them.
 * The interpretation never sees the recommendation or the votes, and the client never shows them inside the read-back, so the read-back is about the operator's words alone.
 
+[#chat]
+== A Chat Before Answering
+
+At `decision.answer` the operator may ask back before answering (`what does option B mean for the open pull request?`): _Chat about it first_ opens the one chat of both clients (link:work-actions.adoc#chat[Chatting with the Planning Role]) with the decision as its scope. What differs from a chat on a plan is only its scope, its role, and what a proposal does here:
+
+* *Scope*: the decision as this document shows it: the question, why now, the evidence, what it blocks, its reversibility, its parts and options, and the recommendation and the votes, which the chat may explain. The head says `decision Q-007`.
+* *Role*: the runtime routes it. A decision a worker asked goes to the role of the task that asked (`Chat · fix-relay · with implement`); one a server rule raised or a quorum escalated goes to the planning role of its subject, `replan` for a plan and `decompose` for an epic. _Chat_ is disabled with its reason while no configuration of that role qualifies.
+* *The chat never answers.* When it ends, the decision is shown again as before, and the operator answers it in any of its ways.
+* *A proposed answer* (`Proposed answer, part 2`) is offered as the operator's own words: _Answer in these words_ ends the chat and sends the words to `decision.interpret` unchanged, and the read-back follows as for any words of the operator (<<own-words>>); nothing is recorded before _Correct_, and the interpretation still never sees the recommendation or the votes. A part that takes no own words gets no proposed answer: the chat explains, and the operator chooses.
+* *A proposed revision* of the plan (or of the epic's staged plans) is read back and applied as in the chat on a plan, through the guards of the subject's own path. The decision stays open (`Q-007 stays open; answer it once the chat has ended.`), unless the revision removes the need for it; then the runtime closes it as withdrawn, with the reason, and the client shows that line instead of the decision.
+* *The plan waits* during the chat, as for any decision, with no time limit. The transcript is kept with the decision, and its record says that the answer followed a chat (`answered after a chat`).
+* *Answered elsewhere* during the chat: the decision closes as in <<outcomes>>, and the chat ends with it (`Q-007 was answered in the web app (iPad); the chat has ended.`); a proposal not yet taken is dropped.
+* *A waiver request offers no chat*: the waiver is an operator override, never an answer to its content (<<waiver>>).
+* *In the web app* the chat is the panel beside the decision, as beside a plan view; the decision stays visible, its answers disabled while the chat is open.
+
 [#announce]
 == Announcing a Decision
 
@@ -145,7 +160,7 @@ A worker that cannot pass a gate may ask for a waiver of it. The request reaches
 * *Three answers*: _Waive the gate_, with the operator's reason; _Decline_, with the operator's reason, after which the plan's remediation takes its next step; _Later_, which leaves the request open.
 * *The reason is required* for both waive and decline; until it is given, both are disabled and say why.
 * *No preselection*: neither answer is the primary one, `Enter` in the terminal answers nothing, and no recommendation is shown.
-* *No interpretation*: the operator's reason is recorded as it is, never read by a model before it is recorded; there is no answer in own words beside the two.
+* *No interpretation*: the operator's reason is recorded as it is, never read by a model before it is recorded; there is no answer in own words beside the two, and no chat (<<chat>>).
 * The worker's reason and the gate's result may come from a model or the repository and are shown as untrusted text (<<safety>>).
 
 [#outcomes]
@@ -163,233 +178,4 @@ Every text of a decision may come from a model or a repository: the question, th
 [#texts]
 == Texts
 
-The texts both clients use for decisions, keys of the area `decision` (link:texts-and-languages.adoc#keys[Keys and Packs]).
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`decision.blocks.plan`
-|blocks the plan
-|blockiert den Plan
-
-|`decision.blocks.epic`
-|blocks the epic
-|blockiert das Epic
-
-|`decision.blocks.task`
-|blocks one task; the plan goes on
-|blockiert einen Task; der Plan läuft weiter
-
-|`decision.blocks.none`
-|blocks nothing
-|blockiert nichts
-
-|`decision.reversibility.reversible`
-|can be undone
-|lässt sich rückgängig machen
-
-|`decision.reversibility.costly`
-|costly to undo
-|nur mit Aufwand rückgängig zu machen
-
-|`decision.reversibility.irreversible`
-|cannot be undone
-|lässt sich nicht rückgängig machen
-
-|`decision.waiting`
-|the plan waits for your answer, since {time}
-|der Plan wartet seit {time} auf deine Antwort
-
-|`decision.part.position`
-|part {n} of {total}
-|Teil {n} von {total}
-
-|`decision.part.depends_on`
-|depends on part {n}: {answer}
-|hängt von Teil {n} ab: {answer}
-
-|`decision.part.reopened`
-|Part {n} was opened again, because part {m} changed.
-|Teil {n} ist wieder offen, weil sich Teil {m} geändert hat.
-
-|`decision.support.votes`
-|{votes} of {total} votes · {models, plural, one {# model} other {# models}}
-|{votes} von {total} Stimmen · {models, plural, one {# Modell} other {# Modelle}}
-
-|`decision.support.band.unanimous`
-|unanimous
-|einstimmig
-
-|`decision.support.band.clear_majority`
-|clear majority
-|klare Mehrheit
-
-|`decision.support.band.split`
-|split
-|geteilt
-
-|`decision.support.band.no_consensus`
-|no consensus
-|keine Einigkeit
-
-|`decision.support.not_voted`
-|not voted on
-|nicht abgestimmt
-
-|`decision.support.self_reported`
-|the model's own estimate: {value} of 100; models tend to overrate themselves
-|die eigene Einschätzung des Modells: {value} von 100; Modelle schätzen sich meist zu hoch ein
-
-|`decision.recommendation.by`
-|Recommended by {role}: {option}
-|Empfohlen von {role}: {option}
-
-|`decision.recommendation.on_request`
-|The recommendation is one step away, so that you weigh the options first.
-|Die Empfehlung ist einen Schritt entfernt, damit du zuerst die Optionen abwägst.
-
-|`decision.dissent`
-|Against it ({role}): {reason}
-|Dagegen ({role}): {reason}
-
-|`decision.answer.own_words`
-|in my own words
-|Antworte in eigenen Worten
-
-|`decision.answer.note`
-|add a note
-|Füge eine Notiz hinzu
-
-|`decision.answer.none_fits`
-|none fits: think again
-|Nichts passt: lass den Plan neu überlegen
-
-|`decision.answer.later`
-|later
-|später
-
-|`decision.interpret.working`
-|{role} is reading your answer
-|{role} liest deine Antwort
-
-|`decision.readback.understood`
-|I understood: {reading}
-|Ich habe verstanden: {reading}
-
-|`decision.readback.condition`
-|{option}, provided {condition}
-|{option}, sofern {condition}
-
-|`decision.readback.own_option`
-|your own answer: {words}
-|deine eigene Antwort: {words}
-
-|`decision.readback.delegation`
-|you leave it to the plan
-|du überlässt es dem Plan
-
-|`decision.readback.confirm`
-|Correct
-|Stimmt so
-
-|`decision.readback.edit`
-|edit my words
-|Bearbeite deine Worte
-
-|`decision.readback.choose`
-|choose an option instead
-|Wähle stattdessen eine Option
-
-|`decision.clarify.which`
-|Which do you mean?
-|Welches meinst du?
-
-|`decision.confirm.title`
-|Your decision
-|Deine Entscheidung
-
-|`decision.confirm.action`
-|Decide
-|Entscheide
-
-|`decision.outcome.answered_elsewhere`
-|answered in {channel} ({device}): {answer}
-|beantwortet über {channel} ({device}): {answer}
-
-|`decision.outcome.revised`
-|The decision changed: {change}. Please answer again.
-|Die Entscheidung hat sich geändert: {change}. Bitte antworte noch einmal.
-
-|`decision.outcome.rethink`
-|you asked the plan to think again
-|du hast den Plan gebeten, neu zu überlegen
-
-|`decision.channel.web`
-|the web app
-|die Web-App
-
-|`decision.channel.cli`
-|the console
-|die Konsole
-
-|`decision.notify.ask`
-|Should the web app notify you when a plan asks a decision? It shows the plan and the kind of decision, never its content.
-|Soll die Web-App dich benachrichtigen, wenn ein Plan eine Entscheidung braucht? Sie zeigt den Plan und die Art der Entscheidung, nie ihren Inhalt.
-
-|`decision.notify.allow`
-|Allow notifications
-|Erlaube Benachrichtigungen
-
-|`decision.notify.deny`
-|Not now
-|Nicht jetzt
-
-|`decision.notify.title`
-|{plan} asks {kind, select, waiver {for a waiver} other {a decision}}
-|{plan} {kind, select, waiver {bittet um einen Waiver} other {braucht eine Entscheidung}}
-
-|`decision.notify.tab_title`
-|({count}) {title}
-|({count}) {title}
-
-|`decision.waiver.title`
-|{plan} asks for a waiver
-|{plan} bittet um einen Waiver
-
-|`decision.waiver.gate`
-|Gate
-|Prüfschritt
-
-|`decision.waiver.result`
-|Result
-|Ergebnis
-
-|`decision.waiver.asked_by`
-|Asked by
-|Gefragt von
-
-|`decision.waiver.its_reason`
-|Its reason
-|Seine Begründung
-
-|`decision.waiver.reason`
-|Your reason
-|Dein Grund
-
-|`decision.waiver.reason_required`
-|Give your reason first.
-|Gib zuerst deinen Grund an.
-
-|`decision.waiver.waive`
-|Waive the gate
-|Erteile den Waiver
-
-|`decision.waiver.decline`
-|Decline
-|Lehne ab
-
-|`decision.waiver.later`
-|Later
-|Später
-|===
+Keys of the area `decision`, shared by both clients. They are listed in their own part: link:decisions-texts.adoc[Decisions, Texts].

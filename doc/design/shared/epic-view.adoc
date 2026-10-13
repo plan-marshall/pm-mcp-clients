@@ -45,7 +45,7 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
 * *Sources, landings, findings, watches*: one line each (findings: how many are new since the last review and how many are open; watches: how many are open), opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
 * *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts, decompositions, landings.
 * *What waits for the operator* (a decomposition, a held item, a decision) stands first in the head, with a link to it.
-* *An ended epic* shows read-only as it ended, with its outcome, reason, and end time in the head, without actions and without live updates, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
+* *An ended epic* shows read-only as it ended, with its outcome, reason, and end time in the head, without live updates and without actions but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]), opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
 
 [#texts]
 == Texts

@@ -11,14 +11,15 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The decisions of the web app as designed: announcing with a notification, the decision view with its parts, support, recommendation by what is at stake, own words with read-back and clarification, confirmation, answered elsewhere and changed decisions; waiver requests.
+* The decisions of the web app as designed: announcing with a notification, the decision view with its parts, support, recommendation by what is at stake, own words with read-back and clarification, confirmation, answered elsewhere and changed decisions; waiver requests; _Chat about it first_ opening the chat panel of `web-start` beside the decision, a proposed answer taken through the read-back, a decision withdrawn by a revision, and the chat ended by an answer elsewhere.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]
-* Design: link:../design/shared/decisions.adoc[Decisions]; the web app's views of `web-design`
+* Use case: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role]
+* Design: link:../design/shared/decisions.adoc[Decisions] with link:../design/shared/decisions.adoc#chat[A Chat Before Answering]; the web app's views of `web-design`
 
 == Done When
 

@@ -11,14 +11,14 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* Starting a plan or an epic and running a recipe as screens: the list of sources with their progress, the editor of a description, the picker of files over the server's listing, copy or move, the issue field with the forge recognised and the grant, a flagged issue, the ready step, the decomposition of a new epic with its chat, the chat panel built here as the one every chat uses (its transcript, each proposed change read back with accept and reject, the message field, ending it); leaving and continuing; at desktop and phone width, light and dark.
+* Starting a plan or an epic and running a recipe as screens: the list of sources with their progress, the editor of a description, the picker of files over the server's listing, copy or move, the issue field with the forge recognised and the grant, a flagged issue, the ready step, the decomposition of a new epic with its chat, the chat panel built here as the one every chat uses (its transcript, each proposed change read back with accept and reject, the message field, ending it); the start chat beside the list of sources once a source is stored and every source from outside the machine is screened, its accepted description stored; leaving and continuing; at desktop and phone width, light and dark.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-6], link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role]
-* Design: link:../design/shared/starting-work.adoc[Starting Work]; the web app's views of `web-design`
+* Design: link:../design/shared/starting-work.adoc[Starting Work] with link:../design/shared/starting-work.adoc#chat[Chatting About the Request]; the web app's views of `web-design`
 
 == Done When
 
