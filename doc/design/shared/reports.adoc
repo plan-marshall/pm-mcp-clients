@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Reports
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope]_
 

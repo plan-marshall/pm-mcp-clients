@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » System
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics] (proposed)_
 

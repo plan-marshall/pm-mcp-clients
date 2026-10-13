@@ -270,13 +270,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-reports.adoc[`cli-reports`]
 |Reports and the completion report in the terminal
 |`blocked`
-|link:report-contract.adoc[`report-contract`]; link:cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
+|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:web-reports.adoc[`web-reports`]
 |Reports and the completion report in the web app
 |`blocked`
-|link:report-contract.adoc[`report-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
+|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:system-contract.adoc[`system-contract`]
