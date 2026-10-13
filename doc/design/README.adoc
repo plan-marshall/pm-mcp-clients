@@ -35,11 +35,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/decisions.adoc[Decisions]
 |`DRAFT`
-|What both clients show of a decision a plan asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, announcing (with the web app's browser notification), a waiver request, and how it ends.
+|What both clients show of a decision a plan asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, a chat before answering, announcing (with the web app's browser notification), a waiver request, and how it ends; its texts in link:shared/decisions-texts.adoc[a part of their own].
 
 |link:shared/plan-overview.adoc[Plan Overview]
 |`DRAFT`
-|What both clients show of the running work across projects: the projects with running work, a project by plan and by epic, what a row shows (the closed lists of states and of what needs the operator), how plans and epics are told apart, a project's ended work opening read-only, live updates, and where the operator left it.
+|What both clients show of the running work across projects: the projects with running work, a project by plan and by epic, what a row shows (the closed lists of states and of what needs the operator), how plans and epics are told apart, a project's ended work opening read-only with a chat about it, live updates, and where the operator left it.
 
 |link:shared/project-explorer.adoc[Project Explorer]
 |`DRAFT`
@@ -55,7 +55,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/starting-work.adoc[Starting Work]
 |`DRAFT`
-|What both clients show while a plan or an epic is started: the setup gate, the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request) with each source's states, their progress through fetching and screening, a flagged source, the ready step with title and id, the creation and its re-check, adopting an epic from elsewhere, a recipe and its parameters, the decomposition, leaving and continuing; its texts in link:shared/starting-work-texts.adoc[a part of their own].
+|What both clients show while a plan or an epic is started: the setup gate, the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request) with each source's states, their progress through fetching and screening, a flagged source, the ready step with title and id, the creation and its re-check, adopting an epic from elsewhere, a chat about the request before it starts, a recipe and its parameters, the decomposition, leaving and continuing; its texts in link:shared/starting-work-texts.adoc[a part of their own].
 
 |link:shared/epic-view.adoc[Epic View]
 |`DRAFT`
@@ -63,7 +63,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
 |`DRAFT`
-|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its settings, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change; what holds a plan (stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each; its texts in link:shared/work-actions-texts.adoc[a part of their own] and link:shared/work-actions-chat-texts.adoc[the chat's part].
+|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its settings, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each; its texts in link:shared/work-actions-texts.adoc[a part of their own] and link:shared/work-actions-chat-texts.adoc[the chat's part].
 
 |link:shared/consents.adoc[Consents]
 |`DRAFT`

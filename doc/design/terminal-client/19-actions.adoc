@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
 
 What the actions are, per state, is link:../shared/work-actions.adoc[Actions on Plans and Epics], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[Use Cases, Controlling Work]). This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
@@ -17,7 +17,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   plan start <plan_id>
   plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]
   plan abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
-  plan chat <plan_id>                    the chat with the plan's planning role
+  plan chat <plan_id>                    the chat with the plan's planning role; on an ended plan, about its archive
   config <aspect> --plan <plan_id>       the plan's settings, in every state (plan-defaults, roles, providers)
   epic <epic_id>                         the epic's view
   epic next <epic_id> [--raise-scope]
@@ -26,7 +26,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
   epic findings <epic_id>                the findings review
   epic watches <epic_id>                 the watches review
-  epic chat <epic_id>                    the chat with the epic's planning role
+  epic chat <epic_id>                    the chat with the epic's planning role; on an ended epic, about its archive
 ----
 
 * All are operator verbs, in the console and as one shell command, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
@@ -59,7 +59,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 * *The menu is modal*: while it is open, only its mnemonics, `↑` `↓` with `Enter`, and `a` or `Esc` (which close it) act; the keys of the view wait until it is closed.
 * *Its mnemonics* are texts of the catalogue, `operator.actions.key.*` (xref:22-texts-actions.adoc#actions-keys[Keys]), in the language of the client; none is `a`, which closes the menu in every language.
-* *What it offers* follows the state, from the runtime: a running plan _Pause…_, _Cancel…_, _Chat…_, _Settings…_; a pausing plan _Start_, _Cancel…_, _Chat…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Chat…_, _Settings…_; an epic that has not ended _Chat…_ among its actions; a plan that holds also the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_; an ended plan or epic nothing (`fix-relay has ended: its view only`).
+* *What it offers* follows the state, from the runtime: a running plan _Pause…_, _Cancel…_, _Chat…_, _Settings…_; a pausing plan _Start_, _Cancel…_, _Chat…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Chat…_, _Settings…_; an epic that has not ended _Chat…_ among its actions; a plan that holds also the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_; an ended plan or epic _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; <<chat-ended>>).
 * An action with `…` leaves the view for its dialogue and returns to it afterwards; _Start_ and _Next plan_ act in place and the row follows. _Settings…_ asks which aspect (`plan-defaults`, `roles`, `providers`) and runs `config <aspect> --plan <plan_id>`.
 * A plan's own pull request is shown by its number (`#214`), a terminal hyperlink (OSC 8) where the terminal shows one; the dialogues print its URL.
 
@@ -305,7 +305,7 @@ pm ›
 [#chat]
 == A Chat
 
-`plan chat <plan_id>` and `epic chat <epic_id>` open the chat of link:../shared/work-actions.adoc#chat[Chatting with the Planning Role]; `h) chat` in the menu below a row, in the review (<<review>>), and in the decomposition (xref:18-starting.adoc#decomposition[The Decomposition]) opens the same dialogue with its scope.
+`plan chat <plan_id>` and `epic chat <epic_id>` open the chat of link:../shared/work-actions.adoc#chat[Chatting with the Planning Role]; `h) chat` in the menu below a row, in the review (<<review>>), in the decomposition (xref:18-starting.adoc#decomposition[The Decomposition]), at a decision's prompt (xref:14-transcripts-decisions.adoc#t-decision-chat[A Chat Before Answering]), at the list of sources (xref:18-starting.adoc#chat[Chatting About the Request]), and on ended work (<<chat-ended>>) opens the same dialogue with its scope (link:../shared/work-actions.adoc#chat-places[The Same Chat in Three More Places]).
 
 [source,text]
 ----
@@ -332,6 +332,36 @@ pm ›
 * *A proposed change* is a read-back, old against new: `Enter` accepts, `r) reject` drops it; a check that fails prints its reason (`not applied: …`) and the chat goes on.
 * *A running plan* takes an accepted revision at its next task boundary, and the line after it says so once it is applied; a question changes nothing.
 * *Chat is refused* with its reason while no configuration of the routed role qualifies (`no configuration of replan qualifies yet`), and `--no-input` refuses it, since every turn needs the operator.
+
+[#chat-ended]
+=== A Chat About Ended Work
+
+`plan chat` and `epic chat` on an ended plan or epic, and `h) chat` in the menu of `a` on ended work or an ended view, open the read-only chat of link:../shared/work-actions.adoc#chat-ended[A Chat About Ended Work]:
+
+[source,text]
+----
+pm › plan chat codeberg-issues
+Chat · codeberg-issues · with replan · its archived record   an empty line ends it
+  read only: the archive stays as it is
+  you     › Why was it cancelled, and what would a new attempt need?
+    ▶  replan answers
+  replan  You cancelled it: replaced by relay-v2. Its outline was done; the
+          provider's tests waited for the relay's new event API.
+  you     › Draft the follow-up on top of relay-v2.
+    ▶  replan answers
+  Proposed follow-up plan
+  + Add the Codeberg issue provider on top of relay-v2.
+  + follows codeberg-issues, cancelled: replaced by relay-v2
+Start a plan with it? [Enter]   r) reject   ?   › ⏎
+✓ The chat is kept with codeberg-issues.
+A new plan is being started in pm-mcp-clients with this description; go on with its sources.
+[1/2] Sources · What does the plan start from?   project pm-mcp-clients
+    ✓  description   "Add the Codeberg issue provider on top of relay-v2. …"
+  d) description   f) documents   i) issue   l) lesson (2)   h) chat   Enter) continue   x) remove one   ?   › 
+----
+
+* The chat changes nothing of the archive; its only proposal is the follow-up plan's description, and `Enter` opens `plan add` at its sources (xref:18-starting.adoc#plan[Starting a Plan]) with that description stored. Nothing starts before _Start the plan_ at the ready step.
+* `r) reject` drops the proposal and the chat goes on; an empty line ends it, and the transcript is kept with the archive entry.
 
 [#actions-texts]
 == Texts of the Terminal

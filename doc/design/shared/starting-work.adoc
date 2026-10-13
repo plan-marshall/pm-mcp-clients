@@ -45,13 +45,14 @@ Starting a plan or an epic is one guided run in which the operator only says wha
 
   + Description   + Documents   + Issue   + Lesson   + Local changes   + Pull request
   ─────────────────────────────────────────────────────────────────────────────
-                                                      [Continue]  (waits for 1 source)
+  [Chat]                                              [Continue]  (waits for 1 source)
 ----
 
 * *A source's line*: its kind, what it is (the start of a description, the paths, an issue's reference and, once fetched, its title), and its state: `checking`, `fetching`, `screening`, `stored`, `copied`, `moved`, `flagged`, or the cause of a failure with _Try again_ and _Remove_. A stored source can be removed until the start.
 * *What may be added*: an epic offers description, documents, and issue; a plan also lesson (only when the project has unclaimed lessons), local changes (only when the checkout has some), and pull request. A plan with local changes or a pull request takes no issue and no lesson besides, and the line says why another kind is not offered (`a plan that adopts a pull request takes only descriptions and documents besides`).
 * *Continue* is offered once there is at least one source and every source is stored, screened or accepted; until then it names what it waits for.
 * *Trust*: a source from outside the machine shows `untrusted` until its screening passed, then nothing; the operator's own sources never show a mark.
+* *Chat* opens a chat about the request before it starts (<<chat>>), once at least one source is stored and screened; until then it is disabled with that reason.
 * *States*: each kind of source is a sub-workflow of its own, and its states are named `source-<kind>.<state>` (`source-documents`, `source-issue`, `source-pr`, `source-lesson`, `source-local-changes`); each subsection names those it shows.
 
 [#adopt]
@@ -116,6 +117,31 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 * *Failed* (`source-pr.failed`): the cause (`not open`, `its head branch is not writable`, `not found`) with _Try again_ and _Remove it_.
 * *Screened* (`source-pr.store`, `source-pr.screen`): like an issue; then shown with its title and its changed files.
 * *Flagged* (`source-pr.flagged`): as a flagged issue (<<issue>>): the spans with their reason, _Use it anyway_ (with a reason) or _Remove it_.
+
+[#chat]
+=== Chatting About the Request
+
+At `start.sources` (`start-epic.sources`) the operator may talk the request through with the role that will plan it before it starts: what the model understood, what is unclear, what is out of scope (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2]). It is the one chat of both clients (link:work-actions.adoc#chat[Chatting with the Planning Role]); only its scope, its role, and what a proposal does differ.
+
+----
+  Chat · a new plan in pm-mcp-clients · with refine                  the request
+  ─────────────────────────────────────────────────────────────────────────────
+  You      What did you understand, and what is unclear?
+  refine   A provider that reads Codeberg issues. Unclear: comments too, and
+           should pull requests of Codeberg follow?
+  ─────────────────────────────────────────────────────────────────────────────
+  Proposed addition to the description
+  + Comments are read with the issue. Pull requests of Codeberg are out of
+  + scope for this plan.
+                                                         [Reject]  [Accept]
+----
+
+* *Scope*: the entry: its stored sources, those from outside the machine marked `untrusted` and read as data, and its description. Nothing of a plan exists yet; the head names the entry (`a new plan in pm-mcp-clients`).
+* *Role*: a plan's entry goes to `refine`, an epic's to `decompose`. _Chat_ is disabled with its reason while no configuration of the role qualifies, and is not offered for a recipe.
+* *The one change it may propose is the description*: a rewrite of one description of the entry, or an addition to it, read back old against new. _Accept_ stores it through the start's own path (`start.store-description`), as the operator's description; where the entry has no description yet, an addition becomes its first. A start chat never changes, adds, or removes another source.
+* *Optional*: starting never waits for a chat, and _Continue_ stays as it is while a chat is open; leaving the entry keeps the chat with it.
+* *The transcript* stays with the entry and goes with its source directory to the plan or the epic at `start.create`, kept for audit and not a source the work reads; abandoning the entry deletes it.
+* *In the web app* the chat is the panel beside the list of sources, as beside a plan view.
 
 [#ready]
 == Ready

@@ -96,7 +96,7 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `onboard`: the onboarding of the machine;
 ** `web`: the frame and navigation of the web app;
 ** `plan`: the plan view (link:plan-view.adoc#texts[Plan View]);
-** `decision`: what both clients show of a decision and a waiver request (link:decisions.adoc#texts[Decisions]);
+** `decision`: what both clients show of a decision and a waiver request (link:decisions-texts.adoc#texts[Decisions, Texts]);
 ** `overview`: running work, ended work, and the epic view (link:plan-overview.adoc#texts[Plan Overview], link:epic-view.adoc#texts[Epic View]);
 ** `project`: the projects, their onboarding, release, and unenrolment (link:project-explorer.adoc#texts[Project Explorer], link:project-onboarding.adoc#texts[Project Onboarding]);
 ** `start`: starting a plan or an epic (link:starting-work-texts.adoc#texts[Starting Work, Texts]);

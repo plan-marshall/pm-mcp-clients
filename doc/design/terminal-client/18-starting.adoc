@@ -70,7 +70,7 @@ pm › plan add
 [1/2] Sources · What does the plan start from?
     ✓  description   "Add a Codeberg provider for issues, so that …"
   d) description   f) documents   i) issue   l) lesson (2)   c) local changes (4 files)
-  p) pull request   Enter) continue   x) remove one   ?   › f
+  p) pull request   h) chat   Enter) continue   x) remove one   ?   › f
   Path   › doc/concepts/forgejo.adoc
     ✓  doc/concepts/forgejo.adoc   18 KB
   Copy or move?   1) copy ← the machine's default   2) move   a) always this   › ⏎
@@ -84,7 +84,7 @@ pm › plan add
     ▶  issue   https://codeberg.org/forgejo/forgejo/issues/4711   fetching
     ▶  issue   https://codeberg.org/forgejo/forgejo/issues/4711   screening   untrusted
     ✓  issue   https://codeberg.org/forgejo/forgejo/issues/4711   Issue comments API · open
-  d) description   f) documents   i) issue   l) lesson (2)   Enter) continue   x) remove one   ?   › ⏎
+  d) description   f) documents   i) issue   l) lesson (2)   h) chat   Enter) continue   x) remove one   ?   › ⏎
 
 [2/2] Ready · The plan starts from
   Description   "Add a Codeberg provider for issues, so that …"
@@ -100,6 +100,7 @@ pm ›
 
 * The source line updates in place while it is fetched and screened; the prompt stays usable, and a source still at work is shown by `Enter) continue` as `waits for 1 source`.
 * *The keys that still apply*: after a description and a document every kind is still offered; once an issue or a lesson is added, `c` (local changes) and `p` (pull request) are no longer offered, since a plan that lands local changes or adopts a pull request starts from it alone, with descriptions and documents at most; once local changes or a pull request are added, `i`, `l`, and the other of the two are no longer offered, and a line says why (<<pull-request>>). A kind the project does not have (no unclaimed lesson, no local changes) is never shown.
+* `h) chat` is offered once a source is stored and screened, for a plan and an epic, never for a recipe (<<chat>>).
 * `l` lists the unclaimed lessons, numbered (<<lesson>>); `c` shows the local changes as files with their counts of lines before they are added (<<local-changes>>).
 * _Follow it_ opens the plan's view (xref:16-plan-view.adoc[The Plan View]); _back to the project_ opens the project's actions in the explorer.
 * What the plan needs and has no value for (its posture, its base branch) is not asked here: it is asked where the plan first needs it, as a decision (link:../shared/decisions.adoc[Decisions]).
@@ -164,7 +165,7 @@ The flagged spans are printed as plain text between quotes, never interpreted, w
 [1/2] Sources · What does the plan start from?
     ✓  pull request   https://github.com/plan-marshall/pm-mcp-clients/pull/236   Retry the relay handshake · 3 files
   A plan that adopts a pull request starts from it alone, with descriptions and documents at most.
-  d) description   f) documents   Enter) continue   x) remove one   ?   › ⏎
+  d) description   f) documents   h) chat   Enter) continue   x) remove one   ?   › ⏎
 ----
 
 * A number is shown at once as the URL of the pull request in the project's repository; the URL is what is stored and shown from then on. A URL of another repository is refused: a plan adopts only a pull request of its own project.
@@ -196,7 +197,7 @@ The flagged spans are printed as plain text between quotes, never interpreted, w
   › 2
     ✗  lesson   The relay retries without a backoff   claimed by plan relay-backoff meanwhile
   o) choose another   b) back   ?   › b
-  d) description   f) documents   i) issue   l) lesson (1)   Enter) continue   x) remove one   ?   › ⏎
+  d) description   f) documents   i) issue   l) lesson (1)   h) chat   Enter) continue   x) remove one   ?   › ⏎
 ----
 
 * `source-lesson.resolve` checks the premise against the current checkout: whether the files and symbols the lesson cites still exist.
@@ -219,7 +220,7 @@ The flagged spans are printed as plain text between quotes, never interpreted, w
   Add the local changes? [Enter]   n) not now   ?   › ⏎
     ✓  local changes   4 files, +161 −61   stored · captured when the plan starts
   A plan that lands local changes starts from them alone, with descriptions and documents at most.
-  d) description   f) documents   Enter) continue   x) remove one   ?   › ⏎
+  d) description   f) documents   h) chat   Enter) continue   x) remove one   ?   › ⏎
 
 [2/2] Ready · The plan starts from
   Local changes   4 files, +161 −61 against main
@@ -235,6 +236,39 @@ pm ›
 * `source-local-changes.preview` lists the changed files against the branch with their counts of lines; `n` leaves them out, and nothing is recorded.
 * At creation the changes are captured as a snapshot commit, and the plan runs the land lane; a file changed between the preview and the creation is captured with the rest, and the creation names it.
 * As a direct verb: `plan add --local-changes`; the preview is printed, and the confirmation is the argument itself.
+
+[#chat]
+=== Chatting About the Request
+
+`h) chat` at the list of sources opens the chat of xref:19-actions.adoc#chat[A Chat] with the entry as its scope (link:../shared/starting-work.adoc#chat[Starting Work, Chatting About the Request]): a plan's entry with `refine`, an epic's with `decompose`.
+
+[source,text]
+----
+[1/2] Sources · What does the plan start from?
+    ✓  description   "Add a Codeberg provider for issues, so that …"
+    ✓  issue   https://codeberg.org/forgejo/forgejo/issues/4711   Issue comments API · open
+  d) description   f) documents   i) issue   l) lesson (2)   h) chat   Enter) continue   x) remove one   ?   › h
+Chat · a new plan in pm-mcp-clients · with refine · the request   an empty line ends it
+  you     › What did you understand, and what is unclear?
+    ▶  refine answers
+  refine  A provider that reads Codeberg issues. The issue (untrusted) also asks
+          for pull requests of Codeberg; your description does not. Unclear:
+          are comments read with the issue?
+  you     › Comments yes, pull requests no.
+    ▶  refine answers
+  Proposed addition to the description
+  + Comments are read with the issue. Pull requests of Codeberg are out of
+  + scope for this plan.
+Accept? [Enter]   r) reject   ?   › ⏎
+    ✓  description stored
+  you     › ⏎
+✓ The chat is kept with a new plan in pm-mcp-clients.
+  d) description   f) documents   i) issue   l) lesson (2)   h) chat   Enter) continue   x) remove one   ?   › ⏎
+----
+
+* The only proposal of a start chat is the description, a rewrite or an addition, read back old against new; it never touches another source.
+* The chat is optional and changes nothing else of the entry; `Enter) continue` goes on as before. Its transcript goes with the entry into the plan's source directory at the start, kept for audit and never read as a source.
+* `--no-input` refuses it, as every chat (xref:19-actions.adoc#chat[A Chat]).
 
 [#shell]
 === As One Shell Command
@@ -267,7 +301,7 @@ pm › epic add
     ✓  doc/concepts/relay-hardening/   4 files: 3 adoc, 1 svg
   Copy or move?   1) copy ← the machine's default   2) move   a) always this   › ⏎
     ✓  documents     doc/concepts/relay-hardening/   copied
-  d) description   f) documents   i) issue   Enter) continue   x) remove one   ?   › ⏎
+  d) description   f) documents   i) issue   h) chat   Enter) continue   x) remove one   ?   › ⏎
 
 [2/3] Ready · The epic starts from
   Documents     doc/concepts/relay-hardening/   4 files

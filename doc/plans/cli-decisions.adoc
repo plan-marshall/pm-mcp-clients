@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The decisions of the console as designed: announcing above the prompt with the badge and the bell or a notification, `questions` and `answer` with the decision's states, the parts, own words with read-back and clarification, `!` during a dialogue, waiver requests with `waive` and `decline`, answered elsewhere and changed decisions.
+* The decisions of the console as designed: announcing above the prompt with the badge and the bell or a notification, `questions` and `answer` with the decision's states, the parts, own words with read-back and clarification, `!` during a dialogue, waiver requests with `waive` and `decline`, answered elsewhere and changed decisions; `h) chat` at `decision.answer` opening the chat dialogue of `cli-start` with the decision as its scope, a proposed answer taken through the read-back, a decision withdrawn by a revision, and the chat ended by an answer elsewhere.
 * Texts from the catalogue only; every text of a decision shown after its control sequences are removed.
 
 == Trace
@@ -19,7 +19,8 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]
-* Design: link:../design/shared/decisions.adoc[Decisions]; link:../design/terminal-client/04-console.adoc[The Console]; link:../design/terminal-client/14-transcripts-decisions.adoc[Decisions, Transcripts]
+* Use case: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role]
+* Design: link:../design/shared/decisions.adoc[Decisions] with link:../design/shared/decisions.adoc#chat[A Chat Before Answering]; link:../design/terminal-client/04-console.adoc[The Console]; link:../design/terminal-client/14-transcripts-decisions.adoc[Decisions, Transcripts]
 
 == Done When
 

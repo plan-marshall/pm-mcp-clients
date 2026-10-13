@@ -129,7 +129,7 @@ The view follows the plan's events: a node entered becomes _running_, one left _
 [#ended]
 === An Ended Plan
 
-An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome, the reason where the operator gave one, and the end time in the head; no action, and no live update.
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome, the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]).
 
 [#texts]
 == Texts

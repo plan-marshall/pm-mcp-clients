@@ -5,14 +5,14 @@
 
 link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics] » link:work-actions.adoc#chat[Chatting with the Planning Role] » Texts
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed); link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), where the chat is also opened_
 
 Status: `DRAFT`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts
 
-Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat`, `control.review.chat`, or `start.decomposition.chat` where it is opened.
+Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -23,8 +23,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |Chat · {subject} · mit {role}
 
 |`control.chat.scope`
-|{scope, select, plan {the whole plan} epic {the whole epic} draft {the decomposition draft} item {{item}} other {the whole register}}
-|{scope, select, plan {der ganze Plan} epic {das ganze Epic} draft {der Entwurf der Zerlegung} item {{item}} other {das ganze Register}}
+|{scope, select, plan {the whole plan} epic {the whole epic} draft {the decomposition draft} item {{item}} decision {decision {item}} entry {the request} archive {its archived record} other {the whole register}}
+|{scope, select, plan {der ganze Plan} epic {das ganze Epic} draft {der Entwurf der Zerlegung} item {{item}} decision {Entscheidung {item}} entry {die Anfrage} archive {sein archivierter Verlauf} other {das ganze Register}}
 
 |`control.chat.you`
 |You
@@ -77,6 +77,26 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.ended`
 |The chat is kept with {subject}.
 |Der Chat bleibt bei {subject} gespeichert.
+
+|`control.chat.read_only`
+|read only: the archive stays as it is
+|nur lesend: das Archiv bleibt, wie es ist
+
+|`control.chat.follow_up`
+|Proposed follow-up plan
+|Vorgeschlagener Folgeplan
+
+|`control.chat.follow_up.start`
+|Start a plan with it
+|Starte damit einen Plan
+
+|`control.chat.follow_up.names`
+|follows {plan}, {outcome}: {reason}
+|folgt auf {plan}, {outcome}: {reason}
+
+|`control.chat.follow_up.opened`
+|A new plan is being started in {project} with this description; go on with its sources.
+|Ein neuer Plan wird in {project} mit dieser Beschreibung gestartet; mach mit seinen Quellen weiter.
 
 |`control.chat.unqualified`
 |no configuration of {role} qualifies yet

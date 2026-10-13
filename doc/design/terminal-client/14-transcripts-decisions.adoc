@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » Transcripts: Decisions
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
 
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts]. What a decision carries and how every client shows it is link:../shared/decisions.adoc[Decisions]; these transcripts show each variant in the console. The states are those of the sub-workflow `decision.*` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]).
 
@@ -28,7 +28,7 @@ Question Q-007 · plan fix-relay · execute · blocks the plan · can be undone
   Recommended by implement: Rebase onto main. Keeps the history linear.
   Against it (quorum-b): the branch was pushed; a rebase rewrites what others pulled.
 
-Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › ⏎
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › ⏎
 ✓ Q-007 answered: Rebase onto main. The plan goes on.
 pm ›
 ----
@@ -51,10 +51,10 @@ Question Q-009 · plan drop-legacy-api · finalize · blocks the plan · cannot 
   Votes: split. The recommendation is one step away, so that you weigh the
   options first: ?r
 
-Choose: 1-3   w) in my own words   x) none fits   l) later   ?   › ?r
+Choose: 1-3   w) in my own words   h) chat   x) none fits   l) later   ?   › ?r
   Recommended by architecture: Deprecate them, delete in 0.11.
   Against it (quorum-a): two clients of v1 are known; both migrated last week.
-Choose: 1-3   w) in my own words   x) none fits   l) later   ?   › 2
+Choose: 1-3   w) in my own words   h) chat   x) none fits   l) later   ?   › 2
 
 Your decision · Q-009 · cannot be undone
   Deprecate the v1 endpoints, delete them in 0.11.
@@ -107,7 +107,7 @@ Decide? [Enter]   1-3) change a part   ?   › ⏎
 
 [source,text]
 ----
-Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   x) none fits   l) later   ?   › w
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › w
 Your answer (Enter sends it): › rebase, but leave release/0.9 alone, it is frozen
   ⠴  interpret is reading your answer       0:03
 
@@ -153,9 +153,9 @@ Question Q-003 · plan cli-onboarding · refine · blocks the plan · can be und
     2) Commands and answers
   Recommended by refine: Commands only. Answers can hold content of the project.
 
-Commands only? [Enter]   other: 1-2   w) in my own words   m) add a note   x) none fits   l) later   ?   › m
+Commands only? [Enter]   other: 1-2   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › m
 Your note: › and say so in the help text
-Commands only? [Enter]   other: 1-2   w) in my own words   m) ✎ note   x) none fits   l) later   ?   › ⏎
+Commands only? [Enter]   other: 1-2   w) in my own words   m) ✎ note   h) chat   x) none fits   l) later   ?   › ⏎
 ✓ Q-003 answered: Commands only (with your note).
 ----
 
@@ -177,6 +177,74 @@ pm [1 question] ›
 ----
 
 * No decision expires: the plan waits until the operator answers it, and `questions` shows since when.
+
+[#t-decision-chat]
+=== A Chat Before Answering (`decision.answer`, `chat.*`, `decision.interpret`)
+
+`h) chat` opens the chat of xref:19-actions.adoc#chat[A Chat] with the decision as its scope (link:../shared/decisions.adoc#chat[Decisions, A Chat Before Answering]); its key is the chat's everywhere, `operator.actions.key.chat` (`h`, German `t`).
+
+[source,text]
+----
+pm [1 question] › answer Q-007
+Question Q-007 · plan fix-relay · execute · blocks the plan · can be undone
+  …
+Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h) chat   x) none fits   l) later   ?   › h
+Chat · fix-relay · with implement · decision Q-007        an empty line ends it
+  you        › What does a rebase mean for the open pull request #214?
+    ▶  implement answers
+  implement  #214 has 2 review comments on RelayServer.java. A rebase rewrites
+             the branch; the comments stay, their lines may move. That is the
+             dissent of quorum-b.
+  you        › Then merge, but only while release/0.9 stays untouched.
+    ▶  implement answers
+  Proposed answer
+    merge main into the branch, as long as release/0.9 stays untouched
+Answer in these words? [Enter]   r) reject   ?   › ⏎
+  ⠴  interpret is reading your answer       0:02
+
+I understood: Merge main into the branch, provided release/0.9 stays as it is.
+  your words: merge main into the branch, as long as release/0.9 stays untouched
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
+✓ Q-007 answered after a chat: Merge main into the branch, provided release/0.9 stays as it is.
+pm ›
+----
+
+A revision that removes the need for the decision, and a chat ended without an answer:
+
+[source,text]
+----
+pm [2 questions] › answer Q-016
+Question Q-016 · plan storage-v2 · execute · blocks the plan · can be undone
+  How is the old store migrated?
+…   h) chat   x) none fits   l) later   ?   › h
+Chat · storage-v2 · with replan · decision Q-016          an empty line ends it
+  you        › Could the plan avoid the migration altogether?
+  replan     Yes: the new store can read the old files as they are.
+  Proposed change
+  - TASK-5  migrate the store at the first start of the new release
+  + TASK-5  read the old files in place; no migration
+Accept? [Enter]   r) reject   ?   › ⏎
+    ✓  accepted: applied
+– Q-016 is closed: the revision removed the need for it (nothing is migrated).
+✓ The chat is kept with Q-016.
+pm [1 question] › answer Q-014
+…   h) chat   x) none fits   l) later   ?   › h
+Chat · fix-relay · with replan · decision Q-014           an empty line ends it
+  you        › Why is this asked now and not after the review?
+  replan     The task graph needs it before TASK-7 can be planned.
+  you        › ⏎
+✓ The chat is kept with Q-014.
+Question Q-014 · plan fix-relay · plan · blocks the plan · can be undone
+  …
+----
+
+* `h) chat` stands with _none fits_ and _later_, for the whole decision; it is no answer, and the plan waits while it runs.
+* The role follows who asked: Q-007 was asked by the task `implement`, so its chat goes to `implement`; Q-016, escalated by a quorum, and Q-014, raised by a server rule, go to the plan's planning role `replan`.
+* A proposed answer is offered only where the part takes own words; `Enter` sends it to `interpret` as the operator's words, and the read-back follows as in <<t-decision-own-words>>. `r) reject` drops it and the chat goes on.
+* A revision accepted in the chat leaves the decision open (`Q-014 stays open; answer it once the chat has ended.`) unless the runtime closes it as withdrawn, as above.
+* Answered in another channel during the chat, the console prints `– Q-007 was answered in the web app (iPad); the chat has ended.` and returns to its prompt.
+* While no configuration of the routed role qualifies, `h` is refused with the reason (`no configuration of implement qualifies yet`); a waiver request has no `h`.
 
 [#t-decision-waiver]
 === A Waiver Request
@@ -221,12 +289,12 @@ pm [1 waiver request] ›
 [#t-decision-texts]
 === The Texts of These Transcripts
 
-The texts are the shared ones of link:../shared/decisions.adoc#texts[Decisions, Texts] (`decision.*`, among them `decision.interpret.working` with the role `interpret`, `decision.confirm.action` for `Decide?`, `decision.outcome.rethink`, `decision.outcome.revised`, and `decision.waiver.title`, `decision.waiver.waive`, `decision.waiver.decline`, `decision.waiver.later`, `decision.waiver.reason` for the waiver request), and the console's own of <<texts-operator-decisions>> (`operator.decision.*`) for the prompts only the terminal has: `Your answer (Enter sends it):`, `Your note:`, `Choose: 1-3`, `1-3) change a part`, the line of _later_, the confirmation of _none fits_, the result lines, and the prompt and results of a waiver request.
+The texts are the shared ones of link:../shared/decisions-texts.adoc#texts[Decisions, Texts] (`decision.*`, among them `decision.interpret.working` with the role `interpret`, `decision.confirm.action` for `Decide?`, `decision.outcome.rethink`, `decision.outcome.revised`, and `decision.waiver.title`, `decision.waiver.waive`, `decision.waiver.decline`, `decision.waiver.later`, `decision.waiver.reason` for the waiver request), and the console's own of <<texts-operator-decisions>> (`operator.decision.*`) for the prompts only the terminal has: `Your answer (Enter sends it):`, `Your note:`, `Choose: 1-3`, `1-3) change a part`, the line of _later_, the confirmation of _none fits_, the result lines, the prompt of a proposed answer in a chat, and the prompt and results of a waiver request; the chat itself has the texts of xref:22-texts-actions.adoc#actions-texts[Actions] and `decision.chat.*`.
 
 [#texts-operator-decisions]
 == Texts: Decisions in the Console
 
-The prompts and result lines only the terminal has; what both clients show is `decision.*` (link:../shared/decisions.adoc#texts[Decisions, Texts]).
+The prompts and result lines only the terminal has; what both clients show is `decision.*` (link:../shared/decisions-texts.adoc#texts[Decisions, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -291,6 +359,14 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |`operator.decision.waived`
 |Waived {gate} for {plan}.
 |Waiver für {gate} in {plan} gewährt.
+
+|`operator.decision.chat_use_words`
+|Answer in these words?
+|Mit diesen Worten antworten?
+
+|`operator.decision.answered_after_chat`
+|{id} answered after a chat: {answer}
+|{id} nach einem Chat beantwortet: {answer}
 
 |`operator.decision.declined`
 |Declined {id}: the plan takes its next step without the waiver.

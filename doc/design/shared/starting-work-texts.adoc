@@ -210,6 +210,26 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Continue
 |Weiter
 
+|`start.sources.chat`
+|Chat
+|Chat
+
+|`start.chat.subject`
+|{kind, select, plan {a new plan} other {a new epic}} in {project}
+|{kind, select, plan {ein neuer Plan} other {ein neues Epic}} in {project}
+
+|`start.chat.waits`
+|available once a source is stored and screened
+|verfügbar, sobald eine Quelle gespeichert und geprüft ist
+
+|`start.chat.proposed`
+|{change, select, rewrite {Proposed rewrite of the description} other {Proposed addition to the description}}
+|{change, select, rewrite {Vorgeschlagene Neufassung der Beschreibung} other {Vorgeschlagene Ergänzung der Beschreibung}}
+
+|`start.chat.stored`
+|description stored
+|Beschreibung gespeichert
+
 |`start.documents.directory`
 |{count, plural, one {# file} other {# files}}: {types}
 |{count, plural, one {# Datei} other {# Dateien}}: {types}

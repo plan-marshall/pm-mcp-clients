@@ -27,8 +27,8 @@ The texts of the actions, the dialogues, and the review are those of link:../sha
 |{name} ist {state}: {actions}
 
 |`operator.actions.ended`
-|{name} has ended: its view only
-|{name} ist beendet: nur seine Ansicht
+|{name} has ended: its view, and a chat about it
+|{name} ist beendet: seine Ansicht und ein Chat darüber
 
 |`operator.actions.chat_end`
 |an empty line ends it
@@ -53,6 +53,10 @@ The texts of the actions, the dialogues, and the review are those of link:../sha
 |`operator.actions.chat.accepted`
 |accepted: {when, select, boundary {applies after the current task} other {applied}}
 |angenommen: {when, select, boundary {gilt nach dem laufenden Task} other {übernommen}}
+
+|`operator.actions.chat.follow_up`
+|Start a plan with it?
+|Damit einen Plan starten?
 
 |`operator.actions.chat.no_input`
 |The chat needs you at every turn; --no-input refuses it.

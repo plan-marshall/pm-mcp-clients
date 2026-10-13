@@ -147,9 +147,9 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |`rename`, `revoke`, `revoke_others`, `listener_off`
 |the paired devices (xref:08-transcripts-later.adoc#t-devices[Paired Devices])
 
-|`w`, `m`, `x`, `l`
-|`w`, `n`, `x`, `s`
-|in my own words, add a note, none fits, later
+|`w`, `m`, `h`, `x`, `l`
+|`w`, `n`, `t`, `x`, `s`
+|in my own words, add a note, chat (the key of every chat, `operator.actions.key.chat`), none fits, later
 |`decision.answer`
 
 |`y`, `d`, `l`

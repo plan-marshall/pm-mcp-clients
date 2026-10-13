@@ -58,7 +58,7 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:../shared/project-onboarding.adoc[Project Onboarding] (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]); each open run is a route of its own
 
 |Running work and ended work
-|link:../shared/plan-overview.adoc[Plan Overview] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]), with the ended plans and epics (link:../shared/plan-overview.adoc#ended[Ended Work])
+|link:../shared/plan-overview.adoc[Plan Overview] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]), with the ended plans and epics (link:../shared/plan-overview.adoc#ended[Ended Work]) and their read-only chat (link:../shared/work-actions.adoc#chat-ended[A Chat About Ended Work])
 
 |A plan
 |link:../shared/plan-view.adoc[Plan View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]); a plan's reference to its epic is a link
@@ -67,10 +67,10 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:../shared/epic-view.adoc[Epic View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5])
 
 |Decisions
-|link:../shared/decisions.adoc[Decisions] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]), with the browser notifications (link:../shared/decisions.adoc#announce[Announcing a Decision])
+|link:../shared/decisions.adoc[Decisions] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]), with the browser notifications (link:../shared/decisions.adoc#announce[Announcing a Decision]) and the chat panel beside a decision (link:../shared/decisions.adoc#chat[A Chat Before Answering])
 
 |Starting work
-|link:../shared/starting-work.adoc[Starting Work] (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9])
+|link:../shared/starting-work.adoc[Starting Work] (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9]), with the chat panel beside the list of sources (link:../shared/starting-work.adoc#chat[Chatting About the Request])
 
 |Actions on plans and epics
 |link:../shared/work-actions.adoc[Actions on Plans and Epics] (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]), with what holds a plan (link:../shared/work-actions.adoc#holds[What Holds a Plan], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]) and the reviews of findings and watches (link:../shared/work-actions.adoc#review[Reviewing Findings or Watches], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]); the chat with the planning role as a panel beside its view (link:../shared/work-actions.adoc#chat[Chatting with the Planning Role], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[proposed])
