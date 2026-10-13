@@ -15,6 +15,7 @@ Status: `DRAFT`. The design of the web app, the specification its implementation
 * link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
 * link:machine-settings.adoc[Machine Settings]: a later run of one aspect, the harnesses again (new and missing ones, the default), the providers verified again, the remembered consents and withdrawing one, the documents mode, a token rotated or replaced, the paired devices.
 * link:harness-icons.adoc[Harness Icons]: how a harness is shown, and the research behind it.
+* link:process-designer.adoc[Process Designer] with link:process-designer-texts.adoc[its Texts]: designing a workflow unit, the one part only the web app offers: the input (an uploaded file, a pasted text, an installed unit), the text and the structure side by side, the building blocks, validating with the composed process, download, placing on the machine or in the project with the difference first, removing.
 
 Everything else the web app shows is designed once for both clients in the shared designs (<<structure>>).
 
@@ -81,17 +82,16 @@ How the app is organised and how one moves from one part to another and back. Un
 |System
 |link:../shared/system.adoc[System] (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1]). Where it lives: an entry _System_ in the frame of the app beside the machine settings, opening the view as a route of its own (`/system`), its figures as links to what they count; the acts _Stop…_, _Restart…_, _Upgrade…_ as buttons of the view, each confirmation a dialogue over it; the progress line of a drain or an upgrade in the frame, above every view, on every paired device; the page of a stopped runtime in place of the view, which connects again by itself; a newer version shown on the entry while one is known; loading again after an upgrade. Laid out with the rest of the frame in the visual language below; built by link:../../plans/web-system.adoc[`web-system`]
 
+|Designing a process
+|link:process-designer.adoc[Process Designer] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3], the web app only), a route of its own (`/designer`), opened from a project's setup, a node of the plan view, and the machine settings; built by link:../../plans/web-designer.adoc[`web-designer`]
+
 |Texts
-|link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings])
+|link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings]); the area `designer` with link:process-designer-texts.adoc#texts[Process Designer]
 |===
 
 How the parts are laid out in one app (the header, the navigation between the explorer, the overview and the settings, the routes) is worked out with the visual language below.
 
 The sections below are the subjects still to work out.
-
-== Plan Designer
-
-Arranging the building blocks of a plan's process and showing the server's verdict on a design (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]).
 
 == Visual Language
 

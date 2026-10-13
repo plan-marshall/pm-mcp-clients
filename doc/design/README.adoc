@@ -31,7 +31,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:web-app/README.adoc[Web App]
 |`DRAFT`
-|The web app: its principles, the onboarding screens, the harness icons; its structure, plan views, plan designer, and visual language are still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
+|The web app: its principles, the onboarding screens, the harness icons, the process designer; its visual language is still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
+
+|link:web-app/process-designer.adoc[Process Designer]
+|`DRAFT`
+|The web app only (the terminal's `help` points to it): designing a workflow unit the operator may own (the project-owned units, the variants of the plan behaviour axes, recipes; compiled-only units read only), from an uploaded file, a pasted text, or an installed unit; text and structure side by side, the building blocks of the project's catalogue, validating as the runtime loads it with a composed process as a dry-run, download, placing on the machine or in the project (a short landing) with the difference first and the audit, removing; read only with validate and download at phone width; its texts in the area `designer`.
 
 |link:shared/decisions.adoc[Decisions]
 |`DRAFT`

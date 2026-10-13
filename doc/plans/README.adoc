@@ -297,6 +297,18 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:system-contract.adoc[`system-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-design.adoc[`web-design`]
 |epic clients
 
+|link:designer-contract.adoc[`designer-contract`]
+|Designing a process: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:process-contract.adoc[`process-contract`] (the composed process); link:../../../pm-mcp-core/doc/plans/process-designer.adoc[`pm-mcp-core` / `process-designer`]; UC-PLN-3 agreed (no work package)
+|epic clients
+
+|link:web-designer.adoc[`web-designer`]
+|The process designer in the web app (the web app only)
+|`blocked`
+|link:designer-contract.adoc[`designer-contract`]; link:web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:web-projects.adoc[`web-projects`] (a project's setup); link:web-design.adoc[`web-design`]
+|epic clients
+
 |===
 
 The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
