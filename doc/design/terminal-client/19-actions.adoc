@@ -159,12 +159,13 @@ pm ›
 [#epic-view]
 == An Epic's View
 
-`epic <epic_id>` prints the epic's view as a tree into the scrollback (link:../shared/epic-view.adoc[Epic View], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]); in the full-screen view, `Enter` on an epic opens it as its level, with the workstreams, the sources, the landings, and the events opening like nodes of the plan view, and `a` for its actions.
+`epic <epic_id>` prints the epic's view as a tree into the scrollback (link:../shared/epic-view.adoc[Epic View], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]); in the full-screen view, `Enter` on an epic opens it as its level, with the workstreams, the sources, the landings, and the events opening like nodes of the plan view, its header the path `pm-mcp-clients › relay-hardening`, `a` for its actions, and `p` for its project (key line `operator.plan.keys.project`), the project's level of the overview, one step away (link:../shared/epic-view.adoc#layout[Epic View]); `Enter` on a plan opens its plan view, whose `e` comes back to the epic (xref:16-plan-view.adoc#full-screen-keys[The Plan View, Keys]), and `Esc` goes back to where the epic's view was opened.
 
 [source,text]
 ----
 pm › epic relay-hardening
 relay-hardening · epic · running · 3 of 3 at once · running 6 d · needs you: 3
+  in pm-mcp-clients                                         status --project pm-mcp-clients
   needs you      relay-auth-v2 asks a decision (Q-014)      answer relay-auth-v2/Q-014
                  3 new findings                             epic findings relay-hardening
   WS-1 Reconnect                     2 shipped · 1 running · 1 paused
@@ -197,7 +198,7 @@ relay-hardening · epic · running · 3 of 3 at once · running 6 d · needs you
 pm ›
 ----
 
-* *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may, since when it runs, and the count of what needs the operator; what waits stands first below it, each with the command that opens it.
+* *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may, since when it runs, and the count of what needs the operator; below it the epic's project with the command that opens it (`operator.plan.tree.context`, xref:16-plan-view.adoc#plan-view-texts[The Plan View, Texts]); what waits stands first below that, each with the command that opens it.
 * *The workstreams*: each plan with its status from one list (`staged`, `running`, `pausing`, `paused`, `shipped`, `cancelled`, `abandoned`, `held`; a plan aborted from an integrity pause is `cancelled` here, link:../shared/work-actions.adoc#epic-told[The Epic Is Told]), what it waits for (a dependency, a lock, the scope), and since when. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
 * *Sources, landings, findings, watches, events*: the sources as stored; each landing with its pull request and the epic's analysis; the open items with their counts and the review that opens them; the events, newest first, the ten newest in the tree and all of them in the full-screen view.
 * An ended epic prints as it ended, read-only, with `ended` and its end (`completed`, `cancelled`, `released`) in its first line (xref:15-overview.adoc#ended[Ended Work]).

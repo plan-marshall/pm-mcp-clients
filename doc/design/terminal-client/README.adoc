@@ -25,7 +25,7 @@ The client holds no step order and no rule of its own: it renders the state the 
 * xref:02-levels.adoc[Levels]: machine, project, and plan; addressing a level; where a value comes from.
 * xref:03-dialogues.adoc[Dialogues]: how a state is rendered and answered, keys and numbers, consent, checks, waiting, resume, refusals.
 * xref:17-projects.adoc[Projects]: the explorer of the machine's projects (favourites, recent, all), a project's actions, and the onboarding of a project; `projects`, `project add`, `project setup`.
-* xref:16-plan-view.adoc[The Plan View]: a plan's process level by level, its phases and sub-workflows down to the leaves, each with its state; in the full-screen view and as a tree (`plan`).
+* xref:16-plan-view.adoc[The Plan View]: a plan's process level by level, its phases and sub-workflows down to the leaves, each with its state; its project and epic one key away; in the full-screen view and as a tree (`plan`).
 * xref:18-starting.adoc[Starting Work]: starting a plan or an epic from its sources, with a chat about the request, and running a recipe; `plan add`, `epic add`, `recipe run`.
 * xref:19-actions.adoc[Actions on Plans and Epics]: pause, start, cancel, abandon a plan; an epic's next plan, decompose again, archive, cancel, and its reviews; the chat with the planning role of a plan or an epic, also about ended work; `plan pause|start|cancel|abandon|chat`, `epic next|decompose|archive|cancel|findings|watches|chat`.
 * xref:20-texts-projects.adoc[Texts: Projects], xref:21-texts-starting.adoc[Texts: Starting Work], xref:22-texts-actions.adoc[Texts: Actions]: the terminal's own texts of parts 17 to 19, in English and German.

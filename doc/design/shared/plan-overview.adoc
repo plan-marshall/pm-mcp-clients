@@ -96,7 +96,7 @@ Order: projects that need the operator first, then by their latest activity. A p
 * *The holds* are exactly `stalled`, `condition`, `integrity_pause`, `held`, and `landing_failed`; each opens its acts (link:work-actions.adoc#holds[What Holds a Plan]). The other kinds are answered where they are asked.
 * Order within a project: those that need the operator first, then the most recently active; the plans below an epic in the same order.
 * Times are shown as durations, rounded to what matters (`25 min`, `2 h 10 min`, `3 d`), and computed at each redraw; nothing counts in place by the second.
-* Selecting a plan leads into its plan view (link:plan-view.adoc[Plan View]), selecting an epic into its epic view (link:epic-view.adoc[Epic View]); selecting the marker leads to what waits: a decision or a waiver request (link:decisions.adoc[Decisions]), a hold (link:work-actions.adoc#holds[What Holds a Plan]), new findings (link:work-actions.adoc#review[Reviewing Findings or Watches]).
+* Selecting a plan leads into its plan view (link:plan-view.adoc[Plan View]), selecting an epic into its epic view (link:epic-view.adoc[Epic View]); from either, its project is one step away, and from a plan of an epic its epic (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]); selecting the marker leads to what waits: a decision or a waiver request (link:decisions.adoc[Decisions]), a hold (link:work-actions.adoc#holds[What Holds a Plan]), new findings (link:work-actions.adoc#review[Reviewing Findings or Watches]).
 
 [#distinction]
 == Telling Them Apart

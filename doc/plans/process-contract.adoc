@@ -12,7 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * *Specification first*: the package writes the changes The Plan's Process as a Structure and Events of the Process into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), once link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] is agreed, and opens that pull request beside its own.
-* The resource records of a plan's process in `pm-api`: the tree of phases, sub-workflows and states down to the leaves, each node with its kind, its state (closed list), its runs and times, the prune reason of a node not in the plan, the leaves' jobs and tasks, and the path to the current position; the codec.
+* The resource records of a plan's process in `pm-api`: the tree of phases, sub-workflows and states down to the leaves, each node with its kind, its state (closed list), its runs and times, the prune reason of a node not in the plan, the leaves' jobs and tasks, and the path to the current position; the plan's project (`project_id`, `display_name`) and its epic, if any (`epic_id`, title), each with its link; the codec.
 * The event types of the process: a state entered and left, a sub-workflow called and returned, a step firing opened and closed, a new instance version; their payloads and the codec.
 * The scenarios of the mock runtime: a plan in each phase, a loop-back, a sub-workflow nested three deep, a branch not taken, a pruned lane, a new instance version while the view is open, a plan that ends; scenario names `plan-view-<case>`.
 

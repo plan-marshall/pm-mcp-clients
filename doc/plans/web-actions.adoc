@@ -12,7 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * The actions of a plan and an epic on their rows and in the plan view's head, by state (a waiting and a held plan, a landing epic too); the dialogues of pausing a plan (with its point), of ending a plan (abort from an integrity pause too), of a plan's settings with their refusals and a value changed meanwhile (`conflict`, applied again or kept; UC-CTL-5), of raising an epic's scope, of decomposing again, the archive check, and cancelling an epic; the review of findings or watches with its list, its item, keep as a finding or to the watches, the edit of a drafted plan, read-back, and chat; the chat panel of `web-start` opened from a plan's and an epic's actions and from the review, beside the view it opens from and full screen at phone width; the chat about ended work, _Chat_ alone on a row of ended work and in an ended plan's or epic's view, its follow-up plan opening the start at its sources with the description stored; at desktop and phone width, light and dark.
-* the epic's view (UC-PLN-5: workstreams and plans with their status, sources, landings, registers, events); what holds a plan, the epic, or a landing, with the acts that resolve it, and after an act the affected plan, epic, or landing going on or the hold shown again with what still holds (UC-CTL-4).
+* the epic's view (UC-PLN-5: the path project › epic with the project a link one step away, workstreams and plans with their status, sources, landings, registers, events); what holds a plan, the epic, or a landing, with the acts that resolve it, and after an act the affected plan, epic, or landing going on or the hold shown again with what still holds (UC-CTL-4).
 
 == Trace
 
