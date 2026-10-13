@@ -341,6 +341,7 @@ pm › epic add
   Documents     doc/concepts/relay-hardening/   4 files
   Title  [Relay hardening] ← from the documents
   Id     [relay-hardening] ← from the title
+  Starts its plans: by itself (from the project); switch it in the epic's actions
 Start the epic? [Enter]   e) edit   ?   › ⏎
 ✓ relay-hardening has started
 ----

@@ -151,7 +151,7 @@ Archive relay-hardening?
     ✓  the ledger is landed
     ✓  the completion review is done
     ·  carried into the archive: 3 kept findings · 5 watches
-relay-hardening is not through yet.
+relay-hardening cannot be archived yet: decide what the check names first.
 
 pm › epic archive relay-docs
 Archive relay-docs?

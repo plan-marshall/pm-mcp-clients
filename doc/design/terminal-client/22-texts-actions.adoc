@@ -102,9 +102,9 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |{plan} started ({running} of {scope} at once)
 |{plan} gestartet ({running} von {scope} gleichzeitig)
 
-|`operator.actions.result.not_through`
-|{epic} is not through yet.
-|{epic} ist noch nicht durch.
+|`operator.actions.result.not_archivable`
+|{epic} cannot be archived yet: decide what the check names first.
+|{epic} kann noch nicht archiviert werden: entscheide zuerst, was die Prüfung nennt.
 
 |`operator.actions.result.archived`
 |{epic} archived
