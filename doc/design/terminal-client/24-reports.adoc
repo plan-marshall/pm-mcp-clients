@@ -161,12 +161,12 @@ tokens         ≥ 412 k (≥ 380 k in · ≥ 32 k out) · ran 2 h 40 min
                execute   ≥ 241 k (≥ 222 k in · ≥ 19 k out)   3 not measured
                finalize    37 k (33 k in · 4 k out)
   by role      planner       claude:opus-5.5 · high       128 k (120 k in · 8 k out)
-               implementer   claude:sonnet-5.5 · medium ≥ 250 k (≥ 228 k in · ≥ 22 k out)
-               reviewer      claude:sonnet-5.5 · low       34 k (32 k in · 2 k out)
+               implementer   claude:sonnet-5.5 · medium   270 k (247 k in · 23 k out)
+               reviewer      codex:gpt-5 · low           ≥ 14 k (≥ 13 k in · ≥ 1 k out)   3 not measured
   by model     claude:opus-5.5      128 k (120 k in · 8 k out)
                claude:sonnet-5.5    270 k (247 k in · 23 k out)
                codex:gpt-5        ≥ 14 k (≥ 13 k in · ≥ 1 k out)   3 not measured
-  waste        52 k tokens (13 %)
+  waste        52 k tokens (13 % of measured)
                produced nothing   18 k   2 tasks
                retries            21 k   retryable 1 · stall 1
                remediation        13 k   returned with findings 1

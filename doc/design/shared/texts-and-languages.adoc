@@ -137,9 +137,9 @@ Every count of tokens is shown in one format, defined here and nowhere else: the
 |`1,24 Mio.`
 |===
 
-* *Rounding*: half up, of the exact count; a total is rounded from its exact count, never summed from rounded parts.
+* *Rounding*: an exact count is rounded half up; a total is rounded from its exact count, never summed from rounded parts. A floor is rounded down at the precision shown, so that it is never overstated: 412 680 measured tokens are `≥ 412 k`, not `≥ 413 k`.
 * *The split* takes the unit of its total, so that the parts read against it: `1.24 M tokens (1.10 M in · 0.14 M out)`, `830 k tokens (790 k in · 40 k out)`. _in_ is input, cache-read, and cache-write tokens; _out_ is output and reasoning tokens; the total is their unweighted sum.
-* *A floor*: a figure over records of which some were not measured is shown with `≥` and the coverage beside it (`≥ 1.24 M tokens · 3 of 41 tasks not measured`), never as exact; a figure with nothing measured is `not measured`, never `0`.
+* *A floor*: a figure over records of which some were measured and some not is shown with `≥`, rounded down, and the coverage beside it (`≥ 1.24 M tokens · 3 of 41 tasks not measured`), never as exact; a figure over records of which none was measured is `not measured` with the coverage, never `0` and never a `≥`.
 * *Never money*: no price, cost, or currency is shown beside a count of tokens, in any language.
 
 [cols="3,3,3",options="header"]

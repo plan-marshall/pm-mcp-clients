@@ -133,7 +133,7 @@ A leaf shows what runs or ran in it:
 The second line of the head says how many tokens the plan has used so far, with the split: `tokens so far   412 k (380 k in · 32 k out)` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]).
 
 * *The figure* is the runtime's: the sum of the plan's usage records, `tokens = in + out`, in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]. The client adds nothing up.
-* *Coverage*: where tasks of the plan were not measured, the figure is a floor with `≥` and the count beside it (`≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 of 17 tasks not measured`); before the plan's first model call the line says `none yet`.
+* *Coverage*: where some tasks of the plan were measured and others not, the figure is a floor with `≥` and the count beside it (`≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 of 17 tasks not measured`). Where model calls happened but no task's usage was measured, the line says `not measured` with the coverage (`not measured · 3 of 3 tasks not measured`), never `0` and never a `≥`. Before the plan's first model call it says `none yet`.
 * *Only usage*: no limit, no warning, no projection, no money. A re-planning or a waiver stays an event of the plan's history, never a figure of this line.
 * *Live*: the line follows the plan's events and changes when a task's usage is recorded, at most once a second.
 * One step from the line: the same figure by phase and by role, each with its raw components (input, cache read, cache write, output, reasoning) as a detail, as the completion report shows them (link:completion-report.adoc#tokens[Completion Report, Tokens]); for an ended plan the line shows the final figure and leads to its completion report.
@@ -300,7 +300,7 @@ Keys of the area `plan`, shared by both clients.
 
 |`plan.view.tokens_detail`
 |By phase and role
-|Zeige je Phase und Role
+|Zeige je Phase und Rolle
 |===
 
 The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The figure of the tokens uses `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).

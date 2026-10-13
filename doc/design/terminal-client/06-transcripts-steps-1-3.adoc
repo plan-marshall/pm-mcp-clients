@@ -196,7 +196,7 @@ Check Claude Code again? [Enter]   x) leave it out   o) choose again   ?   › �
   runs        claude auth status   (Claude Code)
               one minimal headless call of Aider
   never       reads your repositories
-  tokens      about 2 k tokens of your Aider account
+  tokens      about 2.0 k tokens of your Aider account
 ----
 
 * `harness.blocked` is asked for each failing harness in turn, under its name, while at least one chosen harness passes; when none does, the state is `harness.none` (<<t-harness-none>>). `x` leaves it out: the step goes on to `harness.confirm` without it, and if it was the default, the mark moves to the first one left (`★ default ✎` there). The last harness left cannot be left out: its prompt has no `x`. `o` returns to `harness.choose` with the current choice. A harness left out stays found and is offered again by a later run; `harness.confirm` names it `left out`.

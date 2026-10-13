@@ -59,14 +59,14 @@ What the plan used, in tokens and never in money (link:../../../../plan-marshall
                outline     96 k (90 k in · 6 k out)
                execute   ≥ 241 k (≥ 222 k in · ≥ 19 k out)    3 not measured
                finalize    37 k (33 k in · 4 k out)
-  By role      planner       opus-5.5 · high      128 k (120 k in · 8 k out)
-               implementer   sonnet-5.5 · medium ≥ 250 k (≥ 228 k in · ≥ 22 k out)
-               reviewer      sonnet-5.5 · low      34 k (32 k in · 2 k out)
+  By role      planner       claude:opus-5.5 · high      128 k (120 k in · 8 k out)
+               implementer   claude:sonnet-5.5 · medium  270 k (247 k in · 23 k out)
+               reviewer      codex:gpt-5 · low          ≥ 14 k (≥ 13 k in · ≥ 1 k out)  3 not measured
   By model     claude:opus-5.5      128 k (120 k in · 8 k out)
                claude:sonnet-5.5    270 k (247 k in · 23 k out)
                codex:gpt-5        ≥ 14 k (≥ 13 k in · ≥ 1 k out)       3 not measured
   ─────────────────────────────────────────────────────────────────────────────
-  Waste        52 k tokens (13 %)
+  Waste        52 k tokens (13 % of measured)
                produced nothing      18 k   2 tasks
                retries               21 k   retryable 1 · stall 1
                remediation           13 k   returned with findings 1
@@ -75,10 +75,10 @@ What the plan used, in tokens and never in money (link:../../../../plan-marshall
 * *Total*: the plan's tokens with the split, `tokens = in + out` (_in_: input, cache-read, and cache-write tokens; _out_: output and reasoning tokens), and the wall time from its start to its end, as _Ran_ above.
 * *Coverage*: how many of the plan's tasks were measured, and for those that were not, why, by the closed list of the records (`not_reported_by_harness`, `output_unparsed`, `session_task`, `terminated`), `common.tokens.coverage`. A figure the harness's profile declares not applicable (no cache write for its harness) counts as `0` and leaves the task measured. Any total over a task not measured is a floor, shown with `≥`, never as exact; with every task measured the line says `41 of 41 tasks measured`.
 * *By phase*: one line per phase the plan ran, in its order; a phase whose tasks were not all measured names how many.
-* *By role*: one line per role, with what the role pinned (harness, model, effort), as the plan's records name them.
-* *By model*: one line per `<harness>:<model>`.
+* *By role*: one line per role, with what the role pinned (`<harness>:<model>` and effort), as the plan's records name them; a role whose tasks were not all measured names how many.
+* *By model*: one line per `<harness>:<model>`; a model whose tasks were not all measured names how many. The lines of _By phase_, _By role_, and _By model_ each add up to _Total_, as the runtime summed them.
 * *Raw components*, one step from any line of _Total_, _By phase_, _By role_, or _By model_: the figures as the harnesses reported them, summed by the runtime for that line: input, cache read, cache write, output, reasoning, each `not reported` where a harness of the line does not report it and `0` where its profile declares it not applicable. The unified figure stays the one of the line; the components explain it and are never added up by the client.
-* *Waste*: the tokens that produced nothing, with their share of the total: the tasks of spend class `no_product` (a task that ended without a product), and the retries and the remediation of the plan, each by its cause class (`retryable`, `stall`, `terminal_error`, `returned_with_findings`, …) with how often. Nothing is waste that the records do not class as such.
+* *Waste*: the tokens that produced nothing, with their share of the total; where tasks were not measured, the share is of the measured tokens and says so (`13 % of measured`), and with nothing measured it is left out: the tasks of spend class `no_product` (a task that ended without a product), and the retries and the remediation of the plan, each by its cause class (`retryable`, `stall`, `terminal_error`, `returned_with_findings`, …) with how often. Nothing is waste that the records do not class as such.
 * *Only usage*: no budget, no limit, no projection, and no money. A re-planning or a waiver of the plan is in _Re-planning_ above and in the plan's history as an event, never as a figure of this section.
 * Each line of _By phase_ leads to that phase in the plan view as it ended (link:plan-view.adoc#ended[Plan View, An Ended Plan]); `Esc` or _Back_ returns to the report.
 
@@ -193,15 +193,15 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 
 |`report.tokens.by_role`
 |By role
-|Je Role
+|Je Rolle
 
 |`report.tokens.by_model`
 |By model
 |Je Modell
 
 |`report.tokens.role_pin`
-|{role}   {model} · {effort}
-|{role}   {model} · {effort}
+|{role}   {harness}:{model} · {effort}
+|{role}   {harness}:{model} · {effort}
 
 |`report.tokens.unmeasured`
 |{count} not measured
@@ -212,8 +212,8 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |Verschwendet
 
 |`report.tokens.waste_value`
-|{tokens} tokens ({share} %)
-|{tokens} Tokens ({share} %)
+|{tokens} tokens{coverage, select, all { ({share} %)} partial { ({share} % of measured)} other {}}
+|{tokens} Tokens{coverage, select, all { ({share} %)} partial { ({share} % des Gemessenen)} other {}}
 
 |`report.tokens.waste.no_product`
 |produced nothing
