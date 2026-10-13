@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » Texts: Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
 
 The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
 
@@ -30,9 +30,33 @@ The texts of the actions, the dialogues, and the review are those of link:../sha
 |{name} has ended: its view only
 |{name} ist beendet: nur seine Ansicht
 
-|`operator.actions.talk_end`
+|`operator.actions.chat_end`
 |an empty line ends it
-|eine leere Zeile beendet es
+|eine leere Zeile beendet ihn
+
+|`operator.actions.chat.you`
+|you
+|du
+
+|`operator.actions.chat.this_item`
+|this item
+|dieser Eintrag
+
+|`operator.actions.chat.accept`
+|Accept?
+|Annehmen?
+
+|`operator.actions.chat.reject`
+|reject
+|lehne ab
+
+|`operator.actions.chat.accepted`
+|accepted: {when, select, boundary {applies after the current task} other {applied}}
+|angenommen: {when, select, boundary {gilt nach dem laufenden Task} other {übernommen}}
+
+|`operator.actions.chat.no_input`
+|The chat needs you at every turn; --no-input refuses it.
+|Der Chat braucht dich bei jeder Runde; --no-input lehnt ihn ab.
 
 |`operator.actions.settings.which`
 |Which settings of {plan}?
@@ -154,7 +178,7 @@ The texts of the actions, the dialogues, and the review are those of link:../sha
 [#actions-keys]
 === Keys of the Actions
 
-The mnemonics of the action menu, of the acts of a hold, and of the review, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `y) yes`, and `n) no` are the common ones there, and _instruct again_ and _discard_ are those of the decomposition (xref:21-texts-starting.adoc#starting-keys[Starting Work, Keys]). No mnemonic of the menu is `a`, in any language. Within each menu and prompt every key is unique, in both languages.
+The mnemonics of the action menu, of the acts of a hold, and of the review, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `y) yes`, and `n) no` are the common ones there, and _instruct again_ and _discard_ are those of the decomposition (xref:21-texts-starting.adoc#starting-keys[Starting Work, Keys]). No mnemonic of the menu is `a`, in any language. _Chat_ is `h` in English and `t` in German, the first free letter of its label: `c` is taken in the menu of a plan that holds (_add the credential_, in English also _accept the change_), `h` in German by _pause_. Within each menu and prompt every key is unique, in both languages.
 
 [cols="3,3,3",options="header"]
 |===
@@ -260,9 +284,13 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |p
 |p
 
-|`operator.actions.key.talk`
+|`operator.actions.key.chat`
+|h
 |t
-|s
+
+|`operator.actions.key.reject`
+|r
+|l
 
 |`operator.actions.key.accept_remaining`
 |r

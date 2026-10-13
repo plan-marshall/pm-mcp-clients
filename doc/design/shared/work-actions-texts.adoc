@@ -34,6 +34,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Abandon
 |Gib den Plan auf
 
+|`control.plan.chat`
+|Chat
+|Chat
+
 |`control.plan.settings`
 |Settings
 |Einstellungen
@@ -157,6 +161,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.epic.watches_review`
 |Watches review
 |Prüfe die Beobachtungen
+
+|`control.epic.chat`
+|Chat
+|Chat
 
 |`control.epic.archive`
 |Archive
@@ -286,9 +294,9 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Edit
 |Bearbeite es
 
-|`control.review.talk`
-|Talk
-|Besprich es
+|`control.review.chat`
+|Chat
+|Chat
 
 |`control.review.accept_remaining`
 |Accept the remaining {count, plural, one {# proposal} other {# proposals}}

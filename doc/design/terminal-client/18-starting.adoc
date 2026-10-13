@@ -292,7 +292,7 @@ The decomposition follows at once, in the same dialogue (<<decomposition>>); aft
   WS-2  Authentication
     3) relay-auth-v2               pm-api          ✗ overlaps relay-cursor-order (pm-api)
     4) relay-token-rotation        pm-relay        after relay-auth-v2
-  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree (1 check fails)   › 3
+  1-4) open a plan   +) add a plan   h) chat   r) draft again   Enter) agree (1 check fails)   › 3
   relay-auth-v2
     Objective     a token exchange the relay renews by itself
     Deliverables  token exchange; renewal; a test per failure
@@ -307,7 +307,7 @@ The decomposition follows at once, in the same dialogue (<<decomposition>>); aft
   + Surface       pm-relay
 Accept? [Enter]   i) instruct again   x) discard   ?   › ⏎
     ✓  every check passes
-  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree   › ⏎
+  1-4) open a plan   +) add a plan   h) chat   r) draft again   Enter) agree   › ⏎
 ✓ relay-hardening: 2 workstreams, 4 plans committed
     f) Follow it   b) back to the project
 ◆ Question Q-001 · epic relay-hardening · blocks the epic
@@ -315,6 +315,7 @@ Accept? [Enter]   i) instruct again   x) discard   ?   › ⏎
 pm [1 question] ›
 ----
 
+* `h) chat` opens the chat with the epic's planning role about the whole draft (xref:19-actions.adoc#chat[A Chat]); an accepted change goes into the draft, and the checks run on it again.
 * *How many plans run at once* is asked where the epic first needs it, before its first plan starts, and only when the project sets no `parallelization_scope`: as a decision of the epic, announced like every question (xref:04-console.adoc#answering[Answering a Question]); with the project's value the epic starts its plans at once.
 * *Leaving* (`q`, `Ctrl+C`) keeps the draft and the decisions made on it: `Left [3/3] Decomposition of relay-hardening. The draft is kept. epic decompose relay-hardening continues it.` The epic starts no plan before its first decomposition is agreed, and its row in Running Work shows `waiting for you` until then.
 
@@ -338,14 +339,14 @@ Decomposition · relay-hardening
   WS-3  Token lifecycle
     3) relay-token-rotation        changed: moved from WS-2, after relay-token-store
     4) relay-token-store           new
-  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree   › 3
+  1-4) open a plan   +) add a plan   h) chat   r) draft again   Enter) agree   › 3
   relay-token-rotation
   - Workstream    WS-2 Authentication
   + Workstream    WS-3 Token lifecycle
   - Depends on    relay-auth-v2
   + Depends on    relay-auth-v2, relay-token-store
   k) keep   e) edit   d) drop   b) back   › k
-  1-4) open a plan   +) add a plan   t) talk   r) draft again   Enter) agree   › ⏎
+  1-4) open a plan   +) add a plan   h) chat   r) draft again   Enter) agree   › ⏎
 ✓ relay-hardening: 3 workstreams, 1 changed, 1 new, 1 dropped
 pm ›
 ----

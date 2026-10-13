@@ -1,0 +1,84 @@
+= Design: Chatting with the Planning Role, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics] » link:work-actions.adoc#chat[Chatting with the Planning Role] » Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+
+Status: `DRAFT`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+
+[#texts]
+== Texts
+
+Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat`, `control.review.chat`, or `start.decomposition.chat` where it is opened.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`control.chat.title`
+|Chat · {subject} · with {role}
+|Chat · {subject} · mit {role}
+
+|`control.chat.scope`
+|{scope, select, plan {the whole plan} epic {the whole epic} draft {the decomposition draft} item {{item}} other {the whole register}}
+|{scope, select, plan {der ganze Plan} epic {das ganze Epic} draft {der Entwurf der Zerlegung} item {{item}} other {das ganze Register}}
+
+|`control.chat.you`
+|You
+|Du
+
+|`control.chat.answers`
+|{role} answers
+|{role} antwortet
+
+|`control.chat.message`
+|Your message
+|Deine Nachricht
+
+|`control.chat.send`
+|Send
+|Sende sie
+
+|`control.chat.proposed`
+|Proposed change
+|Vorgeschlagene Änderung
+
+|`control.chat.accept`
+|Accept
+|Nimm sie an
+
+|`control.chat.reject`
+|Reject
+|Lehne sie ab
+
+|`control.chat.at_boundary`
+|applies after the current task
+|gilt nach dem laufenden Task
+
+|`control.chat.applied`
+|{subject} changed{version, select, none {} other {; the plan's version becomes {version}}}
+|{subject} geändert{version, select, none {} other {; die Version des Plans wird {version}}}
+
+|`control.chat.rejected`
+|rejected: nothing changed
+|abgelehnt: nichts geändert
+
+|`control.chat.check_failed`
+|not applied: {reason}
+|nicht übernommen: {reason}
+
+|`control.chat.end`
+|End the chat
+|Beende den Chat
+
+|`control.chat.ended`
+|The chat is kept with {subject}.
+|Der Chat bleibt bei {subject} gespeichert.
+
+|`control.chat.unqualified`
+|no configuration of {role} qualifies yet
+|noch keine Konfiguration qualifiziert sich für {role}
+|===

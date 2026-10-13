@@ -63,7 +63,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
 |`DRAFT`
-|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its settings, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and talk; what holds a plan (stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each; its texts in link:shared/work-actions-texts.adoc[a part of their own].
+|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its settings, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change; what holds a plan (stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each; its texts in link:shared/work-actions-texts.adoc[a part of their own] and link:shared/work-actions-chat-texts.adoc[the chat's part].
 
 |link:shared/consents.adoc[Consents]
 |`DRAFT`

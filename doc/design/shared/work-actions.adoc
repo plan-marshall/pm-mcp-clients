@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#changes[Controlling Work, Changes] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
@@ -21,15 +21,15 @@ A plan and an epic carry their actions wherever they are shown: their row in Run
 |State |Actions |Shown as
 
 |running
-|Pause, Cancel, Settings
+|Pause, Cancel, Chat, Settings
 |`running`; _Pause_ first
 
 |pausing
-|Start, Cancel, Settings
+|Start, Cancel, Chat, Settings
 |`pausing after the task` or `after the phase`; _Start_ withdraws the pause
 
 |paused
-|Start, Abandon, Settings
+|Start, Abandon, Chat, Settings
 |`paused` since when, by the operator
 
 |ended
@@ -38,6 +38,7 @@ A plan and an epic carry their actions wherever they are shown: their row in Run
 |===
 
 * *Settings* opens the plan's own values (its overrides, link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]) in every state of a plan that runs, each with where its value comes from (the plan, the project, the machine). A value may be set where the plan first needs it, or later here; it applies from where the plan next reads it.
+* *Chat* opens a chat with the plan's planning role about the whole plan (<<chat>>), in every state of a plan that has not ended: running, pausing, paused, waiting for you, and held alike.
 * *Pause* asks where the plan holds, _after the current task_ preselected (<<pause>>); *Start* acts at once. Neither needs a confirmation: each is undone by the other.
 * A plan always runs once it exists: a plan an epic starts is created and run in one act, so there is no state of a plan that waits to be started.
 * *Cancel* and *Abandon* confirm first (<<confirm-end>>).
@@ -94,11 +95,12 @@ After an action on a plan of an epic, the row of the plan shows for a moment `re
   relay-hardening · epic                       3 running · 1 paused · 4 staged
   ─────────────────────────────────────────────────────────────────────────────
   [▶ Next plan: relay-reconnect-backoff]   [Findings review · 3 new]
-  [Decompose again]   [Watches review · 5]   [Archive]   [Cancel]
+  [Decompose again]   [Watches review · 5]   [Chat]   [Archive]   [Cancel]
 ----
 
 * *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs: the surface overlaps a running plan`); with the epic's scope full it offers _Raise to 4 at once and start it_, which raises the epic's `parallelization_scope` by one and starts the plan.
 * *Decompose again* asks for the instruction (`split the auth workstream; drop the docs plan`) and opens the decomposition with it (link:starting-work.adoc#decomposition[The Decomposition]).
+* *Chat* opens a chat with the epic's planning role about the whole epic (<<chat>>), in every state of an epic that has not ended.
 * *Findings review* and *Watches review* carry their counts; new findings since the last review are also a `needs you` of the epic in Running Work.
 * *Archive* runs the check first (<<archive-check>>).
 * *Cancel* confirms with the choice for its plans (<<cancel-epic>>).
@@ -189,7 +191,7 @@ The review goes through the items of one register, one at a time, open ones firs
   Proposal    Promote to a plan: it needs a change across two modules
               (the planning role)
   ─────────────────────────────────────────────────────────────────────────────
-  [Keep ▾ as defect | as watch]  [Drop]  [Promote to a plan]  [Edit]  [Talk]
+  [Keep ▾ as defect | as watch]  [Drop]  [Promote to a plan]  [Edit]  [Chat]
                               [Accept the remaining 4 proposals]   [Finish]
 ----
 
@@ -197,12 +199,43 @@ The review goes through the items of one register, one at a time, open ones firs
 * *Drop* asks for the reason in one line.
 * *Promote to a plan* shows the planning role at work, then its draft of the staged plan (objective, deliverables, surface, dependencies) with _Stage it_, _Edit_, and _Back_.
 * *Edit* asks what to adapt or add, in the operator's words; the planning role rewrites the statement and the rules, and the read-back shows old against new with _Accept_, _Instruct again_, and _Discard_.
-* *Talk* opens a conversation with the planning role about this item or the whole register; each change it proposes is shown as a read-back, and nothing changes without _Accept_.
+* *Chat* opens the chat (<<chat>>) about this item or the whole register; an accepted change becomes the item's disposition or its rewrite.
 * *Accept the remaining proposals* lists them all once, each with its proposal, for one confirmation.
 * *An item from outside the machine* (a finding from a review comment) carries `untrusted`, and its text is shown as text, never rendered.
 * *Finish* writes the decisions to the epic's ledger, where they are landed; leaving before keeps them, and the review opens where it stopped, in either client.
 
+[#chat]
+== Chatting with the Planning Role
+
+In a chat the operator discusses a plan or an epic with its planning role, asks, and has it propose changes. It is one dialogue wherever it is opened: from a plan's actions (the whole plan), from an epic's actions (the whole epic), from the decomposition (the draft, link:starting-work.adoc#decomposition[The Decomposition]), and from a review (one item or the whole register, <<review>>). The runtime routes it: a plan's chat to the plan's planning role `replan`, an epic's chat, also in its decomposition and its review, to the epic's planning role `decompose`.
+
+----
+  Chat · fix-relay · with replan                                 the whole plan
+  ─────────────────────────────────────────────────────────────────────────────
+  You      Can the cursor test also cover the SSE transport?
+  replan   Yes. TASK-4 tests one transport only; I propose a second test.
+  ─────────────────────────────────────────────────────────────────────────────
+  Proposed change                              applies after the current task
+  - TASK-4  cursor write order: a test for the websocket transport
+  + TASK-4  cursor write order: a test per transport, websocket and SSE
+  Its epic   relay-hardening is told
+                                                         [Reject]  [Accept]
+  ─────────────────────────────────────────────────────────────────────────────
+  [Your message                                                 ]  [Send]
+                                                                [End the chat]
+----
+
+* *The head* names the subject, the role the chat goes to, and the scope.
+* *The transcript* shows the operator's messages and the role's answers in order, the newest at the bottom; while the role works, its line says so (`replan answers`). The operator's words are their own, interpreted with a read-back as in a decision (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-own-words[Own Words]); the role reads the content of the plan or the epic as data, and an item from outside the machine stays marked `untrusted` and is shown as text, never rendered.
+* *A proposed change* is a read-back, old against new, with _Accept_ and _Reject_; nothing changes without _Accept_, and a rejected change is gone. To have it otherwise, the operator says so in the next message.
+* *Accept* applies the change through the subject's own path and its checks: in the decomposition the draft and its checks; in a review the item's disposition or rewrite; on an epic its staged plans, through the epic's checks (surfaces disjoint, dependencies without a cycle); on a plan a revision, through the guards of a first plan (the outline, the derivation, the task graph, the Q-Gate), which makes a new version of the plan (`the plan's version becomes 8`). A check that fails says why and changes nothing; the chat goes on.
+* *A running plan* goes on while the chat runs: a question never touches it, and an accepted revision takes effect at the next task boundary (`applies after the current task`): what runs finishes, the revision is applied, and the plan runs on. A pausing plan takes it at that boundary too and then holds at its point; a paused plan takes it at once and stays paused.
+* *A chat's revision is the operator's own act*: it spends nothing of the plan's re-planning budget, and the runtime never opens a chat by itself. A change to a plan of an epic tells the epic (<<epic-told>>).
+* *End the chat* closes it; a proposal not yet accepted is dropped with it. The transcript is kept with the plan or the epic, among its events, and is never sent elsewhere.
+* *Chat is disabled* with its reason while no configuration of the routed role qualifies (`no configuration of replan qualifies yet`).
+* *In the web app* the chat is a panel beside the view it was opened from (the plan view, the epic view, the decomposition, the review), the message field at its bottom; at phone width it takes the screen, and _End the chat_ returns to the view.
+
 [#texts]
 == Texts
 
-Keys of the area `control`, shared by both clients. They are listed in their own part: link:work-actions-texts.adoc[Actions on Plans and Epics, Texts].
+Keys of the area `control`, shared by both clients. They are listed in their own parts: link:work-actions-texts.adoc[Actions on Plans and Epics, Texts] and, for the chat, link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts].
