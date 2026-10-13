@@ -219,7 +219,7 @@ The actions follow the epic's state (the states of link:epic-view.adoc#layout[Ep
 * *Decompose again* asks for the instruction (`split the auth workstream; drop the docs plan`) and opens the decomposition with it (link:starting-work.adoc#decomposition[The Decomposition]).
 * *Chat* opens a chat with the epic's planning role about the whole epic (<<chat>>), in every state of an epic that has not ended; an ended epic offers it alone, about its archived record (<<chat-ended>>).
 * *Findings review* and *Watches review* carry their counts; new findings since the last review are also a `needs you` of the epic in Running Work.
-* *Archive* runs the check first (<<archive-check>>).
+* *Archive* runs the check first (<<archive-check>>); on an epic whose completion review has not run yet, the completion review before it.
 * *Cancel* confirms with the choice for its plans (<<cancel-epic>>).
 
 [#epic-auto]
@@ -247,6 +247,8 @@ An epic starts its launchable plans by itself, up to how many may run at once, w
     ·  carried into the archive         3 kept findings · 5 watches
                                                                    [Not yet]
 ----
+
+*The completion review first*: an automatic epic has run its completion review once it was through (link:epic-view.adoc#reactions[Epic View, What the Epic Does by Itself]); an epic that has not, a manual one, runs it when the operator chooses _Archive_ (`epic.review-completion`), and the check follows once it is done. Meanwhile the dialogue shows the line `the completion review runs first` (`control.archive.review_first`) in place of the checks and offers _Not yet_, which closes the dialogue and lets the review run on; _Archive_ chosen again shows the check once the review is done. A review that stages further plans leaves the epic not through, and the check names those plans; a review that is held shows as the failing line `the completion review is done`, leading to its hold (<<holds>>).
 
 Each line is a check of the runtime (`epic.archive-check`); a failing one leads to what is open. _Archive the epic_ is offered only when every check passes. Only an open finding, one not decided yet, holds the archive: the kept findings and the watches are listed as carried and go into the archive with the epic's ledger (`epic.archive`), so nothing it found or watched is lost.
 

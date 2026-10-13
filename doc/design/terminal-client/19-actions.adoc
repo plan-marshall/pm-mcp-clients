@@ -152,12 +152,25 @@ Archive relay-hardening?
     ✓  the completion review is done
     ·  carried into the archive: 3 kept findings · 5 watches
 relay-hardening is not through yet.
+
+pm › epic archive relay-docs
+Archive relay-docs?
+    ·  the completion review runs first
+    ✓  no plan running, pausing, or paused
+    ✓  every plan shipped or ended            4 shipped
+    ✓  open findings, not decided yet         0
+    ✓  the ledger is landed
+    ✓  the completion review is done
+    ·  carried into the archive: 1 kept finding · 2 watches
+Archive the epic? y) yes   n) not yet   ?   › y
+✓ relay-docs archived
 pm ›
 ----
 
 * With no plan launchable, `epic next` says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs waits for a lock: the surface pm-relay`); with only the scope full, it asks to raise the scope by one (`epic.raise-scope`), which `--raise-scope` answers yes and `--no-raise` no; `--no-input` without either stops.
 * With none launchable for an overlap, the reason names the running plan (`relay-docs waits: overlap with relay-auth-v2`); raising the scope does not start it.
 * `epic archive` while the epic lands is refused with the reason (`relay-hardening is landing: archive waits until the ledger has landed`); only open findings hold the archive, and kept findings and watches are listed as carried.
+* On an epic whose completion review has not run yet (a manual one; an automatic epic has run it once it was through), `epic archive` runs the review first (`epic.review-completion`, link:../shared/work-actions.adoc#archive-check[Archiving]), prints `the completion review runs first` (`control.archive.review_first`), and prints the check below it once the review is done; with every check passing it asks _Archive the epic_ (`control.archive.action`, `n` is `control.archive.not_yet`) and prints `operator.actions.result.archived`. `q` and `Ctrl+C` leave while it runs, the review going on (xref:03-dialogues.adoc#resume[Interruption and Resume]); `epic archive` again shows the check once it is done. A review that stages further plans leaves the epic not through, and the check names them.
 
 [#epic-auto]
 === Automatic On or Off

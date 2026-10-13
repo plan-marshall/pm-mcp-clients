@@ -270,6 +270,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |the completion review is done
 |die Abschlussprüfung ist erledigt
 
+|`control.archive.review_first`
+|the completion review runs first
+|zuerst läuft die Abschlussprüfung
+
 |`control.archive.carried`
 |carried into the archive: {findings, plural, one {# kept finding} other {# kept findings}} · {watches, plural, one {# watch} other {# watches}}
 |kommen mit ins Archiv: {findings, plural, one {# behaltenes Finding} other {# behaltene Findings}} · {watches, plural, one {# Beobachtung} other {# Beobachtungen}}

@@ -106,6 +106,10 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |{epic} is not through yet.
 |{epic} ist noch nicht durch.
 
+|`operator.actions.result.archived`
+|{epic} archived
+|{epic} archiviert
+
 |`operator.actions.archive_landing`
 |{epic} is landing: archive waits until the ledger has landed
 |{epic} landet gerade: das Archivieren wartet, bis das Ledger gelandet ist

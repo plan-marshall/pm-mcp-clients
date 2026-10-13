@@ -310,6 +310,10 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |committed
 |committet
 
+|`start.decomposition.then`
+|{mode, select, automatic {started: {plans} ({running} of {scope} at once)} other {can start now: {plans}; it starts none by itself}}
+|{mode, select, automatic {gestartet: {plans} ({running} von {scope} gleichzeitig)} other {kann jetzt starten: {plans}; es startet keinen von selbst}}
+
 |`start.decomposition.overlap`
 |surface overlaps {plan} ({paths})
 |Bereich überschneidet sich mit {plan} ({paths})

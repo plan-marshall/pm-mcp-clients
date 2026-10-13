@@ -50,7 +50,7 @@ pm-operator plan start <plan_id>
 pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
 pm-operator plan chat <plan_id>
                                                           [op]  act on a plan by its state (19-actions)
-pm-operator plan report <plan_id>                         [op]  an ended plan's completion report (24-reports)
+pm-operator plan report <plan_id> [--per-phase]           [op]  an ended plan's completion report (24-reports)
 pm-operator epic next <epic_id> [--raise-scope]
 pm-operator epic auto <epic_id> on|off
 pm-operator epic decompose <epic_id> [--instruction <text>]

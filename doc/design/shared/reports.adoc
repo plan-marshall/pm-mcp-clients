@@ -57,8 +57,8 @@ The runtime writes a report for a closed list of kinds; the client shows each re
 |the epic view, at the landing and its judgment
 
 |`epic.through`
-|`relay-hardening is through: the completion review is ready`
-|the epic's completion review, in its view
+|`relay-hardening is through: the completion review is ready`; while its automatic start is off, `relay-hardening is through: archiving runs its completion review`
+|the epic's completion review, in its view; while it has not run, the epic view with _Archive_ (link:work-actions.adoc#archive-check[Archiving])
 
 |`epic.ended`
 |`relay-hardening ended: completed`, or `cancelled`, `released`
@@ -305,8 +305,8 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |{epic} hat {change, select, reorder {seine vorgesehenen Pläne neu geordnet} amend {seine vorgesehenen Pläne angepasst} other {seine vorgesehenen Pläne geändert}}, nachdem {plan} gelandet ist
 
 |`report.subject.epic_through`
-|{epic} is through: the completion review is ready
-|{epic} ist durch: die Abschlussprüfung liegt vor
+|{epic} is through: {review, select, ready {the completion review is ready} other {archiving runs its completion review}}
+|{epic} ist durch: {review, select, ready {die Abschlussprüfung liegt vor} other {das Archivieren führt seine Abschlussprüfung aus}}
 
 |`report.subject.epic_ended`
 |{epic} ended: {end}

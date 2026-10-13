@@ -61,7 +61,7 @@ An epic manages its plans (link:../../../../plan-marshall-documentation/doc/use-
 * *After a plan landed*: the event names the landing and its downstream judgment (`relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered`); a re-order, or an amended surface or dependency of a staged plan, is applied and shown in the rows; a change that adds, drops, or re-scopes a plan waits for the operator in the decomposition, first in the head as what waits (link:starting-work.adoc#decomposition[The Decomposition]).
 * *After a plan ended without landing* (cancelled, abandoned, handed back, released, aborted): the plans that depend on it are held, each with that reason, and the epic asks the operator as every hold does (link:work-actions.adoc#holds[What Holds a Plan]).
 * *The next plans*: then, automatic, the epic starts what can start (`started relay-token-store (2 of 3 at once)`); manual, the event names what can start now (`can start now: relay-token-store`), a report says so once per change (link:reports.adoc#kinds[Reports]), and _Next plan_ offers it.
-* *Through*: once every plan has shipped or ended, an automatic epic runs its completion review and reports it (`relay-hardening is through: the completion review is ready`); the review opens from the head, and _Archive_ stays the operator's act (link:work-actions.adoc#archive-check[Archiving]). A manual epic runs it when the operator archives.
+* *Through*: once every plan has shipped or ended, an automatic epic runs its completion review and reports it (`relay-hardening is through: the completion review is ready`); the review opens from the head, and _Archive_ stays the operator's act (link:work-actions.adoc#archive-check[Archiving]). A manual epic reports that it is through (`relay-hardening is through: archiving runs its completion review`) and runs the review when the operator chooses _Archive_, before the archive check.
 
 [#texts]
 == Texts
@@ -165,8 +165,8 @@ Keys of the area `overview`, shared by both clients.
 |{plan} und {other} haben {files, plural, one {# gemeinsame Datei} other {# gemeinsame Dateien}} geändert
 
 |`overview.epic.event.through`
-|{epic} is through: the completion review is ready
-|{epic} ist durch: die Abschlussprüfung liegt vor
+|{epic} is through: {review, select, ready {the completion review is ready} other {archiving runs its completion review}}
+|{epic} ist durch: {review, select, ready {die Abschlussprüfung liegt vor} other {das Archivieren führt seine Abschlussprüfung aus}}
 
 |`overview.epic.event.mode`
 |you switched automatic {mode, select, automatic {on} other {off}}
