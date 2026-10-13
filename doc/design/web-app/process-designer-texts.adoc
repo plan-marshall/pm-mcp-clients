@@ -1,0 +1,296 @@
+= Design: Web App, Process Designer, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » link:process-designer.adoc[Process Designer] » Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]_
+
+Status: `DRAFT`. The texts of link:process-designer.adoc[Process Designer].
+
+[#texts]
+== Texts
+
+Keys of the area `designer`, which only the web app loads (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). The structure and the composed process use the keys of the plan view (`plan.node.kind.*`, `plan.node.state.planned`, `plan.prune.<reason>`, link:../shared/plan-view.adoc#texts[Plan View, Texts]); a changed meanwhile uses `common.conflict.*`. The findings' messages are the runtime's. The last key is the terminal's one line in its `help` (area `operator`).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`designer.view.title`
+|Process designer
+|Prozess-Designer
+
+|`designer.open.title`
+|Design a process
+|Einen Prozess entwerfen
+
+|`designer.open.question`
+|Where does the unit come from?
+|Woher kommt die Einheit?
+
+|`designer.input.upload`
+|Upload a file
+|Lade eine Datei hoch
+
+|`designer.input.upload_hint`
+|a .pmwf file from this computer, at most {limit}
+|eine .pmwf-Datei von diesem Computer, höchstens {limit}
+
+|`designer.input.not_text`
+|The file is not UTF-8 text.
+|Die Datei ist kein UTF-8-Text.
+
+|`designer.input.no_header`
+|The text has no header line (workflow <name> version <n> format <n>).
+|Der Text hat keine Kopfzeile (workflow <name> version <n> format <n>).
+
+|`designer.input.paste`
+|Paste text
+|Füge Text ein
+
+|`designer.input.installed`
+|Start from an installed unit
+|Starte mit einer installierten Einheit
+
+|`designer.input.open`
+|Open it
+|Öffne sie
+
+|`designer.level.project`
+|the project's copy
+|die Kopie des Projekts
+
+|`designer.level.machine`
+|this machine's copy
+|die Kopie dieser Maschine
+
+|`designer.level.default`
+|the compiled default
+|der eingebaute Standard
+
+|`designer.level.in_force`
+|in force
+|gilt
+
+|`designer.installed.copy`
+|Start from a copy
+|Starte mit einer Kopie
+
+|`designer.installed.compiled_only`
+|compiled only: a building block, never replaced
+|nur eingebaut: ein Baustein, nie ersetzt
+
+|`designer.draft.restored`
+|Your draft from {time} is back.
+|Dein Entwurf von {time} ist wieder da.
+
+|`designer.leave.question`
+|Leave the designer? The draft changed since it was last downloaded or placed.
+|Designer verlassen? Der Entwurf hat sich geändert, seit er zuletzt heruntergeladen oder platziert wurde.
+
+|`designer.leave.stay`
+|Stay
+|Bleib
+
+|`designer.leave.discard`
+|Discard the draft
+|Verwirf den Entwurf
+
+|`designer.checked_against`
+|checked against {project}
+|geprüft gegen {project}
+
+|`designer.pane.text`
+|Text
+|Text
+
+|`designer.pane.structure`
+|Structure
+|Struktur
+
+|`designer.structure.not_parsed`
+|The text does not parse from line {line}: the structure shows its last parse.
+|Der Text lässt sich ab Zeile {line} nicht lesen: Die Struktur zeigt den letzten lesbaren Stand.
+
+|`designer.blocks.title`
+|Building blocks
+|Bausteine
+
+|`designer.blocks.search`
+|Search the building blocks
+|Durchsuche die Bausteine
+
+|`designer.blocks.group`
+|{group, select, primitive {primitives} role {roles} sub_workflow {sub-workflows} other {compiled units}}
+|{group, select, primitive {Primitive} role {Rollen} sub_workflow {Sub-Workflows} other {eingebaute Einheiten}}
+
+|`designer.blocks.insert`
+|Insert
+|Füge ein
+
+|`designer.blocks.not_here`
+|Not usable in this unit: {reason}
+|In dieser Einheit nicht verwendbar: {reason}
+
+|`designer.validate.action`
+|Validate
+|Prüfe
+
+|`designer.validate.stage`
+|{stage, select, parse {parses} rules {static rules} invariants {compiled invariants} other {composed against {project}}}
+|{stage, select, parse {lässt sich lesen} rules {statische Regeln} invariants {eingebaute Invarianten} other {gegen {project} zusammengesetzt}}
+
+|`designer.validate.not_run`
+|not run
+|nicht ausgeführt
+
+|`designer.validate.valid`
+|Valid: the runtime would load it.
+|Gültig: Die Runtime würde sie laden.
+
+|`designer.validate.findings`
+|{count, plural, one {# finding} other {# findings}}: it cannot be placed.
+|{count, plural, one {# Finding} other {# Findings}}: Sie kann nicht platziert werden.
+
+|`designer.validate.finding`
+|{rule} · line {line}, column {column}: {message}
+|{rule} · Zeile {line}, Spalte {column}: {message}
+
+|`designer.validate.outdated`
+|The text changed since: validate again.
+|Der Text hat sich seitdem geändert: Prüfe erneut.
+
+|`designer.preview.open`
+|Show the composed process
+|Zeige den zusammengesetzten Prozess
+
+|`designer.preview.title`
+|If a plan started now in {project}
+|Wenn jetzt ein Plan in {project} startete
+
+|`designer.download.action`
+|Download
+|Lade herunter
+
+|`designer.place.action`
+|Place…
+|Platziere…
+
+|`designer.place.question`
+|Where should {unit} be in force?
+|Wo soll {unit} gelten?
+
+|`designer.place.machine`
+|On this machine
+|Auf dieser Maschine
+
+|`designer.place.machine_hint`
+|for every project here without a copy of its own; yours, never committed
+|für jedes Projekt hier ohne eigene Kopie; deine, nie committet
+
+|`designer.place.project`
+|In the project {project}
+|Im Projekt {project}
+
+|`designer.place.project_hint`
+|the team's file .marshall/config/{file}, committed and pushed as a short landing
+|die Datei des Teams .marshall/config/{file}, committet und gepusht in einer kurzen Landung
+
+|`designer.place.order`
+|In force: the project's copy, else this machine's, else the compiled default.
+|Es gilt: die Kopie des Projekts, sonst die dieser Maschine, sonst der eingebaute Standard.
+
+|`designer.place.compare`
+|Compare…
+|Vergleiche…
+
+|`designer.confirm.title`
+|Place {unit} {target, select, machine {on this machine} other {in {project}}}?
+|{unit} {target, select, machine {auf dieser Maschine} other {in {project}}} platzieren?
+
+|`designer.confirm.against`
+|against {level}
+|gegenüber {level}
+
+|`designer.confirm.lines`
+|+{added} lines, −{removed} lines
+|+{added} Zeilen, −{removed} Zeilen
+
+|`designer.confirm.projects`
+|In force in {projects}; {others} keep their own copy.
+|Gilt in {projects}; {others} behalten ihre eigene Kopie.
+
+|`designer.confirm.uncommitted`
+|The project's landing hands changes back: it stays uncommitted in your checkout until you commit it.
+|Die Landung des Projekts gibt Änderungen zurück: Sie bleibt nicht committet in deinem Checkout, bis du sie committest.
+
+|`designer.place.recipe_project_only`
+|A recipe lives in its project: it cannot be placed on the machine.
+|Ein Rezept lebt in seinem Projekt: Es kann nicht auf der Maschine platziert werden.
+
+|`designer.place.project_findings`
+|{project}: {count, plural, one {# finding} other {# findings}}
+|{project}: {count, plural, one {# Finding} other {# Findings}}
+
+|`designer.confirm.adopt`
+|New plans have it once it has landed; running plans adopt it at their next sync with the base only where their rule allows.
+|Neue Pläne haben sie, sobald sie gelandet ist; laufende Pläne übernehmen sie beim nächsten Abgleich mit der Basis nur, wo ihre Regel es erlaubt.
+
+|`designer.confirm.place`
+|{target, select, machine {Place on this machine} other {Place in {project}}}
+|{target, select, machine {Platziere auf dieser Maschine} other {Platziere in {project}}}
+
+|`designer.back`
+|Back to the designer
+|Zurück zum Designer
+
+|`designer.place.step`
+|{step, select, written {written to {path}} committed {committed {commit}} other {landed: in force from now on}}
+|{step, select, written {geschrieben nach {path}} committed {committet {commit}} other {gelandet: gilt ab jetzt}}
+
+|`designer.place.machine_done`
+|Placed on this machine: in force from now on.
+|Auf dieser Maschine platziert: gilt ab jetzt.
+
+|`designer.place.failed`
+|The landing failed: {reason}. The unit is not in force.
+|Die Landung ist fehlgeschlagen: {reason}. Die Einheit gilt nicht.
+
+|`designer.place.retry`
+|Try again
+|Versuch es erneut
+
+|`designer.place.conflict`
+|{unit} changed since the comparison: here is the new difference.
+|{unit} hat sich seit dem Vergleich geändert: Hier ist der neue Unterschied.
+
+|`designer.place.audit`
+|Placed by {who}, {time}, {channel} · {digest}
+|Platziert von {who}, {time}, {channel} · {digest}
+
+|`designer.remove.action`
+|Remove…
+|Entferne…
+
+|`designer.remove.title`
+|Remove {level} of {unit}?
+|{level} von {unit} entfernen?
+
+|`designer.remove.then`
+|Then in force: {level}.
+|Danach gilt: {level}.
+
+|`designer.remove.confirm`
+|Remove it
+|Entferne sie
+
+|`designer.phone.note`
+|Edit and place it on a wider screen.
+|Bearbeite und platziere sie auf einem breiteren Bildschirm.
+
+|`operator.help.designer`
+|Design a plan's process in the web app (web shows the ways in).
+|Entwirf den Prozess eines Plans in der Web-App (web zeigt die Wege hinein).
+|===

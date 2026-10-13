@@ -1,0 +1,224 @@
+= Design: Web App, Process Designer
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Process Designer
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3] (the web app only), reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (a node of the plan view), link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2] (a project's setup), and link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the machine settings)_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-designer[Designing a Process] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-axes[Plan Behaviour Axes], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-local-trusted[What Is on This Machine Is Trusted]; the specification: link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/01-grammar.adoc[Workflow DSL, Grammar], link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/02-units-jobs-decisions.adoc#workflow-definition-units[Workflow Definition Units], link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/04-ast-node-model.adoc#static-verification-rules[Static AST Verification Rules], link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/04-ast-node-model.adoc#project-owned-units[Project-Owned Workflow Units & Compiled Invariants], link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/06-reusable-sub-workflows.adoc[Reusable Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/09-plan-instance.adoc#composition-rules[Plan Instance, Composition Rules], link:../../../../plan-marshall-documentation/doc/specification/domain-extensions/06-configuration.adoc#config-snapshot[Configuration, Three-Surface Synchronization] (`config_drift`)_
+
+Status: `DRAFT`. The process designer is the one part of the operator's work that only the web app offers: a workflow unit is text and structure side by side, which a terminal shows poorly. The terminal client offers no designer; its `help` says where to find it (link:../terminal-client/01-commands.adoc#command-tree[Terminal Client, The Verbs]). The principles are those of the link:README.adoc#principles[Web App], with one exception said below (<<draft>>). Built by link:../../plans/web-designer.adoc[`web-designer`] on the contract of link:../../plans/designer-contract.adoc[`designer-contract`]. Names, times, and figures in the sketches are examples.
+
+[#what]
+== What Is Designed
+
+A workflow unit the operator may own. Which units those are is the runtime's, served with the units of a project; the designer shows them in three groups:
+
+[cols="2,3,2",options="header"]
+|===
+|Group |Units |In the designer
+
+|Project-owned units
+|the phase units `init`, `refine`, `outline`, `plan`, `execute`, `land`, `finalize`; `git.commit_and_push`, `remediation.*`, `replan`, `adjudicate.decisions`
+|opened, edited, placed, removed
+
+|Variants of the plan behaviour axes
+|`landing.*`, `method.*`, `ask.*`
+|opened, edited, placed, removed
+
+|Recipes
+|a recipe is a named workflow of its project (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows]), its file beside the recipe, `.marshall/recipes/<id>.pmwf`
+|opened, edited, placed and removed in the project only
+
+|Compiled only
+|`epic`, `project-setup`, `lessons`, the bootstrap and source units, `worker-task`, the entity units, `chat`
+|read only, as a building block; never replaced, never copied
+|===
+
+*Levels*: a unit is in force from the first level that has it: the project's copy (`.marshall/config/<unit>.pmwf`, the team's file), else this machine's copy (`<PM_MCP_BASE>/workflows/<unit>.pmwf`, the operator's, never committed), else the compiled default; a recipe lives in its project only. The variant of an axis a plan chooses stays as link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-axes[Plan Behaviour Axes] defines it. A unit for one plan only is not designed here (an open point of the use case).
+
+[#entry]
+== Where It Opens
+
+The designer is a route of its own, `/designer`, with the project it checks against and, where one is open, the unit (`/designer?project=pm-mcp-clients&unit=finalize&level=project`). It opens from:
+
+* *A project's settings* (its setup): the section _Process_ lists the project's units with the level in force (`finalize · the project's copy`), each with _Open in the designer_, and _Design a unit_ opens the input choice for that project.
+* *The plan view*: the unit a phase or a sub-workflow came from is one step away: the node offers _Open in the designer_, which opens that unit at the level it came from in the plan's project (link:../shared/plan-view.adoc#kinds[Plan View, Phase, Sub-Workflow, State]); the plan itself is not changed by it.
+* *The machine settings*: _Workflow units of this machine_ lists the machine's copies, each with _Open in the designer_ and _Remove…_ (link:machine-settings.adoc[Machine Settings]).
+
+[#layout]
+== Layout
+
+[source,text]
+----
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│ plan-marshall                                     Machine: mbp-oliver   ⚙  ?     │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│ Process designer   finalize · from the project's copy                            │
+│ checked against [ pm-mcp-clients ▾ ]          [ Validate ] [ Download ] [Place…] │
+├────────────────────┬──────────────────────────────┬──────────────────────────────┤
+│ Building blocks    │ Text                         │ Structure                    │
+│ [ search…        ] │  1 workflow finalize version │ finalize            sub-wf   │
+│ ▸ primitives  42   │  2 scope subworkflow         │ ├─ finalize.prepare          │
+│ ▸ roles       31   │  3 start finalize.prepare    │ │    done → finalize.review  │
+│ ▾ sub-workflows    │  …                           │ ├─ ↳ sub-workflow            │
+│   git.commit_and_… │ 41 state finalize.sbom       │ │    git.commit_and_push     │
+│   remediation.ci-… │ 42   phase finalize      ✗   │ ├─ ✗ finalize.sbom   Rule 6  │
+│   [ Insert ]       │ 43   job project.run-step    │ └─ finalize.archive-plan     │
+│ ▸ compiled units   │                              │                              │
+├────────────────────┴──────────────────────────────┴──────────────────────────────┤
+│ Validation   ✓ parses  ✓ static rules  ✗ compiled invariants  – composition      │
+│   ✗ INV-GEN-4 · line 42, column 3: a mandatory finalize step is missing          │
+└──────────────────────────────────────────────────────────────────────────────────┘
+----
+
+The head names the unit and where it came from, the project it is checked against, and the three acts. Below: the building blocks, the text, and the structure side by side; the validation as a band at the bottom, which opens to the findings or to the composed process (<<validate>>).
+
+[#input]
+== Choosing the Input (`designer.open`, `designer.input`)
+
+[source,text]
+----
+  Design a process                                    checked against pm-mcp-clients
+
+  Where does the unit come from?
+
+  ( ) Upload a file          a .pmwf file from this computer         [ Choose… ]
+  ( ) Paste text             [                                                ]
+  (•) Start from an installed unit
+        finalize              the project's copy · in force       [ Open ]
+                              the compiled default, revision 4    [ Start from a copy ]
+        landing.pull-request  this machine's copy · in force      [ Open ]
+        remediation.ci-failure  the compiled default · in force   [ Start from a copy ]
+        epic                  compiled only: a building block, never replaced  [ Read ]
+
+  [ Back ]                                                           [ Open it ]
+----
+
+* *Upload*: a file chosen in the browser, read by the browser; it must be UTF-8 text no larger than the limit the runtime states for a unit (the line says it). Nothing is uploaded to the runtime until it is validated (<<validate>>).
+* *Paste*: the text as pasted; one paste, then edited in the text pane.
+* *An installed unit*: the units of the project (`GET /api/v1/projects/{project_id}/workflows`), each with every level that has it and the one in force first; _Open_ opens a copy's text, _Start from a copy_ the compiled default's text as a new draft for this project or machine. A compiled-only unit opens read only.
+* *Its name*: the unit's name comes from its header (`workflow finalize version 5 format 1`); a text without a header that parses is refused before editing (`designer.input.no_header`).
+* *The operator's own*: what is uploaded or pasted is the operator's content, trusted like code on this machine and never screened (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-local-trusted[What Is on This Machine Is Trusted]); it never runs before it is validated and placed.
+* *The marker line* of an earlier invalid download (<<download>>) is dropped on input.
+
+[#draft]
+=== The Draft
+
+The one exception to _The screen is the state_: until it is placed, the unit being designed is the operator's draft, not a state of the runtime. It is kept in the browser of this device, so that a reload shows it again (`designer.draft.restored`); another device does not see it. Leaving the designer with a draft changed since it was last downloaded or placed asks first (`designer.leave.*`).
+
+[#editor]
+== The Text and the Structure (`designer.edit`)
+
+* *The text*: the unit's DSL in a monospaced pane with line numbers; editing is plain text, no model writes or changes it (a chat with a planning role is not part of this use case).
+* *The structure*: the unit as the plan view shows a process (link:../shared/plan-view.adoc#levels[Plan View, Levels]), with its kinds and glyphs (`phase`, `↳ sub-workflow`, a state with its kind), but without any runtime state: each state in the order of the unit, its outcomes with their transitions (`done → finalize.review`), and its calls; a call opens the called unit read only, one step down, with the way back in the path.
+* *Kept in step*: the structure is the runtime's parse of the text, never the client's: after a pause in typing of one second the app sends the text to the validate request and shows the structure it returns; the full findings are shown only on _Validate_. Where the text does not parse, the structure keeps its last parse, marked out of date, and says from which line (`designer.structure.not_parsed`).
+* *Selection*: a node selected in the structure moves the text to its line; the cursor in the text selects its node.
+
+[#blocks]
+== Building Blocks
+
+The catalogue of the project (`GET /api/v1/projects/{project_id}/workflows/catalogue`), in four groups with a search field:
+
+* *Primitives*: by name, with their parameters and outcomes.
+* *Roles*: those of the project's effective role set, for a task state.
+* *Sub-workflows*: the reusable sub-workflows with their parameters and exit contract.
+* *Compiled units*: read only, to look at.
+
+_Insert_ puts the block's text at the cursor, as the catalogue gives it (a state with its outcomes, a call with its parameters to fill in); the structure follows. A block the unit cannot use is shown with its reason and cannot be inserted (`designer.blocks.not_here`).
+
+[#validate]
+== Validating (`designer.validate`)
+
+_Validate_ sends the text, the unit's kind and name, and the project it is checked against (`POST /api/v1/workflows/validate`); the runtime validates it exactly as it would load it. Each stage is a line that turns into ✓ or ✗; a stage after a failed one is `– not run`:
+
+[source,text]
+----
+  Validation                                           checked against pm-mcp-clients
+    ✓  parses
+    ✓  static rules
+    ✓  compiled invariants
+    ✓  composed against pm-mcp-clients
+  Valid: the runtime would load it.                  [ Show the composed process ]
+----
+
+* *Findings*: each with its rule (`Rule 6`, `INV-GEN-4`), line, and column and the runtime's message; a finding selects its line, the text marks the line with `✗` in its gutter, the structure marks its node with `✗` and the rule. Never colour alone.
+* *The composed process*: when valid, the process a plan of the project would run with this unit, shown as the plan view shows a process (link:../shared/plan-view.adoc#levels[Plan View]), every node `planned`, the nodes the composition left out in their group with their reasons, under _If a plan started now in pm-mcp-clients_; nothing starts.
+* *Outdated*: a change of the text after the validation marks the result `The text changed since: validate again.`; _Place…_ is enabled only for a valid result of the current text.
+* *Another project*: the project it is checked against is chosen in the head; a change validates again on demand.
+
+[#download]
+== Download (`designer.download`)
+
+_Download_ saves the text as `<unit>.pmwf`, built in the browser; no request. A text not validated since its last change is validated first. A valid unit is saved as written; one with findings is saved with one comment line at its top, in English like the DSL itself and never translated:
+
+----
+# pm-mcp: not valid against pm-mcp-clients, 2026-10-13T14:02Z, 2 findings (INV-GEN-4, Rule 6)
+----
+
+A download is no operator act and is not audited.
+
+[#place]
+== Placing (`designer.place-target`, `designer.confirm`, `designer.place`)
+
+_Place…_ asks where the unit is to be in force:
+
+[source,text]
+----
+  Where should finalize be in force?
+
+  ( ) On this machine          for every project here without a copy of its own;
+                               yours, never committed
+  (•) In the project pm-mcp-clients
+                               the team's file .marshall/config/finalize.pmwf,
+                               committed and pushed as a short landing
+
+  In force: the project's copy, else this machine's, else the compiled default.
+  Now in force in pm-mcp-clients: the project's copy (revision 4).
+
+  [ Back to the designer ]                                      [ Compare… ]
+----
+
+The confirmation shows the difference first, line by line (side by side at desktop width): against the unit at that level, or, where that level has none, against the one in force now, which the head names:
+
+[source,text]
+----
+  Place finalize in pm-mcp-clients?
+
+  against the project's copy, revision 4          +12 lines, −3 lines
+    40  state finalize.review                40  state finalize.review
+                                           +41  state finalize.sbom
+                                           +42    phase finalize
+  …
+
+  Written to .marshall/config/finalize.pmwf, committed and pushed as a short landing;
+  new plans have it once it has landed. Running plans adopt it at their next sync with
+  the base only where their rule allows.
+
+  [ Back to the designer ]                              [ Place in pm-mcp-clients ]
+----
+
+* *On this machine* (`PUT /api/v1/workflows/{unit}`): the confirmation lists the projects in which it comes into force and those that keep their own copy. The runtime validates it against every enrolled project it would reach and refuses it while any fails; the findings name each project (`designer.place.project_findings`). It is in force at once. For a recipe this target is disabled with its reason (`designer.place.recipe_project_only`).
+* *In the project* (`PUT /api/v1/projects/{project_id}/workflows/{unit}`): written in the project's checkout and landed as a short landing (one commit, pushed as the project lands); a recipe's file is `.marshall/recipes/<id>.pmwf`. It takes effect for a plan when the plan's checkout or worktree has it: new plans once it has landed on the base branch. In a project whose landing is `landing.files` it is written and stays uncommitted in the operator's checkout until it is committed, which the confirmation and the result say. The lines of the landing turn into ✓ as they happen: `written to .marshall/config/finalize.pmwf`, `committed a1b2c3d`, `landed: in force from now on`. A failed landing says why, leaves the unit not in force, and offers _Try again_.
+* *Adoption*: a running plan adopts the new unit through the existing adoption (`config_drift`) at its next sync with the base, only where its rule allows; each plan's view says when it did (link:../shared/plan-view.adoc#live[Plan View, Live]).
+* *Validated again*: placing validates the unit again; a finding refuses it and shows the findings (<<validate>>).
+* *Changed meanwhile*: placing carries the digest of the unit it replaces; if that unit changed since the difference was shown, it is refused with `conflict`, nothing placed, and the new difference is shown to confirm again (`designer.place.conflict`).
+* *Never a compiled-only unit*: such a unit has no _Place…_; the runtime refuses it as well.
+* *Audited*: who, when, the channel and the device, the digest; the result says it (`Placed by you, 13 Oct 14:05, Firefox on mbp-oliver · sha256:3f9a…`).
+
+[#remove]
+== Removing a Placed Unit
+
+A project's or the machine's copy can be removed: _Remove…_ in the list of installed units, in the project's setup, or in the machine settings (`DELETE /api/v1/projects/{project_id}/workflows/{unit}`, `DELETE /api/v1/workflows/{unit}`). The confirmation names the level that takes over (`Then in force: this machine's copy`) with the difference against it; a project's copy is removed as a short landing, as it was placed. Removing the machine's copy is validated like placing it, against every project that would fall back to the compiled default, and refused while any fails. Removing is audited like placing. The compiled default cannot be removed.
+
+[#phone]
+== At Phone Width
+
+The input choice, then the text and the structure as two tabs, read only; _Validate_ with its findings and the composed process, and _Download_. Editing, the building blocks, and _Place…_ are not offered; one line says so (`designer.phone.note`). Placing and removing need the confirmation's difference, which needs the width.
+
+[#texts]
+== Texts
+
+Keys of the area `designer`, which only the web app loads, and the terminal's one line in its `help`, in link:process-designer-texts.adoc#texts[a part of their own].
