@@ -51,6 +51,7 @@ Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d) · 0.10.0 available: runti
 Work      plans    3 running · 1 waiting for you · 1 held · 2 paused
           epics    1 running · 1 waiting for you
           tasks    4 running · 6 queued
+          projects 3 with running work
 Workers   5 · 3 busy · 2 idle
           planner       claude  opus-4.5    busy  fix-relay
           implementer   claude  sonnet-4.5  busy  relay-docs
@@ -82,6 +83,7 @@ pm ›
 ▶ Work      plans  3 running · 1 waiting for you · 1 held · 2 paused
             epics  1 running · 1 waiting for you
             tasks  4 running · 6 queued
+            projects 3 with running work
   Workers   5 · 3 busy · 2 idle
   Jobs      build 1 of 2 slots · 1 queued · test 0 of 1 · locks 3 held
   Models    last hour · per model   42 + 118 + 12 calls · $ 32.25 · 1 error
@@ -122,7 +124,7 @@ pm ›
 |===
 
 * *Live*: the view follows the runtime's stream and redraws only the figures that changed; the selection stays on its figure. While the runtime drains or upgrades, the progress line stands below the header (link:../shared/system.adoc#draining[System, While It Stops]).
-* *Narrow*: below 80 columns the details lines are left out and `?` shows them; below 60 columns the view does not open and `system` prints instead (`operator.overview.too_narrow` with `system`).
+* *Narrow*: below 80 columns the details lines are left out and `?` shows them; below 60 columns the view does not open and `system` prints the snapshot instead, after `operator.system.too_narrow`.
 * *Where it was left*: the window, the grouping, and _per project_ are kept with the overview's state in `$XDG_STATE_HOME/pm-operator/overview.json` (xref:15-overview.adoc#overview-persistence[The Overview, Where the Operator Left It]).
 
 [#t-stop]
@@ -246,7 +248,7 @@ $ pm-operator runtime stop
 The runtime is not running; there is nothing to stop.
 ----
 
-* `system` never starts the runtime, as `status` does not; it exits `0`. `runtime stop` and `runtime restart` without a runtime exit `0` with their line; `runtime restart` starts it (`Starting the runtime …`).
+* `system` never starts the runtime, as `status` does not; it exits `0`. `runtime stop` (with `--withdraw` too) never starts it either and exits `0` with its line; `runtime restart` without a runtime starts it (`Starting the runtime …`), as every other verb that needs the runtime does (link:../shared/system.adoc#channels[System, Who May]).
 
 [#texts]
 == Texts of the Terminal
@@ -312,6 +314,10 @@ The texts of the view and of the acts are those of link:../shared/system-texts.a
 |`operator.system.console_older`
 |The runtime runs {runtime}, this console {console}. Leave it and open pm-operator again.
 |Die Runtime läuft mit {runtime}, diese Konsole mit {console}. Verlasse sie und öffne pm-operator erneut.
+
+|`operator.system.too_narrow`
+|The system view needs {columns} columns; here is a snapshot instead.
+|Die Systemansicht braucht {columns} Spalten; hier ist stattdessen eine Momentaufnahme.
 
 |`operator.system.keep`
 |k) keep it running
