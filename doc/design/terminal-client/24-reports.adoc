@@ -1,0 +1,213 @@
+= Terminal Client: Reports
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Reports
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]_
+
+What a report is, what it shows, and how it is read is link:../shared/reports.adoc[Reports], for both clients; a plan's completion report is link:../shared/completion-report.adoc[Completion Report]. This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
+
+[#commands]
+== Commands
+
+----
+  reports [--project <project_id>|.] [--older]   the unread reports, grouped, newest first; the next page
+  reports read <report_id>... | --all       mark one or several read, or all those the last listing showed
+  reports open <report_id>                  its detail; reads it
+  plan report <plan_id> [--per-phase]       an ended plan's completion report; with the spend per phase and role
+----
+
+* All are operator verbs, in the console and as one shell command; they ask nothing, so `--no-input` changes nothing, with one exception: `reports open` on a report whose detail is a start still open continues `plan add`, a direct verb.
+* *A report's id* is the one the runtime gives it (`rep-0142`); `Tab` completes the ids of the unread ones.
+* `reports` without a project prints every project's; `--project .` the project of the working directory.
+* `reports read --all` marks read the reports the last `reports` of this console printed, by their ids (link:../shared/reports.adoc#read[Reports, Reading a Report]); as one shell command, or before any listing, it reads the list first and marks read what it read, and prints how many. A report that arrived since stays unread.
+* `reports open` runs the command of the report's detail and prints it: `plan report <plan_id>` for a plan that ended, `plan <plan_id>` for a plan, `epic <epic_id>` for an epic (its landing, its rows, or its completion review first), `projects` at the project, `status --ended --project` after a release, `plan add` continued at its sources for a flagged source of a start still open (xref:18-starting.adoc#plan[Starting a Plan]), also of the start of a follow-up plan that a chat about ended work opened (xref:19-actions.adoc#chat-ended[A Chat About Ended Work]). It reads the report in the same act. Continuing `plan add` is a direct verb (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]): with `--no-input` it stops with exit code `3` at the first state that needs the operator and has no answer, prints that state and how to answer it, and leaves the entry open with its sources; the report is read all the same.
+* Marking read a report that is already read, here or in another client, is no error: `rep-0142 was already read.` (`operator.reports.already_read`); an id that is no report of this machine is refused (`operator.reports.not_found`).
+* `plan report` on a plan that has not ended is refused with its state (`fix-relay is running; its completion report follows when it ends`).
+
+[source,text]
+----
+pm › reports
+Reports · 5 unread
+pm-mcp-clients
+  relay-hardening
+    rep-0142  fix-relay           Ended: merged (#214)                  today 11:20
+              3 of 3 deliverables · 2 h 40 min                reports open rep-0142
+    rep-0143  relay-token-store   Started by relay-hardening (2 of 3)   today 11:21
+    rep-0144  relay-docs          Waits: overlap with relay-auth-v2     today 11:21
+  rep-0139    docs-typo           Ended: no change                      today 09:02 · sent 09:40
+pm-mcp-core
+  rep-0131    project             Onboarded                             yesterday 18:40
+reports read rep-0142 · reports read --all
+pm › reports read --all
+✓ 5 reports marked read.
+pm ›
+----
+
+* *Grouped and ordered* as link:../shared/reports.adoc#list[Reports, The List] says: project, then epic, then plan; the newest first. The first line names the plan, the epic, or `project`; the second the body, with the command of its detail where it has one.
+* *Sent* stands beside _created_ only where the two differ by more than a minute (`sent 09:40`).
+* More than one screen of unread reports prints the newest page and the line `12 older: reports --older` (`operator.reports.older`); `reports --older` prints the next page.
+* No unread report: `Nothing new. Reports you have read are not shown any more.` (`report.list.empty`).
+
+[#arrival]
+== On Start
+
+When the console opens and there are unread reports, it prints one line after the entry's lines and before the prompt:
+
+[source,text]
+----
+✓ Web app ready: http://127.0.0.1:47613
+▪ 5 unread reports since yesterday 18:40 · reports shows them
+pm ›
+----
+
+* The line is the console's form of link:../shared/reports.adoc#arrival[Reports, On Entering a Client]: the count and the oldest time from the runtime (`report.arrival.line`), and the command that shows them (`operator.reports.arrival_hint`).
+* No unread report, no line. The prompt carries no badge for reports: its badges are what waits for the operator (xref:04-console.adoc#prompt[The Prompt]).
+* After a reconnect the line `✓ Reconnected …` names the unread reports too where there are any (`operator.reports.reconnected`).
+
+[#notice]
+== While the Console Is Open
+
+A report that arrives is the quiet line of xref:04-console.adoc#pushed[What the Runtime Pushes], printed above the prompt like a notice, without the bell and without a desktop notification:
+
+[source,text]
+----
+pm › config roles --pro
+▪ fix-relay: Ended: merged (#214) · reports open rep-0142
+pm › config roles --pro
+----
+
+* Several arriving together are one line (`▪ 3 new reports · relay-hardening · reports`, `report.notice.many`); during a dialogue the line waits for the next state of the dialogue, as every notice does, and in the full-screen view it is summed up when the view is left (xref:15-overview.adoc#full-screen-live[Live, and Leaving]).
+* A report read in another client prints nothing; a later `reports` no longer lists it.
+
+[#full-screen]
+== In the Full-Screen View
+
+`R` in the overview (xref:15-overview.adoc#full-screen-keys[The Overview, Keys]) opens the unread reports as a level of the same view; the footer of the overview's level of projects carries the count while there are unread reports (`R 5 reports`, `operator.reports.key_count`).
+
+----
+ Reports · 5 unread                                               ● connected
+ ─────────────────────────────────────────────────────────────────────────────
+  pm-mcp-clients
+    ◇ relay-hardening
+▶     ▸ fix-relay          Ended: merged (#214)            today 11:20
+      ▸ relay-token-store  Started by relay-hardening (2 of 3)   11:21
+    ▸ docs-typo            Ended: no change                today 09:02 · sent 09:40
+  pm-mcp-core
+    ▪ project              Onboarded                       yesterday 18:40
+ ─────────────────────────────────────────────────────────────────────────────
+ ↑↓ move   Enter details   m read   M read all shown   p project   e epic   Esc back
+----
+
+[cols="1,3",options="header"]
+|===
+|Key |Action
+
+|`Enter`
+|the report's detail in the same view: the completion report, the plan view, the epic's view, the project; reads it. `Esc` from there comes back to the reports.
+
+|`m`
+|mark the selected report read; it leaves the level, and the selection moves to its neighbour
+
+|`M`
+|mark read all the reports the level shows, by their ids
+
+|`p`, `e`
+|the report's project, its epic: their views, without reading it
+
+|`?`
+|the report's line of details: its body in full, created and sent, its id
+|===
+
+The keys are keys of navigation, the same in every language, like those of the overview. The level follows the runtime's events: a new report is added at its place without moving the selection, a report read elsewhere leaves it.
+
+[#completion]
+== A Completion Report
+
+`plan report <plan_id>` prints link:../shared/completion-report.adoc[Completion Report] into the scrollback; in the full-screen view `c` on an ended plan's view opens it as a level (xref:16-plan-view.adoc#ended[The Plan View, An Ended Plan]), and `Esc` goes back.
+
+[source,text]
+----
+pm › plan report fix-relay
+fix-relay · completion report · merged · #214 · today 11:20
+  in pm-mcp-clients › relay-hardening                    plan fix-relay
+  outcome        merged: the pull request #214 was merged into main
+                 https://github.com/plan-marshall/pm-mcp-clients/pull/214
+  reason         —
+  ran            2 h 40 min, 08:40 to 11:20 · paused 20 min by you
+  deliverables   3 of 3 done
+                   done  cursor write order
+                   done  a test per transport, websocket and SSE
+                   done  fsync of the cursor file
+  re-planning    1 · after the base moved (09:55): TASK-5 added
+  decisions      2 · Q-003 Rebase onto main (you, the web app) · Q-005 (the plan)
+  spend          412 k tokens · 6 workers · 3 models     plan report fix-relay --per-phase
+pm ›
+----
+
+* The states of the deliverables are words (`done`, `not done`, `dropped`), never a glyph alone; `--per-phase` adds the spend per phase and per role.
+* `plan <plan_id>` prints the plan as it ended; `plan chat <plan_id>` opens the chat about it (xref:19-actions.adoc#chat-ended[A Chat About Ended Work]).
+
+[#reports-texts]
+== Texts of the Terminal
+
+The texts of the reports are those of link:../shared/reports.adoc#texts[Reports, Texts] and link:../shared/completion-report.adoc#texts[Completion Report, Texts]; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.reports.arrival_hint`
+|reports shows them
+|reports zeigt sie
+
+|`operator.reports.open_hint`
+|reports open {id}
+|reports open {id}
+
+|`operator.reports.read_hint`
+|reports read {id} · reports read --all
+|reports read {id} · reports read --all
+
+|`operator.reports.older`
+|{count} older: reports --older
+|{count} ältere: reports --older
+
+|`operator.reports.key_count`
+|{count, plural, one {# report} other {# reports}}
+|{count, plural, one {# Bericht} other {# Berichte}}
+
+|`operator.reports.keys.details`
+|details
+|Details
+
+|`operator.reports.keys.read`
+|read
+|gelesen
+
+|`operator.reports.keys.read_all`
+|read all shown
+|alle gezeigten gelesen
+
+|`operator.reports.reconnected`
+|{count, plural, one {# unread report} other {# unread reports}}: reports
+|{count, plural, one {# ungelesener Bericht} other {# ungelesene Berichte}}: reports
+
+|`operator.reports.not_found`
+|{id} is no report of this machine; reports lists the unread ones.
+|{id} ist kein Bericht dieser Maschine; reports listet die ungelesenen.
+
+|`operator.reports.already_read`
+|{id} was already read.
+|{id} war schon gelesen.
+
+|`operator.reports.not_ended`
+|{plan} is {state}; its completion report follows when it ends.
+|{plan} ist {state}; sein Abschlussbericht folgt, wenn er endet.
+
+|`operator.reports.per_phase_hint`
+|plan report {plan} --per-phase
+|plan report {plan} --per-phase
+|===

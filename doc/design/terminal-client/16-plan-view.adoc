@@ -86,7 +86,7 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 [#full-screen-keys]
 === Keys
 
-The keys of the overview hold here too (xref:15-overview.adoc#full-screen-keys[Keys]); those of this table replace them where both name a key: `→` (`l`) and `←` (`h`) open and close nodes instead of moving between levels, and `Enter` shows a leaf's details instead of opening a row. `Esc` goes back to where the plan view was opened: the project, an epic's view, or ended work.
+The keys of the overview hold here too (xref:15-overview.adoc#full-screen-keys[Keys]); those of this table replace them where both name a key: `→` (`l`) and `←` (`h`) open and close nodes instead of moving between levels, and `Enter` shows a leaf's details instead of opening a row. `Esc` goes back to where the plan view was opened: the project, an epic's view, ended work, or the reports.
 
 [cols="1,3",options="header"]
 |===
@@ -118,6 +118,9 @@ The keys of the overview hold here too (xref:15-overview.adoc#full-screen-keys[K
 
 |`n`
 |show or hide the nodes not in this plan
+
+|`c`
+|on an ended plan: its completion report, as a level of the view (xref:24-reports.adoc#completion[Reports, A Completion Report])
 |===
 
 [#full-screen-live]
@@ -128,7 +131,7 @@ The tree follows the plan's events; the selection stays on its node. When the pl
 [#ended]
 === An Ended Plan
 
-A plan that has ended, opened from ended work (xref:15-overview.adoc#ended[Ended Work]) or by `plan <plan_id>`, shows as it ended, read from the archive: the header names its outcome, its reason, and when it ended (`fix-relay · cancelled 2 d ago · the approach is replaced by plan relay-v2`; the outcomes of link:../shared/work-actions.adoc#outcomes[How a Plan Ends]); the tree is the process as it was when the plan ended, opened down to where it stopped; nothing updates, and `a` offers _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; xref:19-actions.adoc#chat-ended[A Chat About Ended Work]).
+A plan that has ended, opened from ended work (xref:15-overview.adoc#ended[Ended Work]) or by `plan <plan_id>`, shows as it ended, read from the archive: the header names its outcome, its reason, and when it ended (`fix-relay · cancelled 2 d ago · the approach is replaced by plan relay-v2`; the outcomes of link:../shared/work-actions.adoc#outcomes[How a Plan Ends]); the tree is the process as it was when the plan ended, opened down to where it stopped; nothing updates, and `a` offers _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; xref:19-actions.adoc#chat-ended[A Chat About Ended Work]); `c` opens its completion report (link:../shared/completion-report.adoc[Completion Report]), which `plan report <plan_id>` prints.
 
 [#tree]
 == The Tree (`plan`)
@@ -229,4 +232,8 @@ The texts of the nodes are those of link:../shared/plan-view.adoc#texts[Plan Vie
 |`operator.plan.tree.ended`
 |ended: {outcome} · {when}
 |beendet: {outcome} · {when}
+
+|`operator.plan.keys.completion`
+|completion report
+|Abschlussbericht
 |===

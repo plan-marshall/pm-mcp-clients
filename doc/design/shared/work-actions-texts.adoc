@@ -194,6 +194,30 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |{epic} runs {running} of {scope} at once; the next plan, {plan}, waits for a free place.
 |{epic} führt {running} von {scope} gleichzeitig aus; der nächste Plan, {plan}, wartet auf einen freien Platz.
 
+|`control.epic.auto`
+|Automatic: {mode, select, on {on} other {off}}
+|Automatischer Start: {mode, select, on {an} other {aus}}
+
+|`control.epic.auto_means`
+|{mode, select, on {starts its plans by itself} other {you start each plan}}
+|{mode, select, on {startet seine Pläne selbst} other {du startest jeden Plan selbst}}
+
+|`control.epic.auto_already`
+|{epic} {mode, select, on {already starts its plans by itself} other {already starts its plans only by hand}}
+|{epic} {mode, select, on {startet seine Pläne schon selbsttätig} other {startet seine Pläne schon nur von Hand}}
+
+|`control.epic.auto_started`
+|{plans} started ({running} of {scope} at once)
+|{plans} gestartet ({running} von {scope} gleichzeitig)
+
+|`control.epic.auto_nothing`
+|Nothing can start now: {reasons}
+|Jetzt kann nichts starten: {reasons}
+
+|`control.epic.auto_off_done`
+|{epic} starts no plan by itself any more; what runs goes on.
+|{epic} startet keinen Plan mehr selbsttätig; was läuft, läuft weiter.
+
 |`control.epic.decompose_again`
 |Decompose again
 |Zerlege neu
@@ -245,6 +269,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.archive.completion_reviewed`
 |the completion review is done
 |die Abschlussprüfung ist erledigt
+
+|`control.archive.review_first`
+|the completion review runs first
+|zuerst läuft die Abschlussprüfung
 
 |`control.archive.carried`
 |carried into the archive: {findings, plural, one {# kept finding} other {# kept findings}} · {watches, plural, one {# watch} other {# watches}}

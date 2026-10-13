@@ -166,7 +166,7 @@ At `start.sources` (`start-epic.sources`) the operator may talk the request thro
 
 * The title is proposed from the first description, else from the first issue's title, else from the first document's name; the id from the title, or `issue-<number>` for a plan from one issue alone.
 * An id that is taken or refused shows why, with a free proposal (`codeberg-provider-issues-2`).
-* *What is not asked here*: posture, base branch, outline review. Each is asked where the plan or the epic first needs it, and not at all where the project or the machine sets it; the operator meets it as a decision (link:decisions.adoc[Decisions]). How many plans an epic runs at once is never asked: a new epic takes the project's `epic.parallelization_scope` (machine default 1); the operator raises it through the epic's _Next plan_, which offers to raise it by one when the scope is full (link:work-actions.adoc#epic-actions[An Epic's Actions]), or in the project's settings.
+* *What is not asked here*: posture, base branch, outline review. Each is asked where the plan or the epic first needs it, and not at all where the project or the machine sets it; the operator meets it as a decision (link:decisions.adoc[Decisions]). How many plans an epic runs at once is never asked: a new epic takes the project's `epic.parallelization_scope` (machine default 1); the operator raises it through the epic's _Next plan_, which offers to raise it by one when the scope is full (link:work-actions.adoc#epic-actions[An Epic's Actions]), or in the project's settings. Whether the epic starts its plans by itself is not asked either: the ready step of an epic shows the value in force, the project's `epic.auto_start` (the machine's default: on), with where it comes from (`start.ready.epic_auto`); it is switched later in the epic's actions (link:work-actions.adoc#epic-auto[Automatic: On or Off]).
 
 [#landing-refused]
 === A Landing That Does Not Fit
@@ -207,7 +207,7 @@ A plan from the local changes needs a landing that commits them. Where the proje
 * *Draft again* asks for an instruction and replaces the draft, keeping what the operator decided where the plan is still in it.
 * *Leaving* keeps the draft and the decisions made on it; the review continues where it stopped, in either client. The epic starts no plan before its first decomposition is agreed.
 * *A later run* (_Decompose again_, or the epic's own recut) shows the shipped, running, pausing, and paused plans locked and greyed (a paused plan is the operator's to start or abandon, never the decomposition's), and marks each staged plan as `unchanged`, `changed`, `new`, or `dropped`, a change opening to old against new.
-* *Agree* is enabled once every check passes (`every check passes`); it commits the cut (`committed`), and the epic then starts the plans that can start.
+* *Agree* is enabled once every check passes (`every check passes`); it commits the cut (`committed`). Then the epic's mode decides (link:work-actions.adoc#epic-auto[Automatic: On or Off]): automatic, it starts the plans that can start, up to how many may run at once, and the line after `committed` names them (`started: relay-reconnect-backoff (1 of 1 at once)`); manual, it leaves them staged, reports them (`epic.launchable`, link:reports.adoc#kinds[Reports]), and waits for _Next plan_, and the line names what can start now (`can start now: relay-reconnect-backoff, relay-cursor-order; it starts none by itself`, `start.decomposition.then`).
 
 [#leaving]
 == Leaving and Coming Back

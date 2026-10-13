@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Epic View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], leading into link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2] and link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-epic-resource[The Epic as a Resource], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-epic-resource[The Epic as a Resource], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-epic-auto[An Epic Runs by Itself] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
 
@@ -18,10 +18,10 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
 
 ----
   pm-mcp-clients › relay-hardening
-  relay-hardening · epic                        running · 2 of 3 at once   ! 3
+  relay-hardening · epic             running · automatic · 2 of 3 at once   ! 3
   ─────────────────────────────────────────────────────────────────────────────
-  [▶ Next plan: relay-reconnect-metrics]  [Decompose again]  [Findings review · 3 new]
-  [Watches review · 5]  [Chat]  [Archive]  [Cancel]
+  [▶ Next plan: relay-reconnect-metrics]  [Automatic: on]  [Decompose again]
+  [Findings review · 3 new]  [Watches review · 5]  [Chat]  [Archive]  [Cancel]
   ─────────────────────────────────────────────────────────────────────────────
   ▾ WS-1  Reconnect                    1 shipped · 1 running · 1 paused · 1 staged
       ✓  relay-reconnect-backoff      shipped · #211                 2 d ago
@@ -31,22 +31,37 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
   ▾ WS-2  Authentication                                   1 running · 1 staged
       ▶  relay-auth-v2                refine · waiting for you   !   12 min
       ○  relay-token-rotation         staged · after relay-auth-v2
+      ○  relay-docs                   staged · waits: overlap with relay-auth-v2
   ─────────────────────────────────────────────────────────────────────────────
   Sources      2 documents · 1 issue           Landings    2 · last 2 d ago
   Findings     3 new · 4 open · 2 kept         Watches     1 open · 4 kept
   ─────────────────────────────────────────────────────────────────────────────
   Events
     12:40  relay-auth-v2 asks a decision
+    12:05  relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered
     11:55  you paused relay-reconnect-docs
     …
 ----
 
-* *The head*: the path `project › epic` (`pm-mcp-clients › relay-hardening`), the project one step away: in the web app a link, in the terminal a key (link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, An Epic's View]), opening the project in Running Work (link:plan-overview.adoc#levels[Plan Overview]); the title, the state from one closed list (running, waiting for you, held, landing, ended), how many plans run of how many may at once, the marker of what needs the operator with its count, and the epic's actions, those of its state (link:work-actions.adoc#epic-actions[An Epic's Actions]: while it lands, _Archive_ waits for the ledger). _Next plan_ names a plan that can start now (here `relay-reconnect-metrics`: `relay-token-rotation` waits for `relay-auth-v2`); with none it is disabled with its reason.
-* *Workstreams*: open or closed like a node of the plan view, each with its counts per status; each plan with its status from one closed list (staged, running, pausing, paused, shipped, cancelled, abandoned, held; a paused plan is always paused by the operator and says so; a plan aborted from an integrity pause shows `cancelled` here and keeps its outcome `aborted`, link:work-actions.adoc#epic-told[The Epic Is Told]), what a staged plan waits for (a dependency, a lock, the scope full) or `can start`, and since when. A shipped plan shows its pull request by its number with a link. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view, whose path leads back to this epic in one step (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]).
+* *The head*: the path `project › epic` (`pm-mcp-clients › relay-hardening`), the project one step away: in the web app a link, in the terminal a key (link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, An Epic's View]), opening the project in Running Work (link:plan-overview.adoc#levels[Plan Overview]); the title, the state from one closed list (running, waiting for you, held, landing, ended), whether it starts its plans by itself (`automatic` or `manual`, <<reactions>>), how many plans run of how many may at once, the marker of what needs the operator with its count, and the epic's actions, those of its state (link:work-actions.adoc#epic-actions[An Epic's Actions]: while it lands, _Archive_ waits for the ledger). _Next plan_ names a plan that can start now (here `relay-reconnect-metrics`: `relay-token-rotation` waits for `relay-auth-v2`); with none it is disabled with its reason.
+* *Workstreams*: open or closed like a node of the plan view, each with its counts per status; each plan with its status from one closed list (staged, running, pausing, paused, shipped, cancelled, abandoned, held; a paused plan is always paused by the operator and says so; a plan aborted from an integrity pause shows `cancelled` here and keeps its outcome `aborted`, link:work-actions.adoc#epic-told[The Epic Is Told]), what a staged plan waits for (a dependency, a lock, the scope full, an overlap with a running plan: `waits: overlap with relay-auth-v2`, <<reactions>>) or `can start`, and since when. A shipped plan shows its pull request by its number with a link. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view, whose path leads back to this epic in one step (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]).
 * *Sources, landings, findings, watches*: one line each (findings: how many are new since the last review, how many are open, not decided yet, and how many are kept; watches: how many are open and how many kept), opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
-* *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts, decompositions, landings.
+* *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts (the automatic mode switched among them), decompositions, landings, and what the epic did by itself after a plan ended (<<reactions>>).
 * *What waits for the operator* (a decomposition, a held item, a decision) stands first in the head, with a link to it.
 * *An ended epic* shows read-only as it ended, with its end (`completed`, `cancelled`, or `released`; link:work-actions.adoc#outcomes[How a Plan Ends]), reason, and end time in the head, its plans with how each ended (a plan aborted from an integrity pause by its outcome `aborted`), without live updates and without actions but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]), opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
+
+[#reactions]
+== What the Epic Does by Itself
+
+An epic manages its plans (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-epic-auto[An Epic Runs by Itself]); the view shows what it did, and never decides anything itself:
+
+* *Automatic or manual*: the head says `automatic` while the epic starts its launchable plans by itself, up to how many may run at once, and `manual` while it starts none and waits for _Next plan_ (link:work-actions.adoc#epic-auto[Automatic: On or Off]). Everything below runs in both modes.
+* *Waits: overlap*: a staged plan whose declared surface shares more files with a running plan than the epic allows waits until that plan has ended, and its row says so (`waits: overlap with relay-auth-v2`); `?` in the terminal or the row's detail in the web app names the files in common. It is never started beside that plan, also not by _Next plan_.
+* *An overlap found*: two running plans whose changes have come to share files beyond the limit go on; the epic records it, the event names both plans and the files (`relay-cursor-order and relay-docs-site changed 3 files in common`), and a report says so (link:reports.adoc#kinds[Reports]). The one that lands second meets its re-planning when the base moves under it.
+* *After a plan landed*: the event names the landing and its downstream judgment (`relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered`); a re-order, or an amended surface or dependency of a staged plan, is applied and shown in the rows; a change that adds, drops, or re-scopes a plan waits for the operator in the decomposition, first in the head as what waits (link:starting-work.adoc#decomposition[The Decomposition]).
+* *After a plan ended without landing* (cancelled, abandoned, handed back, released, aborted): the plans that depend on it are held, each with that reason, and the epic asks the operator as every hold does (link:work-actions.adoc#holds[What Holds a Plan]).
+* *The next plans*: then, automatic, the epic starts what can start (`started relay-token-store (2 of 3 at once)`); manual, the event names what can start now (`can start now: relay-token-store`), a report says so once per change (link:reports.adoc#kinds[Reports]), and _Next plan_ offers it.
+* *Through*: once every plan has shipped or ended, an automatic epic runs its completion review and reports it (`relay-hardening is through: the completion review is ready`); the review opens from the head, and _Archive_ stays the operator's act (link:work-actions.adoc#archive-check[Archiving]). A manual epic reports that it is through (`relay-hardening is through: archiving runs its completion review`) and runs the review when the operator chooses _Archive_, before the archive check.
 
 [#texts]
 == Texts
@@ -113,9 +128,49 @@ Keys of the area `overview`, shared by both clients.
 |waits for a free place: {running} of {scope} taken
 |wartet auf einen freien Platz: {running} von {scope} belegt
 
+|`overview.epic.waits.overlap`
+|waits: overlap with {plan}
+|wartet: Überschneidung mit {plan}
+
+|`overview.epic.waits.overlap_files`
+|{files, plural, one {# file} other {# files}} in common with {plan}: {paths}
+|{files, plural, one {# gemeinsame Datei} other {# gemeinsame Dateien}} mit {plan}: {paths}
+
 |`overview.epic.waits.none`
 |can start
 |kann starten
+
+|`overview.epic.mode`
+|{mode, select, automatic {automatic} other {manual}}
+|{mode, select, automatic {automatisch} other {von Hand}}
+
+|`overview.epic.event.landed`
+|{plan} landed; {change, select, none {no staged plan changed} reorder {{plans} re-ordered} amend {{plans} amended} waits {a change of the staged plans waits for you} other {{plans} changed}}
+|{plan} ist gelandet; {change, select, none {kein vorgesehener Plan hat sich geändert} reorder {{plans} neu geordnet} amend {{plans} angepasst} waits {eine Änderung der vorgesehenen Pläne wartet auf dich} other {{plans} geändert}}
+
+|`overview.epic.event.ended_held`
+|{plan} ended ({outcome}); {plans} held
+|{plan} ist beendet ({outcome}); {plans} zurückgehalten
+
+|`overview.epic.event.started`
+|started {plan} ({running} of {scope} at once)
+|{plan} gestartet ({running} von {scope} gleichzeitig)
+
+|`overview.epic.event.can_start`
+|can start now: {plans}
+|kann jetzt starten: {plans}
+
+|`overview.epic.event.overlap_found`
+|{plan} and {other} changed {files, plural, one {# file} other {# files}} in common
+|{plan} und {other} haben {files, plural, one {# gemeinsame Datei} other {# gemeinsame Dateien}} geändert
+
+|`overview.epic.event.through`
+|{epic} is through: {review, select, ready {the completion review is ready} other {archiving runs its completion review}}
+|{epic} ist durch: {review, select, ready {die Abschlussprüfung liegt vor} other {das Archivieren führt seine Abschlussprüfung aus}}
+
+|`overview.epic.event.mode`
+|you switched automatic {mode, select, automatic {on} other {off}}
+|du hast den automatischen Start {mode, select, automatic {eingeschaltet} other {ausgeschaltet}}
 
 |`overview.epic.sources`
 |Sources

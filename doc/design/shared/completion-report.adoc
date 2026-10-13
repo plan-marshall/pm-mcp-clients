@@ -1,0 +1,134 @@
+= Design: Completion Report
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Completion Report
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (ended work)_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
+
+How a plan went, on one page: the detail of the report of its end (link:reports.adoc#detail[Reports, The Detail]) and one step from the plan as it ended (link:plan-view.adoc#ended[Plan View, An Ended Plan]). The plan view shows the process node by node; the completion report says what came of it. It is a view of its own, read from the archive and the plan's records (its completion record, its re-planning records, its decisions, its usage records); the client computes nothing in it. It is the resource `GET /api/v1/plans/{plan_id}/completion`.
+
+[#layout]
+== Layout
+
+----
+  pm-mcp-clients › relay-hardening › fix-relay
+  fix-relay · completion report                     merged · #214 · today 11:20
+  ─────────────────────────────────────────────────────────────────────────────
+  Outcome        merged: the pull request #214 was merged into main
+  Reason         —
+  Ran            2 h 40 min, 08:40 to 11:20 · paused 20 min by you
+  Deliverables   3 of 3 done
+                   ✓ cursor write order
+                   ✓ a test per transport, websocket and SSE
+                   ✓ fsync of the cursor file
+  Re-planning    1 · after the base moved (09:55): TASK-5 added
+  Decisions      2 · Q-003 Rebase onto main (you, web app) · Q-005 (the plan)
+  Spend          412 k tokens · 6 workers · 3 models          [Per phase]
+  ─────────────────────────────────────────────────────────────────────────────
+  [Its plan view]   [Chat]
+----
+
+* *The head*: the path `project › epic › plan` as in the plan view, each part one step away (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]); the title; the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]); the plan's own pull request by its number with a link; when it ended.
+* *Outcome and reason*: the outcome in words, with what it means for this plan (merged into which branch; handed back as a pull request, a branch, or changes in the working tree, with what is missing; returned with its planning result); the reason where the operator or the plan gave one, else `—`.
+* *Ran*: from its start to its end, and how long it was paused by the operator, where it was.
+* *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
+* *Re-planning*: how often the plan was revised, each with its trigger (the base moved, a failed gate, a chat of the operator) and what changed in one line; opening one leads to it in the plan's history.
+* *Decisions*: how many were asked, each with its id, the answer, and who answered (you, with the channel and device; the plan, where the decision allowed it to decide; withdrawn); opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
+* *Spend*: the tokens, the workers, and the models the plan used, from its usage records; _Per phase_ shows them per phase and per role, one step away. A cost in money is shown only where the records carry one.
+* *Actions*: _Its plan view_ opens the plan as it ended; _Chat_ opens the read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). The report has no other action: the archive never changes.
+
+[#reached]
+== Where It Is Reached
+
+* From the report of the plan's end: _Show the details_, which reads the report (link:reports.adoc#read[Reports, Reading a Report]).
+* From the plan as it ended: the head of the ended plan view offers _Completion report_ (link:plan-view.adoc#ended[An Ended Plan]); from the completion report, _Its plan view_ goes back.
+* From a row of Ended Work: a plan's row opens its plan view as before (link:plan-overview.adoc#ended[Ended Work]); its completion report is one step from there.
+* Only a plan that has ended has one. An epic's counterpart is its completion review, in its view (link:epic-view.adoc#reactions[Epic View, What the Epic Does by Itself]).
+
+[#texts]
+== Texts
+
+Keys of the area `report`, shared by both clients; the outcome is `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview, Texts]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`report.completion.title`
+|{plan} · completion report
+|{plan} · Abschlussbericht
+
+|`report.completion.open`
+|Completion report
+|Abschlussbericht
+
+|`report.completion.outcome`
+|Outcome
+|Ergebnis
+
+|`report.completion.reason`
+|Reason
+|Grund
+
+|`report.completion.ran`
+|Ran
+|Lief
+
+|`report.completion.ran_value`
+|{duration}, {start} to {end}{paused, select, none {} other { · paused {paused} by you}}
+|{duration}, {start} bis {end}{paused, select, none {} other { · {paused} von dir angehalten}}
+
+|`report.completion.deliverables`
+|Deliverables
+|Deliverables
+
+|`report.completion.deliverables_done`
+|{done} of {total} done
+|{done} von {total} fertig
+
+|`report.completion.deliverables_none`
+|no deliverables yet: it ended in {phase}
+|noch keine Deliverables: er endete in {phase}
+
+|`report.completion.replanning`
+|Re-planning
+|Neuplanung
+
+|`report.completion.replanning_entry`
+|after {trigger} ({time}): {change}
+|nach {trigger} ({time}): {change}
+
+|`report.completion.decisions`
+|Decisions
+|Entscheidungen
+
+|`report.completion.decision_by`
+|{by, select, operator {you, {channel}} plan {the plan} withdrawn {withdrawn} other {{by}}}
+|{by, select, operator {du, {channel}} plan {der Plan} withdrawn {zurückgezogen} other {{by}}}
+
+|`report.completion.spend`
+|Spend
+|Verbrauch
+
+|`report.completion.spend_value`
+|{tokens} tokens · {workers, plural, one {# worker} other {# workers}} · {models, plural, one {# model} other {# models}}
+|{tokens} Tokens · {workers, plural, one {# Worker} other {# Worker}} · {models, plural, one {# Modell} other {# Modelle}}
+
+|`report.completion.per_phase`
+|Per phase
+|Zeige je Phase
+
+|`report.completion.plan_view`
+|Its plan view
+|Zeige seinen Plan
+
+|`report.completion.none`
+|—
+|—
+|===

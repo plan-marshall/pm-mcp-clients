@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Plan View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed, the completion report), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
@@ -135,7 +135,7 @@ A leaf shows what runs or ran in it:
 [#way-out]
 === Its Project and Its Epic
 
-From a plan, its project is always one step away, and its epic, where it has one, wherever the plan view was opened from (Running Work, the project, the epic, a decision, ended work; link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]):
+From a plan, its project is always one step away, and its epic, where it has one, wherever the plan view was opened from (Running Work, the project, the epic, a decision, ended work, a report or a completion report; link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]):
 
 * *The path in the head* is `project › epic › plan` (`pm-mcp-clients › relay-hardening › fix-relay`), the project by its display name, the epic by its title; a plan of no epic shows `project › plan`. Each part is one step: in the web app a link, in the terminal a key (link:../terminal-client/16-plan-view.adoc#full-screen-keys[Terminal Client, Keys]).
 * *The project* opens the project in Running Work, its plans and epics (link:plan-overview.adoc#levels[Plan Overview]); *the epic*, where there is one, opens its epic view (link:epic-view.adoc[Epic View]), so that a plan opened from its epic's view goes back to the epic in that step.
@@ -151,7 +151,7 @@ The view follows the plan's events: a node entered becomes _running_, one left _
 [#ended]
 === An Ended Plan
 
-An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]).
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, spend, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
 
 [#texts]
 == Texts

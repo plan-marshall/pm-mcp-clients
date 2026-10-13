@@ -210,7 +210,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:control-contract.adoc[`control-contract`]
 |Controlling work: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; UC-CTL-1 to UC-CTL-5 and UC-STA-6 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; link:../../../pm-mcp-core/doc/plans/epic-auto.adoc[`pm-mcp-core` / `epic-auto`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; UC-CTL-1 to UC-CTL-5 and UC-STA-6 agreed, with An Epic Runs by Itself (no work package)
 |epic clients
 
 |link:cli-actions.adoc[`cli-actions`]
@@ -259,6 +259,24 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |Overview of running work in the web app
 |`blocked`
 |link:overview-contract.adoc[`overview-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
+|epic clients
+
+|link:report-contract.adoc[`report-contract`]
+|Reports to the operator and a plan's completion report: contract and mock runtime
+|`blocked`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/operator-reports.adoc[`pm-mcp-core` / `operator-reports`]; UC-PLN-6 agreed (no work package)
+|epic clients
+
+|link:cli-reports.adoc[`cli-reports`]
+|Reports and the completion report in the terminal
+|`blocked`
+|link:report-contract.adoc[`report-contract`]; link:cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
+|epic clients
+
+|link:web-reports.adoc[`web-reports`]
+|Reports and the completion report in the web app
+|`blocked`
+|link:report-contract.adoc[`report-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
 |===

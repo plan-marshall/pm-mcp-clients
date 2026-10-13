@@ -51,7 +51,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/plan-view.adoc[Plan View]
 |`DRAFT`
-|What both clients show of one plan's process: its head with the path project › epic › plan, each one step away, and the plan's state, its six phases (a lane a choice of them) and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, the leaves' jobs and tasks, and an ended plan as it ended.
+|What both clients show of one plan's process: its head with the path project › epic › plan, each one step away, and the plan's state, its six phases (a lane a choice of them) and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, the leaves' jobs and tasks, and an ended plan as it ended, with its completion report one step away.
 
 |link:shared/starting-work.adoc[Starting Work]
 |`DRAFT`
@@ -59,11 +59,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/epic-view.adoc[Epic View]
 |`DRAFT`
-|What both clients show of one epic: its head with the path project › epic, the project one step away, its state and actions, its workstreams with their plans, their status and what they wait for, its sources, landings, findings, watches, and events; an ended epic as it ended.
+|What both clients show of one epic: its head with the path project › epic, the project one step away, its state, whether it starts its plans by itself, and its actions, its workstreams with their plans, their status and what they wait for (an overlap with a running plan among it), what it does by itself after a plan ended, its sources, landings, findings, watches, and events; an ended epic as it ended.
 
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
 |`DRAFT`
-|What both clients offer to act on a plan or an epic, by its state (running, pausing, paused, waiting for you, held, an epic also landing; ended): pause, start, cancel, abandon a plan, abort it from an integrity pause, how a plan and an epic end, a plan's settings (UC-CTL-5, with its refusals), a setting changed in two clients at once (the one rule for machine, project, and plan settings), its epic told; an epic's next plan with raising the scope, the archive check with what it carries, cancel; the review of an epic's findings or watches with keep as a finding or to the watches, drop, promote (with its redraft), edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (exactly stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each, then released or still held; its texts in link:shared/work-actions-texts.adoc[a part of their own], link:shared/work-actions-review-texts.adoc[the part of reviews and holds], and link:shared/work-actions-chat-texts.adoc[the chat's part].
+|What both clients offer to act on a plan or an epic, by its state (running, pausing, paused, waiting for you, held, an epic also landing; ended): pause, start, cancel, abandon a plan, abort it from an integrity pause, how a plan and an epic end, a plan's settings (UC-CTL-5, with its refusals), a setting changed in two clients at once (the one rule for machine, project, and plan settings), its epic told; an epic's next plan with raising the scope, its automatic start on or off, the archive check with what it carries, cancel; the review of an epic's findings or watches with keep as a finding or to the watches, drop, promote (with its redraft), edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (exactly stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each, then released or still held; its texts in link:shared/work-actions-texts.adoc[a part of their own], link:shared/work-actions-review-texts.adoc[the part of reviews and holds], and link:shared/work-actions-chat-texts.adoc[the chat's part].
 
 |link:shared/consents.adoc[Consents]
 |`DRAFT`
@@ -72,6 +72,14 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`
 |What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys, areas, and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).
+
+|link:shared/reports.adoc[Reports]
+|`DRAFT`
+|What both clients show of the reports to the operator: the closed kinds, what a report shows (from, subject, body, created, sent, detail), the list of unread reports grouped by project, epic, and plan, the count on entering a client with one step to the list, the quiet notice while a client is open, marking one or all shown read, the detail that reads it, read on every device, a subject that has ended or is no longer kept; its texts in the new area `report`.
+
+|link:shared/completion-report.adoc[Completion Report]
+|`DRAFT`
+|What both clients show of how an ended plan went: outcome and reason, pull request, duration, deliverables, re-planning, decisions, spend; reached from the report of its end and from the ended plan view.
 
 |link:shared/paired-devices.adoc[Paired Devices]
 |`DRAFT`
