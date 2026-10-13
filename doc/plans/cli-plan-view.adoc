@@ -11,8 +11,8 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The plan view as the third level of the full-screen view: the tree to open and close, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), sub-workflows marked, the path in the header, the jump to where the plan is, a leaf's details, live updates.
-* `plan <plan_id>` as the tree in the scrollback (`--all`, `--depth`), the accessible path and the fallback.
+* The plan view as the third level of the full-screen view: the tree to open and close, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), sub-workflows marked, the path in the header from the project and the epic down to the selected node, `p` to the plan's project and `e` to its epic from wherever the view was opened (`Esc` back to that place), the jump to where the plan is, a leaf's details, live updates.
+* `plan <plan_id>` as the tree in the scrollback (`--all`, `--depth`), the accessible path and the fallback, its second line naming the project and the epic with the commands that open them.
 * Texts from the catalogue only.
 
 == Trace
@@ -24,4 +24,4 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 == Done When
 
-Every scenario of `process-contract` passes as a transcript test of `plan` and as a screen test of the full-screen view, in the JVM and native; the selection stays on its node while the tree changes.
+Every scenario of `process-contract` passes as a transcript test of `plan` and as a screen test of the full-screen view, in the JVM and native; the selection stays on its node while the tree changes; a screen test reaches the project and the epic in one key from a plan opened in the overview, in an epic's view, and in ended work, and `Esc` returns to where it was opened.

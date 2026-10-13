@@ -47,7 +47,7 @@ A client shows an element when the decision carries it and leaves its place out 
 
 Both clients show a decision in the same order, top to bottom:
 
-. *What is asked*: the title; its subject (the plan, the epic, or the project's setup) and the phase or step that asks; *why now*: what it blocks; how reversible it is; and that its subject waits for the answer.
+. *What is asked*: the title; its subject (the plan, the epic, or the project's setup), leading to its view, from which its project and epic are one step away (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]), and the phase or step that asks; *why now*: what it blocks; how reversible it is; and that its subject waits for the answer.
 . *The evidence*: the description, then the evidence it names (a file and its lines, a diff, a finding, a link). The evidence is what lets the operator decide without trusting the prose; it is one step away (expanded in the web app, `?` in the terminal), never hidden.
 . *The parts*, one at a time where there are several (<<parts>>), each with its question and its options in the order the workflow gives them: never sorted by support, so that the order itself recommends nothing.
 . *The recommendation and the votes*, where the decision carries them, placed by <<recommendation>>.

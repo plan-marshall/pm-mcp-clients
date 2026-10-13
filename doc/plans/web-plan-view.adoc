@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The view of a plan as designed: its process level by level, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), the kinds with the icons of the design system, the states as glyph and word, the path with its way back, the jump to where the plan is, a leaf's details, live updates; at desktop and phone width, light and dark.
+* The view of a plan as designed: its process level by level, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), the kinds with the icons of the design system, the states as glyph and word, the path project › epic › plan in the head, the project and the epic each a link one step away wherever the plan was opened from (Running Work, the project, the epic, a decision, ended work), the path with its way back, the jump to where the plan is, a leaf's details, live updates; at desktop and phone width, light and dark.
 
 == Trace
 
@@ -22,4 +22,4 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 == Done When
 
-Every scenario of `process-contract` passes as a view test; the same scenarios pass in the terminal (`cli-plan-view`).
+Every scenario of `process-contract` passes as a view test, among them the project and the epic reached in one step from a plan opened in each of those places; the same scenarios pass in the terminal (`cli-plan-view`).

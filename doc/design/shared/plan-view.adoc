@@ -17,6 +17,7 @@ A plan's process is not a fixed list of phases: it is the plan's composed workfl
 == Levels
 
 ----
+  pm-mcp-clients › relay-hardening › fix-relay
   fix-relay                                   execute · running · 2 h 10 min
   ├─ ✓ phase  init                            done · 2 min
   ├─ ✓ phase  refine                          done · 14 min
@@ -37,7 +38,7 @@ A plan of the land lane calls fewer phases; the land lane is a choice of phases,
   └─   not in this plan: refine, outline, plan (the land lane)
 ----
 
-* *The head*: the plan's title; its current phase; its state, from the closed list of Running Work (link:plan-overview.adoc#item-rows[A Plan, an Epic]): `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `held`; for a held plan the kind of its hold (`holds: a condition`, link:work-actions.adoc#holds[What Holds a Plan]); how long it runs; its own pull request by its number with a link (`#214`); its epic, if any; and its actions (link:work-actions.adoc#plan-actions[A Plan's Actions]).
+* *The head*: the path project › epic › plan (<<way-out>>); the plan's title; its current phase; its state, from the closed list of Running Work (link:plan-overview.adoc#item-rows[A Plan, an Epic]): `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `held`; for a held plan the kind of its hold (`holds: a condition`, link:work-actions.adoc#holds[What Holds a Plan]); how long it runs; its own pull request by its number with a link (`#214`); and its actions (link:work-actions.adoc#plan-actions[A Plan's Actions]).
 * *The plan*: its phases, the six of `init`, `refine`, `outline`, `plan`, `execute`, `finalize` that the plan unit calls, in the order it calls them, each with its state (done, running, planned, waiting for you, or failed); the phases its composition left out (another lane, a step the project does not need) are a group of their own at the end, each with its reason.
 * *A phase, a sub-workflow*: its workflow, opened below it: the states in the order of the workflow, the calls marked as sub-workflows, each with its state; a sub-workflow opens the same way, through every level of nesting.
 * *A leaf*: a state that calls nothing; opening it shows what runs or ran in it (<<leaf>>).
@@ -130,6 +131,17 @@ A leaf shows what runs or ran in it:
 
 * The path from the plan to the level shown is always visible (`fix-relay › finalize › remediation.ci-failure`), each part a way back up.
 * The plan view opens at the plan's level with the path to the current position open down to the running phase; a jump opens it down to the running leaf.
+
+[#way-out]
+=== Its Project and Its Epic
+
+From a plan, its project and its epic are each one step away, wherever the plan view was opened from (Running Work, the project, the epic, a decision, ended work; link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]):
+
+* *The path in the head* is `project › epic › plan` (`pm-mcp-clients › relay-hardening › fix-relay`), the project by its display name, the epic by its title; a plan of no epic shows `project › plan`. Each part is one step: in the web app a link, in the terminal a key (link:../terminal-client/16-plan-view.adoc#full-screen-keys[Terminal Client, Keys]).
+* *The project* opens the project in Running Work, its plans and epics (link:plan-overview.adoc#levels[Plan Overview]); *the epic* opens its epic view (link:epic-view.adoc[Epic View]), so that a plan opened from its epic's view goes back to the epic in that step.
+* The way back to where the view was opened (the browser's back, `Esc` in the terminal) stays as it is; the path is the way to the plan's own context, wherever the operator came from.
+* An ended plan's path leads the same way: to its project, and to its epic, live or as it ended.
+* Both come from the plan's process, which names its project and its epic with a link to each (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure]).
 
 [#live]
 == Live

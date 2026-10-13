@@ -51,7 +51,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/plan-view.adoc[Plan View]
 |`DRAFT`
-|What both clients show of one plan's process: its head with the plan's state, its six phases (a lane a choice of them) and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, the leaves' jobs and tasks, and an ended plan as it ended.
+|What both clients show of one plan's process: its head with the path project › epic › plan, each one step away, and the plan's state, its six phases (a lane a choice of them) and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, the leaves' jobs and tasks, and an ended plan as it ended.
 
 |link:shared/starting-work.adoc[Starting Work]
 |`DRAFT`
@@ -59,7 +59,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/epic-view.adoc[Epic View]
 |`DRAFT`
-|What both clients show of one epic: its head with its state and actions, its workstreams with their plans, their status and what they wait for, its sources, landings, findings, watches, and events; an ended epic as it ended.
+|What both clients show of one epic: its head with the path project › epic, the project one step away, its state and actions, its workstreams with their plans, their status and what they wait for, its sources, landings, findings, watches, and events; an ended epic as it ended.
 
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
 |`DRAFT`
