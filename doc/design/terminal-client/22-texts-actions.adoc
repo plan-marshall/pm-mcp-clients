@@ -5,14 +5,14 @@
 
 link:README.adoc[Terminal Client] » Texts: Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
 
 The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
 
 [#actions-texts]
 == Actions on Plans and Epics
 
-The texts of the actions, the dialogues, and the review are those of link:../shared/work-actions.adoc#texts[Actions on Plans and Epics, Texts]; the terminal adds these, of the area `operator`:
+The texts of the actions, the dialogues, the settings, the review, and the holds are those of link:../shared/work-actions.adoc#texts[Actions on Plans and Epics, Texts] (link:../shared/work-actions-texts.adoc#texts[the actions], link:../shared/work-actions-review-texts.adoc#texts[reviews and holds]); the terminal adds these, of the area `operator`:
 
 [cols="3,3,3",options="header"]
 |===
@@ -71,16 +71,16 @@ The texts of the actions, the dialogues, and the review are those of link:../sha
 |#{number} {url} ist offen
 
 |`operator.actions.cancel.confirm`
-|{action, select, cancel {Cancel the plan} other {Abandon the plan}}
-|{action, select, cancel {Brich den Plan ab} other {Gib den Plan auf}}
+|{action, select, cancel {Cancel the plan} abandon {Abandon the plan} other {Abort the plan}}
+|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätspause ab}}
 
-|`operator.actions.keep_running`
-|no, keep it running
-|nein, lass ihn weiterlaufen
+|`operator.actions.keep`
+|{action, select, cancel {no, keep it running} abandon {no, keep it paused} other {no, keep it held}}
+|{action, select, cancel {nein, lass ihn weiterlaufen} abandon {nein, lass ihn angehalten} other {nein, lass ihn aufgehalten}}
 
 |`operator.actions.result.ended`
-|{plan} {outcome, select, cancelled {cancelled} other {abandoned}} and archived
-|{plan} {outcome, select, cancelled {abgebrochen} other {aufgegeben}} und archiviert
+|{plan} {outcome, select, cancelled {cancelled} abandoned {abandoned} other {aborted}} and archived
+|{plan} {outcome, select, cancelled {abgebrochen} abandoned {aufgegeben} other {wegen der Integritätspause abgebrochen}} und archiviert
 
 |`operator.actions.result.pr_closed`
 |#{number} closed
@@ -102,13 +102,17 @@ The texts of the actions, the dialogues, and the review are those of link:../sha
 |{plan} started ({running} of {scope} at once)
 |{plan} gestartet ({running} von {scope} gleichzeitig)
 
-|`operator.actions.next.scope_full`
-|{epic} runs {running} of {scope} at once; the next plan, {plan}, waits for the scope.
-|{epic} führt {running} von {scope} gleichzeitig aus; der nächste Plan, {plan}, wartet auf den Scope.
-
 |`operator.actions.result.not_through`
 |{epic} is not through yet.
 |{epic} ist noch nicht durch.
+
+|`operator.actions.archive_landing`
+|{epic} is landing: archive waits until the ledger has landed
+|{epic} landet gerade: das Archivieren wartet, bis das Ledger gelandet ist
+
+|`operator.actions.settings.no_input`
+|{value} is refused: {reason}; --no-input stops here.
+|{value} wird abgelehnt: {reason}; --no-input hält hier an.
 
 |`operator.actions.epic.needs_you`
 |needs you
@@ -151,8 +155,12 @@ The texts of the actions, the dialogues, and the review are those of link:../sha
 |Behalte {item}
 
 |`operator.actions.review.kept`
-|{item} kept as {register, select, findings {defect} other {watch}}
-|{item} behalten als {register, select, findings {Defekt} other {Beobachtung}}
+|{item} kept as {register, select, findings {a finding} other {a watch}}
+|{item} behalten als {register, select, findings {Finding} other {Beobachtung}}
+
+|`operator.actions.review.moved`
+|{item} moved to the {register, select, findings {findings} other {watches}}
+|{item} zu den {register, select, findings {Findings} other {Beobachtungen}} verschoben
 
 |`operator.actions.review.dropped`
 |{item} dropped
@@ -232,6 +240,10 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |r
 |e
 
+|`operator.actions.key.leave_scope`
+|n
+|l
+
 |`operator.actions.key.retry`
 |r
 |w
@@ -273,6 +285,14 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |g
 
 |`operator.actions.key.end_plan`
+|x
+|x
+
+|`operator.actions.key.abort_plan`
+|x
+|x
+
+|`operator.actions.key.cancel_epic`
 |x
 |x
 

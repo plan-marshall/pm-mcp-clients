@@ -35,11 +35,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/decisions.adoc[Decisions]
 |`DRAFT`
-|What both clients show of a decision a plan asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, a chat before answering, announcing (with the web app's browser notification), a waiver request, and how it ends; its texts in link:shared/decisions-texts.adoc[a part of their own].
+|What both clients show of a decision a plan asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, a chat before answering, announcing (with the web app's browser notification), a waiver request with waive and decline, and how it ends (answered elsewhere, changed, none fits asked anew, later); its texts in link:shared/decisions-texts.adoc[a part of their own].
 
 |link:shared/plan-overview.adoc[Plan Overview]
 |`DRAFT`
-|What both clients show of the running work across projects: the projects with running work, a project by plan and by epic, what a row shows (the closed lists of states and of what needs the operator), how plans and epics are told apart, a project's ended work opening read-only with a chat about it, live updates, and where the operator left it.
+|What both clients show of the running work across projects: the projects with running work, a project by plan and by epic, what a row shows (the closed lists of states and of what needs the operator), how plans and epics are told apart, a project's ended work with each plan's outcome and each epic's end, opening read-only with a chat about it, live updates, and where the operator left it.
 
 |link:shared/project-explorer.adoc[Project Explorer]
 |`DRAFT`
@@ -47,15 +47,15 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/project-onboarding.adoc[Project Onboarding]
 |`DRAFT`
-|What both clients show while a project is onboarded, in nine steps: checkout with consent and detection, identity, enrolment (with the build environment), the team's settings with the build map, the project's own settings against the machine's, architecture, roles and descriptions behind their consents of cost, commit, ready; several onboardings at once, and a later run.
+|What both clients show while a project is onboarded, in ten steps: checkout with consent and detection, identity, enrolment (with the build environment), the project's own settings against the machine's, the team's settings with the build map, architecture, landing, roles and descriptions behind their consents of cost, commit, ready; several onboardings at once, and a later run.
 
 |link:shared/plan-view.adoc[Plan View]
 |`DRAFT`
-|What both clients show of one plan's process: its head with the plan's state, its phases and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, the leaves' jobs and tasks, and an ended plan as it ended.
+|What both clients show of one plan's process: its head with the plan's state, its six phases (a lane a choice of them) and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, the leaves' jobs and tasks, and an ended plan as it ended.
 
 |link:shared/starting-work.adoc[Starting Work]
 |`DRAFT`
-|What both clients show while a plan or an epic is started: the setup gate, the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request) with each source's states, their progress through fetching and screening, a flagged source, the ready step with title and id, the creation and its re-check, adopting an epic from elsewhere, a chat about the request before it starts, a recipe and its parameters, the decomposition, leaving and continuing; its texts in link:shared/starting-work-texts.adoc[a part of their own].
+|What both clients show while a plan or an epic is started: the setup gate, the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request) with each source's states, their progress through fetching and screening, a flagged source, the ready step with title and id, the creation and its re-check, adopting an epic from elsewhere, a chat about the request before it starts, a recipe and its parameters, the decomposition, leaving and continuing; its texts in link:shared/starting-work-texts.adoc[a part of their own] and link:shared/starting-work-sources-texts.adoc[the part of the sources].
 
 |link:shared/epic-view.adoc[Epic View]
 |`DRAFT`
@@ -63,11 +63,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
 |`DRAFT`
-|What both clients offer to act on a plan or an epic, by its state: pause, start, cancel, abandon a plan, its settings, its epic told; an epic's next plan, the archive check, cancel; the review of an epic's findings or watches with keep, drop, promote, edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each; its texts in link:shared/work-actions-texts.adoc[a part of their own] and link:shared/work-actions-chat-texts.adoc[the chat's part].
+|What both clients offer to act on a plan or an epic, by its state (running, pausing, paused, waiting for you, held, an epic also landing; ended): pause, start, cancel, abandon a plan, abort it from an integrity pause, how a plan and an epic end, a plan's settings (UC-CTL-5, with its refusals), its epic told; an epic's next plan with raising the scope, the archive check with what it carries, cancel; the review of an epic's findings or watches with keep as a finding or to the watches, drop, promote (with its redraft), edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (exactly stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each; its texts in link:shared/work-actions-texts.adoc[a part of their own], link:shared/work-actions-review-texts.adoc[the part of reviews and holds], and link:shared/work-actions-chat-texts.adoc[the chat's part].
 
 |link:shared/consents.adoc[Consents]
 |`DRAFT`
-|What both clients show of a consent: the consent state with its fields, the answers yes, yes and don't ask again, and not now, and what not now does; the automatic run's one consent; every kind with where it is asked and whether it is remembered; the remembered consents in the machine settings and withdrawing them; the titles of the kinds.
+|What both clients show of a consent: the consent state with its fields, the answers yes, yes and don't ask again, and not now, and what not now does; the automatic run's one consent; every kind with where it is asked and whether it is remembered (among them the check of the credential store and of the providers); the remembered consents in the machine settings and withdrawing one after it says where it is asked again; the titles of the kinds.
 
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`DRAFT`
@@ -75,5 +75,5 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/paired-devices.adoc[Paired Devices]
 |`DRAFT`
-|What both clients show of the browsers paired with the machine: the list with label, when paired and last used, from where, and this one; rename, revoke, revoke all others, turn the network listener off; and the page of a revoked device.
+|What both clients show of the browsers paired with the machine: the list with label, when paired and last used, from where, and this one; rename, revoke, revoke all others (from the terminal client every device), turn the network listener off with the loopback listener left open; and the page of a revoked device.
 |===

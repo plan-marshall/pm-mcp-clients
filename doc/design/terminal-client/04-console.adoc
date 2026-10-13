@@ -26,7 +26,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 The console follows the runtime's event stream (`GET /api/v1/events`) while it is open. Events are of two kinds:
 
-* *Waiting for the operator*: a change of a `needs_operator` summary of a plan, an epic, or a project that adds an item. Each new item is shown as a notice block, counted in the badge, and announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>); an item the operator caused (`paused`) is shown and counted, never rung.
+* *Waiting for the operator*: a change of a `needs_operator` summary of a plan, an epic, or a project that adds an item. Each new item is shown as a notice block, counted in the badge, and announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>). A plan the operator paused is no item: it shows by its state in `plans` and `status`, never as a notice or a badge.
 * *For information*: a plan ended, a worker restarted, a check of a running dialogue reported. At most one quiet line, several of them coalesced into one; the full list is `pm-operator status`.
 
 Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.adoc[Plan Overview]) has its notice, its badge, and the command that opens it; the label of the kind is the shared `overview.needs.<kind>`, the rest is the console's (<<texts-operator-console>>):
@@ -61,9 +61,9 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`plan <id>`
 
 |`condition`
-|`◆ Plan fix-relay needs a fix: <condition>`, then `→ <command>` (`operator.console.notice.condition`)
+|`◆ Plan fix-relay needs a fix: <condition>` (`operator.console.notice.condition`); its acts are those of the hold, never a command as text
 |`1 needs a fix` (`operator.console.badge.conditions`)
-|`plan <id>`
+|`plan <id>`, with the acts of the hold (xref:19-actions.adoc#holds[What Holds a Plan])
 
 |`held`
 |`◆ Epic storage-v2: 1 held for you` (`operator.console.notice.held`)
@@ -80,18 +80,13 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`3 new findings` (`operator.console.badge.findings`)
 |`epic findings <id>`
 
-|`paused`
-|`◆ Plan fix-relay paused by you` (`operator.console.notice.paused`), never rung
-|`1 paused` (`operator.console.badge.paused`)
-|`plan <id>`, `plan start <id>`
-
 |`setup`
 |`◆ Project plan-marshall: the setup needs you: <what>` (`operator.console.notice.setup`)
 |`1 setup` (`operator.console.badge.setup_needs`)
 |`project setup <id>`
 |===
 
-The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup <project_id> 5/9` for each (before its enrolment, the directory name of its checkout stands for the id) project's (`operator.console.badge.setup_project`).
+The holds among the kinds are exactly `stalled`, `condition`, `integrity_pause`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup <project_id> 5/9` for each (before its enrolment, the directory name of its checkout stands for the id) project's (`operator.console.badge.setup_project`).
 
 A notice is printed *above* the prompt: the line the operator is typing is taken off, the notice is printed, and the prompt is drawn again with the typed text and the cursor where they were. Nothing typed is lost, and nothing typed becomes an answer.
 
@@ -259,10 +254,6 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |{count, plural, one {# new finding} other {# new findings}}
 |{count, plural, one {# neues Finding} other {# neue Findings}}
 
-|`operator.console.badge.paused`
-|{count, plural, one {# paused} other {# paused}}
-|{count, plural, one {# angehalten} other {# angehalten}}
-
 |`operator.console.badge.setup_needs`
 |{count, plural, one {# setup} other {# setups}}
 |{count, plural, one {# Einrichtung} other {# Einrichtungen}}
@@ -342,10 +333,6 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |`operator.console.notice.findings`
 |Epic {epic}: {count, plural, one {# new finding} other {# new findings}}
 |Epic {epic}: {count, plural, one {# neues Finding} other {# neue Findings}}
-
-|`operator.console.notice.paused`
-|Plan {plan} paused by you
-|Plan {plan} von dir angehalten
 
 |`operator.console.notice.setup`
 |Project {project}: the setup needs you: {what}

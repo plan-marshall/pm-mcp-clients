@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-devices[Devices in Both Clients] (proposed); link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices], link:../web-app/README.adoc[Web App] (in its machine settings).
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices], link:../web-app/machine-settings.adoc#devices[Web App, Machine Settings].
 
 Every paired browser can do what the operator does: it is an operator channel. The list of paired devices is where the operator sees which browsers can act on the machine, and takes that right away from any of them. The terminal client needs no pairing and is never listed.
 
@@ -29,9 +29,9 @@ Every paired browser can do what the operator does: it is an operator channel. T
 ----
 
 * *A device* (`devices.list`): its label, when it was paired, when it was last used, from where it was last used (`loopback` or `network`), and `this one` for the browser the operator acts from; newest use first. A label is proposed at pairing from the browser and the machine it runs on, and the operator may rename it.
-* *Its acts* (`devices.act`), one step away from its line: _Rename_ and _Revoke…_.
-* *For the list*: _Revoke all others_ (every device but this one) and _Turn the network listener off_ (as `web disable`, link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client]); the listener's state is shown beside it.
-* In the web app the list is reached from the machine settings (link:../web-app/README.adoc[Web App]); in the terminal client it is `web devices` with `rename <id> <label>`, `revoke <id>`, and `revoke --others` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices]).
+* *Its acts* (`devices.act`), one step away from its line: _Rename_ (`devices.rename`: the new label, then the list again) and _Revoke…_ (<<revoke>>).
+* *For the list*: _Revoke all others_ (`devices.revoke-others`, <<revoke>>) and _Turn the network listener off_ (<<listener-off>>); the listener's state is shown beside it.
+* In the web app the list is reached from the machine settings (link:../web-app/machine-settings.adoc#devices[Web App, Machine Settings]); in the terminal client it is `web devices` with `rename <id> <label>`, `revoke <id>`, `revoke --others`, and `listener-off` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices]).
 
 [#revoke]
 == Revoking
@@ -46,7 +46,14 @@ Every paired browser can do what the operator does: it is an operator channel. T
 * *Every revocation asks first*, since it cannot be undone; a revoked device can only be paired again with a new code.
 * *Revoking* (`devices.revoke`) voids the device's token at once and ends its event streams; the list shows it gone.
 * *This device* asks with its consequence named: its pages close and show the pairing page, and a new code pairs it again. After the yes the web app deletes its stored secret and lands on the pairing page.
-* *Revoke all others* names how many devices it revokes and which one stays.
+* *Revoke all others* (`devices.revoke-others`) is `devices.revoke` for every device but the one the operator acts from; it names how many devices it revokes and which one stays. The terminal client acts from no device, so from it _revoke all others_ revokes every paired device, and says so (`devices.revoke.all_title`).
+
+[#listener-off]
+== Turning the Network Listener Off
+
+* *Offered only while it is on*: _Turn the network listener off_ (`devices.listener-off`) closes the HTTPS listener on the network interfaces at once, without a confirmation: nothing is lost, and the entry turns it on again (`entry.other-device`, link:../terminal-client/05-transcripts-entry.adoc#t-entry-other[Terminal Client, Another Device]).
+* *Unlike `web disable`*, the loopback listener stays open, so the browsers of this machine go on working. The devices on the network stay paired: their pages lose the connection and show why (link:../web-app/entry.adoc#listener-off[Web App, Entry, The Network Listener Turned Off]), and they work again once the listener is on.
+* The list then shows `Network listener: off` and no act for it; the line of each device on the network stays as it was.
 
 [#revoked-page]
 == A Revoked Page
@@ -161,6 +168,14 @@ Keys of the area `devices`, shared by both clients (link:texts-and-languages.ado
 |`devices.revoke.done`
 |Revoked: {label}
 |Kopplung entzogen: {label}
+
+|`devices.revoke.all_title`
+|Revoke all {count, plural, one {# paired device} other {# paired devices}}? The terminal client needs no pairing; every browser is signed out.
+|{count, plural, one {Dem # gekoppelten Gerät} other {Allen # gekoppelten Geräten}} die Kopplung entziehen? Der Terminal-Client braucht keine Kopplung; jeder Browser wird abgemeldet.
+
+|`devices.listener_off.done`
+|The network listener is off; the devices on the network stay paired and work again once it is on.
+|Der Netzwerk-Listener ist aus; die Geräte im Netzwerk bleiben gekoppelt und funktionieren wieder, sobald er an ist.
 
 |`devices.revoke.others_done`
 |Revoked {count, plural, one {# device} other {# devices}}; {label} stays paired.

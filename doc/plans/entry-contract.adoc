@@ -13,7 +13,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 * *Specification first*: the package writes its part of the specification into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), from the use case once it is agreed, and opens that pull request beside its own; the proposal's rows it writes are removed from the proposal.
 * *Contract*: The Terminal Client as the Entry, Loopback `Host` without the Port, A Fresh Code after a Redemption, Credentials in the Web App: the switch from loopback to the LAN, the event of a pairing, a fresh code only for the terminal client, the description of a paired device; the entry scenarios of the mock runtime (`entry-<case>`).
-* *Devices in Both Clients*: the list of paired devices with their labels, rename and revoke, and the end of a revoked device's streams.
+* *Devices in Both Clients*: the list of paired devices with their labels, rename, revoke, revoke all others (every device when the terminal client asks), turning the network listener off with the loopback listener left open, and the end of a revoked device's streams.
 
 == Trace
 
@@ -21,7 +21,7 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2], link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (Credentials in the Web App) and their changes
 * Proposal: link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#per-change[Specification Changes for the Clients, What Each Change Must Also Touch]
-* Design: link:../design/terminal-client/05-transcripts-entry.adoc#t-entry[Terminal Client, The Entry]
+* Design: link:../design/terminal-client/05-transcripts-entry.adoc#t-entry[Terminal Client, The Entry]; link:../design/shared/paired-devices.adoc[Paired Devices]
 
 == Done When
 

@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The plan view as the third level of the full-screen view: the tree to open and close, sub-workflows marked, the path in the header, the jump to where the plan is, a leaf's details, live updates.
+* The plan view as the third level of the full-screen view: the tree to open and close, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), sub-workflows marked, the path in the header, the jump to where the plan is, a leaf's details, live updates.
 * `plan <plan_id>` as the tree in the scrollback (`--all`, `--depth`), the accessible path and the fallback.
 * Texts from the catalogue only.
 

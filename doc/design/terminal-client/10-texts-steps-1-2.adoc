@@ -226,6 +226,18 @@ The names of the languages are each written in their own language, in every pack
 |Or add a harness that is not listed, by its program.
 |Oder füge einen Harness, der nicht aufgeführt ist, über sein Programm hinzu.
 
+|`onboard.harness.none.unusable_title`
+|No harness can be used
+|Kein Harness ist verwendbar
+
+|`onboard.harness.none.none_passed`
+|None of the chosen harnesses passed its check:
+|Keiner der gewählten Harnesses hat seine Prüfung bestanden:
+
+|`onboard.harness.none.fix_one`
+|Fix one, then look again, or add a harness that is not listed.
+|Behebe es bei einem und suche dann erneut, oder füge einen Harness hinzu, der nicht aufgeführt ist.
+
 |`onboard.harness.probe_consent.title`
 |Check whether the chosen harnesses are logged in?
 |Prüfen, ob die gewählten Harnesses angemeldet sind?

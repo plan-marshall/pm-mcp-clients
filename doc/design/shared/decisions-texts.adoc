@@ -174,6 +174,10 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |you asked the plan to think again
 |du hast den Plan gebeten, neu zu überlegen
 
+|`decision.outcome.asked_anew`
+|asked anew after {id}
+|neu gefragt nach {id}
+
 |`decision.channel.web`
 |the web app
 |die Web-App

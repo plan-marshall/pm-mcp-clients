@@ -56,7 +56,7 @@ The domain vocabulary stays as it is in every language: it is what the operator 
 |Harness |der |a coding agent that runs workers
 |Role, Worker |die, der |a configured role, and a harness process serving it
 |Plan, Epic |der, das |a plan, and an epic: the initiative of several plans that it coordinates (never called orchestrator)
-|Task, Deliverable, Finding |der, das, das |the parts of a plan; a finding is also a defect an epic keeps
+|Task, Deliverable, Finding |der, das, das |the parts of a plan; a finding is also an item of an epic's findings register, kept to be fixed (a watch is kept to be watched)
 |Outline |das |the plan's outline phase and its result
 |Waiver |der |the operator's waiver of a gate
 |Lane |die |a planning lane
@@ -93,14 +93,14 @@ A word not in the glossary is translated. A new domain word is added here before
 * *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in.
 * *Areas*, each a pack; a client loads only the areas it shows, and the web app loads `common` and `web` at start and every other area when it first opens a view of it:
 ** `common`: texts every view uses, among them the texts of the consent states (link:consents.adoc#texts[Consents, Texts]);
-** `onboard`: the onboarding of the machine;
+** `onboard`: the onboarding of the machine and its later changes in the machine settings (`onboard.settings.*`, link:../terminal-client/23-texts-settings.adoc#texts-settings[Terminal Client, Texts: Machine Settings]);
 ** `web`: the frame and navigation of the web app;
 ** `plan`: the plan view (link:plan-view.adoc#texts[Plan View]);
 ** `decision`: what both clients show of a decision and a waiver request (link:decisions-texts.adoc#texts[Decisions, Texts]);
 ** `overview`: running work, ended work, and the epic view (link:plan-overview.adoc#texts[Plan Overview], link:epic-view.adoc#texts[Epic View]);
 ** `project`: the projects, their onboarding, release, and unenrolment (link:project-explorer.adoc#texts[Project Explorer], link:project-onboarding.adoc#texts[Project Onboarding]);
-** `start`: starting a plan or an epic (link:starting-work-texts.adoc#texts[Starting Work, Texts]);
-** `control`: the actions on plans and epics, the holds, and the reviews (link:work-actions-texts.adoc#texts[Actions on Plans and Epics, Texts]);
+** `start`: starting a plan or an epic (link:starting-work-texts.adoc#texts[Starting Work, Texts], link:starting-work-sources-texts.adoc#texts[Starting Work, Texts of the Sources]);
+** `control`: the actions on plans and epics, the holds, and the reviews (link:work-actions-texts.adoc#texts[Actions on Plans and Epics, Texts], link:work-actions-review-texts.adoc#texts[Actions on Plans and Epics, Texts of the Reviews]);
 ** `devices`: the paired devices (link:paired-devices.adoc#texts[Paired Devices]);
 ** `operator`: the verbs of `pm-operator`;
 ** `relay`: `pm-mcp`.

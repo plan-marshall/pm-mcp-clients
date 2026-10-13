@@ -5,13 +5,13 @@
 
 link:../README.adoc[Design] » Consents
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Consent Before Acting] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#consents[Consents] (the closed list of the kinds)_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/03-dialogues.adoc#consent[Terminal Client, Dialogues, Consent], link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, The Remembered Consents], link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent], link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings, Remembered Consents].
 
-Nothing happens on the machine until the operator says so: every action that looks at the machine, runs a program found on it, or spends model tokens waits in a consent state first. This design is the one place that says how a consent state looks and behaves in both clients, which kinds of consent there are, where the remembered ones are listed and withdrawn, and the texts they share. A client's part shows its own rendering and links here.
+Nothing happens on the machine until the operator says so: every action that looks at the machine, runs a program found on it, writes to its credential store on its own, calls a provider, or spends model tokens waits in a consent state first. What the operator does with their own hands needs none: a token the operator types is stored on that act alone. This design is the one place that says how a consent state looks and behaves in both clients, which kinds of consent there are, where the remembered ones are listed and withdrawn, and the texts they share. A client's part shows its own rendering and links here.
 
 [#pattern]
 == The Consent State
@@ -30,7 +30,7 @@ A consent state is `<sub-workflow>.consent`, or `<sub-workflow>.<action>-consent
 ** _yes, and don't ask again_ (`yes_remember`, `common.consent.yes_remember`): the action runs and the consent is remembered (<<remembered>>); offered only for a kind that can be remembered (<<kinds>>). Where it is not offered, `This consent is for this run only.` (`common.consent.once_only`) stands in its place;
 ** _not now_ (`no`, `common.consent.no`): nothing is looked at, nothing is run, nothing is recorded.
 * *Where the answers sit*: the web app makes the remember choice a choice inside the screen, _yes_ preselected, and the primary button the consent's action; _Not now_ is the secondary button. The terminal has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now` (German `j`, `m`, `n`), and `Enter` alone asks again. Nothing runs until the operator gave one of the two yes answers.
-* *What no does*: for a required action the state stays, `Nothing was done.` (`common.consent.nothing_done`) stands under the title with the same answers, and the step does not move; for an optional action (<<kinds>>, column _With no_) the process goes on without it and says what it goes on with (the monograms, no recommendation, what the scripts would have found unknown, no descriptions). A _no_ is never shown as an error: no `✗`, no colour of an error.
+* *What no does*: for a required action the state stays, `Nothing was done.` (`common.consent.nothing_done`) stands under the title with the same answers, and the step does not move; for an optional action (<<kinds>>, column _With no_) the process goes on without it and says what it goes on with (the monograms, no recommendation, what the scripts would have found unknown, the step skipped with its reason). A _no_ is never shown as an error: no `✗`, no colour of an error.
 * *A remembered consent* passes its state without a question; the client shows one line, `Consent remembered: {action}` (`common.consent.remembered`, the argument the kind's title of <<texts>>), and the terminal adds where it is withdrawn (`common.consent.withdraw_hint`).
 * *A consent covers its kind, never a wider one*: consent to look for harnesses runs no login or model probe, and each is asked where its action is.
 * *Help*: `?` in the terminal and _Why?_ in the web app show the full list behind a shortened field (every script of `project.run-consent` with its arguments, every check of the automatic run).
@@ -91,6 +91,13 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |goes on without the advice: `catalogue.select` without a recommendation, `roles.review` unchanged
 |`common.consent.kind.model_advice`
 
+|`check_credential_store`
+|write, read, and delete one test entry in the chosen OS credential store (the keychain); the file store, in the machine's own directory, is checked without it
+|`store.consent`
+|machine
+|stays
+|`common.consent.kind.check_credential_store`
+
 |`scan_providers`
 |look for the CLI tools of the providers and the credentials already stored
 |`providers.consent`
@@ -98,8 +105,15 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |stays
 |`common.consent.kind.scan_providers`
 
+|`verify_providers`
+|call each chosen provider with its credential, and run its CLI tool
+|`providers.verify-consent` (onboarding, a credential changed in the machine settings, a check asked for there)
+|machine
+|stays
+|`common.consent.kind.verify_providers`
+
 |`inspect_checkout`
-|read a project's checkout and run the version probes of host tools from the absolute directories of the login `PATH`
+|read a project's checkout (git configuration, build wrappers, host tools, language servers, scripts) and run the host tools' version probes from the absolute directories of the login `PATH`; changes nothing
 |`project.consent`
 |project
 |stays
@@ -108,15 +122,15 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |`run_checkout_scripts`
 |run the named scripts of a project's checkout, each with its arguments, confined like a job
 |`project.run-consent`
-|project and the digest of each script
-|goes on, what needs the scripts unknown
+|project and the digest of each script, in `consents.json`, never in the enrolment
+|goes on, what needs the scripts unknown; not asked again in this run
 |`common.consent.kind.run_checkout_scripts`
 
 |`model_cost`
 |a role task whose expected cost is shown first: the qualification of the roles, the description of the modules
 |`setup.qualify-consent`, `setup.enrich-consent`
 |project
-|qualification: stays; description: goes on without
+|goes on without: the step is skipped with its reason and can be run later
 |`common.consent.kind.model_cost`
 
 |the automatic run (no kind of its own)
@@ -130,11 +144,12 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 * `catalogue.consent` asks two kinds at once, each with its own answer and cost: _no_ to the model probes keeps the state, _no_ to the advice goes on without it.
 * A consent of `run_checkout_scripts` is asked again for a script whose digest changed since it was remembered; the state names the changed scripts (`common.consent.changed_scripts`) and offers only those.
 * A grant is not a consent: reading the issues of another repository is a read grant, kept and shown with the grants, never in the list of <<remembered>>.
+* `store.consent` is asked only for an OS store; choosing the files goes from `store.choose` to `store.check` without it. `providers.verify-consent` follows `providers.credentials`: storing the typed token is the operator's own act, calling the provider with it is the machine's.
 
 [#remembered]
 == The Remembered Consents
 
-Both clients list the remembered consents in their machine settings: the web app in its section _Remembered consents_ (link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings]), the terminal with `pm-operator config consents` (link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, transcript]). The list is what the runtime remembers, from either client, one line per consent:
+Both clients list the remembered consents in their machine settings (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], `settings.choose`): the web app in its section _Remembered consents_ (link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings]), the terminal with `pm-operator config consents` (link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, transcript]). The list is what the runtime keeps in its machine store `consents.json`, the only place a remembered consent lives, from either client, one line per consent:
 
 * the action by its kind's title (<<texts>>) and its kind;
 * when it was given;
@@ -142,7 +157,7 @@ Both clients list the remembered consents in their machine settings: the web app
 * for a kind of a project (`inspect_checkout`, `run_checkout_scripts`, `model_cost`) the project;
 * for `run_checkout_scripts` how many scripts it covers; its detail names each script with its digest.
 
-*Withdraw* removes a consent at once, without asking first: withdrawing only brings back a question. The line says that it is asked again the next time its action runs. Both remembering and withdrawing are audited, with the channel and the device. A consent is never given in this list; it is given only in the state that asks it (<<pattern>>). With none remembered, the list says so. The texts of the list are each client's own (`web.settings.consents.*`, `operator.consents.*`).
+*Withdraw* opens `settings.withdraw`: the consent by its title, and where it will be asked again (the consent state of its kind, <<kinds>>, column _Asked in_), with _Keep it_ (`keep`, back to the list) and _Withdraw_ (`withdraw`). Withdrawing (`settings.remove-consent`) removes it from `consents.json`; nothing recorded with it changes, and the consent state is asked again the next time its action runs, which the list then says in place of the line. Both remembering and withdrawing are audited, with the channel and the device. A consent is never given in this list; it is given only in the state that asks it (<<pattern>>). With none remembered, the list says so. The texts of the list are each client's own (`web.settings.consents.*`, `operator.consents.*`); those of `settings.withdraw` are shared (<<texts>>).
 
 [#texts]
 == Texts
@@ -151,7 +166,7 @@ The consent texts both clients show are keys of the area `common` (link:texts-an
 
 *Defined in link:../terminal-client/09-texts-common.adoc#texts-common[Terminal Client, Texts: Common], used by both*: `common.consent.yes`, `.yes_remember`, `.no`, `.nothing_done`, `.remembered`, `.withdraw_hint` (the terminal only), `.once_only`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.cost`; the costs `common.consent.cost.none`, `.estimate`, `.estimate_runs`, `.unknown`. The title of each consent state is defined with its step's texts.
 
-*Defined here*: the title of each kind, a lowercase action that reads in a list and as the `{action}` of `common.consent.remembered`, and the line of changed scripts.
+*Defined here*: the title of each kind, a lowercase action that reads in a list and as the `{action}` of `common.consent.remembered`, the texts of `settings.withdraw` (`{where}` the step and the state that asks the kind, for example `[5/7] Credentials`), and the line of changed scripts.
 
 [cols="3,3,3",options="header"]
 |===
@@ -181,9 +196,17 @@ The consent texts both clients show are keys of the area `common` (link:texts-an
 |ask the steward for advice
 |den steward um Rat fragen
 
+|`common.consent.kind.check_credential_store`
+|check the credential store with a test entry
+|den Speicher für Zugangsdaten mit einem Testeintrag prüfen
+
 |`common.consent.kind.scan_providers`
 |look for CLI tools and stored tokens
 |nach CLI-Werkzeugen und gespeicherten Tokens suchen
+
+|`common.consent.kind.verify_providers`
+|check the providers with their tokens
+|die Provider mit ihren Tokens prüfen
 
 |`common.consent.kind.inspect_checkout`
 |look at a project's checkout
@@ -196,6 +219,22 @@ The consent texts both clients show are keys of the area `common` (link:texts-an
 |`common.consent.kind.model_cost`
 |approve the cost of a role task
 |die Kosten einer Aufgabe einer Role freigeben
+
+|`common.consent.withdraw.title`
+|Withdraw "{action}"?
+|„{action}" zurücknehmen?
+
+|`common.consent.withdraw.asked_again`
+|Asked again in {where}, the next time its action runs. Nothing recorded with it changes.
+|Wieder gefragt in {where}, beim nächsten Lauf ihrer Aktion. Nichts, was damit gespeichert wurde, ändert sich.
+
+|`common.consent.withdraw.keep`
+|Keep it
+|Behalte sie
+
+|`common.consent.withdraw.action`
+|Withdraw
+|Nimm sie zurück
 
 |`common.consent.changed_scripts`
 |{count, plural, one {# script has} other {# scripts have}} changed since you agreed; asked again for {count, plural, one {it} other {them}} only.

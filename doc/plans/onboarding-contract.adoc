@@ -4,7 +4,7 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `onboarding-contract`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1 to UC-ONB-9]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1 to UC-ONB-10]; no roadmap milestone yet
 Where:: `pm-api` (resource records, event types, error codes); `pm-mock-runtime` (routes and scenarios)
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -12,16 +12,16 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * *Specification first*: the package writes its part of the specification into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]), from the use case once it is agreed, and opens that pull request beside its own; the proposal's rows it writes are removed from the proposal.
-* *Contract*: the onboarding's stores and steps: consents, languages as far as `message-catalogue` leaves them, the harnesses from one scan with their default, the login probe and unknown harness, the model catalogue, the steward, the default and machine role assignment, the credential store, the providers and their verification, the plan axes, the plan overrides, the harness icons; the onboarding scenarios of the mock runtime (`onboarding-<case>`).
+* *Contract*: the onboarding's stores and steps: consents (the closed list of kinds with `check_credential_store` and `verify_providers`, `consents.json`), languages as far as `message-catalogue` leaves them, the harnesses from one scan with their default (`harness.none` also when every chosen harness fails), the login probe and unknown harness, the model catalogue, the steward (on the default harness, outside the catalogue), the default and machine role assignment, the credential store, the providers and their verification, the plan axes with the variants `landing.pull-request`, `landing.main`, `landing.files`, the plan overrides, the harness icons; the machine settings (UC-ONB-10): `settings.choose`, withdrawing a remembered consent, `sources.documents_mode`, a credential rotated or replaced with its verification; the onboarding scenarios of the mock runtime (`onboarding-<case>`).
 * *Automatic onboarding*: `auto.consent`, the closed list of reasons and the item schema of `auto.result`.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use case: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1 to UC-ONB-9] and its changes
+* Use case: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1 to UC-ONB-9], link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] and their changes
 * Proposal: link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#per-change[Specification Changes for the Clients, What Each Change Must Also Touch]
-* Design: link:../design/web-app/onboarding.adoc[Web App, Onboarding]; link:../design/terminal-client/README.adoc[Terminal Client]
+* Design: link:../design/shared/consents.adoc[Consents]; link:../design/web-app/onboarding.adoc[Web App, Onboarding]; link:../design/web-app/machine-settings.adoc[Web App, Machine Settings]; link:../design/terminal-client/README.adoc[Terminal Client]
 
 == Done When
 

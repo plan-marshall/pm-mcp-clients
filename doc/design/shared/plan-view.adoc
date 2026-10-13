@@ -23,12 +23,22 @@ A plan's process is not a fixed list of phases: it is the plan's composed workfl
   ├─ ✓ phase  outline                         done · 31 min
   ├─ ✓ phase  plan                            done · 9 min
   ├─ ▶ phase  execute                         running · 25 min
-  ├─ ○ phase  finalize                        planned
-  └─   not in this plan: land (the deep lane runs outline and plan)
+  └─ ○ phase  finalize                        planned
 ----
 
-* *The head*: the plan's title; its current phase; its state, from the closed list of Running Work (link:plan-overview.adoc#item-rows[A Plan, an Epic]): `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `stalled`; a hold where one holds the plan (`holds: a condition`, link:work-actions.adoc#holds[What Holds a Plan]); how long it runs; its own pull request by its number with a link (`#214`); its epic, if any; and its actions (link:work-actions.adoc#plan-actions[A Plan's Actions]).
-* *The plan*: its phases, in the order the plan unit calls them; the phases its composition left out are a group of their own at the end, each with its reason.
+A plan of the land lane calls fewer phases; the land lane is a choice of phases, never a phase of its own, and its `land.*` states run as a sub-workflow within `execute`:
+
+----
+  docs-typo                                   execute · running · 3 min
+  ├─ ✓ phase  init                            done · 1 min
+  ├─ ▶ phase  execute                         running · 2 min
+  │    └─ ▶ ↳ sub-workflow  land              running
+  ├─ ○ phase  finalize                        planned
+  └─   not in this plan: refine, outline, plan (the land lane)
+----
+
+* *The head*: the plan's title; its current phase; its state, from the closed list of Running Work (link:plan-overview.adoc#item-rows[A Plan, an Epic]): `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `held`; for a held plan the kind of its hold (`holds: a condition`, link:work-actions.adoc#holds[What Holds a Plan]); how long it runs; its own pull request by its number with a link (`#214`); its epic, if any; and its actions (link:work-actions.adoc#plan-actions[A Plan's Actions]).
+* *The plan*: its phases, the six of `init`, `refine`, `outline`, `plan`, `execute`, `finalize` that the plan unit calls, in the order it calls them, each with its state (done, running, planned, waiting for you, or failed); the phases its composition left out (another lane, a step the project does not need) are a group of their own at the end, each with its reason.
 * *A phase, a sub-workflow*: its workflow, opened below it: the states in the order of the workflow, the calls marked as sub-workflows, each with its state; a sub-workflow opens the same way, through every level of nesting.
 * *A leaf*: a state that calls nothing; opening it shows what runs or ran in it (<<leaf>>).
 * A level shows its nodes one line each; what the line cannot hold (times, counts) is the next line, or one step away.
@@ -94,7 +104,7 @@ Each node shows its state as a glyph and a word, never as colour alone:
 |the phase's workflow
 
 |Sub-workflow
-|`↳` and the word `sub-workflow`, with its name (`git.commit_and_push`, `remediation.ci-failure`)
+|`↳` and the word `sub-workflow`, with its name (`git.commit_and_push`, `remediation.ci-failure`, `land`, a landing variant `landing.pull-request`, a chat `chat`)
 |the sub-workflow's workflow
 
 |State
@@ -102,7 +112,7 @@ Each node shows its state as a glyph and a word, never as colour alone:
 |a leaf: what runs or ran in it
 |===
 
-The web app draws the kinds with the icons of its design system; the terminal uses the words and the glyph `↳` (ASCII `->`).
+The web app draws the kinds with the icons of its design system; the terminal uses the words and the glyph `↳` (ASCII `->`). A sub-workflow called within a phase (a remediation unit, a landing variant, a chat the operator opened) has that phase: it is shown below the phase it is called in.
 
 [#leaf]
 == A Leaf
@@ -129,7 +139,7 @@ The view follows the plan's events: a node entered becomes _running_, one left _
 [#ended]
 === An Ended Plan
 
-An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome, the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]).
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]).
 
 [#texts]
 == Texts
@@ -257,4 +267,4 @@ Keys of the area `plan`, shared by both clients.
 |wartet auf einen Build-Slot
 |===
 
-The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The plan's state in the head uses the keys `overview.state.*` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-texts.adoc#texts[Actions on Plans and Epics, Texts]).
+The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).

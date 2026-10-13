@@ -48,6 +48,7 @@ pm [1 question] ›
 * `entry.runtime` prints `✓ Runtime running` when one was running already. `entry.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one).
 * `entry.browser` that cannot start the browser prints `– No browser opened: <reason>` and shows the ways in as over SSH.
 * `entry.wait` is the console itself: a pairing is reported above the prompt (`✓ Paired: …`), and a redeemed code is replaced by a new one for a further device, which `web` shows.
+* The console's own views are its verbs at that prompt (`status` above, `plans` for the overview of running work); `pm-operator` without a verb never opens one of them, it connects the web app (xref:01-commands.adoc#command-tree[The Verbs]).
 
 [#t-entry-ssh]
 ==== Onboarded, over SSH (`entry.where`, `entry.show`, `entry.wait`)
@@ -91,7 +92,8 @@ Reach plan-marshall from a phone or another computer?
   certificate self-signed; your browser warns once, compare the fingerprint
   means       every device on your network can reach the pairing page;
               only a paired device gets in
-  undo        pm-operator web disable
+  undo        pm-operator web devices listener-off; this machine keeps its
+              loopback access
 
 Open to the network? y) yes   n) no, keep it on this machine [Enter]   › ⏎
   Nothing was opened.
@@ -109,7 +111,19 @@ Open to the network? y) yes   n) no, keep it on this machine [Enter]   › y
 pm ›
 ----
 
-* `entry.other-device` is a choice of the network exposure, not a consent of the onboarding: its default is the safe answer `n`, which `Enter` takes, as the use case says (`no (default)`).
+* `entry.other-device` is a choice of the network exposure, not a consent of the onboarding: its preselection is the safe answer `n`, which `Enter` takes, as the use case marks it (`no ←`).
+* `entry.lan` that cannot open the listener (the port taken on an interface, no certificate written) returns to `entry.wait` unchanged, with the cause and its fix, and nothing is reachable from the network:
+
+[source,text]
+----
+Open to the network? y) yes   n) no, keep it on this machine [Enter]   › y
+✗ The network listener did not open: port 7420 is in use on 192.168.1.20
+  → stop the program that uses it, or choose another port:
+    pm-operator config set web.port <port>
+pm ›
+----
+
+* Turning it off again is `web devices listener-off` (xref:08-transcripts-later.adoc#t-devices[Paired Devices]), which leaves the loopback listener open; `web disable` closes both.
 
 [#t-entry-first]
 ==== Not Fully Onboarded (`entry.runtime`, `entry.check-onboarded`, `entry.where-to-onboard`, `onboard.mode`)
@@ -181,6 +195,7 @@ Where do you want to go on?   h) here, in the terminal [Enter]   w) in the web a
 …
 ----
 
+* Completed here, the onboarding returns to the entry, which goes on as for a ready machine from `entry.pairing` (xref:07-transcripts-steps-4-7.adoc#t-completed[Done]).
 * Until the onboarding completes, a verb that needs it is refused with both ways to complete it:
 
 [source,text]
@@ -330,17 +345,26 @@ Decide everything for me?
                                    of each one found
     fetch the icons of the harnesses
                                    of the supported harnesses found, once, by
-                                   the runtime; only the web app shows them
+                                   the runtime (through the proxy, if one is
+                                   set); the maker's server sees only a
+                                   download request from this machine's
+                                   address; only the web app shows them
     check whether a harness is logged in
                                    of each supported harness found; for one
                                    without a login probe a short headless
                                    call, paid with tokens of its account
     ask the harnesses for their models
                                    of each enrolled harness that can list them
+    check the credential store with a test entry
+                                   the macOS Keychain: one test entry
+                                   written, read back, and deleted
     look for CLI tools and stored tokens
                                    the tools git, gh, glab and the tokens
                                    already stored, with the version probe of
                                    each tool found
+    check the providers with their tokens
+                                   each provider found, called with its
+                                   token, and its CLI tool run
   never       asks a model for advice, reads other files, sends anything over
               the network except the provider checks and the icons
   cost        none but the headless calls named above
@@ -413,7 +437,8 @@ Check Claude Code again? [Enter]   x) leave it out   o) choose again   q) leave 
 …
 ----
 
-* *Models in the automatic run*: every model a harness lists is allowed; a harness that cannot list its models gets none allowed, and the result names it (`OpenCode: no model allowed`) with `config models` to add its model ids.
+* *Models in the automatic run*: every model a harness lists is allowed. A harness that cannot list its models needs the operator: the run stops in `catalogue.select` for that harness alone, asks its model ids (`Model id for Aider › `, xref:06-transcripts-steps-1-3.adoc#t-models[3 Models]), and continues; the result names the ids with the reason `you were asked`.
+* `check_credential_store` is listed only where the run will choose an OS store; with the files it is not asked (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
 * `auto.result`: a number opens that step's choice state with the automatic value as its proposal, as `config <aspect>` would, and returns to the result.
 
 [#t-mode]

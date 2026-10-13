@@ -50,7 +50,7 @@ Verwende Deutsch hier, English für Modelle? [Enter]   anders: 1-5   ?   › ⏎
 [#t-harness]
 == 2 Harnesses
 
-One scan finds every harness the profiles know; the operator chooses the ones to enrol and one of them as the default, on which the steward of the later steps runs (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]). Every consent state is the shared pattern (link:../shared/consents.adoc#pattern[Consents, The Pattern]; xref:03-dialogues.adoc#consent[Consent]).
+One scan finds every harness the profiles know; the operator chooses the ones to enrol and one of them as the default, on which the steward of the later steps runs with that harness's default model, outside the model catalogue (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]). Every consent state is the shared pattern (link:../shared/consents.adoc#pattern[Consents, The Pattern]; xref:03-dialogues.adoc#consent[Consent]).
 
 [#t-harness-consent]
 === Consent and Scan (`harness.consent`, `harness.scan`)
@@ -87,7 +87,23 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
     OpenCode      https://opencode.ai/docs/
   Or add a harness that is not listed, by its program.
 
-Add a harness that is not listed? [Enter]   l) look again   ?   ›
+Add a harness that is not listed? [Enter]   l) look again   q) later   ?   ›
+----
+
+* `harness.none` is the operator's choice: `Enter` adds a harness (`harness.add`), `l` scans again (`harness.scan`), and `q` is _later_: nothing is sent, the onboarding rests in `harness.none`, and its next run, here or in the web app, resumes there (xref:03-dialogues.adoc#keys[Links as Keys and Numbers]).
+* The step cannot finish without one usable harness. When every chosen harness fails its check, `harness.probe` leads here as well, with the failed checks in place of what was looked for:
+
+[source,text]
+----
+[2/7] Harnesses · No harness can be used
+  None of the chosen harnesses passed its check:
+    Claude Code   ✗ not logged in            → claude login
+    OpenCode      ✗ version 1.2.0 is not supported (1.5 – 1.x)
+                                             → install a version in 1.5 – 1.x
+
+  Fix one, then look again, or add a harness that is not listed.
+
+Look again? [Enter]   a) add a harness that is not listed   q) later   ?   ›
 ----
 
 [#t-harness-icons]
@@ -179,7 +195,7 @@ Check Claude Code again? [Enter]   x) leave it out   o) choose again   ?   › �
   cost        about 0.01 USD, tokens of your Aider account
 ----
 
-* `harness.blocked` is asked for each failing harness in turn, under its name. `x` leaves it out: the step goes on to `harness.confirm` without it, and if it was the default, the mark moves to the first one left (`★ default ✎` there). The last harness left cannot be left out: its prompt has no `x`. `o` returns to `harness.choose` with the current choice. A harness left out stays found and is offered again by a later run; `harness.confirm` names it `left out`.
+* `harness.blocked` is asked for each failing harness in turn, under its name, while at least one chosen harness passes; when none does, the state is `harness.none` (<<t-harness-none>>). `x` leaves it out: the step goes on to `harness.confirm` without it, and if it was the default, the mark moves to the first one left (`★ default ✎` there). The last harness left cannot be left out: its prompt has no `x`. `o` returns to `harness.choose` with the current choice. A harness left out stays found and is offered again by a later run; `harness.confirm` names it `left out`.
 
 [#t-harness-confirm]
 === Confirm and Enrol (`harness.confirm`, `harness.enrol`, `harness.done`)

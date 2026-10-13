@@ -32,7 +32,7 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
       ○  relay-token-rotation         staged · after relay-auth-v2
   ─────────────────────────────────────────────────────────────────────────────
   Sources      2 documents · 1 issue           Landings    2 · last 2 d ago
-  Findings     3 new · 4 open                  Watches     5 open
+  Findings     3 new · 4 open · 2 kept         Watches     1 open · 4 kept
   ─────────────────────────────────────────────────────────────────────────────
   Events
     12:40  relay-auth-v2 asks a decision
@@ -40,12 +40,12 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
     …
 ----
 
-* *The head*: the title, the state from one closed list (running, waiting for you, held, landing, ended), how many plans run of how many may at once, the marker of what needs the operator with its count, and the epic's actions (link:work-actions.adoc#epic-actions[An Epic's Actions]). _Next plan_ names a plan that can start now (here `relay-reconnect-metrics`: `relay-token-rotation` waits for `relay-auth-v2`); with none it is disabled with its reason.
-* *Workstreams*: open or closed like a node of the plan view, each with its counts per status; each plan with its status from one closed list (staged, running, pausing, paused, shipped, cancelled, abandoned, held; a paused plan is always paused by the operator and says so), what a staged plan waits for (a dependency, a lock, the scope full) or `can start`, and since when. A shipped plan shows its pull request by its number with a link. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view.
-* *Sources, landings, findings, watches*: one line each (findings: how many are new since the last review and how many are open; watches: how many are open), opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
+* *The head*: the title, the state from one closed list (running, waiting for you, held, landing, ended), how many plans run of how many may at once, the marker of what needs the operator with its count, and the epic's actions, those of its state (link:work-actions.adoc#epic-actions[An Epic's Actions]: while it lands, _Archive_ waits for the ledger). _Next plan_ names a plan that can start now (here `relay-reconnect-metrics`: `relay-token-rotation` waits for `relay-auth-v2`); with none it is disabled with its reason.
+* *Workstreams*: open or closed like a node of the plan view, each with its counts per status; each plan with its status from one closed list (staged, running, pausing, paused, shipped, cancelled, abandoned, held; a paused plan is always paused by the operator and says so; a plan aborted from an integrity pause shows `cancelled` here and keeps its outcome `aborted`, link:work-actions.adoc#epic-told[The Epic Is Told]), what a staged plan waits for (a dependency, a lock, the scope full) or `can start`, and since when. A shipped plan shows its pull request by its number with a link. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view.
+* *Sources, landings, findings, watches*: one line each (findings: how many are new since the last review, how many are open, not decided yet, and how many are kept; watches: how many are open and how many kept), opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
 * *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts, decompositions, landings.
 * *What waits for the operator* (a decomposition, a held item, a decision) stands first in the head, with a link to it.
-* *An ended epic* shows read-only as it ended, with its outcome, reason, and end time in the head, without live updates and without actions but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]), opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
+* *An ended epic* shows read-only as it ended, with its end (`completed`, `cancelled`, or `released`; link:work-actions.adoc#outcomes[How a Plan Ends]), reason, and end time in the head, its plans with how each ended (a plan aborted from an integrity pause by its outcome `aborted`), without live updates and without actions but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]), opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
 
 [#texts]
 == Texts
@@ -129,16 +129,16 @@ Keys of the area `overview`, shared by both clients.
 |Findings
 
 |`overview.epic.findings_counts`
-|{new, plural, one {# new} other {# new}} · {open, plural, one {# open} other {# open}}
-|{new, plural, one {# neues} other {# neue}} · {open, plural, one {# offenes} other {# offene}}
+|{new, plural, one {# new} other {# new}} · {open, plural, one {# open} other {# open}} · {kept, plural, one {# kept} other {# kept}}
+|{new, plural, one {# neues} other {# neue}} · {open, plural, one {# offenes} other {# offene}} · {kept, plural, one {# behaltenes} other {# behaltene}}
 
 |`overview.epic.watches`
 |Watches
 |Beobachtungen
 
 |`overview.epic.watches_counts`
-|{open, plural, one {# open} other {# open}}
-|{open, plural, one {# offene} other {# offene}}
+|{open, plural, one {# open} other {# open}} · {kept, plural, one {# kept} other {# kept}}
+|{open, plural, one {# offene} other {# offene}} · {kept, plural, one {# behaltene} other {# behaltene}}
 
 |`overview.epic.events`
 |Events

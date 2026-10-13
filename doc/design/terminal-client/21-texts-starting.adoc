@@ -12,7 +12,7 @@ The texts the terminal adds to the shared ones in xref:18-starting.adoc[Starting
 [#starting-texts]
 == Starting Work
 
-The texts of the steps, sources, and states are those of link:../shared/starting-work.adoc#texts[Starting Work, Texts]; the terminal adds these, of the area `operator`:
+The texts of the steps, sources, and states are those of link:../shared/starting-work-texts.adoc#texts[Starting Work, Texts] and link:../shared/starting-work-sources-texts.adoc#texts[Texts of the Sources]; the terminal adds these, of the area `operator`:
 
 [cols="3,3,3",options="header"]
 |===
@@ -65,6 +65,10 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 |`operator.start.remove_it`
 |remove it
 |entferne es
+
+|`operator.start.accept_untrusted`
+|accept it as untrusted (a reason is recorded)
+|nimm es als nicht vertrauenswürdig an (ein Grund wird festgehalten)
 
 |`operator.start.try_again`
 |try again
@@ -150,6 +154,10 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 |free
 |frei
 
+|`operator.start.landing.back`
+|back to the sources
+|zurück zu den Quellen
+
 |`operator.start.decomposition.open_plan`
 |open a plan
 |öffne einen Plan
@@ -214,10 +222,6 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 |Left {step} of {epic}. The draft is kept. {command} continues it.
 |{step} von {epic} verlassen. Der Entwurf bleibt erhalten. {command} setzt ihn fort.
 
-|`operator.start.decomposition.scope_unset`
-|(the project sets no parallelization_scope)
-|(das Projekt setzt keinen parallelization_scope)
-
 |`operator.start.recipe.which`
 |Which recipe?
 |Welches Rezept?
@@ -233,6 +237,14 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 |`operator.start.recipe.to_sources`
 |Go on to its sources
 |Weiter zu seinen Quellen
+
+|`operator.start.recipe.go_on`
+|Go on
+|Weiter
+
+|`operator.start.recipe.ready`
+|Ready · The plan runs the recipe {recipe}
+|Bereit · Der Plan führt das Rezept {recipe} aus
 
 |`operator.start.recipe.takes_request`
 |takes a request
@@ -291,6 +303,10 @@ The mnemonics of starting work, one letter per link relation, in the catalogue l
 |`operator.start.key.remove`
 |r
 |e
+
+|`operator.start.key.accept_untrusted`
+|a
+|n
 
 |`operator.start.key.try_again`
 |t

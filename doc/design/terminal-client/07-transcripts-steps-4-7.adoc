@@ -103,7 +103,7 @@ Accept 1, reject 1? [Enter]   toggle: 1-2   b) back   ?   › ⏎
 Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
 ----
 
-* The steward runs on the default harness of step 2 with that harness's default model (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
+* The steward runs on the default harness of step 2 with that harness's default model, outside the model catalogue and exempt from qualification; it is not among the 31 roles this step assigns (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
 * A failed or left model task returns to `roles.review` as it was, with one line: `– The steward gave no proposal: <reason>.`
 * `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
 
@@ -111,7 +111,7 @@ Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
 == 5 Credentials
 
 [#t-store-choose]
-=== Choose (`store.detect`, `store.choose`, `store.check`, `store.record`, `store.done`)
+=== Choose (`store.detect`, `store.choose`, `store.consent`, `store.check`, `store.record`, `store.done`)
 
 [source,text]
 ----
@@ -127,6 +127,12 @@ Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
   leaves a copy behind.
 
 Use the macOS Keychain? [Enter]   other: 2   b) back   ?   › ⏎
+[5/7] Credentials · Check the macOS Keychain with a test entry?
+  runs        one test entry written to the Keychain, read back, and deleted
+  never       reads or changes any other entry
+  cost        none
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
     ✓  write a test entry
     ✓  read it back
     ✓  delete it
@@ -134,6 +140,7 @@ Use the macOS Keychain? [Enter]   other: 2   b) back   ?   › ⏎
 ----
 
 * On Linux the first option is the Secret Service, with its own text (`Every program you run can read it while it is unlocked.`).
+* `store.consent` (`check_credential_store`, link:../shared/consents.adoc#kinds[Consents, The Kinds]) is asked for an OS store only: the files lie in the machine's own directory and are checked without it. `n` stays (`Nothing was done.`); a remembered consent prints its line.
 
 [#t-store-unavailable]
 === Not Available Now (`store.check`, `store.unavailable`)
@@ -176,7 +183,7 @@ Check again? [Enter]   o) choose another store   ?   › ⏎
 ✓ Tokens are kept in the Secret Service
 ----
 
-* `l` (here the primary link) runs `store.detect` again and checks the same store; `o` returns to `store.choose` with the other stores. Nothing is written to the file store in place of the chosen one.
+* `store.unavailable` is the operator's choice. `l` (here the primary link) runs `store.detect` again and checks the same store, under the consent already given; `o` returns to `store.choose` with the other stores. Nothing is written to the file store in place of the chosen one.
 * Later, a recorded store that has become unavailable makes every step that needs a credential refuse with `credential_store_unavailable` and its fix (`common.error.credential_store_unavailable`, xref:09-texts-common.adoc#texts-common[Common]); `pm-operator status` names it too.
 
 [#t-store-move]
@@ -238,8 +245,17 @@ Continue with 2 providers? [Enter]   toggle: 1-8   b) back   ?   › ⏎
 
 Token (not shown while you type): ›
 Store and check it? [Enter]   b) back   ?   › ⏎
+✓ Token stored in the macOS Keychain
+[6/7] Providers · Check the providers with their tokens?
+  runs        a call of github.com and of sonarcloud.io with each token;
+              gh auth status
+  never       changes anything at the provider; sends the token anywhere else
+  cost        none
+
+y) yes   r) yes, and don't ask again   n) not now   ?   › r
 ----
 
+* Storing the typed token is the operator's own act and needs no consent; calling the providers with it is `providers.verify-consent` (`verify_providers`), asked once for every selected provider before `providers.verify`. `n` stays (`Nothing was done.`); with every token stored already, the consent follows `providers.select` directly.
 * There is no way past a missing token here: `b` returns to `providers.select`, where the provider can be unselected, and a provider whose check fails can be left out in `providers.failed` (<<t-providers-verify>>).
 
 * The token is read with the echo off into a `char[]` (xref:04-console.adoc#line-editor[Line Editor]) and sent in the body of one request to the runtime over its Unix domain socket, which only the user can open; it never crosses a network on its way to the credential store, and nothing of it is printed. `--no-input` stops here and names `pm-operator credentials set sonar`.
@@ -268,6 +284,7 @@ Continue without SonarCloud? [Enter]   b) back   › ⏎
 ----
 
 * With every provider `✓`, the state passes on its own to `providers.record`; the client prints the result line.
+* `providers.failed` is the operator's choice: `Enter` (_fix credential_) returns to `providers.credentials`, `l` runs `providers.verify` again, `k` records the provider as not available after its confirmation.
 
 [#t-defaults]
 == 7 Plans (`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`)
@@ -278,7 +295,7 @@ Continue without SonarCloud? [Enter]   b) back   › ⏎
   A project's setup and a single plan can choose otherwise.
 
   Landing   1) Branch and Pull Request ←   review and merge on the provider
-            2) Commit on main              no Pull Request, pushed directly
+            2) Commit on the base branch   no Pull Request, pushed directly
             3) Files only                  nothing is committed; you take over
   Method    4) Test first ←                tests are written before the code
             5) Tests after
@@ -287,17 +304,19 @@ Continue without SonarCloud? [Enter]   b) back   › ⏎
             8) Only questions              you are asked only what needs you
 
 Use these defaults? [Enter]   change: e.g. 2 5   ?n explains a line   b) back   › 2
-  Landing   2) Commit on main ✎
+  Landing   2) Commit on the base branch ✎
 Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
-    ✓  Commit on main: checked for each project, where its base branch is known
+    ✓  Commit on the base branch: checked for each project, where its base
+       branch is known
     ✓  Test first
     ✓  At the key points
 ✓ Plan defaults recorded
 ----
 
+* The three lines of the landing are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-axes[Plan Behaviour Axes]); `?1` to `?3` name the variant with what it lands: the branch, the pull request, its reviews and the merge; a commit pushed on the base branch; no commit, the changes left in the working tree and the plan handed back.
 * A variant that cannot run on this machine is listed without a number and with its reason (`Branch and Pull Request   needs a provider: none is available`).
 * `defaults.validate` that refuses a line reprints the state with the line marked `✗ <reason>` and the prompt naming it.
-* At the machine level it checks only what the machine knows: whether a provider is available for a pull request. There is no repository at this level, so whether a base branch is protected is checked where a project chooses _Commit on main_ (its setup, or `config plan-defaults --project`), which refuses it on a protected branch with the reason.
+* At the machine level it checks only what the machine knows: whether a provider is available for a pull request; the machine default is never checked against a repository. Whether a base branch is protected is checked where a project is known: the landing the project's team chooses in its setup, and a plan's start, which refuse _Commit on the base branch_ on a protected branch with the reason. A machine default that does not fit a project is refused for that project there, and the project or the plan chooses another.
 
 [#t-completed]
 == Done (`onboard.completed`)
@@ -311,7 +330,7 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
     ✓ Roles        31 roles assigned
     ✓ Credentials  macOS Keychain
     ✓ Providers    GitHub (gh)
-    ✓ Plans        Commit on main · Test first · key points
+    ✓ Plans        Commit on the base branch · Test first · key points
 
   Next: add a project: pm-operator project add, in its checkout.
 ✓ Web access on http://127.0.0.1:7420

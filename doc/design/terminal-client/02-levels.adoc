@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » Levels
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]_
 
 [#levels]
 == Levels
@@ -40,7 +40,7 @@ The onboarding records machine values, and they are defaults, not final values: 
 |override per role (`overrides.json`)
 
 |`credentials`
-|the credential store
+|the credential store; a token rotated or replaced (`--rotate`, `--replace`)
 |— (entries per project with `pm-operator credentials set --project`)
 |—
 
@@ -54,6 +54,8 @@ The onboarding records machine values, and they are defaults, not final values: 
 |method and asking (`local-config.json`); landing with origin `team`, kept with the team's configuration and changed through the project setup
 |landing, method, asking (origin `plan`): set where the plan first needs it, or later as a new instance version
 |===
+
+The variants of the landing axis are the sub-workflows `landing.pull-request`, `landing.main`, and `landing.files`; the values of `--landing` are their names without the prefix, as `--method` and `--asking` take those of `method.*` and `ask.*`. The machine settings that are no aspect, `config consents` and `config documents`, have the machine level only.
 
 A dash is not a level of that aspect: `config harnesses --project p` is refused with usage exit code `2` and the text that names the levels the aspect has. The project column of `language` holds only the model language, since the interface language is the operator's.
 
@@ -85,7 +87,7 @@ Each value carries its origin, one of `default` (shipped with the release), `mac
 $ pm-operator config show plan-defaults --project pm-mcp-clients
 Plan defaults · project pm-mcp-clients
 
-  Landing   Branch and Pull Request   team      overrides machine: Commit on main
+  Landing   Branch and Pull Request   team      overrides machine: Commit on the base branch
   Method    Test first                machine
   Asking    At the key points         default
 
@@ -100,4 +102,4 @@ Change: pm-operator config plan-defaults --project pm-mcp-clients
 [#running-plan]
 === A Plan's Own Values
 
-A plan's values are its own level (origin `plan`). `config show plan-defaults --plan <plan_id>` shows the axes with their origin: `plan` where the plan set its own, otherwise the level it takes them from. A plan sets an axis where it first needs it (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-options-when-needed[Asked When Needed]) or later: `config plan-defaults --plan <plan_id>` writes the plan's value, as `config roles --plan <plan_id>` writes the plan's overrides of roles and providers and shows the plan's effective assignment first. Each change composes a new instance version of the plan (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]), and the client says so before the confirmation (`Applies from the plan's next step; the plan's version becomes 7.`); a part of the plan that has run already keeps what it ran with. The plan's settings are reached the same way from its actions (`o` in its menu, xref:19-actions.adoc[Actions on Plans and Epics]).
+A plan's values are its own level (origin `plan`). `config show plan-defaults --plan <plan_id>` shows the axes with their origin: `plan` where the plan set its own, otherwise the level it takes them from. A plan sets an axis where it first needs it (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-options-when-needed[Asked When Needed]) or later: `config plan-defaults --plan <plan_id>` writes the plan's value, as `config roles --plan <plan_id>` writes the plan's overrides of roles and providers and shows the plan's effective assignment first. Each change composes a new instance version of the plan (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]), and the client says so before the confirmation (`Applies where fix-relay next reads it; the plan's version becomes 7.`, `control.settings.applies`); a part of the plan that has run already keeps what it ran with (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]). A change whose new version would not contain where the plan is (the landing while the plan lands) is refused with the reason, as is a value that cannot run for the project or the plan (`landing.main` on a protected base branch, `landing.files` for a plan from local changes); where an epic started the plan, its epic is told. The plan's settings are reached the same way from its actions (`o` in its menu, xref:19-actions.adoc[Actions on Plans and Epics]).

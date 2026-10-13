@@ -64,7 +64,7 @@ Order: projects that need the operator first, then by their latest activity. A p
 |its icon, colour, and the word `epic`
 
 |Needs the operator
-|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you`, `integrity pause`, `stalled`, `needs a fix`, `held`, `landing failed`, `paused by you`, `setup` (`! 2 · decision`, `! paused by you`)
+|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you` (any other operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity pause`, `held`, `landing failed`, and `setup` (`! 2 · decision`, `! stalled`)
 |the same, counting its plans' items too, and `new findings` of its own
 
 |Title
@@ -72,7 +72,7 @@ Order: projects that need the operator first, then by their latest activity. A p
 |the epic's title
 
 |Where it is
-|the current phase and the state in it, from one closed list: `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `stalled`
+|the current phase and the state in it, from one closed list: `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `held` (a hold of any kind holds it)
 |its plans: `2 running · 3 staged`
 
 |Time
@@ -92,6 +92,8 @@ Order: projects that need the operator first, then by their latest activity. A p
 |—
 |===
 
+* *A paused plan* is no item of what needs the operator: the operator paused it, and its state says so (`paused`); it carries the marker only for what else waits in it, a decision for example.
+* *The holds* are exactly `stalled`, `condition`, `integrity_pause`, `held`, and `landing_failed`; each opens its acts (link:work-actions.adoc#holds[What Holds a Plan]). The other kinds are answered where they are asked.
 * Order within a project: those that need the operator first, then the most recently active; the plans below an epic in the same order.
 * Times are shown as durations, rounded to what matters (`25 min`, `2 h 10 min`, `3 d`), and computed at each redraw; nothing counts in place by the second.
 * Selecting a plan leads into its plan view (link:plan-view.adoc[Plan View]), selecting an epic into its epic view (link:epic-view.adoc[Epic View]); selecting the marker leads to what waits: a decision or a waiver request (link:decisions.adoc[Decisions]), a hold (link:work-actions.adoc#holds[What Holds a Plan]), new findings (link:work-actions.adoc#review[Reviewing Findings or Watches]).
@@ -129,8 +131,9 @@ A project's ended plans and epics are a list of their own, apart from Running Wo
 ----
   pm-mcp-clients · ended work                                         page 1 of 3
   ─────────────────────────────────────────────────────────────────────────────
-  ▸ plan  fix-relay               completed   #214                  today 11:20
-  ◇ epic  relay-hardening         archived                          yesterday
+  ▸ plan  fix-relay               merged      #214                  today 11:20
+  ◇ epic  relay-hardening         completed                         yesterday
+  ▸ plan  relay-cursor-order      aborted     the edit was not ours 1 d ago
   ▸ plan  codeberg-issues         cancelled   replaced by relay-v2  2 d ago
   ▸ plan  docs-cleanup            abandoned   no longer needed      5 d ago
   ─────────────────────────────────────────────────────────────────────────────
@@ -138,7 +141,7 @@ A project's ended plans and epics are a list of their own, apart from Running Wo
 ----
 
 * *Where*: per project, opened from the project's level of Running Work (_Ended work_) and from the project's actions in the explorer (link:project-explorer.adoc#actions[Actions of a Project]), also for a project with nothing running.
-* *A row*: the kind as in Running Work (<<distinction>>), the title, the outcome (a plan: completed, cancelled, abandoned; an epic: archived, cancelled), the plan's own pull request by its number with a link, the reason where the operator gave one, and when it ended.
+* *A row*: the kind as in Running Work (<<distinction>>), the title, the outcome (a plan: merged, no change, handed back, returned, cancelled, abandoned, released, or aborted from an integrity pause; an epic: completed, cancelled, released; link:work-actions.adoc#outcomes[How a Plan Ends]), the plan's own pull request by its number with a link, the reason where the operator gave one, and when it ended.
 * *Order and paging*: newest first, a page at a time, with _Newer_ and _Older_; the runtime pages, the client never loads the whole archive.
 * *Opening one*: an ended plan opens its plan view, an ended epic its epic view, both read-only and as it ended: the last state of every node, the outcome, the reason, and the end time in the head, and no action but _Chat_ (link:plan-view.adoc#live[Plan View, Live]; link:epic-view.adoc#layout[Epic View]).
 * *Chat*, on a row and in the view, opens a read-only chat about the ended plan or epic, whose one proposal is a follow-up plan (link:work-actions.adoc#chat-ended[A Chat About Ended Work]).
@@ -248,10 +251,6 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |new findings
 |neue Findings
 
-|`overview.needs.paused`
-|paused by you
-|von dir angehalten
-
 |`overview.needs.setup`
 |setup
 |Einrichtung
@@ -272,9 +271,9 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |waiting for you
 |wartet auf dich
 
-|`overview.state.stalled`
-|stalled
-|steht
+|`overview.state.held`
+|held
+|aufgehalten
 
 |`overview.time.running`
 |{duration}
@@ -325,8 +324,12 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |In {project} ist noch nichts beendet.
 
 |`overview.ended.outcome`
-|{outcome, select, completed {completed} cancelled {cancelled} abandoned {abandoned} archived {archived} other {ended}}
-|{outcome, select, completed {abgeschlossen} cancelled {abgebrochen} abandoned {aufgegeben} archived {archiviert} other {beendet}}
+|{outcome, select, merged {merged} no_change {no change} handed_back {handed back} returned {returned} cancelled {cancelled} abandoned {abandoned} released {released} aborted {aborted} other {ended}}
+|{outcome, select, merged {zusammengeführt} no_change {ohne Änderung} handed_back {übergeben} returned {zurückgegeben} cancelled {abgebrochen} abandoned {aufgegeben} released {abgegeben} aborted {wegen einer Integritätspause abgebrochen} other {beendet}}
+
+|`overview.ended.epic_end`
+|{end, select, completed {completed} cancelled {cancelled} released {released} other {ended}}
+|{end, select, completed {abgeschlossen} cancelled {abgebrochen} released {abgegeben} other {beendet}}
 
 |`overview.ended.reason`
 |Reason: {reason}

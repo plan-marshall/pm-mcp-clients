@@ -5,9 +5,9 @@
 
 link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics] » Texts
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]_
 
-Status: `DRAFT`. The texts of link:work-actions.adoc[Actions on Plans and Epics]; how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `DRAFT`. The texts of link:work-actions.adoc[Actions on Plans and Epics]; those of the reviews and the holds are link:work-actions-review-texts.adoc[Reviews and Holds, Texts], those of the chat link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts], and the outcomes of ended work are `overview.ended.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]). How texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts
@@ -91,8 +91,8 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Lass ihn weiterlaufen
 
 |`control.end.title`
-|{action, select, cancel {Cancel} other {Abandon}} {plan}?
-|{plan} {action, select, cancel {abbrechen} other {aufgeben}}?
+|{action, select, cancel {Cancel} abandon {Abandon} other {Abort}} {plan}?
+|{plan} {action, select, cancel {abbrechen} abandon {aufgeben} other {wegen der Integritätspause abbrechen}}?
 
 |`control.end.label.what_ends`
 |What ends
@@ -127,16 +127,52 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Lass ihn offen
 
 |`control.end.afterwards`
-|the plan is archived as {outcome, select, cancelled {cancelled} other {abandoned}}; its branch stays
-|der Plan wird als {outcome, select, cancelled {abgebrochen} other {aufgegeben}} archiviert; sein Branch bleibt
+|the plan is archived as {outcome, select, cancelled {cancelled} abandoned {abandoned} other {aborted}}; its branch stays
+|der Plan wird als {outcome, select, cancelled {abgebrochen} abandoned {aufgegeben} other {wegen einer Integritätspause abgebrochen}} archiviert; sein Branch bleibt
 
 |`control.end.keep`
-|{action, select, cancel {Keep it running} other {Keep it paused}}
-|{action, select, cancel {Lass ihn weiterlaufen} other {Lass ihn angehalten}}
+|{action, select, cancel {Keep it running} abandon {Keep it paused} other {Keep it held}}
+|{action, select, cancel {Lass ihn weiterlaufen} abandon {Lass ihn angehalten} other {Lass ihn aufgehalten}}
 
 |`control.end.action`
-|{action, select, cancel {Cancel the plan} other {Abandon the plan}}
-|{action, select, cancel {Brich den Plan ab} other {Gib den Plan auf}}
+|{action, select, cancel {Cancel the plan} abandon {Abandon the plan} other {Abort the plan}}
+|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätspause ab}}
+
+|`control.settings.title`
+|Settings · {plan}
+|Einstellungen · {plan}
+
+|`control.settings.group`
+|{group, select, plan_defaults {Plan defaults} roles {Roles} other {Providers}}
+|{group, select, plan_defaults {Vorgaben für Pläne} roles {Rollen} other {Provider}}
+
+|`control.settings.origin`
+|{origin, select, plan {from the plan} project {from the project} team {from the team} machine {from the machine} other {shipped default}}
+|{origin, select, plan {vom Plan} project {vom Projekt} team {vom Team} machine {von der Maschine} other {mitgelieferte Vorgabe}}
+
+|`control.settings.use_inherited`
+|Use the {level, select, project {project's} other {machine's}} value
+|Nimm den Wert {level, select, project {des Projekts} other {der Maschine}}
+
+|`control.settings.applies`
+|Applies where {plan} next reads it; the plan's version becomes {version}.
+|Gilt dort, wo {plan} ihn als Nächstes liest; die Version des Plans wird {version}.
+
+|`control.settings.refused`
+|{value} is refused: {reason}
+|{value} wird abgelehnt: {reason}
+
+|`control.settings.too_late`
+|Too late: {plan} {position}; the new version would not contain where it is. Nothing changed.
+|Zu spät: {plan} {position}; die neue Version enthielte nicht, wo er steht. Nichts wurde geändert.
+
+|`control.settings.epic_told`
+|{epic} is told of a change
+|{epic} wird über eine Änderung informiert
+
+|`control.settings.close`
+|Close
+|Schließe die Einstellungen
 
 |`control.epic.next`
 |Next plan: {plan}
@@ -149,6 +185,14 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.epic.next_raise`
 |Raise to {count} at once and start it
 |Erhöhe auf {count} gleichzeitig und starte ihn
+
+|`control.epic.next_leave`
+|Leave it
+|Lass es so
+
+|`control.epic.scope_full`
+|{epic} runs {running} of {scope} at once; the next plan, {plan}, waits for a free place.
+|{epic} führt {running} von {scope} gleichzeitig aus; der nächste Plan, {plan}, wartet auf einen freien Platz.
 
 |`control.epic.decompose_again`
 |Decompose again
@@ -170,6 +214,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Archive
 |Archiviere das Epic
 
+|`control.epic.archive_landing`
+|the ledger is landing
+|das Ledger wird gerade gelandet
+
 |`control.epic.cancel`
 |Cancel
 |Brich das Epic ab
@@ -187,8 +235,8 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |jeder Plan ausgeliefert oder beendet
 
 |`control.archive.open_findings`
-|open findings
-|offene Findings
+|open findings, not decided yet
+|offene, noch nicht entschiedene Findings
 
 |`control.archive.ledger_landed`
 |the ledger is landed
@@ -198,9 +246,9 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |the completion review is done
 |die Abschlussprüfung ist erledigt
 
-|`control.archive.open_watches`
-|watches still open: they go into the archive
-|noch offene Beobachtungen: sie kommen ins Archiv
+|`control.archive.carried`
+|carried into the archive: {findings, plural, one {# kept finding} other {# kept findings}} · {watches, plural, one {# watch} other {# watches}}
+|kommen mit ins Archiv: {findings, plural, one {# behaltenes Finding} other {# behaltene Findings}} · {watches, plural, one {# Beobachtung} other {# Beobachtungen}}
 
 |`control.archive.review_findings`
 |Review the findings
@@ -241,180 +289,4 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.cancel_epic.action`
 |Cancel the epic
 |Brich das Epic ab
-
-|`control.review.title`
-|{epic} · {register, select, findings {findings review} other {watches review}}
-|{epic} · {register, select, findings {Prüfung der Findings} other {Prüfung der Beobachtungen}}
-
-|`control.review.progress`
-|{done} of {total} decided
-|{done} von {total} entschieden
-
-|`control.review.statement`
-|Statement
-|Aussage
-
-|`control.review.rules`
-|Rules
-|Regeln
-
-|`control.review.origin`
-|Origin
-|Herkunft
-
-|`control.review.proposal`
-|Proposal
-|Vorschlag
-
-|`control.review.untrusted`
-|untrusted
-|nicht vertrauenswürdig
-
-|`control.review.keep_defect`
-|Keep as defect
-|Behalte es als Defekt
-
-|`control.review.keep_watch`
-|Keep as watch
-|Behalte es als Beobachtung
-
-|`control.review.drop`
-|Drop
-|Lass es fallen
-
-|`control.review.drop_reason`
-|Why do you drop it?
-|Warum lässt du es fallen?
-
-|`control.review.promote`
-|Promote to a plan
-|Mach einen Plan daraus
-
-|`control.review.edit`
-|Edit
-|Bearbeite es
-
-|`control.review.chat`
-|Chat
-|Chat
-
-|`control.review.accept_remaining`
-|Accept the remaining {count, plural, one {# proposal} other {# proposals}}
-|{count, plural, one {Nimm den übrigen Vorschlag an} other {Nimm die übrigen # Vorschläge an}}
-
-|`control.review.accept_remaining_confirm`
-|Take the proposal for {count, plural, one {this item} other {these # items}}?
-|Den Vorschlag für {count, plural, one {diesen Eintrag} other {diese # Einträge}} übernehmen?
-
-|`control.review.stage`
-|Stage it
-|Merke ihn vor
-
-|`control.review.back`
-|Back
-|Zurück
-
-|`control.review.accept`
-|Accept
-|Nimm es an
-
-|`control.review.instruct_again`
-|Instruct again
-|Weise neu an
-
-|`control.review.discard`
-|Discard
-|Verwirf die Änderung
-
-|`control.review.finish`
-|Finish
-|Schließe die Prüfung ab
-
-|`control.hold.title`
-|{kind, select, stalled {{name} is stalled} condition {{name} holds: a condition} integrity_pause {{name} holds: an integrity pause} held {{name} holds: a held item} other {{name} holds: a failed landing}}
-|{kind, select, stalled {{name} steht} condition {{name} wird durch eine Bedingung aufgehalten} integrity_pause {{name} wird durch eine Integritätspause aufgehalten} held {{name} wird durch einen zurückgehaltenen Eintrag aufgehalten} other {{name} wird durch eine fehlgeschlagene Landung aufgehalten}}
-
-|`control.hold.kind.stalled`
-|stalled
-|steht
-
-|`control.hold.kind.condition`
-|a condition
-|eine Bedingung
-
-|`control.hold.kind.integrity_pause`
-|an integrity pause
-|eine Integritätspause
-
-|`control.hold.kind.held`
-|a held item
-|ein zurückgehaltener Eintrag
-
-|`control.hold.kind.landing_failed`
-|a failed landing
-|eine fehlgeschlagene Landung
-
-|`control.hold.cause`
-|Cause
-|Ursache
-
-|`control.hold.tried`
-|Tried {count, plural, one {once} other {# times}}, last {time}
-|{count, plural, one {Einmal} other {# Mal}} versucht, zuletzt {time}
-
-|`control.hold.resolve`
-|Resolve
-|Lösen
-
-|`control.hold.act.retry`
-|Retry now
-|Versuche es jetzt erneut
-
-|`control.hold.act.recycle`
-|Recycle the worker
-|Starte den Worker neu
-
-|`control.hold.act.grant`
-|Grant read access to {project}…
-|Gib Lesezugriff auf {project}…
-
-|`control.hold.act.add_credential`
-|Add the credential…
-|Füge den Zugang hinzu…
-
-|`control.hold.act.raise_budget`
-|Raise the budget…
-|Erhöhe das Budget…
-
-|`control.hold.act.show_change`
-|Show the change
-|Zeige die Änderung
-
-|`control.hold.act.accept_change`
-|Accept the change…
-|Nimm die Änderung an…
-
-|`control.hold.act.restore`
-|Restore
-|Stelle wieder her
-
-|`control.hold.act.show_pr`
-|Show the pull request #{number}
-|Zeige den Pull Request #{number}
-
-|`control.hold.act.give_up_removal`
-|Give up the removal…
-|Gib das Entfernen auf…
-
-|`control.hold.act.end_plan`
-|End the plan…
-|Beende den Plan…
-
-|`control.hold.give_up_removal.explain`
-|The files stay tracked in git where they were, and the source keeps its copy; the two are no longer kept as one.
-|Die Dateien bleiben in Git, wo sie waren, und die Quelle behält ihre Kopie; beide werden nicht mehr als eins geführt.
-
-|`control.hold.cleared`
-|{cause} cleared by itself
-|{cause} hat sich von selbst erledigt
 |===

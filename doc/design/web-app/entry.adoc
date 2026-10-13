@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » link:README.adoc[Web App] » Entry
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the page a revoked device lands on)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the page a revoked device lands on, the network listener turned off)_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing[CLI, Coordination & Security Specification, Pairing Protocol], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-devices[Entry, Devices in Both Clients] (proposed)_
 
@@ -93,6 +93,21 @@ The reason names what the runtime reported:
 
 * Nothing typed in an open form survives the revocation: the page that was open is replaced, not covered.
 * Revoking the device the operator acts from asks first (link:../shared/paired-devices.adoc[Paired Devices]) and then lands here with `You revoked this browser`.
+
+[#listener-off]
+== The Network Listener Turned Off
+
+When the operator turns the network listener off (`devices.listener-off`, link:../shared/paired-devices.adoc#listener-off[Paired Devices]), a page open over the network loses its connection. The device stays paired, so the app does not delete its secret: it shows one page with the reason and waits.
+
+[source,text]
+----
+  This machine is not reachable over the network now
+
+  Its network access was turned off at 14:32. This browser stays paired:
+  it works again once the network access is on (pm-operator, web lan).
+----
+
+* The page reconnects on its own when the listener is on again, and opens where the operator was. It cannot tell a listener turned off from a network that is down when the runtime said nothing; then it says `This machine is not reachable over the network.` with the same way back.
 
 [#after-pairing]
 == Where the App Opens
@@ -195,6 +210,18 @@ Keys of the area `web`; the copy button is `web.common.copy`, the fingerprint's 
 |`web.revoked.page.again`
 |To pair this one again, get a code in a terminal of the machine.
 |Um diesen erneut zu koppeln, hol dir einen Code in einem Terminal der Maschine.
+
+|`web.entry.lan_off.title`
+|This machine is not reachable over the network now
+|Diese Maschine ist gerade nicht über das Netzwerk erreichbar
+
+|`web.entry.lan_off.reason`
+|Its network access was turned off at {time}. This browser stays paired: it works again once the network access is on ({command}).
+|Ihr Netzwerkzugang wurde um {time} ausgeschaltet. Dieser Browser bleibt gekoppelt: er funktioniert wieder, sobald der Netzwerkzugang an ist ({command}).
+
+|`web.entry.lan_off.unknown`
+|This machine is not reachable over the network.
+|Diese Maschine ist nicht über das Netzwerk erreichbar.
 
 |`web.entry.unreachable.title`
 |plan-marshall is not reachable on this machine

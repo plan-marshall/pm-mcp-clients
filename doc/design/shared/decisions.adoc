@@ -157,7 +157,7 @@ A worker that cannot pass a gate may ask for a waiver of it. The request reaches
                                           [Later]   [Decline]   [Waive the gate]
 ----
 
-* *Three answers*: _Waive the gate_, with the operator's reason; _Decline_, with the operator's reason, after which the plan's remediation takes its next step; _Later_, which leaves the request open.
+* *Three answers*: _Waive the gate_ (`waive`), with the operator's reason; _Decline_ (`decline`), with the operator's reason, which records the outcome `declined` and lets the plan's remediation take its next step; _Later_, which leaves the request open.
 * *The reason is required* for both waive and decline; until it is given, both are disabled and say why.
 * *No preselection*: neither answer is the primary one, `Enter` in the terminal answers nothing, and no recommendation is shown.
 * *No interpretation*: the operator's reason is recorded as it is, never read by a model before it is recorded; there is no answer in own words beside the two, and no chat (<<chat>>).
@@ -168,7 +168,8 @@ A worker that cannot pass a gate may ask for a waiver of it. The request reaches
 
 * *Answered in another channel*: every client says where and how (`answered in the web app, iPad: Rebase onto main`), closes the decision if it is open, and drops what was typed into it.
 * *A newer revision*: an answer to an older revision is refused by the runtime; the client shows the changed decision with what changed, and the operator answers again.
-* *None fits*: confirmed like an answer, then shown as `you asked the plan to think again`.
+* *None fits* (`decision.withdraw`): confirmed like an answer, with the note where the operator added one, then shown as `you asked the plan to think again`. The runtime closes the decision as withdrawn; the role that asked thinks again and asks anew, as a new decision with an id of its own, announced like any other (<<announce>>) and naming the one it replaces (`asked anew after Q-007`).
+* *Later* answers nothing: the decision stays open and announced (`decision.announce`), the client leaves it, and the plan waits; it is in the list of open decisions until it is answered.
 
 [#safety]
 == Untrusted Text

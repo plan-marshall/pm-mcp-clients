@@ -43,6 +43,10 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |leave
 |verlasse
 
+|`operator.prompt.later`
+|later
+|später
+
 |`operator.prompt.choose_range`
 |Choose: {range}
 |Wähle: {range}
@@ -116,8 +120,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Ändern: {command}
 
 |`operator.config.plan_version`
-|Applies from the plan's next step; the plan's version becomes {version}.
-|Gilt ab dem nächsten Schritt des Plans; die Version des Plans wird {version}.
+|Applies where {plan} next reads it; the plan's version becomes {version}.
+|Gilt dort, wo {plan} es als Nächstes liest; die Version des Plans wird {version}.
 
 |`operator.copy.done`
 |Copied, if your terminal allows it; the text is above.
@@ -232,6 +236,10 @@ One letter per link relation, the mnemonic of its label; the build checks of the
 |`operator.key.revoke`
 |x
 |w
+
+|`operator.key.keep`
+|k
+|b
 
 |`operator.key.revoke_others`
 |o
@@ -441,9 +449,17 @@ One letter per link relation, the mnemonic of its label; the build checks of the
 |Nothing was opened.
 |Es wurde nichts geöffnet.
 
+|`operator.entry.other.undo_value`
+|pm-operator web devices listener-off; this machine keeps its loopback access
+|pm-operator web devices listener-off; diese Maschine behält ihren Zugang über Loopback
+
+|`operator.entry.lan_failed`
+|The network listener did not open: {cause}
+|Der Netzwerk-Listener hat sich nicht geöffnet: {cause}
+
 |`operator.entry.fingerprint`
 |Fingerprint SHA-256
 |Fingerabdruck SHA-256
 |===
 
-The texts of the console (its badges and notices) are with xref:04-console.adoc#texts-operator-console[The Console]; those of decisions in the console with xref:14-transcripts-decisions.adoc#texts-operator-decisions[Decisions]; those of the paired devices and the machine settings with xref:08-transcripts-later.adoc#texts-operator-devices[Later Changes]. Each part stays below 500 lines.
+The texts of the console (its badges and notices) are with xref:04-console.adoc#texts-operator-console[The Console]; those of decisions in the console with xref:14-transcripts-decisions.adoc#texts-operator-decisions[Decisions]; those of the paired devices and the machine settings with xref:23-texts-settings.adoc#texts-operator-devices[Texts: Machine Settings and Paired Devices]. Each part stays below 500 lines.
