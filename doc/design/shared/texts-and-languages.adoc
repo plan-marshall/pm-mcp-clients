@@ -103,7 +103,7 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `control`: the actions on plans and epics, the holds, and the reviews (link:work-actions-texts.adoc#texts[Actions on Plans and Epics, Texts], link:work-actions-review-texts.adoc#texts[Actions on Plans and Epics, Texts of the Reviews]);
 ** `devices`: the paired devices (link:paired-devices.adoc#texts[Paired Devices]);
 ** `report`: the reports to the operator and a plan's completion report (link:reports.adoc#texts[Reports], link:completion-report.adoc#texts[Completion Report]);
-** `system`: the system view and the acts on the runtime (link:system-texts.adoc#texts[System, Texts]);
+** `system`: the system view, the acts on the runtime, and the cleanup (link:system-texts.adoc#texts[System, Texts], link:cleanup-texts.adoc#texts[Cleanup, Texts]);
 ** `designer`: the process designer, loaded by the web app only (link:../web-app/process-designer-texts.adoc#texts[Process Designer, Texts]);
 ** `operator`: the verbs of `pm-operator`;
 ** `relay`: `pm-mcp`.

@@ -172,11 +172,12 @@ Enrol pm-mcp-clients? [Enter]   change: 1-6   ?n explains a line   ?   › ⏎
   5) GitHub                gh 2.71 · token ✓ stored                 ← from machine
   6) SonarCloud            REST · token ✓ stored                    ← from machine
   7) Commit identity       Oliver Wolff <…>                         ← from machine
-Use the machine's values? [Enter]   change: 1-7   ?   › 4
+  8) Cleanup               30 days                                  ← from machine
+Use the machine's values? [Enter]   change: 1-8   ?   › 4
   Method, asking · project pm-mcp-clients
     Method   1) Test first ← from machine   2) Tests after
   …
-Save 1 own value? [Enter]   change: 1-7   ?   › ⏎
+Save 1 own value? [Enter]   change: 1-8   ?   › ⏎
     ✓  github: variant gh valid, credential acting
     ✓  sonarcloud: variant REST valid, credential acting
 
@@ -326,11 +327,11 @@ pm ›
 
 pm › project unenrol legacy-portal
 Unenrol legacy-portal?
-  What ends      its enrolment: the project leaves the list; its checkout, the
-                 team's configuration in it, and its archived work on this
-                 machine stay as they are
+  What ends      its enrolment: the project leaves the list; its checkout and
+                 the team's configuration in it stay as they are, and so does
+                 its archived work on this machine until the cleanup offers it
   Afterwards     it is onboarded again from the start (project add), and
-                 finds its archived work again
+                 finds its archived work again while it is kept
 Unenrol the project? y) yes   n) no, keep it   ?   › y
 ✓ legacy-portal unenrolled
 pm ›

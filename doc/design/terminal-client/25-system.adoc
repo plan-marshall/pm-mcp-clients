@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » System
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics] (proposed)_
 
@@ -62,12 +62,14 @@ Models    last hour, per model
           claude:opus-4.5      42 calls   2.02 M tokens (1.90 M in · 0.12 M out)   1 retry
           claude:sonnet-4.5   118 calls   3.61 M tokens (3.20 M in · 0.41 M out)
           codex:gpt-5          12 calls   tokens not measured: not reported by codex   1 error
-plans · system --window today · system --by role
+Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB
+          4 kept for good · last sweep today 03:00
+plans · cleanup · system --window today · system --by role
 pm ›
 ----
 
 * The same parts in the same order as link:../shared/system.adoc#view[System, The System View], as words: no meaning is in a colour or a glyph alone, a figure not available says so with its reason.
-* *One step* is a command: the last line names the commands of the figures that lead somewhere (link:../shared/system.adoc#one-step[System, One Step to What a Figure Counts]); `plans` opens the overview of running work, `plan <plan_id>` a plan at its task or job.
+* *One step* is a command: the last line names the commands of the figures that lead somewhere (link:../shared/system.adoc#one-step[System, One Step to What a Figure Counts]); `plans` opens the overview of running work, `plan <plan_id>` a plan at its task or job, `cleanup` the cleanup job (xref:26-cleanup.adoc[Cleanup]).
 * *Models* print tokens and never money: the total with its split, in the number format of link:../shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers]; a total over calls not measured is a floor with `≥` and the count of those calls (link:../shared/system.adoc#models[System, The Models]). `?` on a line prints its raw components as the harness reported them: input, cache read, cache write, output, reasoning, each `not reported` where the harness does not report it.
 * `--project <project_id>` prints the work of that project; without it, every project's together, and a project still recovering says `recovering`.
 
@@ -88,6 +90,7 @@ pm ›
   Workers   5 · 3 busy · 2 idle
   Jobs      build 1 of 2 slots · 1 queued · test 0 of 1 · locks 3 held
   Models    last hour · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 0.53 M out)
+  Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move  Enter open  w window  b by role  p per project  a actions  ? help  q leave
 ----
@@ -100,7 +103,7 @@ pm ›
 |move between the figures
 
 |`Enter`, `→`, `l`
-|follow the selected figure: the workers, the jobs, the locks, or a model's calls as a level of the view; plans in a state as the overview filtered to it; `Esc` back
+|follow the selected figure: the workers, the jobs, the locks, or a model's calls as a level of the view; the cleanup's line opens `cleanup` as a level of the view; plans in a state as the overview filtered to it; `Esc` back
 
 |`w`
 |the models' window: last hour, today, 7 days

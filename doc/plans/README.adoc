@@ -270,29 +270,29 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-reports.adoc[`cli-reports`]
 |Reports and the completion report in the terminal
 |`blocked`
-|link:report-contract.adoc[`report-contract`]; link:cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
+|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:web-reports.adoc[`web-reports`]
 |Reports and the completion report in the web app
 |`blocked`
-|link:report-contract.adoc[`report-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
+|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:system-contract.adoc[`system-contract`]
-|The system view and the runtime's lifecycle: contract and mock runtime
+|The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/runtime-metrics.adoc[`pm-mcp-core` / `runtime-metrics`]; link:../../../pm-mcp-core/doc/plans/runtime-control.adoc[`pm-mcp-core` / `runtime-control`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-SYS-1 and UC-SYS-2 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:report-contract.adoc[`report-contract`] (the closed kinds of reports); link:../../../pm-mcp-core/doc/plans/runtime-metrics.adoc[`pm-mcp-core` / `runtime-metrics`]; link:../../../pm-mcp-core/doc/plans/runtime-control.adoc[`pm-mcp-core` / `runtime-control`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; link:../../../pm-mcp-core/doc/plans/cleanup.adoc[`pm-mcp-core` / `cleanup`]; UC-SYS-1, UC-SYS-2, and UC-SYS-3 agreed (no work package)
 |epic clients
 
 |link:cli-system.adoc[`cli-system`]
-|The system view and the runtime's lifecycle in the terminal
+|The system view, the runtime's lifecycle, and the cleanup in the terminal
 |`blocked`
 |link:system-contract.adoc[`system-contract`]; link:cli-overview.adoc[`cli-overview`] (the full-screen view)
 |epic clients
 
 |link:web-system.adoc[`web-system`]
-|The system view and the runtime's lifecycle in the web app
+|The system view, the runtime's lifecycle, and the cleanup in the web app
 |`blocked`
 |link:system-contract.adoc[`system-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-design.adoc[`web-design`]
 |epic clients

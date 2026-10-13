@@ -79,7 +79,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/reports.adoc[Reports]
 |`DRAFT`
-|What both clients show of the reports to the operator: the closed kinds, what a report shows (from, subject, body, created, sent, detail), the list of unread reports grouped by project, epic, and plan, the count on entering a client with one step to the list, the quiet notice while a client is open, marking one or all shown read, the detail that reads it, read on every device, a subject that has ended or is no longer kept; its texts in the new area `report`.
+|What both clients show of the reports to the operator: the closed kinds, what a report shows (from, subject, body, created, sent, detail), the list of unread reports grouped by project, epic, and plan, the count on entering a client with one step to the list, the quiet notice while a client is open, marking one or all shown read, the detail that reads it, read on every device, a subject that has ended or was deleted by the cleanup; its texts in the new area `report`.
 
 |link:shared/completion-report.adoc[Completion Report]
 |`DRAFT`
@@ -88,6 +88,10 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |link:shared/system.adoc[System]
 |`DRAFT`
 |What both clients show of the runtime itself: the system view with its identity and health (version, uptime, memory, CPU, disk, listeners), the work (plans and epics by state, tasks, workers, jobs with their slots, locks), and the models (calls, tokens with their split, errors per model or role over a window, never money), live, each figure one step from what it counts; stopping by drain or now with its confirmation, withdrawing a drain, stopped and started again, restarting with the clients reconnecting, checking for a newer version behind its consent, upgrading with its steps and its failures, a client of another release, several clients at once; its texts in link:shared/system-texts.adoc[a part of their own].
+
+|link:shared/cleanup.adoc[Cleanup]
+|`DRAFT`
+|The one place where ended work is deleted, in both clients: the work history (archived plans and epics, logs of ended work, read reports, unenrolled projects) offered as a cleanup job when it is due, with its report `system.cleanup_due`; the job's summary and details, each item excludable; _Delete_ with its confirmation, _Ask me again in 3 days_, _Ignore_; the items kept for good and their release; the durations of the machine and a project's own; the technical residue the runtime removes by itself, as figures; what deleting leaves; its texts in link:shared/cleanup-texts.adoc[a part of their own].
 
 |link:shared/paired-devices.adoc[Paired Devices]
 |`DRAFT`

@@ -1,10 +1,10 @@
-= The system view and the runtime's lifecycle in the terminal
+= The system view, the runtime's lifecycle, and the cleanup in the terminal
 :nofooter:
 
 link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-system`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]; no roadmap milestone yet
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]; no roadmap milestone yet
 Where:: `pm-operator`
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
@@ -15,15 +15,16 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * `runtime stop|restart [--drain|--now] [--yes]`, `runtime stop --withdraw`, `runtime upgrade [<version>|--check|--withdraw|--notes] [--drain|--now] [--yes]` as operator verbs, with their confirmations as dialogues, `--no-input` stopping at the choice of when, the consent `check_updates`; as one shell command waiting with the bound of `drain`; in the console the badges `stopping` and `upgrading`, the progress as quiet lines, the prompt `pm (stopped) ›` without reconnecting by itself, the reconnect after a restart or an upgrade, and the line of a console older than the runtime.
 * The verbs of the specification unchanged: `status` (its runtime line names the lifecycle state and `system`), `drain`, `runtime start|install|uninstall`; a refusal of an act because the runtime does not answer names `drain`.
 * The models in tokens, never money: the total with its split per model or role, a floor with the calls not measured, the raw components behind `?` (link:../design/terminal-client/25-system.adoc[Terminal Client, System]), in link:../design/shared/texts-and-languages.adoc#numbers[the number format of tokens].
-* Texts from the catalogue only: the area `system` and the terminal's `operator.system.*`.
+* `cleanup` printing the open job with its summary, details paged per project, the kept count, and the residue figures; in the console the choice _delete_, _ask me again_, _ignore_, items left out, an item opened read-only; `cleanup --delete [--exclude] [--yes]`, `--remind`, `--ignore` as operator verbs, `--no-input` stopping at the confirmation; `cleanup --kept` and `--release <item>…|--all`; `config cleanup [--project]` with its options as answers, the minimum refused on its line, line `13` of `config` and line `8` of a project's ④ Own settings; the decision of another client ending the choice; `reports open` of `system.cleanup_due` running `cleanup`; `sweep` and `sweep --apply` for technical residue only (link:../design/terminal-client/26-cleanup.adoc[Terminal Client, Cleanup]).
+* Texts from the catalogue only: the area `system` and the terminal's `operator.system.*` and `operator.cleanup.*`.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[§ Runtime Access & On-Demand Start]
-* Design: link:../design/shared/system.adoc[System]; link:../design/terminal-client/25-system.adoc[Terminal Client, System]
+* Design: link:../design/shared/system.adoc[System]; link:../design/terminal-client/25-system.adoc[Terminal Client, System]; link:../design/shared/cleanup.adoc[Cleanup]; link:../design/terminal-client/26-cleanup.adoc[Terminal Client, Cleanup]
 
 == Done When
 

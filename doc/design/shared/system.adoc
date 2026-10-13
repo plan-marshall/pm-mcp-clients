@@ -5,11 +5,11 @@
 
 link:../README.adoc[Design] » System
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3] (its line)_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics] (proposed), link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#_drain_stop_upgrade[Drain, Stop & Upgrade], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#per-project-recovery[Per-Project Recovery], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[Installation Layout], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/25-system.adoc[Terminal Client, System], link:../web-app/README.adoc#structure[Web App]. Its texts are in link:system-texts.adoc[a part of their own].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/25-system.adoc[Terminal Client, System], link:../web-app/README.adoc#structure[Web App]. Its texts are in link:system-texts.adoc[a part of their own]; the cleanup of ended work is link:cleanup.adoc[Cleanup].
 
 The runtime runs the plans of the machine without being looked at. Now and then the operator wants to know how it is doing (which version, since when, how much memory, how many tokens the models used today) and what it is doing (how many plans run, which workers are busy, which builds wait for a slot), and sometimes to act on it as a whole: stop it before a reboot, restart it, upgrade it to a newer release. The *system view* is the one place in each client for both (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1]).
 
@@ -45,10 +45,13 @@ Every figure comes from the runtime's metrics: named counters, gauges, and timer
             claude:sonnet-4.5   118 calls   3.61 M tokens (3.20 M in · 0.41 M out)
             codex:gpt-5          12 calls   tokens not measured   1 error
   ─────────────────────────────────────────────────────────────────────────────
+  Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB          [Review…]
+            4 kept for good · last sweep today 03:00
+  ─────────────────────────────────────────────────────────────────────────────
                                             [Upgrade…]  [Restart…]  [Stop…]
 ----
 
-The view has five parts, always in this order; the terminal prints the same parts as a list (link:../terminal-client/25-system.adoc#print[Terminal Client, System]).
+The view has six parts, always in this order; the terminal prints the same parts as a list (link:../terminal-client/25-system.adoc#print[Terminal Client, System]).
 
 [#identity]
 === The Runtime
@@ -107,6 +110,11 @@ The workers of the machine, one line each: the role, the harness, and the model,
 * *Coverage*: calls whose usage was not measured are counted and named (`3 calls not measured`), never added as `0`; a total over them is a floor, shown with `≥` (`common.tokens.at_least`) and rounded down at the precision shown (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]), never as exact; with no call of the line measured it is `not measured`, never `0`. A figure the harness's profile declares not applicable (no cache write for its harness) counts as `0` and leaves the call measured.
 * A line with no call in the window is left out; no call at all says `No model calls in this window.`
 
+[#cleanup]
+=== Cleanup
+
+One line of the cleanup of ended work (link:cleanup.adoc[Cleanup]): the open job's counts and the space it frees with _Review…_, which opens the job; with no job open, `nothing due` and the time of the next check. Below it the count of items kept for good and when the sweep last removed technical residue, each one step from its part of the cleanup view (link:cleanup.adoc#kept[Kept for Good], link:cleanup.adoc#residue[Removed by Itself]).
+
 [#unavailable]
 === A Figure Not Available
 
@@ -152,6 +160,9 @@ A figure that counts things leads to them, in one step, where the clients have a
 
 |Paired devices
 |the list of paired devices (link:paired-devices.adoc[Paired Devices])
+
+|Cleanup
+|the open cleanup job, the items kept for good, or the residue figures (link:cleanup.adoc[Cleanup])
 |===
 
 Gauges (memory, CPU, disk, uptime) lead nowhere; their detail is the figure's line of details (what it measures, since when).
@@ -333,7 +344,7 @@ The names in the system view (a plan's title, a role, a model, a reason of a fai
 
 The change names the requests (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle]); the clients use them as it names them:
 
-* `GET /api/v1/system` with the window (`hour`, `today`, `7d`) and optionally a project: the snapshot of the view, every figure with its value, its unit, and `unavailable` where it is not measured, a recovering project marked. It is the state `system.open` of link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]; the view is `system.view`, a change from the stream `system.update`.
+* `GET /api/v1/system` with the window (`hour`, `today`, `7d`) and optionally a project: the snapshot of the view, every figure with its value, its unit, and `unavailable` where it is not measured, a recovering project marked. It is the state `system.open` of link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]; the view is `system.view`, a change from the stream `system.update`. It carries the cleanup's line; the cleanup's own requests are in link:cleanup.adoc#requests[Cleanup, The Requests].
 * `GET /api/v1/system/metrics`: every metric of the catalogue with its labels, on the runtime's socket only; the clients do not need it for the view.
 * `GET /api/v1/status`: the runtime's version, its lifecycle state (`running`; `draining` with who asked it and whether it can be withdrawn; `upgrading` with its step), the version state (the newest version known with its date, when it was checked, the check's failure with its reason where it failed, whether this installation can be upgraded by the runtime with the reason where not, and the link to the release notes), and the last upgrade's result.
 * `GET /api/v1/system/release-notes` with a version: the release notes of a newer version known, and of each between the installed one and it, as plain text; a read like the snapshot, no operator act, reached by the link of the version state (<<version-check>>). A version not known by a check is answered `404`.
