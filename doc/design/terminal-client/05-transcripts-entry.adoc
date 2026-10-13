@@ -345,7 +345,10 @@ Decide everything for me?
                                    of each one found
     fetch the icons of the harnesses
                                    of the supported harnesses found, once, by
-                                   the runtime; only the web app shows them
+                                   the runtime (through the proxy, if one is
+                                   set); the maker's server sees only a
+                                   download request from this machine's
+                                   address; only the web app shows them
     check whether a harness is logged in
                                    of each supported harness found; for one
                                    without a login probe a short headless

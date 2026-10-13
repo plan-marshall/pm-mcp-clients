@@ -257,7 +257,7 @@ Providers · Checking the providers that use github
 
 * `settings.credential` asks the secret with the echo off (xref:07-transcripts-steps-4-7.adoc#t-providers-credentials[A Missing Token]); it is the operator's own act and needs no consent. `--rotate` keeps the entry's kind and its other fields; `--replace` asks the kind first, from those the provider accepts (`1) fine-grained token ← 2) classic token`), and writes a new entry of that kind under the same key.
 * `settings.store-credential` writes it into the recorded store and drops every token derived from the old secret. The check that follows is `providers.verify-consent` and `providers.verify` on the providers that use the token, as in the onboarding; a failed check leads to `providers.failed` (xref:07-transcripts-steps-4-7.adoc#t-providers-verify[Check]).
-* A token that has expired holds every plan that needs it (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]); the hold names this verb, and the plans go on once the new token verifies, which the last line says.
+* A token that has expired holds every plan that needs it (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]); the hold names this verb, and the plans go on only once the new token verifies, which the last line says; on `providers.failed` the hold stays.
 * `pm-operator credentials set|rotate` stay the plain verbs of the store, without the check.
 
 [#t-providers-verify]

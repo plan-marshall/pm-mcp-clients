@@ -306,7 +306,7 @@ Release the project? y) yes   n) no, keep it   ?   › y
     ✓  fix-sonar-gate released and archived
     ✓  gate-timeouts released and archived
     ✓  gate-docs released and archived
-    ✓  gate-hardening released and archived
+    ✓  epic gate-hardening released with its plans and archived
     ✓  entry with 2 sources deleted
 ✓ plan-marshall released
 pm ›

@@ -325,8 +325,8 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |{programs} in {dirs}, mit der Versionsprüfung jedes gefundenen
 
 |`onboard.auto.consent.detail.fetch_icons`
-|of the supported harnesses found, once, by the runtime; only the web app shows them
-|der gefundenen unterstützten Harnesses, einmal, durch die Runtime; nur die Web-App zeigt sie
+|of the supported harnesses found, once, by the runtime (through the proxy, if one is set); the maker's server sees only a download request from this machine's address; only the web app shows them
+|der gefundenen unterstützten Harnesses, einmal, durch die Runtime (über den Proxy, wenn einer gesetzt ist); der Server des Herstellers sieht nur eine Download-Anfrage von der Adresse dieser Maschine; nur die Web-App zeigt sie
 
 |`onboard.auto.consent.detail.probe_harness_login`
 |of each supported harness found; for one without a login probe a short headless call, paid with tokens of its account
@@ -370,7 +370,7 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 
 |`onboard.auto.result.no_model`
 |No model was asked; ask the steward to refine the roles: {command}
-|Es wurde kein Modell gefragt; lass den steward die Roles verfeinern: {command}
+|Es wurde kein Modell gefragt; lass den steward die Rollen verfeinern: {command}
 
 |`onboard.auto.result.add`
 |Add {name}: {command}

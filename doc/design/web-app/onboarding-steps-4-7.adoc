@@ -333,8 +333,12 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
                 test entry in the OS credential store, the version probe of
                 each tool found, a call of each provider found with its
                 token
+    fetches     the icons of the supported harnesses found, once, by the
+                runtime (through the proxy, if one is set); the maker's
+                server sees only a download request from this machine's
+                address
     never       asks a model for advice, reads other files, sends anything
-                over the network except the provider checks
+                over the network except the provider checks and the icons
     cost        none; for a harness that has no login probe, one short
                 headless call, paid with tokens of its account
 
@@ -345,7 +349,7 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
 
 * *Not now* goes back to xref:onboarding.adoc#start[start] (`onboard.mode`) with the line `Nothing was done.`; nothing was looked at.
 * *List every action* lists each scan and probe with its command, in place.
-* The run fetches the icons of the supported harnesses found (`fetch_icons` is one of its consents, as in the terminal, xref:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, The Automatic Run]); apart from them it uses the network for the provider checks only.
+* The run fetches the icons of the supported harnesses found (`fetch_icons` is one of its consents and listed in it, as in the terminal, xref:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, The Automatic Run]; link:../shared/consents.adoc#kinds[Consents, The Kinds]); apart from them it uses the network for the provider checks only.
 
 [#auto-run]
 === The Run (`auto.run`)

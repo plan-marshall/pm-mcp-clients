@@ -198,6 +198,10 @@ The texts of the rows and steps are those of the shared designs; the terminal ad
 |{name} released and archived
 |{name} abgegeben und archiviert
 
+|`operator.projects.release.epic_ended`
+|epic {name} released with its plans and archived
+|Epic {name} mit seinen Plänen abgegeben und archiviert
+
 |`operator.projects.release.entry_deleted`
 |entry with {count, plural, one {# source} other {# sources}} deleted
 |Eintrag mit {count, plural, one {# Quelle} other {# Quellen}} gelöscht

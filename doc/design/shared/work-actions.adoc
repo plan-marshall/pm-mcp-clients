@@ -133,7 +133,7 @@ An epic ends `completed` (archived because it is through, <<archive-check>>), `c
 [#epic-told]
 === The Epic Is Told
 
-After an action on a plan of an epic, the row of the plan shows for a moment `relay-hardening told`, and the epic's level shows the act among its events: paused, started, cancelled, abandoned, revised in a chat, or settings changed, with the reason. What the epic does with it comes later, as any epic event, and a decision it raises reaches the operator as every decision does (link:decisions.adoc[Decisions]). The release of a project is no act on one plan: it ends the epic with its plans, so nothing is told.
+After an action on a plan of an epic, the row of the plan shows for a moment `relay-hardening told`, and the epic's level shows the act among its events: paused, started, cancelled, abandoned, revised in a chat, or settings changed, with the reason. The _Abort_ of a plan held by an integrity pause is a cancel to the epic: the epic is told `cancelled`, and the plan's row in the epic shows `cancelled`, while the plan keeps its outcome `aborted` wherever it is shown as ended work (<<outcomes>>). What the epic does with it comes later, as any epic event, and a decision it raises reaches the operator as every decision does (link:decisions.adoc[Decisions]). The release of a project is no act on one plan: it ends the epic with its plans, so nothing is told.
 
 [#settings]
 === A Plan's Settings

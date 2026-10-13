@@ -96,7 +96,7 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 
 |`start.cause.no_screener`
 |no configuration of the role screener qualifies
-|keine Konfiguration der Role screener ist qualifiziert
+|keine Konfiguration der Rolle screener ist qualifiziert
 
 |`start.cause.not_open`
 |not open
