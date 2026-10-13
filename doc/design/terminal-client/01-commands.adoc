@@ -45,12 +45,13 @@ pm-operator recipe run [<recipe_key>] [--project <project_id>|.] [<source>]... [
 pm-operator plan pause <plan_id> [--now|--after-task|--after-phase]
 pm-operator plan start <plan_id>
 pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
+pm-operator plan chat <plan_id>
                                                           [op]  act on a plan by its state (19-actions)
 pm-operator epic next <epic_id> [--raise-scope]
 pm-operator epic decompose <epic_id> [--instruction <text>]
-pm-operator epic archive|findings|watches <epic_id>
+pm-operator epic archive|findings|watches|chat <epic_id>
 pm-operator epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
-                                                          [op]  act on an epic, review its findings or watches (19-actions)
+                                                          [op]  act on an epic, review its findings or watches, chat (19-actions)
 pm-operator abort plan|epic <id> --reason <text>        [op]  the existing verb: as plan cancel or abandon, and epic cancel (19-actions)
 pm-operator web devices [rename <device_id> <label>|revoke <device_id>|revoke --others]
                                                           [op]  the paired devices: list, rename, revoke one, revoke all others (UC-ENT-2)

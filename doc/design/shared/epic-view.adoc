@@ -20,7 +20,7 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
   relay-hardening · epic                        running · 2 of 3 at once   ! 3
   ─────────────────────────────────────────────────────────────────────────────
   [▶ Next plan: relay-reconnect-metrics]  [Decompose again]  [Findings review · 3 new]
-  [Watches review · 5]  [Archive]  [Cancel]
+  [Watches review · 5]  [Chat]  [Archive]  [Cancel]
   ─────────────────────────────────────────────────────────────────────────────
   ▾ WS-1  Reconnect                    1 shipped · 1 running · 1 paused · 1 staged
       ✓  relay-reconnect-backoff      shipped · #211                 2 d ago

@@ -11,14 +11,14 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The actions of a plan and an epic on their rows and in the plan view's head; the dialogues of pausing a plan (with its point), of ending a plan, of decomposing again, the archive check, and cancelling an epic; the review of findings or watches with its list, its item, read-back, and talk; at desktop and phone width, light and dark.
+* The actions of a plan and an epic on their rows and in the plan view's head; the dialogues of pausing a plan (with its point), of ending a plan, of decomposing again, the archive check, and cancelling an epic; the review of findings or watches with its list, its item, read-back, and chat; the chat panel of `web-start` opened from a plan's and an epic's actions and from the review, beside the view it opens from and full screen at phone width; at desktop and phone width, light and dark.
 * the epic's view (UC-PLN-5: workstreams and plans with their status, sources, landings, registers, events); what holds a plan, the epic, or a landing, with the acts that resolve it (UC-CTL-4).
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-4], link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]
 * Design: link:../design/shared/work-actions.adoc[Actions on Plans and Epics]; link:../design/shared/epic-view.adoc[Epic View]; the web app's views of `web-design`
 
 == Done When

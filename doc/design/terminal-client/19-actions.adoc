@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
 
 What the actions are, per state, is link:../shared/work-actions.adoc[Actions on Plans and Epics], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[Use Cases, Controlling Work]). This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
@@ -17,6 +17,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   plan start <plan_id>
   plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]
   plan abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
+  plan chat <plan_id>                    the chat with the plan's planning role
   config <aspect> --plan <plan_id>       the plan's settings, in every state (plan-defaults, roles, providers)
   epic <epic_id>                         the epic's view
   epic next <epic_id> [--raise-scope]
@@ -25,13 +26,14 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
   epic findings <epic_id>                the findings review
   epic watches <epic_id>                 the watches review
+  epic chat <epic_id>                    the chat with the epic's planning role
 ----
 
 * All are operator verbs, in the console and as one shell command, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
-* An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, settings`).
+* An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, chat, settings`).
 * *Settings* is an action of every state of a plan: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]).
 * `pm-operator abort plan` and `abort epic` stay as they are and do what `plan cancel` (or `abandon`) and `epic cancel` do.
-* The reviews are dialogues; as one shell command they need a terminal, like every dialogue.
+* The reviews and the chat are dialogues; as one shell command they need a terminal, like every dialogue.
 
 [#full-screen]
 == In the Full-Screen View
@@ -42,6 +44,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 ▶ fix-relay              execute · running · 25 min · #214    relay-hardening
       p  Pause…
       x  Cancel…
+      h  Chat…
       o  Settings…
 
 ▶ relay-hardening        epic · running · 3 running · 1 paused · 3 staged      ! 3
@@ -49,13 +52,14 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
       d  Decompose again…
       f  Findings review (3 new)
       w  Watches review (5)
+      h  Chat…
       A  Archive…
       x  Cancel…
 ----
 
 * *The menu is modal*: while it is open, only its mnemonics, `↑` `↓` with `Enter`, and `a` or `Esc` (which close it) act; the keys of the view wait until it is closed.
 * *Its mnemonics* are texts of the catalogue, `operator.actions.key.*` (xref:22-texts-actions.adoc#actions-keys[Keys]), in the language of the client; none is `a`, which closes the menu in every language.
-* *What it offers* follows the state, from the runtime: a running plan _Pause…_, _Cancel…_, _Settings…_; a pausing plan _Start_, _Cancel…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Settings…_; a plan that holds also the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_; an ended plan or epic nothing (`fix-relay has ended: its view only`).
+* *What it offers* follows the state, from the runtime: a running plan _Pause…_, _Cancel…_, _Chat…_, _Settings…_; a pausing plan _Start_, _Cancel…_, _Chat…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Chat…_, _Settings…_; an epic that has not ended _Chat…_ among its actions; a plan that holds also the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_; an ended plan or epic nothing (`fix-relay has ended: its view only`).
 * An action with `…` leaves the view for its dialogue and returns to it afterwards; _Start_ and _Next plan_ act in place and the row follows. _Settings…_ asks which aspect (`plan-defaults`, `roles`, `providers`) and runs `config <aspect> --plan <plan_id>`.
 * A plan's own pull request is shown by its number (`#214`), a terminal hyperlink (OSC 8) where the terminal shows one; the dialogues print its URL.
 
@@ -246,7 +250,7 @@ F-0004  Reconnect loses the last event                            open
               drops the connection between delivery and cursor write
   Origin      landing of relay-reconnect (#211) · 5 days ago
   Proposal    promote to a plan: it needs a change across two modules
-k) keep   d) drop   p) promote ←   e) edit   t) talk   r) accept the remaining 4   f) finish
+k) keep   d) drop   p) promote ←   e) edit   h) chat   r) accept the remaining 4   f) finish
 ›  e
   What should change?
   │ The rule should also name the SSE transport explicitly.
@@ -256,7 +260,7 @@ k) keep   d) drop   p) promote ←   e) edit   t) talk   r) accept the remaining
   - a fix must hold for every transport; …
   + a fix must hold for every transport, the SSE stream included; …
 Accept? [Enter]   i) instruct again   x) discard   ?   › ⏎
-k) keep   d) drop   p) promote ←   e) edit   t) talk   r) accept the remaining 4   f) finish
+k) keep   d) drop   p) promote ←   e) edit   h) chat   r) accept the remaining 4   f) finish
 ›  p
     ▶  the planning role drafts a plan from F-0004
   Plan  relay-cursor-after-delivery
@@ -268,25 +272,25 @@ Stage it? [Enter]   e) edit   b) back   ?   › ⏎
     ✓  F-0004 promoted: relay-cursor-after-delivery staged
 F-0005  Reconnect storms after a runtime restart                  open
   …
-k) keep   d) drop   p) promote   e) edit   t) talk   r) accept the remaining 3   f) finish
+k) keep   d) drop   p) promote   e) edit   h) chat   r) accept the remaining 3   f) finish
 ›  k
   Keep F-0005   1) as defect ←   2) as watch   › 2
     ✓  F-0005 kept as watch
 F-0006  Relay ignores the proxy settings                          open · untrusted
   Statement   “The relay ignores HTTPS_PROXY; see the CI log …”
   Origin      review comment on #216 · 2 days ago
-k) keep   d) drop ←   p) promote   e) edit   t) talk   r) accept the remaining 2   f) finish
+k) keep   d) drop ←   p) promote   e) edit   h) chat   r) accept the remaining 2   f) finish
 ›  d
-  Reason   › the relay never uses a proxy: it talks to the local runtime only
+  Reason   › the relay never uses a proxy: it connects to the local runtime only
     ✓  F-0006 dropped
 F-0007  …
-k) keep   d) drop   p) promote ←   e) edit   t) talk   r) accept the remaining 1   f) finish
+k) keep   d) drop   p) promote ←   e) edit   h) chat   r) accept the remaining 1   f) finish
 ›  r
   The remaining proposal:
     F-0007  Cursor file not fsynced           promote to a plan
 Accept the remaining proposal? y) yes   n) no   ?   › y
     ✓  F-0007 promoted: relay-cursor-fsync staged
-k) keep   d) drop   p) promote   e) edit   t) talk   f) finish   ›  f
+k) keep   d) drop   p) promote   e) edit   h) chat   f) finish   ›  f
 ✓ relay-hardening: 7 of 7 decided, written to the ledger
 pm ›
 ----
@@ -295,8 +299,39 @@ pm ›
 * `d) drop` asks the reason in one line; it is recorded.
 * `r) accept the remaining` lists every item not decided yet with its proposal and confirms once.
 * *An item from outside the machine* (a finding from a review comment) carries `untrusted`; its text is printed as text between quotes, never rendered, after the control characters are removed.
-* `t) talk` opens a conversation inside the review, ended by an empty line; each change the planning role proposes is shown as a read-back like _edit_.
+* `h) chat` asks its scope, `1) this item ←   2) the whole register`, and opens the chat (<<chat>>); an accepted change becomes the item's disposition or its rewrite.
 * `f) finish` writes the decisions to the epic's ledger. Leaving the review before (`q`, `Ctrl+D`) keeps what was decided; `epic findings relay-hardening` opens it where it stopped.
+
+[#chat]
+== A Chat
+
+`plan chat <plan_id>` and `epic chat <epic_id>` open the chat of link:../shared/work-actions.adoc#chat[Chatting with the Planning Role]; `h) chat` in the menu below a row, in the review (<<review>>), and in the decomposition (xref:18-starting.adoc#decomposition[The Decomposition]) opens the same dialogue with its scope.
+
+[source,text]
+----
+pm › plan chat fix-relay
+Chat · fix-relay · with replan · the whole plan            an empty line ends it
+  you     › Can the cursor test also cover the SSE transport?
+    ▶  replan answers
+  replan  Yes. TASK-4 tests one transport only; I propose a second test.
+  Proposed change   applies after the current task
+  - TASK-4  cursor write order: a test for the websocket transport
+  + TASK-4  cursor write order: a test per transport, websocket and SSE
+  Its epic   relay-hardening is told
+Accept? [Enter]   r) reject   ?   › ⏎
+    ✓  accepted: applies after the current task; relay-hardening told
+  you     › ⏎
+✓ The chat is kept with fix-relay.
+…
+✓ fix-relay changed; the plan's version becomes 8
+pm ›
+----
+
+* *A message* is one line or several, sent by an empty line; an empty line as its first line ends the chat, as `q` and `Ctrl+D` do. A proposal not yet accepted is dropped with it.
+* *The answer* is printed as text after the control characters are removed (xref:04-console.adoc#output-safety[Output Safety]); an item from outside the machine stays marked `untrusted` and is printed between quotes.
+* *A proposed change* is a read-back, old against new: `Enter` accepts, `r) reject` drops it; a check that fails prints its reason (`not applied: …`) and the chat goes on.
+* *A running plan* takes an accepted revision at its next task boundary, and the line after it says so once it is applied; a question changes nothing.
+* *Chat is refused* with its reason while no configuration of the routed role qualifies (`no configuration of replan qualifies yet`), and `--no-input` refuses it, since every turn needs the operator.
 
 [#actions-texts]
 == Texts of the Terminal

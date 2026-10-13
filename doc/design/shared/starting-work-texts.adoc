@@ -406,9 +406,9 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Add a plan
 |Füge einen Plan hinzu
 
-|`start.decomposition.talk`
-|Talk
-|Besprich den Schnitt
+|`start.decomposition.chat`
+|Chat
+|Chat
 
 |`start.decomposition.accept`
 |Accept
