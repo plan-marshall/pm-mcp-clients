@@ -100,7 +100,7 @@ pm ›
 
 * The source line updates in place while it is fetched and screened; the prompt stays usable, and a source still at work is shown by `Enter) continue` as `waits for 1 source`.
 * *The keys that still apply*: after a description and a document every kind is still offered; once an issue or a lesson is added, `c` (local changes) and `p` (pull request) are no longer offered, since a plan that lands local changes or adopts a pull request starts from it alone, with descriptions and documents at most; once local changes or a pull request are added, `i`, `l`, and the other of the two are no longer offered, and a line says why (<<pull-request>>). A kind the project does not have (no unclaimed lesson, no local changes) is never shown.
-* `h) chat` is offered once a source is stored and screened, for a plan and an epic, never for a recipe (<<chat>>).
+* `h) chat` is offered once a source is stored and every source from outside the machine is screened, for a plan and an epic, never for a recipe (<<chat>>).
 * `l` lists the unclaimed lessons, numbered (<<lesson>>); `c` shows the local changes as files with their counts of lines before they are added (<<local-changes>>).
 * _Follow it_ opens the plan's view (xref:16-plan-view.adoc[The Plan View]); _back to the project_ opens the project's actions in the explorer.
 * What the plan needs and has no value for (its posture, its base branch) is not asked here: it is asked where the plan first needs it, as a decision (link:../shared/decisions.adoc[Decisions]).

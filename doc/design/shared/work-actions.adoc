@@ -280,7 +280,7 @@ An ended plan or epic offers one action, _Chat_: a read-only chat about how it w
 
 * *Scope and role*: the archived record, read from the archive: the outcome, the reason, the history, the decisions, the re-planning records, the events. An ended plan's chat goes to `replan`, an ended epic's to `decompose`; it runs at the project's scope and never changes the archive.
 * *The one proposal is a follow-up plan*: a description drafted in the chat that names the ended plan or epic, read back. _Start a plan with it_ ends the chat and opens the start of a new plan in the same project with that description stored (link:starting-work.adoc#sources[The List of Sources]); the operator goes on from ① Sources as with any start, and nothing starts before _Start the plan_.
-* *The transcript* is kept with the archive entry, among its events.
+* *The transcript* is kept beside the archive entry, outside the archived record, which stays as it ended.
 * *Disabled* with its reason while no configuration of the routed role qualifies, as every chat.
 
 [#texts]

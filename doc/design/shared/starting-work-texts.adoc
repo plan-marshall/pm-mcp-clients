@@ -219,8 +219,8 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |{kind, select, plan {ein neuer Plan} other {ein neues Epic}} in {project}
 
 |`start.chat.waits`
-|available once a source is stored and screened
-|verfügbar, sobald eine Quelle gespeichert und geprüft ist
+|available once a source is stored and every source from outside the machine is screened
+|verfügbar, sobald eine Quelle gespeichert und jede Quelle von außerhalb dieses Rechners geprüft ist
 
 |`start.chat.proposed`
 |{change, select, rewrite {Proposed rewrite of the description} other {Proposed addition to the description}}

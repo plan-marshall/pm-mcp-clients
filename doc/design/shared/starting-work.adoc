@@ -52,7 +52,7 @@ Starting a plan or an epic is one guided run in which the operator only says wha
 * *What may be added*: an epic offers description, documents, and issue; a plan also lesson (only when the project has unclaimed lessons), local changes (only when the checkout has some), and pull request. A plan with local changes or a pull request takes no issue and no lesson besides, and the line says why another kind is not offered (`a plan that adopts a pull request takes only descriptions and documents besides`).
 * *Continue* is offered once there is at least one source and every source is stored, screened or accepted; until then it names what it waits for.
 * *Trust*: a source from outside the machine shows `untrusted` until its screening passed, then nothing; the operator's own sources never show a mark.
-* *Chat* opens a chat about the request before it starts (<<chat>>), once at least one source is stored and screened; until then it is disabled with that reason.
+* *Chat* opens a chat about the request before it starts (<<chat>>), once at least one source is stored and every source from outside the machine is screened; until then it is disabled with that reason.
 * *States*: each kind of source is a sub-workflow of its own, and its states are named `source-<kind>.<state>` (`source-documents`, `source-issue`, `source-pr`, `source-lesson`, `source-local-changes`); each subsection names those it shows.
 
 [#adopt]

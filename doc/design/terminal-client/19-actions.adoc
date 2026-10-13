@@ -18,7 +18,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]
   plan abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
   plan chat <plan_id>                    the chat with the plan's planning role; on an ended plan, about its archive
-  config <aspect> --plan <plan_id>       the plan's settings, in every state (plan-defaults, roles, providers)
+  config <aspect> --plan <plan_id>       the plan's settings, in every state until it has ended (plan-defaults, roles, providers)
   epic <epic_id>                         the epic's view
   epic next <epic_id> [--raise-scope]
   epic decompose <epic_id> [--instruction <text>]   decompose again, with the review
@@ -31,7 +31,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 * All are operator verbs, in the console and as one shell command, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
 * An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, chat, settings`).
-* *Settings* is an action of every state of a plan: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]).
+* *Settings* is an action of every state of a plan until it has ended: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]).
 * `pm-operator abort plan` and `abort epic` stay as they are and do what `plan cancel` (or `abandon`) and `epic cancel` do.
 * The reviews and the chat are dialogues; as one shell command they need a terminal, like every dialogue.
 
@@ -361,7 +361,7 @@ A new plan is being started in pm-mcp-clients with this description; go on with 
 ----
 
 * The chat changes nothing of the archive; its only proposal is the follow-up plan's description, and `Enter` opens `plan add` at its sources (xref:18-starting.adoc#plan[Starting a Plan]) with that description stored. Nothing starts before _Start the plan_ at the ready step.
-* `r) reject` drops the proposal and the chat goes on; an empty line ends it, and the transcript is kept with the archive entry.
+* `r) reject` drops the proposal and the chat goes on; an empty line ends it, and the transcript is kept beside the archive entry, outside the archived record.
 
 [#actions-texts]
 == Texts of the Terminal

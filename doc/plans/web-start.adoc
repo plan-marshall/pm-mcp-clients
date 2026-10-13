@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* Starting a plan or an epic and running a recipe as screens: the list of sources with their progress, the editor of a description, the picker of files over the server's listing, copy or move, the issue field with the forge recognised and the grant, a flagged issue, the ready step, the decomposition of a new epic with its chat, the chat panel built here as the one every chat uses (its transcript, each proposed change read back with accept and reject, the message field, ending it); the start chat beside the list of sources once a source is stored and screened, its accepted description stored; leaving and continuing; at desktop and phone width, light and dark.
+* Starting a plan or an epic and running a recipe as screens: the list of sources with their progress, the editor of a description, the picker of files over the server's listing, copy or move, the issue field with the forge recognised and the grant, a flagged issue, the ready step, the decomposition of a new epic with its chat, the chat panel built here as the one every chat uses (its transcript, each proposed change read back with accept and reject, the message field, ending it); the start chat beside the list of sources once a source is stored and every source from outside the machine is screened, its accepted description stored; leaving and continuing; at desktop and phone width, light and dark.
 
 == Trace
 
