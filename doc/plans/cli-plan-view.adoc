@@ -13,6 +13,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 * The plan view as the third level of the full-screen view: the tree to open and close, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), sub-workflows marked, the path in the header from the project and the epic down to the selected node, `p` to the plan's project and `e` to its epic from wherever the view was opened (`Esc` back to that place), the jump to where the plan is, a leaf's details, live updates.
 * `plan <plan_id>` as the tree in the scrollback (`--all`, `--depth`), the accessible path and the fallback, its second line naming the project and the epic with the commands that open them.
+* The plan's tokens so far in the header and the tree's third line (link:../design/terminal-client/16-plan-view.adoc[Terminal Client, The Plan View]): the total with its split, a floor with its coverage, `none yet`; `t` and `--tokens [--components]` by phase and role with the raw components; live; in link:../design/shared/texts-and-languages.adoc#numbers[the number format of tokens], never money or a limit.
 * Texts from the catalogue only.
 
 == Trace

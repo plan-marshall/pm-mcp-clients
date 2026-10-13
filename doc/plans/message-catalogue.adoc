@@ -14,6 +14,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * *Specification first*: the package writes the change Languages (the catalogue, the messages endpoint, the areas) into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]).
 * The message catalogue: keys `<area>.<view>.<element>.<part>`, one pack per area and locale (`messages/<area>.<locale>.properties`, UTF-8, ICU message format), the lookup by key, locale and arguments.
 * English complete as the base, German from the start, addressing the operator with _du_.
+* The number format of tokens as link:../design/shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers] defines it, with its keys `common.tokens.*`; a test formats every example of that section in both languages.
 * The build checks: a key missing in a pack, a key not in English, a differing argument, and a glossary term translated in a German text each fail the build.
 * The route `GET /api/v1/messages/{locale}/{area}` added to the mock runtime of `mock-runtime`, which serves the packs to the web app; the real endpoint follows with the runtime.
 

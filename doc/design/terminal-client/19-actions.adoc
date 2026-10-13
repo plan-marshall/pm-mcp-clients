@@ -226,6 +226,8 @@ relay-hardening · epic · running · automatic · 3 of 3 at once · running 6 d
                      analysis: as planned; no finding
   findings       3 new · 4 open · 2 kept                    epic findings relay-hardening
   watches        1 open · 4 kept                            epic watches relay-hardening
+  tokens         3.86 M (3.52 M in · 0.34 M out) · 6 plans and the epic's own tasks
+                                                            epic relay-hardening --tokens
   events         newest first
     12:40  relay-auth-v2 asks a decision
     11:55  you paused relay-reconnect-docs
@@ -237,6 +239,7 @@ pm ›
 * *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may, since when it runs, and the count of what needs the operator; below it the epic's project with the command that opens it (`operator.plan.tree.context`, xref:16-plan-view.adoc#plan-view-texts[The Plan View, Texts]); what waits stands first below that, each with the command that opens it.
 * *The workstreams*: each plan with its status from one list (`staged`, `running`, `pausing`, `paused`, `shipped`, `cancelled`, `abandoned`, `held`; a plan aborted from an integrity pause is `cancelled` here, link:../shared/work-actions.adoc#epic-told[The Epic Is Told]), what it waits for (a dependency, a lock, the scope, an overlap with a running plan), and since when. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
 * *Sources, landings, findings, watches, events*: the sources as stored; each landing with its pull request and the epic's analysis; the open items with their counts and the review that opens them; the events, newest first, the ten newest in the tree and all of them in the full-screen view.
+* *Tokens*: the sum of the epic's plans and of its own tasks (decompose, landing, review), with the split, as the runtime sums it (link:../shared/epic-view.adoc#layout[Epic View]); a floor with `≥` and the count of tasks not measured where there are any; never money, and no budget of its own. `epic <epic_id> --tokens` prints the figure per plan and the epic's own after the tree, each plan with the command that opens it; in the full-screen view the line opens like a node.
 * An ended epic prints as it ended, read-only, with `ended` and its end (`completed`, `cancelled`, `released`) in its first line (xref:15-overview.adoc#ended[Ended Work]).
 
 [#holds]

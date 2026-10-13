@@ -51,7 +51,7 @@ The domain vocabulary stays as it is in every language: it is what the operator 
 |Repository, Worktree, Remote |das, der, das |the git objects
 |Review, Reviewer |das, der |a review of a pull request, and who gives it
 |Build, CI |der, die |a build, and the provider's CI
-|Token |das |a credential's secret
+|Token |das |a credential's secret; and the unit a model's input and output are counted in (<<numbers>>)
 |Provider |der |a git host, CI, or analysis service
 |Harness |der |a coding agent that runs workers
 |Role, Worker |die, der |a configured role, and a harness process serving it
@@ -110,3 +110,65 @@ A word not in the glossary is translated. A new domain word is added here before
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it.
 
+
+[#numbers]
+== Numbers: Tokens
+
+Every count of tokens is shown in one format, defined here and nowhere else: the plan view, the epic view, the completion report, the system view, and the harness list use it (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]). The runtime sends exact counts; the client only formats them, through the keys below, and never adds or derives a figure.
+
+[cols="2,1,1",options="header"]
+|===
+|Count |English |German
+
+|below 1 000: the number
+|`412`
+|`412`
+
+|1 000 to 9 999: thousands with one decimal
+|`4.2 k`
+|`4,2 Tsd.`
+
+|10 000 to 999 999: whole thousands
+|`830 k`
+|`830 Tsd.`
+
+|from 1 000 000: millions with two decimals
+|`1.24 M`
+|`1,24 Mio.`
+|===
+
+* *Rounding*: an exact count is rounded half up; a total is rounded from its exact count, never summed from rounded parts. A floor is rounded down at the precision shown, so that it is never overstated: 412 680 measured tokens are `≥ 412 k`, not `≥ 413 k`.
+* *The split* takes the unit of its total, so that the parts read against it: `1.24 M tokens (1.10 M in · 0.14 M out)`, `830 k tokens (790 k in · 40 k out)`. _in_ is input, cache-read, and cache-write tokens; _out_ is output and reasoning tokens; the total is their unweighted sum.
+* *A floor*: a figure over records of which some were measured and some not is shown with `≥`, rounded down, and the coverage beside it (`≥ 1.24 M tokens · 3 of 41 tasks not measured`), never as exact; a figure over records of which none was measured is `not measured` with the coverage, never `0` and never a `≥`.
+* *Never money*: no price, cost, or currency is shown beside a count of tokens, in any language.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`common.tokens.thousands`
+|{value} k
+|{value} Tsd.
+
+|`common.tokens.millions`
+|{value} M
+|{value} Mio.
+
+|`common.tokens.split`
+|{total} tokens ({in} in · {out} out)
+|{total} Tokens ({in} rein · {out} raus)
+
+|`common.tokens.at_least`
+|≥ {value}
+|≥ {value}
+
+|`common.tokens.coverage`
+|{unmeasured} of {total, plural, one {# task} other {# tasks}} not measured{reason, select, none {} other {: {reason}}}
+|{unmeasured} von {total, plural, one {# Task} other {# Tasks}} nicht gemessen{reason, select, none {} other {: {reason}}}
+
+|`common.tokens.not_measured`
+|not measured
+|nicht gemessen
+|===
+
+The client rounds the count as the table says and formats `{value}` with the decimal separator of the interface language (`1.24`, `1,24`); the unit comes from `common.tokens.thousands` or `common.tokens.millions`, never from a formatter's compact notation, so `k`, `M`, `Tsd.`, and `Mio.` are fixed in the packs. A test of `pm-api` formats the table's examples in both languages.

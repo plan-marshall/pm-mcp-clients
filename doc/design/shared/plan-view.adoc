@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Plan View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed, the completion report), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed, the completion report), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
@@ -19,6 +19,7 @@ A plan's process is not a fixed list of phases: it is the plan's composed workfl
 ----
   pm-mcp-clients › relay-hardening › fix-relay
   fix-relay                                   execute · running · 2 h 10 min
+  tokens so far   412 k (380 k in · 32 k out)
   ├─ ✓ phase  init                            done · 2 min
   ├─ ✓ phase  refine                          done · 14 min
   ├─ ✓ phase  outline                         done · 31 min
@@ -38,7 +39,7 @@ A plan of the land lane calls fewer phases; the land lane is a choice of phases,
   └─   not in this plan: refine, outline, plan (the land lane)
 ----
 
-* *The head*: the path project › epic › plan, or project › plan for a plan of no epic (<<way-out>>); the plan's title; its current phase; its state, from the closed list of Running Work (link:plan-overview.adoc#item-rows[A Plan, an Epic]): `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `held`; for a held plan the kind of its hold (`holds: a condition`, link:work-actions.adoc#holds[What Holds a Plan]); how long it runs; its own pull request by its number with a link (`#214`); and its actions (link:work-actions.adoc#plan-actions[A Plan's Actions]).
+* *The head*: the path project › epic › plan, or project › plan for a plan of no epic (<<way-out>>); the plan's title; its current phase; its state, from the closed list of Running Work (link:plan-overview.adoc#item-rows[A Plan, an Epic]): `running`, `pausing` with its point (`pausing after the task`), `paused`, `waiting for you`, `held`; for a held plan the kind of its hold (`holds: a condition`, link:work-actions.adoc#holds[What Holds a Plan]); how long it runs; its own pull request by its number with a link (`#214`); its tokens so far (<<tokens>>); and its actions (link:work-actions.adoc#plan-actions[A Plan's Actions]).
 * *The plan*: its phases, the six of `init`, `refine`, `outline`, `plan`, `execute`, `finalize` that the plan unit calls, in the order it calls them, each with its state (done, running, planned, waiting for you, or failed); the phases its composition left out (another lane, a step the project does not need) are a group of their own at the end, each with its reason.
 * *A phase, a sub-workflow*: its workflow, opened below it: the states in the order of the workflow, the calls marked as sub-workflows, each with its state; a sub-workflow opens the same way, through every level of nesting.
 * *A leaf*: a state that calls nothing; opening it shows what runs or ran in it (<<leaf>>).
@@ -126,6 +127,17 @@ A leaf shows what runs or ran in it:
 * *A state that waits for the operator*: what waits (a decision, a waiver request), and the way into it.
 * Its times: when it was entered and left, for each run.
 
+[#tokens]
+== Tokens So Far
+
+The second line of the head says how many tokens the plan has used so far, with the split: `tokens so far   412 k (380 k in · 32 k out)` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]).
+
+* *The figure* is the runtime's: the sum of the plan's usage records, `tokens = in + out`, in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]. The client adds nothing up.
+* *Coverage*: where some tasks of the plan were measured and others not, the figure is a floor with `≥` and the count beside it (`≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 of 17 tasks not measured`). Where model calls happened but no task's usage was measured, the line says `not measured` with the coverage (`not measured · 3 of 3 tasks not measured`), never `0` and never a `≥`. Before the plan's first model call it says `none yet`.
+* *Only usage*: no limit, no warning, no projection, no money. A re-planning or a waiver stays an event of the plan's history, never a figure of this line.
+* *Live*: the line follows the plan's events and changes when a task's usage is recorded, at most once a second.
+* One step from the line: the same figure by phase and by role, each with its raw components (input, cache read, cache write, output, reasoning) as a detail, as the completion report shows them (link:completion-report.adoc#tokens[Completion Report, Tokens]); for an ended plan the line shows the final figure and leads to its completion report.
+
 [#position]
 == Where It Is
 
@@ -151,7 +163,7 @@ The view follows the plan's events: a node entered becomes _running_, one left _
 [#ended]
 === An Ended Plan
 
-An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, spend, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
+An ended plan, opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]) or from a remembered place, shows read-only as it ended: every node with its last state, the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), the reason where the operator gave one, and the end time in the head; no live update, and no action but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). Its head also leads to its completion report in one step (_Completion report_, `report.completion.open`): how the plan went, with its outcome, deliverables, re-planning, decisions, tokens, and duration (link:completion-report.adoc[Completion Report]); the report of the plan's end leads there too (link:reports.adoc#detail[Reports, The Detail]).
 
 [#texts]
 == Texts
@@ -277,6 +289,18 @@ Keys of the area `plan`, shared by both clients.
 |`plan.leaf.job_waits_slot`
 |waits for a build slot
 |wartet auf einen Build-Slot
+
+|`plan.view.tokens`
+|tokens so far
+|Tokens bisher
+
+|`plan.view.tokens_none`
+|none yet
+|noch keine
+
+|`plan.view.tokens_detail`
+|By phase and role
+|Zeige je Phase und Rolle
 |===
 
-The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).
+The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The figure of the tokens uses `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).

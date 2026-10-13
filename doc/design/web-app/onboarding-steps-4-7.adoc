@@ -74,9 +74,9 @@ The advisory of a role (ⓘ, opened in place below its row):
     │ What it does   Turns the refined request into deliverables and the    │
     │                plan's lane; reads the whole affected codebase.        │
     │ What it needs  Deep reasoning over a large context; few tool calls.   │
-    │ Why frontier   A weak outline costs more later than the model costs   │
-    │                here: every later phase builds on it.                  │
-    │ If cheaper     More loop-backs from the Q-Gate; standard tier passed  │
+    │ Why frontier   A weak outline makes more work later than a frontier   │
+    │                model takes here: every later phase builds on it.      │
+    │ Lower tier     More loop-backs from the Q-Gate; standard tier passed  │
     │                71 % of the qualification items (frontier 92 %).       │
     │ Steward        no departure                                           │
     │                                                 [ Reset to default ]  │
@@ -120,7 +120,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
 [#store-consent]
 === Consent (`store.consent`)
 
-Choosing an OS store asks first whether the server may write, read, and delete one test entry in it (consent kind `check_credential_store`, the pattern of xref:onboarding.adoc#consent[consent]): `Check the macOS Keychain with a test entry?` with `runs` one test entry written, read back, and deleted, `never` reads or changes any other entry, `cost` none. *Not now* stays. Choosing the files goes on to the check without it: they lie in the machine's own directory.
+Choosing an OS store asks first whether the server may write, read, and delete one test entry in it (consent kind `check_credential_store`, the pattern of xref:onboarding.adoc#consent[consent]): `Check the macOS Keychain with a test entry?` with `runs` one test entry written, read back, and deleted, `never` reads or changes any other entry, `tokens` none. *Not now* stays. Choosing the files goes on to the check without it: they lie in the machine's own directory.
 
 [#store-check]
 === Check (`store.check`, `store.record`)
@@ -237,7 +237,7 @@ The consent `providers.consent` comes first, as in xref:onboarding.adoc#consent[
 [#providers-verify-consent]
 === Consent (`providers.verify-consent`)
 
-Before the providers are called, the consent kind `verify_providers` (the pattern of xref:onboarding.adoc#consent[consent]): `Check the providers with their tokens?` with `runs` a call of each selected provider with its token and its CLI tool's login check (`gh auth status`), `never` changes anything at the provider or sends the token anywhere else, `cost` none. *Not now* stays; a remembered consent passes with its line. With every token stored already, it follows <<providers-select>> directly.
+Before the providers are called, the consent kind `verify_providers` (the pattern of xref:onboarding.adoc#consent[consent]): `Check the providers with their tokens?` with `runs` a call of each selected provider with its token and its CLI tool's login check (`gh auth status`), `never` changes anything at the provider or sends the token anywhere else, `tokens` none. *Not now* stays; a remembered consent passes with its line. With every token stored already, it follows <<providers-select>> directly.
 
 [#providers-verify]
 === Check (`providers.verify`, `providers.failed`)
@@ -339,7 +339,7 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
                 address
     never       asks a model for advice, reads other files, sends anything
                 over the network except the provider checks and the icons
-    cost        none; for a harness that has no login probe, one short
+    tokens      none; for a harness that has no login probe, one short
                 headless call, paid with tokens of its account
 
   This consent is for this run only.                  [ List every action ]

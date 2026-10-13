@@ -208,7 +208,7 @@ Use these? [Enter]   change: 1-5   ?   › ⏎
 [8/10] Roles · Qualify the roles for pm-mcp-clients?
   runs        one qualification task per role on its assigned model: 12 tasks
   never       changes the role assignment
-  cost        about 0.40 USD (from 3 earlier runs)
+  tokens      about 210 k tokens (from 3 earlier runs)
   if not      the roles stay unqualified and their tasks take their
               conservative fallback; a later run of the setup offers it again
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
@@ -222,7 +222,7 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
   runs        one task of the role enrich per module: 9 tasks on
               Claude Code · sonnet-5.5
   writes      .marshall/project-architecture/, committed in the next step
-  cost        about 0.30 USD (from 2 earlier runs)
+  tokens      about 160 k tokens (from 2 earlier runs)
   if not      the project is ready without descriptions; a later run of
               its setup offers them again
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
@@ -250,7 +250,7 @@ pm ›
 * *Own settings* hold the operator's values only; the variants and credentials are checked as soon as they are saved, and one that fails returns to its line with the finding (`✗  sonarcloud: the token is refused (401); choose another variant or credential`).
 * *Architecture* holds the build map; it is confirmed there and nowhere else, a route edited with `e`.
 * *Landing* holds the team's providers, the finalize steps, and the landing variant; a machine default that does not fit the project is refused on its line (`✗  Commit on main does not fit pm-mcp-clients: main is protected`) and waits for another choice.
-* *Roles* and *Descriptions* are asked only where roles need grading and modules a description; each asks a consent of kind `model_cost` with its expected cost, and both can be remembered (`r`). `n` skips the step with its reason, the project is ready without it, and a later run (`project setup pm-mcp-clients roles`, `… descriptions`) offers it again.
+* *Roles* and *Descriptions* are asked only where roles need grading and modules a description; each asks a consent of kind `model_cost` with the tokens it is expected to use, and both can be remembered (`r`). `n` skips the step with its reason, the project is ready without it, and a later run (`project setup pm-mcp-clients roles`, `… descriptions`) offers it again.
 * *Commit* makes one commit and pushes it where the checkout has a push remote (`not pushed: no push remote` otherwise); `n` leaves the files uncommitted.
 * *A step that cannot pass* waits in `setup.needs-repair` with its cause and fix: `t) try again   q) leave`; `t` runs the step again.
 * The keys of the ready line are `operator.key.add_epic`, `operator.key.add_plan`, and `operator.key.running_work` (xref:13-texts-operator.adoc#texts-operator-keys[Keys]).

@@ -63,23 +63,23 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |never
 |niemals
 
-|`common.consent.field.cost`
-|cost
-|Kosten
+|`common.consent.field.tokens`
+|tokens
+|Tokens
 
-|`common.consent.cost.none`
+|`common.consent.tokens.none`
 |none
 |keine
 
-|`common.consent.cost.estimate`
-|about {amount}
-|etwa {amount}
+|`common.consent.tokens.estimate`
+|about {tokens} tokens
+|etwa {tokens} Tokens
 
-|`common.consent.cost.estimate_runs`
-|about {amount} (from {runs, plural, one {# earlier run} other {# earlier runs}})
-|etwa {amount} (aus {runs, plural, one {einem früheren Lauf} other {# früheren Läufen}})
+|`common.consent.tokens.estimate_runs`
+|about {tokens} tokens (from {runs, plural, one {# earlier run} other {# earlier runs}})
+|etwa {tokens} Tokens (aus {runs, plural, one {einem früheren Lauf} other {# früheren Läufen}})
 
-|`common.consent.cost.unknown`
+|`common.consent.tokens.unknown`
 |not known yet: first run
 |noch unbekannt: erster Lauf
 
@@ -356,7 +356,7 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |asks a model for advice, reads other files, sends anything over the network except the provider checks and the icons
 |fragt ein Modell um Rat, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider und den Icons
 
-|`onboard.auto.consent.cost`
+|`onboard.auto.consent.tokens`
 |none but the headless calls named above
 |keine außer den oben genannten Aufrufen ohne Oberfläche
 

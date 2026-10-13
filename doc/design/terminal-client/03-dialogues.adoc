@@ -193,7 +193,7 @@ Every choice state opens with its proposal filled in and marked `←` (link:../.
 [#consent]
 === Consent
 
-A consent state is the shared pattern of both clients (link:../shared/consents.adoc#pattern[Consents, The Consent State]): the action as the title, then what it looks for, where, what it runs, what it never does, and the cost, each a field and each only where the server states it. Which kinds exist, which can be remembered, and what _no_ does for each is in link:../shared/consents.adoc#kinds[Consents, The Kinds]. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. A kind that cannot be remembered (`verify_harness_profile`, the automatic run) has no `r`. Nothing happens on the machine until the operator typed `y` or `r`. In German:
+A consent state is the shared pattern of both clients (link:../shared/consents.adoc#pattern[Consents, The Consent State]): the action as the title, then what it looks for, where, what it runs, what it never does, and the tokens it uses, each a field and each only where the server states it. Which kinds exist, which can be remembered, and what _no_ does for each is in link:../shared/consents.adoc#kinds[Consents, The Kinds]. Its prompt has no `Enter` default: `y) yes   r) yes, and don't ask again   n) not now`; `Enter` alone prints `Type y, r or n.` and asks again. A kind that cannot be remembered (`verify_harness_profile`, the automatic run) has no `r`. Nothing happens on the machine until the operator typed `y` or `r`. In German:
 
 [source,text]
 ----
@@ -202,7 +202,7 @@ A consent state is the shared pattern of both clients (link:../shared/consents.a
   in           deinem PATH, ~/.local/bin, /Applications, /opt/homebrew/bin
   führt aus    <program> --version für jeden gefundenen
   niemals      liest andere Dateien, startet eine Sitzung, nutzt das Netzwerk
-  Kosten       keine
+  Tokens       keine
 
 j) ja   m) ja, und merken   n) nicht jetzt   ?   › ⏎
 Gib j, m oder n ein.
@@ -234,10 +234,10 @@ A check is one line that starts with a spinner and ends in `✓` or `✗` (link:
 [#waiting]
 === Waiting, Progress, and a Model at Work
 
-While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the expected cost from earlier runs or `cost not known yet` (link:../web-app/onboarding.adoc#frame[Web App, Onboarding, Frame], Model at work):
+While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the tokens expected from earlier runs (`common.consent.tokens.estimate`) or `not known yet: first run` (link:../web-app/onboarding.adoc#frame[Web App, Onboarding, Frame], Model at work):
 
 ----
-  ⠼  steward is working on Claude Code · opus-5.5      0:42   about 0.08 USD
+  ⠼  steward is working on Claude Code · opus-5.5      0:42   about 40 k tokens
      q) leave: the advice continues; its result is reported above the prompt
 ----
 

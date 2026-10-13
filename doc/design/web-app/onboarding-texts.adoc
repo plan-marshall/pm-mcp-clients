@@ -27,13 +27,13 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |the steps `onboard.step.language`, `.harnesses`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`
 
 |xref:onboarding.adoc#model-at-work[model-at-work]
-|`common.model.working`, `common.consent.cost.estimate`, `common.model.no_result`
+|`common.model.working`, `common.consent.tokens.estimate`, `common.model.no_result`
 
 |xref:onboarding.adoc#start[start]
 |`onboard.entry.title`; the summaries `onboard.step.<step>.summary`; `onboard.mode.auto`, `onboard.mode.guided`
 
 |xref:onboarding.adoc#consent[consent]
-|the title `onboard.<step>.consent.title`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.cost` with the values of the step's consent keys; `common.consent.cost.none`, `.estimate`, `.estimate_runs`, `.unknown`; the choice `common.consent.yes`, `common.consent.yes_remember`; `common.consent.no`, `common.consent.nothing_done`, `common.consent.once_only`, `common.consent.remembered` with the kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]); the primary button is the step's consent action (`onboard.harness.consent.action`)
+|the title `onboard.<step>.consent.title`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.tokens` with the values of the step's consent keys; `common.consent.tokens.none`, `.estimate`, `.estimate_runs`, `.unknown`; the choice `common.consent.yes`, `common.consent.yes_remember`; `common.consent.no`, `common.consent.nothing_done`, `common.consent.once_only`, `common.consent.remembered` with the kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]); the primary button is the step's consent action (`onboard.harness.consent.action`)
 
 |xref:onboarding.adoc#language[language]
 |`onboard.language.choose.title`, `.interface`, `.model`, `.model_same`, `.glossary_note`, `.why`, `.action_both`, `.action_split`; `onboard.language.name.<locale>`; `common.from.system_locale`
@@ -42,13 +42,13 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.harness.scan.progress`, `.found`; `onboard.harness.icons_consent.title`, `.looks_for`, `.runs`, `.never`; `onboard.harness.fetch_icons.done`, `.failed`; `web.onboard.icons_consent.action`, `web.onboard.icons_consent.no_action`; `web.consent.withdraw_hint`
 
 |xref:onboarding.adoc#harness-choose[harness-choose], xref:onboarding.adoc#harness-none[harness-none]
-|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `web.onboard.harness.advanced`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`, `.unusable_title`, `.none_passed`, `.fix_one`; `web.onboard.later`
+|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `onboard.harness.tokens.label`, `.complete`, `.partial`, `.not_reported` with `report.tokens.component` for the figures; `web.onboard.harness.advanced`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`, `.unusable_title`, `.none_passed`, `.fix_one`; `web.onboard.later`
 
 |xref:onboarding.adoc#harness-add[harness-add], xref:onboarding.adoc#harness-add-confirm[harness-add-confirm]
-|`onboard.harness.add.title`, `.executable`, `.name`, `.id`, `.start_from`, `.start_from_hint`, `.headless`, `.arguments`, `.mcp_config`, `.output`, `.usage`, `.version_probe`, `.more`, `.action_verify`, `.edit`; `onboard.harness.add_consent.title`, `.runs`, `.never`, `.cost`; `onboard.harness.verify.title`, `.answered`, `.fix_field`; `common.check.not_run`; `onboard.harness.add_confirm.title`, `.intro`, `.profile`, `.workers_yes`, `.workers_no`, `.action`; `onboard.harness.install.done`; `common.link.back`
+|`onboard.harness.add.title`, `.executable`, `.name`, `.id`, `.start_from`, `.start_from_hint`, `.headless`, `.arguments`, `.mcp_config`, `.output`, `.usage`, `.version_probe`, `.more`, `.action_verify`, `.edit`; `onboard.harness.add_consent.title`, `.runs`, `.never`, `.tokens`; `onboard.harness.verify.title`, `.answered`, `.fix_field`; `common.check.not_run`; `onboard.harness.add_confirm.title`, `.intro`, `.profile`, `.workers_yes`, `.workers_no`, `.action`; `onboard.harness.tokens.label`, `.partial`; `onboard.harness.install.done`; `common.link.back`
 
 |xref:onboarding.adoc#harness-probe[harness-probe], xref:onboarding.adoc#harness-confirm[harness-confirm]
-|`onboard.harness.probe_consent.title`, `.runs_item`, `.never`, `.never_call`, `.runs_call`, `.cost_call`; `onboard.harness.probe.title`, `.version_ok`, `.version_unsupported`, `.logged_in`, `.logged_out`; `common.check.ready`, `common.check.not_ready`; `onboard.harness.blocked.fix_login`, `.fix_version`, `.action_recheck`, `.leave_out`, `.left_out`, `.choose_again`; `web.common.copy`; `onboard.harness.confirm.title`, `.intro`, `.path`, `.version`, `.digest`, `.action`, with `onboard.harness.choose.default` for the mark; `onboard.harness.done`
+|`onboard.harness.probe_consent.title`, `.runs_item`, `.never`, `.never_call`, `.runs_call`, `.tokens_call`; `onboard.harness.probe.title`, `.version_ok`, `.version_unsupported`, `.logged_in`, `.logged_out`; `common.check.ready`, `common.check.not_ready`; `onboard.harness.blocked.fix_login`, `.fix_version`, `.action_recheck`, `.leave_out`, `.left_out`, `.choose_again`; `web.common.copy`; `onboard.harness.confirm.title`, `.intro`, `.path`, `.version`, `.digest`, `.action`, with `onboard.harness.choose.default` for the mark; `onboard.harness.tokens.label`, `.figures`; `onboard.harness.done`
 
 |link:machine-settings.adoc#harnesses[harnesses again]
 |as xref:onboarding.adoc#harness-choose[harness-choose], and `onboard.harness.choose.new`, `.missing`, `.used_by_roles`, `.changed`; `onboard.harness.confirm.remove`, `.keep`; `onboard.harness.done.no_models`; `web.settings.back`, `web.settings.harnesses.reassign` (link:machine-settings.adoc#texts[Machine Settings, Texts])
@@ -69,7 +69,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.defaults.review.title`, `.override_note`, `.needs_provider`, `.action_defaults`, `.action_save`; `onboard.defaults.axis.*`, `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`
 
 |xref:onboarding-steps-4-7.adoc#auto[auto]
-|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.cost`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
+|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
 
 |xref:onboarding-steps-4-7.adoc#done[done]
 |`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])

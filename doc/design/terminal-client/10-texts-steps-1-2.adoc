@@ -210,6 +210,26 @@ The names of the languages are each written in their own language, in every pack
 |add a harness that is not listed
 |füge einen Harness hinzu, der nicht aufgeführt ist
 
+|`onboard.harness.tokens.label`
+|tokens
+|Tokens
+
+|`onboard.harness.tokens.complete`
+|complete
+|vollständig
+
+|`onboard.harness.tokens.partial`
+|partial: no {missing}
+|teilweise: keine {missing}
+
+|`onboard.harness.tokens.not_reported`
+|not reported
+|nicht gemeldet
+
+|`onboard.harness.tokens.figures`
+|{state}: {figures}
+|{state}: {figures}
+
 |`onboard.harness.none.title`
 |No harness found
 |Kein Harness gefunden
@@ -258,9 +278,9 @@ The names of the languages are each written in their own language, in every pack
 |one minimal headless call of {harness}
 |einen minimalen Aufruf von {harness} ohne Oberfläche
 
-|`onboard.harness.probe_consent.cost_call`
-|about {amount}, tokens of your {harness} account
-|etwa {amount}, Tokens deines {harness}-Kontos
+|`onboard.harness.probe_consent.tokens_call`
+|about {tokens} tokens of your {harness} account
+|etwa {tokens} Tokens deines {harness}-Kontos
 
 |`onboard.harness.probe.title`
 |Checking {count, plural, one {# harness} other {# harnesses}}
@@ -422,7 +442,7 @@ The names of the languages are each written in their own language, in every pack
 |touches your repositories; it runs in a temporary directory
 |berührt deine Repositories; es läuft in einem temporären Verzeichnis
 
-|`onboard.harness.add_consent.cost`
+|`onboard.harness.add_consent.tokens`
 |about {calls} short headless calls; tokens of your {harness} account
 |etwa {calls} kurze Aufrufe ohne Oberfläche; Tokens deines {harness}-Kontos
 

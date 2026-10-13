@@ -14,6 +14,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * `system [--project] [--window] [--by] [--watch]`, a read like `status`: printed once with the commands of what its figures count as its last line, and in the console as a full-screen view (`S` from the overview), live, with its keys, kept where the operator left it.
 * `runtime stop|restart [--drain|--now] [--yes]`, `runtime stop --withdraw`, `runtime upgrade [<version>|--check|--withdraw|--notes] [--drain|--now] [--yes]` as operator verbs, with their confirmations as dialogues, `--no-input` stopping at the choice of when, the consent `check_updates`; as one shell command waiting with the bound of `drain`; in the console the badges `stopping` and `upgrading`, the progress as quiet lines, the prompt `pm (stopped) ›` without reconnecting by itself, the reconnect after a restart or an upgrade, and the line of a console older than the runtime.
 * The verbs of the specification unchanged: `status` (its runtime line names the lifecycle state and `system`), `drain`, `runtime start|install|uninstall`; a refusal of an act because the runtime does not answer names `drain`.
+* The models in tokens, never money: the total with its split per model or role, a floor with the calls not measured, the raw components behind `?` (link:../design/terminal-client/25-system.adoc[Terminal Client, System]), in link:../design/shared/texts-and-languages.adoc#numbers[the number format of tokens].
 * Texts from the catalogue only: the area `system` and the terminal's `operator.system.*`.
 
 == Trace

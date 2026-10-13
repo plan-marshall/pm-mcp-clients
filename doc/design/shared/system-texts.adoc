@@ -154,16 +154,12 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Pro Role
 
 |`system.models.line`
-|{calls, plural, one {# call} other {# calls}}   {tokens_in} in · {tokens_out} out   {cost}
-|{calls, plural, one {# Aufruf} other {# Aufrufe}}   {tokens_in} rein · {tokens_out} raus   {cost}
+|{calls, plural, one {# call} other {# calls}}   {tokens}
+|{calls, plural, one {# Aufruf} other {# Aufrufe}}   {tokens}
 
 |`system.models.errors`
 |{errors, plural, =0 {} one {# error} other {# errors}}{retries, plural, =0 {} one { # retry} other { # retries}}
 |{errors, plural, =0 {} one {# Fehler} other {# Fehler}}{retries, plural, =0 {} one { # Wiederholung} other { # Wiederholungen}}
-
-|`system.models.cost_not_reported`
-|cost not reported
-|Kosten nicht gemeldet
 
 |`system.models.unmeasured`
 |{count, plural, one {# call not measured} other {# calls not measured}}

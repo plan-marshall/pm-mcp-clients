@@ -16,7 +16,7 @@ What a report is, what it shows, and how it is read is link:../shared/reports.ad
   reports [--project <project_id>|.] [--older]   the unread reports, grouped, newest first; the next page
   reports read <report_id>... | --all       mark one or several read, or all those the last listing showed
   reports open <report_id>                  its detail; reads it
-  plan report <plan_id> [--per-phase]       an ended plan's completion report; with the spend per phase and role
+  plan report <plan_id> [--tokens [--components]]   an ended plan's completion report; with its tokens by phase, role, and model
 ----
 
 * All are operator verbs, in the console and as one shell command; they ask nothing, so `--no-input` changes nothing, with one exception: `reports open` on a report whose detail is a start still open continues `plan add`, a direct verb.
@@ -143,11 +143,38 @@ fix-relay · completion report · merged · #214 · today 11:20
                    done  fsync of the cursor file
   re-planning    1 · after the base moved (09:55): TASK-5 added
   decisions      2 · Q-003 Rebase onto main (you, the web app) · Q-005 (the plan)
-  spend          412 k tokens · 6 workers · 3 models     plan report fix-relay --per-phase
+  tokens         ≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 h 40 min
+                 6 workers · 3 models · 3 of 41 tasks not measured
+                 plan report fix-relay --tokens
 pm ›
 ----
 
-* The states of the deliverables are words (`done`, `not done`, `dropped`), never a glyph alone; `--per-phase` adds the spend per phase and per role.
+* The states of the deliverables are words (`done`, `not done`, `dropped`), never a glyph alone. Tokens are counted in the number format of link:../shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers], never in money.
+[source,text]
+----
+pm › plan report fix-relay --tokens
+…
+tokens         ≥ 412 k (≥ 380 k in · ≥ 32 k out) · ran 2 h 40 min
+  coverage     3 of 41 tasks not measured: their worker was terminated
+  by phase     refine      38 k (35 k in · 3 k out)
+               outline     96 k (90 k in · 6 k out)
+               execute   ≥ 241 k (≥ 222 k in · ≥ 19 k out)   3 not measured
+               finalize    37 k (33 k in · 4 k out)
+  by role      planner       claude:opus-5.5 · high       128 k (120 k in · 8 k out)
+               implementer   claude:sonnet-5.5 · medium   270 k (247 k in · 23 k out)
+               reviewer      codex:gpt-5 · low           ≥ 14 k (≥ 13 k in · ≥ 1 k out)   3 not measured
+  by model     claude:opus-5.5      128 k (120 k in · 8 k out)
+               claude:sonnet-5.5    270 k (247 k in · 23 k out)
+               codex:gpt-5        ≥ 14 k (≥ 13 k in · ≥ 1 k out)   3 not measured
+  waste        52 k tokens (13 % of measured)
+               produced nothing   18 k   2 tasks
+               retries            21 k   retryable 1 · stall 1
+               remediation        13 k   returned with findings 1
+raw components: plan report fix-relay --tokens --components
+pm ›
+----
+
+* `--tokens` prints the report's section Tokens (link:../shared/completion-report.adoc#tokens[Completion Report, Tokens]) after the report: the total with its split and the wall time, the coverage, the tokens by phase, by role, and by model, and the waste, each a line as below; `--components` adds below each line its raw components as the harnesses reported them (`input 310 k · cache read 62 k · cache write 8 k · output 29 k · reasoning 3 k`, a component a harness does not report `not reported`). Nothing of it is money or a limit.
 * `plan <plan_id>` prints the plan as it ended; `plan chat <plan_id>` opens the chat about it (xref:19-actions.adoc#chat-ended[A Chat About Ended Work]).
 
 [#reports-texts]
@@ -207,7 +234,11 @@ The texts of the reports are those of link:../shared/reports.adoc#texts[Reports,
 |{plan} is {state}; its completion report follows when it ends.
 |{plan} ist {state}; sein Abschlussbericht folgt, wenn er endet.
 
-|`operator.reports.per_phase_hint`
-|plan report {plan} --per-phase
-|plan report {plan} --per-phase
+|`operator.reports.tokens_hint`
+|plan report {plan} --tokens
+|plan report {plan} --tokens
+
+|`operator.reports.components_hint`
+|raw components: plan report {plan} --tokens --components
+|Rohwerte: plan report {plan} --tokens --components
 |===

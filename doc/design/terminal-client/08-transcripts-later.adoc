@@ -66,9 +66,11 @@ pm › config harnesses
   ✓ Icons fetched: 1
 Harnesses · Choose the harnesses to enrol
     1) [x] Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported   ★ default
+                                 tokens complete
     2) [x] OpenCode      —       /opt/homebrew/bin/opencode  missing: not found any more
            used by 8 roles; reassign them first: pm-operator config roles
     3) [ ] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   new since the last run
+                                 tokens not reported
 
 Keep as it is? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › 2
   2 cannot be removed: used by 8 roles; reassign them first: pm-operator config roles
@@ -84,6 +86,7 @@ Check 1 harness, Codex the default? [Enter]   toggle: 1-3   d) set the default  
 Harnesses · Enrol 1 harness
     Codex   ★ default   new since the last run
       Path      /opt/homebrew/bin/codex
+      Tokens    not reported: its tasks are counted as not measured
       …
 Enrol 1 harness, Codex the default? [Enter]   b) back   ?   › ⏎
 ✓ 1 harness enrolled: Codex 0.32.0 (default)
@@ -190,7 +193,7 @@ Consents · The consents you said not to ask again
          pm-mcp-clients · 2 Jun, 09:40 · terminal
     5) run scripts of a project's checkout   run_checkout_scripts
          pm-mcp-clients · 3 scripts · 2 Jun, 09:41 · terminal   ?5 lists them
-    6) approve the cost of a role task       model_cost
+    6) approve the tokens of a role task     model_cost
          pm-mcp-clients · 3 Jun, 16:02 · iPad Oliver
 
   A withdrawn consent is asked again the next time its action runs.

@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Epic View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], leading into link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2] and link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-epic-resource[The Epic as a Resource], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-epic-auto[An Epic Runs by Itself] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-epic-resource[The Epic as a Resource], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-epic-auto[An Epic Runs by Itself] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
 
@@ -35,6 +35,7 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
   ─────────────────────────────────────────────────────────────────────────────
   Sources      2 documents · 1 issue           Landings    2 · last 2 d ago
   Findings     3 new · 4 open · 2 kept         Watches     1 open · 4 kept
+  Tokens       3.86 M (3.52 M in · 0.34 M out) · 4 plans and the epic's own tasks
   ─────────────────────────────────────────────────────────────────────────────
   Events
     12:40  relay-auth-v2 asks a decision
@@ -46,6 +47,7 @@ An epic's view is what the plan view is for a plan (link:plan-view.adoc[Plan Vie
 * *The head*: the path `project › epic` (`pm-mcp-clients › relay-hardening`), the project one step away: in the web app a link, in the terminal a key (link:../terminal-client/19-actions.adoc#epic-view[Terminal Client, An Epic's View]), opening the project in Running Work (link:plan-overview.adoc#levels[Plan Overview]); the title, the state from one closed list (running, waiting for you, held, landing, ended), whether it starts its plans by itself (`automatic` or `manual`, <<reactions>>), how many plans run of how many may at once, the marker of what needs the operator with its count, and the epic's actions, those of its state (link:work-actions.adoc#epic-actions[An Epic's Actions]: while it lands, _Archive_ waits for the ledger). _Next plan_ names a plan that can start now (here `relay-reconnect-metrics`: `relay-token-rotation` waits for `relay-auth-v2`); with none it is disabled with its reason.
 * *Workstreams*: open or closed like a node of the plan view, each with its counts per status; each plan with its status from one closed list (staged, running, pausing, paused, shipped, cancelled, abandoned, held; a paused plan is always paused by the operator and says so; a plan aborted from an integrity pause shows `cancelled` here and keeps its outcome `aborted`, link:work-actions.adoc#epic-told[The Epic Is Told]), what a staged plan waits for (a dependency, a lock, the scope full, an overlap with a running plan: `waits: overlap with relay-auth-v2`, <<reactions>>) or `can start`, and since when. A shipped plan shows its pull request by its number with a link. A staged plan opens to its objective, deliverables, surface, and dependencies; a plan that exists opens its plan view, whose path leads back to this epic in one step (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]).
 * *Sources, landings, findings, watches*: one line each (findings: how many are new since the last review, how many are open, not decided yet, and how many are kept; watches: how many are open and how many kept), opening to the sources as stored, the landings with their pull requests and the epic's analysis, and the reviews (link:work-actions.adoc#review[Reviewing Findings or Watches]).
+* *Tokens*: the tokens of the epic so far, with the split: the sum of its plans' and of its own tasks (decompose, landing, review), as the runtime sums them (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]), in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]. Where some tasks were measured and others not, the figure is a floor with `≥` and the coverage (`common.tokens.coverage`); where model calls happened but no task's usage was measured, it is `not measured` with the coverage, never `0` and never a `≥`. One step away: the figure per plan and the epic's own, each plan leading to its plan view. The epic has no budget, limit, or money figure of its own; an ended epic shows its final figure.
 * *Events*: the epic's history, newest first: plans started and ended, messages of its plans, the operator's acts (the automatic mode switched among them), decompositions, landings, and what the epic did by itself after a plan ended (<<reactions>>).
 * *What waits for the operator* (a decomposition, a held item, a decision) stands first in the head, with a link to it.
 * *An ended epic* shows read-only as it ended, with its end (`completed`, `cancelled`, or `released`; link:work-actions.adoc#outcomes[How a Plan Ends]), reason, and end time in the head, its plans with how each ended (a plan aborted from an integrity pause by its outcome `aborted`), without live updates and without actions but _Chat_, a read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]), opened from Ended Work (link:plan-overview.adoc#ended[Ended Work]).
@@ -199,4 +201,19 @@ Keys of the area `overview`, shared by both clients.
 |`overview.epic.events`
 |Events
 |Ereignisse
+|`overview.epic.tokens`
+|Tokens
+|Tokens
+
+|`overview.epic.tokens_scope`
+|{plans, plural, one {# plan} other {# plans}} and the epic's own tasks
+|{plans, plural, one {# Plan} other {# Pläne}} und die eigenen Tasks des Epics
+
+|`overview.epic.tokens_detail`
+|Per plan
+|Zeige je Plan
+
+|`overview.epic.tokens_own`
+|the epic's own tasks
+|die eigenen Tasks des Epics
 |===
