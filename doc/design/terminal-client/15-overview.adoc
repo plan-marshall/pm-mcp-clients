@@ -30,7 +30,7 @@ What the overview of running work shows and in which order is link:../shared/pla
       plan-marshall-mcp   1 epic                              1 h ago
  ! 1  plan-marshall       setup needs you
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   E ended work   / filter   ? help   q leave
+ ↑↓ move   Enter open   E ended work   R 5 reports   / filter   ? help   q leave
 ----
 
 * *Header*: where the operator is (`projects`, or the project and its view) and the connection to the runtime.
@@ -116,6 +116,9 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 |`E`
 |the ended work of the selected project, or of the project shown (<<ended>>)
 
+|`R`
+|the unread reports, as a level of the view; the footer of the projects' level shows their count while there are any (xref:24-reports.adoc#full-screen[Reports, In the Full-Screen View])
+
 |`/`
 |filter the rows by a part of their name or title; `Esc` clears it
 
@@ -139,7 +142,7 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 ----
 pm › plans
   (the full-screen view, until q)
-While the overview was open: 1 decision arrived (Q-014, plan fix-relay), 1 plan ended.
+While the overview was open: 1 decision arrived (Q-014, plan fix-relay), 2 new reports (reports).
 pm [1 question] ›
 ----
 
@@ -293,6 +296,10 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |`operator.overview.keys.ended`
 |ended work
 |beendete Arbeit
+
+|`operator.overview.keys.reports`
+|{count, plural, =0 {reports} one {# report} other {# reports}}
+|{count, plural, =0 {Berichte} one {# Bericht} other {# Berichte}}
 
 |`operator.overview.ended_view_chat`
 |{name} has ended: its view, and a chat about it

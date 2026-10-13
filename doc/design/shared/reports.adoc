@@ -1,0 +1,332 @@
+= Design: Reports
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Reports
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App]. A plan's completion report, the detail of a plan that ended, is link:completion-report.adoc[Completion Report].
+
+While the operator is away, plans start and end, an epic starts its next plan or re-orders its staged ones, a project finishes its onboarding. None of it needs an answer, but the operator wants to know it on coming back. A *report* is the runtime's record of such a thing, written for the operator: what happened, from where, when, and the way to its details. The operator catches up by reading the unread reports and leaves them read (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]).
+
+A report never asks anything. What waits for the operator stays what it is (a decision, a waiver request, an operator wait, a hold: `needs_operator`; link:plan-overview.adoc#item-rows[Plan Overview]), with its badge, its announcement, and its notification (link:decisions.adoc#announce[Announcing a Decision]). A report is never a badge of what needs the operator, never interrupts, and never a browser or desktop notification. The word is _report_ in every text, never _message_: the plans' and the epics' messages (outbox, inbox, mailbox) are something else.
+
+[#kinds]
+== What Reports There Are
+
+The runtime writes a report for a closed list of kinds; the client shows each report the runtime writes, as it wrote it, and never makes one itself or merges two. The subject is a text of the catalogue with the report's parameters (<<texts>>), so it reads in the client's language whatever language was set when it was written.
+
+[cols="2,4,3",options="header"]
+|===
+|Kind |Subject, for example |Its detail
+
+|`plan.started`
+|`fix-relay started by relay-hardening (2 of 3 at once)` (by you, by an epic, by a recipe); a plan an epic starts is one report, whose _from_ names the epic
+|the plan view (link:plan-view.adoc[Plan View])
+
+|`plan.ended`
+|`fix-relay ended: merged (#214)`, with every outcome of link:work-actions.adoc#outcomes[How a Plan Ends]
+|the plan's completion report (link:completion-report.adoc[Completion Report])
+
+|`plan.revised`
+|`fix-relay was revised: re-planned after the base moved`, or `in a chat`
+|the plan view, at the revision in its history
+
+|`plan.hold_released`
+|`fix-relay goes on: the condition cleared`
+|the plan view
+
+|`epic.launchable`
+|`relay-token-store can start now in relay-hardening`; only while the epic's automatic start is off, one report per change
+|the epic view, with _Next plan_ (link:work-actions.adoc#epic-actions[An Epic's Actions])
+
+|`epic.waits_overlap`
+|`relay-docs waits: overlap with relay-auth-v2 (2 files)`
+|the epic view, at the row (link:epic-view.adoc#reactions[Epic View, What the Epic Does by Itself])
+
+|`epic.overlap_found`
+|`relay-cursor-order and relay-docs-site changed 3 files in common`
+|the epic view, at the two rows
+
+|`epic.recut_applied`
+|`relay-hardening re-ordered its staged plans after relay-auth-v2 landed`
+|the epic view, at the landing and its judgment
+
+|`epic.through`
+|`relay-hardening is through: the completion review is ready`
+|the epic's completion review, in its view
+
+|`epic.ended`
+|`relay-hardening ended: completed`, or `cancelled`, `released`
+|the epic view as it ended
+
+|`project.onboarded`
+|`pm-mcp-clients is onboarded`
+|the project in the explorer (link:project-explorer.adoc[Project Explorer])
+
+|`project.released`
+|`pm-mcp-clients was released: 2 plans and 1 epic ended`
+|the project's ended work (link:plan-overview.adoc#ended[Ended Work])
+
+|`source.flagged`
+|`A source of codeberg-issues was flagged: issue #4711`
+|the start at its list of sources (link:starting-work.adoc#sources[Starting Work])
+
+|`decision.closed_elsewhere`
+|`Q-007 of fix-relay was answered in the web app (iPad)`, or withdrawn by a revision
+|the subject's view, at the decision in its history
+|===
+
+[#fields]
+== What a Report Shows
+
+[cols="1,3",options="header"]
+|===
+|Element |Shown as
+
+|From
+|the project, and the epic and the plan where there are, as the path `project › epic › plan`; each part a link to its view, one step away as in the plan view's head (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic])
+
+|Kind
+|its glyph or icon and colour of the subject's kind (plan, epic, project; link:plan-overview.adoc#distinction[Telling Them Apart]); the kind of the report itself is not shown as a word
+
+|Subject
+|one line, the catalogue's text of its kind
+
+|Body
+|a short text below the subject, one line in the list, the rest one step away; where it carries a title, a reason, or a file name from a plan, it is untrusted text (<<safety>>)
+
+|Created
+|when it happened, as the overview shows times (`today 11:20`, `yesterday 18:40`, `3 d ago`)
+
+|Sent
+|when the runtime made it available to the clients; beside _created_ where it was sent more than a minute later (`sent 09:40`, after a restart of the runtime), else left out of the row; the report's line of details always shows both
+
+|Detail
+|the action _Show the details_ where the report has a detail (<<detail>>); a report without one offers _Mark read_ alone
+|===
+
+[#list]
+== The List
+
+----
+  Reports · 5 unread                                       [Mark all shown read]
+  ─────────────────────────────────────────────────────────────────────────────
+  pm-mcp-clients
+    ◇ relay-hardening
+      ▸ fix-relay          Ended: merged (#214)                   today 11:20
+                           3 of 3 deliverables · 2 h 40 min       [Details] [Read]
+      ▸ relay-token-store  Started by relay-hardening (2 of 3)    today 11:21
+      ▸ relay-docs         Waits: overlap with relay-auth-v2      today 11:21
+    ▸ docs-typo            Ended: no change                       today 09:02
+                           sent 09:40                             [Details] [Read]
+  pm-mcp-core
+    ▪ project              Onboarded                              yesterday 18:40
+  ─────────────────────────────────────────────────────────────────────────────
+                                                             [Show 12 older]
+----
+
+* *Unread only*: the list shows the unread reports and nothing else; a report read in any client leaves it at once. There is no list of read reports: they are kept by the runtime and gone from the clients (removing them is the open point _deleting archived work_ of the specification).
+* *Grouped*: by project, then by epic, then by plan; a plan of no epic stands directly below its project, a report of the project itself (`▪ project`) at the end of its group. Groups are ordered by their newest report; within a group the newest first. A group is a heading, not a report: it shows no count and offers no action.
+* *Newest first*, a page at a time: the runtime pages, the client never loads every unread report at once; _Show older_ names how many more there are.
+* *Unread reports never expire*: a report stays unread until the operator reads it, however old it is.
+* *Selecting a part of the path* (the project, the epic, the plan) opens that view without reading the report; only _Show the details_ reads it (<<read>>).
+
+[#arrival]
+== On Entering a Client
+
+When the operator enters a client (the web app opened or paired, the terminal's console started) and there are unread reports, the client says how many in one line and leads to the list in one step:
+
+----
+  5 unread reports since yesterday 18:40                          [Show them]
+----
+
+* *The count* comes from the runtime (`GET /api/v1/reports?state=unread`) with the time of the oldest unread report; the client never counts reports itself.
+* *One step*: in the web app _Show them_ in that line, and the reports entry of the frame with its count, which stays while there are unread reports (link:../web-app/README.adoc#structure[Web App, Structure]); in the terminal the line names the command `reports` (link:../terminal-client/24-reports.adoc#arrival[Terminal Client, On Start]).
+* *Nothing to show*: with no unread report the line is left out, and the entry of the frame carries no count.
+* The line takes no focus and opens nothing by itself; what needs the operator (an open decision) is shown first, as always.
+
+[#notice]
+== While a Client Is Open
+
+A report that arrives while a client is open is a quiet notice:
+
+* *Quiet*: one line with its from and subject (`fix-relay: Ended: merged (#214)`), shown for a moment in the web app (a polite live region for a screen reader, no sound) and printed above the prompt in the terminal; it never takes the focus, never ends a dialogue, and is never a browser or desktop notification.
+* *Coalesced*: several reports arriving together are one line (`3 new reports · relay-hardening`).
+* *Counted*: the count of the frame's entry and of the list rises with it.
+* *Like a decision's announcement, but never blocking*: input typed before it was shown stays the operator's, and nothing typed answers or reads it.
+
+[#read]
+== Reading a Report
+
+A report is read in one of two ways, by the operator's act only:
+
+* *Mark read*: one report (_Mark read_ on its row), or all reports shown (_Mark all shown read_). _All shown_ sends the ids the list shows, never "everything": a report that arrived after the list was drawn and is not shown yet stays unread.
+* *Show the details*: opening a report's detail from the report reads it, in the same act. Opening the same view another way (the plan from Running Work, the epic from its row) reads no report.
+* *Requests*: one report is marked read by `POST /api/v1/reports/{report_id}/read`, the reports shown by `POST /api/v1/reports/read` with their ids; the clients follow `GET /api/v1/reports/events` for new and read reports; the flow is the states `reports.list`, `reports.choose`, `reports.detail`, `reports.read` of link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6].
+* *One operator, every device*: read is per machine. A report read in the web app on one device is read in every browser and in the terminal, and the clients drop it from their lists live, by the runtime's event; a client that shows it in that moment drops the row and says nothing more.
+* *Read elsewhere while marking*: marking read a report that another client read in the meantime is no error; it stays read, with the first read recorded.
+* The runtime records when a report was read and from which channel and device (`read_at`; the channel `web` or `cli`, as for a decision's answer); the clients show the read state only by leaving read reports out.
+
+[#detail]
+== The Detail
+
+A report's detail is the view its kind leads to (<<kinds>>): opening it reads the report and shows that view where it is, as if opened from the overview, so that its way out (to its project, its epic) and its actions are those of the view.
+
+* *A plan that ended* leads to its completion report, from which its plan view as it ended is one step (link:completion-report.adoc[Completion Report]).
+* *A subject that has ended since* (a report of a plan's start, read after the plan has ended): the detail opens as it ended, read-only, from the archive (link:plan-view.adoc#ended[An Ended Plan], link:epic-view.adoc#layout[Epic View]), with the line `relay-docs has ended (merged, 2 d ago); this is how it ended.` (`overview.ended.as_it_ended`).
+* *A subject no longer kept*: where the archive holds the subject no more, the report stays as it was written, its detail is offered disabled with its reason (`relay-docs is no longer kept`), and _Mark read_ remains.
+* *A report without a detail* offers _Mark read_ alone.
+
+[#safety]
+== Untrusted Text
+
+A report's subject and body carry parameters that may come from a model or a repository: a plan's title, a reason, a file name, an issue's title. Both clients show them as text only, after removing every control sequence (link:../terminal-client/04-console.adoc#output-safety[Terminal Client, Output Safety]; the web app renders no raw HTML), and a link in them is inert; only the report's own links (its path, its detail) navigate.
+
+[#texts]
+== Texts
+
+Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]); those of the completion report are in link:completion-report.adoc#texts[Completion Report, Texts].
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`report.list.title`
+|Reports
+|Berichte
+
+|`report.list.unread`
+|{count, plural, =0 {No unread reports} one {# unread report} other {# unread reports}}
+|{count, plural, =0 {Keine ungelesenen Berichte} one {# ungelesener Bericht} other {# ungelesene Berichte}}
+
+|`report.list.empty`
+|Nothing new. Reports you have read are not shown any more.
+|Nichts Neues. Gelesene Berichte werden nicht mehr gezeigt.
+
+|`report.list.from`
+|From
+|Von
+
+|`report.list.subject`
+|Subject
+|Betreff
+
+|`report.list.created`
+|Created
+|Erstellt
+
+|`report.list.sent`
+|Sent
+|Gesendet
+
+|`report.list.sent_at`
+|sent {time}
+|gesendet {time}
+
+|`report.list.project`
+|project
+|Projekt
+
+|`report.list.show_older`
+|Show {count} older
+|Zeige {count} ältere
+
+|`report.action.details`
+|Show the details
+|Zeige die Details
+
+|`report.action.mark_read`
+|Mark read
+|Markiere als gelesen
+
+|`report.action.mark_all_read`
+|Mark all shown read
+|Markiere alle gezeigten als gelesen
+
+|`report.read.done`
+|{count, plural, one {# report marked read} other {# reports marked read}}.
+|{count, plural, one {# Bericht als gelesen markiert} other {# Berichte als gelesen markiert}}.
+
+|`report.arrival.line`
+|{count, plural, one {# unread report} other {# unread reports}} since {time}
+|{count, plural, one {# ungelesener Bericht} other {# ungelesene Berichte}} seit {time}
+
+|`report.arrival.show`
+|Show them
+|Zeige sie
+
+|`report.notice.one`
+|{from}: {subject}
+|{from}: {subject}
+
+|`report.notice.many`
+|{count} new reports · {from}
+|{count} neue Berichte · {from}
+
+|`report.detail.not_kept`
+|{item} is no longer kept
+|{item} wird nicht mehr aufbewahrt
+
+|`report.subject.plan_started`
+|{plan} started {by, select, operator {by you} epic {by {epic} ({running} of {scope} at once)} recipe {by the recipe {recipe}} other {}}
+|{plan} wurde {by, select, operator {von dir} epic {von {epic} ({running} von {scope} gleichzeitig)} recipe {vom Rezept {recipe}} other {}} gestartet
+
+|`report.subject.plan_ended`
+|{plan} ended: {outcome}
+|{plan} ist beendet: {outcome}
+
+|`report.subject.plan_revised`
+|{plan} was revised: {how, select, replan {re-planned after {trigger}} chat {in a chat} other {{how}}}
+|{plan} wurde überarbeitet: {how, select, replan {neu geplant nach {trigger}} chat {in einem Chat} other {{how}}}
+
+|`report.subject.plan_hold_released`
+|{plan} goes on: {cause}
+|{plan} läuft weiter: {cause}
+
+|`report.subject.epic_launchable`
+|{plans} can start now in {epic}
+|{plans} {count, plural, one {kann} other {können}} jetzt in {epic} starten
+
+|`report.subject.epic_waits_overlap`
+|{plan} waits: overlap with {other} ({files, plural, one {# file} other {# files}})
+|{plan} wartet: Überschneidung mit {other} ({files, plural, one {# Datei} other {# Dateien}})
+
+|`report.subject.epic_overlap_found`
+|{plan} and {other} changed {files, plural, one {# file} other {# files}} in common
+|{plan} und {other} haben {files, plural, one {# gemeinsame Datei} other {# gemeinsame Dateien}} geändert
+
+|`report.subject.epic_recut_applied`
+|{epic} {change, select, reorder {re-ordered its staged plans} amend {amended its staged plans} other {changed its staged plans}} after {plan} landed
+|{epic} hat {change, select, reorder {seine vorgesehenen Pläne neu geordnet} amend {seine vorgesehenen Pläne angepasst} other {seine vorgesehenen Pläne geändert}}, nachdem {plan} gelandet ist
+
+|`report.subject.epic_through`
+|{epic} is through: the completion review is ready
+|{epic} ist durch: die Abschlussprüfung liegt vor
+
+|`report.subject.epic_ended`
+|{epic} ended: {end}
+|{epic} ist beendet: {end}
+
+|`report.subject.project_onboarded`
+|{project} is onboarded
+|{project} ist eingerichtet
+
+|`report.subject.project_released`
+|{project} was released: {plans, plural, one {# plan} other {# plans}} and {epics, plural, one {# epic} other {# epics}} ended
+|{project} wurde abgegeben: {plans, plural, one {# Plan} other {# Pläne}} und {epics, plural, one {# Epic} other {# Epics}} beendet
+
+|`report.subject.source_flagged`
+|A source of {item} was flagged: {source}
+|Eine Quelle von {item} ist auffällig: {source}
+
+|`report.subject.decision_closed_elsewhere`
+|{id} of {item} was {how, select, answered {answered in {channel} ({device})} withdrawn {withdrawn by a revision} other {closed}}
+|{id} von {item} wurde {how, select, answered {in {channel} ({device}) beantwortet} withdrawn {durch eine Überarbeitung zurückgezogen} other {geschlossen}}
+|===
+
+The outcome and the end in `report.subject.plan_ended` and `report.subject.epic_ended` are the texts `overview.ended.outcome` and `overview.ended.epic_end`, the channel in `report.subject.decision_closed_elsewhere` the text `decision.channel.<channel>`; the kind of the path's parts uses `overview.kind.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]).

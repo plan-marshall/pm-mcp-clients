@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » The Console
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]_
 
 [#console]
 == The Console
@@ -27,7 +27,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 The console follows the runtime's event stream (`GET /api/v1/events`) while it is open. Events are of two kinds:
 
 * *Waiting for the operator*: a change of a `needs_operator` summary of a plan, an epic, or a project that adds an item. Each new item is shown as a notice block, counted in the badge, and announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>). A plan the operator paused is no item: it shows by its state in `plans` and `status`, never as a notice or a badge.
-* *For information*: a plan ended, a worker restarted, a check of a running dialogue reported. At most one quiet line, several of them coalesced into one; the full list is `pm-operator status`.
+* *For information*: a report the runtime wrote (a plan started or ended, an epic started its next plan, a project onboarded; link:../shared/reports.adoc#kinds[Reports]), a worker restarted, a check of a running dialogue reported. At most one quiet line, several of them coalesced into one, without the bell; a report's line names the command of its detail (xref:24-reports.adoc#notice[Reports, While the Console Is Open]), and `reports` lists the unread ones. When the console opens with unread reports, one line says how many (xref:24-reports.adoc#arrival[Reports, On Start]).
 
 Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.adoc[Plan Overview]) has its notice, its badge, and the command that opens it; the label of the kind is the shared `overview.needs.<kind>`, the rest is the console's (<<texts-operator-console>>):
 

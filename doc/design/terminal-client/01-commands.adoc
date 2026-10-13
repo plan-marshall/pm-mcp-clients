@@ -5,7 +5,7 @@
 
 link:README.adoc[Terminal Client] » Command Model
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] to link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] to link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] to link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] to link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]_
 
 [#commands]
 == Command Model
@@ -50,7 +50,9 @@ pm-operator plan start <plan_id>
 pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
 pm-operator plan chat <plan_id>
                                                           [op]  act on a plan by its state (19-actions)
+pm-operator plan report <plan_id>                         [op]  an ended plan's completion report (24-reports)
 pm-operator epic next <epic_id> [--raise-scope]
+pm-operator epic auto <epic_id> on|off
 pm-operator epic decompose <epic_id> [--instruction <text>]
 pm-operator epic archive|findings|watches|chat <epic_id>
 pm-operator epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
@@ -65,6 +67,9 @@ pm-operator config unset <key> [<level>]                      [op]  remove a key
 pm-operator status [--project <project_id>] [--by epic] [--watch]
                                                                 the running work as a tree, and the runtime (15-overview)
 pm-operator status --ended [--project <project_id>]             the ended work as a tree, opened read-only as it ended (15-overview)
+pm-operator reports [--project <project_id>|.] [--older]  [op]  the unread reports, grouped, newest first (24-reports)
+pm-operator reports read <report_id>...|--all             [op]  mark reports read: those named, or all the last listing showed
+pm-operator reports open <report_id>                      [op]  a report's detail; reads it
 
 <level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
 <source>:  --description <text>|-   --document <path>   --issue <number>|<url>   --pull-request <number>|<url>
@@ -74,7 +79,7 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
            --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
 
 In the console only:
-  plans                       the overview of running work, full screen (15-overview); E shows the ended work
+  plans                       the overview of running work, full screen (15-overview); E shows the ended work, R the reports
   plan <plan_id> [--all|--depth <n>]   a plan's process as a tree (16-plan-view)
   epic <epic_id>              an epic's view as a tree (19-actions)
   questions                   the open decisions and waiver requests, with what they block and the recommendation
@@ -97,6 +102,7 @@ In the console only:
 * *Other verbs* never ask where to onboard. A verb that needs a step of the onboarding that is not done yet (a credential before the credential store is chosen, a role before the catalogue exists) is refused, and the refusal names both ways to complete it: the console (`pm-operator`) and the web app (`operator.entry.onboarding_needed`, xref:13-texts-operator.adoc#texts-operator-entry[The Entry]).
 * *`config show|set|unset`* keep what `pm-operator config` already is: the operator's configuration keys of `machine-config.json` and `local-config.json`. A key that an aspect or a setting owns (`language.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, `sources.documents_mode`, the role assignment) is changed only through its aspect or setting, because the aspect validates and checks it; `config set` refuses it and names the aspect verb. `show` lists every key, the aspect-owned ones included.
 * *`status`* prints the overview of running work as a tree, `--project <project_id>` for one project and `--by epic` with the plans below their epics (xref:15-overview.adoc#status-tree[The Tree]); `status --ended` prints the ended work instead (link:../shared/plan-overview.adoc#ended[Plan Overview, Ended Work]).
+* *`reports`* lists the unread reports, `reports read` marks them read, and `reports open` opens a report's detail, which reads it (xref:24-reports.adoc[Reports]; link:../shared/reports.adoc[Reports] is what both clients show). They are operator verbs because reading changes the state every client shows; the console prints the count of unread reports when it opens.
 * *The flags of the actions* on plans and epics are those of xref:19-actions.adoc[Actions on Plans and Epics], which says what each does; the listing above repeats them, 19 is the reference.
 * *The console commands* (`plans`, `plan`, `epic`, `questions`, `answer`, `web`, `help`, `exit`) exist only inside the console; they are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-fresh-code[A Fresh Code after a Redemption]).
 

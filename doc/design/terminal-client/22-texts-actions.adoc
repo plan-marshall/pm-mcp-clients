@@ -224,6 +224,10 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |n
 |n
 
+|`operator.actions.key.auto`
+|u
+|u
+
 |`operator.actions.key.decompose_again`
 |d
 |z

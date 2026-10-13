@@ -21,6 +21,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   config <aspect> --plan <plan_id>       the plan's settings, in every state until it has ended (plan-defaults, roles, providers)
   epic <epic_id>                         the epic's view
   epic next <epic_id> [--raise-scope|--no-raise]
+  epic auto <epic_id> on|off              whether the epic starts its plans by itself
   epic decompose <epic_id> [--instruction <text>]   decompose again, with the review
   epic archive <epic_id>
   epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
@@ -50,6 +51,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 ▶ relay-hardening        epic · running · 3 running · 1 paused · 3 staged      ! 3
       n  Next plan: relay-token-store
+      u  Automatic: on
       d  Decompose again…
       f  Findings review (3 new)
       w  Watches review (5)
@@ -154,7 +156,28 @@ pm ›
 ----
 
 * With no plan launchable, `epic next` says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs waits for a lock: the surface pm-relay`); with only the scope full, it asks to raise the scope by one (`epic.raise-scope`), which `--raise-scope` answers yes and `--no-raise` no; `--no-input` without either stops.
+* With none launchable for an overlap, the reason names the running plan (`relay-docs waits: overlap with relay-auth-v2`); raising the scope does not start it.
 * `epic archive` while the epic lands is refused with the reason (`relay-hardening is landing: archive waits until the ledger has landed`); only open findings hold the archive, and kept findings and watches are listed as carried.
+
+[#epic-auto]
+=== Automatic On or Off
+
+`epic auto <epic_id> on|off` and `u` in the menu below an epic's row switch whether the epic starts its plans by itself (link:../shared/work-actions.adoc#epic-auto[Automatic: On or Off]); no confirmation, since the other value undoes it. The verb names the value, never a flip, and `u` in the menu sends the value it does not show.
+
+[source,text]
+----
+pm › epic auto relay-hardening on
+✓ relay-hardening starts its plans by itself; relay-token-store started (2 of 3 at once)
+
+pm › epic auto relay-hardening on
+relay-hardening already starts its plans by itself.
+
+pm › epic auto relay-hardening off
+✓ relay-hardening starts no plan by itself any more; what runs goes on.
+----
+
+* Switched on with nothing launchable, the line says why (`Nothing can start now: relay-docs waits: overlap with relay-auth-v2`, `control.epic.auto_nothing`).
+* The head of `epic <epic_id>` names the mode (`automatic`, `manual`), and its events what the epic did by itself after a plan ended (link:../shared/epic-view.adoc#reactions[Epic View, What the Epic Does by Itself]).
 
 [#epic-view]
 == An Epic's View
@@ -164,7 +187,7 @@ pm ›
 [source,text]
 ----
 pm › epic relay-hardening
-relay-hardening · epic · running · 3 of 3 at once · running 6 d · needs you: 3
+relay-hardening · epic · running · automatic · 3 of 3 at once · running 6 d · needs you: 3
   in pm-mcp-clients                                         status --project pm-mcp-clients
   needs you      relay-auth-v2 asks a decision (Q-014)      answer relay-auth-v2/Q-014
                  3 new findings                             epic findings relay-hardening
@@ -179,7 +202,7 @@ relay-hardening · epic · running · 3 of 3 at once · running 6 d · needs you
     staged     relay-token-store           waits for the scope (3 of 3 at once) · since 1 h
   WS-3 Documentation                 1 running · 1 staged
     running    relay-docs-site             outline · running · 20 min
-    staged     relay-docs                  waits for a lock: the surface pm-relay · since 3 h
+    staged     relay-docs                  waits: overlap with relay-auth-v2 (2 files) · since 3 h
   sources        2 documents, 1 issue
                    doc/concepts/relay-hardening/   4 files
                    https://github.com/plan-marshall/pm-mcp-clients/issues/212
@@ -199,7 +222,7 @@ pm ›
 ----
 
 * *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may, since when it runs, and the count of what needs the operator; below it the epic's project with the command that opens it (`operator.plan.tree.context`, xref:16-plan-view.adoc#plan-view-texts[The Plan View, Texts]); what waits stands first below that, each with the command that opens it.
-* *The workstreams*: each plan with its status from one list (`staged`, `running`, `pausing`, `paused`, `shipped`, `cancelled`, `abandoned`, `held`; a plan aborted from an integrity pause is `cancelled` here, link:../shared/work-actions.adoc#epic-told[The Epic Is Told]), what it waits for (a dependency, a lock, the scope), and since when. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
+* *The workstreams*: each plan with its status from one list (`staged`, `running`, `pausing`, `paused`, `shipped`, `cancelled`, `abandoned`, `held`; a plan aborted from an integrity pause is `cancelled` here, link:../shared/work-actions.adoc#epic-told[The Epic Is Told]), what it waits for (a dependency, a lock, the scope, an overlap with a running plan), and since when. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
 * *Sources, landings, findings, watches, events*: the sources as stored; each landing with its pull request and the epic's analysis; the open items with their counts and the review that opens them; the events, newest first, the ten newest in the tree and all of them in the full-screen view.
 * An ended epic prints as it ended, read-only, with `ended` and its end (`completed`, `cancelled`, `released`) in its first line (xref:15-overview.adoc#ended[Ended Work]).
 

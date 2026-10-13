@@ -383,7 +383,7 @@ pm ›
 
 * `h) chat` opens the chat with the epic's planning role about the whole draft (xref:19-actions.adoc#chat[A Chat]); an accepted change goes into the draft, and the checks run on it again.
 * *Edit* and *add a plan* ask for the operator's words (`decomposition.instruct`); the planning role rewrites (`decomposition.rewrite`), and the read-back (`decomposition.read-back`) shows old against new: `Enter` accepts and the checks run (`decomposition.check`), `i` asks for the words again, `x` discards the change and returns to the list (`decomposition.review`).
-* *How many plans run at once* is never asked: the epic takes the project's `epic.parallelization_scope` (machine default 1) and starts its plans at once; `epic next <epic_id>` offers to raise it by one when the scope is full (xref:19-actions.adoc#epic[An Epic]).
+* *How many plans run at once* is never asked: the epic takes the project's `epic.parallelization_scope` (machine default 1) and starts its plans at once; `epic next <epic_id>` offers to raise it by one when the scope is full (xref:19-actions.adoc#epic[An Epic]). Whether it starts them by itself is not asked either: the ready step prints the value in force with its origin (`start.ready.epic_auto`, `Starts its plans: by itself (from the project)`), and `epic auto <epic_id> on|off` switches it later (xref:19-actions.adoc#epic-auto[Automatic On or Off]).
 * *Leaving* (`q`, `Ctrl+C`) keeps the draft and the decisions made on it: `Left [3/3] Decomposition of relay-hardening. The draft is kept. epic decompose relay-hardening continues it.` The epic starts no plan before its first decomposition is agreed, and its row in Running Work shows `waiting for you` until then.
 
 [#decompose-again]

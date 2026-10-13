@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Actions on Plans and Epics
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#changes[Controlling Work, Changes] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#changes[Controlling Work, Changes] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-epic-auto[An Epic Runs by Itself] (proposed); link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
 
@@ -185,9 +185,9 @@ One rule for every recorded value the operator changes: a machine setting (link:
 == An Epic's Actions
 
 ----
-  relay-hardening · epic                       3 running · 1 paused · 4 staged
+  relay-hardening · epic          automatic · 3 running · 1 paused · 4 staged
   ─────────────────────────────────────────────────────────────────────────────
-  [▶ Next plan: relay-reconnect-backoff]   [Findings review · 3 new]
+  [▶ Next plan: relay-reconnect-backoff]   [Automatic: on]   [Findings review · 3 new]
   [Decompose again]   [Watches review · 5]   [Chat]   [Archive]   [Cancel]
 ----
 
@@ -198,7 +198,7 @@ The actions follow the epic's state (the states of link:epic-view.adoc#layout[Ep
 |State |Actions
 
 |running
-|Next plan, Decompose again, Findings review, Watches review, Chat, Archive, Cancel
+|Next plan, Automatic, Decompose again, Findings review, Watches review, Chat, Archive, Cancel
 
 |waiting for you
 |those of running, beside what it waits for (a decomposition, a decision, link:decisions.adoc[Decisions])
@@ -213,13 +213,25 @@ The actions follow the epic's state (the states of link:epic-view.adoc#layout[Ep
 |Chat, read-only, about its archived record (<<chat-ended>>)
 |===
 
-* *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs: the surface overlaps a running plan`); with the epic's scope full it says so and asks to raise the scope (`epic.raise-scope`): _Raise to 4 at once and start it_, which raises the epic's `parallelization_scope` by one and starts the plan, or _Leave it_, which starts nothing.
+* *Next plan* names the plan it will start: the next launchable row in the queue's order. With none launchable it is disabled and says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs waits: overlap with relay-auth-v2`; a plan that waits for an overlap is never started beside that plan, <<epic-auto>>); with the epic's scope full it says so and asks to raise the scope (`epic.raise-scope`): _Raise to 4 at once and start it_, which raises the epic's `parallelization_scope` by one and starts the plan, or _Leave it_, which starts nothing.
+* *Automatic* switches whether the epic starts its plans by itself (<<epic-auto>>).
 * *The scope* is never asked when an epic starts: it is the project's `epic.parallelization_scope`, 1 by the machine's default. It is raised here, one at a time, or in the project's settings.
 * *Decompose again* asks for the instruction (`split the auth workstream; drop the docs plan`) and opens the decomposition with it (link:starting-work.adoc#decomposition[The Decomposition]).
 * *Chat* opens a chat with the epic's planning role about the whole epic (<<chat>>), in every state of an epic that has not ended; an ended epic offers it alone, about its archived record (<<chat-ended>>).
 * *Findings review* and *Watches review* carry their counts; new findings since the last review are also a `needs you` of the epic in Running Work.
 * *Archive* runs the check first (<<archive-check>>).
 * *Cancel* confirms with the choice for its plans (<<cancel-epic>>).
+
+[#epic-auto]
+=== Automatic: On or Off
+
+An epic starts its launchable plans by itself, up to how many may run at once, while _Automatic_ is on; off, it starts none and the operator starts each with _Next plan_ (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-epic-auto[An Epic Runs by Itself]).
+
+* *The toggle* names the state it is in (`Automatic: on`, `Automatic: off`) and switches it in one act, without a confirmation: each is undone by the other. The request names the value it sets, never a flip, so that two clients switching at once both end at the value of the last; setting the value it already has changes nothing and says so (`relay-hardening already starts its plans by itself`).
+* *Switched on*, the epic starts at once what can start, up to the limit, and the line after the toggle says what (`relay-token-store started (2 of 3 at once)`, or `nothing can start now: relay-docs waits: overlap with relay-auth-v2`). *Switched off*, what runs goes on; nothing new starts by itself.
+* *Its default* is the project's `epic.auto_start` (the machine's default: on); a new epic takes it and the ready step of its start shows it, never asking (link:starting-work.adoc#ready[Starting Work, Ready]). The toggle changes this epic only; the project's default is changed in the project's settings.
+* *In both modes* the epic reacts to its plans' ends as link:epic-view.adoc#reactions[Epic View, What the Epic Does by Itself] shows: it records a landing and judges what it means downstream, holds the plans that depend on a plan that ended without landing, and keeps a plan that overlaps a running one waiting; with it on, it also starts the next plans and, once through, runs its completion review. _Next plan_ stays offered in both: with it on, it mostly says why nothing can start, or offers to raise the scope.
+* *Told*: the switch is among the epic's events (`you switched automatic off`).
 
 [#archive-check]
 === Archiving: Is It Through?

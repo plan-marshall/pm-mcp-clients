@@ -178,6 +178,10 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Start the epic
 |Starte das Epic
 
+|`start.ready.epic_auto`
+|Starts its plans: {mode, select, on {by itself} other {by hand}} (from {origin, select, project {the project} other {the machine}}); switch it in the epic's actions
+|Startet seine Pläne: {mode, select, on {selbst} other {von Hand}} (von {origin, select, project {dem Projekt} other {der Maschine}}); schalte es in den Aktionen des Epics um
+
 |`start.ready.landing_refused`
 |{landing} does not fit: a plan from local changes needs a landing that commits
 |{landing} passt nicht: ein Plan aus lokalen Änderungen braucht einen Abschluss, der committet
