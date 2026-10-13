@@ -143,10 +143,10 @@ A decision of a project's workspace scope (a question of its setup, link:../../.
 [#announce]
 == Announcing a Decision
 
-* *Urgency* follows from what the decision carries: it interrupts (a notification, the bell) when it blocks the plan or is not reversible; otherwise it waits in the badge, the list of open decisions, and the next notice at a natural break (when a dialogue ends, when the operator returns to the prompt or the overview).
+* *Urgency* follows from what the decision carries: it interrupts (a notification, the bell) when it blocks its subject (the plan, the epic, or the setup) or is not reversible; otherwise it waits in the badge, the list of open decisions, and the next notice at a natural break (when a dialogue ends, when the operator returns to the prompt or the overview).
 * *Nothing is answered by accident*: an announcement never takes the focus, input typed before it was shown never answers it, and opening a decision discards input typed ahead (xref:../terminal-client/04-console.adoc#answering[Terminal Client, Answering a Question]).
 * *No time limit*: a decision delivered to the operator waits until the operator answers it, and the plan waits with it (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-operator-wait[Waiting for the Operator]); the clients show how long it has waited, never a countdown, and never answer it on their own. A decision that changed (a new revision) is announced again as changed.
-* A notification names the plan and the kind of decision, never its content.
+* A notification names its subject (the plan, the epic, or the project's setup: `The setup of pm-mcp-clients asks a decision`) and the kind of decision, never its content (`decision.notify.title`).
 * *The terminal client* notifies while it runs (`console.notify`, link:../terminal-client/04-console.adoc[Terminal Client, Console]).
 * *The web app* asks once whether it may notify: after the first decision arrives, never at its start, with one line of what it would show; the browser's own prompt follows only on _Allow notifications_. The operator allows or not; without the permission the web app shows the open decisions in the tab title (`(2) Running work · PM-MCP`) and in its badge. The permission is withdrawn in the machine settings (link:../web-app/README.adoc[Web App]), and the web app asks no more once the operator said no.
 
@@ -178,7 +178,7 @@ A worker that cannot pass a gate may ask for a waiver of it. The request reaches
 
 * *Answered in another channel*: every client says where and how (`answered in the web app, iPad: Rebase onto main`), closes the decision if it is open, and drops what was typed into it.
 * *A newer revision*: an answer to an older revision is refused by the runtime; the client shows the changed decision with what changed, and the operator answers again.
-* *None fits* (`decision.withdraw`): confirmed like an answer, with the note where the operator added one, then shown as `you asked the plan to think again`. The runtime closes the decision as withdrawn; the role that asked thinks again and asks anew, as a new decision with an id of its own, announced like any other (<<announce>>) and naming the one it replaces (`asked anew after Q-007`).
+* *None fits* (`decision.withdraw`): confirmed like an answer, with the note where the operator added one, then shown as `you asked the plan to think again` (the epic, the setup of the project, by its subject; `decision.outcome.rethink`). The runtime closes the decision as withdrawn; the role that asked thinks again and asks anew, as a new decision with an id of its own, announced like any other (<<announce>>) and naming the one it replaces (`asked anew after Q-007`).
 * *Later* answers nothing: the decision stays open and announced (`decision.announce`), the client leaves it, and the plan waits; it is in the list of open decisions until it is answered.
 
 [#safety]

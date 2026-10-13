@@ -342,8 +342,8 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |{id} bleibt offen; {scope, select, epic {das Epic} setup {das Setup von {project}} other {der Plan}} wartet darauf. questions listet sie.
 
 |`operator.decision.none_fits_confirm`
-|None fits: the {scope, select, epic {epic} other {plan}} thinks again and asks anew. Send?
-|Nichts passt: {scope, select, epic {das Epic} other {der Plan}} überlegt neu und fragt noch einmal. Senden?
+|None fits: the {scope, select, epic {epic} setup {setup of {project}} other {plan}} thinks again and asks anew. Send?
+|Nichts passt: {scope, select, epic {das Epic} setup {das Setup von {project}} other {der Plan}} überlegt neu und fragt noch einmal. Senden?
 
 |`operator.decision.answered_parts`
 |{id} answered.
@@ -358,8 +358,8 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |(mit deiner Notiz)
 
 |`operator.decision.goes_on`
-|The {scope, select, epic {epic} other {plan}} goes on.
-|{scope, select, epic {Das Epic} other {Der Plan}} läuft weiter.
+|The {scope, select, epic {epic} setup {setup of {project}} other {plan}} goes on.
+|{scope, select, epic {Das Epic} setup {Das Setup von {project}} other {Der Plan}} läuft weiter.
 
 |`operator.decision.waiver_prompt`
 |Waive the gate or decline the request?

@@ -177,7 +177,7 @@ The first valid answer wins, from the web app or the console (the channels `web`
 * What waits for the operator rings the terminal bell once, when it arrives.
 * A desktop notification is sent instead where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
 * The machine configuration key `console.notify` chooses `auto` (the default: the desktop notification where known, else the bell), `bell`, or `off`.
-* A notification carries the scope and the kind (`plan fix-relay asks a question`, `epic storage-v2 asks a question`, `plan fix-relay asks for a waiver`), never the text of the question, which may hold content of the project.
+* A notification carries the scope and the kind (`plan fix-relay asks a question`, `epic storage-v2 asks a question`, `the setup of pm-mcp-clients asks a question`, `plan fix-relay asks for a waiver`), never the text of the question, which may hold content of the project.
 
 [#output-safety]
 === Output Safety
@@ -359,8 +359,8 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |Wieder verbunden: {version}, neu gestartet um {time}. {questions, plural, =0 {Keine Frage offen} one {# Frage offen} other {# Fragen offen}}, {plans, plural, one {# Plan läuft} other {# Pläne laufen}}.
 
 |`operator.console.notification.question`
-|{scope, select, epic {epic} other {plan}} {name} asks a question
-|{scope, select, epic {Epic} other {Plan}} {name} stellt eine Frage
+|{scope, select, epic {epic {name}} setup {the setup of {project}} other {plan {name}}} asks a question
+|{scope, select, epic {Epic {name}} setup {Das Setup von {project}} other {Plan {name}}} stellt eine Frage
 
 |`operator.console.notification.waiver`
 |plan {plan} asks for a waiver

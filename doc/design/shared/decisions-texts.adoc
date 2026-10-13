@@ -111,8 +111,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Füge eine Notiz hinzu
 
 |`decision.answer.none_fits`
-|none fits: think again
-|Nichts passt: lass den Plan neu überlegen
+|none fits: let {subject, select, epic {the epic} setup {the setup} other {the plan}} think again
+|Nichts passt: lass {subject, select, epic {das Epic} setup {das Setup} other {den Plan}} neu überlegen
 
 |`decision.answer.later`
 |later
@@ -171,8 +171,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Die Entscheidung hat sich geändert: {change}. Bitte antworte noch einmal.
 
 |`decision.outcome.rethink`
-|you asked the plan to think again
-|du hast den Plan gebeten, neu zu überlegen
+|you asked {subject, select, epic {the epic} setup {the setup of {project}} other {the plan}} to think again
+|du hast {subject, select, epic {das Epic} setup {das Setup von {project}} other {den Plan}} gebeten, neu zu überlegen
 
 |`decision.outcome.asked_anew`
 |asked anew after {id}
@@ -187,8 +187,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |die Konsole
 
 |`decision.notify.ask`
-|Should the web app notify you when a plan asks a decision? It shows the plan and the kind of decision, never its content.
-|Soll die Web-App dich benachrichtigen, wenn ein Plan eine Entscheidung braucht? Sie zeigt den Plan und die Art der Entscheidung, nie ihren Inhalt.
+|Should the web app notify you when a plan, an epic, or a project's setup asks a decision? It names the plan, the epic, or the setup and the kind of decision, never its content.
+|Soll die Web-App dich benachrichtigen, wenn ein Plan, ein Epic oder das Setup eines Projekts eine Entscheidung braucht? Sie nennt den Plan, das Epic oder das Setup und die Art der Entscheidung, nie ihren Inhalt.
 
 |`decision.notify.allow`
 |Allow notifications
@@ -199,8 +199,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Nicht jetzt
 
 |`decision.notify.title`
-|{plan} asks {kind, select, waiver {for a waiver} other {a decision}}
-|{plan} {kind, select, waiver {bittet um einen Waiver} other {braucht eine Entscheidung}}
+|{subject, select, epic {Epic {name}} setup {The setup of {project}} other {{name}}} asks {kind, select, waiver {for a waiver} other {a decision}}
+|{subject, select, epic {Epic {name}} setup {Das Setup von {project}} other {{name}}} {kind, select, waiver {bittet um einen Waiver} other {braucht eine Entscheidung}}
 
 |`decision.notify.tab_title`
 |({count}) {title}
