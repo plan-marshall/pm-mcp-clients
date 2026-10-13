@@ -156,6 +156,11 @@ How documents are taken into a plan at its start: the machine's `sources.documen
 
 Terminal: `pm-operator config documents` (link:../terminal-client/08-transcripts-later.adoc#t-documents[Terminal Client, transcript]).
 
+[#conflict]
+== Changed Meanwhile
+
+A value changed in another client (the terminal, another device) after this page showed it is not overwritten: the change made here is refused with `conflict`, nothing of it applied, and the line shows the current value beside the operator's choice with _Keep the current value_ and _Apply yours again_ (`common.conflict.*`). This holds for every aspect and for the documents mode (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]; link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#concurrent-changes[Concurrent Changes of a Setting]).
+
 [#credentials]
 == A Token Rotated or Replaced (`settings.credential`, `settings.store-credential`)
 

@@ -86,6 +86,10 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |no credential for {forge}; add one to read it
 |kein Zugang für {forge}; füge einen hinzu, um es zu lesen
 
+|`start.cause.rate_limited`
+|rate limited until {time}{credential, select, none {; add a credential for {forge} for a higher limit} other {}}
+|Rate-Limit bis {time}{credential, select, none {; füge einen Zugang für {forge} hinzu, um ein höheres Limit zu bekommen} other {}}
+
 |`start.cause.provider_unavailable`
 |provider unavailable
 |Provider nicht erreichbar

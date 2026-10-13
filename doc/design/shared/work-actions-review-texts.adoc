@@ -206,6 +206,14 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |The files stay tracked in git where they were, and the source keeps its copy; the two are no longer kept as one.
 |Die Dateien bleiben in Git, wo sie waren, und die Quelle behält ihre Kopie; beide werden nicht mehr als eins geführt.
 
+|`control.hold.released`
+|{subject} goes on
+|{subject} läuft weiter
+
+|`control.hold.still_held`
+|Still held: {cause}
+|Weiterhin aufgehalten: {cause}
+
 |`control.hold.cleared`
 |{cause} cleared by itself
 |{cause} hat sich von selbst erledigt

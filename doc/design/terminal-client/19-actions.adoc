@@ -126,6 +126,7 @@ pm ›
 
 * A refused value prints its reason and asks the value again; `--no-input` stops there with the reason.
 * *Too late* prints its reason and changes nothing; the plan goes on with what it has.
+* *Changed meanwhile* (`conflict`, another client changed the value first) prints `Changed meanwhile: it is now <value>. Yours was not applied.` and asks `Apply yours again? [Enter]   k) keep the current value` (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]).
 
 [#epic]
 == An Epic
@@ -253,6 +254,7 @@ The acts of a hold are those of the shared design (link:../shared/work-actions.a
 |`r) retry   p) show the pull request   g) give up the removal…`
 |===
 
+* *After the act* (`hold.apply`): released (`hold.released`), the line `✓ <plan> goes on` (`control.hold.released`); still held, `hold.show` prints the hold again with `Still held: <cause>` (`control.hold.still_held`) and its prompt.
 * The labels are the shared keys `control.hold.act.<act>`, the kind of the hold the shared `control.hold.kind.<kind>`; the mnemonics are `operator.actions.key.<act>` (xref:22-texts-actions.adoc#actions-keys[Keys]).
 * The holds are exactly these five; a paused plan is none and offers its actions only.
 * An act that cannot be undone (_accept the change_, _end the plan_, _abort the plan_, _cancel the epic_, _give up the removal_) confirms first and names what follows; _abort the plan_ is the dialogue `Abort fix-relay?` of `plan cancel`. _Give up the removal_ keeps the moved files tracked in git: the removal's branch is dropped, and the source keeps its copy.

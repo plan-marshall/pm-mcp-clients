@@ -216,6 +216,10 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |o
 |e
 
+|`operator.actions.key.keep_current`
+|k
+|h
+
 |`operator.actions.key.next`
 |n
 |n

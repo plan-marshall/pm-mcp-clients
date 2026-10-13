@@ -326,9 +326,11 @@ pm ›
 
 pm › project unenrol legacy-portal
 Unenrol legacy-portal?
-  What ends      its enrolment: the project leaves the list; its checkout and
-                 the team's configuration in it stay as they are
-  Afterwards     it is onboarded again only from the start (project add)
+  What ends      its enrolment: the project leaves the list; its checkout, the
+                 team's configuration in it, and its archived work on this
+                 machine stay as they are
+  Afterwards     it is onboarded again from the start (project add), and
+                 finds its archived work again
 Unenrol the project? y) yes   n) no, keep it   ?   › y
 ✓ legacy-portal unenrolled
 pm ›

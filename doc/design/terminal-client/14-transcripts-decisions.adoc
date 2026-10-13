@@ -251,6 +251,22 @@ Question Q-014 · plan fix-relay · plan · blocks the plan · can be undone
 * Answered in another channel during the chat, the console prints `– Q-007 was answered in the web app (iPad); the chat has ended.` and returns to its prompt.
 * While no configuration of the routed role qualifies, `h` is refused with the reason (`no configuration of implement qualifies yet`); a waiver request has no `h`.
 
+[#t-decision-setup]
+=== A Question of a Project's Setup
+
+[source,text]
+----
+◆ Question Q-031 · setup of pm-mcp-clients · descriptions · blocks the setup · can be undone
+pm [1 question] › answer Q-031
+  Should the generated sources of pm-api be described as a module of their own?
+  1) yes   2) no, with pm-api ← recommended by enrich
+Answer? [Enter]   other: 1-2   w) in my own words   h) chat   x) none fits   l) later   ?   › l
+Q-031 stays open; the setup of pm-mcp-clients waits for it. questions lists it.
+----
+
+* A decision of a project's setup is announced, listed by `questions`, and answered like a plan's; its subject is `setup of <project>` and its step stands where a plan's phase would (link:../shared/decisions.adoc#setup[Decisions, A Project's Setup Asks]).
+* `h) chat` goes to the role of the task that asked (`enrich` here); for a question the setup's workflow raised itself, `h` is refused with `decision.chat.no_role`.
+
 [#t-decision-waiver]
 === A Waiver Request
 
@@ -322,8 +338,8 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |ändere einen Teil
 
 |`operator.decision.later_done`
-|{id} stays open; the {scope, select, epic {epic} other {plan}} waits for it. questions lists it.
-|{id} bleibt offen; {scope, select, epic {das Epic} other {der Plan}} wartet darauf. questions listet sie.
+|{id} stays open; the {scope, select, epic {epic} setup {setup of {project}} other {plan}} waits for it. questions lists it.
+|{id} bleibt offen; {scope, select, epic {das Epic} setup {das Setup von {project}} other {der Plan}} wartet darauf. questions listet sie.
 
 |`operator.decision.none_fits_confirm`
 |None fits: the {scope, select, epic {epic} other {plan}} thinks again and asks anew. Send?

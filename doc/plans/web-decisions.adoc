@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The decisions of the web app as designed: announcing with a notification, the decision view with its parts, support, recommendation by what is at stake, own words with read-back and clarification, confirmation, answered elsewhere and changed decisions, _none fits_ with the decision asked anew, _later_; waiver requests with waive and decline; _Chat about it first_ opening the chat panel of `web-start` beside the decision, a proposed answer taken through the read-back, a decision withdrawn by a revision, and the chat ended by an answer elsewhere.
+* The decisions of the web app as designed: announcing with a notification, the decision view with its parts, support, recommendation by what is at stake, own words with read-back and clarification, confirmation, answered elsewhere and changed decisions, _none fits_ with the decision asked anew, _later_; a decision of a project's setup, its chat with the asking task's role or disabled with its reason; waiver requests with waive and decline; _Chat about it first_ opening the chat panel of `web-start` beside the decision, a proposed answer taken through the read-back, a decision withdrawn by a revision, and the chat ended by an answer elsewhere.
 
 == Trace
 

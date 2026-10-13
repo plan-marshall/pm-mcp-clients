@@ -47,8 +47,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |lässt sich nicht rückgängig machen
 
 |`decision.waiting`
-|the plan waits for your answer, since {time}
-|der Plan wartet seit {time} auf deine Antwort
+|{subject, select, epic {the epic} setup {the setup of {project}} other {the plan}} waits for your answer, since {time}
+|{subject, select, epic {das Epic} setup {das Setup von {project}} other {der Plan}} wartet seit {time} auf deine Antwort
 
 |`decision.part.position`
 |part {n} of {total}
@@ -277,6 +277,10 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |`decision.chat.after_chat`
 |answered after a chat
 |nach einem Chat beantwortet
+
+|`decision.chat.no_role`
+|This question comes from the setup itself: no planning role can chat about it.
+|Diese Frage stellt das Setup selbst: keine planende Rolle kann darüber chatten.
 
 |`decision.chat.none_for_waiver`
 |A waiver request offers no chat: the waiver is your override, not an answer to its content.
