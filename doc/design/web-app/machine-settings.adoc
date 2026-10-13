@@ -41,6 +41,8 @@ Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every 
 │                                                                              │
 │  Documents   Ask each time                                      [ Change ]   │
 │                                                                              │
+│  Cleanup     30 days, reminder 3 days · 1 project its own       [ Change ]   │
+│                                                                              │
 │  Remembered consents                                                         │
 │    look for harnesses                          12 Oct · terminal [ Withdraw ]│
 │    check whether a harness is logged in        12 Oct · Firefox  [ Withdraw ]│
@@ -159,10 +161,39 @@ How documents are taken into a plan at its start: the machine's `sources.documen
 
 Terminal: `pm-operator config documents` (link:../terminal-client/08-transcripts-later.adoc#t-documents[Terminal Client, transcript]).
 
+[#cleanup]
+== The Cleanup's Durations
+
+How long ended work is kept before the cleanup offers it (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]); the line sums them up (`system.cleanup.durations.summary`), and *Change* opens them in place:
+
+[source,text]
+----
+  How long should ended work be kept?
+
+  Archived plans        [ 30 ] days   ( ) never
+  Archived epics        [ 30 ] days   ( ) never
+  Logs of ended work    [ 30 ] days   ( ) never
+  Read reports          [ 30 ] days   ( ) never
+  Unenrolled projects   [ 30 ] days   ( ) never
+  Ask me again after    [  3 ] days
+
+  An item is offered when its end is older than its duration. Nothing is deleted
+  without you.
+  1 project has its own: pm-mcp-core (plans 90 days)
+
+  [ Back to the settings ]                               [ Keep as it is ]
+----
+
+* The machine's values, recorded and audited by `settings.record`; with a value changed the button reads _Keep these durations_. A changed duration deletes nothing; it applies at the next check.
+* *A project's own value* is listed by its project and changed in that project's setup, under ④ Own settings (link:../shared/project-onboarding.adoc#steps[Project Onboarding, Steps]); never here.
+* The cleanup view's _Durations_ opens the same.
+
+Terminal: `pm-operator config cleanup` (link:../terminal-client/26-cleanup.adoc#t-durations[Terminal Client, transcript]).
+
 [#conflict]
 == Changed Meanwhile
 
-A value changed in another client (the terminal, another device) after this page showed it is not overwritten: the change made here is refused with `conflict`, nothing of it applied, and the line shows the current value beside the operator's choice with _Keep the current value_ and _Apply yours again_ (`common.conflict.*`). This holds for every aspect and for the documents mode (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]; link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#concurrent-changes[Concurrent Changes of a Setting]).
+A value changed in another client (the terminal, another device) after this page showed it is not overwritten: the change made here is refused with `conflict`, nothing of it applied, and the line shows the current value beside the operator's choice with _Keep the current value_ and _Apply yours again_ (`common.conflict.*`). This holds for every aspect, the documents mode, and the cleanup's durations (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]; link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#concurrent-changes[Concurrent Changes of a Setting]).
 
 [#credentials]
 == A Token Rotated or Replaced (`settings.credential`, `settings.store-credential`)
@@ -202,7 +233,7 @@ Terminal: `pm-operator web devices` (link:../terminal-client/08-transcripts-late
 [#texts]
 == Texts
 
-Keys of the area `web`; the texts of the settings' own states (tokens, documents, a token rotated or replaced) are the shared `onboard.settings.*` (link:../terminal-client/23-texts-settings.adoc#texts-settings-shared[Terminal Client, Texts: Machine Settings]), those of `settings.withdraw` the shared `common.consent.withdraw.*`. The lines of the aspects use the summaries of the onboarding's result (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Done]) and the step names `onboard.step.*`; the check lines and the links of a provider are those of `providers.verify` and `providers.failed` (link:../terminal-client/12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]); a remembered consent is named by its kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]).
+Keys of the area `web`; the cleanup's durations use the shared `system.cleanup.durations.*` (link:../shared/cleanup-texts.adoc#texts-kept[Cleanup, Texts]); the texts of the settings' own states (tokens, documents, a token rotated or replaced) are the shared `onboard.settings.*` (link:../terminal-client/23-texts-settings.adoc#texts-settings-shared[Terminal Client, Texts: Machine Settings]), those of `settings.withdraw` the shared `common.consent.withdraw.*`. The lines of the aspects use the summaries of the onboarding's result (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Done]) and the step names `onboard.step.*`; the check lines and the links of a provider are those of `providers.verify` and `providers.failed` (link:../terminal-client/12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]); a remembered consent is named by its kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -311,4 +342,20 @@ Keys of the area `web`; the texts of the settings' own states (tokens, documents
 |`web.settings.devices.manage`
 |Manage
 |Verwalte sie
+
+|`web.settings.cleanup.title`
+|How long should ended work be kept?
+|Wie lange soll beendete Arbeit aufbewahrt werden?
+
+|`web.settings.cleanup.days`
+|days
+|Tage
+
+|`web.settings.cleanup.own`
+|{count, plural, one {# project has its own} other {# projects have their own}}: {projects}
+|{count, plural, one {# Projekt hat eigene} other {# Projekte haben eigene}}: {projects}
+
+|`web.settings.cleanup.save`
+|Keep these durations
+|Übernimm diese Fristen
 |===

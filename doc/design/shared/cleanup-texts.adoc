@@ -1,0 +1,279 @@
+= Design: Cleanup, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:system.adoc[System] » link:cleanup.adoc[Cleanup] » Texts
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
+
+Status: `DRAFT`. The texts of link:cleanup.adoc[Cleanup], shared by both clients.
+
+[#texts]
+== Texts
+
+Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). Sizes, dates, and times are arguments formatted by the client in the interface language; `{what}` is `system.cleanup.summary.what` with the counts concerned, the outcomes are `overview.ended.outcome` and `overview.ended.epic_end` (link:plan-overview.adoc#texts[Plan Overview, Texts]), and who decided is `system.by` (link:system-texts.adoc#texts-lifecycle[System, Texts]). The report's subject is `report.subject.system_cleanup_due` (link:reports.adoc#texts[Reports, Texts]); the terminal's own texts are in link:../terminal-client/26-cleanup.adoc#texts[Terminal Client, Cleanup].
+
+[#texts-job]
+=== The Job
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`system.cleanup.title`
+|Cleanup
+|Aufräumen
+
+|`system.cleanup.line_due`
+|due: {what} · frees {size}
+|fällig: {what} · gibt {size} frei
+
+|`system.cleanup.line_none`
+|nothing due · next check {time}
+|nichts fällig · nächste Prüfung {time}
+
+|`system.cleanup.review`
+|Review…
+|Sieh es dir an…
+
+|`system.cleanup.due_since`
+|due since {time}
+|fällig seit {time}
+
+|`system.cleanup.summary.title`
+|Summary
+|Übersicht
+
+|`system.cleanup.summary.what`
+|{plans, plural, =0 {} one {# plan} other {# plans}}{epics, plural, =0 {} one { · # epic} other { · # epics}}{logs, plural, =0 {} one { · # log} other { · # logs}}{reports, plural, =0 {} one { · # read report} other { · # read reports}}{projects, plural, =0 {} one { · # unenrolled project} other { · # unenrolled projects}}
+|{plans, plural, =0 {} one {# Plan} other {# Pläne}}{epics, plural, =0 {} one { · # Epic} other { · # Epics}}{logs, plural, =0 {} one { · # Log} other { · # Logs}}{reports, plural, =0 {} one { · # gelesener Bericht} other { · # gelesene Berichte}}{projects, plural, =0 {} one { · # nicht mehr registriertes Projekt} other { · # nicht mehr registrierte Projekte}}
+
+|`system.cleanup.summary.frees`
+|frees {size}
+|gibt {size} frei
+
+|`system.cleanup.details.title`
+|Details
+|Details
+
+|`system.cleanup.details.check_all`
+|Check all
+|Hake alle an
+
+|`system.cleanup.details.check_none`
+|None
+|Keinen
+
+|`system.cleanup.details.ended`
+|ended {time}
+|beendet {time}
+
+|`system.cleanup.details.logs`
+|{count, plural, one {# log} other {# logs}}
+|{count, plural, one {# Log} other {# Logs}}
+
+|`system.cleanup.details.logs_of`
+|logs of {plan}
+|Logs von {plan}
+
+|`system.cleanup.details.plan_kept_until`
+|plan kept until {date}
+|Plan bleibt bis {date}
+
+|`system.cleanup.details.reports`
+|{count, plural, one {# read report} other {# read reports}}
+|{count, plural, one {# gelesener Bericht} other {# gelesene Berichte}}
+
+|`system.cleanup.details.read_before`
+|read before {date}
+|gelesen vor {date}
+
+|`system.cleanup.details.machine`
+|this machine
+|diese Maschine
+
+|`system.cleanup.details.unenrolled_title`
+|Unenrolled projects
+|Nicht mehr registrierte Projekte
+
+|`system.cleanup.details.unenrolled`
+|unenrolled {date} · {plans, plural, one {# plan} other {# plans}}, {epics, plural, one {# epic} other {# epics}}
+|Registrierung entfernt {date} · {plans, plural, one {# Plan} other {# Pläne}}, {epics, plural, one {# Epic} other {# Epics}}
+
+|`system.cleanup.details.open`
+|Open
+|Öffne
+
+|`system.cleanup.details.unchecked_note`
+|Unchecked items are kept for good.
+|Nicht angehakte Einträge bleiben dauerhaft erhalten.
+|===
+
+[#texts-commands]
+=== Delete, Ask Me Again, Ignore
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`system.cleanup.action.delete`
+|Delete {what}…
+|Lösche {what}…
+
+|`system.cleanup.action.remind`
+|Ask me again in {days, plural, one {# day} other {# days}}
+|Frag mich in {days, plural, one {# Tag} other {# Tagen}} wieder
+
+|`system.cleanup.action.ignore`
+|Ignore
+|Ignoriere
+
+|`system.cleanup.action.nothing_checked`
+|Nothing is checked; Ignore keeps everything listed.
+|Nichts ist angehakt; Ignoriere behält alles Gelistete.
+
+|`system.cleanup.confirm.title`
+|Delete {what}?
+|{what} löschen?
+
+|`system.cleanup.confirm.frees`
+|This frees {size}. It cannot be undone.
+|Das gibt {size} frei. Es lässt sich nicht rückgängig machen.
+
+|`system.cleanup.confirm.stays`
+|Branches, pull requests, the remote, the checkout, and an epic's ledger in the repository stay.
+|Branches, Pull Requests, das Remote, der Checkout und das Ledger eines Epics im Repository bleiben.
+
+|`system.cleanup.confirm.kept`
+|{count, plural, =0 {} one {# unchecked item is kept for good.} other {# unchecked items are kept for good.}}
+|{count, plural, =0 {} one {# nicht angehakter Eintrag bleibt dauerhaft erhalten.} other {# nicht angehakte Einträge bleiben dauerhaft erhalten.}}
+
+|`system.cleanup.confirm.do`
+|Delete
+|Lösche
+
+|`system.cleanup.confirm.back`
+|Back
+|Zurück
+
+|`system.cleanup.deleting`
+|Deleting … {done} of {total}
+|Lösche … {done} von {total}
+
+|`system.cleanup.deleted`
+|Deleted {what}; {size} freed.
+|{what} gelöscht; {size} freigegeben.
+
+|`system.cleanup.not_deleted`
+|{count, plural, one {# item could not be deleted and comes back} other {# items could not be deleted and come back}} in the next cleanup: {reason}.
+|{count, plural, one {# Eintrag konnte nicht gelöscht werden und kommt} other {# Einträge konnten nicht gelöscht werden und kommen}} beim nächsten Aufräumen wieder: {reason}.
+
+|`system.cleanup.reminded`
+|Nothing was deleted. The same items come back {date}.
+|Nichts wurde gelöscht. Dieselben Einträge kommen {date} wieder.
+
+|`system.cleanup.ignored`
+|Nothing was deleted. {count, plural, one {# item is} other {# items are}} kept for good; Kept for good releases them.
+|Nichts wurde gelöscht. {count, plural, one {# Eintrag bleibt} other {# Einträge bleiben}} dauerhaft erhalten; unter Dauerhaft behalten gibst du sie wieder frei.
+
+|`system.cleanup.none`
+|Nothing is due. The next check is {time}.
+|Nichts ist fällig. Die nächste Prüfung ist {time}.
+
+|`system.cleanup.decided_elsewhere`
+|This cleanup was decided in {who}: {decision, select, delete {deleted} remind {asked again later} ignore {ignored} other {closed}}.
+|Dieses Aufräumen wurde in {who} entschieden: {decision, select, delete {gelöscht} remind {später erneut gefragt} ignore {ignoriert} other {geschlossen}}.
+
+|`system.cleanup.item_deleted`
+|{item} was deleted by the cleanup (by {who}, {time}).
+|{item} wurde beim Aufräumen gelöscht (durch {who}, {time}).
+
+|`system.cleanup.logs_deleted`
+|logs deleted on {date}
+|Logs gelöscht am {date}
+|===
+
+[#texts-kept]
+=== Kept for Good, Durations, Removed by Itself
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`system.cleanup.kept.title`
+|Kept for good
+|Dauerhaft behalten
+
+|`system.cleanup.kept.why`
+|{how, select, ignore {ignored} exclude {left out of a delete} other {kept}} {time} · {who}
+|{how, select, ignore {ignoriert} exclude {beim Löschen ausgelassen} other {behalten}} {time} · {who}
+
+|`system.cleanup.kept.release`
+|Release {count} selected
+|Gib {count} ausgewählte frei
+
+|`system.cleanup.kept.release_all`
+|Release all
+|Gib alle frei
+
+|`system.cleanup.kept.confirm_all`
+|Give all {count} kept items back to the cleanup?
+|Alle {count} behaltenen Einträge wieder zum Aufräumen freigeben?
+
+|`system.cleanup.kept.released`
+|{count, plural, one {# item goes} other {# items go}} back to the cleanup; due at the next check where past its duration.
+|{count, plural, one {# Eintrag geht} other {# Einträge gehen}} zurück zum Aufräumen; fällig bei der nächsten Prüfung, wo die Frist vorbei ist.
+
+|`system.cleanup.kept.none`
+|Nothing is kept for good.
+|Nichts wird dauerhaft behalten.
+
+|`system.cleanup.durations.title`
+|Durations
+|Fristen
+
+|`system.cleanup.durations.kind`
+|{kind, select, plans {Archived plans} epics {Archived epics} logs {Logs of ended work} reports {Read reports} unenrolled {Unenrolled projects} remind {Ask me again after} other {{kind}}}
+|{kind, select, plans {Archivierte Pläne} epics {Archivierte Epics} logs {Logs beendeter Arbeit} reports {Gelesene Berichte} unenrolled {Nicht mehr registrierte Projekte} remind {Frag mich wieder nach} other {{kind}}}
+
+|`system.cleanup.durations.after`
+|{never, select, true {never} other {after {days, plural, one {# day} other {# days}}}}
+|{never, select, true {nie} other {nach {days, plural, one {# Tag} other {# Tagen}}}}
+
+|`system.cleanup.durations.summary`
+|{days, plural, one {# day} other {# days}}, reminder {remind, plural, one {# day} other {# days}}{own, plural, =0 {} one { · # project its own} other { · # projects their own}}
+|{days, plural, one {# Tag} other {# Tage}}, Erinnerung {remind, plural, one {# Tag} other {# Tage}}{own, plural, =0 {} one { · # Projekt mit eigenen} other { · # Projekte mit eigenen}}
+
+|`system.cleanup.durations.explain`
+|An item is offered when its end is older than its duration. Nothing is deleted without you.
+|Ein Eintrag wird angeboten, wenn sein Ende älter als seine Frist ist. Nichts wird ohne dich gelöscht.
+
+|`system.cleanup.durations.minimum`
+|At least {min, plural, one {# day} other {# days}}{kind, select, remind {} other {, or never}}.
+|Mindestens {min, plural, one {# Tag} other {# Tage}}{kind, select, remind {} other {, oder nie}}.
+
+|`system.cleanup.durations.change`
+|Change
+|Ändere
+
+|`system.cleanup.residue.title`
+|Removed by itself
+|Von selbst entfernt
+
+|`system.cleanup.residue.step`
+|{step, select, temp {temporary files} workers {worker directories of ended jobs} locks {stale locks, fenced generations} rows {old rows of the workspace} lessons {retired lesson bodies} caches {caches} other {{step}}}
+|{step, select, temp {temporäre Dateien} workers {Worker-Verzeichnisse beendeter Jobs} locks {veraltete Locks, abgegrenzte Generationen} rows {alte Zeilen des Arbeitsbereichs} lessons {Inhalte zurückgezogener Lessons} caches {Caches} other {{step}}}
+
+|`system.cleanup.residue.last`
+|last sweep {time}
+|letzte Bereinigung {time}
+
+|`system.cleanup.residue.not_run`
+|not run yet
+|noch nicht gelaufen
+
+|`system.cleanup.residue.explain`
+|Technical leftovers are removed by the runtime and never asked.
+|Technische Reste entfernt die Runtime selbst, ohne zu fragen.
+|===

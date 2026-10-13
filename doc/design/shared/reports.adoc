@@ -79,6 +79,10 @@ The runtime writes a report for a closed list of kinds; the client shows each re
 |`decision.closed_elsewhere`
 |`Q-007 of fix-relay was answered in the web app (iPad)`, or withdrawn by a revision
 |the subject's view, at the decision in its history
+
+|`system.cleanup_due`
+|`12 plans · 2 epics · 40 logs can be deleted`; one report per cleanup job, never one per item
+|the cleanup job (link:cleanup.adoc#job[Cleanup, The Cleanup Job])
 |===
 
 [#fields]
@@ -130,10 +134,10 @@ The runtime writes a report for a closed list of kinds; the client shows each re
                                                              [Show 12 older]
 ----
 
-* *Unread only*: the list shows the unread reports and nothing else; a report read in any client leaves it at once. There is no list of read reports: they are kept by the runtime and gone from the clients (removing them is the open point _deleting archived work_ of the specification).
-* *Grouped*: by project, then by epic, then by plan; a plan of no epic stands directly below its project, a report of the project itself (`▪ project`) at the end of its group. Groups are ordered by their newest report; within a group the newest first. A group is a heading, not a report: it shows no count and offers no action.
+* *Unread only*: the list shows the unread reports and nothing else; a report read in any client leaves it at once. There is no list of read reports: they are kept by the runtime and gone from the clients, until the cleanup offers them for deletion after `cleanup.reports_after_days` (link:cleanup.adoc#what[Cleanup, What the Cleanup Covers]).
+* *Grouped*: by project, then by epic, then by plan; a plan of no epic stands directly below its project, a report of the project itself (`▪ project`) at the end of its group. A report of the machine (`system.cleanup_due`) stands in a group _This machine_ of its own, ordered with the others by its newest report. Groups are ordered by their newest report; within a group the newest first. A group is a heading, not a report: it shows no count and offers no action.
 * *Newest first*, a page at a time: the runtime pages, the client never loads every unread report at once; _Show older_ names how many more there are.
-* *Unread reports never expire*: a report stays unread until the operator reads it, however old it is.
+* *Unread reports never expire*: a report stays unread until the operator reads it, however old it is, and the cleanup never offers it.
 * *Selecting a part of the path* (the project, the epic, the plan) opens that view without reading the report; only _Show the details_ reads it (<<read>>).
 
 [#arrival]
@@ -179,7 +183,7 @@ A report's detail is the view its kind leads to (<<kinds>>): opening it reads th
 
 * *A plan that ended* leads to its completion report, from which its plan view as it ended is one step (link:completion-report.adoc[Completion Report]).
 * *A subject that has ended since* (a report of a plan's start, read after the plan has ended): the detail opens as it ended, read-only, from the archive (link:plan-view.adoc#ended[An Ended Plan], link:epic-view.adoc#layout[Epic View]), with the line `relay-docs has ended (merged, 2 d ago); this is how it ended.` (`overview.ended.as_it_ended`).
-* *A subject no longer kept*: where the archive holds the subject no more, the report stays as it was written, its detail is offered disabled with its reason (`relay-docs is no longer kept`), and _Mark read_ remains.
+* *A subject deleted by the cleanup*: where the operator has deleted the subject in a cleanup (link:cleanup.adoc#deleting[Cleanup, What Deleting Does]), the report stays as it was written, its detail is offered disabled with its reason (`relay-docs was deleted on 13 Oct`), and _Mark read_ remains.
 * *A report without a detail* offers _Mark read_ alone.
 
 [#safety]
@@ -268,9 +272,13 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |{count} new reports · {from}
 |{count} neue Berichte · {from}
 
-|`report.detail.not_kept`
-|{item} is no longer kept
-|{item} wird nicht mehr aufbewahrt
+|`report.detail.deleted`
+|{item} was deleted on {date}
+|{item} wurde am {date} gelöscht
+
+|`report.list.machine`
+|This machine
+|Diese Maschine
 
 |`report.subject.plan_started`
 |{plan} started {by, select, operator {by you} epic {by {epic} ({running} of {scope} at once)} recipe {by the recipe {recipe}} other {}}
@@ -327,6 +335,10 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |`report.subject.decision_closed_elsewhere`
 |{id} of {item} was {how, select, answered {answered in {channel} ({device})} withdrawn {withdrawn by a revision} other {closed}}
 |{id} von {item} wurde {how, select, answered {in {channel} ({device}) beantwortet} withdrawn {durch eine Überarbeitung zurückgezogen} other {geschlossen}}
+
+|`report.subject.system_cleanup_due`
+|{what} can be deleted
+|Löschbar: {what}
 |===
 
-The outcome and the end in `report.subject.plan_ended` and `report.subject.epic_ended` are the texts `overview.ended.outcome` and `overview.ended.epic_end`, the channel in `report.subject.decision_closed_elsewhere` the text `decision.channel.<channel>`; the kind of the path's parts uses `overview.kind.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]).
+The outcome and the end in `report.subject.plan_ended` and `report.subject.epic_ended` are the texts `overview.ended.outcome` and `overview.ended.epic_end`, the channel in `report.subject.decision_closed_elsewhere` the text `decision.channel.<channel>`, the counts in `report.subject.system_cleanup_due` the text `system.cleanup.summary.what` (link:cleanup-texts.adoc#texts-job[Cleanup, Texts]); the kind of the path's parts uses `overview.kind.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]).

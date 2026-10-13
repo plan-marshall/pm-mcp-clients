@@ -166,11 +166,12 @@ Settings · How this machine is set up
   10) Remembered consents   6
   11) Documents             ask each time
   12) Paired devices        3 devices · network listener off
+  13) Cleanup               30 days, reminder 3 days · 1 project its own
 
-Open: 1-12   q) leave   ?   › 8
+Open: 1-13   q) leave   ?   › 8
 ----
 
-* `1` to `7` run the aspect as `config <aspect>` does, a later run of its step (`onboard.entry` with `reconfigure <aspect>`); `8` and `9` open <<t-credential>> for that token; `10` <<t-consents>>; `11` <<t-documents>>; `12` <<t-devices>>. Each returns to this list when it ends; `q` leaves to the prompt.
+* `1` to `7` run the aspect as `config <aspect>` does, a later run of its step (`onboard.entry` with `reconfigure <aspect>`); `8` and `9` open <<t-credential>> for that token; `10` <<t-consents>>; `11` <<t-documents>>; `12` <<t-devices>>; `13` the cleanup's durations, as `config cleanup` (xref:26-cleanup.adoc#t-durations[Cleanup, The Durations]). Each returns to this list when it ends; `q` leaves to the prompt.
 * A token that has expired or expires within 14 days is marked `⚠` with its date; an expired one also names the plans it holds (`⚠ expired: holds 1 plan`). The status of a token is that of its last check (<<t-providers-verify>>).
 * An aspect a project sets for itself is changed in that project's setup, never here; the line says only what the machine provides.
 

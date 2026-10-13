@@ -1,0 +1,260 @@
+= Design: Cleanup
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » link:system.adoc[System] » Cleanup
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#retention[Retention & Rotation], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#periodic-sweep[Periodic Sweep], link:../../../../plan-marshall-documentation/doc/specification/filesystem-layout/03-project-store.adoc#archives[Archives], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/26-cleanup.adoc[Terminal Client, Cleanup], link:../web-app/README.adoc#structure[Web App]. A part of link:system.adoc[System]; its texts are in link:cleanup-texts.adoc[a part of their own].
+
+Work that ended stays on the machine: an archived plan with its history, decisions, and transcripts, an archived epic's store, the logs of its jobs and workers, the reports the operator has read, the store of a project that was unenrolled. It is the operator's record, and only the operator deletes it. The *cleanup* is the one place where that happens: the runtime says when something has been kept long enough, the operator sees what it is and decides, and nothing of the work history is deleted without that decision (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]).
+
+[#what]
+== What the Cleanup Covers
+
+Two classes, kept apart:
+
+[cols="2,3,2",options="header"]
+|===
+|Work history, deleted only by the operator |What it holds |Counted from
+
+|Archived plans
+|the plan's archive entry with everything below it: records, history, decisions, transcripts, metrics rows, and its logs
+|its archiving
+
+|Archived epics
+|the epic's machine store; the epic's archived ledger in the repository is the team's record and is never part of the cleanup
+|its archiving
+
+|Logs of ended work
+|the logs of ended jobs, also of a plan that still runs, and the worker and session logs of archived plans; counted per plan
+|the end of its job; for worker and session logs, the plan's archiving
+
+|Read reports
+|a report the operator has read (link:reports.adoc#read[Reports, Reading a Report])
+|its reading
+
+|Unenrolled projects
+|the project's whole machine store, with the archive of its ended plans and epics (link:project-explorer.adoc#release[Project Explorer, Release and Unenrol])
+|its unenrolment
+|===
+
+* *Technical residue* is removed by the periodic sweep of the runtime, as before, and never asked: temporary files, caches, the worker directories of ended jobs, stale locks, fenced generations, and the candidates of the evidence-based sweeps (old rows of the workspace, retired lesson bodies). The cleanup view shows it as figures per step only (<<residue>>); in the terminal `pm-operator sweep` lists what the next pass would remove, and `--apply` runs it now.
+* *Never offered*: an unread report, a pending entry (a start not finished), an archived plan that still owes an item (it is never due while it does), anything of running work but the logs of its ended jobs, and anything outside the machine store: a branch, a pull request, the remote, a checkout, the team's `.marshall/`. Unread reports and pending entries never expire.
+* *No automatic deletion of work history*: the former retention by `archived_plans_days` and `job_logs_days` is gone; an archived plan and a job log wait for the cleanup however old they are (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup]).
+
+[#durations]
+== How Long Work Is Kept
+
+One duration per kind of work history; an item is *due* when its end (counted as the table above says) is older than its duration.
+
+[cols="2,1,3",options="header"]
+|===
+|Setting |Default |A project's own value
+
+|`cleanup.plans_after_days`
+|`30`
+|yes
+
+|`cleanup.epics_after_days`
+|`30`
+|yes
+
+|`cleanup.logs_after_days`
+|`30`
+|yes
+
+|`cleanup.reports_after_days`
+|`30`
+|no, the machine's only
+
+|`cleanup.unenrolled_after_days`
+|`30`
+|no, the machine's only
+
+|`cleanup.remind_after_days`
+|`3`
+|no, the machine's only
+|===
+
+* *Values*: a number of days, at least `7`, or `never` (never offered); the reminder at least `1` day and never `never`. A smaller value is refused on its line with the minimum (`system.cleanup.durations.minimum`).
+* *Where it is set*: the machine's values, kept in `cleanup` of `machine-config.json`, in the machine settings (link:../web-app/machine-settings.adoc#cleanup[Web App, Machine Settings], link:../terminal-client/26-cleanup.adoc#t-durations[Terminal Client, `config cleanup`]) and in the cleanup view's _Durations_, which opens the same; a project's own value of plans, epics, and logs in its setup, under ④ Own settings, with the machine's value marked `from machine` (link:project-onboarding.adoc#steps[Project Onboarding, Steps]). The rule is that of every project value: accepted as proposed, nothing is recorded for the project.
+* *A changed duration deletes nothing*: it takes effect at the next check, and what becomes due by it is offered in a job like everything else. The line under the durations says so (`system.cleanup.durations.explain`).
+* *Changed meanwhile* in another client: refused with `conflict`, as every setting (link:work-actions.adoc#conflict[Changed in Two Clients at Once]). Every change is audited.
+
+[#due]
+== When Something Is Due
+
+* The runtime checks once a day and at its start (`cleanup.check`). When items have become due that no job holds, it makes one *cleanup job* (`cln-0007`) with all of them and writes one report of the kind `system.cleanup_due`, a report of the machine with no project (`cleanup.report`): `12 plans · 2 epics · 40 logs can be deleted`; its detail is the job (link:reports.adoc#kinds[Reports, What Reports There Are]). One report per job, never one per item.
+* *Quiet*: the report arrives as every report does, a quiet notice in an open client and a count on entering one (link:reports.adoc#notice[Reports, While a Client Is Open]); nothing blocks, nothing waits for the operator, and no work is held.
+* *One job at a time*: while a job is open or postponed, items that become due wait for the next one; the job never changes. The check after the job is `done` makes the next job, with what is due by then.
+* *Reached from*: the report's detail; the System view's line _Cleanup_ (link:system.adoc#cleanup[System, Cleanup]); `pm-operator cleanup` in the terminal. Opening the job from the report reads the report; opening it another way does not (link:reports.adoc#read[Reports, Reading a Report]).
+
+[#job]
+== The Cleanup Job
+
+The job is the state `cleanup.job`: a summary, the details, and three commands.
+
+----
+  Cleanup cln-0007 · due since today 03:00                              ● connected
+  ─────────────────────────────────────────────────────────────────────────────
+  Summary   12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project
+            frees 1.8 GB
+  ─────────────────────────────────────────────────────────────────────────────
+  Details                                                       [Check all] [None]
+  pm-mcp-clients
+    [x] ▸ fix-relay           merged (#214)      ended 12 Sep    84 MB    6 logs  [Open]
+    [x] ▸ docs-typo           no change          ended 11 Sep     2 MB    1 log   [Open]
+    [x] ◇ relay-hardening     completed          ended 10 Sep    12 MB            [Open]
+    [x]   logs of relay-docs  plan kept until 24 Oct             31 MB   14 logs
+    [x]   3 read reports      read before 13 Sep
+  pm-mcp-core
+    [ ] ▸ token-usage         merged (#88)       ended 9 Sep    120 MB   11 logs  [Open]
+    …
+  Unenrolled projects
+    [x] ▪ legacy-portal       unenrolled 2 Sep · 7 plans, 1 epic       1.1 GB
+  ─────────────────────────────────────────────────────────────────────────────
+  Kept for good  4 · Durations  30 days, reminder 3 days · Removed by itself  today 03:00
+  Unchecked items are kept for good.
+           [Delete 11 plans, 2 epics, 29 logs…]  [Ask me again in 3 days]  [Ignore]
+----
+
+[#summary]
+=== Summary
+
+The counts per kind (plans, epics, logs, read reports, unenrolled projects) and the space the job frees, as the runtime counts them; a kind with none is left out of the line. The summary is of the whole job; the button _Delete_ names the counts of what is checked.
+
+[#details]
+=== Details
+
+* *Grouped by project*, ordered as the overview orders its projects; the unenrolled projects in a group of their own at the end.
+* *A plan or an epic*: its kind as in Running Work (link:plan-overview.adoc#distinction[Plan Overview, Telling Them Apart]), its title, its outcome (link:work-actions.adoc#outcomes[How a Plan Ends]), when it ended, its size, and for a plan its logs counted (`6 logs`), which go with it. An epic's plans are items of their own: deleting the epic's store does not delete them, and the other way round.
+* *Logs on their own*: where a plan's logs are due but the plan is not (its own duration is longer, or it is kept), they are one row `logs of <plan>` with the date until which the plan is kept.
+* *Read reports*: one row per project (and one for the machine), counted, with the date they were read before; one step away their subjects.
+* *An unenrolled project*: when it was unenrolled, what its store holds (archived plans and epics, counted, not listed again), and its size.
+* *Open*: a plan or an epic opens read-only, as ended work opens it (link:plan-overview.adoc#ended[Plan Overview, Ended Work]), in place; going back returns to the job with its checks as they were. Opening decides nothing.
+* *Paged*: the runtime pages the details per project; a client never loads every item of a large job at once. The summary is always the whole job.
+* *Checks*: every item is checked when the job opens. An unchecked item is left out of _Delete_ and kept for good, as _Ignore_ keeps it (<<kept>>); _Check all_ and _None_ act on every item of the job, not only the page shown. The checks are the client's until _Delete_ sends them; another client opening the same job starts with all checked.
+
+[#commands]
+=== Delete, Ask Me Again, Ignore
+
+[cols="1,4",options="header"]
+|===
+|Command |What it does
+
+|*Delete…*
+|opens one confirmation (`cleanup.confirm`) naming the counts, the space it frees, what stays, and how many unchecked items are kept for good; it cannot be undone. Confirmed, the runtime deletes the checked items (`cleanup.delete`) and keeps the unchecked ones for good. Disabled while nothing is checked, with the reason `Nothing is checked; Ignore keeps everything listed.`
+
+|*Ask me again in 3 days*
+|deletes nothing and keeps nothing (`cleanup.remind`): the job is `postponed`, and after `cleanup.remind_after_days` it opens again with the same items and a new report; what became due meanwhile still waits for the next job. The checks are not kept. The button names the setting's days.
+
+|*Ignore*
+|deletes nothing (`cleanup.keep`): every item of the job is kept for good and never offered again, whatever its check; the result names where they are (_Kept for good_) and that they can be released there. It asks no confirmation, since a release undoes it.
+|===
+
+----
+  Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?
+  This frees 1.7 GB. It cannot be undone.
+  Branches, pull requests, the remote, the checkout, and an epic's ledger in the
+  repository stay.
+  1 unchecked item is kept for good.
+                                                          [Back]  [Delete]
+----
+
+* *Deciding closes the job* (`done` after _Delete_ or _Ignore_, `postponed` after _Ask me again_), in every client. Each decision is audited: who, when, the channel and device, the decision, and the ids of what it deleted or kept.
+* *While deleting*: one progress line (`Deleting … 18 of 20`); the runtime deletes item by item, so a stop or a failure in between leaves the rest as it was. An item that could not be deleted (a file in use, a store busy) is named with its reason and offered again in the next job: `1 item could not be deleted and comes back in the next cleanup: the store of fix-relay is in use.`
+* *Done*: `Deleted 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project; 1.7 GB freed.` The view then shows the next check, the kept list, and the residue figures.
+* *No job open*: `Nothing is due. The next check is tomorrow 03:00.`, with the durations, the kept list, and the residue figures below.
+
+[#kept]
+== Kept for Good
+
+The items the operator ignored or left out of a delete, listed in the cleanup view under _Kept for good_ (and `pm-operator cleanup --kept`):
+
+----
+  Kept for good · 4                                               [Release all]
+    [ ] ▸ pm-mcp-core › token-usage     left out of a delete 13 Oct · the console
+    [ ] ◇ pm-mcp-clients › relay-auth   ignored 2 Oct · the web app (iPad)
+    [ ]   pm-mcp-clients › 3 read reports   ignored 2 Oct · the web app (iPad)
+    [ ] ▪ old-sandbox                    ignored 2 Oct · the web app (iPad)
+                                                          [Release 0 selected]
+----
+
+* Each with its kind and title, how it came to be kept (ignored, left out of a delete), when, and by whom; grouped as the details are, paged by the runtime. A plan or an epic opens read-only as in the job.
+* *Release* gives the selected items back to the cleanup, _Release all_ every one after a short confirmation; released, an item is due at the next check where its end is past its duration, and is offered in the next job. Releasing deletes nothing and is audited.
+* A kept item stays kept when its durations change, and a kept unenrolled project stays kept when it is enrolled again (its store is then its live store and no item of the cleanup).
+
+[#residue]
+== Removed by Itself
+
+What the runtime removes without asking, as figures per step of the sweep, each with the time it last ran and what it removed then:
+
+----
+  Removed by itself                                    last sweep today 03:00
+    temporary files                       214 · 340 MB
+    worker directories of ended jobs       18 · 1.2 GB
+    stale locks, fenced generations         3
+    old rows of the workspace             612
+    retired lesson bodies                   4
+----
+
+* The figures are the runtime's, per sweep step, as it last ran; a step that has not run since the start says `not run yet`. Nothing here is a command; in the terminal `pm-operator sweep` lists what the next pass would remove and `pm-operator sweep --apply` runs it at once (link:../terminal-client/26-cleanup.adoc#t-sweep[Terminal Client, Cleanup]).
+* The remaining keys of `retention` (the retired lesson bodies, the quiet window of `arch-constraint` lessons, the old rows of the workspace) govern these steps and stay operator settings of the project file; they are not shown as durations of the cleanup.
+
+[#deleting]
+== What Deleting Does, and What It Leaves
+
+* *An archived plan*: its archive entry with everything below it. It disappears from its project's ended work; a report whose detail it was keeps its subject, and its detail is offered disabled with `fix-relay was deleted on 13 Oct` (link:reports.adoc#detail[Reports, The Detail]); its completion report goes with it.
+* *An archived epic*: its machine store; it disappears from ended work. Its archived ledger in the repository stays as the team's record.
+* *Logs*: the files; a plan's view, if the plan is still kept, says `logs deleted on 13 Oct` where a log was.
+* *Read reports*: the reports; nothing shows them anyway.
+* *An unenrolled project*: its machine store with its archive; enrolled again from its checkout, it starts with an empty store.
+* *Never touched*: the plan's branch, its pull request, the remote, the checkout, the team's `.marshall/`, the epic's archived ledger, and the audit trail, which keeps the record of the deletion.
+* *The figures of the System view keep their aggregates*: the tokens and calls of the models' windows and the counters of the runtime are not recomputed downward when the plans they came from are deleted (link:system.adoc#models[System, The Models]); only a deleted plan's own figures (its completion report) are gone.
+* *Open elsewhere*: a client showing a plan or an epic that is deleted says `fix-relay was deleted by the cleanup (by the console, 14:12).` and falls back to its project's ended work.
+
+[#several]
+== Several Clients, One Job
+
+* The job is the same in every client and on every paired device; a new job, a decision, and a release reach every client live.
+* *Decided elsewhere*: a client showing the job when another decides it closes it and says what was decided, by whom: `This cleanup was decided in the web app (iPad): deleted.` A decision sent for a job already decided is answered with the decision already taken, and the client shows that one; nothing is applied twice.
+* *A release while a job is open* does not change the open job; the released items are offered in the next.
+
+[#channels]
+== Who May
+
+Reading the job, the kept list, and the residue figures is a read. Deciding a job, releasing kept items, and changing the durations are operator acts, from the terminal client's operator verbs and from a paired browser, the operator's two channels, never from a tool of a model (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation]); each is audited with its channel and device. While the runtime stops or upgrades, _Delete_ is refused with `The runtime is stopping; nothing new starts.` (link:system.adoc#draining[System, While It Stops]); _Ask me again_ and _Ignore_ are accepted.
+
+[#safety]
+== Untrusted Text
+
+The titles, outcomes' reasons, and report subjects of the details come from models and repositories; both clients show them as text only, after removing every control sequence (link:../terminal-client/04-console.adoc#output-safety[Terminal Client, Output Safety]; the web app renders no raw HTML).
+
+[#requests]
+== The Requests
+
+The change names the requests (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup]); the clients use them as it names them:
+
+* `GET /api/v1/system/cleanup`: the open job (its id `cln-NNNN`, its state `open`, `postponed`, `deleting`, or `done`, since when it is due, the summary with the space it frees, the details paged per project, the links of its three commands) or none with the time of the next check; the durations in force, the count of kept items, and the residue figures per sweep step with the time of its last run. It is the state `cleanup.job` of link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3].
+* `POST /api/v1/system/cleanup/{job_id}/delete` with the unchecked items, after `cleanup.confirm`; `POST /api/v1/system/cleanup/{job_id}/remind`; `POST /api/v1/system/cleanup/{job_id}/ignore`. Each closes the job; on a job already decided each answers the decision taken, with who took it.
+* `GET /api/v1/system/cleanup/kept`, paged; `PUT /api/v1/system/cleanup/kept` with the kept list as the operator leaves it: the items no longer in it are released. An item that was never kept cannot be added.
+* The durations are machine settings and a project's own values, changed as those are (`settings.record` of link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], `project.operator` of a project's setup); a change made in the cleanup view is the same request.
+* The report `system.cleanup_due` arrives as every report (link:reports.adoc#read[Reports, Reading a Report]); a new job, a decision, and the progress and end of a delete reach the clients on `GET /api/v1/events` as `cleanup.job_opened`, `cleanup.decided`, `cleanup.progress`, and `cleanup.done`.
+* The snapshot of the System view (`GET /api/v1/system`) carries the line of the cleanup: the open job's counts and space, or the next check.
+
+The clients hold no rule of their own: what is offered is what the runtime's representation offers as links.
+
+[#states]
+== The States
+
+`cleanup.check` and `cleanup.report` run in the runtime; the clients show `cleanup.job` and `cleanup.confirm`, and the results of `cleanup.delete`, `cleanup.remind`, and `cleanup.keep` (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]). The terminal's transcript of each is in link:../terminal-client/26-cleanup.adoc#state-coverage[Terminal Client, Cleanup].
+
+[#open-points]
+== Open Points
+
+* *Ignore without a confirmation*: the design asks none, since _Kept for good_ undoes it; the operator confirms.

@@ -12,7 +12,7 @@ Status: `DRAFT`. The texts of link:system.adoc[System], shared by both clients.
 [#texts]
 == Texts
 
-Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). Sizes, durations, and times are arguments formatted by the client in the interface language (`412 MB`, `6 h 12 min`, `today 08:14`); the plans' and epics' states are the texts `overview.state.*` of link:plan-overview.adoc#texts[Plan Overview, Texts]. The terminal's own texts are in link:../terminal-client/25-system.adoc#texts[Terminal Client, System].
+Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). Sizes, durations, and times are arguments formatted by the client in the interface language (`412 MB`, `6 h 12 min`, `today 08:14`); the plans' and epics' states are the texts `overview.state.*` of link:plan-overview.adoc#texts[Plan Overview, Texts]. The terminal's own texts are in link:../terminal-client/25-system.adoc#texts[Terminal Client, System]. The texts of the cleanup, `system.cleanup.*`, are in link:cleanup-texts.adoc#texts[Cleanup, Texts].
 
 [#texts-view]
 === The View

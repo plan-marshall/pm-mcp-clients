@@ -34,6 +34,7 @@ The client holds no step order and no rule of its own: it renders the state the 
 * xref:15-overview.adoc[The Overview]: the overview of running work across projects, as a full-screen view (`plans`) and as a tree (`status`); keys, live updates, where the operator left it.
 * xref:24-reports.adoc[Reports]: the unread reports on start, while the console is open, and in the full-screen view (`R`), reading them, a report's detail, and a plan's completion report; `reports`, `reports read`, `reports open`, `plan report`; with its texts.
 * xref:25-system.adoc[System]: the system view of the runtime and its work, printed and full screen (`S` from the overview), and stopping, restarting, and upgrading the runtime with their transcripts; `system`, `runtime stop|restart|upgrade`; with its texts.
+* xref:26-cleanup.adoc[Cleanup]: the cleanup job printed and decided, items left out, the items kept for good and their release, the durations of the machine and of a project; `cleanup`, `config cleanup`; with its transcripts and texts.
 * xref:04-console.adoc[The Console]: the prompt and its badges, what the runtime pushes, answering questions, connection, keys, notifications, output safety, the line editor.
 
 [#transcripts]

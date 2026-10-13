@@ -1,0 +1,314 @@
+= Terminal Client: Cleanup
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Cleanup
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup] (proposed)_
+
+What the cleanup offers, what its commands do, and what deleting leaves is link:../shared/cleanup.adoc[Cleanup], for both clients. This part is how the console offers it. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
+
+[#commands]
+== Commands
+
+----
+  cleanup [--project <project_id>|.]        the open cleanup job: summary and details
+  cleanup --delete [--exclude <item>...] [--yes]
+                                            [op]  delete what the job lists, but the items left out
+  cleanup --remind                          [op]  ask again after the reminder's days
+  cleanup --ignore                          [op]  keep everything the job lists for good
+  cleanup --kept                            the items kept for good
+  cleanup --release <item>... | --all [--yes]
+                                            [op]  give kept items back to the cleanup
+  config cleanup [--project <project_id>|.] [--plans|--epics|--logs <days>|never]
+                 [--reports|--unenrolled <days>|never] [--remind <days>]
+                                            [op]  the durations; a project's own for plans, epics, logs
+  sweep [--apply]                           what the next automatic pass removes; --apply runs it now
+----
+
+* *`cleanup`* is a read: it prints the open job, or that nothing is due with the next check, then the kept count and the residue figures. In the console, without an option, it asks the decision after printing (<<t-job>>); as one shell command it prints and exits `0`.
+* *`--delete`, `--remind`, `--ignore`* are operator verbs, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). `--delete` shows its confirmation (`cleanup.confirm`) as a dialogue, `--yes` answers it; with `--no-input` and no `--yes` it stops at the confirmation with exit code `3` (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]). `--remind` and `--ignore` ask nothing.
+* *An item* is named by its number in the last listing of this console, or by its kind and id: `plan:fix-relay`, `epic:relay-hardening`, `logs:relay-docs`, `reports:pm-mcp-clients`, `reports:machine`, `project:legacy-portal`. `--exclude` leaves the named items out of the delete and keeps them for good. `Tab` completes the ids of the open job.
+* *`config cleanup`* is the machine settings' part of the durations (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]); with `--project`, the project's own value of plans, epics, and logs. Options answer the questions, as for every `config` verb (xref:08-transcripts-later.adoc#t-config-direct[Arguments as Answers]).
+* *`sweep`* is the verb of the specification for technical residue; it never touches work history (<<t-sweep>>).
+* `reports open` on the report `system.cleanup_due` runs `cleanup` (xref:24-reports.adoc#commands[Reports, Commands]); the System view's line names it (xref:25-system.adoc#print[System, The View, Printed]).
+
+[#t-job]
+== The Job, and Deciding It (`cleanup.job`, `cleanup.confirm`, `cleanup.delete`)
+
+[source,text]
+----
+pm › cleanup
+Cleanup cln-0007 · due since today 03:00
+Summary   12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project
+          frees 1.8 GB
+pm-mcp-clients
+   1) ▸ fix-relay           merged (#214)     ended 12 Sep    84 MB    6 logs
+   2) ▸ docs-typo           no change         ended 11 Sep     2 MB    1 log
+   3) ◇ relay-hardening     completed         ended 10 Sep    12 MB
+   4)   logs of relay-docs  plan kept until 24 Oct            31 MB   14 logs
+   5)   3 read reports      read before 13 Sep
+pm-mcp-core
+   6) ▸ token-usage         merged (#88)      ended 9 Sep    120 MB   11 logs
+   …  8 more: cleanup --project pm-mcp-core
+Unenrolled projects
+  14) ▪ legacy-portal       unenrolled 2 Sep · 7 plans, 1 epic    1.1 GB
+Kept for good 4 (cleanup --kept) · durations 30 days, reminder 3 days · last sweep 03:00
+
+d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out   o) open   q) leave   › x
+Leave out: 6
+  6) ▸ token-usage  ✎ kept for good
+d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out   o) open   q) leave   › d
+Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?
+  This frees 1.7 GB. It cannot be undone.
+  Branches, pull requests, the remote, the checkout, and an epic's ledger in the
+  repository stay.
+  1 unchecked item is kept for good.
+Delete? y) yes   n) no, back   ?   › y
+◐ Deleting … 18 of 20
+✓ Deleted 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project; 1.7 GB freed.
+pm ›
+----
+
+* The details are paged per project as the runtime pages them; the line `… 8 more` names the command that prints the rest of a project.
+* `x` asks numbers or ids to leave out; the items left out are marked `✎ kept for good` and the delete's counts follow. `x` again with a number puts it back.
+* `o` with a number opens a plan or an epic read-only as ended work opens it (`plan <plan_id>`, `epic <epic_id>`; xref:16-plan-view.adoc[The Plan View]); `q` there returns to the job with what was left out kept.
+* The confirmation is answered by `y` or `n`, never by `Enter` alone, as every confirmation that cannot be undone. `n` returns to the choice.
+* *Not all deleted*: `✗ 1 item could not be deleted and comes back in the next cleanup: the store of fix-relay is in use.` after the result line.
+* *While the runtime stops*: `d` is refused with `The runtime is stopping; nothing new starts.`; `r` and `i` are accepted.
+
+[#t-script]
+=== As a Shell Command
+
+[source,text]
+----
+$ pm-operator cleanup --delete --exclude plan:token-usage --no-input
+Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?
+Needs a choice: --yes
+$ echo $?
+3
+$ pm-operator cleanup --delete --exclude plan:token-usage --yes
+✓ Deleted 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project; 1.7 GB freed.
+$
+----
+
+* Without an open job, `--delete`, `--remind`, and `--ignore` print `Nothing is due. The next check is tomorrow 03:00.` and exit `0`; an id that is no item of the open job is refused (`operator.cleanup.not_in_job`).
+
+[#t-remind]
+== Ask Me Again, Ignore (`cleanup.remind`, `cleanup.keep`)
+
+[source,text]
+----
+pm › cleanup --remind
+✓ Nothing was deleted. The same items come back 16 Oct.
+pm › cleanup --ignore
+✓ Nothing was deleted. 20 items are kept for good; cleanup --kept lists them, cleanup --release gives them back.
+pm ›
+----
+
+* `--remind` postpones the job by the reminder's days; at that time the report comes again and `cleanup` prints the same job.
+* `--ignore` keeps every item of the job, whatever `--exclude` names; `--exclude` belongs to `--delete` alone and is refused with the others (`operator.cleanup.exclude_delete_only`).
+
+[#t-kept]
+== Kept for Good, Released
+
+[source,text]
+----
+pm › cleanup --kept
+Kept for good · 4
+  1) ▸ pm-mcp-core › token-usage          left out of a delete 13 Oct · the console
+  2) ◇ pm-mcp-clients › relay-auth        ignored 2 Oct · the web app (iPad)
+  3)   pm-mcp-clients › 3 read reports    ignored 2 Oct · the web app (iPad)
+  4) ▪ old-sandbox                        ignored 2 Oct · the web app (iPad)
+pm › cleanup --release 1 4
+✓ 2 items go back to the cleanup; due at the next check where past its duration.
+pm › cleanup --release --all
+Give all 2 kept items back to the cleanup?  y) yes   n) no   ›  y
+✓ 2 items go back to the cleanup; due at the next check where past its duration.
+pm ›
+----
+
+* Releasing deletes nothing; it is audited with the channel `cli`. `--all` asks once, `--yes` answers it.
+* With nothing kept: `Nothing is kept for good.`
+
+[#t-none]
+== Nothing Due, Decided Elsewhere
+
+[source,text]
+----
+pm › cleanup
+Cleanup · Nothing is due. The next check is tomorrow 03:00.
+Kept for good 2 (cleanup --kept) · durations 30 days, reminder 3 days
+Removed by itself · last sweep today 03:00
+  temporary files                       214 · 340 MB
+  worker directories of ended jobs       18 · 1.2 GB
+  stale locks, fenced generations         3
+  old rows of the workspace             612
+  retired lesson bodies                   4
+pm ›
+----
+
+[source,text]
+----
+pm › cleanup
+Cleanup cln-0007 · due since today 03:00
+  …
+d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out   o) open   q) leave   ›
+▪ This cleanup was decided in the web app (iPad): deleted.
+pm ›
+----
+
+* A decision taken in another client ends the choice with its line; a decision sent from here for a job already decided prints the decision taken, with who took it, and changes nothing.
+* A new job arriving while the console is open is the quiet line of its report (link:../shared/reports.adoc#notice[Reports, While a Client Is Open]).
+
+[#t-durations]
+== The Durations (`config cleanup`, `settings.record`)
+
+[source,text]
+----
+pm › config cleanup
+Cleanup · How long should ended work be kept?
+  1) Archived plans        after 30 days
+  2) Archived epics        after 30 days
+  3) Logs of ended work    after 30 days
+  4) Read reports          after 30 days
+  5) Unenrolled projects   after 30 days
+  6) Ask me again after    3 days
+  1 project has its own: pm-mcp-core (plans 90 days)
+  An item is offered when its end is older than its duration. Nothing is deleted without you.
+
+Keep as it is? [Enter]   change: 1-6   ?   › 1
+  Archived plans · days, at least 7, or never   › 60
+  1) Archived plans        after 60 days ✎
+Keep these durations? [Enter]   change: 1-6   ?   › ⏎
+✓ Durations recorded: archived plans after 60 days.
+pm › config cleanup --project pm-mcp-core
+Cleanup · project pm-mcp-core · How long should its ended work be kept?
+  1) Archived plans        after 90 days   own
+  2) Archived epics        after 30 days   ← from machine
+  3) Logs of ended work    after 30 days   ← from machine
+Keep as it is? [Enter]   change: 1-3   d) remove its own values   ?   ›
+----
+
+* The values of the machine are kept in `machine-config.json` (`cleanup`); a project's own in its operator file. A value below the minimum is refused on its line (`At least 7 days, or never.`), and the line asks again.
+* `config cleanup --plans 60 --yes` answers as one shell command; `--project` with `--reports`, `--unenrolled`, or `--remind` is refused, since they are the machine's only (`operator.cleanup.machine_only`).
+* *Changed meanwhile*: refused with `conflict` and shown with its current value, as every setting of `config` (xref:08-transcripts-later.adoc#t-documents[The Documents Mode]).
+* The same durations are line `13` of `config` (xref:08-transcripts-later.adoc#t-settings[The Machine Settings]) and line `8` of a project's ④ Own settings (xref:17-projects.adoc#onboarding[Onboarding a Project]).
+
+[#t-sweep]
+== Technical Residue (`sweep`)
+
+[source,text]
+----
+$ pm-operator sweep
+The next automatic pass (tomorrow 03:00) would remove:
+  temporary files                        37 · 52 MB
+  worker directories of ended jobs        2 · 140 MB
+  old rows of the workspace              48
+  Run it now: pm-operator sweep --apply
+$ pm-operator sweep --apply
+✓ Removed 37 temporary files, 2 worker directories, 48 old rows; 192 MB freed.
+----
+
+* `sweep` never lists or deletes work history: archived plans, epics, logs of ended work, read reports, and unenrolled projects are the cleanup's (link:../shared/cleanup.adoc#what[Cleanup, What the Cleanup Covers]).
+
+[#state-coverage]
+== Every State and Its Transcript
+
+[cols="2,1,3",options="header"]
+|===
+|State |Kind |Transcript
+
+|`cleanup.check`, `cleanup.report`
+|`[S]`, `[S]`
+|<<t-none>> (the report's quiet line)
+
+|`cleanup.job`
+|`[O]`
+|<<t-job>>, <<t-none>>
+
+|`cleanup.confirm`, `cleanup.delete`
+|`[O]`, `[S]`
+|<<t-job>>, <<t-script>>
+
+|`cleanup.remind`
+|`[S]`
+|<<t-remind>>
+
+|`cleanup.keep`
+|`[S]`
+|<<t-remind>>, <<t-job>> (items left out)
+
+|`settings.record` of the durations
+|`[S]`
+|<<t-durations>>
+|===
+
+[#texts]
+== Texts of the Terminal
+
+The texts of the job, the kept list, the durations, and the residue are those of link:../shared/cleanup-texts.adoc#texts[Cleanup, Texts]; the terminal adds these, of the area `operator`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.cleanup.choose`
+|d) delete…   r) ask me again in {days, plural, one {# day} other {# days}}   i) ignore   x) leave items out   o) open   q) leave
+|d) lösche…   r) frag mich in {days, plural, one {# Tag} other {# Tagen}} wieder   i) ignoriere   x) lass Einträge aus   o) öffne   q) verlasse
+
+|`operator.cleanup.leave_out`
+|Leave out
+|Lass aus
+
+|`operator.cleanup.left_out`
+|kept for good
+|dauerhaft behalten
+
+|`operator.cleanup.more`
+|{count} more: {command}
+|{count} weitere: {command}
+
+|`operator.cleanup.kept_hint`
+|Kept for good {count} (cleanup --kept)
+|Dauerhaft behalten {count} (cleanup --kept)
+
+|`operator.cleanup.ignored_hint`
+|cleanup --kept lists them, cleanup --release gives them back.
+|cleanup --kept listet sie, cleanup --release gibt sie wieder frei.
+
+|`operator.cleanup.not_in_job`
+|{item} is no item of the open cleanup.
+|{item} ist kein Eintrag des offenen Aufräumens.
+
+|`operator.cleanup.exclude_delete_only`
+|--exclude goes with --delete only.
+|--exclude gilt nur mit --delete.
+
+|`operator.cleanup.machine_only`
+|{option} is the machine's only; a project has no value of its own for it.
+|{option} gilt nur für die Maschine; ein Projekt hat dafür keinen eigenen Wert.
+
+|`operator.cleanup.ask_days`
+|days, at least {min}, or never
+|Tage, mindestens {min}, oder nie
+
+|`operator.cleanup.recorded`
+|Durations recorded: {what}.
+|Fristen gespeichert: {what}.
+
+|`operator.cleanup.sweep_would`
+|The next automatic pass ({time}) would remove:
+|Der nächste automatische Durchlauf ({time}) würde entfernen:
+
+|`operator.cleanup.sweep_apply_hint`
+|Run it now: pm-operator sweep --apply
+|Führe ihn jetzt aus: pm-operator sweep --apply
+
+|`operator.cleanup.sweep_done`
+|Removed {what}; {size} freed.
+|{what} entfernt; {size} freigegeben.
+|===
