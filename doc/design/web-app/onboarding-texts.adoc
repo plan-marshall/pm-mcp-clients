@@ -42,7 +42,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.harness.scan.progress`, `.found`; `onboard.harness.icons_consent.title`, `.looks_for`, `.runs`, `.never`; `onboard.harness.fetch_icons.done`, `.failed`; `web.onboard.icons_consent.action`, `web.onboard.icons_consent.no_action`; `web.consent.withdraw_hint`
 
 |xref:onboarding.adoc#harness-choose[harness-choose], xref:onboarding.adoc#harness-none[harness-none]
-|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `web.onboard.harness.advanced`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`
+|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `web.onboard.harness.advanced`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`, `.unusable_title`, `.none_passed`, `.fix_one`; `web.onboard.later`
 
 |xref:onboarding.adoc#harness-add[harness-add], xref:onboarding.adoc#harness-add-confirm[harness-add-confirm]
 |`onboard.harness.add.title`, `.executable`, `.name`, `.id`, `.start_from`, `.start_from_hint`, `.headless`, `.arguments`, `.mcp_config`, `.output`, `.usage`, `.version_probe`, `.more`, `.action_verify`, `.edit`; `onboard.harness.add_consent.title`, `.runs`, `.never`, `.cost`; `onboard.harness.verify.title`, `.answered`, `.fix_field`; `common.check.not_run`; `onboard.harness.add_confirm.title`, `.intro`, `.profile`, `.workers_yes`, `.workers_no`, `.action`; `onboard.harness.install.done`; `common.link.back`
@@ -60,10 +60,10 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.roles.review.title`, `.applied`, `.group_roles`, `.not_assignable`, `.no_model_of_tier`, `.assign_open_first`, `.action_defaults`, `.action_save`, `.action_use`, `.adjust`, `.ask_steward`, `.reset`, `.to_look_at`, `.no_effort`; `onboard.roles.field.*`, `onboard.roles.origin.*`, `onboard.roles.advisory.*`; `onboard.roles.consent.title`, `.runs`, `.never`; `onboard.roles.propose.title`, `.reason`, `.rejected`, `.action_all`, `.action_some`; `onboard.roles.validate.ok`, `onboard.roles.done`
 
 |xref:onboarding-steps-4-7.adoc#credential-store[credential-store]
-|`onboard.store.choose.title`, `.keychain`, `.keychain_text`, `.secret_service`, `.secret_service_text`, `.files`, `.files_text`, `.holds`, `.action`; `onboard.store.check.write`, `.read`, `.delete`; `onboard.store.unavailable.now`, `.locked`, `.locked_fix`, `.no_bus`, `.no_bus_fix`, `.choose_another`; `common.link.recheck`; `onboard.store.done`; `onboard.store.move.title`, `.moves`, `.moves_value`, `.each`, `.each_value`, `.if_stopped`, `.if_stopped_value`, `.action`, `.moved`
+|`onboard.store.choose.title`, `.keychain`, `.keychain_text`, `.secret_service`, `.secret_service_text`, `.files`, `.files_text`, `.holds`, `.action`; `onboard.store.consent.title`, `.runs`, `.never`; `onboard.store.check.write`, `.read`, `.delete`; `onboard.store.unavailable.now`, `.locked`, `.locked_fix`, `.no_bus`, `.no_bus_fix`, `.choose_another`; `common.link.recheck`; `onboard.store.done`; `onboard.store.move.title`, `.moves`, `.moves_value`, `.each`, `.each_value`, `.if_stopped`, `.if_stopped_value`, `.action`, `.moved`
 
 |xref:onboarding-steps-4-7.adoc#providers[providers]
-|`onboard.providers.consent.title`, `.looks_for`, `.never`; `onboard.providers.scan.tokens`; `onboard.providers.select.title`, `.available`, `.variant`, `.native`, `.native_only`, `.token_stored`, `.token_missing`, `.review_bots`, `.defaults_note`, `.action`; `onboard.providers.credentials.title`, `.stored_note`, `.action`, `.lan`; `onboard.providers.verify.*`; `common.check.ready`, `common.check.not_ready`; `onboard.providers.failed.fix_token`, `.continue_without`, `.without_note`; `onboard.providers.done`, `.done_not_available`
+|`onboard.providers.consent.title`, `.looks_for`, `.never`; `onboard.providers.scan.tokens`; `onboard.providers.select.title`, `.available`, `.variant`, `.native`, `.native_only`, `.token_stored`, `.token_missing`, `.review_bots`, `.defaults_note`, `.action`; `onboard.providers.credentials.title`, `.stored_note`, `.action`, `.lan`, `.stored`; `onboard.providers.verify_consent.title`, `.runs`, `.never`; `onboard.providers.verify.*`; `common.check.ready`, `common.check.not_ready`; `onboard.providers.failed.fix_token`, `.continue_without`, `.without_note`; `onboard.providers.done`, `.done_not_available`
 
 |xref:onboarding-steps-4-7.adoc#plan-defaults[plan-defaults]
 |`onboard.defaults.review.title`, `.override_note`, `.needs_provider`, `.action_defaults`, `.action_save`; `onboard.defaults.axis.*`, `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`
@@ -86,8 +86,8 @@ The keys below of the area `onboard` are new with this design and belong in the 
 |du wurdest gefragt
 
 |`onboard.defaults.validate.main_per_project`
-|Commit on main: checked for each project, where its base branch is known
-|Commit auf main: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
+|Commit on the base branch: checked for each project, where its base branch is known
+|Commit auf dem Basis-Branch: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
 
 |`onboard.harness.fetch_icons.failed`
 |The icon of {harness} was not fetched: {cause}. Its monogram stays.
@@ -236,6 +236,14 @@ The keys below of the area `onboard` are new with this design and belong in the 
 |`web.onboard.auto_run.title`
 |Deciding everything
 |Alles wird entschieden
+
+|`web.onboard.later`
+|The setup waits here. Your next visit, here or in pm-operator, continues it.
+|Die Einrichtung wartet hier. Dein nächster Besuch, hier oder in pm-operator, setzt sie fort.
+
+|`web.onboard.later_action`
+|Continue later
+|Mach später weiter
 
 |`web.onboard.auto_run.waits`
 |The automatic run waits for you here.

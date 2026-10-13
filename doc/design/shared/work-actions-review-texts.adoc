@@ -1,0 +1,212 @@
+= Design: Reviews and Holds, Texts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics] » Texts of Reviews and Holds
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
+
+Status: `DRAFT`. The texts of link:work-actions.adoc#review[Reviewing Findings or Watches] and link:work-actions.adoc#holds[What Holds a Plan]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+
+[#texts]
+== Texts
+
+Keys of the area `control`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`control.review.title`
+|{epic} · {register, select, findings {findings review} other {watches review}}
+|{epic} · {register, select, findings {Prüfung der Findings} other {Prüfung der Beobachtungen}}
+
+|`control.review.progress`
+|{done} of {total} decided
+|{done} von {total} entschieden
+
+|`control.review.statement`
+|Statement
+|Aussage
+
+|`control.review.rules`
+|Rules
+|Regeln
+
+|`control.review.origin`
+|Origin
+|Herkunft
+
+|`control.review.proposal`
+|Proposal
+|Vorschlag
+
+|`control.review.untrusted`
+|untrusted
+|nicht vertrauenswürdig
+
+|`control.review.keep_finding`
+|{register, select, findings {Keep as a finding} other {To the findings}}
+|{register, select, findings {Behalte es als Finding} other {Verschiebe es zu den Findings}}
+
+|`control.review.keep_watch`
+|{register, select, findings {To the watches} other {Keep as a watch}}
+|{register, select, findings {Verschiebe es zu den Beobachtungen} other {Behalte es als Beobachtung}}
+
+|`control.review.drop`
+|Drop
+|Lass es fallen
+
+|`control.review.drop_reason`
+|Why do you drop it?
+|Warum lässt du es fallen?
+
+|`control.review.promote`
+|Promote to a plan
+|Mach einen Plan daraus
+
+|`control.review.edit`
+|Edit
+|Bearbeite es
+
+|`control.review.chat`
+|Chat
+|Chat
+
+|`control.review.accept_remaining`
+|Accept the remaining {count, plural, one {# proposal} other {# proposals}}
+|{count, plural, one {Nimm den übrigen Vorschlag an} other {Nimm die übrigen # Vorschläge an}}
+
+|`control.review.accept_remaining_confirm`
+|Take the proposal for {count, plural, one {this item} other {these # items}}?
+|Den Vorschlag für {count, plural, one {diesen Eintrag} other {diese # Einträge}} übernehmen?
+
+|`control.review.stage`
+|Stage it
+|Merke ihn vor
+
+|`control.review.back`
+|Back
+|Zurück
+
+|`control.review.instruct_plan`
+|What should change in the drafted plan?
+|Was soll sich am Entwurf des Plans ändern?
+
+|`control.review.redrafting`
+|the planning role drafts the plan again
+|die Planungsrolle entwirft den Plan neu
+
+|`control.review.accept`
+|Accept
+|Nimm es an
+
+|`control.review.instruct_again`
+|Instruct again
+|Weise neu an
+
+|`control.review.discard`
+|Discard
+|Verwirf die Änderung
+
+|`control.review.finish`
+|Finish
+|Schließe die Prüfung ab
+
+|`control.hold.title`
+|{kind, select, stalled {{name} is stalled} condition {{name} holds: a condition} integrity_pause {{name} holds: an integrity pause} held {{name} holds: a held item} other {{name} holds: a failed landing}}
+|{kind, select, stalled {{name} steht} condition {{name} wird durch eine Bedingung aufgehalten} integrity_pause {{name} wird durch eine Integritätspause aufgehalten} held {{name} wird durch einen zurückgehaltenen Eintrag aufgehalten} other {{name} wird durch eine fehlgeschlagene Landung aufgehalten}}
+
+|`control.hold.kind.stalled`
+|stalled
+|steht
+
+|`control.hold.kind.condition`
+|a condition
+|eine Bedingung
+
+|`control.hold.kind.integrity_pause`
+|an integrity pause
+|eine Integritätspause
+
+|`control.hold.kind.held`
+|a held item
+|ein zurückgehaltener Eintrag
+
+|`control.hold.kind.landing_failed`
+|a failed landing
+|eine fehlgeschlagene Landung
+
+|`control.hold.cause`
+|Cause
+|Ursache
+
+|`control.hold.tried`
+|Tried {count, plural, one {once} other {# times}}, last {time}
+|{count, plural, one {Einmal} other {# Mal}} versucht, zuletzt {time}
+
+|`control.hold.resolve`
+|Resolve
+|Lösen
+
+|`control.hold.act.retry`
+|Retry now
+|Versuche es jetzt erneut
+
+|`control.hold.act.recycle`
+|Recycle the worker
+|Starte den Worker neu
+
+|`control.hold.act.grant`
+|Grant read access to {project}…
+|Gib Lesezugriff auf {project}…
+
+|`control.hold.act.add_credential`
+|Add the credential…
+|Füge den Zugang hinzu…
+
+|`control.hold.act.raise_budget`
+|Raise the budget…
+|Erhöhe das Budget…
+
+|`control.hold.act.show_change`
+|Show the change
+|Zeige die Änderung
+
+|`control.hold.act.accept_change`
+|Accept the change…
+|Nimm die Änderung an…
+
+|`control.hold.act.restore`
+|Restore
+|Stelle wieder her
+
+|`control.hold.act.show_pr`
+|Show the pull request #{number}
+|Zeige den Pull Request #{number}
+
+|`control.hold.act.give_up_removal`
+|Give up the removal…
+|Gib das Entfernen auf…
+
+|`control.hold.act.end_plan`
+|End the plan…
+|Beende den Plan…
+
+|`control.hold.act.abort_plan`
+|Abort the plan…
+|Brich den Plan wegen der Integritätspause ab…
+
+|`control.hold.act.cancel_epic`
+|Cancel the epic…
+|Brich das Epic ab…
+
+|`control.hold.give_up_removal.explain`
+|The files stay tracked in git where they were, and the source keeps its copy; the two are no longer kept as one.
+|Die Dateien bleiben in Git, wo sie waren, und die Quelle behält ihre Kopie; beide werden nicht mehr als eins geführt.
+
+|`control.hold.cleared`
+|{cause} cleared by itself
+|{cause} hat sich von selbst erledigt
+|===

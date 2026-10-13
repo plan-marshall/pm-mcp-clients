@@ -9,38 +9,41 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projec
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-onboarding[Onboarding a Project as One Process], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-levels[Project Values over Machine Values] (proposed), link:../../../../plan-marshall-documentation/doc/specification/domain-extensions/04-setup-state-machine.adoc[Setup State Machine]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects], link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects]; the web app: designed by its package link:../../plans/web-projects.adoc[`web-projects`].
 
-Onboarding a project is one guided run: the checkout, a look at it on consent, the project's identity, its enrolment, its setup, what it takes from the machine or sets of its own, its architecture, its roles, the descriptions of its modules, and the commit of the team's configuration. It follows the onboarding of the machine in everything shared: the frame, consent, check lines, preselection, own values against the machine's (link:../web-app/onboarding.adoc[Web App, Onboarding]; link:../terminal-client/03-dialogues.adoc[Terminal Client, Dialogues]).
+Onboarding a project is one guided run: the checkout, a look at it on consent, the project's identity, its enrolment, the operator's own values of the project, the team's settings, its architecture, how its work lands, its roles, the descriptions of its modules, and the commit of the team's configuration. Its order is the setup's (link:../../../../plan-marshall-documentation/doc/specification/domain-extensions/04-setup-state-machine.adoc[Setup State Machine]). It follows the onboarding of the machine in everything shared: the frame, consent, check lines, preselection, own values against the machine's (link:../web-app/onboarding.adoc[Web App, Onboarding]; link:../terminal-client/03-dialogues.adoc[Terminal Client, Dialogues]).
 
 [#steps]
 == Steps
 
-The step line counts the project's steps as the machine's onboarding counts its own; the terminal client shows them as `[n/9]`:
+The step line counts the project's steps as the machine's onboarding counts its own; the terminal client shows them as `[n/10]`:
 
 ----
-  ① Checkout ─ ② Identity ─ ③ Enrolment ─ ④ Team settings ─ ⑤ Own settings
-  ─ ⑥ Architecture ─ ⑦ Roles ─ ⑧ Descriptions ─ ⑨ Commit ─ ✓ Ready
+  ① Checkout ─ ② Identity ─ ③ Enrolment ─ ④ Own settings ─ ⑤ Team settings
+  ─ ⑥ Architecture ─ ⑦ Landing ─ ⑧ Roles ─ ⑨ Descriptions ─ ⑩ Commit ─ ✓ Ready
 ----
 
-* *① Checkout* (`project.checkout`, `project.consent`, `project.detect`, `project.run-consent`, `project.probe`): the path of the checkout, the terminal client proposing its working directory; the consent to look at it, listing what is read and the version probes of the host tools that run; what can be read is read (a build wrapper's version from its pinned properties); host tools are resolved only from the absolute directories of the operator's login `PATH`, never from a relative entry or a directory inside the checkout, and recorded with their path and digest; where a script of the checkout must run to be known, a second consent names every script with its arguments and asks first (`run_checkout_scripts`, per project, recorded with the enrolment, asked again only for a script that changed), and the scripts run as confined jobs; the check lines of what was found.
-* *② Identity* (`project.identity`): the id proposed from the remote's name, the display name from its owner and name, both editable; the pilot choice only while the release's plan lifecycle is not open, with one sentence of what it means.
-* *③ Enrolment* (`project.enrolment`, `project.enrol`): everything to be enrolled as a list, each line with where it comes from (`detected`, `from machine`, `default`): the root, the build wrappers and their pinned files, the host tools, the language servers, the scripts, the budgets, the write paths, the build environment (<<build-environment>>); the container engine is not in the list but a choice of its own, off, with its warning before it can be turned on.
-* *④ Team settings* (the setup's choices that write the team's configuration): base branch and branch prefix, the lanes, the providers of the team's CI and analysis, the finalize steps, and the build map (`setup.seed-build-map`), which is confirmed here and nowhere else; each preselected from what the setup derived, each marked `team` because it is committed for everyone who works on the project.
-* *⑤ Own settings* (`project.operator`): every aspect the project may set, with the machine's value preselected and marked `from machine`: the model language, the allowed models, the role assignment, the providers and their credentials, the plan defaults, the integration variants, the commit identity (link:../terminal-client/02-levels.adoc#origins[Where a Value Comes From]). Accepting a line as proposed records nothing for the project; only a changed line is the project's.
-* *⑥ Architecture* (`setup.detect-domains`, `setup.discover-modules`): the project's type as the setup found it: the domains that apply, each with what made it apply (a descriptor, files), changeable where the team's `domains.json` allows; a project of a type no other descriptor covers gets the domain `general-dev`, and the line says so; the modules each build system's parser found, as a tree with their build system and packaging.
-* *⑦ Roles* (`setup.qualify-consent`, `setup.qualify-roles`): the consent to qualify the roles, of kind `model_cost`, with what runs (one qualification task per role on its assigned model) and its expected cost; then the qualification with its progress, one line per role.
-* *⑧ Descriptions* (`setup.enrich-consent`, `setup.enrich-architecture`): the consent to describe the modules, of kind `model_cost`, with what runs (one task of the role `enrich` per module), what it writes (`.marshall/project-architecture/`, committed in ⑨), and its expected cost; then one line per module turning from waiting to running to ✓. When the operator says no, the setup goes on without it: the architecture keeps what discovery found, `.marshall/project-architecture/` gets no descriptions of the modules, the project is ready, and a later run of its setup offers the descriptions again.
-* *⑨ Commit* (`setup.commit-changes`): the team's configuration as a list of files, to commit in the checkout or to leave there uncommitted; nothing is pushed.
-* *✓ Ready* (`project.completed`): what is ready, and the three actions of a project: add an epic, add a plan, its running work (link:project-explorer.adoc#actions[Project Explorer]).
+* *① Checkout* (`project.checkout`, `project.consent`, `project.detect`, `project.run-consent`, `project.probe`): the path of the checkout, the terminal client proposing its working directory.
+** *The consent to look at it* (`inspect_checkout`): the server reads the checkout and runs the version probes of the host tools, and changes nothing; the consent lists what is read and which probes run. _Not now_ stays at the consent. What can be read is read (a build wrapper's version from its pinned properties); host tools are resolved only from the absolute directories of the operator's login `PATH`, never from a relative entry or a directory inside the checkout, and recorded with their path and digest; the check lines show what was found.
+** *The consent to run scripts* (`run_checkout_scripts`), only where a script of the checkout must run to be known: it names every script with its arguments, and the scripts run as confined jobs. Its answers are _yes_ (this run), _yes, for this project_, and _no_. _Yes, for this project_ is remembered in the machine's `consents.json`, keyed by the project and the digest of each script, never in the enrolment, and asked again only for a script that changed (link:consents.adoc#remembered[Consents, The Remembered Consents]). _No_ goes on to ②, what needs the scripts marked `unknown`, and is not asked again in this run.
+* *② Identity* (`project.identity`): the id proposed from the remote's name, the display name from its owner and name, both editable; the pilot choice only while this version of `PM-MCP` keeps the plan lifecycle closed (the lifecycle gate), with one sentence of what it means.
+* *③ Enrolment* (`project.enrolment`, `project.enrol`): everything to be enrolled as a list, each line with where it comes from (`detected`, `from machine`, `default`): the root, the build wrappers and their pinned files, the host tools, the language servers, the scripts, the budgets, the write paths, the build environment (<<build-environment>>); the container engine is not in the list but a choice of its own, off, with its warning before it can be turned on. After the enrolment the setup's first states run as check lines: the run recorded as a first run (`setup.entry`), `.marshall/config/` created with the default workflow units (`setup.prepare-workspace`), the operator file and the role set validated (`setup.check-operator-files`).
+* *④ Own settings* (`project.operator`, `setup.probe-integration-variants`, `setup.verify-credentials`): the operator's values of the project, and only those, each with the machine's value preselected and marked `from machine`: the model language, the allowed models, the role assignment, the method and asking axes, the integration variant and credential of each provider, the commit identity (link:../terminal-client/02-levels.adoc#origins[Where a Value Comes From]). Accepting a line as proposed records nothing for the project; only a changed line is the project's. Then each integration's variant is probed and its credential or CLI tool verified, as check lines; a variant that is invalid or a credential that is refused returns to ④ with its finding on the line concerned. The landing axis and the providers' declaration are not here: they are the team's (⑦).
+* *⑤ Team settings* (`setup.project-settings`): base branch, branch prefix, the lanes; each preselected from what the setup derived and marked `team`, because it is committed for everyone who works on the project.
+* *⑥ Architecture* (`setup.detect-domains`, `setup.discover-modules`, `setup.seed-build-map`): the project's type as the setup found it: the domains that apply, each with what made it apply (a descriptor, files), changeable where the team's `domains.json` allows; a project of a type no other descriptor covers gets the domain `general-dev`, and the line says so. Then the modules each build system's parser found, as a tree with their build system and packaging, and the build map derived from them, confirmed or its routes customised, here and nowhere else (`team`).
+* *⑦ Landing* (`setup.select-providers`, `setup.configure-finalize`, `setup.probe-merge-queue`, `setup.merge-queue`): how the team's work lands, each line `team`. The providers: the CI provider derived from the remote (or overridden), the code analysis providers, the review bots. The finalize steps, and the landing variant (`landing.pull-request`, `landing.main`, `landing.files`) with the machine's default preselected and marked `from machine`; it is validated here against the project, and a machine default that does not fit (`landing.main` onto a protected base branch, `landing.pull-request` without a provider of pull requests) is refused on its line with the reason, the line waiting for another choice. Where the base branch has no enforced merge queue and could have one, a check line says so with _Check again_ and _Skip_.
+* *⑧ Roles* (`setup.qualify-consent`, `setup.qualify-roles`): asked only where roles need grading. The consent to qualify the roles, of kind `model_cost`, with what runs (one qualification task per role on its assigned model) and its expected cost; then the qualification with its progress, one line per role.
+* *⑨ Descriptions* (`setup.enrich-consent`, `setup.enrich-architecture`): asked only where modules need a description. The consent to describe the modules, of kind `model_cost`, with what runs (one task of the role `enrich` per module), what it writes (`.marshall/project-architecture/`, committed in ⑩), and its expected cost; then one line per module turning from waiting to running to ✓.
+* *⑩ Commit* (`setup.commit-changes`, `setup.land-changes`): the team's configuration as a list of files, to commit or to leave in the checkout uncommitted. _Commit_ makes one commit and pushes it where the checkout has a push remote, and the line says which (`pushed to origin`, `not pushed: no push remote`); _Leave_ ends the run with the files left to commit.
+* *✓ Ready* (`project.completed`): what is ready, what was skipped with its reason, and the three actions of a project: add an epic, add a plan, its running work (link:project-explorer.adoc#actions[Project Explorer]).
 
 [#consents]
 === The Two Consents of Cost
 
-The consents of ⑦ and ⑧ are consents of kind `model_cost` (link:consents.adoc#kinds[Consents, The Kinds]), shown like every consent (link:consents.adoc#pattern[Consents, The Consent State]): what runs, what it never does, its expected cost from earlier runs or `not known yet: first run`, and the answers _yes_, _yes, and don't ask again_, and _not now_ (`common.consent.*`). A remembered consent is listed in the machine settings and withdrawn there (link:consents.adoc#remembered[Consents, The Remembered Consents]).
+The consents of ⑧ and ⑨ are consents of kind `model_cost` (link:consents.adoc#kinds[Consents, The Kinds]), shown like every consent (link:consents.adoc#pattern[Consents, The Consent State]): what runs, what it never does, its expected cost from earlier runs or `not known yet: first run`, and the answers _yes_, _yes, and don't ask again_, and _not now_ (`common.consent.*`). A remembered consent is listed in the machine settings and withdrawn there (link:consents.adoc#remembered[Consents, The Remembered Consents]). _Not now_ skips the step with its reason, and the run goes on; a later run of the setup offers it again (`project.step.skipped`):
 
-* *⑦ not now*: the step waits at its consent; the project is enrolled but not ready, since its roles are not qualified.
-* *⑧ not now*: the project is ready without descriptions (above).
+* *⑧ not now*: the roles stay unqualified; the project is ready, and the tasks of an unqualified role take its conservative fallback where they arise (a role `screener` without a qualified configuration leaves an external source unscreened, link:starting-work.adoc#issue[Starting Work, An Issue]).
+* *⑨ not now*: the architecture keeps what discovery found, `.marshall/project-architecture/` gets no descriptions of the modules, and the project is ready without them.
 
 [#build-environment]
 === The Build Environment
@@ -54,12 +57,12 @@ The build environment of the project's jobs is the operator's login environment 
 [#later-run]
 === A Later Run
 
-A later run of the setup, from the project's _Setup_ (link:project-explorer.adoc#actions[Actions of a Project]), opens its states with the project's current values. Its architecture is reconciled with the checkout: the domains and modules that are new, gone, or changed since the last run are marked so (`new`, `gone`, `changed`), and the descriptions of ⑧ are offered for the modules that changed or have none.
+A later run of the setup, from the project's _Setup_ (link:project-explorer.adoc#actions[Actions of a Project]), opens its states with the project's current values. Its architecture is reconciled with the checkout: the domains and modules that are new, gone, or changed since the last run are marked so (`new`, `gone`, `changed`), the qualification of ⑧ is offered where it was skipped, and the descriptions of ⑨ for the modules that changed or have none.
 
 [#not-ready]
 == Not Ready Yet
 
-A step that cannot pass shows its check line with the cause and the fix and waits (link:../web-app/onboarding.adoc#harness-probe[the check of a harness] is the pattern); the project is enrolled but not ready, and the explorer shows it so, with _Continue the setup_ as its first action. Closing the client changes nothing: the run waits where it stopped, in either client.
+A step that cannot pass (a credential refused, a tool missing, the modules not discoverable) shows its check line with the cause and the fix and waits in `setup.needs-repair`, whose _Try again_ (`project.repair.retry`) runs the step again (link:../web-app/onboarding.adoc#harness-probe[the check of a harness] is the pattern); the project is enrolled but not ready, and the explorer shows it so, with _Continue the setup_ as its first action. Closing the client changes nothing: the run waits where it stopped, in either client.
 
 * *A machine that is not fully onboarded*: a project's onboarding starts only once the machine's onboarding is complete. Until then _Add a project_ is disabled with the reason (`this machine is not fully onboarded: providers`) and the way to go on (_Continue the onboarding_).
 
@@ -70,7 +73,7 @@ Each project's onboarding runs in a scope of its own (an entry until its enrolme
 
 * *Before its enrolment* a run has no project id: the explorer lists it under _Being added_ by the path of its checkout, with the step it waits at, _Continue_, and _Abandon_ (link:project-explorer.adoc#being-added[Being Added]). _Abandon_ deletes the entry; nothing was enrolled.
 * *After its enrolment* it is listed by its project id like every project, not ready, with _Continue the setup_.
-* *The terminal client* shows one badge per open run at its prompt (`pm [setup pm-mcp-clients 5/9]`); `Enter` on the empty prompt continues the most recent, `project setup <id>` a specific one (link:../terminal-client/17-projects.adoc#several[Terminal Client, Several at Once]).
+* *The terminal client* shows one badge per open run at its prompt (`pm [setup pm-mcp-clients 4/10]`); `Enter` on the empty prompt continues the most recent, `project setup <id>` a specific one (link:../terminal-client/17-projects.adoc#several[Terminal Client, Several at Once]).
 * *The web app* gives each run a route of its own, so that each can be open in its own tab and continued from its address.
 
 [#texts]
@@ -94,17 +97,21 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |Enrolment
 |Registrierung
 
-|`project.step.team`
-|Team settings
-|Team-Einstellungen
-
 |`project.step.own`
 |Own settings
 |Eigene Einstellungen
 
+|`project.step.team`
+|Team settings
+|Team-Einstellungen
+
 |`project.step.architecture`
 |Architecture
 |Architektur
+
+|`project.step.landing`
+|Landing
+|Abschluss
 
 |`project.step.roles`
 |Roles
@@ -117,6 +124,14 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |`project.step.commit`
 |Commit
 |Commit
+
+|`project.step.skipped`
+|skipped: {reason}; a later run of the setup offers it again
+|übersprungen: {reason}; ein späterer Lauf der Einrichtung bietet es wieder an
+
+|`project.repair.retry`
+|Try again
+|Versuche es erneut
 
 |`project.checkout.title`
 |Which checkout is the project?
@@ -134,6 +149,18 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |its git configuration, build wrappers, host tools, language servers, and scripts
 |seine Git-Konfiguration, Build-Wrapper, Host-Werkzeuge, Language-Server und Skripte
 
+|`project.consent.runs`
+|the version probe of each host tool in the absolute directories of your PATH, never one inside the checkout
+|die Versionsabfrage jedes Host-Werkzeugs in den absoluten Verzeichnissen deines PATH, nie eines im Checkout
+
+|`project.consent.never`
+|changes nothing, runs no script of the checkout without asking, uses no network
+|ändert nichts, führt kein Skript des Checkouts ohne Rückfrage aus, nutzt kein Netzwerk
+
+|`project.run_consent.unknown`
+|unknown: {script} was not run
+|unbekannt: {script} wurde nicht ausgeführt
+
 |`project.identity.title`
 |How should the project be named?
 |Wie soll das Projekt heißen?
@@ -147,8 +174,8 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |Name
 
 |`project.identity.pilot`
-|Pilot: this release runs plans only in pilot projects
-|Pilot: dieses Release führt Pläne nur in Pilot-Projekten aus
+|Pilot: this version of PM-MCP runs plans only in pilot projects
+|Pilot: diese Version von PM-MCP führt Pläne nur in Pilot-Projekten aus
 
 |`project.enrolment.title`
 |Enrol {project} with these settings?
@@ -218,6 +245,38 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |Save {count, plural, one {# own value} other {# own values}}
 |Speichere {count, plural, one {# eigenen Wert} other {# eigene Werte}}
 
+|`project.own.refused`
+|{integration}: {finding}; choose another variant or credential
+|{integration}: {finding}; wähle eine andere Variante oder einen anderen Zugang
+
+|`project.setup.first_run`
+|first run: .marshall/config/ created with the default workflow units
+|erster Lauf: .marshall/config/ mit den Standard-Workflow-Units angelegt
+
+|`project.setup.operator_files`
+|the operator file and the role set are valid
+|die Operator-Datei und das Role-Set sind gültig
+
+|`project.landing.title`
+|How the work of {project} lands
+|Wie die Arbeit von {project} abgeschlossen wird
+
+|`project.landing.refused`
+|{variant} does not fit {project}: {reason}
+|{variant} passt nicht zu {project}: {reason}
+
+|`project.landing.merge_queue`
+|{branch} has no enforced merge queue and could have one
+|{branch} hat keine erzwungene Merge-Queue und könnte eine haben
+
+|`project.landing.recheck`
+|Check again
+|Prüfe erneut
+
+|`project.landing.skip`
+|Skip
+|Überspringe es
+
 |`project.architecture.title`
 |What {project} is made of
 |Woraus {project} besteht
@@ -255,8 +314,8 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |ändert die Zuweisung der Roles
 
 |`project.qualify.consent.if_not`
-|{project} is not ready until its roles are qualified
-|{project} ist erst bereit, wenn seine Roles qualifiziert sind
+|the roles stay unqualified and their tasks take their conservative fallback; a later run of the setup offers it again
+|die Roles bleiben unqualifiziert und ihre Tasks nehmen ihren vorsichtigen Fallback; ein späterer Lauf der Einrichtung bietet es wieder an
 
 |`project.qualify.progress`
 |Qualifying the roles: {done} of {total} done
@@ -299,8 +358,12 @@ Keys of the area `project`, shared by both clients; the check lines and the setu
 |Lass sie im Checkout
 
 |`project.commit.done`
-|committed: {commit}; not pushed
-|committet: {commit}; nicht gepusht
+|committed: {commit}; {pushed, select, yes {pushed to {remote}} other {not pushed: no push remote}}
+|committet: {commit}; {pushed, select, yes {nach {remote} gepusht} other {nicht gepusht: kein Push-Remote}}
+
+|`project.commit.left`
+|left to commit: {count, plural, one {# file} other {# files}} in .marshall/
+|zum Committen gelassen: {count, plural, one {# Datei} other {# Dateien}} in .marshall/
 
 |`project.ready.title`
 |{project} is ready

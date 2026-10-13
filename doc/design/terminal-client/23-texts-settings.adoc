@@ -1,0 +1,245 @@
+= Terminal Client: Texts: Machine Settings and Paired Devices
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » Texts: Machine Settings and Paired Devices
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]_
+
+The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
+
+[#texts-settings]
+== Texts: Machine Settings and Paired Devices
+
+[#texts-settings-shared]
+=== `onboard.settings`: Shared by Both Clients
+
+The texts of the machine settings' own states (`settings.choose`, `settings.documents-mode`, `settings.credential`, `settings.store-credential`), shown alike by the web app (link:../web-app/machine-settings.adoc[Web App, Machine Settings]) and the terminal (xref:08-transcripts-later.adoc#t-settings[The Machine Settings]). The aspects are named by `onboard.step.*` with the summaries of the onboarding's result; the checks of a token are those of `providers.verify` (xref:12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.settings.title`
+|How this machine is set up
+|Wie diese Maschine eingerichtet ist
+
+|`onboard.settings.aspects`
+|Aspects
+|Bereiche
+
+|`onboard.settings.tokens.title`
+|Tokens
+|Tokens
+
+|`onboard.settings.tokens.expires`
+|expires in {days, plural, one {# day} other {# days}}
+|läuft in {days, plural, one {# Tag} other {# Tagen}} ab
+
+|`onboard.settings.tokens.no_expiry`
+|no expiry known
+|kein Ablauf bekannt
+
+|`onboard.settings.tokens.expired`
+|expired: holds {count, plural, one {# plan} other {# plans}}
+|abgelaufen: hält {count, plural, one {# Plan} other {# Pläne}} an
+
+|`onboard.settings.consents`
+|Remembered consents
+|Gemerkte Zustimmungen
+
+|`onboard.settings.documents`
+|Documents
+|Dokumente
+
+|`onboard.settings.documents.title`
+|How should documents be taken into a plan?
+|Wie sollen Dokumente in einen Plan übernommen werden?
+
+|`onboard.settings.documents.copy`
+|Copy
+|Kopieren
+
+|`onboard.settings.documents.copy_text`
+|they stay where they are; the copy is not kept in step
+|sie bleiben, wo sie sind; die Kopie wird nicht synchronisiert
+
+|`onboard.settings.documents.move`
+|Move
+|Verschieben
+
+|`onboard.settings.documents.move_text`
+|they leave where they are
+|sie werden dort entfernt
+
+|`onboard.settings.documents.ask`
+|Ask each time
+|Jedes Mal fragen
+
+|`onboard.settings.documents.ask_text`
+|the default; Copy is preselected when asked
+|die Vorgabe; beim Fragen ist Kopieren vorgewählt
+
+|`onboard.settings.documents.keep`
+|Keep as it is
+|Lass es, wie es ist
+
+|`onboard.settings.documents.save`
+|{mode, select, copy {Copy from now on} move {Move from now on} other {Ask each time from now on}}
+|{mode, select, copy {Kopiere ab jetzt} move {Verschiebe ab jetzt} other {Frag ab jetzt jedes Mal}}
+
+|`onboard.settings.documents.done`
+|{mode, select, copy {Documents are copied into a plan; the start no longer asks.} move {Documents are moved into a plan; the start no longer asks.} other {The start asks for the documents of each plan.}}
+|{mode, select, copy {Dokumente werden in einen Plan kopiert; der Start fragt nicht mehr.} move {Dokumente werden in einen Plan verschoben; der Start fragt nicht mehr.} other {Der Start fragt bei den Dokumenten jedes Plans.}}
+
+|`onboard.settings.credential.title`
+|{mode, select, rotate {A new token for {key}} other {Another kind of token for {key}}}
+|{mode, select, rotate {Ein neues Token für {key}} other {Eine andere Art Token für {key}}}
+
+|`onboard.settings.credential.entry`
+|entry
+|Eintrag
+
+|`onboard.settings.credential.entry_value`
+|{key}, used by {providers}
+|{key}, verwendet von {providers}
+
+|`onboard.settings.credential.rotate`
+|rotate
+|erneuern
+
+|`onboard.settings.credential.rotate_value`
+|a new secret for this entry; its kind and the providers that use it stay
+|ein neues Geheimnis für diesen Eintrag; seine Art und die Provider, die ihn verwenden, bleiben
+
+|`onboard.settings.credential.replace`
+|replace
+|ersetzen
+
+|`onboard.settings.credential.replace_value`
+|a new entry of another kind under the same key; the providers that use it stay
+|ein neuer Eintrag anderer Art unter demselben Schlüssel; die Provider, die ihn verwenden, bleiben
+
+|`onboard.settings.credential.now`
+|now
+|jetzt
+
+|`onboard.settings.credential.kind`
+|Kind of token
+|Art des Tokens
+
+|`onboard.settings.credential.action`
+|Store the new token
+|Speichere das neue Token
+
+|`onboard.settings.credential.stored`
+|Token {key} stored; {count, plural, =0 {no token was derived from the old one} one {# token derived from the old one dropped} other {# tokens derived from the old one dropped}}
+|Token {key} gespeichert; {count, plural, =0 {vom alten wurde kein Token abgeleitet} one {# vom alten abgeleitetes Token verworfen} other {# vom alten abgeleitete Tokens verworfen}}
+
+|`onboard.settings.credential.verify_title`
+|Checking the providers that use {key}
+|Prüfe die Provider, die {key} verwenden
+
+|`onboard.settings.credential.verified`
+|{key} verified.
+|{key} geprüft.
+
+|`onboard.settings.credential.plans_go_on`
+|{count, plural, one {# plan that waited for it goes on} other {# plans that waited for it go on}}: {plans}
+|{count, plural, one {# Plan, der darauf gewartet hat, geht weiter} other {# Pläne, die darauf gewartet haben, gehen weiter}}: {plans}
+
+|`onboard.settings.credential.lan`
+|Tokens are entered on this machine only. In a terminal of it, run {command}.
+|Tokens werden nur auf dieser Maschine eingegeben. Führe in einem ihrer Terminals {command} aus.
+|===
+
+[#texts-operator-devices]
+=== `operator`: Only the Terminal
+
+The terminal's lines of `web devices`, `config`, `config consents`, `config documents`, `config credentials --rotate|--replace`, and `config providers --verify`; the names of the list's fields and acts are the shared `devices.*` (link:../shared/paired-devices.adoc#texts[Paired Devices]), the texts of `settings.withdraw` the shared `common.consent.withdraw.*` (link:../shared/consents.adoc#texts[Consents, Texts]). Transcripts: xref:08-transcripts-later.adoc#t-devices[Paired Devices], xref:08-transcripts-later.adoc#t-settings[The Machine Settings], xref:08-transcripts-later.adoc#t-consents[The Remembered Consents], xref:08-transcripts-later.adoc#t-documents[The Documents Mode], xref:08-transcripts-later.adoc#t-credential[A Token Rotated or Replaced], xref:08-transcripts-later.adoc#t-providers-verify[Providers Checked Again].
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.devices.console_not_listed`
+|The console needs no pairing and is not listed. Network listener: {state, select, on {on} other {off}}.
+|Die Konsole braucht keine Kopplung und steht nicht in der Liste. Netzwerk-Listener: {state, select, on {an} other {aus}}.
+
+|`operator.devices.act_prompt`
+|Act on a device: {range}
+|Wähle ein Gerät: {range}
+
+|`operator.devices.rename_or_revoke`
+|Rename or revoke?
+|Umbenennen oder widerrufen?
+
+|`operator.devices.label_prompt`
+|Label
+|Bezeichnung
+
+|`operator.devices.renamed`
+|Renamed: {label}
+|Umbenannt: {label}
+
+|`operator.devices.revoke_confirm`
+|Revoke {label}? It is signed out at once; its open pages close with the reason.
+|{label} widerrufen? Das Gerät ist sofort abgemeldet; seine offenen Seiten schließen sich mit dem Grund.
+
+|`operator.devices.revoke_this_confirm`
+|Revoke {label}? It is the browser you are using on this machine: its pages close and show the pairing page; a new code pairs it again.
+|{label} widerrufen? Das ist der Browser, den du auf dieser Maschine benutzt: seine Seiten schließen sich und zeigen die Kopplungsseite; ein neuer Code koppelt ihn wieder.
+
+|`operator.devices.revoke_action`
+|Revoke
+|Widerrufe
+
+|`operator.devices.revoked`
+|Revoked: {label}
+|Widerrufen: {label}
+
+|`operator.devices.revoked_all`
+|Revoked {count, plural, one {# device} other {# devices}}. No browser is paired; web pair issues a new code.
+|{count, plural, one {# Gerät} other {# Geräte}} widerrufen. Kein Browser ist gekoppelt; web pair gibt einen neuen Code aus.
+
+|`operator.devices.revoked_this`
+|Revoked: {label}. web pair issues a new code.
+|Widerrufen: {label}. web pair gibt einen neuen Code aus.
+
+|`operator.settings.open_prompt`
+|Open: {range}
+|Öffne: {range}
+
+|`operator.consents.title`
+|The consents you said not to ask again
+|Die Zustimmungen, die du dir gemerkt hast
+
+|`operator.consents.asked_again`
+|A withdrawn consent is asked again the next time its action runs.
+|Eine zurückgenommene Zustimmung wird beim nächsten Lauf ihrer Aktion wieder erfragt.
+
+|`operator.consents.withdraw_prompt`
+|Withdraw: {range}
+|Nimm zurück: {range}
+
+|`operator.consents.channel_terminal`
+|terminal
+|Terminal
+
+|`operator.consents.scripts`
+|{count, plural, one {# script} other {# scripts}}
+|{count, plural, one {# Skript} other {# Skripte}}
+
+|`operator.consents.list_scripts`
+|lists them
+|listet sie auf
+
+|`operator.consents.withdrawn`
+|{count, plural, one {# consent withdrawn; it is} other {# consents withdrawn; they are}} asked again the next time.
+|{count, plural, one {# Zustimmung zurückgenommen; sie wird} other {# Zustimmungen zurückgenommen; sie werden}} beim nächsten Mal wieder erfragt.
+
+|`operator.consents.none`
+|No consent is remembered.
+|Es ist keine Zustimmung gemerkt.
+|===

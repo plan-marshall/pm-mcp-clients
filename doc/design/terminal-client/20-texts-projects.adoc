@@ -159,8 +159,8 @@ The texts of the rows and steps are those of the shared designs; the terminal ad
 |nein, lass sie im Checkout
 
 |`operator.projects.commit.done`
-|committed: {commit} "{message}"   not pushed
-|committet: {commit} "{message}"   nicht gepusht
+|committed: {commit} "{message}"   {pushed, select, yes {pushed to {remote}} other {not pushed: no push remote}}
+|committet: {commit} "{message}"   {pushed, select, yes {nach {remote} gepusht} other {nicht gepusht: kein Push-Remote}}
 
 |`operator.projects.left_run`
 |Left {step} of {checkout}. Nothing was sent. Enter continues it.
@@ -194,6 +194,18 @@ The texts of the rows and steps are those of the shared designs; the terminal ad
 |{project} released
 |{project} abgegeben
 
+|`operator.projects.release.plan_ended`
+|{name} released and archived
+|{name} abgegeben und archiviert
+
+|`operator.projects.release.entry_deleted`
+|entry with {count, plural, one {# source} other {# sources}} deleted
+|Eintrag mit {count, plural, one {# Quelle} other {# Quellen}} gelöscht
+
+|`operator.projects.release.removal_landed`
+|{paths} removed from git
+|{paths} aus Git entfernt
+
 |`operator.projects.unenrolled`
 |{project} unenrolled
 |Registrierung von {project} entfernt
@@ -205,4 +217,26 @@ The texts of the rows and steps are those of the shared designs; the terminal ad
 |`operator.projects.unenrol.refused_fix`
 |end them first, or release the project: {command}
 |beende sie zuerst, oder gib das Projekt ab: {command}
+|===
+
+[#projects-keys]
+=== Keys of the Prompts
+
+The mnemonics of the project's onboarding beyond the common ones of xref:13-texts-operator.adoc#texts-operator-keys[Keys] (`y`, `r`, `n` of a consent, `e) edit`, `l) check again`); within each state every key is unique, in both languages.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.projects.key.yes_project`
+|p
+|p
+
+|`operator.projects.key.skip`
+|s
+|u
+
+|`operator.projects.key.try_again`
+|t
+|w
 |===

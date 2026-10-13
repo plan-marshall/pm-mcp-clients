@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The decisions of the console as designed: announcing above the prompt with the badge and the bell or a notification, `questions` and `answer` with the decision's states, the parts, own words with read-back and clarification, `!` during a dialogue, waiver requests with `waive` and `decline`, answered elsewhere and changed decisions; `h) chat` at `decision.answer` opening the chat dialogue of `cli-start` with the decision as its scope, a proposed answer taken through the read-back, a decision withdrawn by a revision, and the chat ended by an answer elsewhere.
+* The decisions of the console as designed: announcing above the prompt with the badge and the bell or a notification, `questions` and `answer` with the decision's states, the parts, own words with read-back and clarification, `!` during a dialogue, waiver requests with `waive` and `decline`, answered elsewhere and changed decisions, _none fits_ with the decision asked anew, _later_; `h) chat` at `decision.answer` opening the chat dialogue of `cli-start` with the decision as its scope, a proposed answer taken through the read-back, a decision withdrawn by a revision, and the chat ended by an answer elsewhere.
 * Texts from the catalogue only; every text of a decision shown after its control sequences are removed.
 
 == Trace

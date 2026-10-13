@@ -7,9 +7,9 @@ link:../README.adoc[Design] » Starting Work
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-3[UC-STA-3], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-4[UC-STA-4], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-7[UC-STA-7], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-8[UC-STA-8], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-start-from-clients[Starting from the Clients], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-source-directory[The Source Directory], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-screen-stored[Screened Once Stored], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-documents[Documents as a Source], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-options-when-needed[Asked When Needed], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-decomposition-review[The Decomposition Is Reviewed], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed); link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc[Bootstrap & Lessons States]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-start-from-clients[Starting from the Clients], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-source-directory[The Source Directory], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-screen-stored[Screened Once Stored], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-documents[Documents as a Source], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-options-when-needed[Asked When Needed], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-decomposition-review[The Decomposition Is Reviewed], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-local-trusted[What Is on This Machine Is Trusted], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-lesson-claim[A Claimed Lesson Ends with the Landing], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed); link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc[Bootstrap & Lessons States]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/18-starting.adoc[Terminal Client, Starting Work], link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/18-starting.adoc[Terminal Client, Starting Work]; the web app's view: designed by its package link:../../plans/web-start.adoc[`web-start`].
 
 Starting a plan or an epic is one guided run in which the operator only says what the work comes from. The server gathers each source, stores it, and screens what came from outside; the client shows each source's progress as a check line, like the onboarding's (link:project-onboarding.adoc[Project Onboarding]). Everything else the work needs is asked later, where it is needed.
 
@@ -24,8 +24,8 @@ Starting a plan or an epic is one guided run in which the operator only says wha
 * *The setup gate* (`start.open`, `start-epic.open`): starting is offered only on an onboarded machine and in a ready project. Where either is missing, the start opens on the refusal instead of ①: what is missing (`this machine is not fully onboarded: providers`, `pm-mcp-clients is not ready: credential sonar`) and the one action that goes on there (_Continue the onboarding_, _Continue the setup_); nothing of an entry is created.
 
 * *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where the project has a recipe; an epic starts from sources only.
-* *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the epic_.
-* *Creating* (`start.create`, `start-epic.create`): the server checks again what creation needs. Where something changed meanwhile (the id was taken, a source is gone or changed, a lesson was claimed by another plan, the gate no longer holds), nothing is created and the run returns to ② with the cause on the line concerned (`could not be created: the id codeberg-provider-issues is taken`).
+* *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the epic_. A recipe passes it too (<<recipe>>). Where the project's landing does not fit the sources, it is refused here with the reason (<<landing-refused>>).
+* *Creating* (`start.create`, `start-epic.create`, `recipe.create`): the server checks again what creation needs. Where something changed meanwhile (the id was taken, a source is gone or changed, a lesson was claimed by another plan, a recipe is gone or changed, the gate no longer holds), nothing is created and the run returns to ② with the cause on the line concerned (`could not be created: the id codeberg-provider-issues is taken`).
 * *✓ Started*: the plan or the epic exists, with _Follow it_ (a plan's view, link:plan-view.adoc[Plan View]; an epic's view, link:epic-view.adoc[Epic View]) and _Back to the project_.
 * *③ Decomposition* (an epic only, `decomposition`): after the epic has started, the cut of the epic into workstreams and plans, drafted by the planning role and shaped by the operator before anything is committed (<<decomposition>>). The run goes on into it from ✓; _Follow it_ leads to the epic view, where the decomposition stands first as what waits for the operator.
 
@@ -48,9 +48,9 @@ Starting a plan or an epic is one guided run in which the operator only says wha
   [Chat]                                              [Continue]  (waits for 1 source)
 ----
 
-* *A source's line*: its kind, what it is (the start of a description, the paths, an issue's reference and, once fetched, its title), and its state: `checking`, `fetching`, `screening`, `stored`, `copied`, `moved`, `flagged`, or the cause of a failure with _Try again_ and _Remove_. A stored source can be removed until the start.
-* *What may be added*: an epic offers description, documents, and issue; a plan also lesson (only when the project has unclaimed lessons), local changes (only when the checkout has some), and pull request. A plan with local changes or a pull request takes no issue and no lesson besides, and the line says why another kind is not offered (`a plan that adopts a pull request takes only descriptions and documents besides`).
-* *Continue* is offered once there is at least one source and every source is stored, screened or accepted; until then it names what it waits for.
+* *A source's line*: its kind, what it is (the start of a description, the paths, an issue's reference and, once fetched, its title), and its state: `checking`, `fetching`, `screening`, `stored`, `copied`, `moved`, `flagged`, `unscreened`, or the cause of a failure with _Try again_ and _Remove_. A stored source can be removed until the start.
+* *What may be added*: an epic offers description, documents, and issue; a plan also lesson (only when the project has unclaimed lessons), local changes (only when the checkout has some), and pull request. `start.sources` offers only the kinds that combine with those already in the list: a pull request or the local changes only beside descriptions and documents, and never both; so once an issue or a lesson is in the list neither is offered, and once one of them is in it, no issue, lesson, or the other. The line says why a kind is not offered (`a plan that adopts a pull request takes only descriptions and documents besides`).
+* *Continue* is offered once there is at least one source and every source is stored, screened or accepted (a flagged one with its reason, an unscreened one as untrusted); until then it names what it waits for.
 * *Trust*: a source from outside the machine shows `untrusted` until its screening passed, then nothing; the operator's own sources never show a mark.
 * *Chat* opens a chat about the request before it starts (<<chat>>), once at least one source is stored and every source from outside the machine is screened; until then it is disabled with that reason.
 * *States*: each kind of source is a sub-workflow of its own, and its states are named `source-<kind>.<state>` (`source-documents`, `source-issue`, `source-pr`, `source-lesson`, `source-local-changes`); each subsection names those it shows.
@@ -70,16 +70,16 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 
 * *Picking* (`source-documents.pick`): files or one directory. The web app browses the checkout first, then the operator's home directory, through the server's listing; the terminal client takes paths, completed against its working directory. A directory shows what it holds (`12 files: 9 adoc, 3 svg`) before it is added.
 * *Checked* (`source-documents.check`): each file with a check line; a file that cannot be used names its cause (`not readable`, `larger than 10 MB`, `a link that leads outside`), and the others can be added without it.
-* *Copy or move* (`source-documents.mode`): the machine's default chosen, _always_ beside it; then stored (`source-documents.store`).
+* *Copy or move* (`source-documents.mode`): asked only while the machine's `sources.documents_mode` is `ask`, its default; _Copy_ is preselected. _Always_ stores the choice as the machine's `copy` or `move`, after which the step is not asked and the line just says `copied` or `moved`; the machine's settings set it back to `ask` (link:../web-app/machine-settings.adoc[Web App, Machine Settings], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]). Then stored (`source-documents.store`).
 * *Only from this machine*: the listing, a move, and documents outside the checkout are accepted only from the terminal client and from a browser on the loopback listener. On a device of the network the web app offers the checkout's files by copy only: _Move_ and the operator's home directory are shown disabled with their reason (`only on this machine: a move deletes your files, and your home directory is not shown to other devices`).
 ** *Copy*: the originals stay where they are; the copy is not kept in step with them, and the dialogue says so.
-** *Move*: the documents leave where they were. A file git tracks is removed from git by a short landing (`git.land-removal`, one commit landed as the project lands); the source's line shows `moved · removing from git`, then `moved`, and the work may start meanwhile. Until it is landed, the landing is a row of the project's running work; if it fails, it waits for the operator there.
+** *Move*: the documents leave where they were. A file git tracks is removed from git by a short landing (`git.land-removal`, one commit landed by the project's landing, `landing.pull-request` or `landing.main`); the source's line shows `moved · removing from git`, then `moved`, and the work may start meanwhile. Until it is landed, the landing is a row of the project's running work; if it fails, it waits for the operator there. With `landing.files` nothing is committed: the removal stays in the working tree, and the line says so (`moved · removal left uncommitted`). A release of the project waits for a removal still landing (link:project-explorer.adoc#release[Project Explorer, Release and Unenrol]).
 
 ----
   Copy or move the documents?
-    (●) Copy     they stay where they are; the copy is not kept in step   ← the machine's default
+    (●) Copy     they stay where they are; the copy is not kept in step   ← preselected
     ( ) Move     they leave where they are
-    [ ] Always do this, don't ask again
+    [ ] Always do this, don't ask again (the machine's settings change it)
     With Move, 3 files tracked by git are removed from git by a short landing.
                                                                    [Add documents]
 ----
@@ -88,10 +88,12 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 === An Issue
 
 * *Naming* (`source-issue.name`, `source-issue.resolve`): one field that takes a number (`212`, `#212`: the project's own repository) or a URL; a number is shown at once as the URL of the issue in the project's repository, and the URL is what is stored and shown from then on, also for a pull request. The field takes a URL of GitHub, GitLab, or a Forgejo forge such as Codeberg; the forge is shown as soon as it is recognised (`Codeberg · forgejo/forgejo`).
-* *Another repository* asks first (`source-issue.grant`): _Read issues of forgejo/forgejo?_ with _this time_, _for this project_, and _No, remove it_; a forge without a credential says that only a public issue can be read, and where a credential is added.
+* *Another repository* asks first (`source-issue.grant`): _Read issues of forgejo/forgejo?_ with _this time_, _for this project_, and _No_; _No_ fails the source with the cause `not granted` (`source-issue.failed`).
+* *A forge without a credential* fetches without one: a public issue is read, the line saying `no credential for Codeberg: only a public issue can be read`; another fails with the cause `no credential for Codeberg`, naming where a credential is added.
 * *Progress* (`source-issue.fetch`, `source-issue.store`, `source-issue.screen`): `fetching`, then `screening`, each as a check line; then the issue's title, labels, and state.
-* *Failed* (`source-issue.failed`): the cause (`not found`, `not readable`, `provider unavailable`) with _Try again_ and _Remove it_.
+* *Failed* (`source-issue.failed`): the cause (`not found`, `not readable`, `not granted`, `no credential for <forge>`, `provider unavailable`) with _Try again_ and _Remove it_.
 * *Flagged* (`source-issue.flagged`): the spans the screener flagged, quoted as text with their reason, and _Use it anyway_ (with a reason, which is recorded) or _Remove it_. The flagged text is never rendered as Markdown and its links are inert.
+* *Unscreened* (`source-issue.unscreened`): the screening fails closed. Where the screener failed, or no configuration of the role `screener` qualifies, the source stays unscreened with the cause (`the screening failed: <cause>`, `no configuration of the role screener qualifies`) and no model reads it; _Try again_, _Remove it_, or _Accept it as untrusted_ (with a reason, which is recorded like that of a flagged source). An accepted source keeps its `untrusted` mark (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-screen-stored[Screened Once Stored]).
 
 [#lesson]
 === A Lesson
@@ -100,14 +102,16 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 * *Checked* (`source-lesson.resolve`): the lesson is read and its premise checked against the checkout, as a check line.
 * *Unavailable*: a lesson claimed by another plan meanwhile, retired, or in a damaged store shows the cause (`claimed by another plan`, `retired`, `the lesson store is damaged`) with _Choose another_.
 * *Its premise no longer holds* (`source-lesson.premise`): the evidence (`ConfigLoader.java no longer exists`) with _Use it anyway_ (the evidence goes into the plan), _Retire it_, and _Remove it_.
-* *Stored* (`source-lesson.store`): the lesson is claimed for the plan when the plan is created.
+* *Stored* (`source-lesson.store`): the lesson is claimed for the plan when the plan is created. It is retired when the plan lands its changes (the merge of `landing.pull-request`, the push of `landing.main`), and released when the plan ends without landing them (handed back with `landing.files`, cancelled, abandoned, released, or aborted).
 
 [#local-changes]
 === Local Changes
 
 * *Preview* (`source-local-changes.preview`): what the checkout has changed against its branch, as files with their counts of lines.
 * *Confirm* (`source-local-changes.confirm`): _Add the local changes_, or _Not now_, which leaves the list as it was.
-* *Stored* (`source-local-changes.store`): the preview is recorded; the changes are captured when the plan is created. A change made in the checkout after the preview is captured with the rest, and the creation names it (`2 files changed since the preview; captured with the rest`).
+* *Stored* (`source-local-changes.store`): the preview is recorded; the changes are captured as a snapshot commit when the plan is created, and the plan takes the land lane and lands them by the project's landing. A change made in the checkout after the preview is captured with the rest, and the creation names it (`2 files changed since the preview; captured with the rest`).
+* *None left*: where the checkout has no local changes any more when the preview runs, the source fails with that cause (`the checkout has no local changes any more`), to be removed.
+* *A landing that commits*: a plan from the local changes needs a landing that commits them; with the project's `landing.files` it is refused at ② (<<landing-refused>>).
 
 [#pull-request]
 === A Pull Request
@@ -115,8 +119,8 @@ An editor of several lines: the operator writes what the work is. _Add_ stores i
 * *Naming* (`source-pr.name`): one field that takes a number or the URL of a pull request of the project's own repository; a number is shown at once as its URL, and the URL is what is stored and shown.
 * *Checked* (`source-pr.observe`): fetched and checked as check lines: it is open, its head branch is writable by the agent identity.
 * *Failed* (`source-pr.failed`): the cause (`not open`, `its head branch is not writable`, `not found`) with _Try again_ and _Remove it_.
-* *Screened* (`source-pr.store`, `source-pr.screen`): like an issue; then shown with its title and its changed files.
-* *Flagged* (`source-pr.flagged`): as a flagged issue (<<issue>>): the spans with their reason, _Use it anyway_ (with a reason) or _Remove it_.
+* *Stored and screened* (`source-pr.store`, `source-pr.screen`): its title and body like an issue's; its changed files are stored as the pull request's head and are code from outside, possibly from a fork: the line shows them marked `untrusted` (`3 changed files · untrusted`) unless the operator authored the pull request. They are never screened and never read by a model as instructions; the plan's own gates (its review, its integrity checks) apply to them as to every change it lands (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-local-trusted[What Is on This Machine Is Trusted]).
+* *Flagged* (`source-pr.flagged`) and *unscreened* (`source-pr.unscreened`): as an issue's (<<issue>>): _Use it anyway_ or _Accept it as untrusted_ (each with a reason), _Try again_ where unscreened, or _Remove it_.
 
 [#chat]
 === Chatting About the Request
@@ -161,15 +165,22 @@ At `start.sources` (`start-epic.sources`) the operator may talk the request thro
 
 * The title is proposed from the first description, else from the first issue's title, else from the first document's name; the id from the title, or `issue-<number>` for a plan from one issue alone.
 * An id that is taken or refused shows why, with a free proposal (`codeberg-provider-issues-2`).
-* *What is not asked here*: posture, base branch, outline review, how many plans an epic runs at once. Each is asked where the plan or the epic first needs it, and not at all where the project or the machine sets it; the operator meets it as a decision (link:decisions.adoc[Decisions]). How many plans an epic runs at once is asked when its first plan is to start, only where the project sets no `epic.parallelization_scope`.
+* *What is not asked here*: posture, base branch, outline review. Each is asked where the plan or the epic first needs it, and not at all where the project or the machine sets it; the operator meets it as a decision (link:decisions.adoc[Decisions]). How many plans an epic runs at once is never asked: a new epic takes the project's `epic.parallelization_scope` (machine default 1); the operator raises it through the epic's _Next plan_, which offers to raise it by one when the scope is full (link:work-actions.adoc#epic-actions[An Epic's Actions]), or in the project's settings.
+
+[#landing-refused]
+=== A Landing That Does Not Fit
+
+A plan from the local changes needs a landing that commits them. Where the project's landing is `landing.files`, ② shows the reason in place of _Start the plan_ (`Files only does not fit: a plan from local changes needs a landing that commits`) and offers a landing for this plan alone, `landing.pull-request` or `landing.main`, as the plan's own value, written to its overrides when the plan is created (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-overrides[Plan Overrides]); or the operator goes back to ① and removes the local changes. _Start the plan_ is enabled once the landing fits.
 
 [#recipe]
 == A Recipe
 
 * *Choosing* (`recipe.choose`): the project's recipes, each with its name, what it does in one line, and where it comes from (a domain, the project).
-* *Parameters* (`recipe.parameters`): one line per parameter, with the options the server resolved (`modules: 9 found`) and its proposal preselected and marked `proposed`, as the onboarding's choices are (link:../web-app/onboarding.adoc[Web App, Onboarding]); then _Run coverage?_ with the parameters as chosen, and _Run the recipe_.
-* *A recipe that takes a request* asks its parameters first, then its sources, as in <<sources>>, and runs from there.
-* *Started*: the plan, its id from the recipe and the time (`recipe-coverage-2026-10-12-14-05-00`).
+* *Parameters* (`recipe.parameters`): one line per parameter, with the options the server resolved (`modules: 9 found`) and its proposal preselected and marked `proposed`, as the onboarding's choices are (link:../web-app/onboarding.adoc[Web App, Onboarding]); then on to ②. A parameter without an option (no module the recipe can work on, no domain of it in the project) shows its reason (`modules: none the recipe can work on`), and the recipe cannot run: the operator chooses another or leaves.
+* *A recipe that takes a request* asks its parameters first, then its sources, as in <<sources>>, with their failures and screening; a chat is not offered for a recipe.
+* *Ready* (`start.ready`): as for a plan (<<ready>>): the recipe and its parameters, the title and the id proposed from the recipe and the time (`recipe-coverage-2026-10-12-14-05-00`), both editable; _Run the recipe_.
+* *Creating* (`recipe.create`): re-checks what creation needs; a recipe gone or changed meanwhile (its domain or the project removed or changed it), an id taken, or a gate that no longer holds returns to ② with the cause, and nothing is created.
+* *Leaving* keeps the entry with the recipe and the parameters chosen, in either client; abandoning it deletes the entry (<<leaving>>).
 
 [#decomposition]
 == The Decomposition
@@ -189,7 +200,7 @@ At `start.sources` (`start-epic.sources`) the operator may talk the request thro
 ----
 
 * *The draft* is shown while the planning role works on it, workstream by workstream, as in the onboarding's progress (`drafting WS-2`).
-* *A plan* opens to its objective, deliverables, expected surface, dependencies, and order, with _Keep_, _Edit_, and _Drop_. _Edit_ and _Add a plan_ ask for the operator's words; the planning role rewrites or drafts, and the read-back shows old against new with _Accept_, _Instruct again_, and _Discard_.
+* *A plan* opens to its objective, deliverables, expected surface, dependencies, and order, with _Keep_, _Edit_, and _Drop_ (`decomposition.review`). _Edit_ and _Add a plan_ ask for the operator's words (`decomposition.instruct`); the planning role rewrites or drafts the plan (`decomposition.rewrite`), and the read-back (`decomposition.read-back`) shows old against new with _Accept_ (on to the checks, `decomposition.check`), _Instruct again_ (back to the words, which keep what was written), and _Discard_ (back to the review, the plan as it was).
 * *The checks* of the server are marks on the plans concerned (`✗` with the reason); _Agree_ is disabled while one fails and says how many.
 * *Chat* opens the chat with the epic's planning role about the whole draft (link:work-actions.adoc#chat[Chatting with the Planning Role]); an accepted change goes into the draft, and the checks run on it again.
 * *Draft again* asks for an instruction and replaces the draft, keeping what the operator decided where the plan is still in it.
@@ -200,9 +211,9 @@ At `start.sources` (`start-epic.sources`) the operator may talk the request thro
 [#leaving]
 == Leaving and Coming Back
 
-The entry waits with its sources while the operator is away, in either client; a source still being fetched or screened goes on. The project's actions show _Continue starting_ (with the entry's kind and its number of sources) as their first action while an entry is open, and _Abandon_ deletes the entry and its source directory.
+The entry waits with its sources (a recipe's with its parameters) while the operator is away, in either client; a source still being fetched or screened goes on. The project's actions show _Continue starting_ (with the entry's kind and its number of sources) as their first action while an entry is open, and _Abandon_ deletes the entry and its source directory.
 
 [#texts]
 == Texts
 
-Keys of the area `start`, shared by both clients. They are listed in their own part: link:starting-work-texts.adoc[Starting Work, Texts].
+Keys of the area `start`, shared by both clients. They are listed in their own parts: link:starting-work-texts.adoc[Starting Work, Texts] (the steps, ready, the recipe, the decomposition) and link:starting-work-sources-texts.adoc[Starting Work, Texts of the Sources].

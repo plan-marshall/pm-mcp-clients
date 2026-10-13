@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:starting-work.adoc[Starting Work] » Texts
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-3[UC-STA-3], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-4[UC-STA-4], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-5[UC-STA-5], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-7[UC-STA-7], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-8[UC-STA-8], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-9[UC-STA-9]_
 
-Status: `DRAFT`. The texts of link:starting-work.adoc[Starting Work]; how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `DRAFT`. The texts of link:starting-work.adoc[Starting Work], but those of the single sources, which are in link:starting-work-sources-texts.adoc[Texts of the Sources]; how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts
@@ -122,82 +122,6 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Try again
 |Versuche es erneut
 
-|`start.state.checking`
-|checking
-|wird geprüft
-
-|`start.state.fetching`
-|fetching
-|wird geholt
-
-|`start.state.screening`
-|screening
-|wird auf Anweisungen geprüft
-
-|`start.state.stored`
-|stored
-|gespeichert
-
-|`start.state.copied`
-|copied
-|kopiert
-
-|`start.state.moved`
-|moved
-|verschoben
-
-|`start.state.flagged`
-|flagged
-|auffällig
-
-|`start.state.untrusted`
-|untrusted
-|nicht vertrauenswürdig
-
-|`start.state.removing_from_git`
-|removing from git
-|wird aus Git entfernt
-
-|`start.cause.not_readable`
-|not readable
-|nicht lesbar
-
-|`start.cause.too_large`
-|larger than {size}
-|größer als {size}
-
-|`start.cause.link_outside`
-|a link that leads outside
-|ein Link, der hinausführt
-
-|`start.cause.not_found`
-|not found
-|nicht gefunden
-
-|`start.cause.provider_unavailable`
-|provider unavailable
-|Provider nicht erreichbar
-
-|`start.cause.not_open`
-|not open
-|nicht offen
-
-|`start.cause.head_not_writable`
-|its head branch is not writable
-|sein Head-Branch ist nicht beschreibbar
-
-|`start.cause.lesson_claimed`
-|claimed by another plan
-|von einem anderen Plan beansprucht
-
-|`start.cause.lesson_retired`
-|retired
-|ausgemustert
-
-|`start.cause.lesson_store_damaged`
-|the lesson store is damaged
-|der Speicher der Lessons ist beschädigt
-
 |`start.sources.waits`
 |waits for {count, plural, one {# source} other {# sources}}
 |wartet auf {count, plural, one {# Quelle} other {# Quellen}}
@@ -230,102 +154,6 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |description stored
 |Beschreibung gespeichert
 
-|`start.documents.directory`
-|{count, plural, one {# file} other {# files}}: {types}
-|{count, plural, one {# Datei} other {# Dateien}}: {types}
-
-|`start.documents.mode.title`
-|Copy or move the documents?
-|Die Dokumente kopieren oder verschieben?
-
-|`start.documents.mode.copy`
-|Copy: they stay where they are; the copy is not kept in step
-|Kopieren: sie bleiben, wo sie sind; die Kopie wird nicht synchronisiert
-
-|`start.documents.mode.move`
-|Move: they leave where they are
-|Verschieben: sie werden dort entfernt
-
-|`start.documents.mode.always`
-|Always do this, don't ask again
-|Immer so, nicht mehr fragen
-
-|`start.documents.tracked`
-|With Move, {count, plural, one {# file tracked by git is} other {# files tracked by git are}} removed from git by a short landing.
-|Beim Verschieben {count, plural, one {wird # Datei unter Git} other {werden # Dateien unter Git}} durch eine kurze Landung aus Git entfernt.
-
-|`start.documents.loopback_only`
-|only on this machine: a move deletes your files, and your home directory is not shown to other devices
-|nur an dieser Maschine: ein Verschieben löscht deine Dateien, und dein Home-Verzeichnis wird anderen Geräten nicht gezeigt
-
-|`start.documents.add`
-|Add documents
-|Füge die Dokumente hinzu
-
-|`start.issue.field`
-|Number or URL of the issue
-|Nummer oder URL des Issues
-
-|`start.issue.grant.title`
-|Read issues of {repository}?
-|Issues von {repository} lesen?
-
-|`start.issue.grant.once`
-|this time
-|dieses Mal
-
-|`start.issue.grant.project`
-|for this project
-|für dieses Projekt
-
-|`start.issue.grant.no`
-|No, remove it
-|Nein, entferne es
-
-|`start.issue.public_only`
-|No credential for {forge}: only a public issue can be read.
-|Kein Zugang für {forge}: nur ein öffentliches Issue kann gelesen werden.
-
-|`start.issue.flagged.title`
-|This text may contain instructions to a model
-|Dieser Text enthält möglicherweise Anweisungen an ein Modell
-
-|`start.issue.flagged.accept`
-|Use it anyway
-|Verwende sie trotzdem
-
-|`start.pr.field`
-|Number or URL of the pull request
-|Nummer oder URL des Pull Requests
-
-|`start.lesson.premise`
-|Its premise no longer holds: {evidence}
-|Ihre Voraussetzung gilt nicht mehr: {evidence}
-
-|`start.lesson.accept`
-|Use it anyway
-|Verwende sie trotzdem
-
-|`start.lesson.retire`
-|Retire it
-|Mustere sie aus
-
-|`start.lesson.choose_another`
-|Choose another
-|Wähle eine andere
-
-|`start.local_changes.add`
-|Add the local changes
-|Füge die lokalen Änderungen hinzu
-
-|`start.local_changes.not_now`
-|Not now
-|Nicht jetzt
-
-|`start.local_changes.changed`
-|{count, plural, one {# file changed} other {# files changed}} since the preview; captured with the rest
-|{count, plural, one {# Datei hat} other {# Dateien haben}} sich seit der Vorschau geändert; mit dem Rest erfasst
-
 |`start.ready.starts_from`
 |The {kind, select, plan {plan} other {epic}} starts from
 |{kind, select, plan {Der Plan} other {Das Epic}} geht aus von
@@ -349,6 +177,14 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |`start.ready.start_epic`
 |Start the epic
 |Starte das Epic
+
+|`start.ready.landing_refused`
+|{landing} does not fit: a plan from local changes needs a landing that commits
+|{landing} passt nicht: ein Plan aus lokalen Änderungen braucht einen Abschluss, der committet
+
+|`start.ready.landing_choose`
+|Land this plan by
+|Schließe diesen Plan ab mit
 
 |`start.create.failed`
 |{name} could not be created: {cause}. Nothing was created.
@@ -378,17 +214,17 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |proposed
 |vorgeschlagen
 
-|`start.recipe.confirm.title`
-|Run {recipe}?
-|{recipe} ausführen?
+|`start.recipe.no_option`
+|{parameter}: {reason}; the recipe cannot run
+|{parameter}: {reason}; das Rezept kann nicht laufen
+
+|`start.recipe.no_module`
+|none the recipe can work on
+|keines, an dem das Rezept arbeiten kann
 
 |`start.recipe.run`
 |Run the recipe
 |Führe das Rezept aus
-
-|`start.epic.scope.title`
-|How many plans of {epic} may run at once?
-|Wie viele Pläne von {epic} dürfen gleichzeitig laufen?
 
 |`start.entry.continue`
 |Continue starting ({count, plural, one {# source} other {# sources}})
@@ -425,6 +261,14 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |`start.decomposition.add`
 |Add a plan
 |Füge einen Plan hinzu
+
+|`start.decomposition.instruct.title`
+|What should change in {plan}?
+|Was soll sich an {plan} ändern?
+
+|`start.decomposition.read_back.title`
+|{plan}: old against new
+|{plan}: alt gegen neu
 
 |`start.decomposition.chat`
 |Chat

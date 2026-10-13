@@ -336,6 +336,14 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |of each enrolled harness that can list them
 |jedes registrierten Harness, der sie auflisten kann
 
+|`onboard.auto.consent.detail.check_credential_store`
+|{store}: one test entry written, read back, and deleted
+|{store}: ein Testeintrag geschrieben, zurückgelesen und gelöscht
+
+|`onboard.auto.consent.detail.verify_providers`
+|each provider found, called with its token, and its CLI tool run
+|jeder gefundene Provider, mit seinem Token aufgerufen, und sein CLI-Werkzeug ausgeführt
+
 |`onboard.auto.consent.detail.scan_providers`
 |the tools {tools} and the tokens already stored, with the version probe of each tool found
 |die Werkzeuge {tools} und die schon gespeicherten Tokens, mit der Versionsprüfung jedes gefundenen Werkzeugs

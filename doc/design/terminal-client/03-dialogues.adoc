@@ -37,7 +37,7 @@ Input is read by the console's line editor (JLine, xref:04-console.adoc#line-edi
 * *Numbers* pick from a list. In a single choice a number picks one item and is sent at once when the state has nothing else to decide; in a multiple choice (models, providers, review bots) numbers toggle items (`2 5`, ranges `3-7`) and the list is printed again until `Enter` accepts it. Where a state has several choices (the languages, the plan axes), their items are numbered across the whole state, so one line answers several (`2 5 8`).
 * *Letters* take the other links. The key of a link relation is a text of the catalogue (`operator.key.<relation>`, xref:13-texts-operator.adoc#texts-operator-keys[Keys]), one letter, the mnemonic of its label in the interface language; within one language a relation has the same key in every state that offers it. Two relations share a key only when no state offers both: a test runs every state of the scenarios in every language and fails on a state that offers two links with the same key, or a key that is a digit or `?`.
 * *`?`* prints the explanation of the state (the text the web app shows under the title and behind _Why?_); `?<n>` prints the explanation of item `n` (the advisory of a role, the rationale of a recommended model, the full value of a shortened one).
-* *`q`* (German `v`) or `Ctrl+C` leaves the dialogue back to the console prompt: nothing is sent, the state stays where it is, and the client prints where the dialogue stopped and how to continue it (<<resume>>).
+* *`q`* (German `v`) or `Ctrl+C` leaves the dialogue back to the console prompt: nothing is sent, the state stays where it is, and the client prints where the dialogue stopped and how to continue it (<<resume>>). Where a use case names _later_ for the onboarding (`harness.none`: the onboarding rests there and its next run resumes there), `q` is that answer, and the prompt names it `q) later`.
 * *`!`* opens what is waiting for the operator (a question, a waiver request) while a dialogue runs, and returns to the same state afterwards; like `?` it is the same in every language (xref:04-console.adoc#during-dialogue[A Question During a Dialogue]).
 * An input the state does not offer is answered with one line (`3 is not offered here: 1-2, a, l, q`) and the same prompt; nothing is sent.
 
@@ -146,6 +146,11 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |`u`, `w`, `a`, `n`
 |`rename`, `revoke`, `revoke_others`, `listener_off`
 |the paired devices (xref:08-transcripts-later.adoc#t-devices[Paired Devices])
+
+|`k`
+|`b`
+|`keep` (keep a remembered consent; `Enter` withdraws it)
+|`settings.withdraw` (xref:08-transcripts-later.adoc#t-consents[The Remembered Consents])
 
 |`w`, `m`, `h`, `x`, `l`
 |`w`, `n`, `t`, `x`, `s`

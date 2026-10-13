@@ -344,6 +344,18 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |choose another store
 |wähle einen anderen Speicher
 
+|`onboard.store.consent.title`
+|Check {store, select, keychain {the macOS Keychain} other {the Secret Service}} with a test entry?
+|{store, select, keychain {Den macOS-Schlüsselbund} other {Den Secret Service}} mit einem Testeintrag prüfen?
+
+|`onboard.store.consent.runs`
+|one test entry written to {store, select, keychain {the Keychain} other {the Secret Service}}, read back, and deleted
+|ein Testeintrag wird {store, select, keychain {in den Schlüsselbund} other {in den Secret Service}} geschrieben, zurückgelesen und gelöscht
+
+|`onboard.store.consent.never`
+|reads or changes any other entry
+|liest oder ändert einen anderen Eintrag
+
 |`onboard.store.check.write`
 |write a test entry
 |einen Testeintrag schreiben

@@ -210,7 +210,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:control-contract.adoc[`control-contract`]
 |Controlling work: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; UC-CTL-1 to UC-CTL-3 and UC-STA-6 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; UC-CTL-1 to UC-CTL-5 and UC-STA-6 agreed (no work package)
 |epic clients
 
 |link:cli-actions.adoc[`cli-actions`]

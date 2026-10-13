@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projec
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-explorer[The Projects of the Machine], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-release[Releasing Ends Work as the Operator Ends It] (proposed)_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects], link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects]; the web app: designed by its package link:../../plans/web-projects.adoc[`web-projects`].
 
 The explorer is where the operator finds a project among all the machine's projects, and goes from it to its work. It is the counterpart of _Running Work_ (link:plan-overview.adoc[Plan Overview]): Running Work shows only what runs, the explorer every enrolled project.
 
@@ -26,7 +26,7 @@ The explorer is where the operator finds a project among all the machine's proje
       plan-marshall      setup needs: credential sonar             yesterday
       cui-http           ready                                     3 d ago
   Being added
-      ~/git/cui-parent   step 2 of 9: Identity         [Continue]  [Abandon]
+      ~/git/cui-parent   step 2 of 10: Identity        [Continue]  [Abandon]
   All projects                                    [ filter ]   by name ▾
       API-Sheriff        ready                                     5 weeks ago
       cui-http           ready                                     3 d ago
@@ -90,13 +90,15 @@ A released project offers _Enrol again_ first, which runs its onboarding again f
 [#release]
 == Release and Unenrol
 
-The project's setup offers, after its aspects, _Release the project…_ and _Unenrol the project…_ (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]). Each confirms first with what it ends (`project.release-confirm`).
+The project's setup offers, after its aspects, _Release the project…_ and _Unenrol the project…_ (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]); _Release_ only while the project is not released. Each confirms first with what it ends (`project.release-confirm`).
 
 ----
   Release pm-mcp-clients?
   ─────────────────────────────────────────────────────────────────────────────
-  What ends      3 plans, each archived as cancelled; 1 epic, cancelled with
-                 its plans; each epic is told
+  What ends      3 plans, each ended as released and archived; 1 epic,
+                 released with its plans and archived
+                 1 entry not started yet, deleted with its sources
+                 the setup run of pm-mcp-clients, ended where it stands
   Pull requests  #214, #219 are open   (●) Close them, with the reason
                                        ( ) Leave them open
   Reason         [                                                         ]
@@ -105,7 +107,8 @@ The project's setup offers, after its aspects, _Release the project…_ and _Une
                                                   [Keep it]  [Release the project]
 ----
 
-* *Release* ends every plan as a cancel does (link:work-actions.adoc#confirm-end[Ending a Plan]) and cancels every epic with its plans, then closes the project's plan lifecycle. The reason is required; it goes to every plan's archive and to the closing comments.
+* *Release* ends every plan of the project, whatever its state (running, pausing, paused, waiting for the operator, held), with the outcome `released`, never `cancelled` or `abandoned`, and archives it like a completed plan; its branch stays, and its open pull request is closed or left as the confirmation chose. Every epic of the project ends with the `terminal_reason` `released` and is archived; its plans end with the release, so nothing is left to tell it. The project's pending entries (starts not finished, link:starting-work.adoc#leaving[Starting Work, Leaving and Coming Back]) are deleted with their sources, and a running onboarding of the project (a later run of one of its aspects, link:project-onboarding.adoc#later-run[A Later Run]) is ended where it stands. Then the project's plan lifecycle is closed. The reason is required; it goes to every plan's archive and to the closing comments. Each line of _What ends_ is shown only where there is something to end.
+* *A removal from git still landing* (`project.release-wait`): where a moved document's `git.land-removal` of the project runs (link:starting-work.adoc#documents[Starting Work, Documents]), the release lets it finish before it ends anything, so that no removal is left half landed: after the confirmation a check line waits for it within its bound (`project.release.waiting`). When it does not finish in its bound, the release is refused, nothing has ended, and the removal is named with its row in Running Work (`project.release.wait_refused`); the operator releases again once it landed or was resolved there.
 * *Unenrol* removes the project's enrolment; its checkout and its committed configuration stay. It is refused while work runs: the dialogue lists the running plans and epics instead, each leading to its actions (link:work-actions.adoc[Actions on Plans and Epics]), and offers _Release the project…_, which ends them.
 
 ----
@@ -117,7 +120,7 @@ The project's setup offers, after its aspects, _Release the project…_ and _Une
                                                   [Back]  [Release the project…]
 ----
 
-* *The reason*: the release asks it (it closes the pull requests and goes to the epics); unenrolling takes an optional one, recorded in the audit trail.
+* *The reason*: the release asks it (it closes the pull requests and goes to every archive); unenrolling takes an optional one, recorded in the audit trail.
 * *Afterwards*: a released project stays listed with `released` and offers _Enrol again_; an unenrolled one leaves the list, and a client that shows it says so and moves to the list.
 
 [#marks]
@@ -265,8 +268,24 @@ Keys of the area `project`, shared by both clients.
 |Was endet
 
 |`project.release.ends`
-|{plans, plural, one {# plan, archived as cancelled} other {# plans, each archived as cancelled}}; {epics, plural, one {# epic, cancelled with its plans} other {# epics, each cancelled with its plans}}; each epic is told
-|{plans, plural, one {# Plan, als abgebrochen archiviert} other {# Pläne, jeder als abgebrochen archiviert}}; {epics, plural, one {# Epic, mit seinen Plänen abgebrochen} other {# Epics, jedes mit seinen Plänen abgebrochen}}; jedes Epic wird informiert
+|{plans, plural, one {# plan, ended as released and archived} other {# plans, each ended as released and archived}}; {epics, plural, one {# epic, released with its plans and archived} other {# epics, each released with its plans and archived}}
+|{plans, plural, one {# Plan, als abgegeben beendet und archiviert} other {# Pläne, jeder als abgegeben beendet und archiviert}}; {epics, plural, one {# Epic, mit seinen Plänen abgegeben und archiviert} other {# Epics, jedes mit seinen Plänen abgegeben und archiviert}}
+
+|`project.release.entries`
+|{count, plural, one {# entry not started yet, deleted with its sources} other {# entries not started yet, each deleted with its sources}}
+|{count, plural, one {# noch nicht gestarteter Eintrag, mit seinen Quellen gelöscht} other {# noch nicht gestartete Einträge, jeder mit seinen Quellen gelöscht}}
+
+|`project.release.onboarding`
+|the setup run of {project}, ended where it stands
+|der Einrichtungslauf von {project}, beendet, wo er steht
+
+|`project.release.waiting`
+|waiting for the removal of {paths} from git to land
+|wartet, bis die Entfernung von {paths} aus Git abgeschlossen ist
+
+|`project.release.wait_refused`
+|{project} was not released: the removal of {paths} from git did not land within its bound. Nothing was ended.
+|{project} wurde nicht abgegeben: die Entfernung von {paths} aus Git wurde nicht innerhalb ihrer Frist abgeschlossen. Es wurde nichts beendet.
 
 |`project.release.pull_requests`
 |Pull requests

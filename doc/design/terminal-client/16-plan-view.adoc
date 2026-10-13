@@ -35,7 +35,6 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
          ▶ tasks  4 of 7 tasks done
      ○ envelope-close                               planned
  ▸ ○ phase  finalize                                planned
-     · not in this plan: land (deep lane)
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move   → open   ← close   Enter details   . where it is   a actions   Esc back
 ----
@@ -43,7 +42,7 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 * The plan view is a tree: `▸` a closed node, `▾` an open one; `→` (`l`) opens the selected node one level, `←` (`h`) closes it or moves to its parent.
 * It opens with the path to the plan's current position open and the selection on the running leaf; `.` jumps there again from anywhere.
 * The header is the path from the plan to the selected node, and below it the plan's line: its phase, its state, since when it runs, its own pull request by its number (a terminal hyperlink, OSC 8, where the terminal shows one), and its epic.
-* *The state* is one of the closed list of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]: `running`, `pausing after the task` or `pausing after the phase`, `paused`, `waiting for you`, `stalled`. A hold is named after it, with its kind and since when (`execute · waiting for you · holds: a condition since 14:02`), and `a` offers its acts (xref:19-actions.adoc#holds[What Holds a Plan]).
+* *The state* is one of the closed list of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]: `running`, `pausing after the task` or `pausing after the phase`, `paused`, `waiting for you`, `held`. A held plan names its hold after it, with its kind and since when (`execute · held · holds: a condition since 14:02`), and `a` offers its acts (xref:19-actions.adoc#holds[What Holds a Plan]).
 * `a` opens the plan's actions below the header (xref:19-actions.adoc#full-screen[Actions]).
 * `Enter` on a leaf shows its details below it (<<full-screen-leaf>>); on a node that waits for the operator it leaves the view and opens the decision, as `answer` does.
 
@@ -122,7 +121,7 @@ The tree follows the plan's events; the selection stays on its node. When the pl
 [#ended]
 === An Ended Plan
 
-A plan that has ended, opened from ended work (xref:15-overview.adoc#ended[Ended Work]) or by `plan <plan_id>`, shows as it ended, read from the archive: the header names its outcome, its reason, and when it ended (`fix-relay · cancelled 2 d ago · the approach is replaced by plan relay-v2`); the tree is the process as it was when the plan ended, opened down to where it stopped; nothing updates, and `a` offers _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; xref:19-actions.adoc#chat-ended[A Chat About Ended Work]).
+A plan that has ended, opened from ended work (xref:15-overview.adoc#ended[Ended Work]) or by `plan <plan_id>`, shows as it ended, read from the archive: the header names its outcome, its reason, and when it ended (`fix-relay · cancelled 2 d ago · the approach is replaced by plan relay-v2`; the outcomes of link:../shared/work-actions.adoc#outcomes[How a Plan Ends]); the tree is the process as it was when the plan ended, opened down to where it stopped; nothing updates, and `a` offers _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; xref:19-actions.adoc#chat-ended[A Chat About Ended Work]).
 
 [#tree]
 == The Tree (`plan`)
@@ -140,11 +139,19 @@ fix-relay · execute · running · 2 h 10 min · pull request #214 https://githu
     running   envelope-ready                 run 3 · tasks: 4 of 7 done
     planned   envelope-close
   planned   phase finalize
-  not in this plan: land (deep lane)
+pm ›
+
+pm › plan docs-typo
+docs-typo · execute · running · 3 min
+  done      phase init                       1 min
+  running   phase execute                    2 min
+    running   sub-workflow land
+  planned   phase finalize
+  not in this plan: refine, outline, plan (the land lane)
 pm ›
 ----
 
-* The tree uses words for the states, so that it reads the same without glyphs and colour; sub-workflows carry the word `sub-workflow`.
+* The tree uses words for the states, so that it reads the same without glyphs and colour; sub-workflows carry the word `sub-workflow`. A plan of the land lane shows its `land.*` states as the sub-workflow `land` within `execute`, and the phases the lane does not call as not in this plan; `land` is never a phase.
 * `plan fix-relay --all` opens every level; `--depth 2` opens two.
 * The first line carries the state from the same closed list as the full-screen header, the hold with its kind where one holds, and the plan's pull request by its number and its URL. An ended plan prints `ended` with its outcome instead (`fix-relay · ended: cancelled · 2 d ago`) and the tree as it ended.
 

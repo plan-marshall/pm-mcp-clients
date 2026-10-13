@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The view of a plan as designed: its process level by level, the kinds with the icons of the design system, the states as glyph and word, the path with its way back, the jump to where the plan is, a leaf's details, live updates; at desktop and phone width, light and dark.
+* The view of a plan as designed: its process level by level, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), the kinds with the icons of the design system, the states as glyph and word, the path with its way back, the jump to where the plan is, a leaf's details, live updates; at desktop and phone width, light and dark.
 
 == Trace
 

@@ -117,6 +117,11 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
 * On Linux the first option is the Secret Service, with its own text: every program you run can read it while it is unlocked.
 * The primary button names the store it will use.
 
+[#store-consent]
+=== Consent (`store.consent`)
+
+Choosing an OS store asks first whether the server may write, read, and delete one test entry in it (consent kind `check_credential_store`, the pattern of xref:onboarding.adoc#consent[consent]): `Check the macOS Keychain with a test entry?` with `runs` one test entry written, read back, and deleted, `never` reads or changes any other entry, `cost` none. *Not now* stays. Choosing the files goes on to the check without it: they lie in the machine's own directory.
+
 [#store-check]
 === Check (`store.check`, `store.record`)
 
@@ -152,7 +157,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
   [ Check again ]   [ Choose another store ]          [ Use the files ]
 ----
 
-* The state is reached when the OS store is not available now (`store.detect`: locked, no session bus over SSH), or when its check failed (`store.check` with a ✗, whose line is shown in place of the cause: `✗ read it back: the collection is locked` with `→ unlock it (for example by logging in at the desktop), then check again`).
+* The state is the operator's choice, reached when the OS store is not available now (`store.detect`: locked, no session bus over SSH), or when its check failed (`store.check` with a ✗, whose line is shown in place of the cause: `✗ read it back: the collection is locked` with `→ unlock it (for example by logging in at the desktop), then check again`).
 * *Check again* goes back to `store.detect` and then shows `store.choose` with what is available now; *Choose another store* goes to `store.choose` with the other store preselected, which the primary button then names.
 
 [#store-move]
@@ -227,7 +232,12 @@ The consent `providers.consent` comes first, as in xref:onboarding.adoc#consent[
 
 * The state has one link, and no link to skip the provider: continuing without a provider is offered only after its check failed (<<providers-verify>>).
 * On the LAN listener the input is replaced by the command to run in a terminal and *Check again* (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-web-credentials[Credentials in the Web App]): `Tokens are entered on this machine only. In a terminal of it, run pm-operator credentials set sonar, then check again.`
-* *Store and check it* stores the token and leads to the check (<<providers-verify>>).
+* *Store and check it* stores the token, the operator's own act without a consent, and leads to the consent of the check.
+
+[#providers-verify-consent]
+=== Consent (`providers.verify-consent`)
+
+Before the providers are called, the consent kind `verify_providers` (the pattern of xref:onboarding.adoc#consent[consent]): `Check the providers with their tokens?` with `runs` a call of each selected provider with its token and its CLI tool's login check (`gh auth status`), `never` changes anything at the provider or sends the token anywhere else, `cost` none. *Not now* stays; a remembered consent passes with its line. With every token stored already, it follows <<providers-select>> directly.
 
 [#providers-verify]
 === Check (`providers.verify`, `providers.failed`)
@@ -267,7 +277,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-providers[Term
   A project's setup and a single plan can choose otherwise.
 
   Landing    (•) Branch and Pull Request    review and merge on the provider
-             ( ) Commit on main             no Pull Request, pushed directly
+             ( ) Commit on the base branch  no Pull Request, pushed directly
              ( ) Files only                 nothing is committed; you take over
                                                                     [ Why? ]
   Method     (•) Test first                 tests are written before the code
@@ -281,7 +291,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-providers[Term
   [ Back ]                                         [ Use these defaults ]
 ----
 
-* The preselection is the shipped default; each line says in a few words what the variant does, and *Why?* beside an axis explains its consequences in place.
+* The preselection is the shipped default; each line says in a few words what the variant does, and *Why?* beside an axis explains its consequences in place. The landing's lines are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-axes[Plan Behaviour Axes]).
 * A variant that cannot run on this machine is greyed with its reason (`Branch and Pull Request   needs a provider: none is available`).
 * With a line changed, the button reads *Save these choices*.
 
@@ -298,7 +308,7 @@ The validation (`defaults.validate`) shows one line per axis:
   ✓ Plan defaults recorded
 ----
 
-* At machine level only what the machine can know is checked: that a provider is available for `Branch and Pull Request`. Whether a base branch is protected is known only for a repository; `Commit on main` is checked when a project's setup or a plan chooses it, and here reads `✓  Commit on main: checked for each project, where its base branch is known`.
+* At machine level only what the machine can know is checked: that a provider is available for `Branch and Pull Request`; the machine default is never checked against a repository. Whether a base branch is protected is known only where a project is known; `Commit on the base branch` is checked at a project's setup and at a plan's start, which refuse a machine default that does not fit the project with the reason, and here reads `✓  Commit on the base branch: checked for each project, where its base branch is known`.
 * A refused line returns to `defaults.review` with the axis marked `✗ <reason>` and the button disabled until it is changed.
 
 Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-defaults[Terminal Client, transcript].
@@ -319,8 +329,10 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
                 ~/.local/bin, /Applications, /opt/homebrew/bin;
                 the tools git, gh, glab and the tokens already stored
     runs        the version and login probe of each harness found, the
-                model probe of each harness that can list its models, the
-                version probe of each tool found
+                model probe of each harness that can list its models, one
+                test entry in the OS credential store, the version probe of
+                each tool found, a call of each provider found with its
+                token
     never       asks a model for advice, reads other files, sends anything
                 over the network except the provider checks
     cost        none; for a harness that has no login probe, one short
@@ -355,7 +367,7 @@ The run shows the step bar moving and each step's check lines as they report:
   ⑥ Providers    ⠦ GitHub via gh 2.71, SonarCloud
 ----
 
-* *A step that needs the operator* (a login, a token, no harness found, a check that fails): the run stops in that step's own state, shown as in the guided run under the step bar, with the line `The automatic run waits for you here.` above it; when the state passes, the run continues on its own. Here SonarCloud is selected because a stored token was found for it, and that token is refused:
+* *A step that needs the operator* (a login, a token, no harness found, the model ids of a harness that cannot list its models, a check that fails): the run stops in that step's own state, shown as in the guided run under the step bar, with the line `The automatic run waits for you here.` above it; when the state passes, the run continues on its own. Here SonarCloud is selected because a stored token was found for it, and that token is refused:
 
 [source,text]
 ----
@@ -398,7 +410,7 @@ The run shows the step bar moving and each step's check lines as they report:
 
 * *Change* opens that step's choice state with the automatic value as its proposal and returns to the result.
 * A value the operator gave during the run has the reason `you were asked`.
-* ② enrols every supported harness found, the first of them the default (`onboard.auto.reason.supported_found`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; a harness that cannot list its models gets none, stays enrolled but used by no role, and is named in the result (`OpenCode: no model allowed`), its model ids to be added with *Change*.
+* ② enrols every supported harness found, the first of them the default (`onboard.auto.reason.supported_found`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
 
 Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, transcript].
 

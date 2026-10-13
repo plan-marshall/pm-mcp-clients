@@ -88,6 +88,22 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Tokens are entered on this machine only. In a terminal of it, run {command}, then check again.
 |Tokens werden nur auf dieser Maschine eingegeben. Führe in einem ihrer Terminals {command} aus und prüfe dann erneut.
 
+|`onboard.providers.credentials.stored`
+|Token stored in {store, select, keychain {the macOS Keychain} secret_service {the Secret Service} other {a file}}
+|Token {store, select, keychain {im macOS-Schlüsselbund} secret_service {im Secret Service} other {in einer Datei}} gespeichert
+
+|`onboard.providers.verify_consent.title`
+|Check the providers with their tokens?
+|Die Provider mit ihren Tokens prüfen?
+
+|`onboard.providers.verify_consent.runs`
+|a call of {hosts} with each token; {tools}
+|ein Aufruf von {hosts} mit jedem Token; {tools}
+
+|`onboard.providers.verify_consent.never`
+|changes anything at the provider; sends the token anywhere else
+|ändert etwas beim Provider; sendet das Token irgendwo anders hin
+
 |`onboard.providers.verify.title`
 |Checking the providers
 |Prüfe die Provider
@@ -193,8 +209,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Review und Merge beim Provider
 
 |`onboard.defaults.landing.main`
-|Commit on main
-|Commit auf main
+|Commit on the base branch
+|Commit auf dem Basis-Branch
 
 |`onboard.defaults.landing.main_text`
 |no Pull Request, pushed directly
@@ -261,8 +277,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |{axis} legt das Team des Projekts fest (.marshall/config/); ändere es in der Einrichtung des Projekts.
 
 |`onboard.defaults.validate.main_per_project`
-|Commit on main: checked for each project, where its base branch is known
-|Commit auf main: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
+|Commit on the base branch: checked for each project, where its base branch is known
+|Commit auf dem Basis-Branch: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
 
 |`onboard.defaults.validate.pull_request_ok`
 |Branch and Pull Request: {provider} is available
@@ -273,4 +289,4 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Vorgaben für Pläne gespeichert
 |===
 
-At the machine level there is no repository, so _Commit on main_ is not checked against a protected base branch here (`onboard.defaults.validate.main_per_project`); that check belongs to a project's setup. The German name of the landing axis is _Abschluss_, since _Landing_ is not in the glossary; _Outline_, _Merge_, _Pull Request_, _Branch_, _Commit_, _Push_ stay as the glossary says.
+The keys of the landing name its variants: `onboard.defaults.landing.pull_request`, `.main`, and `.files` are the sub-workflows `landing.pull-request`, `landing.main`, and `landing.files`. At the machine level there is no repository, so _Commit on the base branch_ is never checked against a protected base branch here (`onboard.defaults.validate.main_per_project`); that check belongs where a project is known, its setup and a plan's start. The German name of the landing axis is _Abschluss_, since _Landing_ is not in the glossary; _Outline_, _Merge_, _Pull Request_, _Branch_, _Commit_, _Push_ stay as the glossary says.

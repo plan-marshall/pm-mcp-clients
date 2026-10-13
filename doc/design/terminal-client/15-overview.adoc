@@ -74,8 +74,8 @@ By epic:
 ----
 
 * Each row is the plan's or epic's first line (kind, title, phase and state) and below it its details (times, progress, the epic it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
-* *The state* of a plan is one of a closed list, the texts `overview.state.*` of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]: `running`, `pausing` (with its point: `after the task`, `after the phase`), `paused`, `waiting for you`, `stalled`. A plan's own pull request, where it has one, is shown in its details by its number (`#214`), a terminal hyperlink (OSC 8) to the pull request where the terminal shows one; `?` on the row prints its URL.
-* *The marker* `!` names the kind of the first item that needs the operator, the texts `overview.needs.*`: `decision`, `waiver`, `waits for you` (an operator wait), `integrity pause`, `stalled`, `needs a fix` (a condition), `held`, `landing failed`, `new findings`, `paused by you`, `setup`.
+* *The state* of a plan is one of a closed list, the texts `overview.state.*` of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]: `running`, `pausing` (with its point: `after the task`, `after the phase`), `paused`, `waiting for you`, `held`. A plan's own pull request, where it has one, is shown in its details by its number (`#214`), a terminal hyperlink (OSC 8) to the pull request where the terminal shows one; `?` on the row prints its URL.
+* *The marker* `!` names the kind of the first item that needs the operator, the texts `overview.needs.*`: `decision`, `waiver`, `waits for you` (an operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity pause`, `held`, `landing failed`, and `new findings`, `setup`. A paused plan carries no marker for being paused: its state says it.
 * `e` on a plan moves to its epic in the view by epic; `Tab` switches between the two views and keeps the selection.
 * `Enter` on a plan or an epic opens its own view in the same full-screen view: a plan its plan view (xref:16-plan-view.adoc[The Plan View]); an epic its epic view (link:../shared/epic-view.adoc[Epic View]; drawn as xref:19-actions.adoc#epic-view[An Epic's View] says); `!` leaves the view and opens what waits for the operator in it, as `answer` does (link:../shared/decisions.adoc[Decisions]).
 * `a` opens the actions of the selected plan or epic below its row (xref:19-actions.adoc#full-screen[Actions]); `E` opens the project's ended work (<<ended>>).
@@ -178,7 +178,7 @@ Runtime pm-mcpd 0.9.1, running since 08:14 · 2 workers · 1 of 2 build slots in
 pm [1 question] ›
 ----
 
-* The same rows, in the same order, as words: the kind is a word (`plan`, `epic`), the state is a word of the closed list (`running`, `pausing`, `paused`, `waiting for you`, `stalled`), the marker `!` is followed by its kind, and no meaning is in a colour or a glyph alone.
+* The same rows, in the same order, as words: the kind is a word (`plan`, `epic`), the state is a word of the closed list (`running`, `pausing`, `paused`, `waiting for you`, `held`), the marker `!` is followed by its kind, and no meaning is in a colour or a glyph alone.
 * A plan's own pull request is printed by its number and its URL, so that it can be opened from the scrollback.
 * By default the tree is the view by plan: plans flat, each naming its epic. `status --by epic` prints the view by epic: the epics with their running and staged plans, and their plans below them; `status --project <id>` prints one project; `status --ended` prints the ended work (<<ended>>).
 * The tree is printed once; it is the view of a screen reader, of a terminal without cursor control, and of a narrow one.
@@ -194,10 +194,10 @@ What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, 
 ----
  Ended work · pm-mcp-clients                                      ● connected
  ─────────────────────────────────────────────────────────────────────────────
-▶ ▸ plan  Relay drops events on reconnect   completed   #211 · 2 d ago
+▶ ▸ plan  Relay drops events on reconnect   merged      #211 · 2 d ago
   ▸ plan  Fix the relay's event loss        cancelled   2 d ago
             the approach is replaced by plan relay-v2
-  ◇ epic  client bootstrap                  archived    2 weeks ago
+  ◇ epic  client bootstrap                  completed   2 weeks ago
   ▸ plan  Message catalogue v0              abandoned   3 weeks ago
             superseded by the shared texts
  ─────────────────────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, 
 ----
 pm › status --ended --project pm-mcp-clients
 pm-mcp-clients · ended work
-  plan  Relay drops events on reconnect   completed · 2 d ago
+  plan  Relay drops events on reconnect   merged · 2 d ago
         pull request #211 https://github.com/plan-marshall/pm-mcp-clients/pull/211
   plan  Fix the relay's event loss   cancelled · 2 d ago
         reason: the approach is replaced by plan relay-v2
@@ -218,7 +218,7 @@ pm-mcp-clients · ended work
 pm ›
 ----
 
-* Each row is the plan or epic with its outcome (a plan: `completed`, `cancelled`, `abandoned`; an epic: `archived`, `cancelled`), its reason where it has one, and when it ended; newest first; the client reads the runtime's pages as the operator scrolls (full screen) or as it prints (`status --ended`).
+* Each row is the plan or epic with its outcome (a plan: `merged`, `no change`, `handed back`, `returned`, `cancelled`, `abandoned`, `released`, `aborted`; an epic: `completed`, `cancelled`, `released`; link:../shared/work-actions.adoc#outcomes[How a Plan Ends]), its reason where it has one, and when it ended; newest first; the client reads the runtime's pages as the operator scrolls (full screen) or as it prints (`status --ended`).
 * `Enter` on an ended plan opens its plan view as it ended (xref:16-plan-view.adoc#ended[An Ended Plan]), on an ended epic its epic view as it ended (link:../shared/epic-view.adoc[Epic View]); both are read-only: no live updates, and no action but _Chat…_, which `a` offers with `fix-relay has ended: its view, and a chat about it` (xref:19-actions.adoc#chat-ended[A Chat About Ended Work]). `a` on a row of ended work opens the same menu. `plan <plan_id>` and `epic <epic_id>` print an ended plan or epic the same way, with `ended` in its first line.
 
 [#overview-texts]

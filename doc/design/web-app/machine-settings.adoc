@@ -5,11 +5,11 @@
 
 link:../README.adoc[Design] » link:README.adoc[Web App] » Machine Settings
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect, the remembered consents), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4] (the harnesses again), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the machine settings: one aspect again, a remembered consent withdrawn, the documents mode, a token rotated or replaced), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4] (the harnesses again), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices)_
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Onboarding, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal] (proposed)_
 
-Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding. They show what the onboarding recorded and change it by running one aspect again; they hold no form of their own that writes a value. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
+Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding: the page is the state `settings.choose`, reached from `onboard.completed` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]). They show what the onboarding recorded and change it by running one aspect again, or through the settings' own states (a consent withdrawn, the documents mode, a token rotated or replaced); every change is audited. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
 
 [#layout]
 == Layout
@@ -35,10 +35,17 @@ Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every 
 │    SonarCloud     – not available  recorded 3 Oct, 401 "Invalid token"       │
 │                                                                 [ Check ]    │
 │                                                                              │
+│  Tokens                                                                      │
+│    github   GitHub · fine-grained · ⚠ expires in 9 days  [ Rotate ][Replace] │
+│    sonar    SonarCloud · user token · no expiry known    [ Rotate ][Replace] │
+│                                                                              │
+│  Documents   Ask each time                                      [ Change ]   │
+│                                                                              │
 │  Remembered consents                                                         │
 │    look for harnesses                          12 Oct · terminal [ Withdraw ]│
 │    check whether a harness is logged in        12 Oct · Firefox  [ Withdraw ]│
 │    look for CLI tools and stored tokens        12 Oct · terminal [ Withdraw ]│
+│    check the providers with their tokens       12 Oct · terminal [ Withdraw ]│
 │    run scripts of a project's checkout                                       │
 │      pm-mcp-clients · 3 scripts                14 Oct · Firefox  [ Withdraw ]│
 │                                                                              │
@@ -99,7 +106,7 @@ Terminal: `pm-operator config harnesses` (link:../terminal-client/08-transcripts
 [#providers]
 == Providers Verified Again
 
-Every provider shows the result and the time of its last verification, from the onboarding or from a later check. *Check* runs the verification of that provider (`providers.verify`, link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification]), *Check all* of every provider the machine records; no consent is asked, since it uses only the tokens and tools the operator recorded. The lines appear in place, as in the onboarding:
+Every provider shows the result and the time of its last verification, from the onboarding or from a later check. *Check* runs the verification of that provider (`providers.verify`, link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification]), *Check all* of every provider the machine records; the consent `verify_providers` (`providers.verify-consent`, link:onboarding-steps-4-7.adoc#providers-verify-consent[Onboarding, Consent]) comes first unless it is remembered. The lines appear in place, as in the onboarding:
 
 [source,text]
 ----
@@ -123,10 +130,59 @@ Terminal: `pm-operator config providers --verify` (link:../terminal-client/08-tr
 
 The list of link:../shared/consents.adoc#remembered[Consents, The Remembered Consents], the same in both clients: every consent the operator remembered (_yes, and don't ask again_), from either client, one line each: the action by its kind's title (`common.consent.kind.<kind>`, link:../shared/consents.adoc#kinds[Consents, The Kinds]), when it was given, where (`terminal`, or the label of the paired device), and for a kind of a project its project and, for `run_checkout_scripts`, how many scripts it covers.
 
-* *Withdraw* removes it at once; the line is replaced by `Withdrawn: you will be asked again next time.` Withdrawing asks nothing first: it only brings back a question. Both remembering and withdrawing are audited.
+* *Withdraw* opens `settings.withdraw` in place: `Withdraw "check whether a harness is logged in"?` with where it will be asked again (`common.consent.withdraw.*`, link:../shared/consents.adoc#remembered[Consents]) and *Keep it* or *Withdraw*. Withdrawing (`settings.remove-consent`) removes it from `consents.json`; the line is replaced by `Withdrawn: you will be asked again next time.` Nothing recorded with it changes. Both remembering and withdrawing are audited.
 * With none remembered, the section says `No consent is remembered: you are asked every time.`
 
 Terminal: `pm-operator config consents` (link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, transcript]).
+
+[#documents]
+== The Documents Mode (`settings.documents-mode`, `settings.record`)
+
+How documents are taken into a plan at its start: the machine's `sources.documents_mode` (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-documents[Documents]). *Change* opens the choice in place:
+
+[source,text]
+----
+  How should documents be taken into a plan?
+
+  ( ) Copy            they stay where they are; the copy is not kept in step
+  ( ) Move            they leave where they are
+  (•) Ask each time   the default; Copy is preselected when asked
+
+  [ Back to the settings ]                               [ Keep as it is ]
+----
+
+* The current value is preselected; with another chosen the button names it (`Copy from now on`), and `settings.record` records and audits it. _Always_ at a plan's start writes the same setting (link:../shared/starting-work.adoc[Starting Work]); this is where it is set back to _Ask each time_.
+* On a device of the network _Move_ is disabled with its reason, as at a plan's start (`start.documents.loopback_only`): a move deletes the operator's files.
+
+Terminal: `pm-operator config documents` (link:../terminal-client/08-transcripts-later.adoc#t-documents[Terminal Client, transcript]).
+
+[#credentials]
+== A Token Rotated or Replaced (`settings.credential`, `settings.store-credential`)
+
+Every token the machine keeps is listed with its provider, its kind, and its expiry from the last check; one that has expired or expires within 14 days is marked `⚠`, an expired one with the plans it holds (`⚠ expired: holds 1 plan`). *Rotate* gives the entry a new secret, its kind and other fields kept; *Replace* asks the kind first, from those the provider accepts, and writes a new entry of that kind under the same key:
+
+[source,text]
+----
+  A new token for github
+
+    entry       github, used by GitHub (gh)
+    rotate      a new secret for this entry; its kind and the providers
+                that use it stay
+    now         fine-grained, expires in 9 days
+
+  Token   [ •••••••••••••••••••••••••••••• ]
+          Stored in the macOS Keychain; it is never shown again and never
+          reaches a model or a log.
+
+  [ Back to the settings ]                         [ Store the new token ]
+----
+
+* Entering the token is the operator's own act and needs no consent. `settings.store-credential` writes it into the recorded store and drops every token derived from the old secret (`Token github stored; 2 tokens derived from the old one dropped`).
+* Then the providers that use it are checked as in the onboarding: `providers.verify-consent` unless remembered, `providers.verify`, and on a ✗ `providers.failed` with its links (link:onboarding-steps-4-7.adoc#providers-verify[Onboarding, Check]). Afterwards the page is the settings again; a plan the old token held goes on, which one line says (`1 plan that waited for it goes on: fix-relay`, link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]).
+* On the LAN listener the input is replaced by the command to run in a terminal of the machine (`onboard.settings.credential.lan`: `pm-operator config credentials --rotate github`), as for a missing token (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-web-credentials[Credentials in the Web App]).
+* A plan held by an expired token names this section as the act that resolves the hold.
+
+Terminal: `pm-operator config credentials --rotate|--replace <credential_key>` (link:../terminal-client/08-transcripts-later.adoc#t-credential[Terminal Client, transcript]).
 
 [#devices]
 == Paired Devices
@@ -138,7 +194,7 @@ Terminal: `pm-operator web devices` (link:../terminal-client/08-transcripts-late
 [#texts]
 == Texts
 
-Keys of the area `web`. The lines of the aspects use the summaries of the onboarding's result (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Done]) and the step names `onboard.step.*`; the check lines and the links of a provider are those of `providers.verify` and `providers.failed` (link:../terminal-client/12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]); a remembered consent is named by its kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]).
+Keys of the area `web`; the texts of the settings' own states (tokens, documents, a token rotated or replaced) are the shared `onboard.settings.*` (link:../terminal-client/23-texts-settings.adoc#texts-settings-shared[Terminal Client, Texts: Machine Settings]), those of `settings.withdraw` the shared `common.consent.withdraw.*`. The lines of the aspects use the summaries of the onboarding's result (link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Done]) and the step names `onboard.step.*`; the check lines and the links of a provider are those of `providers.verify` and `providers.failed` (link:../terminal-client/12-texts-steps-6-7.adoc#texts-onboard-providers[Texts, Providers]); a remembered consent is named by its kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -195,6 +251,14 @@ Keys of the area `web`. The lines of the aspects use the summaries of the onboar
 |`web.settings.providers.record_available`
 |Record {provider} as available
 |Speichere {provider} als verfügbar
+
+|`web.settings.credentials.rotate`
+|Rotate
+|Erneuere
+
+|`web.settings.credentials.replace`
+|Replace
+|Ersetze
 
 |`web.settings.consents.title`
 |Remembered consents

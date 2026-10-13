@@ -15,12 +15,13 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 ----
   projects [--list]                     the explorer, full screen; --list prints it into the scrollback
   project add [<path>]                  onboard a project; the working directory is the proposed checkout
-  project setup <project_id> [<step>]   a later run of a project's onboarding, at a step (identity, team,
-                                        own, architecture, roles, descriptions, commit); without a step it
-                                        asks which, release and unenrol among the choices
+  project setup <project_id> [<step>]   a later run of a project's onboarding, at a step (identity, own,
+                                        team, architecture, landing, roles, descriptions, commit); without
+                                        a step it asks which, release and unenrol among the choices
   project release <project_id> [--reason <text>]
-                                        end every plan of the project and close its plan lifecycle; the
-                                        reason is asked when it is missing
+                                        end every plan and epic of the project as released, delete its
+                                        pending entries, and close its plan lifecycle; the reason is asked
+                                        when it is missing
   project unenrol <project_id> [--reason <text>]   remove the project's enrolment; refused while work of it runs
   project favourite <project_id> [--off]
 ----
@@ -112,22 +113,22 @@ The keys of the explorer are keys of navigation, the same in every language, lik
 [#onboarding]
 == Onboarding a Project
 
-The onboarding is a dialogue of the console, with the frame, the step line, consent, and check lines of xref:03-dialogues.adoc[Dialogues]; its nine steps are those of link:../shared/project-onboarding.adoc#steps[Project Onboarding, Steps]:
+The onboarding is a dialogue of the console, with the frame, the step line, consent, and check lines of xref:03-dialogues.adoc[Dialogues]; its ten steps are those of link:../shared/project-onboarding.adoc#steps[Project Onboarding, Steps]:
 
 [source,text]
 ----
 pm › project add
-[1/9] Checkout · Which checkout is the project?
+[1/10] Checkout · Which checkout is the project?
   Path of the checkout   [/home/oliver/git/pm-mcp-clients] ← the working directory
 Use this checkout? [Enter]   e) edit the path   ?   › ⏎
 
-[1/9] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
+[1/10] Checkout · Look at the checkout /home/oliver/git/pm-mcp-clients?
   reads       its git configuration, build wrappers, host tools, language
               servers, and scripts
   runs        the version probe of each host tool in the absolute directories
               of your PATH, never one inside the checkout
-  never       runs a script of the checkout without asking, changes a file,
-              uses the network
+  never       changes nothing, runs no script of the checkout without asking,
+              uses no network
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
     ✓  remote plan-marshall/pm-mcp-clients, base branch main
     ✓  build wrapper mvnw (Maven 3.9.11)
@@ -136,22 +137,22 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
 
     ?  build wrapper gradlew   its version is known only by running it
 
-[1/9] Checkout · Run this script of the checkout to know its version?
+[1/10] Checkout · Run this script of the checkout to know its version?
   runs        ./gradlew --version   (as a job, confined: no network, no writes
               outside a temporary directory)
   why         the wrapper names no version in its properties
   this        is the same trust as enrolling the project: its wrapper runs
               in every build of its plans
-y) yes, for this project   n) no, leave its version unknown   ?   › y
+y) yes   p) yes, for this project   n) no, leave its version unknown   ?   › p
     ✓  build wrapper gradlew (Gradle 9.1)
 
-[2/9] Identity · How should the project be named?
+[2/10] Identity · How should the project be named?
   Id     [pm-mcp-clients] ← from the remote
   Name   [plan-marshall/pm-mcp-clients] ← from the remote
-  Pilot  this release runs plans only in pilot projects   1) yes ←   2) no
+  Pilot  this version of PM-MCP runs plans only in pilot projects   1) yes ←   2) no
 Use these? [Enter]   e) edit a line   ?   › ⏎
 
-[3/9] Enrolment · Enrol pm-mcp-clients with these settings?
+[3/10] Enrolment · Enrol pm-mcp-clients with these settings?
   1) root             /home/oliver/git/pm-mcp-clients                     detected
   2) build wrapper    mvnw, pinned .mvn/wrapper/maven-wrapper.properties  detected
   3) host tools       git, gh                                             detected
@@ -160,51 +161,64 @@ Use these? [Enter]   e) edit a line   ?   › ⏎
   6) containers       off: the jobs run without Docker
 Enrol pm-mcp-clients? [Enter]   change: 1-6   ?n explains a line   ?   › ⏎
     ✓  pm-mcp-clients enrolled
+    ✓  first run: .marshall/config/ created with the default workflow units
+    ✓  the operator file and the role set are valid
 
-[4/9] Team settings · What the team works with
-  1) Base branch      main                                  team · detected
-  2) Branch prefix    feature/                              team · default
-  3) Lanes            light, deep                           team · default
-  4) CI provider      GitHub Actions                        team · detected
-  5) Analysis         SonarCloud                            team · detected
-  6) Finalize steps   create-pr, automatic-review, merge    team · default
-Use these? [Enter]   change: 1-6   ?   › ⏎
-  Build map   9 modules, 412 files attributed, 0 unattributed
-Confirm the build map? [Enter]   e) edit a route   ?   › ⏎
-
-[5/9] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
+[4/10] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
   1) Model language        English                                  ← from machine
   2) Allowed models        4 models                                 ← from machine
   3) Role assignment       12 roles on 2 harnesses                  ← from machine
-  4) Providers             GitHub (gh) · token ✓ stored             ← from machine
-  5) Plan defaults         Pull Request · Test first · key points   ← from machine
-  6) Integration variants  git: gh 2.71 · github: gh 2.71           ← from machine
+  4) Method, asking        Test first · key points                  ← from machine
+  5) GitHub                gh 2.71 · token ✓ stored                 ← from machine
+  6) SonarCloud            REST · token ✓ stored                    ← from machine
   7) Commit identity       Oliver Wolff <…>                         ← from machine
-Use the machine's values? [Enter]   change: 1-7   ?   › 5
-  Plan defaults · project pm-mcp-clients
+Use the machine's values? [Enter]   change: 1-7   ?   › 4
+  Method, asking · project pm-mcp-clients
     Method   1) Test first ← from machine   2) Tests after
   …
 Save 1 own value? [Enter]   change: 1-7   ?   › ⏎
+    ✓  github: variant gh valid, credential acting
+    ✓  sonarcloud: variant REST valid, credential acting
 
-[6/9] Architecture · What pm-mcp-clients is made of
+[5/10] Team settings · What the team works with
+  1) Base branch      main                                  team · detected
+  2) Branch prefix    feature/                              team · default
+  3) Lanes            light, deep                           team · default
+Use these? [Enter]   change: 1-3   ?   › ⏎
+
+[6/10] Architecture · What pm-mcp-clients is made of
   Domains     java (pom.xml), documentation (doc/**/*.adoc)
   Modules     9 modules found by Maven
                 pm-api · jar        pm-operator · jar     pm-relay · jar
                 pm-exec · jar       pm-mock-runtime · jar …
 Use this architecture? [Enter]   e) edit the domains   ?   › ⏎
+  Build map   9 modules, 412 files attributed, 0 unattributed
+Confirm the build map? [Enter]   e) edit a route   ?   › ⏎
 
-[7/9] Roles · Qualify the roles for pm-mcp-clients?
+[7/10] Landing · How the work of pm-mcp-clients lands
+  1) CI provider      GitHub Actions                        team · detected
+  2) Analysis         SonarCloud                            team · detected
+  3) Review bots      none                                  team · default
+  4) Finalize steps   automatic-review                      team · default
+  5) Landing          Branch and Pull Request               team · from machine
+Use these? [Enter]   change: 1-5   ?   › ⏎
+    !  main has no enforced merge queue and could have one
+  l) check again   s) skip   ?   › s
+
+[8/10] Roles · Qualify the roles for pm-mcp-clients?
   runs        one qualification task per role on its assigned model: 12 tasks
   never       changes the role assignment
   cost        about 0.40 USD (from 3 earlier runs)
+  if not      the roles stay unqualified and their tasks take their
+              conservative fallback; a later run of the setup offers it again
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
-[7/9] Roles · Qualifying the roles: 4 of 12 done
+[8/10] Roles · Qualifying the roles: 4 of 12 done
     ✓  implement       Claude Code · sonnet-5.5
     ▶  qgate           OpenCode · qwen-coder          running 0:22
     ○  refine          waiting
     …
 
-[8/9] Descriptions · Describe the modules of pm-mcp-clients?
+[9/10] Descriptions · Describe the modules of pm-mcp-clients?
   runs        one task of the role enrich per module: 9 tasks on
               Claude Code · sonnet-5.5
   writes      .marshall/project-architecture/, committed in the next step
@@ -212,18 +226,18 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
   if not      the project is ready without descriptions; a later run of
               its setup offers them again
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
-[8/9] Descriptions · Describing the modules: 1 of 9 done
+[9/10] Descriptions · Describing the modules: 1 of 9 done
     ✓  pm-api              enrich · Claude Code sonnet-5.5
     ▶  pm-operator         running 0:41
     ○  pm-relay            waiting
     …
 
-[9/9] Commit · Commit the team's configuration?
+[10/10] Commit · Commit the team's configuration?
   14 files in .marshall/
     .marshall/project.json   .marshall/domains.json   .marshall/build-map.json
     .marshall/project-architecture/   9 files
 Commit the files? [Enter]   n) no, leave them in the checkout   ?   › ⏎
-    ✓  committed: 3f2a91c "chore: plan-marshall project configuration"   not pushed
+    ✓  committed: 3f2a91c "chore: plan-marshall project configuration"   pushed to origin
 
 ✓ pm-mcp-clients is ready
     e) Add an epic   p) Add a plan   r) Running work
@@ -231,10 +245,14 @@ pm ›
 ----
 
 * `project add <path>` starts with that path; in a checkout, the working directory is the proposal.
+* *Checkout*: `n` at the consent to look stays there. The consent to run scripts answers `y` for this run, `p` for this project (remembered in the machine's `consents.json` by the scripts' digests, asked again only for a script that changed), or `n`, which goes on with the version `unknown` and does not ask again in this run.
 * *Enrolment*: every line can be changed by its number; `?n` lists what a line holds (`?4` the 12 variables of the build environment). The container engine is line 6, off; `6` opens its choice with its warning (`project.enrolment.container_warning`) before it can be turned on.
-* *Team settings* hold the build map; it is confirmed here and nowhere else, a route edited with `e`.
-* *Roles* and *Descriptions* each ask a consent of kind `model_cost` with its expected cost; both can be remembered (`r`). `n` at the descriptions makes the project ready without them (`.marshall/project-architecture/` gets no descriptions), and a later run (`project setup pm-mcp-clients descriptions`) offers them again.
-* *Commit* commits the team's configuration in the checkout, never pushes it; `n` leaves the files uncommitted.
+* *Own settings* hold the operator's values only; the variants and credentials are checked as soon as they are saved, and one that fails returns to its line with the finding (`✗  sonarcloud: the token is refused (401); choose another variant or credential`).
+* *Architecture* holds the build map; it is confirmed there and nowhere else, a route edited with `e`.
+* *Landing* holds the team's providers, the finalize steps, and the landing variant; a machine default that does not fit the project is refused on its line (`✗  Commit on main does not fit pm-mcp-clients: main is protected`) and waits for another choice.
+* *Roles* and *Descriptions* are asked only where roles need grading and modules a description; each asks a consent of kind `model_cost` with its expected cost, and both can be remembered (`r`). `n` skips the step with its reason, the project is ready without it, and a later run (`project setup pm-mcp-clients roles`, `… descriptions`) offers it again.
+* *Commit* makes one commit and pushes it where the checkout has a push remote (`not pushed: no push remote` otherwise); `n` leaves the files uncommitted.
+* *A step that cannot pass* waits in `setup.needs-repair` with its cause and fix: `t) try again   q) leave`; `t` runs the step again.
 * The keys of the ready line are `operator.key.add_epic`, `operator.key.add_plan`, and `operator.key.running_work` (xref:13-texts-operator.adoc#texts-operator-keys[Keys]).
 * A later run (`project setup pm-mcp-clients own`) opens the same states with the project's current values; a project that is not ready continues where its setup stopped.
 
@@ -245,17 +263,17 @@ Each project's onboarding runs in a scope of its own, so several can be open tog
 
 [source,text]
 ----
-pm [setup pm-mcp-clients 5/9] › project add ~/git/cui-parent
-[1/9] Checkout · Which checkout is the project?
+pm [setup pm-mcp-clients 4/10] › project add ~/git/cui-parent
+[1/10] Checkout · Which checkout is the project?
   …
-[2/9] Identity · How should the project be named?
+[2/10] Identity · How should the project be named?
   … q
-Left [2/9] Identity of /home/oliver/git/cui-parent. Nothing was sent. Enter continues it.
-pm [setup cui-parent 2/9 · setup pm-mcp-clients 5/9] › ⏎
-[2/9] Identity · How should the project be named?
+Left [2/10] Identity of /home/oliver/git/cui-parent. Nothing was sent. Enter continues it.
+pm [setup cui-parent 2/10 · setup pm-mcp-clients 4/10] › ⏎
+[2/10] Identity · How should the project be named?
   …
-pm [setup cui-parent 3/9 · setup pm-mcp-clients 5/9] › project setup pm-mcp-clients
-[5/9] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
+pm [setup cui-parent 3/10 · setup pm-mcp-clients 4/10] › project setup pm-mcp-clients
+[4/10] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
   …
 ----
 
@@ -271,24 +289,31 @@ What releasing and unenrolling do is link:../shared/project-explorer.adoc#releas
 ----
 pm › project setup plan-marshall
 plan-marshall · Setup · What do you want to change?
-  1) Identity        2) Team settings   3) Own settings    4) Architecture
-  5) Roles           6) Descriptions    7) Commit
-  8) Release the project…              9) Unenrol the project…
-› 8
+  1) Identity        2) Own settings    3) Team settings   4) Architecture
+  5) Landing         6) Roles           7) Descriptions    8) Commit
+  9) Release the project…              10) Unenrol the project…
+› 9
 Release plan-marshall?
-  What ends      every plan of the project: 2 running, 1 paused; each is
-                 archived as cancelled, and its epic gate-hardening is told
+  What ends      3 plans, each ended as released and archived; 1 epic,
+                 released with its plans and archived
+                 1 entry not started yet, deleted with its sources
   Afterwards     the project's plan lifecycle is closed; it stays listed as
                  released and can be enrolled again with its values
   Reason         › the gates move to the new repository
 Release the project? y) yes   n) no, keep it   ?   › y
-    ✓  fix-sonar-gate cancelled and archived
-    ✓  gate-timeouts cancelled and archived
-    ✓  gate-docs cancelled and archived
-    ✓  gate-hardening told
+    ▶  waiting for the removal of doc/gates.adoc from git to land   0:41
+    ✓  doc/gates.adoc removed from git
+    ✓  fix-sonar-gate released and archived
+    ✓  gate-timeouts released and archived
+    ✓  gate-docs released and archived
+    ✓  gate-hardening released and archived
+    ✓  entry with 2 sources deleted
 ✓ plan-marshall released
 pm ›
 ----
+
+* *A removal still landing* is waited for first, within its bound; when it does not land in it, the release is refused and nothing has ended: `✗ plan-marshall was not released: the removal of doc/gates.adoc from git did not land within its bound. Nothing was ended.`, with `→ running plan-marshall` to its row in Running Work.
+* *A running onboarding* of the project (a later run of its setup, its badge at the prompt) is ended where it stands, and its badge goes.
 
 [source,text]
 ----
@@ -320,7 +345,7 @@ pm ›
 ----
 pm › projects --list
 Being added
-    /home/oliver/git/cui-parent   Identity (2 of 9)
+    /home/oliver/git/cui-parent   Identity (2 of 10)
 Favourites
   ★ pm-mcp-clients    ready   needs you: 2   3 plans · 1 epic   2 min ago
   ★ pm-mcp-core       ready   2 plans   9 min ago

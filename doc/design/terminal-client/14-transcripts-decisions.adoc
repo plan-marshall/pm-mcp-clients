@@ -170,12 +170,17 @@ pm [1 question] › answer Q-007
 …   x) none fits   l) later   ?   › x
 None fits: the plan thinks again and asks anew. Send? [Enter]   b) back   › ⏎
 ✓ Q-007: you asked the plan to think again.
-
+pm ›
+◆ Question Q-009 · plan fix-relay · blocks the plan · asked anew after Q-007
+  …
+  answer Q-009   ·   questions
 pm [1 question] ›
-◆ Q-008 changed: a third option was added. Please answer again.
+◆ Q-009 changed: a third option was added. Please answer again.
 pm [1 question] ›
 ----
 
+* _Later_ (`l`) leaves the decision open and announced; the console leaves it, and the badge keeps counting it.
+* _None fits_ (`x`) closes the decision as withdrawn, with the note where `m)` added one before; the role that asked thinks again and asks anew as a new decision, announced like any other with the one it replaces (`decision.outcome.asked_anew`).
 * No decision expires: the plan waits until the operator answers it, and `questions` shows since when.
 
 [#t-decision-chat]
