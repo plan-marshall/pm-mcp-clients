@@ -150,7 +150,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:onboarding-contract.adoc[`onboarding-contract`]
 |Onboarding: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/machine-onboarding-unit.adoc[`pm-mcp-core` / `machine-onboarding-unit`]; UC-ONB agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/machine-onboarding-unit.adoc[`pm-mcp-core` / `machine-onboarding-unit`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-ONB agreed (no work package)
 |epic clients
 
 |link:entry-contract.adoc[`entry-contract`]
@@ -192,7 +192,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:process-contract.adoc[`process-contract`]
 |A plan's process: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/phase-sub-workflows.adoc[`pm-mcp-core` / `phase-sub-workflows`]; UC-PLN-1 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/phase-sub-workflows.adoc[`pm-mcp-core` / `phase-sub-workflows`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-PLN-1 agreed (no work package)
 |epic clients
 
 |link:cli-plan-view.adoc[`cli-plan-view`]
@@ -210,7 +210,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:control-contract.adoc[`control-contract`]
 |Controlling work: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; link:../../../pm-mcp-core/doc/plans/epic-auto.adoc[`pm-mcp-core` / `epic-auto`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; UC-CTL-1 to UC-CTL-5 and UC-STA-6 agreed, with An Epic Runs by Itself (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; link:../../../pm-mcp-core/doc/plans/epic-auto.adoc[`pm-mcp-core` / `epic-auto`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-CTL-1 to UC-CTL-5 and UC-STA-6 agreed, with An Epic Runs by Itself (no work package)
 |epic clients
 
 |link:cli-actions.adoc[`cli-actions`]
@@ -264,7 +264,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:report-contract.adoc[`report-contract`]
 |Reports to the operator and a plan's completion report: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/operator-reports.adoc[`pm-mcp-core` / `operator-reports`]; UC-PLN-6 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/operator-reports.adoc[`pm-mcp-core` / `operator-reports`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-PLN-6 agreed (no work package)
 |epic clients
 
 |link:cli-reports.adoc[`cli-reports`]
@@ -282,7 +282,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:system-contract.adoc[`system-contract`]
 |The system view and the runtime's lifecycle: contract and mock runtime
 |`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/runtime-metrics.adoc[`pm-mcp-core` / `runtime-metrics`]; link:../../../pm-mcp-core/doc/plans/runtime-control.adoc[`pm-mcp-core` / `runtime-control`]; UC-SYS-1 and UC-SYS-2 agreed (no work package)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/runtime-metrics.adoc[`pm-mcp-core` / `runtime-metrics`]; link:../../../pm-mcp-core/doc/plans/runtime-control.adoc[`pm-mcp-core` / `runtime-control`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-SYS-1 and UC-SYS-2 agreed (no work package)
 |epic clients
 
 |link:cli-system.adoc[`cli-system`]

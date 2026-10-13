@@ -64,9 +64,9 @@ Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   �
     What it does   Turns the refined request into deliverables and the plan's
                    lane; reads the whole affected codebase.
     What it needs  Deep reasoning over a large context; few tool calls.
-    Why frontier   A weak outline costs more later than the model costs here:
-                   every later phase builds on it.
-    If cheaper     More loop-backs from the Q-Gate; standard tier passed 71 %
+    Why frontier   A weak outline makes more work later than a frontier model
+                   takes here: every later phase builds on it.
+    Lower tier     More loop-backs from the Q-Gate; standard tier passed 71 %
                    of the qualification items (frontier 92 %).
     Steward        no departure
 ----
@@ -82,15 +82,15 @@ Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   �
               it reads the roles, the catalogue, and the qualification
               records of your projects
   never       changes a role: you accept or reject each proposal
-  cost        about 0.12 USD (from 2 earlier runs)
+  tokens      about 60 k tokens (from 2 earlier runs)
 
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
-  ⠦  steward is working on Claude Code · opus-5.5      1:04   about 0.12 USD
+  ⠦  steward is working on Claude Code · opus-5.5      1:04   about 60 k tokens
 
 [4/7] Roles · The steward proposes 2 departures
     1) qgate       read_only   OpenCode · qwen-coder   ← Claude Code · sonnet-5.5
        Reason: the qualification records of 2 projects show qwen-coder at
-       the level of sonnet-5.5 for this role, at a third of the cost.
+       the level of sonnet-5.5 for this role, as a smaller model.
     2) refine      read_only   Claude Code · opus-5.5  ← Claude Code · sonnet-5.5
        Reason: refine loops back twice as often on sonnet-5.5.
 
@@ -130,7 +130,7 @@ Use the macOS Keychain? [Enter]   other: 2   b) back   ?   › ⏎
 [5/7] Credentials · Check the macOS Keychain with a test entry?
   runs        one test entry written to the Keychain, read back, and deleted
   never       reads or changes any other entry
-  cost        none
+  tokens      none
 
 y) yes   r) yes, and don't ask again   n) not now   ?   › y
     ✓  write a test entry
@@ -217,7 +217,7 @@ Move 7 tokens? [Enter]   b) back   ?   › ⏎
   looks for   git, gh, glab in your PATH; the tokens stored in the macOS Keychain
   runs        <tool> --version, gh auth status, glab auth status
   never       reads a token's value, uses the network
-  cost        none
+  tokens      none
 
 y) yes   r) yes, and don't ask again   n) not now   ?   › r
   ✓  git 2.47   ✓  gh 2.71   –  glab not found   ✓  1 token stored
@@ -250,7 +250,7 @@ Store and check it? [Enter]   b) back   ?   › ⏎
   runs        a call of github.com and of sonarcloud.io with each token;
               gh auth status
   never       changes anything at the provider; sends the token anywhere else
-  cost        none
+  tokens      none
 
 y) yes   r) yes, and don't ask again   n) not now   ?   › r
 ----

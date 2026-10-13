@@ -24,7 +24,7 @@ A consent state is `<sub-workflow>.consent`, or `<sub-workflow>.<action>-consent
 ** _in_ (`common.consent.field.in`): where it is looked for (the directories of the login `PATH`, the checkout);
 ** _runs_ (`common.consent.field.runs`): what is run, each command with its arguments (a version probe, a login probe, a named script of the checkout, a role task on its harness and model);
 ** _never_ (`common.consent.field.never`): what it never does (reads other files, starts a session, uses the network, writes to the checkout);
-** _cost_ (`common.consent.field.cost`): `none` (`common.consent.cost.none`), an estimate (`common.consent.cost.estimate`, `.estimate_runs` with the number of earlier runs it comes from), or `not known yet: first run` (`common.consent.cost.unknown`); a consent with a model cost names the role, the harness, and the model.
+** _tokens_ (`common.consent.field.tokens`): `none` (`common.consent.tokens.none`), an estimate of the tokens the action uses (`common.consent.tokens.estimate`, `.estimate_runs` with the number of earlier runs it comes from), or `not known yet: first run` (`common.consent.tokens.unknown`); a consent that calls a model names the role, the harness, and the model. The estimate is a count of tokens in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers], never money (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]).
 * *Answers*, the links of the state:
 ** _yes_ (`yes`, `common.consent.yes`): the action runs this time;
 ** _yes, and don't ask again_ (`yes_remember`, `common.consent.yes_remember`): the action runs and the consent is remembered (<<remembered>>); offered only for a kind that can be remembered (<<kinds>>). Where it is not offered, `This consent is for this run only.` (`common.consent.once_only`) stands in its place;
@@ -38,7 +38,7 @@ A consent state is `<sub-workflow>.consent`, or `<sub-workflow>.<action>-consent
 [#auto]
 === The Automatic Run's One Consent
 
-The automatic run (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]) asks once, in `auto.consent`, for everything it does: the consents of the steps it runs, each listed by its kind's title (<<texts>>) with what it looks for and runs, and that the run asks no model and so costs nothing. The consent covers exactly those actions, for this run only: it is never remembered, it has no remember choice (`common.consent.once_only` stands in its place), and it does not remember the kinds it lists. _No_ goes back to `onboard.mode`, nothing done. A kind the operator remembered earlier is listed as remembered and not asked again.
+The automatic run (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]) asks once, in `auto.consent`, for everything it does: the consents of the steps it runs, each listed by its kind's title (<<texts>>) with what it looks for and runs, and that the run asks no model and so uses no tokens. The consent covers exactly those actions, for this run only: it is never remembered, it has no remember choice (`common.consent.once_only` stands in its place), and it does not remember the kinds it lists. _No_ goes back to `onboard.mode`, nothing done. A kind the operator remembered earlier is listed as remembered and not asked again.
 
 [#kinds]
 == The Kinds
@@ -64,14 +64,14 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |`common.consent.kind.fetch_icons`
 
 |`probe_harness_login`
-|run the login probe of each chosen harness: its command, or one minimal headless call with its token cost
+|run the login probe of each chosen harness: its command, or one minimal headless call with the tokens it uses
 |`harness.probe-consent`
 |machine
 |stays
 |`common.consent.kind.probe_harness_login`
 
 |`verify_harness_profile`
-|run a harness the binary does not know, to verify its draft profile, with the token cost of its stages
+|run a harness the binary does not know, to verify its draft profile, with the tokens its stages use
 |`harness.add-consent`
 |never
 |stays
@@ -85,7 +85,7 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |`common.consent.kind.probe_harness_models`
 
 |`model_advice`
-|a task of the steward on the default harness, with its expected cost
+|a task of the steward on the default harness, with its expected tokens
 |`catalogue.consent`, `roles.consent`
 |machine
 |goes on without the advice: `catalogue.select` without a recommendation, `roles.review` unchanged
@@ -127,7 +127,7 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |`common.consent.kind.run_checkout_scripts`
 
 |`model_cost`
-|a role task whose expected cost is shown first: the qualification of the roles, the description of the modules
+|a role task whose expected tokens are shown first: the qualification of the roles, the description of the modules
 |`setup.qualify-consent`, `setup.enrich-consent`
 |project
 |goes on without: the step is skipped with its reason and can be run later
@@ -148,7 +148,7 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |`onboard.auto.consent.title`
 |===
 
-* `catalogue.consent` asks two kinds at once, each with its own answer and cost: _no_ to the model probes keeps the state, _no_ to the advice goes on without it.
+* `catalogue.consent` asks two kinds at once, each with its own answer and tokens: _no_ to the model probes keeps the state, _no_ to the advice goes on without it.
 * A consent of `run_checkout_scripts` is asked again for a script whose digest changed since it was remembered; the state names the changed scripts (`common.consent.changed_scripts`) and offers only those.
 * A grant is not a consent: reading the issues of another repository is a read grant, kept and shown with the grants, never in the list of <<remembered>>.
 * `store.consent` is asked only for an OS store; choosing the files goes from `store.choose` to `store.check` without it. `providers.verify-consent` follows `providers.credentials`: storing the typed token is the operator's own act, calling the provider with it is the machine's.
@@ -171,7 +171,7 @@ Both clients list the remembered consents in their machine settings (link:../../
 
 The consent texts both clients show are keys of the area `common` (link:texts-and-languages.adoc#keys[Keys and Packs]).
 
-*Defined in link:../terminal-client/09-texts-common.adoc#texts-common[Terminal Client, Texts: Common], used by both*: `common.consent.yes`, `.yes_remember`, `.no`, `.nothing_done`, `.remembered`, `.withdraw_hint` (the terminal only), `.once_only`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.cost`; the costs `common.consent.cost.none`, `.estimate`, `.estimate_runs`, `.unknown`. The title of each consent state is defined with its step's texts.
+*Defined in link:../terminal-client/09-texts-common.adoc#texts-common[Terminal Client, Texts: Common], used by both*: `common.consent.yes`, `.yes_remember`, `.no`, `.nothing_done`, `.remembered`, `.withdraw_hint` (the terminal only), `.once_only`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.tokens`; the estimates `common.consent.tokens.none`, `.estimate`, `.estimate_runs`, `.unknown`. The title of each consent state is defined with its step's texts.
 
 *Defined here*: the title of each kind, a lowercase action that reads in a list and as the `{action}` of `common.consent.remembered`, the texts of `settings.withdraw` (`{where}` the step and the state that asks the kind, for example `[5/7] Credentials`), and the line of changed scripts.
 
@@ -224,8 +224,8 @@ The consent texts both clients show are keys of the area `common` (link:texts-an
 |Skripte aus dem Checkout eines Projekts ausführen
 
 |`common.consent.kind.model_cost`
-|approve the cost of a role task
-|die Kosten einer Aufgabe einer Role freigeben
+|approve the tokens of a role task
+|die Tokens einer Aufgabe einer Role freigeben
 
 |`common.consent.kind.check_updates`
 |check for a newer version

@@ -13,6 +13,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 * The onboarding route and the start and pairing pages as designed in `web-design`, rendering the states the runtime reports; one route, done steps read-only.
 * Every view at desktop and phone width, light and dark, with the behaviour of the design (check lists, consent, model at work, lost connection).
+* Tokens, never money: the consent field `tokens` with its estimate; what each harness reports of its tokens in the choice, the enrolment, the installed profile, and the machine settings, and the verification's stage `usage` (link:../design/web-app/onboarding.adoc#harness-tokens[Web App, Onboarding, What a Harness Reports]).
 * The scenarios shared with `cli-onboarding`; a scenario missing for a web case is added there.
 * The machine settings (UC-ONB-10): the aspects again, the remembered consents with their withdrawal, the documents mode, a token rotated or replaced, a setting changed meanwhile in another client (`conflict`), applied again or kept; the page of a device whose network listener was turned off.
 * The paired devices in the machine's settings (UC-ENT-2).

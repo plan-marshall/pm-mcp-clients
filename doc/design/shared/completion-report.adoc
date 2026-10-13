@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Completion Report
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (ended work)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
 
@@ -29,7 +29,8 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
                    ✓ fsync of the cursor file
   Re-planning    1 · after the base moved (09:55): TASK-5 added
   Decisions      2 · Q-003 Rebase onto main (you, web app) · Q-005 (the plan)
-  Spend          412 k tokens · 6 workers · 3 models          [Per phase]
+  Tokens         ≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 h 40 min      [Tokens]
+                 6 workers · 3 models · 3 of 41 tasks not measured
   ─────────────────────────────────────────────────────────────────────────────
   [Its plan view]   [Chat]
 ----
@@ -40,8 +41,46 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 * *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
 * *Re-planning*: how often the plan was revised, each with its trigger (the base moved, a failed gate, a chat of the operator) and what changed in one line; opening one leads to it in the plan's history.
 * *Decisions*: how many were asked, each with its id, the answer, and who answered (you, with the channel and device; the plan, where the decision allowed it to decide; withdrawn); opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
-* *Spend*: the tokens, the workers, and the models the plan used, from its usage records; _Per phase_ shows them per phase and per role, one step away. A cost in money is shown only where the records carry one.
+* *Tokens*: the tokens the plan used, with the split and the wall time, the workers, the models, and the coverage; _Tokens_ opens the section of its own, one step away (<<tokens>>). No money is shown.
 * *Actions*: _Its plan view_ opens the plan as it ended; _Chat_ opens the read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). The report has no other action: the archive never changes.
+
+[#tokens]
+== Tokens
+
+What the plan used, in tokens and never in money (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]). Every figure is one the runtime derived from the plan's usage records; the client formats it (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]) and adds nothing up.
+
+----
+  fix-relay · tokens                                merged · #214 · today 11:20
+  ─────────────────────────────────────────────────────────────────────────────
+  Total        ≥ 412 k tokens (≥ 380 k in · ≥ 32 k out) · ran 2 h 40 min
+  Coverage     3 of 41 tasks not measured: their worker was terminated
+  ─────────────────────────────────────────────────────────────────────────────
+  By phase     refine      38 k (35 k in · 3 k out)
+               outline     96 k (90 k in · 6 k out)
+               execute   ≥ 241 k (≥ 222 k in · ≥ 19 k out)    3 not measured
+               finalize    37 k (33 k in · 4 k out)
+  By role      planner       opus-5.5 · high      128 k (120 k in · 8 k out)
+               implementer   sonnet-5.5 · medium ≥ 250 k (≥ 228 k in · ≥ 22 k out)
+               reviewer      sonnet-5.5 · low      34 k (32 k in · 2 k out)
+  By model     claude:opus-5.5      128 k (120 k in · 8 k out)
+               claude:sonnet-5.5    270 k (247 k in · 23 k out)
+               codex:gpt-5        ≥ 14 k (≥ 13 k in · ≥ 1 k out)       3 not measured
+  ─────────────────────────────────────────────────────────────────────────────
+  Waste        52 k tokens (13 %)
+               produced nothing      18 k   2 tasks
+               retries               21 k   retryable 1 · stall 1
+               remediation           13 k   returned with findings 1
+----
+
+* *Total*: the plan's tokens with the split, `tokens = in + out` (_in_: input, cache-read, and cache-write tokens; _out_: output and reasoning tokens), and the wall time from its start to its end, as _Ran_ above.
+* *Coverage*: how many of the plan's tasks were measured, and for those that were not, why, by the closed list of the records (`not_reported_by_harness`, `output_unparsed`, `session_task`, `terminated`), `common.tokens.coverage`. A figure the harness's profile declares not applicable (no cache write for its harness) counts as `0` and leaves the task measured. Any total over a task not measured is a floor, shown with `≥`, never as exact; with every task measured the line says `41 of 41 tasks measured`.
+* *By phase*: one line per phase the plan ran, in its order; a phase whose tasks were not all measured names how many.
+* *By role*: one line per role, with what the role pinned (harness, model, effort), as the plan's records name them.
+* *By model*: one line per `<harness>:<model>`.
+* *Raw components*, one step from any line of _Total_, _By phase_, _By role_, or _By model_: the figures as the harnesses reported them, summed by the runtime for that line: input, cache read, cache write, output, reasoning, each `not reported` where a harness of the line does not report it and `0` where its profile declares it not applicable. The unified figure stays the one of the line; the components explain it and are never added up by the client.
+* *Waste*: the tokens that produced nothing, with their share of the total: the tasks of spend class `no_product` (a task that ended without a product), and the retries and the remediation of the plan, each by its cause class (`retryable`, `stall`, `terminal_error`, `returned_with_findings`, …) with how often. Nothing is waste that the records do not class as such.
+* *Only usage*: no budget, no limit, no projection, and no money. A re-planning or a waiver of the plan is in _Re-planning_ above and in the plan's history as an event, never as a figure of this section.
+* Each line of _By phase_ leads to that phase in the plan view as it ended (link:plan-view.adoc#ended[Plan View, An Ended Plan]); `Esc` or _Back_ returns to the report.
 
 [#reached]
 == Where It Is Reached
@@ -112,17 +151,109 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |{by, select, operator {you, {channel}} plan {the plan} withdrawn {withdrawn} other {{by}}}
 |{by, select, operator {du, {channel}} plan {der Plan} withdrawn {zurückgezogen} other {{by}}}
 
-|`report.completion.spend`
-|Spend
-|Verbrauch
+|`report.completion.tokens`
+|Tokens
+|Tokens
 
-|`report.completion.spend_value`
-|{tokens} tokens · {workers, plural, one {# worker} other {# workers}} · {models, plural, one {# model} other {# models}}
-|{tokens} Tokens · {workers, plural, one {# Worker} other {# Worker}} · {models, plural, one {# Modell} other {# Modelle}}
+|`report.completion.tokens_value`
+|{tokens} · {duration}
+|{tokens} · {duration}
 
-|`report.completion.per_phase`
-|Per phase
-|Zeige je Phase
+|`report.completion.tokens_scope`
+|{workers, plural, one {# worker} other {# workers}} · {models, plural, one {# model} other {# models}} · {coverage}
+|{workers, plural, one {# Worker} other {# Worker}} · {models, plural, one {# Modell} other {# Modelle}} · {coverage}
+
+|`report.completion.tokens_open`
+|Tokens
+|Zeige die Tokens
+
+|`report.tokens.title`
+|{plan} · tokens
+|{plan} · Tokens
+
+|`report.tokens.total`
+|Total
+|Gesamt
+
+|`report.tokens.total_value`
+|{tokens} · ran {duration}
+|{tokens} · lief {duration}
+
+|`report.tokens.coverage`
+|Coverage
+|Abdeckung
+
+|`report.tokens.all_measured`
+|{total} of {total} tasks measured
+|{total} von {total} Tasks gemessen
+
+|`report.tokens.by_phase`
+|By phase
+|Je Phase
+
+|`report.tokens.by_role`
+|By role
+|Je Role
+
+|`report.tokens.by_model`
+|By model
+|Je Modell
+
+|`report.tokens.role_pin`
+|{role}   {model} · {effort}
+|{role}   {model} · {effort}
+
+|`report.tokens.unmeasured`
+|{count} not measured
+|{count} nicht gemessen
+
+|`report.tokens.waste`
+|Waste
+|Verschwendet
+
+|`report.tokens.waste_value`
+|{tokens} tokens ({share} %)
+|{tokens} Tokens ({share} %)
+
+|`report.tokens.waste.no_product`
+|produced nothing
+|ohne Ergebnis
+
+|`report.tokens.waste.retries`
+|retries
+|Wiederholungen
+
+|`report.tokens.waste.remediation`
+|remediation
+|Nacharbeit
+
+|`report.tokens.waste_tasks`
+|{count, plural, one {# task} other {# tasks}}
+|{count, plural, one {# Task} other {# Tasks}}
+
+|`report.tokens.waste_cause`
+|{cause} {count}
+|{cause} {count}
+
+|`report.tokens.waste_none`
+|none
+|keine
+
+|`report.tokens.components`
+|Raw components
+|Zeige die Rohwerte
+
+|`report.tokens.component`
+|{component, select, input {input} cache_read {cache read} cache_write {cache write} output {output} reasoning {reasoning} other {{component}}}
+|{component, select, input {Eingabe} cache_read {aus dem Cache gelesen} cache_write {in den Cache geschrieben} output {Ausgabe} reasoning {Nachdenken} other {{component}}}
+
+|`report.tokens.component_not_reported`
+|not reported
+|nicht gemeldet
+
+|`report.tokens.component_not_applicable`
+|0 (not applicable to {harness})
+|0 (bei {harness} nicht anwendbar)
 
 |`report.completion.plan_view`
 |Its plan view
@@ -132,3 +263,5 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |—
 |—
 |===
+
+The reasons a task was not measured and the cause classes are texts of their closed lists, keys `report.tokens.unmeasured_reason.<reason>` and `report.tokens.cause.<cause_class>`, added with the contract (link:../../plans/report-contract.adoc[`report-contract`]); the figures use `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]).

@@ -367,7 +367,7 @@ Decide everything for me?
                                    token, and its CLI tool run
   never       asks a model for advice, reads other files, sends anything over
               the network except the provider checks and the icons
-  cost        none but the headless calls named above
+  tokens      none but the headless calls named above
   This consent is for this run only.
 
 y) yes   n) not now   ? lists every action   › n

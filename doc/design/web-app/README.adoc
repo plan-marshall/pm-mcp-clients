@@ -23,7 +23,7 @@ Everything else the web app shows is designed once for both clients in the share
 
 * *The screen is the state.* Each screen renders one state of the onboarding workflow: what the server reports for it, and one control per link it offers. The app holds no step order and no rule of its own; reloading the page, closing the browser, or opening it on another paired device shows the same state.
 * *Nothing happens on its own.* No screen starts an action when it opens. Every action that looks at the machine, runs a program, or asks a model is behind a consent screen (link:onboarding.adoc#consent[Onboarding], link:../shared/consents.adoc#pattern[Consents]); every other action is behind a button that names it.
-* *Say exactly what will happen.* A button is labelled with what it does ("Look for harnesses", "Enrol 2 harnesses"), never "Next" or "OK". A consent screen lists the directories, the commands, and the cost before it asks.
+* *Say exactly what will happen.* A button is labelled with what it does ("Look for harnesses", "Enrol 2 harnesses"), never "Next" or "OK". A consent screen lists the directories, the commands, and the tokens it uses before it asks.
 * *Preselected, never hidden.* Every screen opens with the proposal filled in (defaults, found harnesses, detected tools), so accepting it is one click; the overview shows everything that will be recorded, and every part of it can be changed, the detail one click away.
 * *Every check reports back.* A check is a line that turns from a spinner into ✓ or ✗; a ✗ carries what failed, the answer received, and the fix. Nothing is marked done that was not checked.
 * *Saying no is safe.* "Not now" never ends in an error or a warning colour; the screen stays and says that nothing was done.

@@ -78,10 +78,12 @@ Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-
 
   [x] CC  Claude Code   2.5.0   ~/.local/bin/claude          ✓ supported   (•)
                                 was 2.4.1: checked and enrolled again
+                                tokens complete
   [ ] OC  OpenCode      —       /opt/homebrew/bin/opencode
                                 missing: not found any more
   [ ] CX  Codex         0.40.0  /opt/homebrew/bin/codex      ✓ new since the
                                                                last run    ( )
+                                tokens not reported
       AG  Antigravity   —       not found
 
   ▸ Advanced: add a harness that is not listed
@@ -94,6 +96,7 @@ Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-
 * *Missing*: an enrolled harness no longer found is shown with the path it was enrolled at, `missing: not found any more`, and unticked: it is offered for removal. Ticking it keeps it only once it is found again (*Look again*, or its path under _Advanced_).
 * *Used by roles*: a harness that roles use cannot be removed, neither by unticking it nor as missing. Its row stays ticked and locked, with `used by 6 roles; reassign them first:` and the link _Reassign them_ that opens the later run of the roles (link:onboarding-steps-4-7.adoc#roles[Onboarding, ④ Roles]) filtered to them; the harness keeps its roles until then. Its default mark can still move.
 * *Default*: any ticked harness can be made the default; the change is shown in the confirmation.
+* *Tokens*: what each harness and version reports of its usage, as in the first run (link:onboarding.adoc#harness-tokens[Onboarding, What a Harness Reports]); a new version is shown with what its profile and verification say for that version, so a change of what a harness reports is seen here.
 * *Back to the settings* (`web.settings.back`) leaves the later run without a change.
 * *A changed program* (a new version or digest at the same path) is checked and enrolled again with the others; the line says what it was.
 * The check (link:onboarding.adoc#harness-probe[Onboarding, Check]) runs for every ticked harness, the consent `probe_harness_login` asked unless remembered. The confirmation (link:onboarding.adoc#harness-confirm[Onboarding, Confirm]) lists what changes: each harness to enrol with its path, version and digest, the new ones marked `new since the last run`, each one to remove as `Remove OpenCode: its enrolment is deleted`, and the default in the button; with nothing changed its button reads *Keep as it is*.
