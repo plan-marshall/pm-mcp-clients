@@ -10,7 +10,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-* The user symlinks of `pm-mcp` and `pm-operator`, the versioned installation directory, and the switch of the symlinks at an upgrade, as far as the specification gives them to the client binaries; the drain of the old runtime is link:../../../pm-mcp-core/doc/plans/runtime-lifecycle.adoc[`pm-mcp-core` / `runtime-lifecycle`].
+* The user symlinks of `pm-mcp` and `pm-operator`, the versioned installation directory, and the switch of the symlinks at an upgrade, as far as the specification gives them to the client binaries; the drain of the old runtime is link:../../../pm-mcp-core/doc/plans/runtime-lifecycle.adoc[`pm-mcp-core` / `runtime-lifecycle`]. The upgrade the operator starts from a client, where the runtime installs the release and switches the links itself, is link:../../../pm-mcp-core/doc/plans/runtime-control.adoc[`pm-mcp-core` / `runtime-control`] and link:system-contract.adoc[`system-contract`]; this package keeps the resolution through the switched links that it relies on.
 
 == Trace
 

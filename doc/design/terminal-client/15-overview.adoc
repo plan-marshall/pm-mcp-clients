@@ -116,6 +116,9 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 |`E`
 |the ended work of the selected project, or of the project shown (<<ended>>)
 
+|`S`
+|the system view, as a level of the view (xref:25-system.adoc#full-screen[System, Full Screen])
+
 |`R`
 |the unread reports, as a level of the view; the footer of the projects' level shows their count while there are any (xref:24-reports.adoc#full-screen[Reports, In the Full-Screen View])
 

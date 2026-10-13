@@ -1,0 +1,29 @@
+= The system view and the runtime's lifecycle in the web app
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `web-system`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]; no roadmap milestone yet
+Where:: `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* *Design first*: no web design exists for these views. The package lays them out in the design system of `web-design` from the shared design, and has the operator accept the layout before building it: the entry _System_ in the frame beside the machine settings, the view as a route of its own (`/system`), the confirmations as dialogues over it, the progress line of a drain or an upgrade in the frame, the page of a stopped runtime (link:../design/web-app/README.adoc#structure[Web App, Structure]).
+* The system view with its five parts, live from `GET /api/v1/events`, each figure a link to what it counts, the window, the grouping, and per project remembered per browser; a figure unavailable with its reason, never `0`.
+* Stop, restart, and upgrade from a paired device, each with its confirmation and its choice of when; the drain's line with _Stop now_ and _Keep it running_ on every device; the stopped page with the command to copy, connecting again by itself; the restart's reconnect; the check behind its consent screen; the upgrade's check list, its withdraw, its failures; loading the app again after an upgrade, waiting where a field holds unsent text.
+* Every view at desktop and phone width, light and dark; texts from the catalogue only (area `system`).
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI & Security § Web App]
+* Design: link:../design/shared/system.adoc[System]; link:../design/web-app/README.adoc#structure[Web App, Structure]; the web app's views of `web-design`
+
+== Done When
+
+The operator accepted the layout; every scenario of `system-contract` passes as a view test; the same scenarios pass in the terminal (`cli-system`).

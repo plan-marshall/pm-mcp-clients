@@ -1,0 +1,347 @@
+= Design: System
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » System
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics] (proposed), link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#_drain_stop_upgrade[Drain, Stop & Upgrade], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#per-project-recovery[Per-Project Recovery], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[Installation Layout], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/25-system.adoc[Terminal Client, System], link:../web-app/README.adoc#structure[Web App]. Its texts are in link:system-texts.adoc[a part of their own].
+
+The runtime runs the plans of the machine without being looked at. Now and then the operator wants to know how it is doing (which version, since when, how much memory, how much the models cost today) and what it is doing (how many plans run, which workers are busy, which builds wait for a slot), and sometimes to act on it as a whole: stop it before a reboot, restart it, upgrade it to a newer release. The *system view* is the one place in each client for both (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1]).
+
+Every figure comes from the runtime's metrics: named counters, gauges, and timers that the runtime keeps where things happen (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics]). A client never computes a figure by counting what it has loaded, and never shows a figure it did not receive.
+
+[#view]
+== The System View
+
+----
+  System                                                          ● connected
+  ─────────────────────────────────────────────────────────────────────────────
+  Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d)        0.10.0 available
+            running since today 08:14 · 6 h 12 min
+            memory 412 MB in use of 1 GB · 680 MB resident · CPU 4 %
+            machine store 2.3 GB · 38 GB free on its disk · measured 13:40
+            listeners  socket · web on the network 192.168.1.20:47613 (2 devices)
+  ─────────────────────────────────────────────────────────────────────────────
+  Work      plans    3 running · 1 waiting for you · 1 held · 2 paused
+            epics    1 running · 1 waiting for you
+            tasks    4 running · 6 queued
+            projects 3 with running work                    [All] [Per project]
+  ─────────────────────────────────────────────────────────────────────────────
+  Workers   5 · 3 busy · 2 idle
+            planner        claude     opus-4.5     busy    fix-relay
+            implementer    claude     sonnet-4.5   busy    relay-docs
+            implementer    codex      gpt-5        idle
+  ─────────────────────────────────────────────────────────────────────────────
+  Jobs      build  1 of 2 slots · 1 queued        test  0 of 1 slot
+            locks  3 held
+  ─────────────────────────────────────────────────────────────────────────────
+  Models    [Last hour] [Today] [7 days]                [Per model] [Per role]
+            claude:opus-4.5      42 calls   1.9 M in · 120 k out   $ 18.40   1 retry
+            claude:sonnet-4.5   118 calls   3.2 M in · 410 k out   $ 11.75
+            codex:gpt-5          12 calls   0.4 M in ·  30 k out   $  2.10   1 error
+  ─────────────────────────────────────────────────────────────────────────────
+                                            [Upgrade…]  [Restart…]  [Stop…]
+----
+
+The view has five parts, always in this order; the terminal prints the same parts as a list (link:../terminal-client/25-system.adoc#print[Terminal Client, System]).
+
+[#identity]
+=== The Runtime
+
+[cols="1,3",options="header"]
+|===
+|Figure |Shown as
+
+|Version
+|the release of `pm-mcpd` and its build (date and commit); where a newer release is known, `0.10.0 available` beside it, leading to the upgrade (<<upgrade>>); where it is not known, `newer version not checked` with _Check now_ (<<version-check>>)
+
+|Running since
+|the start, as the overview shows times, and the uptime (`6 h 12 min`, `3 d 4 h`); after a restart the uptime starts again, the work and the models' windows do not
+
+|Memory
+|the runtime's heap in use and its maximum, and the resident memory of its process; the workers and jobs are processes of their own and are not in it
+
+|CPU
+|the runtime's share of the machine's processors over the last minute
+
+|Machine store
+|the size of `<PM_MCP_BASE>` and the free space of the disk it lies on, with when they were measured: the periodic sweep measures them, not the request
+
+|Listeners
+|the runtime's socket, always; the web listener on loopback or on the network with its address and the number of paired devices, `web off` where it is closed (link:paired-devices.adoc#listener-off[Paired Devices, Turning the Network Listener Off])
+
+|Relays of another release
+|only while there are any: `2 host sessions run pm-mcp 0.9.0` with the command that updates the hosts' bundles (<<mismatch>>)
+|===
+
+[#work]
+=== The Work
+
+* *Plans and epics* by the closed list of states of the overview (`running`, `pausing`, `paused`, `waiting for you`, `held`; link:plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]); a state with no item is left out of the line, and a kind with none at all says `none running`.
+* *Tasks*: the tasks being worked by a worker now, and those queued for a worker.
+* *Projects*: across every project by default; _Per project_ shows the same lines once per project with running work, ordered as the overview orders its projects (the runtime answers per project; the client never adds them up).
+* *A project still recovering* after a start is shown as `recovering` in place of its counts, and the view never waits for it.
+
+[#workers]
+=== Workers
+
+The workers of the machine, one line each: the role, the harness, and the model, `busy` with the plan or epic it works for, or `idle`; the count above them. A worker that is starting or restarting is `starting`; one that failed and waits for its restart is `restarting` with the reason in its detail (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/04-sessions-and-workers.adoc[Sessions, Workers & Failure Semantics]). More than eight workers are folded by role, harness, and model, with their counts (`implementer · claude · sonnet-4.5   3 busy · 1 idle`), each fold one step from its lines.
+
+[#jobs]
+=== Jobs and Locks
+
+* *Jobs* by kind (build, test, and the others of the job runtime), each kind with its slots in use of its slots and the jobs queued for one (link:../../../../plan-marshall-documentation/doc/specification/job-runtime/01-pipeline-and-subprocesses.adoc#job-status[Job Status]); a kind without slots of its own shows its running jobs alone.
+* *Locks*: the number held; one step away, each lock with what holds it (a plan, an epic, the workspace of a project) and since when.
+
+[#models]
+=== The Models
+
+* *Per model* (`<harness>:<model>`) by default, _Per role_ instead: calls, tokens in and out (the total; its components in the line's detail), cost, and the calls that failed (`1 error`) or were repeated (`1 retry`), from the runtime's records of model use (link:../../../../plan-marshall-documentation/doc/specification/model-work/09-completion-usage-and-spend.adoc[Completion, Usage & Spend]).
+* *Window*: _Last hour_, _Today_ (since local midnight), _7 days_; _Last hour_ by default. The window is the client's choice and remembered with the view (<<persistence>>).
+* *Cost* in US dollars, as the records keep it; a model whose harness reports no cost shows `cost not reported`, never `$ 0`. Calls whose usage was not measured are counted and named (`3 calls not measured`), never added as `0`.
+* A line with no call in the window is left out; no call at all says `No model calls in this window.`
+
+[#unavailable]
+=== A Figure Not Available
+
+A figure the runtime cannot measure on this machine (the CPU share where the OS gives none, the resident memory on a platform without it) is shown as `not available` with the reason one step away (`not measured on this platform`), never as `0` and never left out silently. A figure that is measured but not received yet (a client that just connected) shows `…` until it arrives.
+
+[#live]
+=== Live
+
+* The view follows the runtime's stream of changed figures and redraws only what changed; the runtime sends the changed figures at most once a second, and the client shows them as they come. Nothing is polled while the stream is open.
+* The selection and the window stay as they are when figures change.
+* A client that lost the connection says so on the view, keeps the last figures greyed with the time they are from, and reads the whole snapshot again when it is back.
+* *Under load* the view costs the runtime nothing that grows with the work: it reads kept figures, never the stores.
+
+[#one-step]
+=== One Step to What a Figure Counts
+
+A figure that counts things leads to them, in one step, where the clients have a view of them:
+
+[cols="2,3",options="header"]
+|===
+|Figure |Leads to
+
+|Plans or epics in a state
+|the overview of running work, filtered to that state (link:plan-overview.adoc#levels[Plan Overview]); per project, that project's view
+
+|Waiting for you, held
+|what waits for the operator, as the overview's marker opens it (link:decisions.adoc[Decisions], link:work-actions.adoc#holds[What Holds a Plan])
+
+|Tasks
+|the plans whose tasks they are, each to its plan view at the task (link:plan-view.adoc#leaf[Plan View, A Leaf])
+
+|A worker that is busy
+|the plan or epic it works for, at the task it works on
+
+|Jobs of a kind
+|the running and queued jobs, each with its plan, to the plan view at the job's leaf
+
+|Locks
+|the list of locks with their holders, each holder to its view
+
+|A model or a role
+|its calls in the window by plan, each to the plan's completion report or plan view (link:completion-report.adoc[Completion Report])
+
+|Paired devices
+|the list of paired devices (link:paired-devices.adoc[Paired Devices])
+|===
+
+Gauges (memory, CPU, disk, uptime) lead nowhere; their detail is the figure's line of details (what it measures, since when).
+
+[#persistence]
+=== Where the Operator Left It
+
+The view remembers the window of the models, _per model_ or _per role_, and _all_ or _per project_: the web app per browser, the terminal per user in its state directory, as the overview does (link:plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]).
+
+[#lifecycle]
+== Acting on the Runtime
+
+[#channels]
+=== Who May
+
+Stopping, restarting, and upgrading the runtime are operator acts: privileged endpoints of the runtime, reached from the terminal client's operator verbs and from a paired browser of the web app, the operator's two channels, never from a link of a state or a tool of a model (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation]). Each is audited with its channel and device. Starting is no privileged act: every verb of `pm-operator` starts the runtime on demand, and `pm-operator runtime start` starts it explicitly (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start]). The web app is served by the runtime, so it cannot start a stopped one; it says how (<<stopped>>).
+
+The signal `pm-operator drain` of the specification stays as it is: it works whatever state the runtime is in, even when its API does not answer, and drains with the drain timeout; it asks nothing and offers no choice, and a drain it started (or the service manager, or the OS shutting down) cannot be withdrawn. The acts below are the operator's form, with what runs shown first and the choice of when; they are the states `runtime.actions`, `runtime.confirm-stop`, `runtime.draining`, `runtime.stopped`, `runtime.start`, and `runtime.running` of link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1].
+
+[#stop]
+=== Stopping
+
+The act opens a confirmation that names what runs and asks when:
+
+----
+  Stop the runtime?
+  Running now: 3 plans · 1 epic · 4 tasks · 2 jobs (1 build, 1 test) · 5 workers, 3 busy
+
+  When
+  (•) When what runs is done
+      Nothing new starts. Each running task and job finishes, then the runtime stops.
+  ( ) Now
+      Running tasks are withdrawn and jobs stopped. Everything goes on from its last
+      committed state at the next start.
+
+  Every client sees that it stops. Start it again on this machine: pm-operator runtime start.
+                                               [Stop when done]  [Keep it running]
+----
+
+* *When what runs is done* (the drain) is preselected; *Now* is the stop that withdraws running tasks and ends jobs, after which every plan goes on from its last committed state at the next start, as the recovery of the specification does (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#per-project-recovery[Per-Project Recovery]). The primary button names the choice (`Stop when done`, `Stop now`).
+* *Neither ends a plan*: a running plan runs on after the next start, a paused one stays paused (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]).
+* *Nothing runs*: the choice is left out, the line says `Nothing runs.`, and the button is `Stop`.
+* *What runs* is the runtime's count at the moment the confirmation opened, kept live while it is open; each count is one step from what it counts (<<one-step>>).
+* *Keep it running* sends nothing.
+
+[#draining]
+=== While It Stops
+
+While the runtime drains, every client shows one line at the top of every view, the same on every device:
+
+----
+  ◐ Stopping when what runs is done · 2 left: execute task of fix-relay, build of fix-relay
+    since 14:02 · by the console                          [Stop now]  [Keep it running]
+----
+
+* *What is left* by name, at most three, then `+2 more`, each one step to its view; the line shrinks as each ends.
+* *Stop now* turns the drain into the stop now, with its own short confirmation (`Withdraw 1 task and stop 1 job now?`).
+* *Keep it running* withdraws the stop: waiting work starts again, and every client drops the line (`The runtime keeps running; the stop was withdrawn.`). It is offered only for a drain the operator asked in a client; a drain of a signal shows `by a signal` and no _Keep it running_. Once the runtime has begun to stop, a withdraw that arrives is answered as too late, and the client says `Too late to keep it running; the runtime is stopping.`
+* *Not done in time*: the drain is bounded by the drain timeout of the machine configuration; at the timeout the runtime stops what still runs, as specified, and it resumes at the next start. A client's own wait ends at the bound defined with the drain timeout; it then says that the runtime is still draining and keeps _Stop now_:
+
+----
+  ◐ Still draining after 10 min: build of fix-relay (started 13:58)
+                                                  [Stop now]  [Keep it running]
+----
+
+* A new plan, a start of a phase, or an epic's next plan asked for while it stops is refused with the reason `The runtime is stopping; nothing new starts.`, and the refusal names _Keep it running_.
+
+[#stopped]
+=== Stopped, and Starting Again
+
+* *The web app* shows a page in place of the view it showed: `The runtime is stopped (by the console, 14:12).`, how to start it on the machine (`pm-operator runtime start`, or any verb of `pm-operator`), with a button that copies the command, and that the page connects again by itself once the runtime runs. It tries again every five seconds, quietly, and returns to the view it showed. A browser that loads the app while the runtime is stopped gets no page at all, since nothing serves it; that is the browser's own error.
+* *The terminal client* prints `▪ The runtime is stopped. runtime start starts it.` and keeps the console open with the prompt `pm (stopped) ›`. The console does not reconnect by itself; `runtime start` starts it, and so does the next verb that needs the runtime, as every verb does, saying so first (`Starting the runtime …`).
+* A runtime that stopped itself or ended unexpectedly is shown the same way, with what the runtime recorded (`ended unexpectedly at 14:12`) where it recorded anything.
+
+[#restart]
+=== Restarting
+
+* The same confirmation as the stop, titled `Restart the runtime?`, with the same choice of when; its buttons are `Restart when done` and `Restart now`, and it adds that every client connects again by itself.
+* It is the stop with `then: restart`: after its stop the runtime has its successor started on the same release, under the service manager through it (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle]). The clients show `Restarting … the clients connect again by themselves.` and then, once connected, `✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41.`, as the console does after any reconnect (link:../terminal-client/04-console.adoc#connection[Terminal Client, Connection]).
+* The pairing of the browsers stays, and so does the network listener as it was; each client reads every state again, because a restarted runtime holds no events to replay.
+* *Not back in time*: when the runtime does not answer within the runtime start timeout, the clients say `The runtime did not come back.` and name `pm-operator status` on the machine; the web app keeps trying as on the stopped page.
+
+[#upgrade]
+=== Upgrading
+
+[#version-check]
+==== Is There a Newer Version?
+
+* The version installed is a local read and needs no consent. Whether a newer one exists is a question to the organisation's registry, the only place a release is delivered, over the network: the consent kind `check_updates` (link:consents.adoc#kinds[Consents, The Kinds]), asked in `runtime.update-consent` on _Check now_, rememberable for the machine. The consent's fields say what is asked (the newest release for this machine's platform), of whom (the registry, by its address), and what it never sends (nothing about the machine beyond the request itself). The answer is `runtime.check-update`.
+* With the consent remembered, the runtime checks at most once a day and whenever the operator asks; the clients show a newer version when they open, and the view says when it last checked (`checked today 09:00`).
+* *Not now*: the view shows `newer version not checked`; nothing was asked, and no upgrade is offered.
+* *An installation the runtime cannot upgrade* (not laid out in versioned directories with the two `PATH` links, or reached through `PM_MCP_HOME`): the newer version is shown, _Upgrade…_ is disabled with its reason (`This installation is not upgraded by the runtime: PM_MCP_HOME is set.`), and the steps by hand of the specification are one step away (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[Installation Layout]).
+* *The source cannot be reached*: `Could not check for a newer version: <reason>.` with _Check again_; the installed version stays shown, never `up to date`.
+* *A newer version*: its number, its date, and its release notes one step away; with several newer releases, the newest, and the notes of each in between.
+
+[#upgrade-confirm]
+==== Choosing to Upgrade
+
+----
+  Upgrade to 0.10.0?
+  installed 0.9.1 → 0.10.0 (2026-10-11) · release notes
+  Running now: 3 plans · 2 jobs
+
+  When
+  (•) When what runs is done        ( ) Now
+
+  0.10.0 is fetched, verified, and installed beside 0.9.1, and the links switched. Then the
+  runtime stops as you chose and starts on 0.10.0; running work goes on from its last
+  committed state.
+  If any step fails, 0.9.1 stays or is restored, and you are told why.
+  Afterwards: pm-operator client update for 2 hosts.
+                                            [Upgrade when done]  [Not now]
+----
+
+* The same choice of when as the stop, the same preselection; the buttons `Upgrade when done` and `Upgrade now`.
+* *Afterwards* names what the operator does after it: the hosts' bundles that are installed for the old release (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], `client update`); the line is left out where there are none.
+* Pre-1.0 there is no migration of the stores beyond what the specification defines; the confirmation says nothing about one.
+
+[#upgrade-progress]
+==== While It Upgrades
+
+The steps are a check list, as every check of the clients reports back (link:../web-app/README.adoc#principles[Web App, Principles]), at the top of every view in every client:
+
+----
+  Upgrading to 0.10.0
+  ✓ fetched             ✓ verified           ✓ installed beside 0.9.1, links switched
+  ◐ waiting for what runs · 1 left: build of fix-relay
+  · stopping            · starting 0.10.0
+                                                                    [Upgrade now]
+----
+
+* The steps are the states `runtime.fetch`, `runtime.install`, `runtime.draining`, `runtime.stopped`, and `runtime.start` of the use case.
+* *Withdraw the upgrade* is offered while it fetches and verifies, before the links are switched; it leaves 0.9.1 running as it was (`The upgrade was withdrawn; 0.9.1 keeps running.`). A stop asked then withdraws the upgrade too, and the runtime stops on 0.9.1.
+* *Upgrade now*, once the links are switched, turns the wait into the stop now, with its confirmation; the runtime then starts on 0.10.0.
+* Once stopping has begun, nothing more is offered; the clients then reconnect as after a restart (<<restart>>) and say `✓ The runtime runs 0.10.0.`
+
+[#upgrade-failed]
+==== When It Fails
+
+A failed upgrade always leaves a running runtime on a release that worked, and says which step failed and why:
+
+[cols="2,4",options="header"]
+|===
+|Failed while |What the clients say
+
+|fetching, verifying, installing (no network, a digest that does not match, no space), before the links are switched
+|`The upgrade to 0.10.0 failed while verifying: <reason>. 0.9.1 keeps running; nothing was changed.` Running work was not touched.
+
+|starting 0.10.0 (no answer within the runtime start timeout)
+|`0.10.0 did not start: <reason>. 0.9.1 was restored and runs again; running work goes on from its last committed state.` The links are switched back (`runtime.rollback`); 0.9.1's installation stays the way back until the next upgrade.
+
+|restoring 0.9.1 too
+|`Neither 0.10.0 nor 0.9.1 started: <reason>.` with what the operator does on the machine (`pm-operator status`, the runtime's log); the web app shows the stopped page.
+|===
+
+_Try again_ is offered where the cause can pass (a download, a check of the source); the reason is the runtime's, shown as text only (<<safety>>).
+
+[#mismatch]
+=== A Client of Another Release
+
+* *The web app* is served by the runtime, so after an upgrade it is of the old release until it loads again. When it connects to a runtime of another release, it says `The runtime now runs 0.10.0; the web app loads again.` and loads again by itself, unless a field holds text not sent yet; then the line offers _Load again_ and waits for the operator.
+* *The console* of the terminal client is a process of the old release: it compares its version with the runtime's on its first request after the reconnect, prints `The runtime runs 0.10.0, this console 0.9.1. Leave it and open pm-operator again.`, and goes on working where the runtime accepts its requests; a verb run as one shell command starts the new binary through the switched link and is of the new release.
+* *A relay* of another release forwards as before (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#_drain_stop_upgrade[Drain, Stop & Upgrade]); the system view counts the host sessions on it (<<identity>>), and the hosts' bundles are updated with `pm-operator client update`.
+
+[#several]
+=== Several Clients, One Runtime
+
+* Every client and every paired device sees a stop, a restart, or an upgrade as it starts, with who started it (`by the console`, `by the web app (iPad)`), and its progress line.
+* *Two acts at once*: the first one the runtime accepts wins; a second stop while one runs is no error (`The runtime is already stopping (by the web app, iPad, 14:02).`), and its confirmation closes.
+* *An act while another runs*: while it drains, an upgrade or a restart is refused with `The runtime is stopping; keep it running first.`; while it upgrades, a stop before the links are switched withdraws the upgrade (<<upgrade-progress>>), and a restart, or a stop after the switch, is refused with `An upgrade runs; Upgrade now shortens it.` The progress line's own buttons (_Stop now_, _Upgrade now_) are the way to hurry it.
+
+[#safety]
+=== Untrusted Text
+
+The names in the system view (a plan's title, a role, a model, a reason of a failed upgrade or of a worker's restart) come from configuration, from a model, or from outside; both clients show them as text only, after removing every control sequence (link:../terminal-client/04-console.adoc#output-safety[Terminal Client, Output Safety]; the web app renders no raw HTML), and the release notes as plain text with inert links.
+
+[#requests]
+== The Requests
+
+The change names the requests (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-metrics[The Runtime's Metrics], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle]); the clients use them as it names them:
+
+* `GET /api/v1/system` with the window (`hour`, `today`, `7d`) and optionally a project: the snapshot of the view, every figure with its value, its unit, and `unavailable` where it is not measured, a recovering project marked. It is the state `system.open` of link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]; the view is `system.view`, a change from the stream `system.update`.
+* `GET /api/v1/system/metrics`: every metric of the catalogue with its labels, on the runtime's socket only; the clients do not need it for the view.
+* `GET /api/v1/status`: the runtime's version, its lifecycle state (`running`; `draining` with who asked it and whether it can be withdrawn; `upgrading` with its step), the newest version known with when it was checked, and the last upgrade's result.
+* `GET /api/v1/events`, the runtime-wide stream: `system.metrics` with the figures that changed, at most once a second; `runtime.draining`, `runtime.drain_withdrawn`, `runtime.stopping`, `runtime.upgrading`, `runtime.upgraded`, `runtime.upgrade_failed`.
+* The operator's acts, privileged, under `/api/v1/operator/runtime/`: `POST stop` with `when` (`drain`, the default, or `now`) and `then` (`exit`, or `restart` for the restart); `DELETE stop` withdraws a drain the operator asked, answered `409` once it is too late; `POST upgrade` with the version and `when`; and the check for a newer version behind the consent `check_updates`.
+
+The clients hold no rule of their own: what is offered (a withdraw, a stop now, the upgrade) is what the runtime's representation offers as links.
+
+[#open-points]
+== Open Points
+
+* *The registry's credential* (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-runtime-lifecycle[The Runtime's Lifecycle], its open point). Which credential the runtime presents to the organisation's registry decides whether the consent of the check also names a credential; the clients show what the consent state states.
+* *`pm-operator drain` and the operator's stop* (the operator). The signal is no privileged verb in the specification, the operator's stop is; whether the signal keeps working for every caller is a decision of the security model.
