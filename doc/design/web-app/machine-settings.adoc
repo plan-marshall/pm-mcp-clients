@@ -219,10 +219,10 @@ Every token the machine keeps is listed with its provider, its kind, and its exp
 
 * Entering the token is the operator's own act and needs no consent. `settings.store-credential` writes it into the recorded store and drops every token derived from the old secret (`Token github stored; 2 tokens derived from the old one dropped`); while the recorded store is not available it is refused (`credential_store_unavailable`) with the cause and the fix, and nothing is written.
 * Then the providers that use it are checked as in the onboarding (`settings.verify-providers` calls the providers' sub-workflow at its verification): `providers.verify-consent` unless remembered, `providers.verify`, and on a ✗ `providers.failed` with its links (link:onboarding-steps-4-7.adoc#providers-verify[Onboarding, Check]). Afterwards the page is the settings again. A plan the old token held goes on only once the new token verifies, which one line says (`1 plan that waited for it goes on: fix-relay`, link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]); on `providers.failed` the hold stays.
-* On the LAN listener the input is replaced by the command to run in a terminal of the machine (`onboard.settings.credential.lan`: `pm-operator config credentials --rotate github`), as for a missing token (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-credentials[Credentials in the Web App]).
+* On the LAN listener the input is replaced by the command to run in a terminal of the machine (`onboard.settings.credential.lan`: `pm-operator credentials rotate github`), as for a missing token (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-credentials[Credentials in the Web App]).
 * A plan held by an expired token names this section as the act that resolves the hold.
 
-Terminal: `pm-operator config credentials --rotate|--replace <credential_key>` (link:../terminal-client/08-transcripts-later.adoc#t-credential[Terminal Client, transcript]).
+Terminal: `pm-operator credentials rotate|set <credential_key>` (link:../terminal-client/08-transcripts-later.adoc#t-credential[Terminal Client, transcript]).
 
 [#devices]
 == Paired Devices

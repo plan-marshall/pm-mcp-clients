@@ -16,7 +16,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * The scenarios of every case the use cases name (each consent answered no, each check failing, stop and resume, the automatic run), in `pm-mock-runtime`.
 * Tokens, never money: the consent field `tokens` with its estimate; what each harness reports of its tokens in the choice, the enrolment, the installed profile, and `config harnesses`, and the verification's stage `usage` (link:../design/terminal-client/06-transcripts-steps-1-3.adoc#t-harness-choose[Terminal Client, Choose]).
 * Texts from the catalogue only, in English and German.
-* The machine settings (UC-ONB-10): `config`, `config consents` with its confirmation, `config documents`, `config credentials --rotate|--replace`; a setting changed meanwhile in another client (`conflict`), applied again or kept.
+* The machine settings (UC-ONB-10): `config`, `config consents` with its confirmation, `config documents`, `credentials rotate|set <credential_key>`; a setting changed meanwhile in another client (`conflict`), applied again or kept.
 * The paired devices (UC-ENT-2): `web devices` with rename, revoke, revoke all others, and `listener-off`.
 
 == Trace

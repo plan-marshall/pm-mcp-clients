@@ -332,7 +332,7 @@ _Try again_ is offered where the cause can pass (a download, a check of the sour
 
 * Every client and every paired device sees a stop, a restart, or an upgrade as it starts, with who started it (`by the console`, `by the web app (iPad)`), and its progress line.
 * *Two acts at once*: the first one the runtime accepts wins; a second stop while one runs is no error (`The runtime is already stopping (by the web app, iPad, 14:02).`), and its confirmation closes.
-* *An act while another runs*: while it drains, an upgrade or a restart is refused with `The runtime is stopping; keep it running first.`; while it upgrades, a stop or a restart is refused with `An upgrade runs; withdraw it first, or Upgrade now shortens it.` (<<upgrade-progress>>) The progress line's own buttons (_Stop now_, _Upgrade now_) are the way to hurry it.
+* *An act while another runs*: while it drains, an upgrade or a restart is refused with `The runtime is stopping; keep it running first.`; while it upgrades, a stop or a restart is refused, naming the act the upgrade offers in its phase (<<upgrade-progress>>): before the links are switched `An upgrade runs; withdraw it first.` (`system.busy.upgrade_withdraw`), after it `An upgrade waits for what runs; Upgrade now shortens the wait.` (`system.busy.upgrade_now`). The progress line's own buttons (_Stop now_, _Upgrade now_) are the way to hurry it.
 
 [#safety]
 === Untrusted Text

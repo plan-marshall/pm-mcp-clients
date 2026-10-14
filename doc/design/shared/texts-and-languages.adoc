@@ -107,7 +107,7 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `designer`: the process designer, loaded by the web app only (link:../web-app/process-designer-texts.adoc#texts[Process Designer, Texts]);
 ** `operator`: the verbs of `pm-operator`;
 ** `relay`: `pm-mcp`.
-* *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message format. English (`en`) is complete and the base; German (`de`) ships from the start.
+* *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message syntax (arguments, `plural`, `select`); provisional: how the catalogue formats it is an open question of the documentation (link:../../../../plan-marshall-documentation/doc/discussions/open-questions.adoc#message-format[Open Questions, Message Format]), and this statement follows its decision. English (`en`) is complete and the base; German (`de`) ships from the start.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set.
 

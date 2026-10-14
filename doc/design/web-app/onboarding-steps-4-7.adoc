@@ -340,8 +340,9 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
                 address
     never       asks a model for advice, reads other files, sends anything
                 over the network except the provider checks and the icons
-    tokens      none; for a harness that has no login probe, one short
-                headless call, paid with tokens of its account
+    tokens      only for a harness that has no login probe: one short
+                headless call, about 1,200 tokens, paid with tokens of
+                its account
 
   This consent is for this run only.                  [ List every action ]
 

@@ -65,8 +65,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |gilt, wenn {plan} wieder startet
 
 |`control.chat.no_revision_yet`
-|{plan} proposes no change yet: a revision comes once the plan has tasks, until its merge
-|{plan} schlägt noch keine Änderung vor: eine Überarbeitung kommt, sobald der Plan Tasks hat, bis zu seinem Merge
+|{plan} proposes no change yet: a revision comes in execute or in finalize, until its merge
+|{plan} schlägt noch keine Änderung vor: eine Überarbeitung kommt in execute oder in finalize, bis zu seinem Merge
 
 |`control.chat.no_revision_merged`
 |{plan} is merged: the chat answers and proposes no change

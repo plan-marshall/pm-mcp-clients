@@ -10,7 +10,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == What
 
-Nothing of this package remains to be built. The specification has no verb `pm-mcp enter`: `pm-mcp` has only the worker-facing verb `serve --job`, every start of work runs in the operator's two clients, and a harness is a worker only (link:../../../plan-marshall-documentation/doc/specification/workflow-dsl/02-units-jobs-decisions.adoc#clients-only[Workflow DSL § All Interaction in the Operator's Clients]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]). The package is to be retired: its file and its row deleted, and the dependency on it in `plan-marshall-mcp` (`doc/plans/README.adoc`) dropped. The retirement waits for the operator (see the index).
+* Retire the package: delete this file and its row in the link:README.adoc#packages[index], and drop the dependency on it in `plan-marshall-mcp` (`doc/plans/README.adoc`). Nothing is built: the specification has no verb `pm-mcp enter` (link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/workflow-dsl/02-units-jobs-decisions.adoc#clients-only[Workflow DSL § All Interaction in the Operator's Clients]).
 
 == Trace
 
@@ -19,4 +19,4 @@ Nothing of this package remains to be built. The specification has no verb `pm-m
 
 == Done When
 
-The operator has decided the retirement, and the file, its row, and the dependency on it in `plan-marshall-mcp` are removed.
+The file, its row, and the dependency on it in `plan-marshall-mcp` are removed.

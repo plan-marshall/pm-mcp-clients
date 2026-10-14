@@ -337,9 +337,13 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |The runtime is stopping; keep it running first.
 |Die Runtime stoppt; lass sie zuerst weiterlaufen.
 
-|`system.busy.upgrade_runs`
-|An upgrade runs; withdraw it first, or Upgrade now shortens it.
-|Eine Aktualisierung läuft; nimm sie zuerst zurück, oder Aktualisiere jetzt verkürzt sie.
+|`system.busy.upgrade_withdraw`
+|An upgrade runs; withdraw it first.
+|Eine Aktualisierung läuft; nimm sie zuerst zurück.
+
+|`system.busy.upgrade_now`
+|An upgrade waits for what runs; Upgrade now shortens the wait.
+|Eine Aktualisierung wartet auf das, was läuft; „Aktualisiere jetzt“ verkürzt das Warten.
 |===
 
 [#texts-upgrade]

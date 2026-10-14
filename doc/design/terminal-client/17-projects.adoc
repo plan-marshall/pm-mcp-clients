@@ -68,7 +68,7 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
       *  Remove from favourites
 ----
 
-* *A released project* offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `r  Running work` while plans of it still show.
+* *A released project* offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `E  Ended work`, its ended plans and epics (xref:15-overview.adoc#ended[Ended Work]); the release ended every plan and epic of it, so it offers no `r  Running work`.
 * *A project that is not ready* offers `c  Continue the setup` first; `e` and `p` are shown disabled with the reason (`pm-mcp-core is not ready: credential sonar`).
 * *A project with an open entry* (a start not finished) offers `c  Continue starting` first (link:../shared/starting-work.adoc#leaving[Starting Work, Leaving and Coming Back]).
 * *A project being added* offers `c  Continue` and `x  Abandon…`; abandoning asks first and deletes the run, of which nothing is enrolled yet.
@@ -91,6 +91,9 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 
 |`a`
 |on a released project: enrol it again
+
+|`E`
+|on a released project: its ended work (xref:15-overview.adoc#ended[Ended Work])
 
 |`*`
 |mark or unmark the selected project as a favourite
