@@ -84,14 +84,14 @@ public record MockHttpRequest(
         if (this == o) {
             return true;
         }
-        if (!(o instanceof MockHttpRequest that)) {
+        if (!(o instanceof MockHttpRequest(var otherMethod, var otherTarget, var otherHeaders, var otherBody, var otherNanos))) {
             return false;
         }
-        return receivedNanos == that.receivedNanos
-                && Objects.equals(method, that.method)
-                && Objects.equals(target, that.target)
-                && Objects.equals(headers, that.headers)
-                && Arrays.equals(body, that.body);
+        return receivedNanos == otherNanos
+                && Objects.equals(method, otherMethod)
+                && Objects.equals(target, otherTarget)
+                && Objects.equals(headers, otherHeaders)
+                && Arrays.equals(body, otherBody);
     }
 
     @Override

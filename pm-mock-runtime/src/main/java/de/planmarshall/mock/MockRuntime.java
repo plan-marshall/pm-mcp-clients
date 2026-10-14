@@ -95,13 +95,19 @@ public final class MockRuntime implements AutoCloseable {
         return start(MockRuntimeConfig.builder().scenario(scenario).build());
     }
 
+    @SuppressWarnings({"java:S5443", "java:S7467"})
     private static Path createSecureTempDir() throws IOException {
         try {
             var attrs = PosixFilePermissions.asFileAttribute(
                     PosixFilePermissions.fromString("rwx------"));
             return Files.createTempDirectory("pm-mock", attrs);
-        } catch (UnsupportedOperationException e) {
-            return Files.createTempDirectory("pm-mock");
+        } catch (UnsupportedOperationException _) {
+            var dir = Files.createTempDirectory("pm-mock"); // NOSONAR
+            var file = dir.toFile();
+            file.setReadable(true, true);
+            file.setWritable(true, true);
+            file.setExecutable(true, true);
+            return dir;
         }
     }
 
@@ -341,12 +347,12 @@ public final class MockRuntime implements AutoCloseable {
             if (tcpServer != null) {
                 tcpServer.close();
             }
-        } catch (IOException ignored) {
+        } catch (IOException _) {
             // Ignore error when closing TCP server
         }
         try {
             unixServer.close();
-        } catch (IOException ignored) {
+        } catch (IOException _) {
             // Ignore error when closing Unix socket server
         }
         engine.close();
@@ -356,7 +362,7 @@ public final class MockRuntime implements AutoCloseable {
                 for (var path : walk.sorted(Comparator.reverseOrder()).toList()) {
                     Files.deleteIfExists(path);
                 }
-            } catch (IOException ignored) {
+            } catch (IOException _) {
                 // Ignore failure during temp directory cleanup
             }
         }

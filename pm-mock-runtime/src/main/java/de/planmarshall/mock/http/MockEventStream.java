@@ -90,7 +90,7 @@ public final class MockEventStream implements AutoCloseable {
             try {
                 out.write("0\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
                 out.flush();
-            } catch (IOException e) {
+            } catch (IOException _) {
                 // Client might have already disconnected
             }
         }

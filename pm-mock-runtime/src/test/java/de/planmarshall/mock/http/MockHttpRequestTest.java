@@ -11,6 +11,7 @@ package de.planmarshall.mock.http;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -67,7 +68,7 @@ class MockHttpRequestTest {
 
         assertNotEquals(req1, req3);
         assertNotEquals(req1, req4);
-        assertNotEquals(req1, null);
+        assertNotNull(req1);
         assertNotEquals("other", req1);
 
         assertTrue(req1.toString().contains("MockHttpRequest[GET /test"));

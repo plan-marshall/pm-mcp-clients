@@ -32,7 +32,7 @@ import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("MockRuntime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-class MockRuntimeIT {
+class MockRuntimeTest {
 
     @Test
     @DisplayName("initializes filesystem layout with strict POSIX permissions and cleans up on close")
@@ -147,7 +147,7 @@ class MockRuntimeIT {
             assertEquals("status-only", JsonTree.string(stateJson, "scenario"));
             assertEquals("runtime.idle", JsonTree.string(stateJson, "state"));
 
-            // Control endpoint: POST /mock/scenario
+            // Verify scenario switching control endpoint
             var switchRes = client.send(HttpRequest.json("POST", "/mock/scenario", "{\"scenario\":\"web-pairing\"}"));
             assertEquals(200, switchRes.status());
             var switchJson = JsonTree.asObject(JsonTree.parse(switchRes.body()));
@@ -155,12 +155,12 @@ class MockRuntimeIT {
             assertEquals("web-pairing", JsonTree.string(switchJson, "scenario"));
             assertEquals("web.pair", runtime.currentStateName());
 
-            // Control endpoint: POST /mock/goto/{state}
+            // Verify jump to state control endpoint
             var gotoPost = client.send(HttpRequest.json("POST", "/mock/goto/web.paired", "{}"));
             assertEquals(200, gotoPost.status());
             assertEquals("web.paired", runtime.currentStateName());
 
-            // Control endpoint: POST /mock/reset
+            // Verify reset control endpoint
             var resetRes = client.send(HttpRequest.json("POST", "/mock/reset", "{}"));
             assertEquals(200, resetRes.status());
             assertEquals("web.pair", runtime.currentStateName());
@@ -180,7 +180,7 @@ class MockRuntimeIT {
             // Wait for auto-transition to complete
             var deadline = System.currentTimeMillis() + 2000;
             while (!"harness.confirm".equals(runtime.currentStateName()) && System.currentTimeMillis() < deadline) {
-                Thread.onSpinWait();
+                Thread.sleep(10);
             }
             assertEquals("harness.confirm", runtime.currentStateName());
         }

@@ -67,7 +67,7 @@ class MockRuntimeEngineTest {
         if (!bodyStr.isBlank() && bodyStr.startsWith("{")) {
             try {
                 json = JsonTree.asObject(JsonTree.parse(bodyStr));
-            } catch (RuntimeException ignored) {
+            } catch (IOException | IllegalArgumentException _) {
                 // Not valid JSON
             }
         }

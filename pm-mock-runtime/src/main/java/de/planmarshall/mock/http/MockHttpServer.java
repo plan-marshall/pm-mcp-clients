@@ -70,7 +70,7 @@ public final class MockHttpServer implements AutoCloseable {
         try {
             server.bind(UnixDomainSocketAddress.of(socketPath));
             return new MockHttpServer(server, handler, socketPath);
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException e) {
             server.close();
             throw e;
         }
@@ -90,7 +90,7 @@ public final class MockHttpServer implements AutoCloseable {
         try {
             server.bind(new InetSocketAddress("127.0.0.1", port));
             return new MockHttpServer(server, handler, null);
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException e) {
             server.close();
             throw e;
         }
@@ -102,7 +102,7 @@ public final class MockHttpServer implements AutoCloseable {
     public SocketAddress localAddress() {
         try {
             return server.getLocalAddress();
-        } catch (IOException e) {
+        } catch (IOException _) {
             return null;
         }
     }
@@ -138,7 +138,7 @@ public final class MockHttpServer implements AutoCloseable {
             try {
                 var channel = server.accept();
                 Thread.ofVirtual().name("mock-http-worker").start(() -> serve(channel));
-            } catch (IOException e) {
+            } catch (IOException _) {
                 if (closed || !server.isOpen()) {
                     return;
                 }
@@ -158,7 +158,7 @@ public final class MockHttpServer implements AutoCloseable {
             arrivals.add(request);
             var response = new MockHttpResponse(out);
             invokeHandler(request, response);
-        } catch (IOException e) {
+        } catch (IOException _) {
             // Client closed connection
         }
     }
@@ -206,7 +206,7 @@ public final class MockHttpServer implements AutoCloseable {
         if (lengthHeader != null) {
             try {
                 length = Integer.parseInt(lengthHeader);
-            } catch (NumberFormatException ignored) {
+            } catch (NumberFormatException _) {
                 // Ignore malformed content-length header and treat as 0
                 length = 0;
             }

@@ -96,7 +96,7 @@ public final class MockRuntimeCli {
                     var portStr = args[i++];
                     try {
                         webPort = Integer.parseInt(portStr);
-                    } catch (NumberFormatException e) {
+                    } catch (NumberFormatException _) {
                         err.println("Error: invalid port: " + portStr);
                         return new CliParseResult(2, null);
                     }
@@ -153,7 +153,7 @@ public final class MockRuntimeCli {
 
         try {
             Thread.currentThread().join();
-        } catch (InterruptedException e) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
         }
 

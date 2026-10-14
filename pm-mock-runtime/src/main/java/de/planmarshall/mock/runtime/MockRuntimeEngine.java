@@ -162,7 +162,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var stream = iterator.next();
             try {
                 stream.sendJson(event, data);
-            } catch (IOException e) {
+            } catch (IOException _) {
                 iterator.remove();
             }
         }
@@ -260,7 +260,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (linkDef.delayMs() > 0) {
             try {
                 Thread.sleep(linkDef.delayMs());
-            } catch (InterruptedException e) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
             }
         }
@@ -356,7 +356,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     code = JsonTree.string(parsed, "code");
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (IOException | RuntimeException ignored) {
+            } catch (IOException | RuntimeException _) {
                 // Ignore parse errors from invalid body
             }
         }
@@ -387,7 +387,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         activeStreams.add(stream);
         try {
             stream.sendComment("connected to mock runtime");
-        } catch (IOException e) {
+        } catch (IOException _) {
             activeStreams.remove(stream);
             return;
         }
@@ -396,7 +396,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         while (!closed && !stream.isClosed()) {
             try {
                 Thread.sleep(1000);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
                 break;
             }
@@ -483,7 +483,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     scenarioName = JsonTree.string(parsed, KEY_SCENARIO);
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (IOException | RuntimeException ignored) {
+            } catch (IOException | RuntimeException _) {
                 // Ignore parse errors when extracting scenario name from body
             }
         }
@@ -512,17 +512,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleControlBroadcast(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        String event = "message";
+        String event = KEY_MESSAGE;
         Object data = Map.of();
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
                 if (parsed != null) {
-                    event = Objects.requireNonNullElse(JsonTree.string(parsed, "event"), "message");
+                    event = Objects.requireNonNullElse(JsonTree.string(parsed, "event"), KEY_MESSAGE);
                     data = Objects.requireNonNullElse(parsed.get("data"), Map.of());
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (IOException | RuntimeException ignored) {
+            } catch (IOException | RuntimeException _) {
                 // Ignore parse errors from broadcast body
             }
         }
@@ -559,7 +559,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             for (var stream : activeStreams) {
                 try {
                     stream.close();
-                } catch (IOException ignored) {
+                } catch (IOException _) {
                     // Ignore error when closing active stream during engine shutdown
                 }
             }
