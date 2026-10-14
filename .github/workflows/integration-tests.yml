@@ -29,6 +29,7 @@ jobs:
         pm-exec/target/failsafe-reports
         pm-relay/target/failsafe-reports
         pm-operator/target/failsafe-reports
+        pm-mock-runtime/target/failsafe-reports
       # The report upload publishes to cuioss.github.io with the cuioss release App, which this
       # organisation neither has nor uses; the reports stay available as the run's artifact.
       deploy-reports: false

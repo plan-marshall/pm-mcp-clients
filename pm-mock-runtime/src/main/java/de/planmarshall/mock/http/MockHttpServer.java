@@ -67,8 +67,13 @@ public final class MockHttpServer implements AutoCloseable {
         Objects.requireNonNull(handler, "handler");
         Files.deleteIfExists(socketPath);
         var server = ServerSocketChannel.open(StandardProtocolFamily.UNIX);
-        server.bind(UnixDomainSocketAddress.of(socketPath));
-        return new MockHttpServer(server, handler, socketPath);
+        try {
+            server.bind(UnixDomainSocketAddress.of(socketPath));
+            return new MockHttpServer(server, handler, socketPath);
+        } catch (IOException | RuntimeException e) {
+            server.close();
+            throw e;
+        }
     }
 
     /**
@@ -82,8 +87,13 @@ public final class MockHttpServer implements AutoCloseable {
     public static MockHttpServer startTcp(int port, MockHttpHandler handler) throws IOException {
         Objects.requireNonNull(handler, "handler");
         var server = ServerSocketChannel.open();
-        server.bind(new InetSocketAddress("127.0.0.1", port));
-        return new MockHttpServer(server, handler, null);
+        try {
+            server.bind(new InetSocketAddress("127.0.0.1", port));
+            return new MockHttpServer(server, handler, null);
+        } catch (IOException | RuntimeException e) {
+            server.close();
+            throw e;
+        }
     }
 
     /**
@@ -137,9 +147,9 @@ public final class MockHttpServer implements AutoCloseable {
     }
 
     private void serve(SocketChannel channel) {
-        try (channel) {
-            var in = new BufferedInputStream(Channels.newInputStream(channel));
-            var out = Channels.newOutputStream(channel);
+        try (channel;
+             var in = new BufferedInputStream(Channels.newInputStream(channel));
+             var out = Channels.newOutputStream(channel)) {
             var request = readRequest(in);
             if (request == null) {
                 return;
@@ -147,19 +157,23 @@ public final class MockHttpServer implements AutoCloseable {
             requests.add(request);
             arrivals.add(request);
             var response = new MockHttpResponse(out);
-            try {
-                handler.handle(request, response);
-                if (!response.isCommitted()) {
-                    response.send(500, "application/json", "{\"error\":\"unhandled_request\"}");
-                }
-                // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (IOException | RuntimeException e) {
-                if (!response.isCommitted()) {
-                    response.send(500, "application/json", "{\"error\":\"internal_error\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}");
-                }
-            }
+            invokeHandler(request, response);
         } catch (IOException e) {
             // Client closed connection
+        }
+    }
+
+    private void invokeHandler(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        try {
+            handler.handle(request, response);
+            if (!response.isCommitted()) {
+                response.send(500, "application/json", "{\"error\":\"unhandled_request\"}");
+            }
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException e) {
+            if (!response.isCommitted()) {
+                response.send(500, "application/json", "{\"error\":\"internal_error\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}");
+            }
         }
     }
 
@@ -193,6 +207,7 @@ public final class MockHttpServer implements AutoCloseable {
             try {
                 length = Integer.parseInt(lengthHeader);
             } catch (NumberFormatException ignored) {
+                // Ignore malformed content-length header and treat as 0
                 length = 0;
             }
         }

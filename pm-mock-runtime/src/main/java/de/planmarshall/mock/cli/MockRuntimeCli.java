@@ -9,8 +9,11 @@
  */
 package de.planmarshall.mock.cli;
 
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import de.planmarshall.mock.MockRuntime;
@@ -21,6 +24,8 @@ import de.planmarshall.mock.MockRuntimeConfig;
  */
 public final class MockRuntimeCli {
 
+    private static final String ERR_MISSING_ARG = "Error: missing argument for ";
+
     private MockRuntimeCli() {
     }
 
@@ -30,7 +35,9 @@ public final class MockRuntimeCli {
      * @param args command-line arguments
      */
     public static void main(String[] args) {
-        var exitCode = run(args, System.out, System.err);
+        var out = new PrintStream(new FileOutputStream(FileDescriptor.out), true, StandardCharsets.UTF_8);
+        var err = new PrintStream(new FileOutputStream(FileDescriptor.err), true, StandardCharsets.UTF_8);
+        var exitCode = run(args, out, err);
         if (exitCode != 0) {
             System.exit(exitCode);
         }
@@ -49,6 +56,13 @@ public final class MockRuntimeCli {
         }
     }
 
+    private static boolean isValuedOption(String arg) {
+        return switch (arg) {
+            case "--scenario", "-s", "--base", "-b", "--web-port", "-p", "--token", "-t" -> true;
+            default -> false;
+        };
+    }
+
     /**
      * Parses command-line arguments without starting the server.
      *
@@ -63,45 +77,29 @@ public final class MockRuntimeCli {
         int webPort = -1;
         String token = null;
 
-        for (var i = 0; i < args.length; i++) {
-            var arg = args[i];
+        var i = 0;
+        while (i < args.length) {
+            var arg = args[i++];
+            if ("--help".equals(arg) || "-h".equals(arg)) {
+                printUsage(out);
+                return new CliParseResult(0, null);
+            }
+            if (i >= args.length && isValuedOption(arg)) {
+                err.println(ERR_MISSING_ARG + arg);
+                return new CliParseResult(2, null);
+            }
             switch (arg) {
-                case "--help", "-h" -> {
-                    printUsage(out);
-                    return new CliParseResult(0, null);
-                }
-                case "--scenario", "-s" -> {
-                    if (i + 1 >= args.length) {
-                        err.println("Error: missing argument for " + arg);
-                        return new CliParseResult(2, null);
-                    }
-                    scenario = args[++i];
-                }
-                case "--base", "-b" -> {
-                    if (i + 1 >= args.length) {
-                        err.println("Error: missing argument for " + arg);
-                        return new CliParseResult(2, null);
-                    }
-                    base = Path.of(args[++i]);
-                }
+                case "--scenario", "-s" -> scenario = args[i++];
+                case "--base", "-b" -> base = Path.of(args[i++]);
+                case "--token", "-t" -> token = args[i++];
                 case "--web-port", "-p" -> {
-                    if (i + 1 >= args.length) {
-                        err.println("Error: missing argument for " + arg);
-                        return new CliParseResult(2, null);
-                    }
+                    var portStr = args[i++];
                     try {
-                        webPort = Integer.parseInt(args[++i]);
+                        webPort = Integer.parseInt(portStr);
                     } catch (NumberFormatException e) {
-                        err.println("Error: invalid port: " + args[i]);
+                        err.println("Error: invalid port: " + portStr);
                         return new CliParseResult(2, null);
                     }
-                }
-                case "--token", "-t" -> {
-                    if (i + 1 >= args.length) {
-                        err.println("Error: missing argument for " + arg);
-                        return new CliParseResult(2, null);
-                    }
-                    token = args[++i];
                 }
                 default -> {
                     err.println("Error: unrecognized argument: " + arg);
@@ -151,6 +149,18 @@ public final class MockRuntimeCli {
             runtime.close();
         }));
 
+        printRuntimeInfo(runtime, out);
+
+        try {
+            Thread.currentThread().join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        return 0;
+    }
+
+    private static void printRuntimeInfo(MockRuntime runtime, PrintStream out) {
         out.println("Mock runtime started successfully:");
         out.println("  Base (PM_MCP_BASE): " + runtime.base());
         out.println("  Unix Socket:        " + runtime.socketPath());
@@ -166,14 +176,6 @@ public final class MockRuntimeCli {
         out.println("Use 'pm-operator' with PM_MCP_BASE=" + runtime.base() + " to interact.");
         out.println("Press Ctrl+C to terminate.");
         out.flush();
-
-        try {
-            Thread.currentThread().join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        return 0;
     }
 
     private static void printUsage(PrintStream out) {

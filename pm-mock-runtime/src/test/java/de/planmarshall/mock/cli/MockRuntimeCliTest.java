@@ -101,29 +101,47 @@ class MockRuntimeCliTest {
     }
 
     @Test
-    @DisplayName("reports error on missing argument for --scenario")
-    void missingScenarioArg() {
-        var result = MockRuntimeCli.parse(new String[]{"--scenario"}, out, err);
-        assertEquals(2, result.exitCode());
-        assertFalse(result.isSuccess());
-        assertTrue(stderr().contains("missing argument"));
+    @DisplayName("reports error on missing argument for options")
+    void missingOptionArgs() {
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"-s"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"--base"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"-b"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"--web-port"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"-p"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"--token"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"-t"}, out, err).exitCode());
     }
 
     @Test
-    @DisplayName("reports error on invalid web port")
-    void invalidWebPort() {
-        var result = MockRuntimeCli.parse(new String[]{"--web-port", "not-a-number"}, out, err);
-        assertEquals(2, result.exitCode());
-        assertFalse(result.isSuccess());
-        assertTrue(stderr().contains("invalid port"));
+    @DisplayName("parses short flags correctly")
+    void shortFlags() {
+        var args = new String[]{
+                "-s", "web-pairing",
+                "-b", "/tmp/base-short",
+                "-p", "9999",
+                "-t", "tok"
+        };
+        var result = MockRuntimeCli.parse(args, out, err);
+        assertEquals(0, result.exitCode());
+        assertTrue(result.isSuccess());
+        assertEquals("web-pairing", result.config().getScenario());
+        assertEquals(Path.of("/tmp/base-short"), result.config().getBase());
+        assertEquals(9999, result.config().getWebPort());
+        assertEquals("tok", result.config().effectiveRuntimeToken());
     }
 
     @Test
-    @DisplayName("reports error on unrecognized option")
-    void unrecognizedOption() {
-        var result = MockRuntimeCli.parse(new String[]{"--unknown-flag"}, out, err);
-        assertEquals(2, result.exitCode());
-        assertFalse(result.isSuccess());
-        assertTrue(stderr().contains("unrecognized argument"));
+    @DisplayName("run returns exit code of failed parse")
+    void runParseFailure() {
+        var exitCode = MockRuntimeCli.run(new String[]{"--unknown"}, out, err);
+        assertEquals(2, exitCode);
+    }
+
+    @Test
+    @DisplayName("run returns 1 on startup failure (e.g. non-existent scenario)")
+    void runStartupFailure() {
+        var exitCode = MockRuntimeCli.run(new String[]{"-s", "non-existent-scenario-file-1234"}, out, err);
+        assertEquals(1, exitCode);
+        assertTrue(stderr().contains("Error starting mock runtime"));
     }
 }

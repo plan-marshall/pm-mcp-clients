@@ -32,7 +32,7 @@ import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("MockRuntime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-class MockRuntimeTest {
+class MockRuntimeIT {
 
     @Test
     @DisplayName("initializes filesystem layout with strict POSIX permissions and cleans up on close")
@@ -131,7 +131,6 @@ class MockRuntimeTest {
     void scenarioSwitching() throws Exception {
         try (var runtime = MockRuntime.start("onboarding-happy")) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
 
             assertEquals("onboarding-happy", runtime.currentScenarioName());
             assertEquals("onboard.mode", runtime.currentStateName());
@@ -179,7 +178,10 @@ class MockRuntimeTest {
             assertEquals("harness.probe", runtime.currentStateName());
 
             // Wait for auto-transition to complete
-            Thread.sleep(400);
+            var deadline = System.currentTimeMillis() + 2000;
+            while (!"harness.confirm".equals(runtime.currentStateName()) && System.currentTimeMillis() < deadline) {
+                Thread.onSpinWait();
+            }
             assertEquals("harness.confirm", runtime.currentStateName());
         }
     }

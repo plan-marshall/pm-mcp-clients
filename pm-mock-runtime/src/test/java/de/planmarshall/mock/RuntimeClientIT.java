@@ -29,7 +29,7 @@ import de.planmarshall.api.runtime.RuntimeTokenFile;
 
 @DisplayName("RuntimeClient Integration")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-class RuntimeClientIntegrationTest {
+class RuntimeClientIT {
 
     @Test
     @DisplayName("RuntimeClient seamlessly connects and interacts with MockRuntime over Unix domain socket")

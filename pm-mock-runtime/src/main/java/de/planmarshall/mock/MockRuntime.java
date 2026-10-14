@@ -46,32 +46,32 @@ public final class MockRuntime implements AutoCloseable {
     private final String token;
     private final String deviceSecret;
     private final boolean cleanupOnClose;
-    private final ScenarioRegistry registry;
     private final MockRuntimeEngine engine;
     private final MockHttpServer unixServer;
     private final MockHttpServer tcpServer;
 
-    private MockRuntime(
+    private record RuntimeContext(
             Path base,
             Path cleanupDir,
             MachinePaths paths,
             String token,
             String deviceSecret,
             boolean cleanupOnClose,
-            ScenarioRegistry registry,
             MockRuntimeEngine engine,
             MockHttpServer unixServer,
             MockHttpServer tcpServer) {
-        this.base = base;
-        this.cleanupDir = cleanupDir;
-        this.paths = paths;
-        this.token = token;
-        this.deviceSecret = deviceSecret;
-        this.cleanupOnClose = cleanupOnClose;
-        this.registry = registry;
-        this.engine = engine;
-        this.unixServer = unixServer;
-        this.tcpServer = tcpServer;
+    }
+
+    private MockRuntime(RuntimeContext ctx) {
+        this.base = ctx.base();
+        this.cleanupDir = ctx.cleanupDir();
+        this.paths = ctx.paths();
+        this.token = ctx.token();
+        this.deviceSecret = ctx.deviceSecret();
+        this.cleanupOnClose = ctx.cleanupOnClose();
+        this.engine = ctx.engine();
+        this.unixServer = ctx.unixServer();
+        this.tcpServer = ctx.tcpServer();
     }
 
     /**
@@ -95,6 +95,16 @@ public final class MockRuntime implements AutoCloseable {
         return start(MockRuntimeConfig.builder().scenario(scenario).build());
     }
 
+    private static Path createSecureTempDir() throws IOException {
+        try {
+            var attrs = PosixFilePermissions.asFileAttribute(
+                    PosixFilePermissions.fromString("rwx------"));
+            return Files.createTempDirectory("pm-mock", attrs);
+        } catch (UnsupportedOperationException e) {
+            return Files.createTempDirectory("pm-mock");
+        }
+    }
+
     /**
      * Starts a mock runtime with the given configuration.
      *
@@ -109,7 +119,7 @@ public final class MockRuntime implements AutoCloseable {
         Path baseDir;
         Path cleanupDir;
         if (autoCreatedBase) {
-            var parent = Files.createTempDirectory(Path.of("/tmp"), "pm-mock");
+            var parent = createSecureTempDir();
             baseDir = parent.resolve("b");
             cleanupDir = parent;
         } else {
@@ -160,7 +170,8 @@ public final class MockRuntime implements AutoCloseable {
             }
         }
 
-        return new MockRuntime(baseDir, cleanupDir, paths, token, deviceSecret, cleanup, registry, engine, unixServer, tcpServer);
+        return new MockRuntime(new RuntimeContext(
+                baseDir, cleanupDir, paths, token, deviceSecret, cleanup, engine, unixServer, tcpServer));
     }
 
     private static void setupFilesystem(MachinePaths paths, String token) throws IOException {
@@ -331,10 +342,12 @@ public final class MockRuntime implements AutoCloseable {
                 tcpServer.close();
             }
         } catch (IOException ignored) {
+            // Ignore error when closing TCP server
         }
         try {
             unixServer.close();
         } catch (IOException ignored) {
+            // Ignore error when closing Unix socket server
         }
         engine.close();
 
@@ -344,6 +357,7 @@ public final class MockRuntime implements AutoCloseable {
                     Files.deleteIfExists(path);
                 }
             } catch (IOException ignored) {
+                // Ignore failure during temp directory cleanup
             }
         }
     }

@@ -10,6 +10,8 @@
 package de.planmarshall.mock.http;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -36,7 +38,13 @@ public record MockHttpRequest(
     public MockHttpRequest {
         method = Objects.requireNonNull(method, "method").toUpperCase(Locale.ROOT);
         Objects.requireNonNull(target, "target");
-        headers = headers == null ? Map.of() : Map.copyOf(headers);
+        if (headers == null || headers.isEmpty()) {
+            headers = Map.of();
+        } else {
+            var normalized = new LinkedHashMap<String, String>();
+            headers.forEach((k, v) -> normalized.put(k.toLowerCase(Locale.ROOT), v));
+            headers = Map.copyOf(normalized);
+        }
         body = body == null ? new byte[0] : body;
     }
 
@@ -69,5 +77,33 @@ public record MockHttpRequest(
      */
     public String bodyText() {
         return new String(body, StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof MockHttpRequest that)) {
+            return false;
+        }
+        return receivedNanos == that.receivedNanos
+                && Objects.equals(method, that.method)
+                && Objects.equals(target, that.target)
+                && Objects.equals(headers, that.headers)
+                && Arrays.equals(body, that.body);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(method, target, headers, receivedNanos);
+        result = 31 * result + Arrays.hashCode(body);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "MockHttpRequest[" + method + " " + target + ", headers=" + headers.size()
+                + ", bodyBytes=" + body.length + "]";
     }
 }

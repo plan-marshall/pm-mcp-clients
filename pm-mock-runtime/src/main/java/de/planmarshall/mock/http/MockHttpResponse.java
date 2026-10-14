@@ -27,8 +27,11 @@ public final class MockHttpResponse {
     private final Map<String, String> headers = new LinkedHashMap<>();
     private boolean committed;
 
-    MockHttpResponse(OutputStream out) {
-        this.out = out;
+    /**
+     * @param out output stream to write HTTP response to
+     */
+    public MockHttpResponse(OutputStream out) {
+        this.out = Objects.requireNonNull(out, "out");
     }
 
     /**

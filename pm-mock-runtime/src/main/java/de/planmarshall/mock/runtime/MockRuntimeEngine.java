@@ -10,7 +10,6 @@
 package de.planmarshall.mock.runtime;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,6 +21,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.http.MockEventStream;
@@ -37,6 +37,12 @@ import de.planmarshall.mock.scenario.StateDefinition;
  */
 public final class MockRuntimeEngine implements AutoCloseable {
 
+    private static final String KEY_ERROR = "error";
+    private static final String KEY_MESSAGE = "message";
+    private static final String KEY_STATE = "state";
+    private static final String KEY_SCENARIO = "scenario";
+    private static final String KEY_STATUS = "status";
+
     private final ScenarioRegistry registry;
     private final String runtimeToken;
     private final String deviceSecret;
@@ -44,9 +50,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Set<MockEventStream> activeStreams = ConcurrentHashMap.newKeySet();
     private final List<ScheduledFuture<?>> pendingTasks = new ArrayList<>();
 
-    private volatile Scenario currentScenario;
-    private volatile String currentStateId;
-    private volatile Instant stateEnteredInstant;
+    private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
+    private final AtomicReference<String> currentStateId = new AtomicReference<>();
     private volatile boolean closed;
 
     /**
@@ -76,15 +81,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private synchronized void setScenario(Scenario scenario) {
-        this.currentScenario = scenario;
-        transitionTo(scenario.start(), false);
+        this.currentScenario.set(scenario);
+        transitionTo(scenario.start());
     }
 
     /**
      * Resets the active scenario back to its start state.
      */
     public synchronized void reset() {
-        transitionTo(currentScenario.start(), false);
+        transitionTo(currentScenario.get().start());
     }
 
     /**
@@ -94,21 +99,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IllegalArgumentException if the state does not exist in the current scenario
      */
     public synchronized void goToState(String stateId) {
-        if (!currentScenario.states().containsKey(stateId)) {
-            throw new IllegalArgumentException("State '" + stateId + "' does not exist in scenario '" + currentScenario.name() + "'");
+        var scenario = currentScenario.get();
+        if (!scenario.states().containsKey(stateId)) {
+            throw new IllegalArgumentException("State '" + stateId + "' does not exist in scenario '" + scenario.name() + "'");
         }
-        transitionTo(stateId, false);
+        transitionTo(stateId);
     }
 
-    private synchronized void transitionTo(String nextStateId, boolean fromAuto) {
+    private synchronized void transitionTo(String nextStateId) {
         if (closed) {
             return;
         }
         cancelPendingTasks();
-        this.currentStateId = nextStateId;
-        this.stateEnteredInstant = Instant.now();
+        this.currentStateId.set(nextStateId);
 
-        var stateDef = currentScenario.state(nextStateId);
+        var stateDef = currentScenario.get().state(nextStateId);
         if (stateDef == null) {
             return;
         }
@@ -125,8 +130,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var auto = stateDef.auto();
             var task = scheduler.schedule(() -> {
                 synchronized (this) {
-                    if (Objects.equals(this.currentStateId, nextStateId)) {
-                        transitionTo(auto.next(), true);
+                    if (Objects.equals(this.currentStateId.get(), nextStateId)) {
+                        transitionTo(auto.next());
                     }
                 }
             }, auto.afterMs(), TimeUnit.MILLISECONDS);
@@ -139,6 +144,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
             task.cancel(false);
         }
         pendingTasks.clear();
+    }
+
+    /**
+     * Broadcasts an event to all open SSE connections.
+     *
+     * @param event the event type
+     * @param data  the event payload
+     */
+    public void broadcast(String event, Object data) {
+        broadcastEvent(event, data);
     }
 
     private void broadcastEvent(String event, Object data) {
@@ -171,92 +186,113 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 2. Authentication check
-        if (isWeb) {
-            if ("/api/v1/pair".equals(path) || "/pair".equals(path)) {
-                handlePairing(request, response);
-                return;
-            }
-            var auth = request.header("Authorization");
-            if (auth == null || !auth.equals("Bearer " + deviceSecret)) {
-                response.json(401, Map.of("error", "unauthorized", "message", "Invalid or missing device secret"));
-                return;
-            }
-        } else {
-            // Local Unix socket
-            var auth = request.header("Authorization");
-            if (auth == null || !auth.equals("Bearer " + runtimeToken)) {
-                // Check if it presents a job token on /mcp
-                var jobToken = request.header("PM-MCP-Job-Token");
-                if (jobToken == null || !path.startsWith("/mcp")) {
-                    response.json(401, Map.of("error", "unauthorized", "message", "Invalid or missing runtime token"));
-                    return;
-                }
-            }
+        if (!isAuthorized(request, response, isWeb)) {
+            return;
         }
 
         // 3. SSE event stream subscription
         if ("GET".equals(request.method()) && ("/api/v1/events".equals(path) || path.endsWith("/events"))) {
-            handleEventStream(request, response);
+            handleEventStream(response);
             return;
         }
 
         // 4. Match against current state links
-        StateDefinition state;
-        String activeStateId;
-        synchronized (this) {
-            activeStateId = this.currentStateId;
-            state = currentScenario.state(activeStateId);
-        }
-
-        if (state != null) {
-            var matched = findMatchingLink(request, state);
-            if (matched != null) {
-                var linkName = matched.getKey();
-                var linkDef = matched.getValue();
-
-                if (linkDef.delayMs() > 0) {
-                    try {
-                        Thread.sleep(linkDef.delayMs());
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }
-
-                if (linkDef.status() >= 400) {
-                    var errorPayload = Map.of(
-                            "error", linkDef.error() != null ? linkDef.error() : "rejected",
-                            "state", activeStateId,
-                            "link", linkName
-                    );
-                    response.json(linkDef.status(), errorPayload);
-                    return;
-                }
-
-                // Advance state machine
-                synchronized (this) {
-                    transitionTo(linkDef.next(), false);
-                    state = currentScenario.state(this.currentStateId);
-                }
-
-                var nextRep = state != null ? state.representation() : Map.of();
-                response.json(linkDef.status(), nextRep);
-                return;
-            }
+        if (handleStateLink(request, response)) {
+            return;
         }
 
         // 5. Match against static routes
-        var route = currentScenario.route(request.method(), path);
+        var route = currentScenario.get().route(request.method(), path);
         if (route != null) {
             response.json(route.status(), route.representation());
             return;
         }
 
         // 6. No match: answer mock_no_route
+        handleNoRoute(request, response);
+    }
+
+    private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        var path = request.path();
+        if (isWeb) {
+            if ("/api/v1/pair".equals(path) || "/pair".equals(path)) {
+                handlePairing(request, response);
+                return false;
+            }
+            var auth = request.header("Authorization");
+            if (auth == null || !auth.equals("Bearer " + deviceSecret)) {
+                response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing device secret"));
+                return false;
+            }
+        } else {
+            var auth = request.header("Authorization");
+            if (auth == null || !auth.equals("Bearer " + runtimeToken)) {
+                var jobToken = request.header("PM-MCP-Job-Token");
+                if (jobToken == null || !path.startsWith("/mcp")) {
+                    response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing runtime token"));
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean handleStateLink(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        StateDefinition state;
+        String activeStateId;
+        synchronized (this) {
+            activeStateId = this.currentStateId.get();
+            state = currentScenario.get().state(activeStateId);
+        }
+
+        if (state == null) {
+            return false;
+        }
+
+        var matched = findMatchingLink(request, state);
+        if (matched == null) {
+            return false;
+        }
+
+        var linkName = matched.getKey();
+        var linkDef = matched.getValue();
+
+        if (linkDef.delayMs() > 0) {
+            try {
+                Thread.sleep(linkDef.delayMs());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        if (linkDef.status() >= 400) {
+            var errorPayload = Map.of(
+                    KEY_ERROR, linkDef.error() != null ? linkDef.error() : "rejected",
+                    KEY_STATE, activeStateId,
+                    "link", linkName
+            );
+            response.json(linkDef.status(), errorPayload);
+            return true;
+        }
+
+        synchronized (this) {
+            transitionTo(linkDef.next());
+            state = currentScenario.get().state(this.currentStateId.get());
+        }
+
+        var nextRep = state != null ? state.representation() : Map.of();
+        response.json(linkDef.status(), nextRep);
+        return true;
+    }
+
+    private void handleNoRoute(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String activeStateId = this.currentStateId.get();
+        var state = currentScenario.get().state(activeStateId);
         var offeredLinks = state != null ? new ArrayList<>(state.links().keySet()) : List.<String>of();
         var errorBody = new LinkedHashMap<String, Object>();
-        errorBody.put("error", "mock_no_route");
-        errorBody.put("message", "No route matched for " + request.method() + " " + path + " in state '" + activeStateId + "'");
-        errorBody.put("state", activeStateId);
+        errorBody.put(KEY_ERROR, "mock_no_route");
+        errorBody.put(KEY_MESSAGE, "No route matched for " + request.method() + " " + request.path() + " in state '" + activeStateId + "'");
+        errorBody.put(KEY_STATE, activeStateId);
         errorBody.put("offered_links", offeredLinks);
 
         response.json(404, errorBody);
@@ -270,43 +306,45 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var linkName = entry.getKey();
             var linkDef = entry.getValue();
 
-            // Method check
             if (!method.equalsIgnoreCase(linkDef.method())) {
                 continue;
             }
-
-            // Check 1: Explicit href matches path
-            if (linkDef.href() != null && linkDef.href().equals(path)) {
+            if (matchesLinkTarget(linkDef, linkName, path, state)) {
                 return entry;
-            }
-
-            // Check 2: Path ends with /<linkName> (e.g. /api/v1/operator/check or /api/v1/probe)
-            if (path.endsWith("/" + linkName)) {
-                return entry;
-            }
-
-            // Check 3: Check inside representation links/forms if available
-            if (state.representation() instanceof Map<?, ?> repMap) {
-                var linksObj = repMap.get("links");
-                if (linksObj instanceof Map<?, ?> repLinks && repLinks.containsKey(linkName)) {
-                    var targetObj = repLinks.get(linkName);
-                    if (targetObj instanceof Map<?, ?> targetMap && path.equals(targetMap.get("href"))) {
-                        return entry;
-                    }
-                    if (path.equals(String.valueOf(targetObj))) {
-                        return entry;
-                    }
-                }
-                var halLinksObj = repMap.get("_links");
-                if (halLinksObj instanceof Map<?, ?> halLinks && halLinks.containsKey(linkName)) {
-                    var targetObj = halLinks.get(linkName);
-                    if (targetObj instanceof Map<?, ?> targetMap && path.equals(targetMap.get("href"))) {
-                        return entry;
-                    }
-                }
             }
         }
         return null;
+    }
+
+    private boolean matchesLinkTarget(LinkDefinition linkDef, String linkName, String path, StateDefinition state) {
+        if (linkDef.href() != null && linkDef.href().equals(path)) {
+            return true;
+        }
+        if (path.endsWith("/" + linkName)) {
+            return true;
+        }
+        return matchesRepresentationLink(state, linkName, path);
+    }
+
+    private boolean matchesRepresentationLink(StateDefinition state, String linkName, String path) {
+        if (!(state.representation() instanceof Map<?, ?> repMap)) {
+            return false;
+        }
+        if (checkLinkGroup(repMap.get("links"), linkName, path)) {
+            return true;
+        }
+        return checkLinkGroup(repMap.get("_links"), linkName, path);
+    }
+
+    private boolean checkLinkGroup(Object groupObj, String linkName, String path) {
+        if (!(groupObj instanceof Map<?, ?> links) || !links.containsKey(linkName)) {
+            return false;
+        }
+        var targetObj = links.get(linkName);
+        if (targetObj instanceof Map<?, ?> targetMap && path.equals(targetMap.get("href"))) {
+            return true;
+        }
+        return path.equals(String.valueOf(targetObj));
     }
 
     private void handlePairing(MockHttpRequest request, MockHttpResponse response) throws IOException {
@@ -319,6 +357,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
             } catch (IOException | RuntimeException ignored) {
+                // Ignore parse errors from invalid body
             }
         }
         if (code == null && request.query() != null) {
@@ -330,7 +369,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
 
-        var expectedCode = currentScenario.pairingCode();
+        var expectedCode = currentScenario.get().pairingCode();
         if (code != null && code.replace("-", "").equalsIgnoreCase(expectedCode.replace("-", ""))) {
             var body = Map.of(
                     "device_secret", deviceSecret,
@@ -339,11 +378,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             );
             response.json(200, body);
         } else {
-            response.json(400, Map.of("error", "invalid_code", "message", "The pairing code does not match"));
+            response.json(400, Map.of(KEY_ERROR, "invalid_code", KEY_MESSAGE, "The pairing code does not match"));
         }
     }
 
-    private void handleEventStream(MockHttpRequest request, MockHttpResponse response) throws IOException {
+    private void handleEventStream(MockHttpResponse response) throws IOException {
         var stream = response.events(200);
         activeStreams.add(stream);
         try {
@@ -358,6 +397,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 break;
             }
         }
@@ -367,97 +407,137 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleControlRequest(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         if ("/mock/state".equals(path) && "GET".equals(request.method())) {
-            StateDefinition state;
-            String stateId;
-            String scenarioName;
-            synchronized (this) {
-                stateId = this.currentStateId;
-                scenarioName = this.currentScenario.name();
-                state = currentScenario.state(stateId);
-            }
-            var offered = state != null ? new ArrayList<>(state.links().keySet()) : List.<String>of();
-            response.json(200, Map.of(
-                    "scenario", scenarioName,
-                    "state", stateId,
-                    "offered_links", offered
-            ));
+            handleControlState(response);
             return;
         }
-
         if ("/mock/reset".equals(path) && "POST".equals(request.method())) {
-            reset();
-            response.json(200, Map.of(
-                    "status", "reset",
-                    "scenario", currentScenario.name(),
-                    "state", currentStateId
-            ));
+            handleControlReset(response);
             return;
         }
-
         if ("/mock/scenario".equals(path) && "POST".equals(request.method())) {
-            String scenarioName = null;
-            if (request.body().length > 0) {
-                try {
-                    var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-                    if (parsed != null) {
-                        scenarioName = JsonTree.string(parsed, "scenario");
-                    }
-                    // cui-rewrite:disable InvalidExceptionUsageRecipe
-                } catch (IOException | RuntimeException ignored) {
-                }
-            }
-            if (scenarioName == null && request.query() != null) {
-                for (var part : request.query().split("&")) {
-                    if (part.startsWith("name=") || part.startsWith("scenario=")) {
-                        scenarioName = part.substring(part.indexOf('=') + 1);
-                        break;
-                    }
-                }
-            }
-            if (scenarioName == null || scenarioName.isBlank()) {
-                response.json(400, Map.of("error", "missing_scenario_name"));
-                return;
-            }
-            try {
-                switchScenario(scenarioName);
-                response.json(200, Map.of(
-                        "status", "switched",
-                        "scenario", currentScenario.name(),
-                        "state", currentStateId
-                ));
-                // cui-rewrite:disable InvalidExceptionUsageRecipe
-            } catch (RuntimeException e) {
-                response.json(404, Map.of("error", "scenario_not_found", "message", e.getMessage()));
-            }
+            handleControlScenario(request, response);
             return;
         }
-
         if (path.startsWith("/mock/goto/") && "POST".equals(request.method())) {
-            var targetState = path.substring("/mock/goto/".length());
-            try {
-                goToState(targetState);
-                response.json(200, Map.of(
-                        "status", "transitioned",
-                        "scenario", currentScenario.name(),
-                        "state", currentStateId
-                ));
-            } catch (IllegalArgumentException e) {
-                response.json(404, Map.of("error", "state_not_found", "message", e.getMessage()));
-            }
+            handleControlGoto(path.substring("/mock/goto/".length()), response);
             return;
         }
+        if ("/mock/broadcast".equals(path) && "POST".equals(request.method())) {
+            handleControlBroadcast(request, response);
+            return;
+        }
+        response.json(404, Map.of(KEY_ERROR, "unknown_control_endpoint"));
+    }
 
-        response.json(404, Map.of("error", "unknown_control_endpoint"));
+    private void handleControlState(MockHttpResponse response) throws IOException {
+        StateDefinition state;
+        String stateId;
+        String scenarioName;
+        synchronized (this) {
+            stateId = this.currentStateId.get();
+            scenarioName = this.currentScenario.get().name();
+            state = currentScenario.get().state(stateId);
+        }
+        var offered = state != null ? new ArrayList<>(state.links().keySet()) : List.<String>of();
+        response.json(200, Map.of(
+                KEY_SCENARIO, scenarioName,
+                KEY_STATE, stateId,
+                "offered_links", offered
+        ));
+    }
+
+    private void handleControlReset(MockHttpResponse response) throws IOException {
+        reset();
+        response.json(200, Map.of(
+                KEY_STATUS, "reset",
+                KEY_SCENARIO, currentScenario.get().name(),
+                KEY_STATE, currentStateId.get()
+        ));
+    }
+
+    private void handleControlScenario(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String scenarioName = extractScenarioName(request);
+        if (scenarioName == null || scenarioName.isBlank()) {
+            response.json(400, Map.of(KEY_ERROR, "missing_scenario_name"));
+            return;
+        }
+        try {
+            switchScenario(scenarioName);
+            response.json(200, Map.of(
+                    KEY_STATUS, "switched",
+                    KEY_SCENARIO, currentScenario.get().name(),
+                    KEY_STATE, currentStateId.get()
+            ));
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (RuntimeException e) {
+            response.json(404, Map.of(KEY_ERROR, "scenario_not_found", KEY_MESSAGE, e.getMessage()));
+        }
+    }
+
+    private String extractScenarioName(MockHttpRequest request) {
+        String scenarioName = null;
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null) {
+                    scenarioName = JsonTree.string(parsed, KEY_SCENARIO);
+                }
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IOException | RuntimeException ignored) {
+                // Ignore parse errors when extracting scenario name from body
+            }
+        }
+        if (scenarioName == null && request.query() != null) {
+            for (var part : request.query().split("&")) {
+                if (part.startsWith("name=") || part.startsWith("scenario=")) {
+                    scenarioName = part.substring(part.indexOf('=') + 1);
+                    break;
+                }
+            }
+        }
+        return scenarioName;
+    }
+
+    private void handleControlGoto(String targetState, MockHttpResponse response) throws IOException {
+        try {
+            goToState(targetState);
+            response.json(200, Map.of(
+                    KEY_STATUS, "transitioned",
+                    KEY_SCENARIO, currentScenario.get().name(),
+                    KEY_STATE, currentStateId.get()
+            ));
+        } catch (IllegalArgumentException e) {
+            response.json(404, Map.of(KEY_ERROR, "state_not_found", KEY_MESSAGE, e.getMessage()));
+        }
+    }
+
+    private void handleControlBroadcast(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String event = "message";
+        Object data = Map.of();
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null) {
+                    event = Objects.requireNonNullElse(JsonTree.string(parsed, "event"), "message");
+                    data = Objects.requireNonNullElse(parsed.get("data"), Map.of());
+                }
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IOException | RuntimeException ignored) {
+                // Ignore parse errors from broadcast body
+            }
+        }
+        broadcastEvent(event, data);
+        response.json(200, Map.of(KEY_STATUS, "broadcasted", "event", event));
     }
 
     /** @return the current scenario */
     public Scenario currentScenario() {
-        return currentScenario;
+        return currentScenario.get();
     }
 
     /** @return the current state id */
     public String currentStateId() {
-        return currentStateId;
+        return currentStateId.get();
     }
 
     /** @return the accepted runtime token */
@@ -480,6 +560,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 try {
                     stream.close();
                 } catch (IOException ignored) {
+                    // Ignore error when closing active stream during engine shutdown
                 }
             }
             activeStreams.clear();

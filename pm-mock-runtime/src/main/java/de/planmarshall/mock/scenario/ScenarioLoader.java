@@ -162,7 +162,12 @@ public class ScenarioLoader {
                     "start state '" + start + "' does not exist in states");
         }
 
-        // Validate all link targets and auto targets exist
+        validateTransitions(states, identifier);
+
+        return new Scenario(formatVersion, name, description, start, pairingCode, routes, states);
+    }
+
+    private static void validateTransitions(Map<String, StateDefinition> states, String identifier) {
         for (var entry : states.entrySet()) {
             var stateId = entry.getKey();
             var stateDef = entry.getValue();
@@ -184,8 +189,6 @@ public class ScenarioLoader {
                 }
             }
         }
-
-        return new Scenario(formatVersion, name, description, start, pairingCode, routes, states);
     }
 
     private static Map<String, RouteDefinition> parseRoutes(Object routesObj, String scenario) {
@@ -200,7 +203,7 @@ public class ScenarioLoader {
                         "route definition must be an object");
             }
             var rep = routeMap.get("representation");
-            if (rep == null || !(rep instanceof Map<?, ?>)) {
+            if (!(rep instanceof Map<?, ?>)) {
                 throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
                         "route representation must be a JSON object");
             }
@@ -225,7 +228,7 @@ public class ScenarioLoader {
 
             // representation
             var representation = stateMap.get("representation");
-            if (representation == null || !(representation instanceof Map<?, ?>)) {
+            if (!(representation instanceof Map<?, ?>)) {
                 throw new ScenarioValidationException(scenario, stateId, "representation",
                         "state representation must be a JSON object");
             }

@@ -1,0 +1,270 @@
+= Mock Runtime (`pm-mock-runtime`)
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+The `pm-mock-runtime` module provides an in-memory, scenario-driven mock server that stands in for the `pm-mcpd` daemon towards operator clients (`pm-operator`, CLI tools, and the web interface).
+
+== Overview
+
+The mock runtime implements the link:../doc/plans/api-contract.adoc[Local API] `/api/v1` according to the contract defined in `pm-api`. It is driven by declarative scenario files rather than a live execution engine, allowing client applications to be developed and tested against every state a flow can produce—including edge cases that are difficult to reproduce with a live engine (such as unauthenticated harnesses, locked keychains, refused tokens, slow checks, or simulated failures).
+
+=== Key Properties
+
+* *Transports*:
+** *Unix domain socket*: binds `<PM_MCP_BASE>/run/pm-mcpd.sock`, generates `<PM_MCP_BASE>/run/runtime.token` with strict POSIX permissions (`rw-------`), writes `<PM_MCP_BASE>/state/runtime.json`, and answers liveness checks so client libraries find an active runtime.
+** *Loopback TCP*: optionally listens on `127.0.0.1:<port>` for browser-based client development and testing, supporting web pairing redemption.
+* *Control Plane*: provides `/mock/` control endpoints alongside `/api/v1/` to inspect state, reset flows, jump between states, and switch active scenarios on the fly.
+* *Minimal Dependency Footprint*: HTTP/1.1 and Server-Sent Events (SSE) are implemented using JDK `ServerSocketChannel` and `jackson-core`, requiring no third-party web frameworks or servlet containers.
+* *Development & Test Only*: the module is never deployed or distributed in production artifacts.
+
+== Usage
+
+`pm-mock-runtime` can be run standalone as a long-running process for interactive development, or instantiated programmatically in unit and integration tests.
+
+=== Standalone (CLI)
+
+The mock runtime includes a command-line interface in `de.planmarshall.mock.cli.MockRuntimeCli`.
+
+==== Running the Server
+
+Run directly with `java -jar`:
+
+[source,bash]
+----
+java -jar pm-mock-runtime.jar [options]
+----
+
+Or via the Maven wrapper from the repository root:
+
+[source,bash]
+----
+./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario onboarding-happy --web-port 8088"
+----
+
+==== Command-Line Options
+
+[cols="1,2,3",options="header"]
+|===
+| Option | Arguments | Description
+
+| `-s, --scenario`
+| `<name\|path>`
+| Initial scenario name (e.g. `status-only`, `onboarding-happy`) or path to a scenario JSON file. Defaults to `status-only`.
+
+| `-b, --base`
+| `<dir>`
+| Target directory for `PM_MCP_BASE`. Defaults to an automatically generated secure temporary directory that is deleted on shutdown.
+
+| `-p, --web-port`
+| `<port>`
+| Loopback TCP port on `127.0.0.1` for web client testing. If omitted, the web listener is disabled.
+
+| `-t, --token`
+| `<token>`
+| Fixed runtime token for authentication on the Unix domain socket. Defaults to a generated token.
+
+| `-h, --help`
+| _none_
+| Prints usage instructions and exits.
+|===
+
+==== Interacting with Clients
+
+When started, the CLI outputs connection coordinates:
+
+[source,text]
+----
+Mock runtime started successfully:
+  Base (PM_MCP_BASE): /tmp/pm-mock12345/b
+  Unix Socket:        /tmp/pm-mock12345/b/run/pm-mcpd.sock
+  Loopback Web Port:  8088 (http://127.0.0.1:8088)
+  Scenario:           onboarding-happy
+  Initial State:      onboard.mode
+  Runtime Token:      mock-token-abcde-12345
+
+Use 'pm-operator' with PM_MCP_BASE=/tmp/pm-mock12345/b to interact.
+----
+
+Export `PM_MCP_BASE` in another shell to run `pm-operator` against the mock runtime:
+
+[source,bash]
+----
+export PM_MCP_BASE=/tmp/pm-mock12345/b
+pm-operator status
+----
+
+=== Control Endpoints (`/mock/`)
+
+The mock runtime exposes dedicated control endpoints on both listeners for test orchestration:
+
+* `GET /mock/state`: Returns the active scenario name, current state identifier, and offered link relations.
+* `POST /mock/reset`: Resets the active scenario back to its initial `start` state.
+* `POST /mock/scenario`: Switches the active scenario dynamically using a name-based lookup. Accepts a JSON body `{"scenario": "<name>"}` or query parameters `?name=<name>`.
+* `POST /mock/goto/{state}`: Jumps directly to any target state within the active scenario (useful for skipping directly to a specific review or error screen).
+* `POST /mock/broadcast`: Triggers a custom Server-Sent Event broadcast to all connected SSE clients.
+
+=== Testing Usage
+
+==== Integration Tests with `MockRuntime`
+
+In tests, manage server lifecycle using `try-with-resources`:
+
+[source,java]
+----
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.api.runtime.RuntimeClient;
+
+class MyClientIT {
+
+    @Test
+    void testClientInteraction() throws Exception {
+        var config = MockRuntimeConfig.builder()
+                .scenario("onboarding-happy")
+                .webPort(0) // 0 selects an ephemeral TCP port
+                .build();
+
+        try (var runtime = MockRuntime.start(config)) {
+            // Point the production client to the mock base
+            var client = new RuntimeClient(runtime.base());
+
+            // Interact with the runtime
+            var status = client.status();
+            assertNotNull(status);
+
+            // Dynamically switch scenario in-test
+            runtime.switchScenario("status-only");
+            assertEquals("status-only", runtime.currentScenarioName());
+        }
+    }
+}
+----
+
+==== In-Memory Unit Testing with `MockRuntimeEngine`
+
+For pure in-memory testing without opening OS sockets or creating files on disk, test directly against `MockRuntimeEngine`:
+
+[source,java]
+----
+var registry = new ScenarioRegistry();
+var scenario = registry.resolve("status-only");
+try (var engine = new MockRuntimeEngine(registry, scenario, "tok", "sec")) {
+    var req = new MockHttpRequest("GET", "/api/v1/status", Map.of("Authorization", "Bearer tok"), new byte[0], 0);
+    var out = new ByteArrayOutputStream();
+    var res = new MockHttpResponse(out);
+
+    engine.dispatch(req, res, false);
+    assertTrue(out.toString(StandardCharsets.UTF_8).contains("200 OK"));
+}
+----
+
+== Scenario Configuration
+
+Scenarios are declarative JSON definitions stored in `src/main/resources/scenarios/<name>.json` or loaded from external paths.
+
+=== Schema Format
+
+A scenario file adheres to `format_version: 1`:
+
+[source,json]
+----
+{
+  "format_version": 1,
+  "name": "onboarding-harness-not-logged-in",
+  "description": "Claude Code is found but not logged in; logging in and checking again passes.",
+  "start": "harness.choose",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "status": 200,
+      "representation": {
+        "status": "ready",
+        "machine": "mock-machine"
+      }
+    }
+  },
+  "states": {
+    "harness.choose": {
+      "representation": {
+        "scope": "workspace",
+        "state": "harness.choose",
+        "summary": "Choose execution harness"
+      },
+      "links": {
+        "check": {
+          "next": "harness.probe",
+          "href": "/api/v1/operator/onboard/probe",
+          "method": "POST"
+        }
+      }
+    },
+    "harness.probe": {
+      "representation": {
+        "summary": "Probe running"
+      },
+      "events": [
+        {
+          "after_ms": 100,
+          "event": "check",
+          "data": { "id": "version", "result": "pass" }
+        },
+        {
+          "after_ms": 300,
+          "event": "check",
+          "data": { "id": "login", "result": "fail", "cause": "not logged in" }
+        }
+      ],
+      "auto": {
+        "after_ms": 500,
+        "next": "harness.blocked"
+      }
+    },
+    "harness.blocked": {
+      "representation": {
+        "summary": "Probe failed; login required"
+      },
+      "links": {
+        "recheck": {
+          "next": "harness.choose",
+          "href": "/api/v1/operator/onboard/retry",
+          "method": "POST"
+        }
+      }
+    }
+  }
+}
+----
+
+=== Structural Elements
+
+* *`format_version`*: format specification version (`1`).
+* *`name`*: unique scenario name used for name-based lookup and switching.
+* *`start`*: identifier of the initial state when the scenario is activated or reset.
+* *`pairing_code`*: code accepted by the web pairing endpoint `/api/v1/pair` (e.g. `KXQB-MRTN`).
+* *`routes`*: static routes that respond identically regardless of state (e.g. `GET /api/v1/status`).
+* *`states`*: the states in the state machine:
+** *`representation`*: the exact JSON payload returned to clients when entering or querying this state.
+** *`links`*: hypermedia transitions offered by the state. A request matching `href` and `method` moves the engine to `next` and responds with the next state's representation. Supports `delay_ms` for simulated latency and `status` with `error` for refusal responses (e.g. HTTP 409).
+** *`events`*: Server-Sent Events emitted to `/api/v1/events` subscribers after `after_ms` milliseconds from entering the state.
+** *`auto`*: automatic state transition triggered after `after_ms` milliseconds without requiring an incoming client request.
+
+=== Dynamic Scenario Switching
+
+The mock runtime supports switching scenarios on demand by name. Scenarios on the classpath (`scenarios/<name>.json`) are automatically discovered and cached by `ScenarioRegistry`.
+
+To switch scenarios:
+1. *From the CLI or Web UI*: send `POST /mock/scenario` with JSON body `{"scenario": "<name>"}` or query string `POST /mock/scenario?name=<name>`.
+2. *In Java*: call `runtime.switchScenario("<name>")` on the `MockRuntime` instance.
+
+=== Bundled Scenarios
+
+The module ships with the following scenarios out of the box:
+
+* `status-only`: represents an idle runtime serving machine status.
+* `onboarding-happy`: complete happy path machine onboarding flow through mode selection, language selection, harness verification, and confirmation.
+* `onboarding-harness-not-logged-in`: machine onboarding where harness probing fails with a missing login diagnosis and offers a fix link.
+* `web-pairing`: browser pairing flow demonstrating pairing code exchange and subsequent authenticated web client requests.

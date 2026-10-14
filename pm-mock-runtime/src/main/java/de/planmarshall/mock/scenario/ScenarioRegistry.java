@@ -25,6 +25,7 @@ public final class ScenarioRegistry {
      * Creates an empty registry.
      */
     public ScenarioRegistry() {
+        // Creates an empty scenario registry with an empty cache
     }
 
     /**
