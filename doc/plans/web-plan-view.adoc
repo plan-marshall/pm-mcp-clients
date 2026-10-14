@@ -13,12 +13,14 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 * The view of a plan as designed: its process level by level, the six phases and a lane's choice of them (the land lane's `land` a sub-workflow within `execute`), the kinds with the icons of the design system, the states as glyph and word, the path project › epic › plan in the head, the project and the epic each a link one step away wherever the plan was opened from (Running Work, the project, the epic, a decision, ended work), the path with its way back, the jump to where the plan is, a leaf's details, live updates; at desktop and phone width, light and dark.
 * The plan's tokens so far in the head (link:../design/shared/plan-view.adoc#tokens[Plan View, Tokens So Far]): the total with its split, a floor with its coverage, `none yet`, live; one step away by phase and role with the raw components; in link:../design/shared/texts-and-languages.adoc#numbers[the number format of tokens], never money or a limit.
+* A worker at work: a leaf's running task with its activity growing live (its role, harness, model, attempt, duration, and tokens above it), an ended task's activity as it was, a worker off track with its signal and what the server did; the activity shown as plain text, never acted on.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]
+* Specification: the sections link:process-contract.adoc[`process-contract`] implements in the contract, which this package shows
 * Design: link:../design/shared/plan-view.adoc[Plan View]; the web app's views of `web-design`
 
 == Done When

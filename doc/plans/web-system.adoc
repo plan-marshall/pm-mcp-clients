@@ -24,6 +24,7 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI & Security § Web App]
+* Specification: the sections link:system-contract.adoc[`system-contract`] implements in the contract, which this package shows
 * Design: link:../design/shared/system.adoc[System]; link:../design/shared/cleanup.adoc[Cleanup]; link:../design/web-app/machine-settings.adoc#cleanup[Web App, Machine Settings]; link:../design/web-app/README.adoc#structure[Web App, Structure]; the web app's views of `web-design`
 
 == Done When

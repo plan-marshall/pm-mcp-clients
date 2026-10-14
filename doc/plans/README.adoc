@@ -66,7 +66,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:enter-command.adoc[`enter-command`]
 |`pm-mcp enter` as an API request
 |`blocked`
-|link:api-contract.adoc[`api-contract`]; link:profile-documents.adoc[`profile-documents`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`], whose change All Interaction in the Operator's Clients removes `pm-mcp enter` as the operator's way to start work: once it is written, this package keeps only what a host still needs, or is retired
+|the operator's decision to retire it: the specification has no `pm-mcp enter` (no work package)
 |Milestone 3
 
 |link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]
@@ -119,7 +119,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:cli-onboarding.adoc[`cli-onboarding`]
 |The console `pm-operator`: entry and onboarding
-|`blocked`
+|`open`
 |link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:operator-checks.adoc[`operator-checks`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
 |epic clients
 
@@ -131,181 +131,181 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:web-onboarding.adoc[`web-onboarding`]
 |Onboarding and start in the web app
-|`blocked`
+|`open`
 |link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
 |epic clients
 
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |What every operator interaction shares: a state for a client, the operator's links, the event catalogue, texts, client inputs
-|`blocked`
-|link:api-contract.adoc[`api-contract`]; link:mock-runtime.adoc[`mock-runtime`]; link:../../../pm-mcp-core/doc/plans/operator-wait-and-machine-scope.adoc[`pm-mcp-core` / `operator-wait-and-machine-scope`]
+|`open`
+|link:api-contract.adoc[`api-contract`]; link:mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
 |link:decision-contract.adoc[`decision-contract`]
 |Decisions: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records); link:../../../pm-mcp-core/doc/plans/decision-engine.adoc[`pm-mcp-core` / `decision-engine`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; UC-PLN-2 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
 |link:onboarding-contract.adoc[`onboarding-contract`]
 |Onboarding: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/machine-onboarding-unit.adoc[`pm-mcp-core` / `machine-onboarding-unit`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-ONB agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:entry-contract.adoc[`entry-contract`]
 |Entry: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-ENT-1, UC-ENT-2, and UC-ONB-8 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:cli-decisions.adoc[`cli-decisions`]
 |Decisions in the terminal
-|`blocked`
+|`open`
 |link:decision-contract.adoc[`decision-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
 |epic clients
 
 |link:web-decisions.adoc[`web-decisions`]
 |Decisions in the web app
-|`blocked`
+|`open`
 |link:decision-contract.adoc[`decision-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
 |epic clients
 
 |link:project-contract.adoc[`project-contract`]
 |Projects: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/project-onboarding-unit.adoc[`pm-mcp-core` / `project-onboarding-unit`]; UC-PRJ-1 to UC-PRJ-3 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:cli-projects.adoc[`cli-projects`]
 |Projects in the terminal
-|`blocked`
+|`open`
 |link:project-contract.adoc[`project-contract`]; link:cli-onboarding.adoc[`cli-onboarding`]
 |epic clients
 
 |link:web-projects.adoc[`web-projects`]
 |Projects in the web app
-|`blocked`
+|`open`
 |link:project-contract.adoc[`project-contract`]; link:web-onboarding.adoc[`web-onboarding`]
 |epic clients
 
 |link:process-contract.adoc[`process-contract`]
 |A plan's process: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/phase-sub-workflows.adoc[`pm-mcp-core` / `phase-sub-workflows`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-PLN-1 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:cli-plan-view.adoc[`cli-plan-view`]
 |A plan's process in the terminal
-|`blocked`
+|`open`
 |link:process-contract.adoc[`process-contract`]; link:cli-overview.adoc[`cli-overview`]
 |epic clients
 
 |link:web-plan-view.adoc[`web-plan-view`]
 |A plan's process in the web app
-|`blocked`
+|`open`
 |link:process-contract.adoc[`process-contract`]; link:web-overview.adoc[`web-overview`]
 |epic clients
 
 |link:control-contract.adoc[`control-contract`]
 |Controlling work: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:../../../pm-mcp-core/doc/plans/plan-and-epic-control.adoc[`pm-mcp-core` / `plan-and-epic-control`]; link:../../../pm-mcp-core/doc/plans/epic-findings-review.adoc[`pm-mcp-core` / `epic-findings-review`]; link:../../../pm-mcp-core/doc/plans/epic-decomposition.adoc[`pm-mcp-core` / `epic-decomposition`]; link:../../../pm-mcp-core/doc/plans/epic-auto.adoc[`pm-mcp-core` / `epic-auto`]; link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-CTL-1 to UC-CTL-5 and UC-STA-6 agreed, with An Epic Runs by Itself (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:cli-actions.adoc[`cli-actions`]
 |Actions on plans and epics in the terminal
-|`blocked`
+|`open`
 |link:control-contract.adoc[`control-contract`]; link:cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]; link:cli-start.adoc[`cli-start`]
 |epic clients
 
 |link:web-actions.adoc[`web-actions`]
 |Actions on plans and epics in the web app
-|`blocked`
+|`open`
 |link:control-contract.adoc[`control-contract`]; link:web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
 |epic clients
 
 |link:start-contract.adoc[`start-contract`]
 |Starting work: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records); link:../../../pm-mcp-core/doc/plans/chat.adoc[`pm-mcp-core` / `chat`]; link:../../../pm-mcp-core/doc/plans/start-from-clients.adoc[`pm-mcp-core` / `start-from-clients`]; link:../../../pm-mcp-core/doc/plans/recipe-workflows.adoc[`pm-mcp-core` / `recipe-workflows`]; link:../../../pm-mcp-core/doc/plans/forgejo-provider.adoc[`pm-mcp-core` / `forgejo-provider`]; UC-STA-1 to UC-STA-5 and UC-STA-7 to UC-STA-9 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
 |link:cli-start.adoc[`cli-start`]
 |Starting work in the terminal
-|`blocked`
+|`open`
 |link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:cli-projects.adoc[`cli-projects`]
 |epic clients
 
 |link:web-start.adoc[`web-start`]
 |Starting work in the web app
-|`blocked`
+|`open`
 |link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:web-projects.adoc[`web-projects`]
 |epic clients
 
 |link:overview-contract.adoc[`overview-contract`]
 |Overview of running work: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; UC-PLN-4 agreed, with Ended Work (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:cli-overview.adoc[`cli-overview`]
 |Overview of running work in the terminal
-|`blocked`
+|`open`
 |link:overview-contract.adoc[`overview-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:web-overview.adoc[`web-overview`]
 |Overview of running work in the web app
-|`blocked`
+|`open`
 |link:overview-contract.adoc[`overview-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
 |epic clients
 
 |link:report-contract.adoc[`report-contract`]
 |Reports to the operator and a plan's completion report: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:../../../pm-mcp-core/doc/plans/operator-reports.adoc[`pm-mcp-core` / `operator-reports`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; UC-PLN-6 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:cli-reports.adoc[`cli-reports`]
 |Reports and the completion report in the terminal
-|`blocked`
+|`open`
 |link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:web-reports.adoc[`web-reports`]
 |Reports and the completion report in the web app
-|`blocked`
+|`open`
 |link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:system-contract.adoc[`system-contract`]
 |The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:report-contract.adoc[`report-contract`] (the closed kinds of reports); link:../../../pm-mcp-core/doc/plans/runtime-metrics.adoc[`pm-mcp-core` / `runtime-metrics`]; link:../../../pm-mcp-core/doc/plans/runtime-control.adoc[`pm-mcp-core` / `runtime-control`]; link:../../../pm-mcp-core/doc/plans/token-usage.adoc[`pm-mcp-core` / `token-usage`]; link:../../../pm-mcp-core/doc/plans/cleanup.adoc[`pm-mcp-core` / `cleanup`]; UC-SYS-1, UC-SYS-2, and UC-SYS-3 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:report-contract.adoc[`report-contract`] (the closed kinds of reports)
 |epic clients
 
 |link:cli-system.adoc[`cli-system`]
 |The system view, the runtime's lifecycle, and the cleanup in the terminal
-|`blocked`
+|`open`
 |link:system-contract.adoc[`system-contract`]; link:cli-overview.adoc[`cli-overview`] (the full-screen view)
 |epic clients
 
 |link:web-system.adoc[`web-system`]
 |The system view, the runtime's lifecycle, and the cleanup in the web app
-|`blocked`
+|`open`
 |link:system-contract.adoc[`system-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-design.adoc[`web-design`]
 |epic clients
 
 |link:designer-contract.adoc[`designer-contract`]
 |Designing a process: contract and mock runtime
-|`blocked`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:process-contract.adoc[`process-contract`] (the composed process); link:../../../pm-mcp-core/doc/plans/process-designer.adoc[`pm-mcp-core` / `process-designer`]; UC-PLN-3 agreed (no work package)
+|`open`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:process-contract.adoc[`process-contract`] (the composed process)
 |epic clients
 
 |link:web-designer.adoc[`web-designer`]
 |The process designer in the web app (the web app only)
-|`blocked`
+|`open`
 |link:designer-contract.adoc[`designer-contract`]; link:web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:web-projects.adoc[`web-projects`] (a project's setup); link:web-design.adoc[`web-design`]
 |epic clients
 

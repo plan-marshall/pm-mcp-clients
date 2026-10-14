@@ -23,6 +23,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]
+* Specification: the sections link:onboarding-contract.adoc[`onboarding-contract`] and link:entry-contract.adoc[`entry-contract`] implement in the contract, which this package shows
 * Design: the accepted design of `web-design`, `doc/design/web-app/` of this repository; link:../design/web-app/onboarding.adoc[Web App, Onboarding]
 
 == Done When
