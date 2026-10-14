@@ -53,7 +53,10 @@ By plan:
                      in ◇ client work
              ▸ plan  Message catalogue                outline · pausing after the task
                      running 1 h 5 min · in outline 30 min · 0 of 0 tasks
-                     in ◇ client work
+                     in ◇ client work · off track: repeating
+   alongside
+ ! landing failed    landing remediation.ci-failure   failed
+                     removing 2 moved documents from git   running
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move   Enter open   a actions   e epic   ! what waits   Tab by epic   E ended work   Esc back
 ----
@@ -76,6 +79,8 @@ By epic:
 * Each row is the plan's or epic's first line (kind, title, phase and state) and below it its details (times, progress, the epic it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
 * *The state* of a plan is one of a closed list, the texts `overview.state.*` of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]: `running`, `pausing` (with its point: `after the task`, `after the phase`), `paused`, `waiting for you`, `held`. A plan's own pull request, where it has one, is shown in its details by its number (`#214`), a terminal hyperlink (OSC 8) to the pull request where the terminal shows one; `?` on the row prints its URL.
 * *The marker* `!` names the kind of the first item that needs the operator, the texts `overview.needs.*`: `decision`, `waiver`, `waits for you` (an operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity pause`, `held`, `landing failed`, and `new findings`, `setup`. A paused plan carries no marker for being paused: its state says it.
+* *Off track*: a plan one of whose workers the server judges off track shows `off track: <signal>` in its details (`overview.plan.off_track`); it is no marker of what needs the operator and is never counted in one; `Enter` on the row opens the plan view at that task's activity (xref:16-plan-view.adoc#activity[The Plan View, A Worker at Work]).
+* *Alongside* (`overview.group.alongside`): below the plans and epics of a project, its running and failed short landings, each with its state, a failed one with the marker `landing failed` and the acts of its hold (xref:19-actions.adoc#holds[What Holds a Plan]), and a running onboarding or setup run of the project, which `Enter` continues (xref:17-projects.adoc#onboarding[Onboarding a Project]); the tree of `status` prints the same group as words (link:../shared/plan-overview.adoc[Plan Overview]).
 * `e` on a plan moves to its epic in the view by epic; `Tab` switches between the two views and keeps the selection.
 * `Enter` on a plan or an epic opens its own view in the same full-screen view: a plan its plan view (xref:16-plan-view.adoc[The Plan View]); an epic its epic view (link:../shared/epic-view.adoc[Epic View]; drawn as xref:19-actions.adoc#epic-view[An Epic's View] says); `!` leaves the view and opens what waits for the operator in it, as `answer` does (link:../shared/decisions.adoc[Decisions]).
 * `a` opens the actions of the selected plan or epic below its row (xref:19-actions.adoc#full-screen[Actions]); `E` opens the project's ended work (<<ended>>).
@@ -155,7 +160,7 @@ pm [1 question] ›
 * On JLine 4 alone, without another library: `Display` draws the screen and updates only the cells that changed, `BindingReader` and `KeyMap` read the keys, the terminal's capabilities switch to the alternate screen, hide the cursor, and set the keypad mode; everything is restored in a `finally`, also on an error, and the terminal's resize signal redraws. JLine's own `ttop` is built the same way.
 * The view model (the rows, the selection by id, the filter, the actions of the keys) is kept apart from the drawing, so that the drawing can change its library later without the model.
 * One thread draws: the events of the runtime only update the model and mark it changed, and the view's loop redraws, waiting for a key with a short timeout.
-* `console.full_screen` of `machine-config.json` switches the full-screen view off (`off`) or leaves it on where the terminal allows it (`auto`, the default); off, `plans` prints the tree as `status` does.
+* `console.full_screen` of `machine-config.json` (link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store]) chooses whether the views open full screen: `true` where the terminal allows it; `false`, and `plans` prints the tree as `status` does.
 
 [#overview-persistence]
 === Where the Operator Left It

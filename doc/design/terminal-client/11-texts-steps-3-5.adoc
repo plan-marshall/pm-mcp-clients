@@ -29,8 +29,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Den steward fragen, welche Modelle zu welcher Arbeit passen
 
 |`onboard.catalogue.consent.advice_runs`
-|a steward task on the default harness, {harness} · {model}
-|eine Aufgabe des steward auf dem vorgegebenen Harness, {harness} · {model}
+|a steward task on the default harness, {harness} · {model} (tier standard)
+|eine Aufgabe des steward auf dem vorgegebenen Harness, {harness} · {model} (Stufe standard)
 
 |`onboard.catalogue.consent.yes_both`
 |yes to both
@@ -237,8 +237,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Den steward die Vorgaben verfeinern lassen?
 
 |`onboard.roles.consent.runs`
-|a steward task on the default harness, {harness} · {model}: it reads the roles, the catalogue, and the qualification records of your projects
-|eine Aufgabe des steward auf dem vorgegebenen Harness, {harness} · {model}: er liest die Roles, den Katalog und die Qualifizierungsnachweise deiner Projekte
+|a steward task on the default harness, {harness} · {model} (tier standard): it reads the roles, the catalogue, and the qualification records of your projects
+|eine Aufgabe des steward auf dem vorgegebenen Harness, {harness} · {model} (Stufe standard): er liest die Roles, den Katalog und die Qualifizierungsnachweise deiner Projekte
 
 |`onboard.roles.consent.never`
 |changes a role: you accept or reject each proposal
@@ -407,4 +407,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |`onboard.store.move.moved`
 |moved
 |verschoben
+
+|`onboard.store.move.key_moved`
+|the enrolment key moved
+|der Schlüssel der Einschreibungen verschoben
 |===

@@ -26,7 +26,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 The console follows the runtime's event stream (`GET /api/v1/events`) while it is open. Events are of two kinds:
 
-* *Waiting for the operator*: a change of a `needs_operator` summary of a plan, an epic, or a project that adds an item. Each new item is shown as a notice block, counted in the badge, and announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>). A plan the operator paused is no item: it shows by its state in `plans` and `status`, never as a notice or a badge.
+* *Waiting for the operator*: a change of a `needs_operator` summary of a plan, an epic, or a project that adds an item. Each new item is shown as a notice block, counted in the badge, and, while `console.notify` is `true` (the default), announced by the terminal bell, or by a desktop notification where the terminal supports one (<<notifications>>). A plan the operator paused is no item: it shows by its state in `plans` and `status`, never as a notice or a badge.
 * *For information*: a report the runtime wrote (a plan started or ended, an epic started its next plan, a project onboarded; link:../shared/reports.adoc#kinds[Reports]), a worker restarted, a check of a running dialogue reported. At most one quiet line, several of them coalesced into one, without the bell; a report's line names the command of its detail (xref:24-reports.adoc#notice[Reports, While the Console Is Open]), and `reports` lists the unread ones. When the console opens with unread reports, one line says how many (xref:24-reports.adoc#arrival[Reports, On Start]).
 
 Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.adoc[Plan Overview]) has its notice, its badge, and the command that opens it; the label of the kind is the shared `overview.needs.<kind>`, the rest is the console's (<<texts-operator-console>>):
@@ -110,6 +110,8 @@ A pushed item never takes the focus: no keystroke typed before it was shown can 
 * `answer Q-007 2` answers a single-part decision at once with option 2, after printing the option it chose; where the decision asks for `decision.confirm` (several parts, or costly to undo, or not reversible), the confirmation is still shown.
 * `h) chat` (German `t`) at the decision's prompt opens a chat about the decision before answering it, with the role the runtime routes it to (link:../shared/decisions.adoc#chat[A Chat Before Answering]; xref:14-transcripts-decisions.adoc#t-decision-chat[A Chat Before Answering]); the decision is shown again when the chat ends, and an answer the chat proposed goes through the read-back as the operator's own words.
 * A waiver request is opened the same way (`answer WR-2`) and answered by _waive_ with a reason, _decline_ with a reason, or _later_; it has no `Enter` default and no preselection, like a consent (xref:03-dialogues.adoc#consent[Consent]; xref:14-transcripts-decisions.adoc#t-decision-waiver[A Waiver Request]).
+* `x) none fits` is offered only where the decision allows it (a role that asked it, or a declared quorum, link:../shared/decisions.adoc[Decisions]); `w) in my own words` asks back at most as often as the decision declares (xref:14-transcripts-decisions.adoc#t-decision-own-words[In Own Words]).
+* *A refused answer* (`conflict`, `already_answered`, `invalid_answer`, `dependency_unanswered`) is printed with the decision as it stands, never as an error of the console (xref:14-transcripts-decisions.adoc#t-decision-ends[Later, None Fits, Changed]).
 * A question's text comes from a model; the console shows it as data, never as a command, and strips every control sequence from it before it is printed (<<output-safety>>).
 
 [#during-dialogue]
@@ -174,9 +176,9 @@ The first valid answer wins, from the web app or the console (the channels `web`
 [#notifications]
 === Notifications
 
-* What waits for the operator rings the terminal bell once, when it arrives.
-* A desktop notification is sent instead where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
-* The machine configuration key `console.notify` chooses `auto` (the default: the desktop notification where known, else the bell), `bell`, or `off`.
+* While `console.notify` is `true`, what waits for the operator rings the terminal bell once, when it arrives.
+* A desktop notification is sent instead, under the same key, where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
+* The machine configuration key `console.notify` (link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store]) turns them on and off: `true`, the default, sends the desktop notification where known and else rings the bell; `false` sends neither.
 * A notification carries the scope and the kind (`plan fix-relay asks a question`, `epic storage-v2 asks a question`, `the setup of pm-mcp-clients asks a question`, `plan fix-relay asks for a waiver`), never the text of the question, which may hold content of the project.
 
 [#output-safety]
@@ -197,7 +199,7 @@ The console reads with JLine 4 (`jline-reader`, `jline-terminal`, `jline-termina
 * *Terminal access*: through the Foreign Function & Memory API (`ffm`), and through `stty` (`exec`) where that fails; the JNI provider, which unpacks a native library at runtime, is not used. The native libraries that `jline-native` carries for other platforms are kept out of the binary.
 * *Platforms*: Linux (`x86_64`, `aarch64`) and macOS on Apple silicon (`arm64`).
 * *Threads*: one thread reads; the thread of the event stream only prints above the prompt and redraws it. A verb writes through the console's writer while the console is open, never directly to standard output.
-* *A terminal without cursor control* (`TERM=dumb`, a screen reader that reads each redraw): notices are printed between lines, at the next prompt, never into the line being typed; the badge and the bell still announce them.
+* *A terminal without cursor control* (`TERM=dumb`, a screen reader that reads each redraw): notices are printed between lines, at the next prompt, never into the line being typed; the badge still announces them, and the bell while `console.notify` is `true`.
 * *Secrets* (a token in `providers.credentials`, `credentials set`) are read character by character from the terminal with the echo off into a `char[]` that is cleared after the request, never through `LineReader.readLine`, whose result is a `String` that cannot be cleared; they never reach the history.
 * *Picocli* stays the parser of verbs and options; completion is computed from picocli's model of the commands.
 

@@ -78,7 +78,7 @@ Save 31 roles? [Enter]   e) adjust more   d) reset to default   b) back   ?   �
 ----
 › s
 [4/7] Roles · Ask the steward to refine the defaults?
-  runs        a steward task on the default harness, Claude Code · opus-5.5:
+  runs        a steward task on the default harness, Claude Code · opus-5.5 (tier standard):
               it reads the roles, the catalogue, and the qualification
               records of your projects
   never       changes a role: you accept or reject each proposal
@@ -103,7 +103,7 @@ Accept 1, reject 1? [Enter]   toggle: 1-2   b) back   ?   › ⏎
 Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
 ----
 
-* The steward runs on the default harness of step 2 with that harness's default model, outside the model catalogue and exempt from qualification; it is not among the 31 roles this step assigns (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
+* The steward runs on the default harness of step 2 with the model its profile maps to the tier `standard`, outside the model catalogue and exempt from qualification; it is not among the 31 roles this step assigns (link:../../../../plan-marshall-documentation/doc/specification/model-work/01-roles-and-configuration.adoc#steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
 * A failed or left model task returns to `roles.review` as it was, with one line: `– The steward gave no proposal: <reason>.`
 * `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
 
@@ -187,7 +187,7 @@ Check again? [Enter]   o) choose another store   ?   › ⏎
 * Later, a recorded store that has become unavailable makes every step that needs a credential refuse with `credential_store_unavailable` and its fix (`common.error.credential_store_unavailable`, xref:09-texts-common.adoc#texts-common[Common]); `pm-operator status` names it too.
 
 [#t-store-move]
-=== A Later Change Moves the Tokens (`config credentials`)
+=== A Later Change Moves the Tokens (`config credentials`, `store.confirm-move`, `store.move`)
 
 [source,text]
 ----
@@ -202,8 +202,11 @@ Move 7 tokens? [Enter]   b) back   ?   › ⏎
     ✓  sonar                    moved
     …
     ✓  pm-mcp-clients/github    moved
+    ✓  the enrolment key moved
 ✓ Tokens are kept in the macOS Keychain
 ----
+
+* The new store is checked first (`store.check`); `store.confirm-move` asks for the move with the count, and `store.move` moves each token: written, read back, then deleted from the old store. The enrolment integrity key moves last of all, once the enrolments verify under it in the new store (`onboard.store.move.key_moved`); only then is the new store recorded (`store.record`). A token that does not read back from the new store stays in the old one, is marked ✗ with its cause, and the move stops there; `l) check again` continues it, as does the next run of `config credentials`.
 
 [#t-providers]
 == 6 Providers
@@ -313,8 +316,14 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
 ✓ Plan defaults recorded
 ----
 
-* The three lines of the landing are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-axes[Plan Behaviour Axes]); `?1` to `?3` name the variant with what it lands: the branch, the pull request, its reviews and the merge; a commit pushed on the base branch; no commit, the changes left in the working tree and the plan handed back.
+* The three lines of the landing are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-axes[Plan Behaviour Axes]); `?1` to `?3` name the variant with what it lands: the branch, the pull request, its reviews and the merge; a commit pushed on the base branch; no commit, the changes left in the working tree and the plan handed back.
 * A variant that cannot run on this machine is listed without a number and with its reason (`Branch and Pull Request   needs a provider: none is available`).
+* *A later run* (`config plan-defaults`, or `7` of `config`) adds a fourth line the first run never shows: the posture of a plan (`plan_defaults.posture`), unset by default, so that a plan asks its posture at its start (`init.options`) while no level sets it (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc#state-defaults.review[State Catalogue, `defaults.review`]):
++
+[source,text]
+----
+  Posture   9) Not set: each plan asks ←   10) Minimal   11) Standard   12) Full
+----
 * `defaults.validate` that refuses a line reprints the state with the line marked `✗ <reason>` and the prompt naming it.
 * At the machine level it checks only what the machine knows: whether a provider is available for a pull request; the machine default is never checked against a repository. Whether a base branch is protected is checked where a project is known: the landing the project's team chooses in its setup, and a plan's start, which refuse _Commit on the base branch_ on a protected branch with the reason. A machine default that does not fit a project is refused for that project there, and the project or the plan chooses another.
 

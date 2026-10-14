@@ -20,6 +20,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]
+* Specification: the sections link:project-contract.adoc[`project-contract`] implements in the contract, which this package shows
 * Design: link:../design/shared/project-explorer.adoc[Project Explorer]; link:../design/shared/project-onboarding.adoc[Project Onboarding]; the web app's views of `web-design`
 
 == Done When

@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Paired Devices
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2], reached from link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-devices[Devices in Both Clients] (proposed); link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[Devices in Both Clients], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners[Loopback and LAN Listeners Side by Side], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Local API], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc[Event Catalogue], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#web-access-records[Web Access Records]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices], link:../web-app/machine-settings.adoc#devices[Web App, Machine Settings].
 
@@ -19,19 +19,19 @@ Every paired browser can do what the operator does: it is an operator channel. T
 ----
   Paired devices · The browsers that can act on this machine
   ─────────────────────────────────────────────────────────────────────────────
-    Firefox on mbp-oliver   paired 12 May   last used today 14:02   loopback   this one
-    iPad Oliver             paired 20 May   last used 3 d ago       network
-    Chrome on build-box     paired 2 Jun    last used 5 weeks ago   loopback
+    Firefox on mbp-oliver   paired 12 May from loopback   last used today 14:02   this one
+    iPad Oliver             paired 20 May from network    last used 3 d ago
+    Chrome on build-box     paired 2 Jun from loopback    last used 5 weeks ago
   ─────────────────────────────────────────────────────────────────────────────
   The terminal client needs no pairing and is not listed.
   Network listener: on                          [Turn the network listener off]
                                                        [Revoke all others]
 ----
 
-* *A device* (`devices.list`): its label, when it was paired, when it was last used, from where it was last used (`loopback` or `network`), and `this one` for the browser the operator acts from; newest use first. A label is proposed at pairing from the browser and the machine it runs on, and the operator may rename it.
-* *Its acts* (`devices.act`), one step away from its line: _Rename_ (`devices.rename`: the new label, then the list again) and _Revoke…_ (<<revoke>>).
+* *A device* (`devices.list`, `GET /api/v1/web/devices`): its label, when it was paired and from where (`paired_from`: the listener the pairing was redeemed on, `loopback` or `network` for `lan`), when it was last used, and `this one` for the browser the operator acts from; newest use first. A label is proposed at pairing from the browser and the machine it runs on, and the operator may rename it.
+* *Its acts* (`devices.act`), one step away from its line: _Rename_ (`devices.rename`, `PATCH /api/v1/web/devices/{device_id}`: the new label, then the list again) and _Revoke…_ (<<revoke>>).
 * *For the list*: _Revoke all others_ (`devices.revoke-others`, <<revoke>>) and _Turn the network listener off_ (<<listener-off>>); the listener's state is shown beside it.
-* In the web app the list is reached from the machine settings (link:../web-app/machine-settings.adoc#devices[Web App, Machine Settings]); in the terminal client it is `web devices` with `rename <id> <label>`, `revoke <id>`, `revoke --others`, and `listener-off` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices]).
+* In the web app the list is reached from the machine settings (link:../web-app/machine-settings.adoc#devices[Web App, Machine Settings]); in the terminal client it is `web devices` with `rename <id> <label>`, `revoke <id>`, `revoke --others` (or `revoke --all`, the same from it), and `listener-off` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, Paired Devices]).
 
 [#revoke]
 == Revoking
@@ -44,15 +44,16 @@ Every paired browser can do what the operator does: it is an operator channel. T
 ----
 
 * *Every revocation asks first*, since it cannot be undone; a revoked device can only be paired again with a new code.
-* *Revoking* (`devices.revoke`) voids the device's token at once and ends its event streams; the list shows it gone.
+* *Revoking* (`devices.revoke`, `DELETE /api/v1/web/devices/{device_id}`) voids the device's token at once and ends its event streams with `stream.closed`, reason `device_revoked`; the list shows it gone (`device.revoked`).
 * *This device* asks with its consequence named: its pages close and show the pairing page, and a new code pairs it again. After the yes the web app deletes its stored secret and lands on the pairing page.
-* *Revoke all others* (`devices.revoke-others`) is `devices.revoke` for every device but the one the operator acts from; it names how many devices it revokes and which one stays. The terminal client acts from no device, so from it _revoke all others_ revokes every paired device, and says so (`devices.revoke.all_title`).
+* *Revoke all others* (`devices.revoke-others`, `DELETE /api/v1/web/devices?others`) is `devices.revoke` for every device but the one the operator acts from; it names how many devices it revokes and which one stays. The terminal client acts from no device, so from it _revoke all others_ revokes every paired device, and says so (`devices.revoke.all_title`).
 
 [#listener-off]
 == Turning the Network Listener Off
 
-* *Offered only while it is on*: _Turn the network listener off_ (`devices.listener-off`) closes the HTTPS listener on the network interfaces at once, without a confirmation: nothing is lost, and the entry turns it on again (`entry.other-device`, link:../terminal-client/05-transcripts-entry.adoc#t-entry-other[Terminal Client, Another Device]).
-* *Unlike `web disable`*, the loopback listener stays open, so the browsers of this machine go on working. The devices on the network stay paired: their pages lose the connection and show why (link:../web-app/entry.adoc#listener-off[Web App, Entry, The Network Listener Turned Off]), and they work again once the listener is on.
+* *Offered only while it is on*: _Turn the network listener off_ (`devices.listener-off`, `DELETE /api/v1/web/listeners/lan`) closes the HTTPS listener on the network interfaces at once, without a confirmation: nothing is lost, and the entry turns it on again (`entry.other-device`, link:../terminal-client/05-transcripts-entry.adoc#t-entry-other[Terminal Client, Another Device]).
+* *From a device on the network* it asks first, since that browser loses its access with it (`devices.listener_off.confirm_title`, `devices.listener_off.confirm_explain`); after the yes the web app on that device is left at the page that says the machine is no longer reachable over the network (link:../web-app/entry.adoc#listener-off[Web App, Entry, The Network Listener Turned Off]). Its pairing stays, and it works again once the listener is on.
+* *Unlike `web disable`*, the loopback listener stays open, so the browsers of this machine go on working. The devices on the network stay paired: their streams end with `stream.closed`, reason `listener_closed`, and their pages show why (link:../web-app/entry.adoc#listener-off[Web App, Entry, The Network Listener Turned Off]), and they work again once the listener is on.
 * The list then shows `Network listener: off` and no act for it; the line of each device on the network stays as it was.
 
 [#revoked-page]
@@ -69,7 +70,7 @@ An open page of a device that was revoked elsewhere, or expired after its idle t
                                                               [Pair this browser]
 ----
 
-* The reason names who revoked it (the terminal client, or the label of another device) and when, or that it expired after not being used.
+* The reason is that of the last event `stream.closed`: `device_revoked` names who revoked it (the terminal client, or the label of another device) and when; `device_expired` says that it expired after not being used (the device idle expiry).
 * Nothing the page showed stays visible behind the message.
 
 [#texts]
@@ -98,8 +99,8 @@ Keys of the area `devices`, shared by both clients (link:texts-and-languages.ado
 |zuletzt verwendet {time}
 
 |`devices.list.from`
-|{from, select, loopback {loopback} other {network}}
-|{from, select, loopback {Loopback} other {Netzwerk}}
+|{from, select, loopback {from loopback} other {from network}}
+|{from, select, loopback {über Loopback} other {über das Netzwerk}}
 
 |`devices.list.this_one`
 |this one
@@ -173,6 +174,14 @@ Keys of the area `devices`, shared by both clients (link:texts-and-languages.ado
 |Revoke all {count, plural, one {# paired device} other {# paired devices}}? The terminal client needs no pairing; every browser is signed out.
 |{count, plural, one {Dem # gekoppelten Gerät} other {Allen # gekoppelten Geräten}} die Kopplung entziehen? Der Terminal-Client braucht keine Kopplung; jeder Browser wird abgemeldet.
 
+|`devices.listener_off.confirm_title`
+|Turn the network listener off from this browser?
+|Den Netzwerk-Listener von diesem Browser aus ausschalten?
+
+|`devices.listener_off.confirm_explain`
+|This browser is on the network: it loses its access with it and shows the pairing page. It stays paired and works again once the listener is on.
+|Dieser Browser ist im Netzwerk: er verliert damit seinen Zugang und zeigt die Kopplungsseite. Er bleibt gekoppelt und funktioniert wieder, sobald der Listener an ist.
+
 |`devices.listener_off.done`
 |The network listener is off; the devices on the network stay paired and work again once it is on.
 |Der Netzwerk-Listener ist aus; die Geräte im Netzwerk bleiben gekoppelt und funktionieren wieder, sobald er an ist.
@@ -186,8 +195,8 @@ Keys of the area `devices`, shared by both clients (link:texts-and-languages.ado
 |Dieser Browser ist nicht mehr gekoppelt
 
 |`devices.revoked.reason`
-|{reason, select, revoked {It was revoked from {by} {time}.} other {It expired after not being used since {time}.}}
-|{reason, select, revoked {Die Kopplung wurde {time} von {by} entzogen.} other {Die Kopplung ist abgelaufen, weil er seit {time} nicht verwendet wurde.}}
+|{reason, select, device_revoked {It was revoked from {by} {time}.} other {It expired after not being used since {time}.}}
+|{reason, select, device_revoked {Die Kopplung wurde {time} von {by} entzogen.} other {Die Kopplung ist abgelaufen, weil er seit {time} nicht verwendet wurde.}}
 
 |`devices.revoked.how_back`
 |To use the web app here again, pair it with a new code: run pm-operator in a terminal of this machine.

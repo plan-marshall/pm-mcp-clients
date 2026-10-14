@@ -157,11 +157,15 @@ The texts of the machine settings' own states (`settings.choose`, `settings.docu
 [#texts-operator-devices]
 === `operator`: Only the Terminal
 
-The terminal's lines of `web devices`, `config`, `config consents`, `config documents`, `config credentials --rotate|--replace`, and `config providers --verify`; the names of the list's fields and acts are the shared `devices.*` (link:../shared/paired-devices.adoc#texts[Paired Devices]), the texts of `settings.withdraw` the shared `common.consent.withdraw.*` (link:../shared/consents.adoc#texts[Consents, Texts]). Transcripts: xref:08-transcripts-later.adoc#t-devices[Paired Devices], xref:08-transcripts-later.adoc#t-settings[The Machine Settings], xref:08-transcripts-later.adoc#t-consents[The Remembered Consents], xref:08-transcripts-later.adoc#t-documents[The Documents Mode], xref:08-transcripts-later.adoc#t-credential[A Token Rotated or Replaced], xref:08-transcripts-later.adoc#t-providers-verify[Providers Checked Again].
+The terminal's lines of `web devices`, `config`, `config consents`, `config documents`, `credentials rotate|set`, and `config providers --verify`; the names of the list's fields and acts are the shared `devices.*` (link:../shared/paired-devices.adoc#texts[Paired Devices]), the texts of `settings.withdraw` the shared `common.consent.withdraw.*` (link:../shared/consents.adoc#texts[Consents, Texts]). Transcripts: xref:08-transcripts-later.adoc#t-devices[Paired Devices], xref:08-transcripts-later.adoc#t-settings[The Machine Settings], xref:08-transcripts-later.adoc#t-consents[The Remembered Consents], xref:08-transcripts-later.adoc#t-documents[The Documents Mode], xref:08-transcripts-later.adoc#t-credential[A Token Rotated or Replaced], xref:08-transcripts-later.adoc#t-providers-verify[Providers Checked Again].
 
 [cols="3,3,3",options="header"]
 |===
 |Key |English |German
+
+|`operator.config.harnesses.default_locked`
+|the default; choose another default first
+|die Vorgabe; wähle zuerst eine andere Vorgabe
 
 |`operator.devices.console_not_listed`
 |The console needs no pairing and is not listed. Network listener: {state, select, on {on} other {off}}.

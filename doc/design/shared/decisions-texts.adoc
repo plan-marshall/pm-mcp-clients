@@ -5,7 +5,7 @@
 
 link:../README.adoc[Design] » link:decisions.adoc[Decisions] » Texts
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]; link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], its chat link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]_
 
 Status: `DRAFT`. The texts of link:decisions.adoc[Decisions]; the texts of the chat itself are link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
@@ -121,6 +121,22 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |`decision.interpret.working`
 |{role} is reading your answer
 |{role} liest deine Antwort
+
+|`decision.interpret.unclear_bound`
+|Your words could not be read clearly enough ({reason}). Choose an option, or answer again.
+|Deine Worte ließen sich nicht klar genug lesen ({reason}). Wähle eine Option oder antworte noch einmal.
+
+|`decision.own_words.unqualified`
+|Answering in your own words is not available: no model qualifies for {role}.
+|Antworten in eigenen Worten ist nicht verfügbar: kein Modell ist für {role} qualifiziert.
+
+|`decision.refused.invalid_answer`
+|This answer does not fit the part: {reason}
+|Diese Antwort passt nicht zu dem Teil: {reason}
+
+|`decision.refused.dependency_unanswered`
+|Answer part {n} first.
+|Beantworte zuerst Teil {n}.
 
 |`decision.readback.understood`
 |I understood: {reading}

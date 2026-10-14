@@ -58,6 +58,14 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Open it
 |Öffne sie
 
+|`designer.open.new_recipe`
+|A new recipe
+|Ein neues Rezept
+
+|`designer.open.new_recipe_hint`
+|an empty recipe unit for this project or machine
+|eine leere Rezept-Einheit für dieses Projekt oder diese Maschine
+
 |`designer.level.project`
 |the project's copy
 |die Kopie des Projekts
@@ -305,6 +313,14 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`designer.place.recipe_key_taken`
 |{recipe} is the key of a delivered recipe: choose another.
 |{recipe} ist der Schlüssel eines mitgelieferten Rezepts: Wähle einen anderen.
+
+|`designer.place.no_project`
+|No project is enrolled: a unit for this machine is placed once a project exists to compose it against.
+|Kein Projekt ist eingetragen: Eine Einheit für diese Maschine wird platziert, sobald ein Projekt existiert, gegen das sie zusammengesetzt wird.
+
+|`designer.place.unchanged`
+|The text is the same as the unit at this level: nothing to place.
+|Der Text ist derselbe wie die Einheit auf dieser Ebene: Es gibt nichts zu platzieren.
 
 |`designer.place.project_findings`
 |{project}: {count, plural, one {# finding} other {# findings}}

@@ -20,13 +20,13 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
                                         a step it asks which, release and unenrol among the choices
   project release <project_id> [--reason <text>]
                                         end every plan and epic of the project as released, delete its
-                                        pending entries, and close its plan lifecycle; the reason is asked
+                                        pending entries; no plan runs in it afterwards; the reason is asked
                                         when it is missing
   project unenrol <project_id> [--reason <text>]   remove the project's enrolment; refused while work of it runs
   project favourite <project_id> [--off]
 ----
 
-* All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `pm-operator enrol` stays the direct verb of a project's enrolment, with its arguments as the answers of `project.identity` to `project.enrol`.
+* All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `pm-operator enrol` is the direct verb of a project's enrolment, with its arguments as the answers of `project.identity` to `project.enrol`.
 * `--project ?` of every other verb shows the same list as the explorer, favourites first (xref:02-levels.adoc#addressing[Addressing a Level]).
 * `project release` and `project unenrol` are direct verbs (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]): `--reason` answers the reason, a missing one is asked, and `--no-input` stops there; the confirmation is answered by `--yes`, never by `Enter` alone (<<release>>).
 
@@ -68,7 +68,7 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
       *  Remove from favourites
 ----
 
-* *A released project* offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `r  Running work` while plans of it still show.
+* *A released project* offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `E  Ended work`, its ended plans and epics (xref:15-overview.adoc#ended[Ended Work]); the release ended every plan and epic of it, so it offers no `r  Running work`.
 * *A project that is not ready* offers `c  Continue the setup` first; `e` and `p` are shown disabled with the reason (`pm-mcp-core is not ready: credential sonar`).
 * *A project with an open entry* (a start not finished) offers `c  Continue starting` first (link:../shared/starting-work.adoc#leaving[Starting Work, Leaving and Coming Back]).
 * *A project being added* offers `c  Continue` and `x  Abandon…`; abandoning asks first and deletes the run, of which nothing is enrolled yet.
@@ -91,6 +91,9 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 
 |`a`
 |on a released project: enrol it again
+
+|`E`
+|on a released project: its ended work (xref:15-overview.adoc#ended[Ended Work])
 
 |`*`
 |mark or unmark the selected project as a favourite
@@ -161,7 +164,7 @@ Use these? [Enter]   e) edit a line   ?   › ⏎
   6) containers       off: the jobs run without Docker
 Enrol pm-mcp-clients? [Enter]   change: 1-6   ?n explains a line   ?   › ⏎
     ✓  pm-mcp-clients enrolled
-    ✓  first run: .marshall/config/ created with the default workflow units
+    ✓  first run: .marshall/config/ created; the project takes the machine's or the default workflow units
     ✓  the operator file and the role set are valid
 
 [4/10] Own settings · What pm-mcp-clients takes from the machine, and what it sets of its own
@@ -255,7 +258,7 @@ pm ›
 * *Commit* makes one commit and pushes it where the checkout has a push remote (`not pushed: no push remote` otherwise); `n` leaves the files uncommitted.
 * *A step that cannot pass* waits in `setup.needs-repair` with its cause and fix: `t) try again   q) leave`; `t` runs the step again.
 * The keys of the ready line are `operator.key.add_epic`, `operator.key.add_plan`, and `operator.key.running_work` (xref:13-texts-operator.adoc#texts-operator-keys[Keys]).
-* A later run (`project setup pm-mcp-clients own`) opens the same states with the project's current values; a project that is not ready continues where its setup stopped.
+* A later run (`project setup pm-mcp-clients own`) opens the same states with the project's current values; a project that is not ready continues where its setup stopped. Every choice of a later run offers `o) step out` (`project.setup.step_out`, key `operator.projects.key.step_out`), which returns to the prompt with what was already written left uncommitted for the next commit; the first run offers none. The later run of the own settings shows two lines the first run does not ask: the posture (`plan_defaults.posture`, unset unless the operator sets it; while neither the project nor the machine sets it, every plan asks it) and the cleanup's durations of the project's plans, epics, and logs, each with the machine's value preselected and marked `from machine` (link:../shared/project-onboarding.adoc#later-run[Project Onboarding, A Later Run]).
 
 [#several]
 === Several at Once
@@ -298,22 +301,24 @@ Release plan-marshall?
   What ends      3 plans, each ended as released and archived; 1 epic,
                  released with its plans and archived
                  1 entry not started yet, deleted with its sources
-  Afterwards     the project's plan lifecycle is closed; it stays listed as
-                 released and can be enrolled again with its values
+  What stays     the repository: branches, worktrees, pull requests, and
+                 .marshall/ with the epics' ledgers, as they are
+  Afterwards     no plan runs in plan-marshall; it stays listed as released
+                 and can be enrolled again with its values
   Reason         › the gates move to the new repository
 Release the project? y) yes   n) no, keep it   ?   › y
-    ▶  waiting for the removal of doc/gates.adoc from git to land   0:41
+    ▶  waiting for git.land-removal to land   0:41
     ✓  doc/gates.adoc removed from git
     ✓  fix-sonar-gate released and archived
     ✓  gate-timeouts released and archived
     ✓  gate-docs released and archived
-    ✓  epic gate-hardening released with its plans and archived
+    ✓  epic gate-hardening released with its plans, archived on this machine; its ledger stays in .marshall/epics/
     ✓  entry with 2 sources deleted
 ✓ plan-marshall released
 pm ›
 ----
 
-* *A removal still landing* is waited for first, within its bound; when it does not land in it, the release is refused and nothing has ended: `✗ plan-marshall was not released: the removal of doc/gates.adoc from git did not land within its bound. Nothing was ended.`, with `→ running plan-marshall` to its row in Running Work.
+* *A short landing still running* (`project.release-wait`), the removal of a moved document from git (`git.land-removal`) or the landing of a placed workflow unit (`git.land-unit`), is waited for first, within its bound; when it does not land in it, the release is refused and nothing has ended: `✗ plan-marshall was not released: git.land-removal did not land within its bound. Nothing was ended.`, with `→ running plan-marshall` to its row in Running Work.
 * *A running onboarding* of the project (a later run of its setup, its badge at the prompt) is ended where it stands, and its badge goes.
 
 [source,text]

@@ -16,7 +16,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * The scenarios of every case the use cases name (each consent answered no, each check failing, stop and resume, the automatic run), in `pm-mock-runtime`.
 * Tokens, never money: the consent field `tokens` with its estimate; what each harness reports of its tokens in the choice, the enrolment, the installed profile, and `config harnesses`, and the verification's stage `usage` (link:../design/terminal-client/06-transcripts-steps-1-3.adoc#t-harness-choose[Terminal Client, Choose]).
 * Texts from the catalogue only, in English and German.
-* The machine settings (UC-ONB-10): `config`, `config consents` with its confirmation, `config documents`, `config credentials --rotate|--replace`; a setting changed meanwhile in another client (`conflict`), applied again or kept.
+* The machine settings (UC-ONB-10): `config`, `config consents` with its confirmation, `config documents`, `credentials rotate|set <credential_key>`; a setting changed meanwhile in another client (`conflict`), applied again or kept.
 * The paired devices (UC-ENT-2): `web devices` with rename, revoke, revoke all others, and `listener-off`.
 
 == Trace
@@ -24,6 +24,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]
+* Specification: the sections link:onboarding-contract.adoc[`onboarding-contract`] and link:entry-contract.adoc[`entry-contract`] implement in the contract, which this package shows
 * Design: link:../design/terminal-client/README.adoc[Terminal Client], the accepted design of `cli-design`, which this package implements; link:../design/shared/texts-and-languages.adoc[Texts and Languages]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc[Runtime Model § Mock Runtime]
 

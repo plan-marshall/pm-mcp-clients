@@ -5,9 +5,9 @@
 
 link:../README.adoc[Design] » Consents
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Consent Before Acting] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#consents[Consents] (the closed list of the kinds)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#consent[Consent Before Acting], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#consents[Consents] (the closed list of the kinds)_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/03-dialogues.adoc#consent[Terminal Client, Dialogues, Consent], link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, The Remembered Consents], link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent], link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings, Remembered Consents].
 
@@ -24,7 +24,7 @@ A consent state is `<sub-workflow>.consent`, or `<sub-workflow>.<action>-consent
 ** _in_ (`common.consent.field.in`): where it is looked for (the directories of the login `PATH`, the checkout);
 ** _runs_ (`common.consent.field.runs`): what is run, each command with its arguments (a version probe, a login probe, a named script of the checkout, a role task on its harness and model);
 ** _never_ (`common.consent.field.never`): what it never does (reads other files, starts a session, uses the network, writes to the checkout);
-** _tokens_ (`common.consent.field.tokens`): `none` (`common.consent.tokens.none`), an estimate of the tokens the action uses (`common.consent.tokens.estimate`, `.estimate_runs` with the number of earlier runs it comes from), or `not known yet: first run` (`common.consent.tokens.unknown`); a consent that calls a model names the role, the harness, and the model. The estimate is a count of tokens in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers], never money (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]).
+** _tokens_ (`common.consent.field.tokens`): `none` (`common.consent.tokens.none`), an estimate of the tokens the action uses (`common.consent.tokens.estimate`, `.estimate_runs` with the number of earlier runs it comes from), or `not known yet: first run` (`common.consent.tokens.unknown`); a consent that calls a model names the role, the harness, and the model. The estimate is a count of tokens in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers], never money (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]).
 * *Answers*, the links of the state:
 ** _yes_ (`yes`, `common.consent.yes`): the action runs this time;
 ** _yes, and don't ask again_ (`yes_remember`, `common.consent.yes_remember`): the action runs and the consent is remembered (<<remembered>>); offered only for a kind that can be remembered (<<kinds>>). Where it is not offered, `This consent is for this run only.` (`common.consent.once_only`) stands in its place;
@@ -38,7 +38,7 @@ A consent state is `<sub-workflow>.consent`, or `<sub-workflow>.<action>-consent
 [#auto]
 === The Automatic Run's One Consent
 
-The automatic run (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]) asks once, in `auto.consent`, for everything it does: the consents of the steps it runs, each listed by its kind's title (<<texts>>) with what it looks for and runs, and that the run asks no model and so uses no tokens. The consent covers exactly those actions, for this run only: it is never remembered, it has no remember choice (`common.consent.once_only` stands in its place), and it does not remember the kinds it lists. _No_ goes back to `onboard.mode`, nothing done. A kind the operator remembered earlier is listed as remembered and not asked again.
+The automatic run (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]) asks once, in `auto.consent` (kind `auto_run`), for everything it does: the consents of the steps it runs, each listed by its kind's title (<<texts>>) with what it looks for and runs, and that the run asks no model for advice. Its only tokens are those of the login probe of a harness whose profile has no login probe of its own (`auth_probe: null`): one minimal headless call, paid with tokens of the harness's account, listed with its expected tokens (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#login-probe[Login Probe]). The consent is asked before the scan, so it lists that cost for every harness the profiles know without a login probe; only where there is none does its tokens field say `none` (`common.consent.tokens.none`), and never otherwise. The consent covers exactly those actions, for this run only: it is never remembered, it has no remember choice (`common.consent.once_only` stands in its place), and it does not remember the kinds it lists. _No_ goes back to `onboard.mode`, nothing done. A kind the operator remembered earlier is listed as remembered and not asked again.
 
 [#kinds]
 == The Kinds
@@ -137,10 +137,10 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |ask the organisation's registry for the newest release of this machine's platform, through the runtime (and the proxy, if one is set); nothing about the machine is sent beyond the request itself
 |`runtime.update-consent`, on the system view's _Check now_ (link:system.adoc#version-check[System, Is There a Newer Version?])
 |machine; remembered, the runtime checks at most once a day and on the operator's request
-|goes on without: `newer version not checked`, no upgrade offered
+|goes on: no newer version is known (`newer version not checked`); an upgrade is offered only for a version installed by hand
 |`common.consent.kind.check_updates`
 
-|the automatic run (no kind of its own)
+|`auto_run`, the automatic run
 |every consent of the steps the run needs, listed in full, for this run only (<<auto>>)
 |`auto.consent`
 |never

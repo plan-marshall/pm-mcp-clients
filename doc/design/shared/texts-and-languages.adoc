@@ -9,11 +9,11 @@ _Shared by both clients: link:../terminal-client/README.adoc[Terminal Client], l
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]; every use case with a screen or a terminal dialogue_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-i18n[Onboarding, Languages and Internationalisation] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure, Languages and Internationalisation]_
 
 Status: `DRAFT`.
 
-How the texts of the web app and the command-line binaries are written, kept, and translated. The architecture (one catalogue in `pm-api`, served to the web app, packs checked at build time) is the change linked above; this document is about the texts themselves.
+How the texts of the web app and the command-line binaries are written, kept, and translated. The architecture (one catalogue in `pm-api`, served to the web app, packs checked at build time) is specified in the section linked above; this document is about the texts themselves.
 
 [#two-languages]
 == Two Languages
@@ -107,15 +107,15 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `designer`: the process designer, loaded by the web app only (link:../web-app/process-designer-texts.adoc#texts[Process Designer, Texts]);
 ** `operator`: the verbs of `pm-operator`;
 ** `relay`: `pm-mcp`.
-* *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message format. English (`en`) is complete and the base; German (`de`) ships from the start.
+* *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message syntax (arguments, `plural`, `select`); provisional: how the catalogue formats it is an open question of the documentation (link:../../../../plan-marshall-documentation/doc/discussions/open-questions.adoc#message-format[Open Questions, Message Format]), and this statement follows its decision. English (`en`) is complete and the base; German (`de`) ships from the start.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
-* *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it.
+* *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set.
 
 
 [#numbers]
 == Numbers: Tokens
 
-Every count of tokens is shown in one format, defined here and nowhere else: the plan view, the epic view, the completion report, the system view, and the harness list use it (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]). The runtime sends exact counts; the client only formats them, through the keys below, and never adds or derives a figure.
+Every count of tokens is shown in one format, defined here and nowhere else: the plan view, the epic view, the completion report, the system view, and the harness list use it (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). The runtime sends exact counts; the client only formats them, through the keys below, and never adds or derives a figure.
 
 [cols="2,1,1",options="header"]
 |===

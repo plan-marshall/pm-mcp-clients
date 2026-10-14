@@ -24,6 +24,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]
+* Specification: the sections link:report-contract.adoc[`report-contract`] implements in the contract, which this package shows
 * Design: link:../design/shared/reports.adoc[Reports]; link:../design/shared/completion-report.adoc[Completion Report]; link:../design/web-app/README.adoc#structure[Web App, Structure]; the web app's views of `web-design`
 
 == Done When

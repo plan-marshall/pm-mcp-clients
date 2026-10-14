@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » Entry
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the page a revoked device lands on, the network listener turned off)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing[CLI, Coordination & Security Specification, Pairing Protocol], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-devices[Entry, Devices in Both Clients] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing[CLI, Coordination & Security Specification, Pairing Protocol], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[Devices in Both Clients], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners[Loopback and LAN Listeners Side by Side], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-open[Open on the Same Machine], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc[Runtime & Interaction Model, Event Catalogue] (`stream.closed`)_
 
 Status: `DRAFT`. How a browser gets into the web app: the pairing page, the page a revoked device lands on, and where the app opens after pairing. The entry itself (the runtime, the pairing code, the ways in, another device) runs in the terminal client (link:../terminal-client/05-transcripts-entry.adoc#t-entry[Terminal Client, The Entry]); the web app sees only its end: a URL with a code, or a browser without one. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
 
@@ -47,7 +47,7 @@ The URL the terminal client opens or shows carries the code in its fragment (`ht
 [#revoked]
 == A Revoked Device
 
-When the device is revoked, its open pages are told at once (the runtime ends its event streams with the reason); a page opened later gets the refusal on its first request. Either way the app deletes the stored device secret and shows the pairing page with the reason above it:
+When the device is revoked, its open pages are told at once (the runtime ends its event streams with the last event `stream.closed`, reason `device_revoked` with the channel and device that revoked it and when, or `device_expired`); a page opened later gets the refusal on its first request. Either way the app deletes the stored device secret and shows the pairing page with the reason above it:
 
 [source,text]
 ----
@@ -97,7 +97,7 @@ The reason names what the runtime reported:
 [#listener-off]
 == The Network Listener Turned Off
 
-When the operator turns the network listener off (`devices.listener-off`, link:../shared/paired-devices.adoc#listener-off[Paired Devices]), a page open over the network loses its connection. The device stays paired, so the app does not delete its secret: it shows one page with the reason and waits.
+When the operator turns the network listener off (`devices.listener-off`, link:../shared/paired-devices.adoc#listener-off[Paired Devices]), a page open over the network loses its connection (`stream.closed` with the reason `listener_closed`). The device stays paired, so the app does not delete its secret: it shows one page with the reason and waits.
 
 [source,text]
 ----
@@ -107,6 +107,7 @@ When the operator turns the network listener off (`devices.listener-off`, link:.
   it works again once the network access is on (pm-operator, web lan).
 ----
 
+* *The device that turned it off*, when it is itself on the network, asked first (`devices.listener_off.confirm_title`, link:../shared/paired-devices.adoc#listener-off[Paired Devices]) and lands here as well, not on the pairing page: its pairing stays, and no listener it can reach would take a code.
 * The page reconnects on its own when the listener is on again, and opens where the operator was. It cannot tell a listener turned off from a network that is down when the runtime said nothing; then it says `This machine is not reachable over the network.` with the same way back.
 
 [#after-pairing]

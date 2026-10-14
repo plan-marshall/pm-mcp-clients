@@ -243,4 +243,8 @@ The mnemonics of the project's onboarding beyond the common ones of xref:13-text
 |`operator.projects.key.try_again`
 |t
 |w
+
+|`operator.projects.key.step_out`
+|o
+|a
 |===

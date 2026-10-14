@@ -5,7 +5,9 @@
 
 link:README.adoc[Terminal Client] » Texts: Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`]_
 
 The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
 
@@ -232,6 +234,10 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |u
 |u
 
+|`operator.actions.key.common_files`
+|m
+|g
+
 |`operator.actions.key.decompose_again`
 |d
 |z
@@ -276,17 +282,9 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |b
 |u
 
-|`operator.actions.key.show_change`
-|v
-|z
-
 |`operator.actions.key.accept_change`
 |c
 |n
-
-|`operator.actions.key.restore`
-|t
-|w
 
 |`operator.actions.key.show_pr`
 |p

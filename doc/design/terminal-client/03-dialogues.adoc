@@ -254,7 +254,7 @@ pm [setup 3/7] ›
 ----
 
 * `Enter` on the empty prompt, a new console, or the web app opens at the same state with the same proposal (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], Variations).
-* *Another channel moved the state*: the client follows the event stream while it waits for input. When the state changes (the operator answered in the web app), it prints `Answered in the web app: <answer>` and the new state; the typed but unsent input is dropped. A link sent for a state that has moved on is refused by the runtime, and the client prints the new state instead of an error (xref:README.adoc#open-points[Open Points], the code of that refusal).
+* *Another channel moved the state*: the client follows the event stream while it waits for input. When the state changes (the operator answered in the web app), it prints `Answered in the web app: <answer>` and the new state; the typed but unsent input is dropped. A link sent for a state that has moved on is refused by the runtime (`already_answered` where the other channel answered the same wait, `act_not_available` where the state was left otherwise; link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#api-error-codes[Local API Error Codes]), and the client prints the new state instead of an error.
 * *Connection lost*: the runtime stopped or restarted (a drain, an upgrade). The client says so (xref:04-console.adoc#connection[Connection]), starts the runtime on demand as for every request, re-reads the state, and continues there; a link whose answer did not arrive is never sent twice without reading the state first.
 
 [#refusals]

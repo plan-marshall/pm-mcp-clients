@@ -15,8 +15,9 @@ What starting a plan or an epic shows is link:../shared/starting-work.adoc[Start
 ----
   plan add [--project <project_id>|.] [<source>]... [--title <title>] [--id <plan_id>]
   epic add [--project <project_id>|.] [<source>]... [--title <title>] [--id <epic_id>]
+  epic add [--project <project_id>|.] --adopt <epic_id>
   recipe run [<recipe_key>] [--project <project_id>|.] [--param <name>=<value>]... [<source>]...
-             [--title <title>] [--id <plan_id>]
+             [--title <title>]
 
   <source>:  --description <text>|-             a description; - reads it from standard input
              --document <path>                  a file or a directory; repeatable
@@ -107,7 +108,7 @@ pm ›
 * `h) chat` is offered once a source is stored and every source from outside the machine is screened, for a plan and an epic, never for a recipe (<<chat>>).
 * `l` lists the unclaimed lessons, numbered (<<lesson>>); `c` shows the local changes as files with their counts of lines before they are added (<<local-changes>>).
 * _Follow it_ opens the plan's view (xref:16-plan-view.adoc[The Plan View]); _back to the project_ opens the project's actions in the explorer.
-* What the plan needs and has no value for (its posture, its base branch) is not asked here: it is asked where the plan first needs it, as a decision (link:../shared/decisions.adoc[Decisions]).
+* What the plan needs and has no value for (its posture, its base branch) is not asked here: where no level sets it, the plan's first phase asks it in one operator wait, `init.options`, before the base is stamped (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/02-plan-phases-1-3.adoc[State Catalogue, Phase 1]); the answer is the plan's own value.
 
 [#create-failed]
 === When the Start Fails
@@ -255,21 +256,18 @@ pm ›
 
 * `source-local-changes.preview` lists the changed files against the branch with their counts of lines; `n` leaves them out, and nothing is recorded. With no local changes left when the preview runs, the source fails with `the checkout has no local changes any more`, to be removed.
 * At creation the changes are captured as a snapshot commit, and the plan takes the land lane and lands them by the project's landing; a file changed between the preview and the creation is captured with the rest, and the creation names it.
-* *A landing that commits*: where the project lands with `landing.files`, the ready step refuses the start with the reason and asks a landing for this plan alone (link:../shared/starting-work.adoc#landing-refused[Starting Work, A Landing That Does Not Fit]):
+* *A landing that commits*: a plan from the local changes needs a landing that commits them. While the project's landing in force is `landing.files`, `start.sources` does not offer the local changes: the key is left out, and the line below the keys names the reason and the project's setting `landing`, which the operator changes in the project's settings (`project setup <project_id>`; link:../shared/starting-work.adoc#landing-refused[Starting Work, A Landing That Does Not Fit]):
 
 [source,text]
 ----
-[2/2] Ready · The plan starts from
-  Local changes   4 files, +161 −61 against main
-  ✗  Files only does not fit: a plan from local changes needs a landing that commits
-  Land this plan by   1) Branch and Pull Request ← from machine   2) Commit on main
-  b) back to the sources   ?   › 1
-  Title  [Reconnect without the old backoff] ← from the changes
-  Id     [reconnect-without-old-backoff] ← from the title
-Start the plan? [Enter]   e) edit   ?   › ⏎
+pm › plan add
+[1/2] Sources · What does the plan start from?   project pm-mcp-clients ← the working directory
+  d) description   f) documents   i) issue   l) lesson (2)   p) pull request
+  Local changes are not offered: the project lands with Files only, which commits nothing (setting landing).
+  ?   › 
 ----
 
-* As a direct verb: `plan add --local-changes`; the preview is printed, and the confirmation is the argument itself.
+* As a direct verb: `plan add --local-changes`; the preview is printed, and the confirmation is the argument itself. While the project lands with `landing.files` the verb is refused with the same reason.
 
 [#chat]
 === Chatting About the Request
@@ -347,6 +345,24 @@ Start the epic? [Enter]   e) edit   ?   › ⏎
 ----
 
 The decomposition follows at once, in the same dialogue (<<decomposition>>); after it, _Follow it_ opens the epic's view (link:../shared/epic-view.adoc[Epic View]; xref:19-actions.adoc#epic-view[An Epic's View]).
+
+[#adopt]
+=== Adopting an Epic from Elsewhere (`start-epic.adopt`, `start-epic.adopt-failed`)
+
+Where the project's ledger holds an epic that does not run on this machine, ① of `epic add` offers it above the keys of the sources, at most ten of them (link:../shared/starting-work.adoc#adopt[Starting Work, Adopting an Epic from Elsewhere]):
+
+[source,text]
+----
+pm › epic add
+[1/3] Sources · What does the epic start from?   project pm-mcp-clients ← the working directory
+  relay-hardening is in the ledger of pm-mcp-clients but does not run on this machine
+  a) adopt relay-hardening   d) description   f) documents   i) issue   ?   › a
+    ✓  relay-hardening adopted from the ledger: 3 workstreams, 5 plans staged
+Follow it? [Enter]   q) leave   ?   › ⏎
+----
+
+* Adopting takes no sources: the epic's store on this machine is created from its ledger, and the run ends with _Follow it_. `epic add --adopt <epic_id>` does the same as one shell command.
+* Where the ledger cannot be adopted (`start-epic.adopt-failed`: unreadable, with the failing file; invalid; or ended), the cause is printed with `t) try again` (after the ledger was repaired through git), `b) back` to ①, and `x) abandon`.
 
 [#decomposition]
 === The Decomposition
@@ -443,7 +459,7 @@ Go on? [Enter]   change: 1-2   ?n explains a line   ?   › ⏎
 Ready · The plan runs the recipe coverage
   Parameters   modules: all 9 · thoroughness: standard
   Title  [Coverage of all modules] ← from the recipe
-  Id     [recipe-coverage-2026-10-12-14-05-00] ← from the recipe and the time
+  Id      recipe-coverage-2026-10-12-14-05-00   from the recipe and the time
 Run coverage? [Enter]   e) edit   ?   › ⏎
 ✓ recipe-coverage-2026-10-12-14-05-00 has started
 pm ›
@@ -469,7 +485,7 @@ Run audit? [Enter]   e) edit   ?   › ⏎
 pm ›
 ----
 
-* *Ready* is the plan's ready step (`start.ready`): the title and the id proposed from the recipe and the time, both editable with `e`; `--title` and `--id` of the verb answer it. A recipe gone or changed meanwhile, or an id taken, returns there with the cause (<<create-failed>>).
+* *Ready* is the plan's ready step (`start.ready`): the title proposed from the recipe, editable with `e`, and `--title` of the verb answers it; the id is derived from the recipe's key and the time and is not editable, so `recipe run` takes no `--id`. A recipe gone or changed meanwhile, or an id taken, returns there with the cause (<<create-failed>>).
 * *A parameter without an option* is shown with its reason (`✗  modules: none the recipe can work on; the recipe cannot run`), and only `b) back` to the recipes and `q` remain.
 * A recipe offers no chat. As a direct verb: `recipe run audit --project . --param modules=pm-relay --issue 240`.
 

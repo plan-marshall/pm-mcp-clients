@@ -200,6 +200,10 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Asking
 |Rückfragen
 
+|`onboard.defaults.axis.posture`
+|Posture
+|Haltung
+
 |`onboard.defaults.landing.pull_request`
 |Branch and Pull Request
 |Branch und Pull Request
@@ -259,6 +263,22 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |`onboard.defaults.asking.questions_only_text`
 |you are asked only what needs you
 |du wirst nur gefragt, was dich braucht
+
+|`onboard.defaults.posture.unset`
+|Not set: each plan asks
+|Nicht gesetzt: jeder Plan fragt
+
+|`onboard.defaults.posture.minimal`
+|Minimal
+|Minimal
+
+|`onboard.defaults.posture.standard`
+|Standard
+|Standard
+
+|`onboard.defaults.posture.full`
+|Full
+|Voll
 
 |`onboard.defaults.review.needs_provider`
 |needs a provider: none is available

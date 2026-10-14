@@ -94,6 +94,18 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |provider unavailable
 |Provider nicht erreichbar
 
+|`start.cause.unknown_forge`
+|not a forge this machine knows
+|keine Forge, die diese Maschine kennt
+
+|`start.cause.cancelled`
+|cancelled
+|abgebrochen
+
+|`start.cause.outside_allowed`
+|outside the checkout and your home directory
+|außerhalb des Checkouts und deines Home-Verzeichnisses
+
 |`start.cause.screening_failed`
 |the screening failed: {cause}
 |die Prüfung ist fehlgeschlagen: {cause}

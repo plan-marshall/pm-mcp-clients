@@ -12,6 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * The overview as the start view of the web app: the projects with running work, a project by plan and by epic, a plan's epic as a link (and in the plan and epic views the project, and the epic, each one step away: link:../design/shared/plan-view.adoc#way-out[Plan View, Its Project and Its Epic], designed with `web-plan-view` and `web-actions`), the indicators, icons, colours and words of the design system, live updates from the event stream, and the start point stored per browser.
+* A plan whose worker is off track marked apart from what needs the operator.
 * Ended work: the ended plans and epics of a project with every outcome and end, each opening its view as it ended.
 * Every view at desktop and phone width, light and dark.
 
@@ -20,6 +21,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]
+* Specification: the sections link:overview-contract.adoc[`overview-contract`] implements in the contract, which this package shows
 * Design: link:../design/shared/plan-overview.adoc[Plan Overview]; the web app's views of `web-design`
 
 == Done When

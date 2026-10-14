@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » Onboarding, Texts
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#changes[Onboarding, Changes to the Specification] (proposed), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/14-machine-onboarding.adoc[State Catalogue, Machine Onboarding], link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc[Onboarding Aspects, Part 2], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[CLI, Coordination & Security, Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
 Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
 
@@ -51,7 +51,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.harness.probe_consent.title`, `.runs_item`, `.never`, `.never_call`, `.runs_call`, `.tokens_call`; `onboard.harness.probe.title`, `.version_ok`, `.version_unsupported`, `.logged_in`, `.logged_out`; `common.check.ready`, `common.check.not_ready`; `onboard.harness.blocked.fix_login`, `.fix_version`, `.action_recheck`, `.leave_out`, `.left_out`, `.choose_again`; `web.common.copy`; `onboard.harness.confirm.title`, `.intro`, `.path`, `.version`, `.digest`, `.action`, with `onboard.harness.choose.default` for the mark; `onboard.harness.tokens.label`, `.figures`; `onboard.harness.done`
 
 |link:machine-settings.adoc#harnesses[harnesses again]
-|as xref:onboarding.adoc#harness-choose[harness-choose], and `onboard.harness.choose.new`, `.missing`, `.used_by_roles`, `.changed`; `onboard.harness.confirm.remove`, `.keep`; `onboard.harness.done.no_models`; `web.settings.back`, `web.settings.harnesses.reassign` (link:machine-settings.adoc#texts[Machine Settings, Texts])
+|as xref:onboarding.adoc#harness-choose[harness-choose], and `onboard.harness.choose.new`, `.missing`, `.used_by_roles`, `.changed`; `onboard.harness.confirm.remove`, `.keep`; `onboard.harness.done.no_models`; `web.settings.back`, `web.settings.harnesses.reassign`, `web.settings.harnesses.default_locked` (link:machine-settings.adoc#texts[Machine Settings, Texts])
 
 |xref:onboarding.adoc#models[models]
 |`onboard.catalogue.consent.title`, `.probe`, `.advice`, `.advice_runs`, `.yes_both`, `.yes_both_remember`, `.probes_only`; `web.onboard.catalogue_consent.action`; `common.consent.remembered`; `onboard.catalogue.models.count`, `.cannot_list`; `onboard.catalogue.select.title`, `.recommendation`, `.why`, `.add_model`, `.model_id_prompt`, `.none_allowed`, `.action`, with `onboard.harness.choose.default` for the mark; `common.from.recommended`; `onboard.catalogue.done`
@@ -60,13 +60,13 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.roles.review.title`, `.applied`, `.group_roles`, `.not_assignable`, `.no_model_of_tier`, `.assign_open_first`, `.action_defaults`, `.action_save`, `.action_use`, `.adjust`, `.ask_steward`, `.reset`, `.to_look_at`, `.no_effort`; `onboard.roles.field.*`, `onboard.roles.origin.*`, `onboard.roles.advisory.*`; `onboard.roles.consent.title`, `.runs`, `.never`; `onboard.roles.propose.title`, `.reason`, `.rejected`, `.action_all`, `.action_some`; `onboard.roles.validate.ok`, `onboard.roles.done`
 
 |xref:onboarding-steps-4-7.adoc#credential-store[credential-store]
-|`onboard.store.choose.title`, `.keychain`, `.keychain_text`, `.secret_service`, `.secret_service_text`, `.files`, `.files_text`, `.holds`, `.action`; `onboard.store.consent.title`, `.runs`, `.never`; `onboard.store.check.write`, `.read`, `.delete`; `onboard.store.unavailable.now`, `.locked`, `.locked_fix`, `.no_bus`, `.no_bus_fix`, `.choose_another`; `common.link.recheck`; `onboard.store.done`; `onboard.store.move.title`, `.moves`, `.moves_value`, `.each`, `.each_value`, `.if_stopped`, `.if_stopped_value`, `.action`, `.moved`
+|`onboard.store.choose.title`, `.keychain`, `.keychain_text`, `.secret_service`, `.secret_service_text`, `.files`, `.files_text`, `.holds`, `.action`; `onboard.store.consent.title`, `.runs`, `.never`; `onboard.store.check.write`, `.read`, `.delete`; `onboard.store.unavailable.now`, `.locked`, `.locked_fix`, `.no_bus`, `.no_bus_fix`, `.choose_another`; `common.link.recheck`; `onboard.store.done`; `onboard.store.move.title`, `.moves`, `.moves_value`, `.each`, `.each_value`, `.if_stopped`, `.if_stopped_value`, `.action`, `.moved`, `.key_moved`
 
 |xref:onboarding-steps-4-7.adoc#providers[providers]
 |`onboard.providers.consent.title`, `.looks_for`, `.never`; `onboard.providers.scan.tokens`; `onboard.providers.select.title`, `.available`, `.variant`, `.native`, `.native_only`, `.token_stored`, `.token_missing`, `.review_bots`, `.defaults_note`, `.action`; `onboard.providers.credentials.title`, `.stored_note`, `.action`, `.lan`, `.stored`; `onboard.providers.verify_consent.title`, `.runs`, `.never`; `onboard.providers.verify.*`; `common.check.ready`, `common.check.not_ready`; `onboard.providers.failed.fix_token`, `.continue_without`, `.without_note`; `onboard.providers.done`, `.done_not_available`
 
 |xref:onboarding-steps-4-7.adoc#plan-defaults[plan-defaults]
-|`onboard.defaults.review.title`, `.override_note`, `.needs_provider`, `.action_defaults`, `.action_save`; `onboard.defaults.axis.*`, `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`
+|`onboard.defaults.review.title`, `.override_note`, `.needs_provider`, `.action_defaults`, `.action_save`; `onboard.defaults.axis.*`, `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`; in a later run the posture `onboard.defaults.axis.posture`, `onboard.defaults.posture.unset`, `.minimal`, `.standard`, `.full`
 
 |xref:onboarding-steps-4-7.adoc#auto[auto]
 |`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
@@ -75,52 +75,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])
 |===
 
-The keys below of the area `onboard` are new with this design and belong in the terminal client's tables as well, since its dialogues say the same (link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2], link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5]); every other `onboard` key named above is defined in its tables. Gone with this design: `onboard.step.harness` (now `onboard.step.harnesses`), `onboard.harness.choose.action_check` (now `.action`), `onboard.harness.blocked.choose_another` (now `.choose_again`), `onboard.catalogue.consent.yes_one` (now `.probes_only`), `onboard.catalogue.scan.models` (now `onboard.catalogue.models.count`), `onboard.catalogue.select.enrolled`, `.found_not_enrolled`, `.enrol`, and the web keys of the icons' consent, now shared.
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`onboard.auto.reason.asked`
-|you were asked
-|du wurdest gefragt
-
-|`onboard.defaults.validate.main_per_project`
-|Commit on the base branch: checked for each project, where its base branch is known
-|Commit auf dem Basis-Branch: wird für jedes Projekt geprüft, wo sein Basis-Branch bekannt ist
-
-|`onboard.harness.fetch_icons.failed`
-|The icon of {harness} was not fetched: {cause}. Its monogram stays.
-|Das Icon von {harness} wurde nicht geladen: {cause}. Sein Monogramm bleibt.
-
-|`onboard.harness.choose.default_moved`
-|{harness} is now the default.
-|{harness} ist jetzt die Vorgabe.
-
-|`onboard.harness.choose.changed`
-|was {version}: checked and enrolled again
-|war {version}: wird geprüft und neu registriert
-
-|`onboard.harness.probe_consent.runs_item`
-|{command}   ({harness})
-|{command}   ({harness})
-
-|`onboard.harness.blocked.left_out`
-|left out
-|weggelassen
-
-|`onboard.harness.confirm.keep`
-|Keep as it is
-|Lass es, wie es ist
-
-|`onboard.harness.done.no_models`
-|{harness} has no model allowed yet: run ③ Models.
-|{harness} hat noch kein erlaubtes Modell: führe ③ Modelle aus.
-
-|`onboard.catalogue.models.cannot_list`
-|cannot list its models
-|kann seine Modelle nicht auflisten
-|===
+Every `onboard` key named above is defined with its texts in the terminal client's tables, since its dialogues say the same (link:../terminal-client/09-texts-common.adoc#texts[Common], link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2], link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]).
 
 [#texts-web]
 === Keys of the Web App

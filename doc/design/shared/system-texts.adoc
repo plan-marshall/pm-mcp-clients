@@ -66,8 +66,8 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Maschinenablage {size} · {free} frei auf ihrem Datenträger · gemessen {time}
 
 |`system.runtime.listeners`
-|listeners  socket · {web, select, off {web off} loopback {web on loopback {address}} other {web on the network {address} ({devices, plural, one {# device} other {# devices}})}}
-|Listener  Socket · {web, select, off {Web aus} loopback {Web auf Loopback {address}} other {Web im Netzwerk {address} ({devices, plural, one {# Gerät} other {# Geräte}})}}
+|listeners  socket · {loopback, select, off {loopback off} other {loopback {loopback_address}}} · {lan, select, off {network off} other {network {lan_address} ({devices, plural, one {# device} other {# devices}})}}
+|Listener  Socket · {loopback, select, off {Loopback aus} other {Loopback {loopback_address}}} · {lan, select, off {Netzwerk aus} other {Netzwerk {lan_address} ({devices, plural, one {# Gerät} other {# Geräte}})}}
 
 |`system.runtime.relays_behind`
 |{count, plural, one {# host session runs} other {# host sessions run}} pm-mcp {version} · pm-operator client update
@@ -337,9 +337,13 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |The runtime is stopping; keep it running first.
 |Die Runtime stoppt; lass sie zuerst weiterlaufen.
 
-|`system.busy.upgrade_runs`
-|An upgrade runs; Upgrade now shortens it.
-|Eine Aktualisierung läuft; Aktualisiere jetzt verkürzt sie.
+|`system.busy.upgrade_withdraw`
+|An upgrade runs; withdraw it first.
+|Eine Aktualisierung läuft; nimm sie zuerst zurück.
+
+|`system.busy.upgrade_now`
+|An upgrade waits for what runs; Upgrade now shortens the wait.
+|Eine Aktualisierung wartet auf das, was läuft; „Aktualisiere jetzt“ verkürzt das Warten.
 |===
 
 [#texts-upgrade]
@@ -392,6 +396,10 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |`system.upgrade.withdrawn`
 |The upgrade was withdrawn; {installed} keeps running.
 |Die Aktualisierung wurde zurückgenommen; {installed} läuft weiter.
+
+|`system.upgrade.too_late`
+|Too late to withdraw the upgrade; the links are switched.
+|Zu spät, um die Aktualisierung zurückzunehmen; die Links sind umgestellt.
 
 |`system.upgrade.done`
 |The runtime runs {version}.

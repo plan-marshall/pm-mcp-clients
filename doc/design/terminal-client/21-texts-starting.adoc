@@ -114,6 +114,10 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 |Add the local changes
 |Füge die lokalen Änderungen hinzu
 
+|`operator.start.local.not_offered`
+|Local changes are not offered: the project lands with {landing}, which commits nothing (setting landing).
+|Lokale Änderungen werden nicht angeboten: das Projekt landet mit {landing}, was nichts committet (Einstellung landing).
+
 |`operator.start.local.captured`
 |local changes captured: snapshot {commit}, {count, plural, one {# file} other {# files}}
 |lokale Änderungen erfasst: Snapshot {commit}, {count, plural, one {# Datei} other {# Dateien}}

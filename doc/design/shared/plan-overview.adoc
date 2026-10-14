@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Plan Overview
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], leading into link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-overview-resource[The Overview Resource and Its Events], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-titles[Titles and Names], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-start[The Start of the Current Phase], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#running-work[Running Work], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/02-workflow-state-store.adoc#titles[Titles and Names], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/02-workflow-state-store.adoc#phase-start[The Start of the Current Phase], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
 
@@ -25,7 +25,7 @@ Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.ado
                                       epic      plans of none at the end
 ----
 
-* *Projects*: only those with running work (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-running-work[Running Work]): an active plan or epic, or an open decision of the project's setup. Ended and archived plans never appear here; a project with nothing running does not either. What ended is a list of its own (<<ended>>).
+* *Projects*: only those with running work (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#running-work[Running Work]): an active plan or epic (a paused plan is active), or something of the project that needs the operator without one (a question of its setup), and beside them a running or failed short landing (the removal from git of moved documents, the landing of a placed workflow unit) and a running onboarding or setup run of the project. Ended and archived plans never appear here; a project with nothing running does not either. What ended is a list of its own (<<ended>>).
 * *A project, by plan*: its active plans, flat. Each plan names the epic it belongs to; in the web app the name is a link to that epic, in the terminal a key moves there.
 * *A project, by epic*: its active epics, each with its active plans below it; the plans that belong to no epic follow as a group of their own (`without epic`), so both views hold the same plans.
 * The operator switches between the two views of a project at any time; the view is part of where the operator left the overview (<<persistence>>).
@@ -49,6 +49,8 @@ Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.ado
 |Setup
 |`setup needs you` when only its setup waits for the operator; selecting it opens what waits: a decision of the setup (link:decisions.adoc#setup[Decisions, A Project's Setup Asks]) or its run
 |===
+
+At the project's level, below its plans and epics, a group `alongside` lists its running and failed short landings (`removing 2 moved documents from git · running`, `landing remediation.ci-failure · failed`), each with its state, a failed one with the hold `landing failed` and its acts (link:work-actions.adoc#holds[What Holds a Plan]), and a running onboarding or setup run of the project, leading to it (link:project-onboarding.adoc[Project Onboarding]).
 
 Order: projects that need the operator first, then by their latest activity. A project whose running work ends (its last active plan and epic ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
 
@@ -90,6 +92,10 @@ Order: projects that need the operator first, then by their latest activity. A p
 |Pull request
 |its own pull request once it has one, by its number with a link to the provider (`#214`)
 |—
+
+|Off track
+|`off track` with its signal (`off track: repeating`) while one of its workers is judged so; apart from what needs the operator, never counted in its marker, and leading to the task's activity (link:plan-view.adoc#worker[Plan View, A Worker at Work])
+|—
 |===
 
 * *A paused plan* is no item of what needs the operator: the operator paused it, and its state says so (`paused`); it carries the marker only for what else waits in it, a decision for example.
@@ -126,7 +132,7 @@ A plan and an epic differ by three things at once, so that none carries the mean
 [#ended]
 == Ended Work
 
-A project's ended plans and epics are a list of their own, apart from Running Work, so that what runs is never crowded by what ended (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work]).
+A project's ended plans and epics are a list of their own, apart from Running Work, so that what runs is never crowded by what ended (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]).
 
 ----
   pm-mcp-clients · ended work                                         page 1 of 3
@@ -302,6 +308,22 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |`overview.plan.pull_request`
 |#{number}
 |#{number}
+
+|`overview.plan.off_track`
+|off track: {signal}
+|vom Weg ab: {signal}
+
+|`overview.group.alongside`
+|alongside
+|nebenher
+
+|`overview.landing.removal`
+|removing {count, plural, one {# moved document} other {# moved documents}} from git · {state}
+|entferne {count, plural, one {# verschobenes Dokument} other {# verschobene Dokumente}} aus git · {state}
+
+|`overview.landing.unit`
+|landing {unit} · {state}
+|lande {unit} · {state}
 
 |`overview.connection.lost`
 |Not connected to the runtime; reconnecting …

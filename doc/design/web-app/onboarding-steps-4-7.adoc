@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » Onboarding, Steps �
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#changes[Onboarding, Changes to the Specification] (proposed), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/14-machine-onboarding.adoc[State Catalogue, Machine Onboarding], link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc[Onboarding Aspects, Part 2], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[CLI, Coordination & Security, Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
 Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
 
@@ -161,7 +161,7 @@ Choosing an OS store asks first whether the server may write, read, and delete o
 * *Check again* goes back to `store.detect` and then shows `store.choose` with what is available now; *Choose another store* goes to `store.choose` with the other store preselected, which the primary button then names.
 
 [#store-move]
-=== A Later Change Moves the Tokens
+=== A Later Change Moves the Tokens (`store.confirm-move`, `store.move`)
 
 A later run of this step from the settings (link:machine-settings.adoc#aspects[Machine Settings]) that changes the store asks for the move first, with the count:
 
@@ -189,7 +189,7 @@ A later run of this step from the settings (link:machine-settings.adoc#aspects[M
   ✓ Tokens are kept in the macOS Keychain
 ----
 
-* The new store is checked first as in <<store-check>>; the move starts only when it passes. A token that does not read back from the new store stays in the old one, is marked ✗ with the cause, and the move stops there; *Check again* continues it. Closing the page does not stop the move; the next visit shows where it is.
+* The new store is checked first as in <<store-check>>; the move starts only when it passes. The enrolment integrity key moves last of all, once the enrolments verify under it in the new store, which the last line says (`✓  the enrolment key moved`, `onboard.store.move.key_moved`); only then is the new store recorded. A token that does not read back from the new store stays in the old one, is marked ✗ with the cause, and the move stops there; *Check again* continues it. Closing the page does not stop the move; the next visit shows where it is.
 
 Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-credentials[Terminal Client, transcript].
 
@@ -231,7 +231,7 @@ The consent `providers.consent` comes first, as in xref:onboarding.adoc#consent[
 ----
 
 * The state has one link, and no link to skip the provider: continuing without a provider is offered only after its check failed (<<providers-verify>>).
-* On the LAN listener the input is replaced by the command to run in a terminal and *Check again* (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-web-credentials[Credentials in the Web App]): `Tokens are entered on this machine only. In a terminal of it, run pm-operator credentials set sonar, then check again.`
+* On the LAN listener the input is replaced by the command to run in a terminal and *Check again* (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-credentials[Credentials in the Web App]): `Tokens are entered on this machine only. In a terminal of it, run pm-operator credentials set sonar, then check again.`
 * *Store and check it* stores the token, the operator's own act without a consent, and leads to the consent of the check.
 
 [#providers-verify-consent]
@@ -291,9 +291,10 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-providers[Term
   [ Back ]                                         [ Use these defaults ]
 ----
 
-* The preselection is the shipped default; each line says in a few words what the variant does, and *Why?* beside an axis explains its consequences in place. The landing's lines are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-plan-axes[Plan Behaviour Axes]).
+* The preselection is the shipped default; each line says in a few words what the variant does, and *Why?* beside an axis explains its consequences in place. The landing's lines are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-axes[Plan Behaviour Axes]).
 * A variant that cannot run on this machine is greyed with its reason (`Branch and Pull Request   needs a provider: none is available`).
 * With a line changed, the button reads *Save these choices*.
+* *A later run* from the machine settings (link:machine-settings.adoc#aspects[Machine Settings]) adds a fourth line, never shown in the first run: the posture of a plan (`plan_defaults.posture`), `( ) Not set: each plan asks`, `( ) Minimal`, `( ) Standard`, `( ) Full`, with `Not set` preselected while it is unset, so that a plan asks its posture at its start while no level sets it (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc#state-defaults.review[State Catalogue, `defaults.review`]).
 
 The validation (`defaults.validate`) shows one line per axis:
 
@@ -339,8 +340,9 @@ The consent lists everything the run does, in the form of xref:onboarding.adoc#c
                 address
     never       asks a model for advice, reads other files, sends anything
                 over the network except the provider checks and the icons
-    tokens      none; for a harness that has no login probe, one short
-                headless call, paid with tokens of its account
+    tokens      only for a harness that has no login probe: one short
+                headless call, about 1,200 tokens, paid with tokens of
+                its account
 
   This consent is for this run only.                  [ List every action ]
 
@@ -414,7 +416,7 @@ The run shows the step bar moving and each step's check lines as they report:
 
 * *Change* opens that step's choice state with the automatic value as its proposal and returns to the result.
 * A value the operator gave during the run has the reason `you were asked`.
-* ② enrols every supported harness found, the first of them the default (`onboard.auto.reason.supported_found`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
+* ② enrols every supported harness found, the first of them the default (`onboard.auto.reason.all_supported`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
 
 Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, transcript].
 

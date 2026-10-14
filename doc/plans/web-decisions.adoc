@@ -18,7 +18,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
 * Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]
-* Use case: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role]
+* Specification: the sections link:decision-contract.adoc[`decision-contract`] implements in the contract, which this package shows; link:../../../plan-marshall-documentation/doc/specification/state-catalogue.adoc#chat[State Catalogue § Chatting with the Planning Role]
 * Design: link:../design/shared/decisions.adoc[Decisions] with link:../design/shared/decisions.adoc#chat[A Chat Before Answering]; the web app's views of `web-design`
 
 == Done When

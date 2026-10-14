@@ -5,7 +5,9 @@
 
 link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics] » link:work-actions.adoc#chat[Chatting with the Planning Role] » Texts
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed); link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), where the chat is also opened_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]; link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], where the chat is also opened_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../plan-marshall-documentation/doc/specification/phase-workflows/08-dynamic-re-planning.adoc#replan-chat[Revision from a Chat], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
 Status: `DRAFT`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
@@ -57,6 +59,18 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.at_boundary`
 |applies after the current task
 |gilt nach dem laufenden Task
+
+|`control.chat.at_start`
+|applies when {plan} starts again
+|gilt, wenn {plan} wieder startet
+
+|`control.chat.no_revision_yet`
+|{plan} proposes no change yet: a revision comes in execute or in finalize, until its merge
+|{plan} schlägt noch keine Änderung vor: eine Überarbeitung kommt in execute oder in finalize, bis zu seinem Merge
+
+|`control.chat.no_revision_merged`
+|{plan} is merged: the chat answers and proposes no change
+|{plan} ist gemergt: der Chat antwortet und schlägt keine Änderung vor
 
 |`control.chat.applied`
 |{subject} changed{version, select, none {} other {; the plan's version becomes {version}}}

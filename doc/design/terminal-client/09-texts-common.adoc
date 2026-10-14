@@ -10,7 +10,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 [#texts]
 == Texts
 
-Every text of the onboarding and of the entry in the terminal, as keys of the message catalogue with the English and the German text (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). Arguments are ICU arguments; a plural is written `{n, plural, one {…} other {…}}`. German addresses the operator with _du_, and the words of the glossary stay as they are (link:../shared/texts-and-languages.adoc#glossary[Glossary]).
+Every text of the onboarding and of the entry in the terminal, as keys of the message catalogue with the English and the German text (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). Arguments are ICU arguments, provisionally (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]); a plural is written `{n, plural, one {…} other {…}}`. German addresses the operator with _du_, and the words of the glossary stay as they are (link:../shared/texts-and-languages.adoc#glossary[Glossary]).
 
 * *Shared with the web app*: the keys of the areas `common` and `onboard` are the texts both clients show; the web app adds keys of its own for what only it needs (a button, a tooltip), and the terminal adds the keys of the area `operator` for what only it needs (the prompt line, the keys, the result lines). The labels of links are shared: a button in the web app and a key's label in the terminal read the same.
 * *Titles are questions or names, links are actions* (link:../shared/texts-and-languages.adoc#style[How Texts Are Written]). The prompt of a primary link is the action as a question (`operator.prompt.primary` wraps the shared label: `{action}? [Enter]`).
@@ -163,7 +163,7 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |The {role} gave no proposal: {reason}.
 |Der {role} hat keinen Vorschlag gemacht: {reason}.
 
-|`common.error.state_moved`
+|`common.error.already_answered`
 |Answered in {channel}: {answer}
 |Beantwortet in {channel}: {answer}
 
@@ -196,13 +196,13 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |Die Runtime stellt sich noch wieder her; versuche es gleich noch einmal.
 
 |`common.error.web_listener_conflict`
-|Port {port} is in use by another program. Choose another: pm-operator config set web.port <port>
-|Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set web.port <port>
+|Port {port} is in use by another program. Choose another: pm-operator config set {key} <port>
+|Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set {key} <port>
 |===
 
 The `common.consent.*` keys above are the texts of the consent state of both clients (link:../shared/consents.adoc#pattern[Consents, The Consent State]); the title of each consent kind, `common.consent.kind.<kind>`, is defined with the kinds (link:../shared/consents.adoc#texts[Consents, Texts]).
 
-The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. `common.error.state_moved` is also the line the console prints when another channel answered the state it shows, with `{channel}` one of the shared `decision.channel.web` and `decision.channel.cli`; `common.error.credential_store_unavailable` is the text of `precondition_unmet` with `facts.reason: credential_store_unavailable`. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
+The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. `common.error.already_answered` is also the line the console prints when another channel answered the state it shows, and the line of `act_not_available` for a link of a state left meanwhile, with `{channel}` one of the shared `decision.channel.web` and `decision.channel.cli`; `common.error.web_listener_conflict` names the key of the listener that did not open, `web.port` or `web.lan_port`; `common.error.credential_store_unavailable` is the text of `precondition_unmet` with `facts.reason: credential_store_unavailable`. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
 
 [#texts-onboard]
 === `onboard`: The Onboarding
@@ -306,7 +306,7 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 [#texts-onboard-auto]
 ==== Automatic Run
 
-`auto.consent` lists each consent of the run as the title of its kind (`common.consent.kind.<kind>`, link:../shared/consents.adoc#texts[Consents, Texts]) with its detail (`onboard.auto.consent.detail.<kind>`), or `onboard.auto.consent.remembered` where the kind is remembered (link:../shared/consents.adoc#auto[Consents, The Automatic Run's One Consent]).
+`auto.consent` lists each consent of the run as the title of its kind (`common.consent.kind.<kind>`, link:../shared/consents.adoc#texts[Consents, Texts]) with its detail (`onboard.auto.consent.detail.<kind>`), or `onboard.auto.consent.remembered` where the kind is remembered (link:../shared/consents.adoc#auto[Consents, The Automatic Run's One Consent]). Its tokens line is `onboard.auto.consent.tokens`, `{estimate}` the expected tokens of one headless login call (`common.consent.tokens.estimate`), where a harness the profiles know has no login probe; only where none lacks one is it `common.consent.tokens.none`.
 
 [cols="3,3,3",options="header"]
 |===
@@ -357,8 +357,8 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |fragt ein Modell um Rat, liest andere Dateien, sendet etwas über das Netzwerk außer den Prüfungen der Provider und den Icons
 
 |`onboard.auto.consent.tokens`
-|none but the headless calls named above
-|keine außer den oben genannten Aufrufen ohne Oberfläche
+|only the headless calls named above: {estimate} each
+|nur die oben genannten Aufrufe ohne Oberfläche: je {estimate}
 
 |`onboard.auto.consent.list_all`
 |lists every action

@@ -4,27 +4,30 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `message-catalogue`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[Use Cases, UC-ONB-3]; no roadmap milestone yet
-Where:: `pm-api`, a package for the catalogue; the build of `pm-mcp-clients`; the messages route of `pm-mock-runtime`
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], and the texts of every use case of both clients; no roadmap milestone yet
+Where:: `pm-api`, package `de.planmarshall.api.message`; the build of `pm-mcp-clients`; the messages routes of `pm-mock-runtime`
 Part of:: link:epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What
 
-* *Specification first*: the package writes the change Languages (the catalogue, the messages endpoint, the areas) into `plan-marshall-documentation` as part of its own work (link:../../../plan-marshall-documentation/doc/discussions/client-specification-changes.adoc#slicing[Specification Changes for the Clients, Packages]).
-* The message catalogue: keys `<area>.<view>.<element>.<part>`, one pack per area and locale (`messages/<area>.<locale>.properties`, UTF-8, ICU message format), the lookup by key, locale and arguments.
+The package implements the specification of the languages and the message catalogue listed under _Trace_. A statement of it that the implementation proves wrong is corrected in `plan-marshall-documentation` in the same plan (link:README.adoc#how[How to Work a Package]).
+
+* *The message format first*: how the catalogue formats its arguments is an open question (link:../../../plan-marshall-documentation/doc/discussions/open-questions.adoc#message-format[Open Questions, Message Format]); the package proposes the format, the operator decides it, and the decision is written into the specification and the question removed, as a correction task of the documentation pull request, before the packs are written.
+* The message catalogue: keys `<area>.<view>.<element>.<part>`, one pack per area and locale (`messages/<area>.<locale>.properties`, UTF-8), the lookup by key, locale and arguments.
 * English complete as the base, German from the start, addressing the operator with _du_.
 * The number format of tokens as link:../design/shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers] defines it, with its keys `common.tokens.*`; a test formats every example of that section in both languages.
 * The build checks: a key missing in a pack, a key not in English, a differing argument, and a glossary term translated in a German text each fail the build.
-* The route `GET /api/v1/messages/{locale}/{area}` added to the mock runtime of `mock-runtime`, which serves the packs to the web app; the real endpoint follows with the runtime.
+* The routes `GET /api/v1/messages` (the locales with a pack and their areas) and `GET /api/v1/messages/{locale}/{area}` added to the mock runtime of `mock-runtime`, served without a device secret, which serve the packs to the web app; the real endpoints follow with the runtime.
 
 == Trace
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]). They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding] (UC-ONB-3, change _Languages and Internationalisation_)
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure § Languages and Internationalisation]; link:../../../plan-marshall-documentation/doc/specification/hypermedia-format/01-representation-and-link-forms.adoc#runtime-texts[Hypermedia Format § Texts of the Runtime]; link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Runtime Model § Local API] (the messages endpoints, the client's locale)
 * Design: link:../design/shared/texts-and-languages.adoc[Texts and Languages]; link:../design/terminal-client/README.adoc#texts[Terminal Client, Texts] (the keys of the onboarding, the entry, and the console, English and German)
 
 == Done When
 
-The specification of Languages is merged in `plan-marshall-documentation`; each build check has a test that makes it fail; `pm-operator` prints its texts from the catalogue in both languages; the mock runtime answers the messages route with a pack of each language, and a test asserts it.
+The message format is decided and written into the specification; each build check has a test that makes it fail; `pm-operator` prints its texts from the catalogue in both languages; the mock runtime answers both messages routes with the packs of each language, and a test asserts it.

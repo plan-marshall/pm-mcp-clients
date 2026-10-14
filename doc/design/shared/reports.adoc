@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Reports
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-event-streams[Events per Scope]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App]. A plan's completion report, the detail of a plan that ended, is link:completion-report.adoc[Completion Report].
 
@@ -79,6 +79,10 @@ The runtime writes a report for a closed list of kinds; the client shows each re
 |`decision.closed_elsewhere`
 |`Q-007 of fix-relay was answered in the web app (iPad)`, or withdrawn by a revision
 |the subject's view, at the decision in its history
+
+|`task.off_track`
+|`TASK-003 of fix-relay was restarted: off track (repeating)`, or `yielded`; only where the server took `yield` or `restart`, never for a signal it only showed
+|the task's activity in the plan view (link:plan-view.adoc#worker[Plan View, A Worker at Work])
 
 |`system.cleanup_due`
 |`12 plans · 2 epics · 40 logs can be deleted`; one report per cleanup job, never one per item
@@ -335,6 +339,10 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |`report.subject.decision_closed_elsewhere`
 |{id} of {item} was {how, select, answered {answered in {channel} ({device})} withdrawn {withdrawn by a revision} other {closed}}
 |{id} von {item} wurde {how, select, answered {in {channel} ({device}) beantwortet} withdrawn {durch eine Überarbeitung zurückgezogen} other {geschlossen}}
+
+|`report.subject.task_off_track`
+|{task} of {plan} was {action, select, restart {restarted} yield {yielded} other {{action}}}: off track ({signal})
+|{task} von {plan} wurde {action, select, restart {neu gestartet} yield {abgegeben} other {{action}}}: vom Weg ab ({signal})
 
 |`report.subject.system_cleanup_due`
 |{what} can be deleted

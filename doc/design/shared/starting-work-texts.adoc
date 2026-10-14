@@ -35,8 +35,12 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |{project} ist nicht bereit: {need}.
 
 |`start.gate.continue_onboarding`
-|Continue the onboarding
+|Continue the machine's onboarding
 |Setze die Einrichtung der Maschine fort
+
+|`start.gate.continue_project`
+|Continue the project's onboarding
+|Setze die Einrichtung des Projekts fort
 
 |`start.step.sources`
 |Sources
@@ -66,6 +70,10 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |A recipe
 |Ein Rezept
 
+|`start.choose.no_recipe`
+|no recipe is offered in {project}
+|in {project} wird kein Rezept angeboten
+
 |`start.epic.adopt.offer`
 |{epic} is in the ledger of {project} but does not run on this machine.
 |{epic} steht im Ledger von {project}, läuft aber nicht auf dieser Maschine.
@@ -77,6 +85,10 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |`start.epic.adopt.new`
 |Start a new epic
 |Starte ein neues Epic
+
+|`start.epic.adopt.failed`
+|{epic} cannot be adopted: {reason, select, ledger_unreadable {{file} cannot be read} ledger_invalid {its ledger is not valid} ledger_terminal {it has ended} other {{detail}}}
+|{epic} kann nicht übernommen werden: {reason, select, ledger_unreadable {{file} ist nicht lesbar} ledger_invalid {sein Ledger ist ungültig} ledger_terminal {es ist beendet} other {{detail}}}
 
 |`start.sources.title`
 |What does the {kind, select, plan {plan} other {epic}} start from?
@@ -182,13 +194,13 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Starts its plans: {mode, select, on {by itself} other {by hand}} (from {origin, select, project {the project} other {the machine}}); switch it in the epic's actions
 |Startet seine Pläne: {mode, select, on {selbst} other {von Hand}} (von {origin, select, project {dem Projekt} other {der Maschine}}); schalte es in den Aktionen des Epics um
 
-|`start.ready.landing_refused`
-|{landing} does not fit: a plan from local changes needs a landing that commits
-|{landing} passt nicht: ein Plan aus lokalen Änderungen braucht einen Abschluss, der committet
+|`start.sources.local_changes_landing`
+|Local changes need a landing that commits; this project's landing is {landing}
+|Lokale Änderungen brauchen einen Abschluss, der committet; der Abschluss dieses Projekts ist {landing}
 
-|`start.ready.landing_choose`
-|Land this plan by
-|Schließe diesen Plan ab mit
+|`start.sources.project_settings`
+|Change it in the project's settings
+|Ändere ihn in den Einstellungen des Projekts
 
 |`start.create.failed`
 |{name} could not be created: {cause}. Nothing was created.

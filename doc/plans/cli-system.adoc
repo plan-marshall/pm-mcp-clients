@@ -24,6 +24,7 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[§ Runtime Access & On-Demand Start]
+* Specification: the sections link:system-contract.adoc[`system-contract`] implements in the contract, which this package shows
 * Design: link:../design/shared/system.adoc[System]; link:../design/terminal-client/25-system.adoc[Terminal Client, System]; link:../design/shared/cleanup.adoc[Cleanup]; link:../design/terminal-client/26-cleanup.adoc[Terminal Client, Cleanup]
 
 == Done When
