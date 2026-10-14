@@ -1,0 +1,7 @@
+node_modules/
+target/
+test-results/
+playwright-report/
+.auth/
+*.log
+.DS_Store
