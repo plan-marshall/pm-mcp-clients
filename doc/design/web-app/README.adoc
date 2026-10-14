@@ -15,7 +15,7 @@ Status: `DRAFT`. The design of the web app, the specification its implementation
 * link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
 * link:machine-settings.adoc[Machine Settings]: a later run of one aspect, the harnesses again (new and missing ones, the default), the providers verified again, the remembered consents and withdrawing one, the documents mode, a token rotated or replaced, the paired devices.
 * link:harness-icons.adoc[Harness Icons]: how a harness is shown, and the research behind it.
-* link:process-designer.adoc[Process Designer] with link:process-designer-texts.adoc[its Texts]: designing a workflow unit, the one part only the web app offers: the input (an uploaded file, a pasted text, an installed unit), the text and the structure side by side, the building blocks, validating with the composed process, download, placing on the machine or in the project with the difference first, removing.
+* link:process-designer.adoc[Process Designer] with link:process-designer-texts.adoc[its Texts]: designing a workflow unit, the one part only the web app offers: the input (an uploaded file, a pasted text, an installed unit), the text and the structure side by side, the building blocks, the unit's frontmatter, validating with the composed process, placing on the machine or in the project with the difference first, removing.
 
 Everything else the web app shows is designed once for both clients in the shared designs (<<structure>>).
 
