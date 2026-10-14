@@ -143,12 +143,12 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Einstellungen · {plan}
 
 |`control.settings.group`
-|{group, select, plan_defaults {Plan defaults} roles {Roles} other {Providers}}
-|{group, select, plan_defaults {Vorgaben für Pläne} roles {Rollen} other {Provider}}
+|{group, select, plan_defaults {Plan defaults} roles {Roles} integrations {Integrations} other {Providers}}
+|{group, select, plan_defaults {Vorgaben für Pläne} roles {Rollen} integrations {Integrationen} other {Provider}}
 
 |`control.settings.origin`
-|{origin, select, plan {from the plan} project {from the project} team {from the team} machine {from the machine} other {shipped default}}
-|{origin, select, plan {vom Plan} project {vom Projekt} team {vom Team} machine {von der Maschine} other {mitgelieferte Vorgabe}}
+|{origin, select, plan {from the plan} project {from the project} team {from the team} machine {from the machine} derived {derived} other {shipped default}}
+|{origin, select, plan {vom Plan} project {vom Projekt} team {vom Team} machine {von der Maschine} derived {abgeleitet} other {mitgelieferte Vorgabe}}
 
 |`control.settings.use_inherited`
 |Use the {level, select, project {project's} other {machine's}} value
@@ -217,6 +217,14 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.epic.auto_off_done`
 |{epic} starts no plan by itself any more; what runs goes on.
 |{epic} startet keinen Plan mehr selbsttätig; was läuft, läuft weiter.
+
+|`control.epic.overlap`
+|Common files allowed: {count}
+|Erlaubte gemeinsame Dateien: {count}
+
+|`control.epic.overlap_means`
+|a plan starts beside a running one only while they share at most {count, plural, =0 {no file} one {# file} other {# files}}
+|ein Plan startet neben einem laufenden nur, solange sie höchstens {count, plural, =0 {keine Datei} one {# Datei} other {# Dateien}} teilen
 
 |`control.epic.decompose_again`
 |Decompose again

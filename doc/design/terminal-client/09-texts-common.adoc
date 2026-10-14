@@ -163,7 +163,7 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |The {role} gave no proposal: {reason}.
 |Der {role} hat keinen Vorschlag gemacht: {reason}.
 
-|`common.error.state_moved`
+|`common.error.already_answered`
 |Answered in {channel}: {answer}
 |Beantwortet in {channel}: {answer}
 
@@ -196,13 +196,13 @@ Every text of the onboarding and of the entry in the terminal, as keys of the me
 |Die Runtime stellt sich noch wieder her; versuche es gleich noch einmal.
 
 |`common.error.web_listener_conflict`
-|Port {port} is in use by another program. Choose another: pm-operator config set web.port <port>
-|Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set web.port <port>
+|Port {port} is in use by another program. Choose another: pm-operator config set {key} <port>
+|Port {port} wird von einem anderen Programm benutzt. Wähle einen anderen: pm-operator config set {key} <port>
 |===
 
 The `common.consent.*` keys above are the texts of the consent state of both clients (link:../shared/consents.adoc#pattern[Consents, The Consent State]); the title of each consent kind, `common.consent.kind.<kind>`, is defined with the kinds (link:../shared/consents.adoc#texts[Consents, Texts]).
 
-The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. `common.error.state_moved` is also the line the console prints when another channel answered the state it shows, with `{channel}` one of the shared `decision.channel.web` and `decision.channel.cli`; `common.error.credential_store_unavailable` is the text of `precondition_unmet` with `facts.reason: credential_store_unavailable`. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
+The `common.error.*` keys above are the error codes the onboarding, the entry, and the console can meet; their texts are complete. `common.error.already_answered` is also the line the console prints when another channel answered the state it shows, and the line of `act_not_available` for a link of a state left meanwhile, with `{channel}` one of the shared `decision.channel.web` and `decision.channel.cli`; `common.error.web_listener_conflict` names the key of the listener that did not open, `web.port` or `web.lan_port`; `common.error.credential_store_unavailable` is the text of `precondition_unmet` with `facts.reason: credential_store_unavailable`. The texts of the other error codes of `pm-api` belong to the flows that raise them and are added with them.
 
 [#texts-onboard]
 === `onboard`: The Onboarding

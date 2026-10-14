@@ -31,7 +31,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:web-app/README.adoc[Web App]
 |`DRAFT`
-|The web app: its principles, the onboarding screens, the harness icons, the process designer; its visual language is still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
+|The web app: its principles, its structure and navigation, the entry and pairing pages, the onboarding screens, the machine settings, the harness icons, the process designer; its visual language is still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
 
 |link:web-app/process-designer.adoc[Process Designer]
 |`DRAFT`
@@ -59,7 +59,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/starting-work.adoc[Starting Work]
 |`DRAFT`
-|What both clients show while a plan or an epic is started: the setup gate, the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request) with each source's states, their progress through fetching and screening, a fetch refused for a rate limit, a flagged source, the ready step with title and id, the creation and its re-check, adopting an epic from elsewhere, a chat about the request before it starts, a recipe and its parameters, the decomposition, leaving and continuing without a time limit; its texts in link:shared/starting-work-texts.adoc[a part of their own] and link:shared/starting-work-sources-texts.adoc[the part of the sources].
+|What both clients show while a plan or an epic is started: the setup gate, the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request) with each source's states (local changes not offered while the project's landing is `landing.files`, with the reason naming that setting), their progress through fetching and screening, a fetch refused for a rate limit, a flagged source, the ready step with title and id, the creation and its re-check, adopting an epic from elsewhere among the sources of an epic's start (with its failure), a chat about the request before it starts, a recipe and its parameters, the decomposition, leaving and continuing without a time limit; its texts in link:shared/starting-work-texts.adoc[a part of their own] and link:shared/starting-work-sources-texts.adoc[the part of the sources].
 
 |link:shared/epic-view.adoc[Epic View]
 |`DRAFT`
@@ -67,7 +67,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
 |`DRAFT`
-|What both clients offer to act on a plan or an epic, by its state (running, pausing, paused, waiting for you, held, an epic also landing; ended): pause, start, cancel, abandon a plan, abort it from an integrity pause, how a plan and an epic end, a plan's settings (UC-CTL-5, with its refusals), a setting changed in two clients at once (the one rule for machine, project, and plan settings), its epic told; an epic's next plan with raising the scope, its automatic start on or off, the archive check with what it carries, cancel; the review of an epic's findings or watches with keep as a finding or to the watches, drop, promote (with its redraft), edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (exactly stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each, then released or still held; its texts in link:shared/work-actions-texts.adoc[a part of their own], link:shared/work-actions-review-texts.adoc[the part of reviews and holds], and link:shared/work-actions-chat-texts.adoc[the chat's part].
+|What both clients offer to act on a plan or an epic, by its state (running, pausing, paused, waiting for you, held, an epic also landing; ended): pause, start, cancel, abandon a plan, abort it from an integrity pause, how a plan and an epic end, a plan's settings (UC-CTL-5, with its refusals), a setting changed in two clients at once (the one rule for machine, project, and plan settings), its epic told; an epic's next plan with raising the scope, its automatic start on or off, the archive check with what it carries, cancel; the review of an epic's findings or watches with keep as a finding or to the watches, drop, promote (with its redraft), edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change and the window in which it may propose a revision, the common files allowed per epic, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (exactly stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each, then released or still held; its texts in link:shared/work-actions-texts.adoc[a part of their own], link:shared/work-actions-review-texts.adoc[the part of reviews and holds], and link:shared/work-actions-chat-texts.adoc[the chat's part].
 
 |link:shared/consents.adoc[Consents]
 |`DRAFT`
@@ -91,9 +91,9 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/cleanup.adoc[Cleanup]
 |`DRAFT`
-|The one place where ended work is deleted, in both clients: the work history (archived plans and epics, logs of ended work, read reports, unenrolled projects) offered as a cleanup job when it is due, with its report `system.cleanup_due`; the job's summary and details, each item excludable; _Delete_ with its confirmation, _Ask me again in 3 days_, _Ignore_; the items kept for good and their release; the durations of the machine and a project's own; the technical residue the runtime removes by itself, as figures; what deleting leaves; its texts in link:shared/cleanup-texts.adoc[a part of their own].
+|The one place where ended work is deleted, in both clients: the work history (archived plans and epics, logs of ended work, read reports, unenrolled projects) offered as a cleanup job when it is due, with its report `system.cleanup_due`, reached from the reports, the system view, and a released project; the job's summary and details, each item excludable; _Delete_ with its confirmation, _Ask me again in 3 days_, _Ignore_; the items kept for good and their release; the durations of the machine and a project's own; the technical residue the runtime removes by itself, as figures; what deleting leaves; its texts in link:shared/cleanup-texts.adoc[a part of their own].
 
 |link:shared/paired-devices.adoc[Paired Devices]
 |`DRAFT`
-|What both clients show of the browsers paired with the machine: the list with label, when paired and last used, from where, and this one; rename, revoke, revoke all others (from the terminal client every device), turn the network listener off with the loopback listener left open; and the page of a revoked device.
+|What both clients show of the browsers paired with the machine: the list with label, when and from where it was paired (`paired_from`: loopback or the network), when last used, and this one; rename, revoke, revoke all others (from the terminal client every device), turn the network listener off with the loopback listener left open; and the page of a revoked device.
 |===

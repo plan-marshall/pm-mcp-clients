@@ -45,7 +45,7 @@ $ pm-operator
 pm [1 question] ›
 ----
 
-* `entry.runtime` prints `✓ Runtime running` when one was running already. `entry.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one).
+* `entry.runtime` prints `✓ Runtime running` when one was running already. On the desktop `entry.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one). In an SSH session it always issues a code (<<t-entry-ssh>>).
 * `entry.browser` that cannot start the browser prints `– No browser opened: <reason>` and shows the ways in as over SSH.
 * `entry.wait` is the console itself: a pairing is reported above the prompt (`✓ Paired: …`), and a redeemed code is replaced by a new one for a further device, which `web` shows.
 * The console's own views are its verbs at that prompt (`status` above, `plans` for the overview of running work); `pm-operator` without a verb never opens one of them, it connects the web app (xref:01-commands.adoc#command-tree[The Verbs]).
@@ -79,16 +79,18 @@ pm › web qr
 pm ›
 ----
 
-* `web qr` prints the QR code of the open code with its URL again, for a phone at hand; it issues no new code. After a redemption the fresh code is reported above the prompt (`operator.entry.fresh_code`), and `web qr` shows its QR code (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#change-fresh-code[A Fresh Code after a Redemption]).
+* Over SSH `entry.pairing` always issues a code, whatever browser of this machine is paired, since the browser is on the operator's own computer; a browser that holds a valid device secret does not redeem it (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#start[The Terminal Client as the Entry]).
+* `web qr` prints the QR code of the open code with its URL again, for a phone at hand; it issues no new code. After a redemption the fresh code is reported above the prompt (`operator.entry.fresh_code`), and `web qr` shows its QR code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
 
 [#t-entry-other]
 ==== Another Device (`entry.other-device`, `entry.lan`)
 
 [source,text]
 ----
-pm › web lan
+pm › web enable --lan
 Reach plan-marshall from a phone or another computer?
-  serves      HTTPS on every network interface of this machine, port 7420
+  serves      HTTPS on every network interface of this machine, port 7421,
+              beside http://127.0.0.1:7420, which stays as it is
   certificate self-signed; your browser warns once, compare the fingerprint
   means       every device on your network can reach the pairing page;
               only a paired device gets in
@@ -97,13 +99,13 @@ Reach plan-marshall from a phone or another computer?
 
 Open to the network? y) yes   n) no, keep it on this machine [Enter]   › ⏎
   Nothing was opened.
-pm › web lan
+pm › web enable --lan
 …
 Open to the network? y) yes   n) no, keep it on this machine [Enter]   › y
-✓ Web access on https://mbp-oliver.local:7420 and every interface
+✓ Web access on https://mbp-oliver.local:7421 and every interface; 127.0.0.1:7420 unchanged
 
   ▄▄▄▄▄▄▄ ▄ ▄▄ ▄▄▄▄▄▄▄
-  █ ▄▄▄ █ ▀█▄▀ █ ▄▄▄ █      https://mbp-oliver.local:7420/pair#code=HVNQ-SXKD
+  █ ▄▄▄ █ ▀█▄▀ █ ▄▄▄ █      https://mbp-oliver.local:7421/pair#code=HVNQ-SXKD
   █ ███ █ ▄▀▀█ █ ███ █      Code HVNQ-SXKD, valid until 14:38
   █▄▄▄▄▄█ █▀▄▀ █▄▄▄▄▄█      Fingerprint SHA-256
   ▄▄▄▄ ▄▄▄▀█▄▀▄▄▄▄ ▄ ▄        4F:1A:9C:…:E2:07   ? shows it in full
@@ -112,14 +114,15 @@ pm ›
 ----
 
 * `entry.other-device` is a choice of the network exposure, not a consent of the onboarding: its preselection is the safe answer `n`, which `Enter` takes, as the use case marks it (`no ←`).
+* `entry.lan` opens the LAN listener on its own port `web.lan_port` beside the loopback listener, which stays open with its URL and any SSH forward (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners[Loopback and LAN Listeners Side by Side]).
 * `entry.lan` that cannot open the listener (the port taken on an interface, no certificate written) returns to `entry.wait` unchanged, with the cause and its fix, and nothing is reachable from the network:
 
 [source,text]
 ----
 Open to the network? y) yes   n) no, keep it on this machine [Enter]   › y
-✗ The network listener did not open: port 7420 is in use on 192.168.1.20
+✗ The network listener did not open: port 7421 is in use on 192.168.1.20
   → stop the program that uses it, or choose another port:
-    pm-operator config set web.port <port>
+    pm-operator config set web.lan_port <port>
 pm ›
 ----
 
@@ -412,7 +415,7 @@ pm ›
 * The automatic run is the choice `a` of `onboard.mode`, after _here_ in `entry.where-to-onboard`; there is no option for it.
 * `auto.consent` has no `r`: the automatic run's consent is never remembered. `n` returns to `onboard.mode` with `Nothing was done.`; nothing of the run has happened.
 * `auto.consent` lists the consents the run needs, each by its kind's title (`common.consent.kind.<kind>`) with what it looks for and runs (link:../shared/consents.adoc#auto[Consents, The Automatic Run's One Consent]); `?` lists every check. It covers exactly these, for this run only, and remembers none of them. A kind remembered earlier is listed with `remembered` in place of its detail and is not part of this consent. The automatic run asks no model, so `model_advice` is not listed; `fetch_icons` is, since the runtime fetches the icons for the web app whichever client runs the onboarding.
-* The headless call is named because the consent is asked before the scan: whether a harness without a login probe is found is not known yet (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-login-probe[Login Probe]).
+* The headless call is named because the consent is asked before the scan: whether a harness without a login probe is found is not known yet (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#login-probe[Login Probe]).
 * *A state that needs a token* stops the run there: `providers.credentials` is shown as in the guided run, and the run continues after it. It has no way to skip the provider; a provider can be left out after its check fails (`providers.failed`), or the operator leaves with `q` and the run waits at that state.
 * *A step that needs the operator* (`auto.run` stops in a state of a step): the state is shown as in the guided run, under its step line, and the run continues after it:
 

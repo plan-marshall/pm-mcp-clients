@@ -262,8 +262,8 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Von selbst entfernt
 
 |`system.cleanup.residue.step`
-|{step, select, temp {temporary files} workers {worker directories of ended jobs} locks {stale locks, fenced generations} rows {old rows of the workspace} lessons {retired lesson bodies} caches {caches} other {{step}}}
-|{step, select, temp {temporäre Dateien} workers {Worker-Verzeichnisse beendeter Jobs} locks {veraltete Locks, abgegrenzte Generationen} rows {alte Zeilen des Arbeitsbereichs} lessons {Inhalte zurückgezogener Lessons} caches {Caches} other {{step}}}
+|{step, select, temp {temporary files} workers {worker directories of ended jobs} locks {stale locks and leases, fenced generations} tasks {ended task records} rows {old rows of the workspace} lessons {retired lesson bodies} audit {rotated audit files} caches {caches} other {{step}}}
+|{step, select, temp {temporäre Dateien} workers {Worker-Verzeichnisse beendeter Jobs} locks {veraltete Locks und Leases, abgegrenzte Generationen} tasks {Einträge beendeter Tasks} rows {alte Zeilen des Arbeitsbereichs} lessons {Inhalte zurückgezogener Lessons} audit {rotierte Audit-Dateien} caches {Caches} other {{step}}}
 
 |`system.cleanup.residue.last`
 |last sweep {time}

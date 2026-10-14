@@ -5,7 +5,9 @@
 
 link:README.adoc[Terminal Client] » Actions on Plans and Epics
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#change-chat[Chatting with the Planning Role] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/04-sessions-and-workers.adoc#plan-pause[Pausing and Starting a Plan], link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#plan-end[Cancelling and Abandoning Archive], link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc#epic-actions[An Epic's Actions], link:../../../../plan-marshall-documentation/doc/specification/model-work/08-epic-coordination.adoc#epic-review[The Review], link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/01-conventions-generic-conditions.adoc#holds[Holds and Their Acts], link:../../../../plan-marshall-documentation/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
 What the actions are, per state, is link:../shared/work-actions.adoc[Actions on Plans and Epics], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[Use Cases, Controlling Work]). This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
@@ -18,10 +20,12 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]   on an integrity pause, its abort
   plan abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
   plan chat <plan_id>                    the chat with the plan's planning role; on an ended plan, about its archive
-  config <aspect> --plan <plan_id>       the plan's settings, in every state until it has ended (plan-defaults, roles, providers)
+  config <aspect> --plan <plan_id>       the plan's settings, in every state until it has ended (plan-defaults with
+                                         posture and base branch, roles, integrations, providers)
   epic <epic_id>                         the epic's view
   epic next <epic_id> [--raise-scope|--no-raise]
   epic auto <epic_id> on|off              whether the epic starts its plans by itself
+  epic auto <epic_id> --common-files <n>  how many files a plan may share with a running plan and still start
   epic decompose <epic_id> [--instruction <text>]   decompose again, with the review
   epic archive <epic_id>
   epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
@@ -34,7 +38,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 * An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, chat, settings`).
 * *Settings* is an action of every state of a plan until it has ended: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]; <<settings>>).
 * `plan cancel` on a plan held by an integrity pause is that pause's abort: its dialogue is `Abort fix-relay?`, and the plan ends `aborted` (link:../shared/work-actions.adoc#confirm-end[Ending a Plan]); its epic is told `cancelled` (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]). A waiting or held plan is cancelled like a running one.
-* `pm-operator abort plan` and `abort epic` stay as they are and do what `plan cancel` (or `abandon`) and `epic cancel` do.
+* `pm-operator abort plan` and `abort epic` are the shell forms of the specification: they do what `plan cancel` (or `abandon`, by the plan's state) and `epic cancel` do.
 * The reviews and the chat are dialogues; as one shell command they need a terminal, like every dialogue.
 
 [#full-screen]
@@ -52,6 +56,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 ▶ relay-hardening        epic · running · 3 running · 1 paused · 3 staged      ! 3
       n  Next plan: relay-token-store
       u  Automatic: on
+      m  Common files allowed: 0
       d  Decompose again…
       f  Findings review (3 new)
       w  Watches review (5)
@@ -105,7 +110,7 @@ pm ›
 [#settings]
 === A Plan's Settings
 
-`config <aspect> --plan <plan_id>` is the terminal's form of link:../shared/work-actions.adoc#settings[A Plan's Settings]; `config show <aspect> --plan <plan_id>` lists the plan's values with their origin, and `o) settings` in the menu asks the aspect first (`plan-defaults`, `roles`, `providers`).
+`config <aspect> --plan <plan_id>` is the terminal's form of link:../shared/work-actions.adoc#settings[A Plan's Settings]; `config show <aspect> --plan <plan_id>` lists the plan's values with their origin, and `o) settings` in the menu asks the aspect first (`plan-defaults`, `roles`, `integrations`, `providers`). The plan defaults hold the plan's posture and base branch beside the landing, method, and asking axes; a value set here before the plan first needs it is not asked in `init.options`. `integrations` sets the plan's variant of each git and provider integration.
 
 [source,text]
 ----
@@ -189,6 +194,7 @@ pm › epic auto relay-hardening off
 ✓ relay-hardening starts no plan by itself any more; what runs goes on.
 ----
 
+* *Common files* (`epic auto <epic_id> --common-files <n>`, `m` in the menu below an epic's row, beside the toggle): how many files a plan may share with a running plan and still start beside it, the epic's `overlap_max_files`, taken from the project's `epic.overlap_max_files` when the epic started. One act naming the value it sets, told among the epic's events, and the epic at once starts what the new value admits (`✓ relay-hardening allows 2 common files; relay-docs started`); the head of `epic <epic_id>` shows it (`Common files allowed: 0`), and the project's default is changed in the project's settings (link:../shared/work-actions.adoc#epic-auto[Automatic: On or Off]).
 * Switched on with nothing launchable, the line says why (`Nothing can start now: relay-docs waits: overlap with relay-auth-v2`, `control.epic.auto_nothing`).
 * The head of `epic <epic_id>` names the mode (`automatic`, `manual`), and its events what the epic did by itself after a plan ended (link:../shared/epic-view.adoc#reactions[Epic View, What the Epic Does by Itself]).
 
@@ -258,13 +264,11 @@ fix-relay · execute · held · holds: a condition since 14:02
 ----
 pm › plan relay-cursor-order
 relay-cursor-order · execute · held · holds: an integrity pause since 10:31
-  cause   pm-relay/src/main/java/…/Cursor.java changed outside the plan's tasks
-  v) view the change   c) accept the change…   t) restore   x) abort the plan…   ?   › v
-  --- a/pm-relay/src/main/java/…/Cursor.java
-  +++ b/pm-relay/src/main/java/…/Cursor.java
-  …
-  v) view the change   c) accept the change…   t) restore   x) abort the plan…   ?   › c
-Accept the change to Cursor.java?   it becomes part of the plan's work; this cannot be undone
+  cause   the plan's store file references.json changed outside the runtime
+  recorded  4,812 bytes   sha256 3f9a…c21e
+  current   5,034 bytes   sha256 b70d…9a44
+  c) accept the change…   x) abort the plan…   ?   › c
+Accept references.json as it is?   its digest is recorded anew and the plan goes on with it; this cannot be undone
   y) yes   n) no   ?   › y
 ✓ relay-cursor-order goes on with the change
 ----
@@ -282,7 +286,7 @@ The acts of a hold are those of the shared design (link:../shared/work-actions.a
 |the act it names as a dialogue: `g) grant read access to <project>…`, `c) add the credential <name>…`, or `b) raise the budget…`; then `r) retry   x) end the plan…`
 
 |integrity pause
-|`v) view the change   c) accept the change…   t) restore   x) abort the plan…` (an epic's: `x) cancel the epic…`)
+|the tampered file with its recorded and current size and digest; `c) accept the change…   x) abort the plan…` (an epic's: `x) cancel the epic…`); no diff and no restore, since the prior content is not kept
 
 |held item of an epic
 |`r) retry` and the item's own acts, `x) end the plan…` for a plan's item, else `x) cancel the epic…`
@@ -298,7 +302,7 @@ The acts of a hold are those of the shared design (link:../shared/work-actions.a
 * The labels are the shared keys `control.hold.act.<act>`, the kind of the hold the shared `control.hold.kind.<kind>`; the mnemonics are `operator.actions.key.<act>` (xref:22-texts-actions.adoc#actions-keys[Keys]).
 * The holds are exactly these five; a paused plan is none and offers its actions only.
 * An act that cannot be undone (_accept the change_, _end the plan_, _abort the plan_, _cancel the epic_, _give up the removal_) confirms first and names what follows; _abort the plan_ is the dialogue `Abort fix-relay?` of `plan cancel`. _Give up the removal_ keeps the moved files tracked in git: the removal's branch is dropped, and the source keeps its copy.
-* _Show the pull request_ prints its number and URL; _view the change_ (`control.hold.act.show_change`) prints the diff as text, after the control characters are removed (xref:04-console.adoc#output-safety[Output Safety]).
+* _Show the pull request_ prints its number and URL. The path of a tampered file is printed after the control characters are removed (xref:04-console.adoc#output-safety[Output Safety]).
 
 [#review]
 == A Review
@@ -404,7 +408,8 @@ pm ›
 * *A message* is one line or several, sent by an empty line; an empty line as its first line ends the chat, as `q` and `Ctrl+D` do. A proposal not yet accepted is dropped with it. A message is never interpreted or read back: the role answers it, and only a change it proposes is read back.
 * *The answer* is printed as text after the control characters are removed (xref:04-console.adoc#output-safety[Output Safety]); an item from outside the machine stays marked `untrusted` and is printed between quotes.
 * *A proposed change* is a read-back, old against new: `Enter` accepts, `r) reject` drops it; a check that fails prints its reason (`not applied: …`) and the chat goes on.
-* *A running plan* takes an accepted revision at its next task boundary, and the line after it says so once it is applied; a question changes nothing.
+* *A running plan* takes an accepted revision at its next task boundary, and the line after it says so once it is applied; a pausing plan takes it at that boundary too and then holds at its point; a paused plan takes it when the operator starts it again (`applies when fix-relay starts again`). A question changes nothing.
+* *When a revision is proposed*: only once the plan has tasks, in Phase 5 or in finalize before the merge; earlier, and after the merge, the role answers and proposes none, and the chat says so once (`fix-relay proposes no change yet: a revision comes once the plan has tasks, until its merge`).
 * *Chat is refused* with its reason while no configuration of the routed role qualifies (`no configuration of replan qualifies yet`), and `--no-input` refuses it, since every turn needs the operator.
 
 [#chat-ended]

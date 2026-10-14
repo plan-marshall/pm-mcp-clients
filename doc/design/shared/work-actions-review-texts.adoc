@@ -170,17 +170,25 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Raise the budget…
 |Erhöhe das Budget…
 
-|`control.hold.act.show_change`
-|Show the change
-|Zeige die Änderung
+|`control.hold.integrity.file`
+|File
+|Datei
+
+|`control.hold.integrity.recorded`
+|recorded: {size} · {digest}
+|aufgezeichnet: {size} · {digest}
+
+|`control.hold.integrity.current`
+|current: {size} · {digest}
+|aktuell: {size} · {digest}
+
+|`control.hold.integrity.no_restore`
+|The earlier content is not kept: accept the change as it is, or abort.
+|Der frühere Inhalt ist nicht aufbewahrt: nimm die Änderung an, wie sie ist, oder brich ab.
 
 |`control.hold.act.accept_change`
 |Accept the change…
 |Nimm die Änderung an…
-
-|`control.hold.act.restore`
-|Restore
-|Stelle wieder her
 
 |`control.hold.act.show_pr`
 |Show the pull request #{number}

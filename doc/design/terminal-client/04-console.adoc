@@ -110,6 +110,8 @@ A pushed item never takes the focus: no keystroke typed before it was shown can 
 * `answer Q-007 2` answers a single-part decision at once with option 2, after printing the option it chose; where the decision asks for `decision.confirm` (several parts, or costly to undo, or not reversible), the confirmation is still shown.
 * `h) chat` (German `t`) at the decision's prompt opens a chat about the decision before answering it, with the role the runtime routes it to (link:../shared/decisions.adoc#chat[A Chat Before Answering]; xref:14-transcripts-decisions.adoc#t-decision-chat[A Chat Before Answering]); the decision is shown again when the chat ends, and an answer the chat proposed goes through the read-back as the operator's own words.
 * A waiver request is opened the same way (`answer WR-2`) and answered by _waive_ with a reason, _decline_ with a reason, or _later_; it has no `Enter` default and no preselection, like a consent (xref:03-dialogues.adoc#consent[Consent]; xref:14-transcripts-decisions.adoc#t-decision-waiver[A Waiver Request]).
+* `x) none fits` is offered only where the decision allows it (a role that asked it, or a declared quorum, link:../shared/decisions.adoc[Decisions]); `w) in my own words` asks back at most as often as the decision declares (xref:14-transcripts-decisions.adoc#t-decision-own-words[In Own Words]).
+* *A refused answer* (`conflict`, `already_answered`, `invalid_answer`, `dependency_unanswered`) is printed with the decision as it stands, never as an error of the console (xref:14-transcripts-decisions.adoc#t-decision-ends[Later, None Fits, Changed]).
 * A question's text comes from a model; the console shows it as data, never as a command, and strips every control sequence from it before it is printed (<<output-safety>>).
 
 [#during-dialogue]
@@ -176,7 +178,7 @@ The first valid answer wins, from the web app or the console (the channels `web`
 
 * What waits for the operator rings the terminal bell once, when it arrives.
 * A desktop notification is sent instead where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
-* The machine configuration key `console.notify` chooses `auto` (the default: the desktop notification where known, else the bell), `bell`, or `off`.
+* The machine configuration key `console.notify` (link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store]) turns them on and off: `true`, the default, sends the desktop notification where known and else rings the bell; `false` sends neither.
 * A notification carries the scope and the kind (`plan fix-relay asks a question`, `epic storage-v2 asks a question`, `the setup of pm-mcp-clients asks a question`, `plan fix-relay asks for a waiver`), never the text of the question, which may hold content of the project.
 
 [#output-safety]

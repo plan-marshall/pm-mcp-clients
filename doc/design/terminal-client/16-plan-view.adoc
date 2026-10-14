@@ -85,6 +85,26 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
          entered 14:02 (run 3), 13:31 (run 2, left 13:58), 13:07 (run 1, left 13:29)
 ----
 
+[#activity]
+=== A Worker at Work
+
+`Enter` on a task of a leaf opens what its worker does as a level of the view, live while it is shown; `plan <plan_id> --activity <task_id>` prints the same into the scrollback, and with `--watch` follows it until `q` (link:../shared/plan-view.adoc#worker[Plan View, A Worker at Work]; link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#worker-activity[What a Worker Does]):
+
+----
+  fix-relay › execute › execute.envelope · TASK-003
+  implement · claude sonnet · attempt 1 · running 6 min · 48 k tokens
+  14:02:11  wrote      Reading the relay's transport before changing it.
+  14:02:14  tool       read pm-relay/src/main/java/…/Transport.java
+  14:02:20  tool       bash ./mvnw -pl pm-relay test        failed · 4 KiB
+  14:03:02  changed    pm-relay/src/main/java/…/Transport.java
+  14:03:40  link       submit:TASK-003
+  14:03:41  ⚠ off track  repeating (5 of 5): shown
+----
+
+* The head, the entries and their kinds, the gap where entries gave way to the journal's bound (`plan.activity.gap`), and a harness without an event stream (`plan.activity.server_only`) are those of the shared design; every text and target is printed after the control sequences are removed (xref:04-console.adoc#output-safety[Output Safety]).
+* *Off track*: the head and the entry name the signal (`repeating`, `no_progress`, `over_size`, `outside_footprint`), its value and threshold, and what the server did (`show`, `nudge`, `yield`, `restart`); it needs no act and is never a badge of what needs the operator. A `yield` or a `restart` is also the report `task.off_track` (xref:24-reports.adoc[Reports]).
+* The stream is opened only while the level is shown and closed when it is left.
+
 [#full-screen-keys]
 === Keys
 
@@ -101,7 +121,7 @@ The keys of the overview hold here too (xref:15-overview.adoc#full-screen-keys[K
 |close the selected node, or move to its parent (replaces _back_ of the overview)
 
 |`Enter`
-|on a leaf, its details; on a node that waits for the operator, the decision (replaces _open_ of the overview)
+|on a leaf, its details; on a task of a leaf, what its worker does (<<activity>>); on a node that waits for the operator, the decision (replaces _open_ of the overview)
 
 |`a`
 |the plan's actions, below the header; on a node that holds, the acts of the hold

@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Project Explorer
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3], leading into link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-1[UC-STA-1], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-2[UC-STA-2], and link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-explorer[The Projects of the Machine], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#change-project-release[Releasing Ends Work as the Operator Ends It] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#project-explorer[The Projects of the Machine], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#project-release[Releasing Ends Work as the Operator Ends It], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#explorer-store[The Operator's Projects (`explorer.json`)], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#enrolment-lifecycle-release[Enrolment, Lifecycle Gate & Release], link:../../../../plan-marshall-documentation/doc/specification/timeouts/01-job-budgets-and-waits.adoc#release-landing-wait[Release Landing Wait], link:../../../../plan-marshall-documentation/doc/specification/filesystem-layout/03-project-store.adoc#archives[Archives]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects]; the web app: designed by its package link:../../plans/web-projects.adoc[`web-projects`].
 
@@ -35,7 +35,7 @@ The explorer is where the operator finds a project among all the machine's proje
 
 * *Favourites*: the projects the operator marked, in the operator's order; always first.
 * *Recent*: the projects the operator worked with last, newest first, at most five; a favourite is not repeated here.
-* *All projects*: every enrolled project, by name, or by _most used_ (how often the operator worked in it over the last four weeks); a filter on name and id narrows the list, and with a filter the three groups become one list of matches.
+* *All projects*: every enrolled project, by name, or by _most used_ (how often the operator worked in it over the last 30 days); a filter on name and id narrows the list, and with a filter the three groups become one list of matches.
 * *Being added*: the projects whose onboarding has not reached its enrolment yet (<<being-added>>); shown only while there is one.
 * *Add a project* starts the onboarding of a project (link:project-onboarding.adoc[Project Onboarding]). On a machine that is not fully onboarded it is disabled with the reason (`this machine is not fully onboarded: providers`) and _Continue the onboarding_ beside it.
 * A released project is listed with `released` and offers to be enrolled again; an unenrolled one is not listed (<<release>>).
@@ -99,17 +99,17 @@ The project's setup offers, after its aspects, _Release the project…_ and _Une
                  released with its plans and archived
                  1 entry not started yet, deleted with its sources
                  the setup run of pm-mcp-clients, ended where it stands
-  Pull requests  #214, #219 are open   (●) Close them, with the reason
-                                       ( ) Leave them open
+  What stays     the repository: branches, worktrees, pull requests, and
+                 .marshall/ with the epics' ledgers, as they are
   Reason         [                                                         ]
   Afterwards     no plan runs in pm-mcp-clients; it stays listed as released
                  and can be enrolled again with its values
                                                   [Keep it]  [Release the project]
 ----
 
-* *Release* ends every plan of the project, whatever its state (running, pausing, paused, waiting for the operator, held), with the outcome `released`, never `cancelled` or `abandoned`, and archives it like a completed plan; its branch stays, and its open pull request is closed or left as the confirmation chose. Every epic of the project ends with the `terminal_reason` `released` and is archived; its plans end with the release, so nothing is left to tell it. The project's pending entries (starts not finished, link:starting-work.adoc#leaving[Starting Work, Leaving and Coming Back]) are deleted with their sources, and a running onboarding of the project (a later run of one of its aspects, link:project-onboarding.adoc#later-run[A Later Run]) is ended where it stands. Then the project's plan lifecycle is closed. The reason is required; it goes to every plan's archive and to the closing comments. Each line of _What ends_ is shown only where there is something to end.
-* *A removal from git still landing* (`project.release-wait`): where a moved document's `git.land-removal` of the project runs (link:starting-work.adoc#documents[Starting Work, Documents]), the release lets it finish before it ends anything, so that no removal is left half landed: after the confirmation a check line waits for it within its bound (`project.release.waiting`). When it does not finish in its bound, the release is refused, nothing has ended, and the removal is named with its row in Running Work (`project.release.wait_refused`); the operator releases again once it landed or was resolved there.
-* *Unenrol* removes the project's enrolment and nothing else: its checkout and the team's `.marshall/` stay as they are, and so does the project's machine store with the archive of its ended plans and epics. Enrolled again from the same checkout, the project finds its store and its archive again. Unenrolling deletes nothing; the store becomes an item of the cleanup, offered once `cleanup.unenrolled_after_days` have passed and deleted only by the operator's decision (link:cleanup.adoc#what[Cleanup, What the Cleanup Covers]; link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]). It is refused while work runs: the dialogue lists the running plans and epics instead, each leading to its actions (link:work-actions.adoc[Actions on Plans and Epics]), and offers _Release the project…_, which ends them.
+* *Release* ends every plan of the project, whatever its state (running, pausing, paused, waiting for the operator, held), with the outcome `released`, never `cancelled` or `abandoned`, and archives it like a completed plan; its open decisions and waiver requests are closed. Every epic of the project ends with the `terminal_reason` `released` and is archived in the project's machine store only: its ledger stays in `.marshall/epics/` as it is, nothing is committed, and no epic landing runs; its plans end with the release, so nothing is left to tell it. The project's pending entries (starts not finished, link:starting-work.adoc#leaving[Starting Work, Leaving and Coming Back]) are deleted with their sources, and a running onboarding of the project (a later run of one of its aspects, link:project-onboarding.adoc#later-run[A Later Run]) is ended where it stands. Then the project's plan lifecycle is closed. The release touches no repository: branches, worktrees, pull requests, and the team's `.marshall/` stay as they are. The act is `POST /api/v1/projects/{project_id}/release` with the reason, in the terminal client `project release <project_id>`. The reason is required; it goes to every plan's archive. Each line of _What ends_ is shown only where there is something to end.
+* *A short landing still running* (`project.release-wait`): where a short landing of the project runs, the removal of a moved document from git (`git.land-removal`, link:starting-work.adoc#documents[Starting Work, Documents]) or the landing of a placed workflow unit (`git.land-unit`), the release lets it finish before it ends anything, so that no landing is left half done: after the confirmation a check line waits for it within its bound (`release.landing_wait_seconds`; `project.release.waiting`), and meanwhile the project admits no new start. When it does not finish in its bound, the release is refused (`release_landing_pending`), nothing has ended, and the landing is named with its row in Running Work (`project.release.wait_refused`); the operator releases again once it landed or was resolved there.
+* *Unenrol* removes the project's enrolment and nothing else: its checkout and the team's `.marshall/` stay as they are, and so does the project's machine store with the archive of its ended plans and epics. Enrolled again from the same checkout, the project finds its store and its archive again. Unenrolling deletes nothing; the store becomes an item of the cleanup, offered once `cleanup.unenrolled_after_days` have passed and deleted only by the operator's decision (link:cleanup.adoc#what[Cleanup, What the Cleanup Covers]; link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]). It is refused while work runs (`scope_active`, naming the work): the dialogue lists the running plans and epics instead, each leading to its actions (link:work-actions.adoc[Actions on Plans and Epics]), and offers _Release the project…_, which ends them.
 
 ----
   pm-mcp-clients cannot be unenrolled while work runs
@@ -120,7 +120,7 @@ The project's setup offers, after its aspects, _Release the project…_ and _Une
                                                   [Back]  [Release the project…]
 ----
 
-* *The reason*: the release asks it (it closes the pull requests and goes to every archive); unenrolling takes an optional one, recorded in the audit trail.
+* *The reason*: the release asks it (it goes to every archive); unenrolling takes an optional one, recorded in the audit trail.
 * *Afterwards*: a released project stays listed with `released` and offers _Enrol again_; an unenrolled one leaves the list, and a client that shows it says so and moves to the list.
 
 [#marks]
@@ -280,24 +280,20 @@ Keys of the area `project`, shared by both clients.
 |der Einrichtungslauf von {project}, beendet, wo er steht
 
 |`project.release.waiting`
-|waiting for the removal of {paths} from git to land
-|wartet, bis die Entfernung von {paths} aus Git abgeschlossen ist
+|waiting for {landing} to land
+|wartet, bis {landing} abgeschlossen ist
 
 |`project.release.wait_refused`
-|{project} was not released: the removal of {paths} from git did not land within its bound. Nothing was ended.
-|{project} wurde nicht abgegeben: die Entfernung von {paths} aus Git wurde nicht innerhalb ihrer Frist abgeschlossen. Es wurde nichts beendet.
+|{project} was not released: {landing} did not land within its bound. Nothing was ended.
+|{project} wurde nicht abgegeben: {landing} wurde nicht innerhalb seiner Frist abgeschlossen. Es wurde nichts beendet.
 
-|`project.release.pull_requests`
-|Pull requests
-|Pull Requests
+|`project.release.what_stays`
+|What stays
+|Was bleibt
 
-|`project.release.pr_close`
-|Close them, with the reason
-|Schließe sie, mit dem Grund
-
-|`project.release.pr_leave`
-|Leave them open
-|Lass sie offen
+|`project.release.stays`
+|the repository: branches, worktrees, pull requests, and .marshall/ with the epics' ledgers, as they are
+|das Repository: Branches, Worktrees, Pull Requests und .marshall/ mit den Ledgern der Epics, wie sie sind
 
 |`project.release.reason`
 |Reason

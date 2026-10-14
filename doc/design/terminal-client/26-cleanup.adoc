@@ -5,9 +5,9 @@
 
 link:README.adoc[Terminal Client] » Cleanup
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the durations)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]_
 
 What the cleanup offers, what its commands do, and what deleting leaves is link:../shared/cleanup.adoc[Cleanup], for both clients. This part is how the console offers it. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
@@ -165,7 +165,7 @@ pm ›
 * A new job arriving while the console is open is the quiet line of its report (link:../shared/reports.adoc#notice[Reports, While a Client Is Open]).
 
 [#t-durations]
-== The Durations (`config cleanup`, `settings.record`)
+== The Durations (`config cleanup`, `settings.cleanup-durations`, `settings.record`)
 
 [source,text]
 ----
@@ -193,7 +193,7 @@ Cleanup · project pm-mcp-core · How long should its ended work be kept?
 Keep as it is? [Enter]   change: 1-3   d) remove its own values   ?   ›
 ----
 
-* The values of the machine are kept in `machine-config.json` (`cleanup`); a project's own in its operator file. A value below the minimum is refused on its line (`At least 7 days, or never.`), and the line asks again.
+* The list is the operator wait `settings.cleanup-durations` of the machine settings (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]), one duration per kind and the postponement; `settings.record` records them. The values of the machine are kept in `machine-config.json` (`cleanup`); a project's own in its operator file. A value below the minimum is refused on its line (`At least 7 days, or never.`), and the line asks again.
 * `config cleanup --plans 60 --yes` answers as one shell command; `--project` with `--reports`, `--unenrolled`, or `--remind` is refused, since they are the machine's only (`operator.cleanup.machine_only`).
 * *Changed meanwhile*: refused with `conflict` and shown with its current value, as every setting of `config` (xref:08-transcripts-later.adoc#t-documents[The Documents Mode]).
 * The same durations are line `13` of `config` (xref:08-transcripts-later.adoc#t-settings[The Machine Settings]) and line `8` of a project's ④ Own settings (xref:17-projects.adoc#onboarding[Onboarding a Project]).
@@ -242,8 +242,8 @@ $ pm-operator sweep --apply
 |`[S]`
 |<<t-remind>>, <<t-job>> (items left out)
 
-|`settings.record` of the durations
-|`[S]`
+|`settings.cleanup-durations`, `settings.record` of the durations
+|`[O]`, `[S]`
 |<<t-durations>>
 |===
 

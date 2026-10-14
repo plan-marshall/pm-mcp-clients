@@ -5,11 +5,11 @@
 
 link:../README.adoc[Design] » link:README.adoc[Web App] » Machine Settings
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the machine settings: one aspect again, a remembered consent withdrawn, the documents mode, a token rotated or replaced), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4] (the harnesses again), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the machine settings: one aspect again, a remembered consent withdrawn, the documents mode, the cleanup's durations, a token rotated or replaced, the paired devices), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4] (the harnesses again), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3] (the cleanup's durations)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-consent[Onboarding, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-two-channels[Operator Choices in the Web App and the Terminal] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/14-machine-onboarding.adoc#state-catalogue-settings[State Catalogue, The Machine's Settings], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#provider-verification[CLI, Coordination & Security, Provider Verification], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#concurrent-changes[Concurrent Changes of a Setting]_
 
-Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding: the page is the state `settings.choose`, reached from `onboard.completed` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]). They show what the onboarding recorded and change it by running one aspect again, or through the settings' own states (a consent withdrawn, the documents mode, a token rotated or replaced); every change is audited. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
+Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding: the page is the state `settings.choose`, reached from `onboard.completed` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]). They show what the onboarding recorded and change it by running one aspect again, or through the settings' own states (a consent withdrawn, the documents mode, the cleanup's durations, a token rotated or replaced); every change is audited. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
 
 [#layout]
 == Layout
@@ -58,11 +58,12 @@ Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every 
 [#aspects]
 == A Later Run of One Aspect
 
-* *Change* runs the aspect's sub-workflow again as a later run (`onboard.entry` with `reconfigure <aspect>`): it opens in the frame of the onboarding (link:onboarding.adoc#frame[Onboarding, Frame]), the step bar showing only that aspect, the current values as the proposal. The screens are those of the first run, with the consents that are not remembered asked again; at its end the app returns here.
+* *Change* runs the aspect's sub-workflow again as a later run (the link `reconfigure:<aspect>` of `settings.choose`, `onboard_run: reconfigure`): it opens in the frame of the onboarding (link:onboarding.adoc#frame[Onboarding, Frame]), the step bar showing only that aspect, the current values as the proposal. The screens are those of the first run, with the consents that are not remembered asked again; at its end, or when the operator leaves it (`stepped_out`, _Back to the settings_), the server returns to `settings.choose` and the app with it.
 * A later run of the harnesses offers the new ones and removes the missing ones (<<harnesses>>).
 * A later change of the credential store moves the tokens (link:onboarding-steps-4-7.adoc#store-move[Onboarding, A Later Change Moves the Tokens]).
 * *Ask the steward…* is the later run of the roles opened directly at the steward's consent (`roles.consent`); after the automatic run, it is where the operator asks a model for the first time.
-* The interface language changes the app at once, as in the first run.
+* A changed interface language is the language of every text from then on, as in the first run.
+* *⑦ Plans* in a later run also shows the optional posture of a plan (`plan_defaults.posture`: minimal, standard, full), which the first run never asks: unset by default, so that a plan asks it in its start while no level sets it (link:onboarding-steps-4-7.adoc#plan-defaults[Onboarding, ⑦ Plans]).
 * An aspect a project sets for itself is changed in that project's setup, never here; the line says only what the machine provides.
 
 Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-later.adoc#t-later[Terminal Client, Later Changes]).
@@ -97,7 +98,7 @@ Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-
 * *The proposal is the current state*: every enrolled harness that is found is ticked, the default as recorded. A harness found that is not enrolled is offered, marked `new since the last run` and not ticked; ticking it adds it.
 * *Missing*: an enrolled harness no longer found is shown with the path it was enrolled at, `missing: not found any more`, and unticked: it is offered for removal. Ticking it keeps it only once it is found again (*Look again*, or its path under _Advanced_).
 * *Used by roles*: a harness that roles use cannot be removed, neither by unticking it nor as missing. Its row stays ticked and locked, with `used by 6 roles; reassign them first:` and the link _Reassign them_ that opens the later run of the roles (link:onboarding-steps-4-7.adoc#roles[Onboarding, ④ Roles]) filtered to them; the harness keeps its roles until then. Its default mark can still move.
-* *Default*: any ticked harness can be made the default; the change is shown in the confirmation.
+* *Default*: any ticked harness can be made the default; the change is shown in the confirmation. The default itself cannot be removed, neither by unticking it nor as missing, before another ticked harness is made the default: its row stays ticked and locked with `the default; choose another default first` (`web.settings.harnesses.default_locked`).
 * *Tokens*: what each harness and version reports of its usage, as in the first run (link:onboarding.adoc#harness-tokens[Onboarding, What a Harness Reports]); a new version is shown with what its profile and verification say for that version, so a change of what a harness reports is seen here.
 * *Back to the settings* (`web.settings.back`) leaves the later run without a change.
 * *A changed program* (a new version or digest at the same path) is checked and enrolled again with the others; the line says what it was.
@@ -111,7 +112,7 @@ Terminal: `pm-operator config harnesses` (link:../terminal-client/08-transcripts
 [#providers]
 == Providers Verified Again
 
-Every provider shows the result and the time of its last verification, from the onboarding or from a later check. *Check* runs the verification of that provider (`providers.verify`, link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-provider-verification[Provider Verification]), *Check all* of every provider the machine records; the consent `verify_providers` (`providers.verify-consent`, link:onboarding-steps-4-7.adoc#providers-verify-consent[Onboarding, Consent]) comes first unless it is remembered. The lines appear in place, as in the onboarding:
+Every provider shows the result and the time of its last verification, from the onboarding or from a later check. *Check* runs the verification of that provider (`providers.verify`, link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#provider-verification[Provider Verification], _Again later_), *Check all* of every provider the machine records; the consent `verify_providers` (`providers.verify-consent`, link:onboarding-steps-4-7.adoc#providers-verify-consent[Onboarding, Consent]) comes first unless it is remembered. The lines appear in place, as in the onboarding:
 
 [source,text]
 ----
@@ -143,7 +144,7 @@ Terminal: `pm-operator config consents` (link:../terminal-client/08-transcripts-
 [#documents]
 == The Documents Mode (`settings.documents-mode`, `settings.record`)
 
-How documents are taken into a plan at its start: the machine's `sources.documents_mode` (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-documents[Documents]). *Change* opens the choice in place:
+How documents are taken into a plan at its start: the machine's `sources.documents_mode` (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#documents-source[State Catalogue, Documents as a Source]). *Change* opens the choice in place:
 
 [source,text]
 ----
@@ -162,9 +163,9 @@ How documents are taken into a plan at its start: the machine's `sources.documen
 Terminal: `pm-operator config documents` (link:../terminal-client/08-transcripts-later.adoc#t-documents[Terminal Client, transcript]).
 
 [#cleanup]
-== The Cleanup's Durations
+== The Cleanup's Durations (`settings.cleanup-durations`, `settings.record`)
 
-How long ended work is kept before the cleanup offers it (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]); the line sums them up (`system.cleanup.durations.summary`), and *Change* opens them in place:
+How long ended work is kept before the cleanup offers it, the machine's `cleanup.*` (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]; link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[Timeouts & Budgets, One Cleanup]); the line sums them up (`system.cleanup.durations.summary`), and *Change* opens them in place:
 
 [source,text]
 ----
@@ -193,10 +194,10 @@ Terminal: `pm-operator config cleanup` (link:../terminal-client/26-cleanup.adoc#
 [#conflict]
 == Changed Meanwhile
 
-A value changed in another client (the terminal, another device) after this page showed it is not overwritten: the change made here is refused with `conflict`, nothing of it applied, and the line shows the current value beside the operator's choice with _Keep the current value_ and _Apply yours again_ (`common.conflict.*`). This holds for every aspect, the documents mode, and the cleanup's durations (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]; link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#concurrent-changes[Concurrent Changes of a Setting]).
+A value changed in another client (the terminal, another device) after this page showed it is not overwritten: the change made here is refused with `conflict`, nothing of it applied, and the line shows the current value beside the operator's choice with _Keep the current value_ and _Apply yours again_ (`common.conflict.*`). This holds for every aspect, the documents mode, and the cleanup's durations (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]; link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#concurrent-changes[Concurrent Changes of a Setting]).
 
 [#credentials]
-== A Token Rotated or Replaced (`settings.credential`, `settings.store-credential`)
+== A Token Rotated or Replaced (`settings.credential`, `settings.store-credential`, `settings.verify-providers`)
 
 Every token the machine keeps is listed with its provider, its kind, and its expiry from the last check; one that has expired or expires within 14 days is marked `⚠`, an expired one with the plans it holds (`⚠ expired: holds 1 plan`). *Rotate* gives the entry a new secret, its kind and other fields kept; *Replace* asks the kind first, from those the provider accepts, and writes a new entry of that kind under the same key:
 
@@ -216,9 +217,9 @@ Every token the machine keeps is listed with its provider, its kind, and its exp
   [ Back to the settings ]                         [ Store the new token ]
 ----
 
-* Entering the token is the operator's own act and needs no consent. `settings.store-credential` writes it into the recorded store and drops every token derived from the old secret (`Token github stored; 2 tokens derived from the old one dropped`).
-* Then the providers that use it are checked as in the onboarding: `providers.verify-consent` unless remembered, `providers.verify`, and on a ✗ `providers.failed` with its links (link:onboarding-steps-4-7.adoc#providers-verify[Onboarding, Check]). Afterwards the page is the settings again. A plan the old token held goes on only once the new token verifies, which one line says (`1 plan that waited for it goes on: fix-relay`, link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]); on `providers.failed` the hold stays.
-* On the LAN listener the input is replaced by the command to run in a terminal of the machine (`onboard.settings.credential.lan`: `pm-operator config credentials --rotate github`), as for a missing token (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#change-web-credentials[Credentials in the Web App]).
+* Entering the token is the operator's own act and needs no consent. `settings.store-credential` writes it into the recorded store and drops every token derived from the old secret (`Token github stored; 2 tokens derived from the old one dropped`); while the recorded store is not available it is refused (`credential_store_unavailable`) with the cause and the fix, and nothing is written.
+* Then the providers that use it are checked as in the onboarding (`settings.verify-providers` calls the providers' sub-workflow at its verification): `providers.verify-consent` unless remembered, `providers.verify`, and on a ✗ `providers.failed` with its links (link:onboarding-steps-4-7.adoc#providers-verify[Onboarding, Check]). Afterwards the page is the settings again. A plan the old token held goes on only once the new token verifies, which one line says (`1 plan that waited for it goes on: fix-relay`, link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]); on `providers.failed` the hold stays.
+* On the LAN listener the input is replaced by the command to run in a terminal of the machine (`onboard.settings.credential.lan`: `pm-operator config credentials --rotate github`), as for a missing token (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-credentials[Credentials in the Web App]).
 * A plan held by an expired token names this section as the act that resolves the hold.
 
 Terminal: `pm-operator config credentials --rotate|--replace <credential_key>` (link:../terminal-client/08-transcripts-later.adoc#t-credential[Terminal Client, transcript]).
@@ -226,7 +227,7 @@ Terminal: `pm-operator config credentials --rotate|--replace <credential_key>` (
 [#devices]
 == Paired Devices
 
-The count of paired devices and whether the network listener is on; *Manage* opens the list of the paired devices, to rename one, revoke one or all others, and turn the network listener off (link:../shared/paired-devices.adoc[Paired Devices]).
+The count of paired devices and whether the network listener is on; *Manage* opens the list of the paired devices, to rename one, revoke one or all others, and turn the network listener off (link:../shared/paired-devices.adoc[Paired Devices]); from a browser on the network turning it off asks first, since that browser loses its access with it (`devices.listener_off.confirm_title`, `devices.listener_off.confirm_explain`, link:../shared/paired-devices.adoc#listener-off[Paired Devices, The Network Listener Turned Off]), and the browser then shows link:entry.adoc#listener-off[Entry, The Network Listener Turned Off]. The list is no state of the settings: it reads and acts through the devices' own endpoints (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[CLI, Coordination & Security, Devices in Both Clients]); leaving it returns to `settings.choose`, unchanged.
 
 Terminal: `pm-operator web devices` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, transcript]).
 
@@ -330,6 +331,10 @@ Keys of the area `web`; the cleanup's durations use the shared `system.cleanup.d
 |`web.settings.harnesses.reassign`
 |Reassign them
 |Ordne sie neu zu
+
+|`web.settings.harnesses.default_locked`
+|the default; choose another default first
+|die Vorgabe; wähle zuerst eine andere Vorgabe
 
 |`web.settings.devices.title`
 |Paired devices

@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Completion Report
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (ended work)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
 
@@ -28,7 +28,7 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
                    ✓ a test per transport, websocket and SSE
                    ✓ fsync of the cursor file
   Re-planning    1 · after the base moved (09:55): TASK-5 added
-  Decisions      2 · Q-003 Rebase onto main (you, web app) · Q-005 (the plan)
+  Decisions      2 · Q-003 Rebase onto main (you, web app) · Q-005 (left to the plan)
   Tokens         ≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 h 40 min      [Tokens]
                  6 workers · 3 models · 3 of 41 tasks not measured
   ─────────────────────────────────────────────────────────────────────────────
@@ -40,14 +40,14 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 * *Ran*: from its start to its end, and how long it was paused by the operator, where it was.
 * *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
 * *Re-planning*: how often the plan was revised, each with its trigger (the base moved, a failed gate, a chat of the operator) and what changed in one line; opening one leads to it in the plan's history.
-* *Decisions*: how many were asked, each with its id, the answer, and who answered (you, with the channel and device; the plan, where the decision allowed it to decide; withdrawn); opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
+* *Decisions*: how many were asked, each with its id, the answer, and how it was taken, as its decision record names it (link:../../../../plan-marshall-documentation/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words]): by you, with the channel and device, chosen, interpreted from your words, your own option, or left to the plan, which took the part's recommendation (`delegated`); by a quorum; or withdrawn; opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
 * *Tokens*: the tokens the plan used, with the split and the wall time, the workers, the models, and the coverage; _Tokens_ opens the section of its own, one step away (<<tokens>>). No money is shown.
 * *Actions*: _Its plan view_ opens the plan as it ended; _Chat_ opens the read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). The report has no other action: the archive never changes.
 
 [#tokens]
 == Tokens
 
-What the plan used, in tokens and never in money (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]). Every figure is one the runtime derived from the plan's usage records; the client formats it (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]) and adds nothing up.
+What the plan used, in tokens and never in money (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). Every figure is one the runtime derived from the plan's usage records; the client formats it (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]) and adds nothing up.
 
 ----
   fix-relay · tokens                                merged · #214 · today 11:20
@@ -73,7 +73,7 @@ What the plan used, in tokens and never in money (link:../../../../plan-marshall
 ----
 
 * *Total*: the plan's tokens with the split, `tokens = in + out` (_in_: input, cache-read, and cache-write tokens; _out_: output and reasoning tokens), and the wall time from its start to its end, as _Ran_ above.
-* *Coverage*: how many of the plan's tasks were measured, and for those that were not, why, by the closed list of the records (`not_reported_by_harness`, `output_unparsed`, `session_task`, `terminated`), `common.tokens.coverage`. A figure the harness's profile declares not applicable (no cache write for its harness) counts as `0` and leaves the task measured. A total over measured and unmeasured tasks is a floor, shown with `≥`, never as exact; with no task measured it is `not measured` with the coverage, never `0` or `≥` (link:texts-and-languages.adoc#numbers[Numbers]); with every task measured the line says `41 of 41 tasks measured`.
+* *Coverage*: how many of the plan's tasks were measured, and for those that were not, why, by the closed list of the records (`not_reported_by_harness`, `output_unparsed`, `terminated`), `common.tokens.coverage`. A figure the harness's profile declares not applicable (no cache write for its harness) counts as `0` and leaves the task measured. A total over measured and unmeasured tasks is a floor, shown with `≥`, never as exact; with no task measured it is `not measured` with the coverage, never `0` or `≥` (link:texts-and-languages.adoc#numbers[Numbers]); with every task measured the line says `41 of 41 tasks measured`.
 * *By phase*: one line per phase the plan ran, in its order; a phase whose tasks were not all measured names how many.
 * *By role*: one line per role, with what the role pinned (`<harness>:<model>` and effort), as the plan's records name them; a role whose tasks were not all measured names how many.
 * *By model*: one line per `<harness>:<model>`; a model whose tasks were not all measured names how many. The lines of _By phase_, _By role_, and _By model_ each add up to _Total_, as the runtime summed them.
@@ -148,8 +148,8 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |Entscheidungen
 
 |`report.completion.decision_by`
-|{by, select, operator {you, {channel}} plan {the plan} withdrawn {withdrawn} other {{by}}}
-|{by, select, operator {du, {channel}} plan {der Plan} withdrawn {zurückgezogen} other {{by}}}
+|{by, select, operator {you, {channel}} delegated {left to the plan} quorum {a quorum} withdrawn {withdrawn} other {{by}}}
+|{by, select, operator {du, {channel}} delegated {dem Plan überlassen} quorum {ein Quorum} withdrawn {zurückgezogen} other {{by}}}
 
 |`report.completion.tokens`
 |Tokens

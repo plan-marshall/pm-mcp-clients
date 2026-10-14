@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Plan View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed, the completion report), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed)_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator] (the completion report), link:../../../../plan-marshall-documentation/doc/specification/store-schemas/03-findings-and-review-records.adoc#phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
@@ -116,21 +116,45 @@ Each node shows its state as a glyph and a word, never as colour alone:
 
 The web app draws the kinds with the icons of its design system; the terminal uses the words and the glyph `↳` (ASCII `->`). A sub-workflow called within a phase (a remediation unit, a landing variant, a chat the operator opened) has that phase: it is shown below the phase it is called in.
 
+*The unit it comes from*: in the web app, a phase or a sub-workflow names the unit it comes from and the level in force (the project's copy, the machine's, or the default), and opens that unit in the process designer in one step (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]; link:../web-app/process-designer.adoc#entry[Web App, Process Designer]); the terminal client offers no designer and names the web app instead.
+
 [#leaf]
 == A Leaf
 
 A leaf shows what runs or ran in it:
 
 * *A job*: its kind, its status, since when it runs or how long it ran, its outcome; a job that waits for a build slot says so (`waits for a build slot`).
-* *Tasks* (a state that hands work to workers): one line per task, with its role, the worker serving it (harness and model), its attempt, its status, and its outcome; how many tasks of how many are done.
+* *Tasks* (a state that hands work to workers): one line per task, with its role, the worker serving it (harness and model), its attempt, its status, and its outcome, and `off track` where the server judged its worker so; how many tasks of how many are done; a task opens what its worker does (<<worker>>).
 * *A finalize step*: its outcome and its firings (`fired 2×: failure, then done`).
 * *A state that waits for the operator*: what waits (a decision, a waiver request), and the way into it.
 * Its times: when it was entered and left, for each run.
 
+[#worker]
+== A Worker at Work
+
+Selecting a task of a leaf shows what its worker does, as it does it (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#worker-activity[What a Worker Does]):
+
+----
+  fix-relay › execute › execute.envelope · TASK-003
+  implement · claude sonnet · attempt 1 · running 6 min · 48 k tokens
+  14:02:11  wrote      Reading the relay's transport before changing it.
+  14:02:14  tool       read pm-relay/src/main/java/…/Transport.java
+  14:02:20  tool       bash ./mvnw -pl pm-relay test        failed · 4 KiB
+  14:03:02  changed    pm-relay/src/main/java/…/Transport.java
+  14:03:40  link       submit:TASK-003
+  14:03:41  ⚠ off track  repeating (5 of 5): shown
+----
+
+* *The head*: the task's role, its harness and model, its attempt, how long it runs (or ran), and the tokens it used so far (<<tokens>>).
+* *The activity*, newest last, each entry with its time and its kind: what the model wrote (cut to the runtime's bound), each tool it called with its target (a file, a command, a link of the task such as `submit:TASK-003`), whether the call failed and the size of its result, never its content, the files it changed, the links of its task it followed, the questions it asked, and its acknowledgement of an answer. A task of a harness whose output gives no event stream shows only the server's entries, and the head says so (`plan.activity.server_only`).
+* *Live while shown*: the client reads the activity from a cursor and opens its live stream only while it shows the task, and closes it when the task is left (`GET /api/v1/plans/{plan_id}/tasks/{queue_task_id}/activity` and `…/activity/events`, link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Local API]). Entries that gave way to the journal's bound show as a gap (`plan.activity.gap`). A task that ended shows its activity as it was.
+* *Untrusted*: every text and target may come from the project, a review comment, or a tool result: shown as plain text after removing every control sequence, never as markup and never as a link the client follows; secrets in it are already masked by the runtime (link:decisions.adoc#safety[Decisions, Untrusted Text]).
+* *Off track*: where the server judged the worker off track, the head and the entry say so with the signal (`repeating`, `no_progress`, `over_size`, `outside_footprint`), its measured value and threshold, and what the server did (`show`, `nudge`, `yield`, `restart`; link:../../../../plan-marshall-documentation/doc/specification/model-work/03-supervision-and-recycling.adoc#worker-off-track[A Worker Off Track]). It needs no act and is never shown as something that needs the operator; a `yield` or a `restart` is also a report (link:reports.adoc[Reports]).
+
 [#tokens]
 == Tokens So Far
 
-The second line of the head says how many tokens the plan has used so far, with the split: `tokens so far   412 k (380 k in · 32 k out)` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-token-usage[Tokens, Not Money]).
+The second line of the head says how many tokens the plan has used so far, with the split: `tokens so far   412 k (380 k in · 32 k out)` (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]).
 
 * *The figure* is the runtime's: the sum of the plan's usage records, `tokens = in + out`, in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]. The client adds nothing up.
 * *Coverage*: where some tasks of the plan were measured and others not, the figure is a floor with `≥` and the count beside it (`≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 of 17 tasks not measured`). Where model calls happened but no task's usage was measured, the line says `not measured` with the coverage (`not measured · 3 of 3 tasks not measured`), never `0` and never a `≥`. Before the plan's first model call it says `none yet`.
@@ -153,7 +177,7 @@ From a plan, its project is always one step away, and its epic, where it has one
 * *The project* opens the project in Running Work, its plans and epics (link:plan-overview.adoc#levels[Plan Overview]); *the epic*, where there is one, opens its epic view (link:epic-view.adoc[Epic View]), so that a plan opened from its epic's view goes back to the epic in that step.
 * The way back to where the view was opened (the browser's back, `Esc` in the terminal) stays as it is; the path is the way to the plan's own context, wherever the operator came from.
 * An ended plan's path leads the same way: to its project, and to its epic where it has one, live or as it ended.
-* Both come from the plan's process, which names its project with a link and, where the plan has one, its epic with a link (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-process-resource[The Plan's Process as a Structure]).
+* Both come from the plan's process, which names its project with a link and, where the plan has one, its epic with a link (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure]).
 
 [#live]
 == Live
@@ -301,6 +325,50 @@ Keys of the area `plan`, shared by both clients.
 |`plan.view.tokens_detail`
 |By phase and role
 |Zeige je Phase und Rolle
+
+|`plan.activity.title`
+|{role} · {harness} {model} · attempt {attempt} · {duration}
+|{role} · {harness} {model} · Versuch {attempt} · {duration}
+
+|`plan.activity.kind.text`
+|wrote
+|schrieb
+
+|`plan.activity.kind.tool_call`
+|tool
+|Werkzeug
+
+|`plan.activity.kind.tool_failed`
+|failed · {size}
+|fehlgeschlagen · {size}
+
+|`plan.activity.kind.file_changed`
+|changed
+|geändert
+
+|`plan.activity.kind.link`
+|link
+|Link
+
+|`plan.activity.kind.question`
+|asked
+|fragte
+
+|`plan.activity.kind.answer_ack`
+|answer received
+|Antwort erhalten
+
+|`plan.activity.server_only`
+|This harness reports no steps; only what the server saw is shown.
+|Dieser Harness meldet keine Schritte; gezeigt wird nur, was der Server gesehen hat.
+
+|`plan.activity.gap`
+|{count} older entries gave way
+|{count} ältere Einträge sind entfallen
+
+|`plan.activity.off_track`
+|off track: {signal} ({value} of {threshold}): {action}
+|vom Weg ab: {signal} ({value} von {threshold}): {action}
 |===
 
-The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The figure of the tokens uses `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).
+The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`; all of them are added with the contract (link:../../plans/process-contract.adoc[`process-contract`]). The signals and actions of a worker off track are texts of their closed lists, keys `plan.signal.<signal>` and `plan.signal.action.<action>`, added with the contract. The figure of the tokens uses `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).

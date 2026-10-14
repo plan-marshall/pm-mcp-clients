@@ -12,7 +12,7 @@ The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#t
 [#t-later]
 == Later Changes and Scripts
 
-The first two run a verb as one shell command, as a script does, and so do `config providers --verify` and `config credentials --rotate`; the others run it in the console. The machine settings of link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] start at <<t-settings>>.
+The first two run a verb as one shell command, as a script does, and so do `config providers --verify` and `credentials rotate`; the others run it in the console. The machine settings of link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] start at <<t-settings>>.
 
 [#t-config-direct]
 === Arguments as Answers (`config plan-defaults`)
@@ -94,7 +94,7 @@ Enrol 1 harness, Codex the default? [Enter]   b) back   ?   › ⏎
 ----
 
 * The proposal is the current state: every enrolled harness found is ticked, the default as recorded. A harness found that is not enrolled is offered unticked, marked `new since the last run`; ticking it adds it. An enrolled one no longer found is unticked and marked missing: it is offered for removal, and unticking an enrolled one found removes it too; `harness.confirm` lists it as `Remove OpenCode: its enrolment is deleted`. With nothing changed the prompt is `Keep as it is?`, and `Enter` ends the run without a change.
-* A harness that roles use cannot be removed, neither unticked nor as missing: it stays ticked, with the roles and the verb that reassigns them (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]); its default mark can still move.
+* A harness that roles use cannot be removed, neither unticked nor as missing: it stays ticked, with the roles and the verb that reassigns them (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]); its default mark can still move. The default harness cannot be removed before another is chosen as the default: unticking it says so (`operator.config.harnesses.default_locked`, xref:23-texts-settings.adoc#texts-settings[Texts]) and leaves it ticked.
 * The check and the confirmation cover the harnesses that change: a new one, and an enrolled one whose version or digest changed (`was 2.3.0: checked and enrolled again`). An unchanged one keeps its enrolment.
 * A new harness has no allowed model until `config models` runs; a removed one's allowed models go with it. A new default moves the steward of later advice to it (xref:07-transcripts-steps-4-7.adoc#t-roles-steward[Ask the Steward]); the roles keep their harnesses.
 * With arguments: `--add`, `--remove`, `--default`, `--path` (xref:01-commands.adoc#command-tree[The Verbs]).
@@ -171,7 +171,7 @@ Settings · How this machine is set up
 Open: 1-13   q) leave   ?   › 8
 ----
 
-* `1` to `7` run the aspect as `config <aspect>` does, a later run of its step (`onboard.entry` with `reconfigure <aspect>`); `8` and `9` open <<t-credential>> for that token; `10` <<t-consents>>; `11` <<t-documents>>; `12` <<t-devices>>; `13` the cleanup's durations, as `config cleanup` (xref:26-cleanup.adoc#t-durations[Cleanup, The Durations]). Each returns to this list when it ends; `q` leaves to the prompt.
+* `1` to `7` run the aspect as `config <aspect>` does, a later run of its step (`reconfigure <aspect>` from `settings.choose`, `onboard_run: reconfigure`); `8` and `9` open <<t-credential>> for that token; `10` <<t-consents>>; `11` <<t-documents>>; `12` <<t-devices>>; `13` the cleanup's durations, as `config cleanup` (xref:26-cleanup.adoc#t-durations[Cleanup, The Durations]). Each returns to this list when it ends; `q` leaves to the prompt.
 * A token that has expired or expires within 14 days is marked `⚠` with its date; an expired one also names the plans it holds (`⚠ expired: holds 1 plan`). The status of a token is that of its last check (<<t-providers-verify>>).
 * An aspect a project sets for itself is changed in that project's setup, never here; the line says only what the machine provides.
 
@@ -229,16 +229,16 @@ Copy from now on? [Enter]   b) back   ?   › ⏎
 ✓ Documents are copied into a plan; the start no longer asks.
 ----
 
-* The value is the machine's `sources.documents_mode`: `copy`, `move`, or `ask`, the default (link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#change-documents[Documents]); answering _always this_ at a plan's start writes the same setting (xref:18-starting.adoc[Starting Work]). `settings.record` records and audits it.
+* The value is the machine's `sources.documents_mode`: `copy`, `move`, or `ask`, the default (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#documents-source[Documents]); answering _always this_ at a plan's start writes the same setting (xref:18-starting.adoc[Starting Work]). `settings.record` records and audits it.
 * *Changed meanwhile*: where another client changed the mode after the question was shown, the change is refused with `conflict` and nothing is applied; the line `Changed meanwhile: it is now Ask each time. Yours was not applied.` asks `Apply yours again? [Enter]   k) keep the current value`. Every setting of `config` does the same (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]).
 * `--mode copy|move|ask` answers the choice. With _Move_ the machine's default, a move is still accepted only from this client and from a browser on the loopback listener; a device on the network copies.
 
 [#t-credential]
-=== A Token Rotated or Replaced (`config credentials --rotate|--replace`, `settings.credential`, `settings.store-credential`)
+=== A Token Rotated or Replaced (`credentials rotate|set`, `settings.credential`, `settings.store-credential`)
 
 [source,text]
 ----
-$ pm-operator config credentials --rotate github
+$ pm-operator credentials rotate github
 Credentials · A new token for github
   entry       github, used by GitHub (gh)
   rotate      a new secret for this entry; its kind and the providers that
@@ -260,10 +260,10 @@ Providers · Checking the providers that use github
 ✓ github verified. 1 plan that waited for it goes on: fix-relay
 ----
 
-* `settings.credential` asks the secret with the echo off (xref:07-transcripts-steps-4-7.adoc#t-providers-credentials[A Missing Token]); it is the operator's own act and needs no consent. `--rotate` keeps the entry's kind and its other fields; `--replace` asks the kind first, from those the provider accepts (`1) fine-grained token ← 2) classic token`), and writes a new entry of that kind under the same key.
+* `settings.credential` asks the secret with the echo off (xref:07-transcripts-steps-4-7.adoc#t-providers-credentials[A Missing Token]); it is the operator's own act and needs no consent. `credentials rotate` keeps the entry's kind and its other fields; `credentials set` on an existing entry replaces it: it asks the kind first, from those the provider accepts (`1) fine-grained token ← 2) classic token`), and writes a new entry of that kind under the same key.
 * `settings.store-credential` writes it into the recorded store and drops every token derived from the old secret. The check that follows is `providers.verify-consent` and `providers.verify` on the providers that use the token, as in the onboarding; a failed check leads to `providers.failed` (xref:07-transcripts-steps-4-7.adoc#t-providers-verify[Check]).
 * A token that has expired holds every plan that needs it (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]); the hold names this verb, and the plans go on only once the new token verifies, which the last line says; on `providers.failed` the hold stays.
-* `pm-operator credentials set|rotate` stay the plain verbs of the store, without the check.
+* `credentials set` of a new key enters a token as `providers.credentials` does; `credentials status|verify|remove|migrate` are the other verbs of the specification.
 
 [#t-providers-verify]
 === Providers Checked Again (`config providers --verify`)
@@ -306,9 +306,9 @@ Store and check it? [Enter]   b) back   ?   › ⏎
 ----
 pm › web devices
 Paired devices · The browsers that can act on this machine
-    1) Firefox on mbp-oliver     paired 12 May   last used today 14:02   loopback
-    2) Safari on iPad            paired 20 May   last used 3 d ago       network
-    3) Chrome on build-box       paired 2 Jun    last used 5 weeks ago   loopback
+    1) Firefox on mbp-oliver     paired 12 May from loopback   last used today 14:02
+    2) Safari on iPad            paired 20 May from network    last used 3 d ago
+    3) Chrome on build-box       paired 2 Jun from loopback    last used 5 weeks ago
 
   The console needs no pairing and is not listed. Network listener: on.
 
@@ -337,10 +337,10 @@ Revoke? [Enter]   b) back   ?   › ⏎
 pm ›
 ----
 
-* `web devices` is the terminal side of link:../shared/paired-devices.adoc[Paired Devices]: the list (`devices.list`) with label, when paired and last used, and from where (loopback or the network); the acts (`devices.act`) rename (`devices.rename`), revoke one (`devices.revoke`), revoke all others (`devices.revoke-others`), and turn the network listener off (`devices.listener-off`); a revocation voids the device's token at once and closes its open pages with the reason.
+* `web devices` is the terminal side of link:../shared/paired-devices.adoc[Paired Devices]: the list (`devices.list`) with label, when paired and from where (`paired_from`: loopback or the network), and when last used; the acts (`devices.act`) rename (`devices.rename`), revoke one (`devices.revoke`), revoke all others (`devices.revoke-others`), and turn the network listener off (`devices.listener-off`); a revocation voids the device's secret at once and closes its open pages with the reason.
 * The console acts from no device, so it marks none _this one_, and _revoke all others_ revokes every paired device; its confirmation says so. The browser the console's entry paired or last opened on this machine is named when it is revoked: its pages land on the pairing page. Every revocation asks, since it cannot be undone; `--yes` answers that confirmation in a script.
-* _Turn the network listener off_ (`n`, or `listener-off`) is offered only while it is on and asks nothing: it closes the HTTPS listener of the network, leaves the loopback listener open, unlike `web disable`, and keeps the devices on the network paired. `web lan` turns it on again (xref:05-transcripts-entry.adoc#t-entry-other[Another Device]).
-* The direct forms `web devices rename <device_id> <label>`, `web devices revoke <device_id>`, `web devices revoke --others`, and `web devices listener-off` act at once after the confirmation where there is one; the ids are the numbers of the list or the device ids the list shows with `?`.
+* _Turn the network listener off_ (`n`, or `listener-off`) is offered only while it is on and asks nothing: it closes the HTTPS listener of the network, leaves the loopback listener open, unlike `web disable`, and keeps the devices on the network paired. `web enable --lan` turns it on again (xref:05-transcripts-entry.adoc#t-entry-other[Another Device]).
+* The direct forms `web devices list`, `web devices rename <device_id> <label>`, `web devices revoke <device_id>`, `web devices revoke --others` (and `revoke --all`, the same from the terminal, which acts from no device: every paired device is revoked), and `web devices listener-off` act at once after the confirmation where there is one; the ids are the numbers of the list or the device ids the list shows with `?`.
 
 [#state-coverage]
 == Every State and Its Transcript
@@ -363,13 +363,17 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |console
 |xref:05-transcripts-entry.adoc#t-console[The Console at Work]
 
-|`entry.check-onboarded`, `entry.where-to-onboard`, `onboard.mode`
-|`[S]`, `[O]`, `[O]`
+|`entry.check-onboarded`, `entry.where-to-onboard`, `onboard.entry`, `onboard.mode`
+|`[S]`, `[O]`, `[S]`, `[O]`
 |xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded (entry.runtime, entry.check-onboarded, entry.where-to-onboard, onboard.mode)], xref:05-transcripts-entry.adoc#t-mode[Guided (onboard.mode)]
 
 |`auto.consent`, `auto.run`, `auto.result`
 |`[O]`, `[S]`, `[O]`
 |xref:05-transcripts-entry.adoc#t-auto[Automatic (auto.consent, auto.run, auto.result)]
+
+|`onboard.language`, `onboard.harnesses`, `onboard.models`, `onboard.assign-roles`, `onboard.credential-store`, `onboard.providers`, `onboard.plan-defaults`
+|`↳` each
+|the calls of the seven steps, one sub-workflow each, shown as the step's frame `[n/7]` (xref:05-transcripts-entry.adoc#t-mode[Guided (onboard.mode)]); their states are the rows below
 
 |`language.detect`, `language.choose`, `language.record`, `language.done`
 |`[S]`, `[O]`, `[S]`, end
@@ -417,7 +421,11 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 
 |`store.detect`, `store.choose`, `store.consent`, `store.check`, `store.record`, `store.done`
 |`[S]`, `[O]`, `[O]`, `[S]`, `[S]`, end
-|xref:07-transcripts-steps-4-7.adoc#t-store-choose[Choose (store.detect, store.choose, store.consent, store.check, store.record, store.done)], xref:07-transcripts-steps-4-7.adoc#t-store-move[A Later Change Moves the Tokens (config credentials)]
+|xref:07-transcripts-steps-4-7.adoc#t-store-choose[Choose (store.detect, store.choose, store.consent, store.check, store.record, store.done)]
+
+|`store.confirm-move`, `store.move`
+|`[O]`, `[S]`
+|xref:07-transcripts-steps-4-7.adoc#t-store-move[A Later Change Moves the Tokens (config credentials, store.confirm-move, store.move)]
 
 |`store.unavailable`
 |`[O]`
@@ -459,6 +467,10 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |`[O]`, `[S]`
 |<<t-documents>>
 
+|`settings.cleanup-durations`, `settings.record`
+|`[O]`, `[S]`
+|xref:26-cleanup.adoc#t-durations[Cleanup, The Durations]
+
 |`settings.credential`, `settings.store-credential`
 |`[O]`, `[S]`
 |<<t-credential>>
@@ -468,4 +480,4 @@ The states are those of the use cases' flows (link:../../../../plan-marshall-doc
 |xref:07-transcripts-steps-4-7.adoc#t-completed[Done (onboard.completed)]
 |===
 
-The terminal's texts of `web devices`, `config`, `config consents`, `config documents`, `config credentials --rotate|--replace`, and `config providers --verify`, and the shared texts of the machine settings, are in xref:23-texts-settings.adoc#texts-settings[Texts: Machine Settings and Paired Devices].
+The terminal's texts of `web devices`, `config`, `config consents`, `config documents`, `credentials rotate|set`, and `config providers --verify`, and the shared texts of the machine settings, are in xref:23-texts-settings.adoc#texts-settings[Texts: Machine Settings and Paired Devices].

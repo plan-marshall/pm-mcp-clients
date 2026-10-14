@@ -5,9 +5,9 @@
 
 link:../README.adoc[Design] » link:system.adoc[System] » Cleanup
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6] (its report) and link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]; the stores of link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-reports[Reports to the Operator] (proposed), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#change-ended-work[Ended Work] (proposed), link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#retention[Retention & Rotation], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#periodic-sweep[Periodic Sweep], link:../../../../plan-marshall-documentation/doc/specification/filesystem-layout/03-project-store.adoc#archives[Archives], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#retention[Retention & Rotation], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#periodic-sweep[Periodic Sweep], link:../../../../plan-marshall-documentation/doc/specification/filesystem-layout/03-project-store.adoc#archives[Archives], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#cleanup-journal[Cleanup Journal], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc[Event Catalogue]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/26-cleanup.adoc[Terminal Client, Cleanup], link:../web-app/README.adoc#structure[Web App]. A part of link:system.adoc[System]; its texts are in link:cleanup-texts.adoc[a part of their own].
 
@@ -31,8 +31,8 @@ Two classes, kept apart:
 |its archiving
 
 |Logs of ended work
-|the logs of ended jobs, also of a plan that still runs, and the worker and session logs of archived plans; counted per plan
-|the end of its job; for worker and session logs, the plan's archiving
+|the logs of ended jobs, also of a plan that still runs, and the worker logs of archived plans; counted per plan
+|the end of its job; for worker logs, the plan's archiving
 
 |Read reports
 |a report the operator has read (link:reports.adoc#read[Reports, Reading a Report])
@@ -43,9 +43,9 @@ Two classes, kept apart:
 |its unenrolment
 |===
 
-* *Technical residue* is removed by the periodic sweep of the runtime, as before, and never asked: temporary files, caches, the worker directories of ended jobs, stale locks, fenced generations, and the candidates of the evidence-based sweeps (old rows of the workspace, retired lesson bodies). The cleanup view shows it as figures per step only (<<residue>>); in the terminal `pm-operator sweep` lists what the next pass would remove, and `--apply` runs it now.
+* *Technical residue* is removed by the periodic sweep of the runtime by itself, each removal audited, and never asked: temporary files, caches, the worker directories of ended jobs, stale locks and leases, fenced generations, rotated audit files, and the candidates of the evidence-based sweeps (ended task records, old rows of the workspace, retired lesson bodies). The cleanup view shows it as figures per step only (<<residue>>); in the terminal `pm-operator sweep` lists what the next pass would remove, and `--apply` runs it now.
 * *Never offered*: an unread report, a pending entry (a start not finished), an archived plan that still owes an item (it is never due while it does), anything of running work but the logs of its ended jobs, and anything outside the machine store: a branch, a pull request, the remote, a checkout, the team's `.marshall/`. Unread reports and pending entries never expire.
-* *No automatic deletion of work history*: the former retention by `archived_plans_days` and `job_logs_days` is gone; an archived plan and a job log wait for the cleanup however old they are (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup]).
+* *No automatic deletion of work history*: no retention period applies to it; an archived plan and a job log wait for the cleanup however old they are (link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]).
 
 [#durations]
 == How Long Work Is Kept
@@ -204,7 +204,7 @@ What the runtime removes without asking, as figures per step of the sweep, each 
 ----
 
 * The figures are the runtime's, per sweep step, as it last ran; a step that has not run since the start says `not run yet`. Nothing here is a command; in the terminal `pm-operator sweep` lists what the next pass would remove and `pm-operator sweep --apply` runs it at once (link:../terminal-client/26-cleanup.adoc#t-sweep[Terminal Client, Cleanup]).
-* The remaining keys of `retention` (the retired lesson bodies, the quiet window of `arch-constraint` lessons, the old rows of the workspace) govern these steps and stay operator settings of the project file; they are not shown as durations of the cleanup.
+* The remaining keys of `retention` (the retired lesson bodies, the quiet window of `arch-constraint` lessons, the old rows of the workspace) govern these steps and are operator settings of the project's `local-config.json`, with machine-wide defaults (link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#retention-days[Retention of Residue]); they are not shown as durations of the cleanup.
 
 [#deleting]
 == What Deleting Does, and What It Leaves
@@ -238,12 +238,12 @@ The titles, outcomes' reasons, and report subjects of the details come from mode
 [#requests]
 == The Requests
 
-The change names the requests (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#change-cleanup[One Cleanup]); the clients use them as it names them:
+The specification names the requests (link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]); the clients use them as it names them:
 
 * `GET /api/v1/system/cleanup`: the open job (its id `cln-NNNN`, its state `open`, `postponed`, `deleting`, or `done`, since when it is due, the summary with the space it frees, the details paged per project, the links of its three commands) or none with the time of the next check; the durations in force, the count of kept items, and the residue figures per sweep step with the time of its last run. It is the state `cleanup.job` of link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3].
 * `POST /api/v1/system/cleanup/{job_id}/delete` with the unchecked items, after `cleanup.confirm`; `POST /api/v1/system/cleanup/{job_id}/remind`; `POST /api/v1/system/cleanup/{job_id}/ignore`. Each closes the job; on a job already decided each answers the decision taken, with who took it.
 * `GET /api/v1/system/cleanup/kept`, paged; `PUT /api/v1/system/cleanup/kept` with the kept list as the operator leaves it: the items no longer in it are released. An item that was never kept cannot be added.
-* The durations are machine settings and a project's own values, changed as those are (`settings.record` of link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], `project.operator` of a project's setup); a change made in the cleanup view is the same request.
+* The durations are machine settings and a project's own values, changed as those are (`settings.cleanup-durations` and `settings.record` of link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], `project.operator` of a project's setup); a change made in the cleanup view is the same request.
 * The report `system.cleanup_due` arrives as every report (link:reports.adoc#read[Reports, Reading a Report]); a new job, a decision, and the progress and end of a delete reach the clients on `GET /api/v1/events` as `cleanup.job_opened`, `cleanup.decided`, `cleanup.progress`, and `cleanup.done`.
 * The snapshot of the System view (`GET /api/v1/system`) carries the line of the cleanup: the open job's counts and space, or the next check.
 
@@ -254,7 +254,3 @@ The clients hold no rule of their own: what is offered is what the runtime's rep
 
 `cleanup.check` and `cleanup.report` run in the runtime; the clients show `cleanup.job` and `cleanup.confirm`, and the results of `cleanup.delete`, `cleanup.remind`, and `cleanup.keep` (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]). The terminal's transcript of each is in link:../terminal-client/26-cleanup.adoc#state-coverage[Terminal Client, Cleanup].
 
-[#open-points]
-== Open Points
-
-* *Ignore without a confirmation*: the design asks none, since _Kept for good_ undoes it; the operator confirms.
