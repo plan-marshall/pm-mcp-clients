@@ -12,7 +12,6 @@ package de.planmarshall.mock.runtime;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -173,7 +172,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 2. Authentication check
         if (isWeb) {
-            if (path.equals("/api/v1/pair") || path.equals("/pair")) {
+            if ("/api/v1/pair".equals(path) || "/pair".equals(path)) {
                 handlePairing(request, response);
                 return;
             }
@@ -196,7 +195,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 3. SSE event stream subscription
-        if (request.method().equals("GET") && (path.equals("/api/v1/events") || path.endsWith("/events"))) {
+        if ("GET".equals(request.method()) && ("/api/v1/events".equals(path) || path.endsWith("/events"))) {
             handleEventStream(request, response);
             return;
         }
@@ -318,7 +317,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (parsed != null) {
                     code = JsonTree.string(parsed, "code");
                 }
-            } catch (Exception ignored) {
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IOException | RuntimeException ignored) {
             }
         }
         if (code == null && request.query() != null) {
@@ -366,7 +366,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleControlRequest(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
-        if (path.equals("/mock/state") && request.method().equals("GET")) {
+        if ("/mock/state".equals(path) && "GET".equals(request.method())) {
             StateDefinition state;
             String stateId;
             String scenarioName;
@@ -384,7 +384,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        if (path.equals("/mock/reset") && request.method().equals("POST")) {
+        if ("/mock/reset".equals(path) && "POST".equals(request.method())) {
             reset();
             response.json(200, Map.of(
                     "status", "reset",
@@ -394,7 +394,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        if (path.equals("/mock/scenario") && request.method().equals("POST")) {
+        if ("/mock/scenario".equals(path) && "POST".equals(request.method())) {
             String scenarioName = null;
             if (request.body().length > 0) {
                 try {
@@ -402,7 +402,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     if (parsed != null) {
                         scenarioName = JsonTree.string(parsed, "scenario");
                     }
-                } catch (Exception ignored) {
+                    // cui-rewrite:disable InvalidExceptionUsageRecipe
+                } catch (IOException | RuntimeException ignored) {
                 }
             }
             if (scenarioName == null && request.query() != null) {
@@ -424,13 +425,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         "scenario", currentScenario.name(),
                         "state", currentStateId
                 ));
-            } catch (Exception e) {
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (RuntimeException e) {
                 response.json(404, Map.of("error", "scenario_not_found", "message", e.getMessage()));
             }
             return;
         }
 
-        if (path.startsWith("/mock/goto/") && request.method().equals("POST")) {
+        if (path.startsWith("/mock/goto/") && "POST".equals(request.method())) {
             var targetState = path.substring("/mock/goto/".length());
             try {
                 goToState(targetState);

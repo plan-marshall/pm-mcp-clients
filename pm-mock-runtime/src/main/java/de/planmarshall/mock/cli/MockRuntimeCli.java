@@ -9,6 +9,7 @@
  */
 package de.planmarshall.mock.cli;
 
+import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
 
@@ -139,7 +140,8 @@ public final class MockRuntimeCli {
         MockRuntime runtime;
         try {
             runtime = MockRuntime.start(result.config());
-        } catch (Exception e) {
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException e) {
             err.println("Error starting mock runtime: " + e.getMessage());
             return 1;
         }

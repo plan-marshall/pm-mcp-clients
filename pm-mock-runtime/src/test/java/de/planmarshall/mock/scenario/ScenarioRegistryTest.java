@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -60,7 +59,7 @@ class ScenarioRegistryTest {
 
     @Test
     @DisplayName("resolves scenario from external filesystem path")
-    void resolvesFromFilePath(@TempDir Path tempDir) throws IOException {
+    void resolvesFromFilePath(@TempDir Path tempDir) throws Exception {
         var scenarioFile = tempDir.resolve("custom-scenario.json");
         var json = """
                 {

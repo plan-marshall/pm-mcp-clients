@@ -17,6 +17,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -304,7 +305,7 @@ public final class MockRuntime implements AutoCloseable {
      * @return all requests received by the runtime across both listeners
      */
     public List<MockHttpRequest> requests() {
-        var all = new java.util.ArrayList<>(unixServer.requests());
+        var all = new ArrayList<>(unixServer.requests());
         if (tcpServer != null) {
             all.addAll(tcpServer.requests());
         }

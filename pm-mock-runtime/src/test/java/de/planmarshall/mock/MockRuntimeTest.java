@@ -14,13 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.time.Duration;
-import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -194,7 +192,7 @@ class MockRuntimeTest {
             var auth = "Bearer " + runtime.token();
 
             try (var exchange = client.open(HttpRequest.get("/api/v1/events")
-                    .withHeader("Authorization", auth))) {
+                         .withHeader("Authorization", auth))) {
                 assertTrue(exchange.isEventStream());
                 var sse = exchange.events();
 
@@ -229,7 +227,7 @@ class MockRuntimeTest {
                     .uri(URI.create(baseUrl + "/api/v1/status"))
                     .GET()
                     .build();
-            var unauthRes = httpClient.send(unauthReq, java.net.http.HttpResponse.BodyHandlers.ofString());
+            var unauthRes = httpClient.send(unauthReq, HttpResponse.BodyHandlers.ofString());
             assertEquals(401, unauthRes.statusCode());
 
             // 2. Attempt pairing with wrong code -> 400
@@ -238,7 +236,7 @@ class MockRuntimeTest {
                     .header("Content-Type", "application/json")
                     .POST(java.net.http.HttpRequest.BodyPublishers.ofString("{\"code\":\"wrong-code\"}"))
                     .build();
-            var badPairRes = httpClient.send(badPairReq, java.net.http.HttpResponse.BodyHandlers.ofString());
+            var badPairRes = httpClient.send(badPairReq, HttpResponse.BodyHandlers.ofString());
             assertEquals(400, badPairRes.statusCode());
 
             // 3. Successful pairing with code 'KXQB-MRTN' -> 200 and device_secret
@@ -247,7 +245,7 @@ class MockRuntimeTest {
                     .header("Content-Type", "application/json")
                     .POST(java.net.http.HttpRequest.BodyPublishers.ofString("{\"code\":\"KXQB-MRTN\"}"))
                     .build();
-            var pairRes = httpClient.send(pairReq, java.net.http.HttpResponse.BodyHandlers.ofString());
+            var pairRes = httpClient.send(pairReq, HttpResponse.BodyHandlers.ofString());
             assertEquals(200, pairRes.statusCode());
             var pairJson = JsonTree.asObject(JsonTree.parse(pairRes.body()));
             var deviceSecret = JsonTree.string(pairJson, "device_secret");
@@ -260,7 +258,7 @@ class MockRuntimeTest {
                     .header("Authorization", "Bearer " + deviceSecret)
                     .GET()
                     .build();
-            var authRes = httpClient.send(authReq, java.net.http.HttpResponse.BodyHandlers.ofString());
+            var authRes = httpClient.send(authReq, HttpResponse.BodyHandlers.ofString());
             assertEquals(200, authRes.statusCode());
         }
     }

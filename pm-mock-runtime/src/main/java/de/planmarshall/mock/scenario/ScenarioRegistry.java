@@ -71,7 +71,8 @@ public final class ScenarioRegistry {
         }
         try {
             return Optional.of(resolve(name));
-        } catch (Exception e) {
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (RuntimeException e) {
             return Optional.empty();
         }
     }

@@ -27,7 +27,6 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -153,7 +152,8 @@ public final class MockHttpServer implements AutoCloseable {
                 if (!response.isCommitted()) {
                     response.send(500, "application/json", "{\"error\":\"unhandled_request\"}");
                 }
-            } catch (Exception e) {
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IOException | RuntimeException e) {
                 if (!response.isCommitted()) {
                     response.send(500, "application/json", "{\"error\":\"internal_error\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}");
                 }
