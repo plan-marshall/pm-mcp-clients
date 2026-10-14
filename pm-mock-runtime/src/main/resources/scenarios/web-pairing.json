@@ -1,0 +1,38 @@
+{
+  "format_version": 1,
+  "name": "web-pairing",
+  "description": "Web client pairing and access",
+  "start": "web.pair",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "machine": "mock-machine"
+      }
+    }
+  },
+  "states": {
+    "web.pair": {
+      "representation": {
+        "scope": "workspace",
+        "state": "web.pair",
+        "summary": "Pair this browser"
+      },
+      "links": {
+        "pair": {
+          "next": "web.paired",
+          "href": "/api/v1/pair"
+        }
+      }
+    },
+    "web.paired": {
+      "representation": {
+        "scope": "workspace",
+        "state": "web.paired",
+        "summary": "Browser paired successfully"
+      },
+      "links": {}
+    }
+  }
+}
