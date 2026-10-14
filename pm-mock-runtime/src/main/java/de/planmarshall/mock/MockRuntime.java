@@ -104,9 +104,12 @@ public final class MockRuntime implements AutoCloseable {
         } catch (UnsupportedOperationException _) {
             var dir = Files.createTempDirectory("pm-mock"); // NOSONAR
             var file = dir.toFile();
-            file.setReadable(true, true);
-            file.setWritable(true, true);
-            file.setExecutable(true, true);
+            var permissionsApplied = file.setReadable(true, true)
+                    && file.setWritable(true, true)
+                    && file.setExecutable(true, true);
+            if (!permissionsApplied) {
+                // Operating system or filesystem does not support setting file permissions
+            }
             return dir;
         }
     }

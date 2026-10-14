@@ -18,7 +18,11 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.time.Duration;
+import java.util.Comparator;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -180,7 +184,7 @@ class MockRuntimeTest {
             // Wait for auto-transition to complete
             var deadline = System.currentTimeMillis() + 2000;
             while (!"harness.confirm".equals(runtime.currentStateName()) && System.currentTimeMillis() < deadline) {
-                Thread.sleep(10);
+                LockSupport.parkNanos(10_000_000L);
             }
             assertEquals("harness.confirm", runtime.currentStateName());
         }
@@ -262,6 +266,52 @@ class MockRuntimeTest {
                     .build();
             var authRes = httpClient.send(authReq, HttpResponse.BodyHandlers.ofString());
             assertEquals(200, authRes.statusCode());
+        }
+    }
+
+    @Test
+    @DisplayName("programmatic facade methods provide full runtime introspection and control")
+    void programmaticFacade() throws Exception {
+        var tempBase = Files.createTempDirectory(Path.of("/tmp"), "pm-mb");
+        try {
+            var config = MockRuntimeConfig.builder()
+                    .scenario("status-only")
+                    .base(tempBase)
+                    .cleanupBaseOnClose(false)
+                    .build();
+
+            try (var runtime = MockRuntime.start(config)) {
+                assertEquals(tempBase, runtime.base());
+                assertNotNull(runtime.paths());
+                assertEquals(runtime.paths().socket(), runtime.socketPath());
+                assertNotNull(runtime.token());
+                assertNotNull(runtime.deviceSecret());
+                assertEquals(-1, runtime.webPort());
+                assertTrue(runtime.environment().containsKey(MachinePaths.ENV_BASE));
+
+                assertEquals("status-only", runtime.currentScenarioName());
+                assertEquals("runtime.idle", runtime.currentStateName());
+                assertNotNull(runtime.currentScenario());
+
+                runtime.goToState("runtime.idle");
+                assertEquals("runtime.idle", runtime.currentStateName());
+
+                runtime.switchScenario("onboarding-happy");
+                assertEquals("onboarding-happy", runtime.currentScenarioName());
+                assertEquals("onboard.mode", runtime.currentStateName());
+
+                runtime.reset();
+                assertEquals("onboard.mode", runtime.currentStateName());
+
+                var awaited = runtime.awaitRequest(Duration.ofMillis(10));
+                assertTrue(awaited == null || awaited.receivedNanos() > 0);
+            }
+        } finally {
+            try (var walk = Files.walk(tempBase)) {
+                for (var p : walk.sorted(Comparator.reverseOrder()).toList()) {
+                    Files.deleteIfExists(p);
+                }
+            }
         }
     }
 }

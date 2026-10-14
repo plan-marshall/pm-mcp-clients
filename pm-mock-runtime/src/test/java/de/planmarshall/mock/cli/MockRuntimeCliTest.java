@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -143,5 +144,34 @@ class MockRuntimeCliTest {
         var exitCode = MockRuntimeCli.run(new String[]{"-s", "non-existent-scenario-file-1234"}, out, err);
         assertEquals(1, exitCode);
         assertTrue(stderr().contains("Error starting mock runtime"));
+    }
+
+    @Test
+    @DisplayName("run returns 0 on --help")
+    void runHelp() {
+        var exitCode = MockRuntimeCli.run(new String[]{"--help"}, out, err);
+        assertEquals(0, exitCode);
+        assertTrue(stdout().contains("Usage: pm-mock-runtime"));
+    }
+
+    @Test
+    @DisplayName("reports invalid port error")
+    void invalidPort() {
+        var result = MockRuntimeCli.parse(new String[]{"--web-port", "abc"}, out, err);
+        assertEquals(2, result.exitCode());
+        assertTrue(stderr().contains("invalid port"));
+    }
+
+    @Test
+    @DisplayName("starts runtime and exits cleanly when interrupted")
+    void runInterrupted() {
+        var currentThread = Thread.currentThread();
+        Thread.ofVirtual().start(() -> {
+            LockSupport.parkNanos(100_000_000L);
+            currentThread.interrupt();
+        });
+        var exitCode = MockRuntimeCli.run(new String[]{"-s", "status-only", "-p", "0"}, out, err);
+        assertEquals(0, exitCode);
+        assertTrue(stdout().contains("Mock runtime started successfully"));
     }
 }

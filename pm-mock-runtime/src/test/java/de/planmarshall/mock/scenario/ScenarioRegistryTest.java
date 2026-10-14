@@ -94,4 +94,15 @@ class ScenarioRegistryTest {
         assertThrows(NullPointerException.class, () -> registry.resolve(null));
         assertThrows(IllegalArgumentException.class, () -> registry.resolve("   "));
     }
+
+    @Test
+    @DisplayName("finds scenario safely returning Optional and handles clear")
+    void findAndClear() {
+        assertTrue(registry.find("status-only").isPresent());
+        assertTrue(registry.find("unknown-scenario").isEmpty());
+        assertTrue(registry.find(null).isEmpty());
+
+        registry.clear();
+        assertTrue(registry.find("status-only").isPresent());
+    }
 }
