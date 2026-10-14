@@ -14,6 +14,9 @@ import java.util.UUID;
 import lombok.Builder;
 import lombok.Value;
 
+import de.planmarshall.mock.scenario.Scenario;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
+
 /**
  * Configuration options for starting a {@link MockRuntime} instance.
  */
@@ -43,6 +46,12 @@ public class MockRuntimeConfig {
 
     /** Whether to recursively delete the base directory on {@link MockRuntime#close()}. */
     Boolean cleanupBaseOnClose;
+
+    /** An optional preconfigured scenario registry. If {@code null}, a new registry is instantiated. */
+    ScenarioRegistry registry;
+
+    /** An optional preloaded scenario instance. If specified, takes precedence as the initial scenario. */
+    Scenario initialScenario;
 
     /**
      * @return the runtime token or a generated default

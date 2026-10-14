@@ -22,6 +22,8 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
 
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +35,9 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.mock.scenario.Scenario;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
+import de.planmarshall.mock.scenario.StateDefinition;
 
 @DisplayName("MockRuntime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -312,6 +317,29 @@ class MockRuntimeTest {
                     Files.deleteIfExists(p);
                 }
             }
+        }
+    }
+
+    @Test
+    @DisplayName("starts successfully with in-memory programmatic Scenario and custom ScenarioRegistry")
+    void startWithProgrammaticScenario() throws Exception {
+        var states = Map.of("initial", new StateDefinition(
+                Map.of("custom_key", "custom_val"),
+                Map.of(),
+                List.of(),
+                null
+        ));
+        var dynamicScenario = new Scenario(1, "synthetic-scenario", "Synthetic", "initial", null, Map.of(), states);
+        var registry = new ScenarioRegistry();
+        var config = MockRuntimeConfig.builder()
+                .registry(registry)
+                .initialScenario(dynamicScenario)
+                .build();
+
+        try (var runtime = MockRuntime.start(config)) {
+            assertEquals("synthetic-scenario", runtime.currentScenarioName());
+            assertEquals("initial", runtime.currentStateName());
+            assertNotNull(runtime.currentScenario());
         }
     }
 }

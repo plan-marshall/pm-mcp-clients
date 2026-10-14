@@ -268,3 +268,164 @@ The module ships with the following scenarios out of the box:
 * `onboarding-happy`: complete happy path machine onboarding flow through mode selection, language selection, harness verification, and confirmation.
 * `onboarding-harness-not-logged-in`: machine onboarding where harness probing fails with a missing login diagnosis and offers a fix link.
 * `web-pairing`: browser pairing flow demonstrating pairing code exchange and subsequent authenticated web client requests.
+
+== Extending the Mock Runtime
+
+The mock runtime provides three primary extension mechanisms: declarative classpath scenarios, external filesystem scenario files, and programmatic Java scenarios.
+
+=== 1. Adding Scenarios in Consuming Projects (Classpath Extension)
+
+Downstream modules (such as `pm-operator` or integration test modules) can declare custom scenarios without modifying `pm-mock-runtime`.
+
+1. Add `pm-mock-runtime` as a test-scoped dependency:
++
+[source,xml]
+----
+<dependency>
+    <groupId>de.planmarshall</groupId>
+    <artifactId>pm-mock-runtime</artifactId>
+    <scope>test</scope>
+</dependency>
+----
+
+2. Place your scenario file under `src/test/resources/scenarios/<scenario-name>.json`.
+3. Reference the scenario by bare name in your tests or CLI:
++
+[source,java]
+----
+try (var runtime = MockRuntime.start("my-custom-flow")) {
+    assertEquals("my-custom-flow", runtime.currentScenarioName());
+}
+----
++
+`ScenarioLoader` searches `scenarios/<name>.json` across the entire runtime classpath, automatically finding files packaged in test resources or dependent jars.
+
+=== 2. Loading External Scenarios from Disk
+
+Scenarios can be authored and maintained in standalone directories outside the repository:
+
+* *Via CLI*:
++
+[source,bash]
+----
+./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario /var/scenarios/custom-flow.json"
+----
+
+* *Via Java API*:
++
+[source,java]
+----
+var config = MockRuntimeConfig.builder()
+        .scenario("/var/scenarios/custom-flow.json")
+        .build();
+try (var runtime = MockRuntime.start(config)) {
+    // runtime loads and validates the external file
+}
+----
+
+=== 3. Programmatic Scenario Authoring in Java
+
+For dynamic or synthetic test scenarios generated at runtime, instantiate the domain records directly without writing files to disk:
+
+[source,java]
+----
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.scenario.LinkDefinition;
+import de.planmarshall.mock.scenario.Scenario;
+import de.planmarshall.mock.scenario.StateDefinition;
+
+var states = Map.of(
+    "step1", new StateDefinition(
+        Map.of("step", 1, "message", "Welcome"),
+        Map.of("next", new LinkDefinition("step2", "/api/v1/next", "POST", 200, null, 0)),
+        List.of(),
+        null
+    ),
+    "step2", new StateDefinition(
+        Map.of("step", 2, "message", "Done"),
+        Map.of(),
+        List.of(),
+        null
+    )
+);
+
+var scenario = new Scenario(
+    1,                  // format_version
+    "synthetic-flow",   // name
+    "In-memory flow",   // description
+    "step1",            // start state
+    "TEST-PAIR",        // pairing code
+    Map.of(),           // static routes
+    states              // state definitions
+);
+
+var config = MockRuntimeConfig.builder()
+        .initialScenario(scenario)
+        .build();
+
+try (var runtime = MockRuntime.start(config)) {
+    assertEquals("synthetic-flow", runtime.currentScenarioName());
+    assertEquals("step1", runtime.currentStateName());
+}
+----
+
+=== 4. Simulating Latency, Failures, and Edge Cases
+
+Scenarios support explicit fault injection and temporal simulation:
+
+* *Artificial Latency (`delay_ms`)*:
++
+[source,json]
+----
+"links": {
+  "slow-check": {
+    "next": "checked.state",
+    "href": "/api/v1/operator/slow-check",
+    "method": "POST",
+    "delay_ms": 1500
+  }
+}
+----
+
+* *Simulated Refusals (`status` and `error`)*:
++
+Setting `status >= 400` simulates error conditions (e.g. conflict, permission denied). The engine returns the specified HTTP status and a standard error payload:
++
+[source,json]
+----
+"links": {
+  "locked-action": {
+    "next": "same.state",
+    "href": "/api/v1/operator/action",
+    "method": "POST",
+    "status": 409,
+    "error": "resource_locked"
+  }
+}
+----
+
+* *Timed Automatic Transitions (`auto`)*:
++
+Simulates asynchronous backend progress (e.g. background job finishing) by advancing the state after `after_ms` milliseconds without requiring a client request:
++
+[source,json]
+----
+"auto": {
+  "after_ms": 1000,
+  "next": "job.completed"
+}
+----
+
+=== 5. Validation Rules and Diagnostics
+
+`ScenarioLoader` enforces closed state machine rules upon loading:
+
+* `format_version` must equal `1`.
+* `start` state must exist in `states`.
+* Every link `next` must reference an existing state in `states` (no dangling links).
+* Every `auto.next` must reference an existing state in `states`.
+* Every `representation` must be a valid JSON object.
+
+If any invariant is violated, a `ScenarioValidationException` is thrown, naming the file, state, field, and violation reason (e.g. `routes.GET /api/v1/status: route definition must be an object`).
+

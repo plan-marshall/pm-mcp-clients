@@ -13,12 +13,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import de.planmarshall.mock.scenario.Scenario;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
+import de.planmarshall.mock.scenario.StateDefinition;
 
 @DisplayName("MockRuntimeConfig")
 class MockRuntimeConfigTest {
@@ -44,6 +51,9 @@ class MockRuntimeConfigTest {
     @DisplayName("builder applies custom values")
     void customValues() {
         var base = Path.of("/tmp/custom-base");
+        var registry = new ScenarioRegistry();
+        var scenario = new Scenario(1, "in-mem", "desc", "s1", null, Map.of(),
+                Map.of("s1", new StateDefinition(Map.of("ok", true), Map.of(), List.of(), null)));
         var config = MockRuntimeConfig.builder()
                 .scenario("onboarding-happy")
                 .base(base)
@@ -51,6 +61,8 @@ class MockRuntimeConfigTest {
                 .runtimeToken("custom-token")
                 .deviceSecret("custom-secret")
                 .cleanupBaseOnClose(false)
+                .registry(registry)
+                .initialScenario(scenario)
                 .build();
 
         assertEquals("onboarding-happy", config.getScenario());
@@ -61,6 +73,8 @@ class MockRuntimeConfigTest {
         assertEquals("custom-secret", config.getDeviceSecret());
         assertEquals("custom-secret", config.effectiveDeviceSecret());
         assertFalse(config.getCleanupBaseOnClose());
+        assertSame(registry, config.getRegistry());
+        assertSame(scenario, config.getInitialScenario());
     }
 
     @Test

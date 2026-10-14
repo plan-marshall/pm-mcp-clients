@@ -152,8 +152,14 @@ public final class MockRuntime implements AutoCloseable {
         setupFilesystem(paths, token);
 
         // 2. Load scenario
-        var registry = new ScenarioRegistry();
-        var initialScenario = registry.resolve(config.getScenario());
+        var registry = config.getRegistry() != null ? config.getRegistry() : new ScenarioRegistry();
+        Scenario initialScenario;
+        if (config.getInitialScenario() != null) {
+            initialScenario = config.getInitialScenario();
+            registry.register(initialScenario);
+        } else {
+            initialScenario = registry.resolve(config.getScenario());
+        }
 
         // 3. Initialize engine
         var engine = new MockRuntimeEngine(registry, initialScenario, token, deviceSecret);
