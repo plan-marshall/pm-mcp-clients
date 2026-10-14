@@ -16,9 +16,9 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * The input: an uploaded file read in the browser, a pasted text, an installed unit with its levels; the draft kept in the browser of the device, restored on reload, and the question on leaving it changed.
 * The text and the structure side by side, kept in step from the runtime's parse, the selection following both ways; the building blocks of the project's catalogue with search and insert.
 * Validating with its stages and findings marked in the text and the structure; the composed process as the plan view draws it; an outdated result.
-* Download built in the browser, with the marker line for a unit with findings.
-* Placing with the target, the difference (side by side at desktop width), the projects it comes into force in, the landing's lines, a failed landing tried again, a conflict compared again, the audit line; removing with the level that takes over.
-* At phone width read only, with validate and download; every view light and dark; texts from the catalogue only (area `designer`).
+* The frontmatter panel, kept in step with the text: the fields, the modification date and release set on an edit, a signature dropped, the author asked once per device, the interface of a replacing unit read only; entries and exits in the structure.
+* Placing with the target, the difference (side by side at desktop width), the projects it comes into force in, the landing's lines, a failed landing tried again, a conflict compared again, the result line with author, date, and digest; removing with the level that takes over.
+* At phone width read only, with validate; every view light and dark; texts from the catalogue only (area `designer`).
 
 == Trace
 

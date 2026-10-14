@@ -434,6 +434,7 @@ Which recipe?   project pm-mcp-clients
   1) coverage     raise the test coverage of modules          domain java
   2) deps-update  update the dependencies of the build        domain java
   3) audit        audit the code against a request            project · takes a request
+  4) release-note  draft the notes of the next release         this machine
   › 1
 coverage · its parameters
   1) Modules       all 9 ← proposed
