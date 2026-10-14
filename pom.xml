@@ -31,6 +31,7 @@
         <module>pm-exec</module>
         <module>pm-relay</module>
         <module>pm-operator</module>
+        <module>pm-mock-runtime</module>
     </modules>
     <scm>
         <url>https://github.com/plan-marshall/pm-mcp-clients/</url>
@@ -61,6 +62,11 @@
             <dependency>
                 <groupId>de.planmarshall</groupId>
                 <artifactId>pm-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>de.planmarshall</groupId>
+                <artifactId>pm-mock-runtime</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
