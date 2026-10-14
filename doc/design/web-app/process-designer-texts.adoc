@@ -87,8 +87,28 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Dein Entwurf von {time} ist wieder da.
 
 |`designer.leave.question`
-|Leave the designer? The draft changed since it was last downloaded or placed.
-|Designer verlassen? Der Entwurf hat sich geändert, seit er zuletzt heruntergeladen oder platziert wurde.
+|Leave the designer? The draft changed since it was last placed.
+|Designer verlassen? Der Entwurf hat sich geändert, seit er zuletzt platziert wurde.
+
+|`designer.frontmatter.title`
+|About this unit
+|Über diese Einheit
+
+|`designer.frontmatter.add`
+|This unit has no frontmatter. Add one
+|Diese Einheit hat keinen Frontmatter. Füge einen hinzu
+
+|`designer.frontmatter.author`
+|Your name as the author of the units you change
+|Dein Name als Autor der Einheiten, die du änderst
+
+|`designer.frontmatter.signature_dropped`
+|The signature was removed: it no longer covers the changed text.
+|Die Signatur wurde entfernt: Sie deckt den geänderten Text nicht mehr ab.
+
+|`designer.frontmatter.interface_kept`
+|kept: it replaces a unit of this type, with these entries and exits
+|beibehalten: Sie ersetzt eine Einheit dieses Typs, mit diesen Eingängen und Ausgängen
 
 |`designer.leave.stay`
 |Stay
@@ -226,10 +246,6 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |If a plan started now in {project}
 |Wenn jetzt ein Plan in {project} startete
 
-|`designer.download.action`
-|Download
-|Lade herunter
-
 |`designer.place.action`
 |Place…
 |Platziere…
@@ -286,9 +302,9 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |{unit} is not a unit that can be placed here: the runtime refused its name.
 |{unit} ist keine Einheit, die hier platziert werden kann: Die Runtime hat ihren Namen abgelehnt.
 
-|`designer.place.recipe_project_only`
-|A recipe lives in its project: it cannot be placed on the machine.
-|Ein Rezept lebt in seinem Projekt: Es kann nicht auf der Maschine platziert werden.
+|`designer.place.recipe_key_taken`
+|{recipe} is the key of a delivered recipe: choose another.
+|{recipe} ist der Schlüssel eines mitgelieferten Rezepts: Wähle einen anderen.
 
 |`designer.place.project_findings`
 |{project}: {count, plural, one {# finding} other {# findings}}
@@ -326,9 +342,9 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |{unit} changed since the comparison: here is the new difference.
 |{unit} hat sich seit dem Vergleich geändert: Hier ist der neue Unterschied.
 
-|`designer.place.audit`
-|Placed by {who}, {time}, {channel} · {digest}
-|Platziert von {who}, {time}, {channel} · {digest}
+|`designer.place.result`
+|Placed: {name} by {author}, {date} · {digest}
+|Platziert: {name} von {author}, {date} · {digest}
 
 |`designer.remove.action`
 |Remove…

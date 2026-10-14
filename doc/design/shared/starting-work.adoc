@@ -23,7 +23,7 @@ Starting a plan or an epic is one guided run in which the operator only says wha
 
 * *The setup gate* (`start.open`, `start-epic.open`): starting is offered only on an onboarded machine and in a ready project. Where either is missing, the start opens on the refusal instead of ①: what is missing (`this machine is not fully onboarded: providers`, `pm-mcp-clients is not ready: credential sonar`) and the one action that goes on there (_Continue the onboarding_, _Continue the setup_); nothing of an entry is created.
 
-* *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where the project has a recipe; an epic starts from sources only.
+* *① Sources* (`start.sources`, `start-epic.sources`): the list of the sources so far, and the ways to add one (<<sources>>). A plan first shows the choice between _from sources_ and _a recipe_ (`start.choose`), only where a recipe is offered in the project; an epic starts from sources only.
 * *② Ready* (`start.ready`, `start-epic.ready`): what the work starts from, one line per source; the title and the id proposed from the sources, both editable; _Start the plan_ or _Start the epic_. A recipe passes it too (<<recipe>>). Where the project's landing does not fit the sources, it is refused here with the reason (<<landing-refused>>).
 * *Creating* (`start.create`, `start-epic.create`, `recipe.create`): the server checks again what creation needs. Where something changed meanwhile (the id was taken, a source is gone or changed, a lesson was claimed by another plan, a recipe is gone or changed, the gate no longer holds), nothing is created and the run returns to ② with the cause on the line concerned (`could not be created: the id codeberg-provider-issues is taken`).
 * *✓ Started*: the plan or the epic exists, with _Follow it_ (a plan's view, link:plan-view.adoc[Plan View]; an epic's view, link:epic-view.adoc[Epic View]) and _Back to the project_.
@@ -176,11 +176,11 @@ A plan from the local changes needs a landing that commits them. Where the proje
 [#recipe]
 == A Recipe
 
-* *Choosing* (`recipe.choose`): the project's recipes, each with its name, what it does in one line, and where it comes from (a domain, the project).
+* *Choosing* (`recipe.choose`): the recipes offered in the project, each with its name, what it does in one line, and where it comes from (a domain, this machine, the project); a project's recipe takes the place of this machine's of the same key.
 * *Parameters* (`recipe.parameters`): one line per parameter, with the options the server resolved (`modules: 9 found`) and its proposal preselected and marked `proposed`, as the onboarding's choices are (link:../web-app/onboarding.adoc[Web App, Onboarding]); then on to ②. A parameter without an option (no module the recipe can work on, no domain of it in the project) shows its reason (`modules: none the recipe can work on`), and the recipe cannot run: the operator chooses another or leaves.
 * *A recipe that takes a request* asks its parameters first, then its sources, as in <<sources>>, with their failures and screening; a chat is not offered for a recipe.
 * *Ready* (`start.ready`): as for a plan (<<ready>>): the recipe and its parameters, the title and the id proposed from the recipe and the time (`recipe-coverage-2026-10-12-14-05-00`), both editable; _Run the recipe_.
-* *Creating* (`recipe.create`): re-checks what creation needs; a recipe gone or changed meanwhile (its domain or the project removed or changed it), an id taken, or a gate that no longer holds returns to ② with the cause, and nothing is created.
+* *Creating* (`recipe.create`): re-checks what creation needs; a recipe gone or changed meanwhile (its domain, this machine, or the project removed or changed it), an id taken, or a gate that no longer holds returns to ② with the cause, and nothing is created.
 * *Leaving* keeps the entry with the recipe and the parameters chosen, in either client; abandoning it deletes the entry (<<leaving>>).
 
 [#decomposition]
