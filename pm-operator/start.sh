@@ -46,7 +46,7 @@ fi
 
 if [ "$BUILD_NEEDED" = true ]; then
     echo "Building pm-operator (incremental ./mvnw -am, without clean)..."
-    "$REPO_ROOT/mvnw" compile dependency:build-classpath -Dmdep.outputFile=target/classpath.txt -pl pm-operator -am
+    "$REPO_ROOT/mvnw" -f "$REPO_ROOT/pom.xml" compile dependency:build-classpath -Dmdep.outputFile="$CP_FILE" -pl pm-operator -am
 fi
 
 # 3. Parse options

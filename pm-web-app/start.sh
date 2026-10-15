@@ -52,7 +52,7 @@ fi
 
 if [ "$BUILD_NEEDED" = true ]; then
     echo "Building pm-web-app dependencies (incremental ./mvnw -am, without clean)..."
-    "$REPO_ROOT/mvnw" compile -pl pm-web-app -am -DskipTests
+    "$REPO_ROOT/mvnw" -f "$REPO_ROOT/pom.xml" compile -pl pm-web-app -am -DskipTests
 fi
 
 # 3. Locate node and vite
