@@ -179,8 +179,8 @@ Keys of the area `devices`, shared by both clients (link:texts-and-languages.ado
 |Den Netzwerk-Listener von diesem Browser aus ausschalten?
 
 |`devices.listener_off.confirm_explain`
-|This browser is on the network: it loses its access with it and shows the pairing page. It stays paired and works again once the listener is on.
-|Dieser Browser ist im Netzwerk: er verliert damit seinen Zugang und zeigt die Kopplungsseite. Er bleibt gekoppelt und funktioniert wieder, sobald der Listener an ist.
+|This browser is on the network: it loses its access with it and shows that the machine is no longer reachable over the network. It stays paired and works again once the listener is on.
+|Dieser Browser ist im Netzwerk: er verliert damit seinen Zugang und zeigt, dass die Maschine über das Netzwerk nicht mehr erreichbar ist. Er bleibt gekoppelt und funktioniert wieder, sobald der Listener an ist.
 
 |`devices.listener_off.done`
 |The network listener is off; the devices on the network stay paired and work again once it is on.

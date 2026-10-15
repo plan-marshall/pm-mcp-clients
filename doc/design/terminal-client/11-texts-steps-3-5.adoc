@@ -411,4 +411,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |`onboard.store.move.key_moved`
 |the enrolment key moved
 |der Schlüssel der Einschreibungen verschoben
+
+|`onboard.store.move.failed`
+|The move stopped: {token} did not read back from {to} ({cause}). Every token stays in {from}.
+|Das Verschieben wurde angehalten: {token} ließ sich aus {to} nicht zurücklesen ({cause}). Jedes Token bleibt in {from}.
 |===

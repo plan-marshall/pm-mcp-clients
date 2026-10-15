@@ -39,7 +39,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/decisions.adoc[Decisions]
 |`DRAFT`
-|What both clients show of a decision a plan, an epic, or a project's setup asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, a chat before answering, a decision of a project's setup, announcing (with the web app's browser notification), a waiver request with waive and decline, and how it ends (answered elsewhere, changed, none fits asked anew, later); its texts in link:shared/decisions-texts.adoc[a part of their own].
+|What both clients show of a decision a plan, an epic, a project's setup, or a start's entry asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, a chat before answering, a decision of a project's setup, announcing (with the web app's browser notification), a waiver request with waive and decline, and how it ends (answered elsewhere, changed, none fits asked anew, later); its texts in link:shared/decisions-texts.adoc[a part of their own].
 
 |link:shared/plan-overview.adoc[Plan Overview]
 |`DRAFT`

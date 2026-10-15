@@ -126,11 +126,9 @@ Unclear, then a new option in the operator's words:
 ----
 Your answer (Enter sends it): › do whatever the reviewer would do
   ⠴  interpret is reading your answer       0:02
-Which do you mean?
-    1) Merge main into the branch, as the reviewer voted
-    2) Leave it to the recommendation: Rebase onto main
-Choose: 1-2   w) in my own words   o) choose an option instead   ?   › w
-Your answer (Enter sends it): › neither: squash the branch into one commit on main
+interpret asks: Should main be merged into the branch, as the reviewer voted, or
+  something else?
+Your reply (Enter sends it): › neither: squash the branch into one commit on main
   ⠴  interpret is reading your answer       0:03
 
 I understood: your own answer: squash the branch into one commit on main.
@@ -140,7 +138,7 @@ Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ⏎
 
 * The read-back marks the passages it rests on; nothing is recorded before `Enter`.
 * A delegation is read back as `you leave it to the recommendation: …` and offered only where the part allows one; the part's recommendation is then taken as the answer, recorded as `delegated`.
-* `decision.clarify` asks at most as often as the decision's unit declares (by default twice). A read-back of an understood answer always offers `e)` and `o)`; once the bound is reached, or the interpreting task ends without a result, the decision returns to `decision.answer` with the part unanswered and the reason (`decision.interpret.unclear_bound`), and the console offers the options and `w)` again.
+* `decision.clarify` shows the question and takes the reply alone, which is added to the words and interpreted again. It asks at most as often as the decision's unit declares (by default twice). A read-back of an understood answer always offers `e)` and `o)`; once the bound is reached, or the interpreting task ends without a result, the decision returns to `decision.answer` with the part unanswered and the reason (`decision.interpret.unclear_bound`), and the console offers the options and `w)` again.
 
 [#t-decision-not-voted]
 === Not Voted On, and a Note
@@ -267,7 +265,7 @@ Answer? [Enter]   other: 1-2   w) in my own words   h) chat   l) later   ?   ›
 Q-031 stays open; the setup of pm-mcp-clients waits for it. questions lists it.
 ----
 
-* A decision of a project's setup is announced, listed by `questions`, and answered like a plan's; its subject is `setup of <project>` and its step stands where a plan's phase would (link:../shared/decisions.adoc#setup[Decisions, A Project's Setup Asks]).
+* A decision of a project's setup is announced, listed by `questions`, and answered like a plan's; its subject is `setup of <project>` and its step stands where a plan's phase would (link:../shared/decisions.adoc#setup[Decisions, A Project's Setup Asks]). A decision of a start's entry is the same, its subject `start in <project>`.
 * `h) chat` goes to the role of the task that asked (`enrich` here); for a question the setup's workflow raised itself, `h` is refused with `decision.chat.no_role`. A decision of the setup offers no _none fits_ unless it declares a quorum.
 
 [#t-decision-waiver]
@@ -313,7 +311,7 @@ pm [1 waiver request] ›
 [#t-decision-texts]
 === The Texts of These Transcripts
 
-The texts are the shared ones of link:../shared/decisions-texts.adoc#texts[Decisions, Texts] (`decision.*`, among them `decision.interpret.working` with the role `interpret`, `decision.confirm.action` for `Decide?`, `decision.outcome.rethink`, `decision.outcome.revised`, and `decision.waiver.title`, `decision.waiver.waive`, `decision.waiver.decline`, `decision.waiver.later`, `decision.waiver.reason` for the waiver request), and the console's own of <<texts-operator-decisions>> (`operator.decision.*`) for the prompts only the terminal has: `Your answer (Enter sends it):`, `Your note:`, `Choose: 1-3`, `1-3) change a part`, the line of _later_, the confirmation of _none fits_, the result lines, the prompt of a proposed answer in a chat, and the prompt and results of a waiver request; the chat itself has the texts of xref:22-texts-actions.adoc#actions-texts[Actions] and `decision.chat.*`.
+The texts are the shared ones of link:../shared/decisions-texts.adoc#texts[Decisions, Texts] (`decision.*`, among them `decision.interpret.working` with the role `interpret`, `decision.confirm.action` for `Decide?`, `decision.outcome.rethink`, `decision.outcome.revised`, and `decision.waiver.title`, `decision.waiver.waive`, `decision.waiver.decline`, `decision.waiver.later`, `decision.waiver.reason` for the waiver request), and the console's own of <<texts-operator-decisions>> (`operator.decision.*`) for the prompts only the terminal has: `Your answer (Enter sends it):`, `Your reply (Enter sends it):`, `Your note:`, `Choose: 1-3`, `1-3) change a part`, the line of _later_, the confirmation of _none fits_, the result lines, the prompt of a proposed answer in a chat, and the prompt and results of a waiver request; the chat itself has the texts of xref:22-texts-actions.adoc#actions-texts[Actions] and `decision.chat.*`.
 
 [#texts-operator-decisions]
 == Texts: Decisions in the Console
@@ -328,6 +326,10 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |Your answer (Enter sends it):
 |Deine Antwort (Enter sendet sie):
 
+|`operator.decision.reply_prompt`
+|Your reply (Enter sends it):
+|Deine Antwort darauf (Enter sendet sie):
+
 |`operator.decision.note_prompt`
 |Your note:
 |Deine Notiz:
@@ -341,12 +343,12 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |ändere einen Teil
 
 |`operator.decision.later_done`
-|{id} stays open; the {scope, select, epic {epic} setup {setup of {project}} other {plan}} waits for it. questions lists it.
-|{id} bleibt offen; {scope, select, epic {das Epic} setup {das Setup von {project}} other {der Plan}} wartet darauf. questions listet sie.
+|{id} stays open; the {scope, select, epic {epic} setup {setup of {project}} entry {start in {project}} other {plan}} waits for it. questions lists it.
+|{id} bleibt offen; {scope, select, epic {das Epic} setup {das Setup von {project}} entry {der Start in {project}} other {der Plan}} wartet darauf. questions listet sie.
 
 |`operator.decision.none_fits_confirm`
-|None fits: the {scope, select, epic {epic} setup {setup of {project}} other {plan}} thinks again and asks anew. Send?
-|Nichts passt: {scope, select, epic {das Epic} setup {das Setup von {project}} other {der Plan}} überlegt neu und fragt noch einmal. Senden?
+|None fits: the {scope, select, epic {epic} setup {setup of {project}} entry {start in {project}} other {plan}} thinks again and asks anew. Send?
+|Nichts passt: {scope, select, epic {das Epic} setup {das Setup von {project}} entry {der Start in {project}} other {der Plan}} überlegt neu und fragt noch einmal. Senden?
 
 |`operator.decision.answered_parts`
 |{id} answered.
@@ -361,8 +363,8 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |(mit deiner Notiz)
 
 |`operator.decision.goes_on`
-|The {scope, select, epic {epic} setup {setup of {project}} other {plan}} goes on.
-|{scope, select, epic {Das Epic} setup {Das Setup von {project}} other {Der Plan}} läuft weiter.
+|The {scope, select, epic {epic} setup {setup of {project}} entry {start in {project}} other {plan}} goes on.
+|{scope, select, epic {Das Epic} setup {Das Setup von {project}} entry {Der Start in {project}} other {Der Plan}} läuft weiter.
 
 |`operator.decision.waiver_prompt`
 |Waive the gate or decline the request?

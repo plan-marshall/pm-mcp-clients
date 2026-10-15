@@ -51,7 +51,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 ----
   Choose the models plans may use
 
-  ⠴  steward is working on Claude Code · opus-5.5          0:18   about 50 k tokens
+  ⠴  steward is working on Claude Code · sonnet-5.5          0:18   about 50 k tokens
 
      You can leave this page; the work continues, and the next visit shows
      its result.
@@ -140,7 +140,7 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-harness-consen
                                                  [ Use Deutsch for both ]
 ----
 
-* The screen switches to the chosen interface language at once, before the button is pressed, so the operator sees what it will look like (the sketch is in English to be read here).
+* The screen stays in the language it was shown in until the choice is recorded (`language.record`); every text after it is in the chosen interface language (the sketch is in English to be read here).
 * *Why?* shows `onboard.language.choose.why` in place: models do not work equally well in every language, and _same as above_ follows a later change.
 * With two different languages the button reads `Use Deutsch here, English for models`.
 
@@ -190,10 +190,10 @@ Right after the scan, before the choice, when at least one found harness's profi
 
   [x] CC  Claude Code   2.4.1   ~/.local/bin/claude          ✓ supported   (•)
                                 tokens complete
-  [x] OC  OpenCode      1.9.0   /opt/homebrew/bin/opencode   ✓ supported   ( )
-                                tokens complete
   [ ] CX  Codex         0.31.2  /opt/homebrew/bin/codex      ✗ cannot run workers
                                 tokens not reported
+  [x] OC  OpenCode      1.9.0   /opt/homebrew/bin/opencode   ✓ supported   ( )
+                                tokens complete
       AG  Antigravity   —       not found
 
   The default runs the steward of the next steps and is proposed for
@@ -204,7 +204,7 @@ Right after the scan, before the choice, when at least one found harness's profi
   [ Look again ]                [ Check 2 harnesses, Claude Code the default ]
 ----
 
-* Every found harness is listed with its icon or monogram, its version and path, and whether it is supported; every supported one is preselected, and the first of them is the default. Harnesses that cannot run workers are greyed with the reason and cannot be chosen; harnesses not found are listed so the operator sees what was looked for.
+* Every found harness is listed with its icon or monogram, its version and path, and whether it is supported, in the order of its client id (`claude`, `codex`, `opencode`); every supported one that can run workers is preselected, and the first of them in that order is the default. Harnesses that cannot run workers are greyed with the reason and cannot be chosen; harnesses not found are listed so the operator sees what was looked for.
 * *Default* is a choice among the ticked rows; unticking the default makes the first ticked row the default, and the line under the list says so (`OpenCode is now the default.`). With no row ticked the primary button is disabled and reads `Choose at least one`.
 * [[harness-tokens]]*What a harness reports of its tokens* stands below each found harness (`onboard.harness.tokens.*`): `complete`, `partial` naming what is missing (`partial: no cache figures`), or `not reported`, for this harness and version, from its profile and, for a verified profile, from its verification's stage `usage` (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Client Profiles, Tokens, Not Money]). A figure the profile declares not applicable to the harness (no cache write) does not make it partial. It is information, never a condition of the choice: a harness that reports less is enrolled like any other, and the figures of its tasks say what was not measured. *Why?* on the line lists each figure (input, cache read, cache write, output, reasoning) as reported, not applicable, or not reported. No price or cost of a harness is shown.
 * The primary button names the count and the default, and leads to the login probe's consent (<<harness-probe>>). *Look again* runs `harness.scan` again under the consent already given.
@@ -417,7 +417,7 @@ Two consents in one screen, each with its own tokens (consent kinds `probe_harne
        tokens none
 
   2  Ask the steward which models suit which work
-       runs   a steward task on the default harness, Claude Code · opus-5.5
+       runs   a steward task on the default harness, Claude Code · sonnet-5.5
        tokens not known yet: first run
 
     1  (•) yes   ( ) yes, and don't ask again
@@ -442,7 +442,7 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-models[Termina
 
     ✓  Claude Code    3 models
     ✓  OpenCode       cannot list its models
-    ⠴  steward is working on Claude Code · opus-5.5      0:18   about 50 k tokens
+    ⠴  steward is working on Claude Code · sonnet-5.5      0:18   about 50 k tokens
 
   [ Continue without the advice ]
 ----

@@ -41,7 +41,7 @@ $ echo $?
 $ pm-operator config harnesses --add codex --consent scan_harnesses --no-icons --consent probe_harness_login --no-input
   ✓  Looking for harnesses: 3 found
   –  Icons: no   (--no-icons)
-  ✓  Harnesses   Claude Code (default), OpenCode, Codex 0.32.0   (--add codex)
+  ✓  Harnesses   Claude Code (default), Codex 0.32.0, OpenCode   (--add codex)
   Codex
     ✓  version 0.32.0 is supported (0.32 – 0.x)
     ✓  logged in
@@ -67,17 +67,17 @@ pm › config harnesses
 Harnesses · Choose the harnesses to enrol
     1) [x] Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported   ★ default
                                  tokens complete
-    2) [x] OpenCode      —       /opt/homebrew/bin/opencode  missing: not found any more
-           used by 8 roles; reassign them first: pm-operator config roles
-    3) [ ] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   new since the last run
+    2) [ ] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   new since the last run
                                  tokens not reported
+    3) [x] OpenCode      —       /opt/homebrew/bin/opencode  missing: not found any more
+           used by 8 roles; reassign them first: pm-operator config roles
 
-Keep as it is? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › 2
-  2 cannot be removed: used by 8 roles; reassign them first: pm-operator config roles
-Keep as it is? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › 3 d
-    3) [x] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   new since the last run ✎
-  default   1) Claude Code ←   3) Codex   › 3
-    3) [x] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   ★ default ✎
+Keep as it is? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › 3
+  3 cannot be removed: used by 8 roles; reassign them first: pm-operator config roles
+Keep as it is? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › 2 d
+    2) [x] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   new since the last run ✎
+  default   1) Claude Code ←   2) Codex   › 2
+    2) [x] Codex         0.32.0  /opt/homebrew/bin/codex     ✓ supported   ★ default ✎
 Check 1 harness, Codex the default? [Enter]   toggle: 1-3   d) set the default   a) add …   l) look again   ?   › ⏎
   ✓ Consent remembered: check whether a harness is logged in
   Codex

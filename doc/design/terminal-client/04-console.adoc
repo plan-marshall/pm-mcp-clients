@@ -281,8 +281,8 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |{count, plural, one {# Frage bleibt offen} other {# Fragen bleiben offen}}; du kannst {count, plural, one {sie} other {sie}} in der Web-App beantworten. exit oder Strg+D noch einmal verlässt die Konsole.
 
 |`operator.console.question.notice`
-|Question {id} · {scope, select, epic {epic} setup {setup of} other {plan}} {name} · {blocks}
-|Frage {id} · {scope, select, epic {Epic} setup {Einrichtung von} other {Plan}} {name} · {blocks}
+|Question {id} · {scope, select, epic {epic} setup {setup of} entry {start in} other {plan}} {name} · {blocks}
+|Frage {id} · {scope, select, epic {Epic} setup {Einrichtung von} entry {Start in} other {Plan}} {name} · {blocks}
 
 |`operator.console.question.recommended`
 |Recommended: {option}
@@ -361,8 +361,8 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |Wieder verbunden: {version}, neu gestartet um {time}. {questions, plural, =0 {Keine Frage offen} one {# Frage offen} other {# Fragen offen}}, {plans, plural, one {# Plan läuft} other {# Pläne laufen}}.
 
 |`operator.console.notification.question`
-|{scope, select, epic {epic {name}} setup {the setup of {project}} other {plan {name}}} asks a question
-|{scope, select, epic {Epic {name}} setup {Das Setup von {project}} other {Plan {name}}} stellt eine Frage
+|{scope, select, epic {epic {name}} setup {the setup of {project}} entry {the start in {project}} other {plan {name}}} asks a question
+|{scope, select, epic {Epic {name}} setup {Das Setup von {project}} entry {Der Start in {project}} other {Plan {name}}} stellt eine Frage
 
 |`operator.console.notification.waiver`
 |plan {plan} asks for a waiver

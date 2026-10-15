@@ -47,8 +47,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |lässt sich nicht rückgängig machen
 
 |`decision.waiting`
-|{subject, select, epic {the epic} setup {the setup of {project}} other {the plan}} waits for your answer, since {time}
-|{subject, select, epic {das Epic} setup {das Setup von {project}} other {der Plan}} wartet seit {time} auf deine Antwort
+|{subject, select, epic {the epic} setup {the setup of {project}} entry {the start in {project}} other {the plan}} waits for your answer, since {time}
+|{subject, select, epic {das Epic} setup {das Setup von {project}} entry {der Start in {project}} other {der Plan}} wartet seit {time} auf deine Antwort
 
 |`decision.part.position`
 |part {n} of {total}
@@ -111,8 +111,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Füge eine Notiz hinzu
 
 |`decision.answer.none_fits`
-|none fits: let {subject, select, epic {the epic} setup {the setup} other {the plan}} think again
-|Nichts passt: lass {subject, select, epic {das Epic} setup {das Setup} other {den Plan}} neu überlegen
+|none fits: let {subject, select, epic {the epic} setup {the setup} entry {the start} other {the plan}} think again
+|Nichts passt: lass {subject, select, epic {das Epic} setup {das Setup} entry {den Start} other {den Plan}} neu überlegen
 
 |`decision.answer.later`
 |later
@@ -166,9 +166,9 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |choose an option instead
 |Wähle stattdessen eine Option
 
-|`decision.clarify.which`
-|Which do you mean?
-|Welches meinst du?
+|`decision.clarify.asks`
+|{role} asks: {question}
+|{role} fragt: {question}
 
 |`decision.confirm.title`
 |Your decision
@@ -187,8 +187,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Die Entscheidung hat sich geändert: {change}. Bitte antworte noch einmal.
 
 |`decision.outcome.rethink`
-|you asked {subject, select, epic {the epic} setup {the setup of {project}} other {the plan}} to think again
-|du hast {subject, select, epic {das Epic} setup {das Setup von {project}} other {den Plan}} gebeten, neu zu überlegen
+|you asked {subject, select, epic {the epic} setup {the setup of {project}} entry {the start in {project}} other {the plan}} to think again
+|du hast {subject, select, epic {das Epic} setup {das Setup von {project}} entry {den Start in {project}} other {den Plan}} gebeten, neu zu überlegen
 
 |`decision.outcome.asked_anew`
 |asked anew after {id}
@@ -203,8 +203,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |die Konsole
 
 |`decision.notify.ask`
-|Should the web app notify you when a plan, an epic, or a project's setup asks a decision? It names the plan, the epic, or the setup and the kind of decision, never its content.
-|Soll die Web-App dich benachrichtigen, wenn ein Plan, ein Epic oder das Setup eines Projekts eine Entscheidung braucht? Sie nennt den Plan, das Epic oder das Setup und die Art der Entscheidung, nie ihren Inhalt.
+|Should the web app notify you when a plan, an epic, a project's setup, or a start asks a decision? It names the plan, the epic, the setup, or the start and the kind of decision, never its content.
+|Soll die Web-App dich benachrichtigen, wenn ein Plan, ein Epic, das Setup eines Projekts oder ein Start eine Entscheidung braucht? Sie nennt den Plan, das Epic, das Setup oder den Start und die Art der Entscheidung, nie ihren Inhalt.
 
 |`decision.notify.allow`
 |Allow notifications
@@ -215,8 +215,8 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Nicht jetzt
 
 |`decision.notify.title`
-|{subject, select, epic {Epic {name}} setup {The setup of {project}} other {{name}}} asks {kind, select, waiver {for a waiver} other {a decision}}
-|{subject, select, epic {Epic {name}} setup {Das Setup von {project}} other {{name}}} {kind, select, waiver {bittet um einen Waiver} other {braucht eine Entscheidung}}
+|{subject, select, epic {Epic {name}} setup {The setup of {project}} entry {The start in {project}} other {{name}}} asks {kind, select, waiver {for a waiver} other {a decision}}
+|{subject, select, epic {Epic {name}} setup {Das Setup von {project}} entry {Der Start in {project}} other {{name}}} {kind, select, waiver {bittet um einen Waiver} other {braucht eine Entscheidung}}
 
 |`decision.notify.tab_title`
 |({count}) {title}

@@ -170,7 +170,7 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |`e`, `o`
 |`b`, `o`
 |edit my words, choose an option instead
-|`decision.read-back`, `decision.clarify`
+|`decision.read-back`
 
 |`!`
 |`!`
@@ -237,7 +237,7 @@ A check is one line that starts with a spinner and ends in `✓` or `✗` (link:
 While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the tokens expected from earlier runs (`common.consent.tokens.estimate`) or `not known yet: first run` (link:../web-app/onboarding.adoc#frame[Web App, Onboarding, Frame], Model at work):
 
 ----
-  ⠼  steward is working on Claude Code · opus-5.5      0:42   about 40 k tokens
+  ⠼  steward is working on Claude Code · sonnet-5.5      0:42   about 40 k tokens
      q) leave: the advice continues; its result is reported above the prompt
 ----
 

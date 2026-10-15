@@ -82,11 +82,11 @@ Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-
   [x] CC  Claude Code   2.5.0   ~/.local/bin/claude          ✓ supported   (•)
                                 was 2.4.1: checked and enrolled again
                                 tokens complete
-  [ ] OC  OpenCode      —       /opt/homebrew/bin/opencode
-                                missing: not found any more
   [ ] CX  Codex         0.40.0  /opt/homebrew/bin/codex      ✓ new since the
                                                                last run    ( )
                                 tokens not reported
+  [ ] OC  OpenCode      —       /opt/homebrew/bin/opencode
+                                missing: not found any more
       AG  Antigravity   —       not found
 
   ▸ Advanced: add a harness that is not listed

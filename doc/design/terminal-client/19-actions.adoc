@@ -42,7 +42,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 * The reviews and the chat are dialogues; as one shell command they need a terminal, like every dialogue.
 
 [#full-screen]
-== In the Full-Screen View
+== In the Full-Screen View (`plan.actions`, `epic.actions`)
 
 `a` on a plan or an epic in the overview (xref:15-overview.adoc[The Overview]), in the plan view (xref:16-plan-view.adoc[The Plan View]), or in the epic's view (<<epic-view>>) opens its actions below the row:
 
@@ -72,7 +72,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 * A plan's own pull request is shown by its number (`#214`), a terminal hyperlink (OSC 8) where the terminal shows one; the dialogues print its URL.
 
 [#plan]
-== A Plan
+== A Plan (`plan.confirm-end`, `plan.end`, `plan.pause-when`, `plan.pausing`, `plan.inform-epic`)
 
 [source,text]
 ----
@@ -105,10 +105,11 @@ pm ›
 ----
 
 * `plan pause` without an answer asks; `--after-task` is the answer of the default, and `--no-input` without one stops.
+* `plan start` asks nothing (`plan.start`): a paused plan runs on from where it rests, a pausing one has its pause withdrawn.
 * `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops.
 
 [#settings]
-=== A Plan's Settings
+=== A Plan's Settings (`plan-settings.open`, `plan-settings.aspect`, `plan-settings.value`, `plan-settings.validate`, `plan-settings.apply`)
 
 `config <aspect> --plan <plan_id>` is the terminal's form of link:../shared/work-actions.adoc#settings[A Plan's Settings]; `config show <aspect> --plan <plan_id>` lists the plan's values with their origin, and `o) settings` in the menu asks the aspect first (`plan-defaults`, `roles`, `integrations`, `providers`). The plan defaults hold the plan's posture and base branch beside the landing, method, and asking axes; a value set here before the plan first needs it is not asked in `init.options`. `integrations` sets the plan's variant of each git and provider integration.
 
@@ -136,7 +137,7 @@ pm ›
 * *Changed meanwhile* (`conflict`, another client changed the value first) prints `Changed meanwhile: it is now <value>. Yours was not applied.` and asks `Apply yours again? [Enter]   k) keep the current value` (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]).
 
 [#epic]
-== An Epic
+== An Epic (`epic.next-work`, `epic.raise-scope`, `epic.archive-check`, `epic.archive`, `epic.confirm-cancel`, `epic.cancel`)
 
 [source,text]
 ----
@@ -172,13 +173,14 @@ Archive the epic? y) yes   n) not yet   ?   › y
 pm ›
 ----
 
-* With no plan launchable, `epic next` says why per row (`relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs waits for a lock: the surface pm-relay`); with only the scope full, it asks to raise the scope by one (`epic.raise-scope`), which `--raise-scope` answers yes and `--no-raise` no; `--no-input` without either stops.
+* With no plan launchable, `epic next` says why per row, by one of the reasons `dependency`, `lock`, `scope`, `overlap`, `stale`, and `held` (link:../shared/work-actions.adoc#epic-actions[An Epic's Actions]; `relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs waits for a lock: the surface pm-relay`); with only the scope full, it asks to raise the scope by one (`epic.raise-scope`), which `--raise-scope` answers yes and `--no-raise` no; `--no-input` without either stops.
 * With none launchable for an overlap, the reason names the running plan (`relay-docs waits: overlap with relay-auth-v2`); raising the scope does not start it.
+* `epic cancel` asks first (`epic.confirm-cancel`, link:../shared/work-actions.adoc#cancel-epic[Cancelling an Epic]): its plans cancelled too or left to run on (`--with-plans`, `--without-plans`), and the reason; confirmed, the epic is archived as cancelled (`epic.cancel`).
 * `epic archive` while the epic lands is refused with the reason (`relay-hardening is landing: archive waits until the ledger has landed`); only open findings hold the archive, and kept findings and watches are listed as carried.
 * On an epic whose completion review has not run yet (a manual one; an automatic epic has run it once it was through), `epic archive` runs the review first (`epic.review-completion`, link:../shared/work-actions.adoc#archive-check[Archiving]), prints `the completion review runs first` (`control.archive.review_first`), and prints the check below it once the review is done; with every check passing it asks _Archive the epic_ (`control.archive.action`, `n` is `control.archive.not_yet`) and prints `operator.actions.result.archived`. `q` and `Ctrl+C` leave while it runs, the review going on (xref:03-dialogues.adoc#resume[Interruption and Resume]); `epic archive` again shows the check once it is done. A review that stages further plans leaves the epic not through, and the check names them.
 
 [#epic-auto]
-=== Automatic On or Off
+=== Automatic On or Off (`epic.auto`)
 
 `epic auto <epic_id> on|off` and `u` in the menu below an epic's row switch whether the epic starts its plans by itself (link:../shared/work-actions.adoc#epic-auto[Automatic: On or Off]); no confirmation, since the other value undoes it. The verb names the value, never a flip, and `u` in the menu sends the value it does not show.
 
@@ -194,7 +196,7 @@ pm › epic auto relay-hardening off
 ✓ relay-hardening starts no plan by itself any more; what runs goes on.
 ----
 
-* *Common files* (`epic auto <epic_id> --common-files <n>`, `m` in the menu below an epic's row, beside the toggle): how many files a plan may share with a running plan and still start beside it, the epic's `overlap_max_files`, taken from the project's `epic.overlap_max_files` when the epic started. One act naming the value it sets, told among the epic's events, and the epic at once starts what the new value admits (`✓ relay-hardening allows 2 common files; relay-docs started`); the head of `epic <epic_id>` shows it (`Common files allowed: 0`), and the project's default is changed in the project's settings (link:../shared/work-actions.adoc#epic-auto[Automatic: On or Off]).
+* *Common files* (`epic auto <epic_id> --common-files <n>`, `m` in the menu below an epic's row, beside the toggle): how many files a plan may share with a running plan and still start beside it, the epic's `overlap_max_files`, taken from the project's `epic.overlap_max_files` when the epic started. One act naming the value it sets, told among the epic's events, and the epic at once starts what the new value admits (`✓ relay-hardening allows 2 common files; relay-docs started`, `control.epic.overlap_done`); the head of `epic <epic_id>` shows it (`Common files allowed: 0`), and the project's default is changed in the project's settings (link:../shared/work-actions.adoc#epic-auto[Automatic: On or Off]).
 * Switched on with nothing launchable, the line says why (`Nothing can start now: relay-docs waits: overlap with relay-auth-v2`, `control.epic.auto_nothing`).
 * The head of `epic <epic_id>` names the mode (`automatic`, `manual`), and its events what the epic did by itself after a plan ended (link:../shared/epic-view.adoc#reactions[Epic View, What the Epic Does by Itself]).
 
@@ -249,7 +251,7 @@ pm ›
 * An ended epic prints as it ended, read-only, with `ended` and its end (`completed`, `cancelled`, `released`) in its first line (xref:15-overview.adoc#ended[Ended Work]).
 
 [#holds]
-== What Holds a Plan
+== What Holds a Plan (`hold.show`, `hold.resolve`, `hold.apply`)
 
 [source,text]
 ----
@@ -305,7 +307,7 @@ The acts of a hold are those of the shared design (link:../shared/work-actions.a
 * _Show the pull request_ prints its number and URL. The path of a tampered file is printed after the control characters are removed (xref:04-console.adoc#output-safety[Output Safety]).
 
 [#review]
-== A Review
+== A Review (`review.open`, `review.item`, `review.keep`, `review.drop`, `review.confirm-plan`, `review.commit`)
 
 [source,text]
 ----
@@ -381,7 +383,7 @@ pm ›
 * `f) finish` writes the decisions to the epic's ledger. Leaving the review before (`q`, `Ctrl+D`) keeps what was decided; `epic findings relay-hardening` opens it where it stopped.
 
 [#chat]
-== A Chat
+== A Chat (`chat.open`, `chat.turn`, `chat.read-back`, `chat.apply`, `chat.end`)
 
 `plan chat <plan_id>` and `epic chat <epic_id>` open the chat of link:../shared/work-actions.adoc#chat[Chatting with the Planning Role]; `h) chat` in the menu below a row, in the review (<<review>>), in the decomposition (xref:18-starting.adoc#decomposition[The Decomposition]), at a decision's prompt (xref:14-transcripts-decisions.adoc#t-decision-chat[A Chat Before Answering]), at the list of sources (xref:18-starting.adoc#chat[Chatting About the Request]), and on ended work (<<chat-ended>>) opens the same dialogue with its scope (link:../shared/work-actions.adoc#chat-places[The Same Chat in Three More Places]).
 

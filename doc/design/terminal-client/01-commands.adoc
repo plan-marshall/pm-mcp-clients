@@ -38,7 +38,7 @@ pm-operator project setup <project_id> [<step>]           [op]  a later run of a
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
 pm-operator project release <project_id> [--reason <text>]
                                                           [op]  release a project: no new work starts in it (UC-PRJ-3, 17-projects)
-pm-operator project unenrol <project_id> [--reason <text>] [op]  remove a project's enrolment; refused while its work runs (UC-PRJ-3, 17-projects)
+pm-operator project unenrol <project_id>                  [op]  remove a project's enrolment; refused while its work runs (UC-PRJ-3, 17-projects)
 pm-operator plan add [--project <project_id>|.] [<source>]... [--title <title>] [--id <plan_id>]
                                                           [op]  start a plan from its sources (18-starting)
 pm-operator epic add [--project <project_id>|.] [<source>]... [--title <title>] [--id <epic_id>] | --adopt <epic_id>

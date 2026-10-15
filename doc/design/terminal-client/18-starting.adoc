@@ -361,8 +361,8 @@ pm › epic add
 Follow it? [Enter]   q) leave   ?   › ⏎
 ----
 
-* Adopting takes no sources: the epic's store on this machine is created from its ledger, and the run ends with _Follow it_. `epic add --adopt <epic_id>` does the same as one shell command.
-* Where the ledger cannot be adopted (`start-epic.adopt-failed`: unreadable, with the failing file; invalid; or ended), the cause is printed with `t) try again` (after the ledger was repaired through git), `b) back` to ①, and `x) abandon`.
+* Adopting takes no sources: the epic's store on this machine is created from its ledger, and the run ends with _Follow it_. `epic add --adopt <epic_id>` does the same as one shell command. The lines are `start.epic.adopt.offer`, `operator.start.adopt.option` with the key `operator.start.key.adopt`, `operator.start.adopt.done`, and `operator.start.follow`.
+* Where the ledger cannot be adopted (`start-epic.adopt-failed`: unreadable, with the failing file; invalid; or ended), the cause is printed (`start.epic.adopt.failed`) with `t) try again` (after the ledger was repaired through git), `b) back` to ①, and `x) abandon`.
 
 [#decomposition]
 === The Decomposition
