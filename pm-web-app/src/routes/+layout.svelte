@@ -2,7 +2,7 @@
   import '../styles/tokens.css';
   import '../styles/base.css';
   import { onMount } from 'svelte';
-  import { t, setLocale, currentLocale } from '../lib/i18n';
+  import { t, setLocale, currentLocale, initI18n } from '../lib/i18n';
   import { runtimeStore, initRuntime, navigateTo } from '../lib/stores/runtime';
   import Spinner from '../lib/components/Spinner.svelte';
 
@@ -21,6 +21,7 @@
     }
     document.documentElement.setAttribute('data-theme', theme);
 
+    await initI18n();
     await initRuntime();
   });
 

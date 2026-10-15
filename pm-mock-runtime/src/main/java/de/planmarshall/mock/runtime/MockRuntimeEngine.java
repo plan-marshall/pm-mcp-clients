@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
@@ -214,6 +215,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
+        if ("/api/v1/messages".equals(path) || path.startsWith("/api/v1/messages/")) {
+            handleMessages(request, response);
+            return false;
+        }
+
         if (isWeb) {
             if ("/api/v1/pair".equals(path) || "/pair".equals(path)) {
                 handlePairing(request, response);
@@ -380,6 +386,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } else {
             response.json(400, Map.of(KEY_ERROR, "invalid_code", KEY_MESSAGE, "The pairing code does not match"));
         }
+    }
+
+    private void handleMessages(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (!"GET".equalsIgnoreCase(request.method())) {
+            response.json(405, Map.of(KEY_ERROR, "method_not_allowed", KEY_MESSAGE, "Only GET is supported for messages"));
+            return;
+        }
+
+        var path = request.path();
+        if ("/api/v1/messages".equals(path)) {
+            response.json(200, MessageCatalogue.getAvailableLocalesAndAreas());
+            return;
+        }
+
+        var sub = path.substring("/api/v1/messages/".length());
+        var parts = sub.split("/");
+        var locale = parts[0];
+        var area = parts.length > 1 ? parts[1] : "all";
+
+        var messages = MessageCatalogue.getMessages(locale, area);
+        response.json(200, messages);
     }
 
     private void handleEventStream(MockHttpResponse response) throws IOException {

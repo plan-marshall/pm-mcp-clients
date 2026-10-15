@@ -122,4 +122,33 @@ describe('ApiClient', () => {
     await expect(client.request('GET', '/\t/attacker.example/path')).rejects.toThrow('Invalid request path');
     await expect(client.request('GET', '/\n/attacker.example/path')).rejects.toThrow('Invalid request path');
   });
+
+  it('fetches message catalogue and available locales via API', async () => {
+    // Arrange
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.endsWith('/api/v1/messages')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ locales: ['en', 'de'], areas: ['common'] }),
+        });
+      }
+      if (url.endsWith('/api/v1/messages/en/common')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ 'web.common.copy': 'Copy' }),
+        });
+      }
+      return Promise.reject(new Error(`Unexpected url: ${url}`));
+    });
+
+    // Act
+    const meta = await client.getAvailableMessages();
+    const messages = await client.getMessages('en', 'common');
+
+    // Assert
+    expect(meta.locales).toContain('en');
+    expect(messages['web.common.copy']).toBe('Copy');
+  });
 });
