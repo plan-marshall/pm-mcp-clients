@@ -13,6 +13,8 @@
     <description>Operator CLI, native binary pm-operator.</description>
     <properties>
         <maven.jar.plugin.automatic.module.name>de.planmarshall.operator</maven.jar.plugin.automatic.module.name>
+        <version.jline>3.28.0</version.jline>
+        <version.qrcodegen>1.8.0</version.qrcodegen>
         <!-- Enabled by the integration-tests profile -->
         <skipITs>true</skipITs>
     </properties>
@@ -31,8 +33,47 @@
             <artifactId>picocli</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline-terminal</artifactId>
+            <version>${version.jline}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline-reader</artifactId>
+            <version>${version.jline}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jline</groupId>
+            <artifactId>jline-terminal-ffm</artifactId>
+            <version>${version.jline}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.nayuki</groupId>
+            <artifactId>qrcodegen</artifactId>
+            <version>${version.qrcodegen}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss</groupId>
+            <artifactId>cui-java-tools</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-generator</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-juli-logger</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- The fake runtime server of the pm-api tests -->

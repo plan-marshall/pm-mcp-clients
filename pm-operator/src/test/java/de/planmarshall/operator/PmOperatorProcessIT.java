@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.nayuki.qrcodegen.QrCode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -24,6 +25,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.jline.reader.LineReader;
+import org.jline.terminal.Terminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +60,9 @@ class PmOperatorProcessIT {
     private static final long BUDGET_MS = 50;
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
-            MachinePaths.class, CommandLine.class, JsonFactory.class);
+            MachinePaths.class, CommandLine.class, JsonFactory.class,
+            Terminal.class, LineReader.class,
+            QrCode.class);
     private RuntimeFixture fixture;
 
     @BeforeEach

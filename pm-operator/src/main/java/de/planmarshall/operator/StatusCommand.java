@@ -10,8 +10,10 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -35,10 +37,24 @@ final class StatusCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Option(names = "--json", description = "Prints the status as JSON.")
     boolean json;
+
+    @Option(names = "--project", description = "Target project ID")
+    @Nullable
+    String project;
+
+    @Option(names = "--by", description = "Group by epic")
+    @Nullable
+    String by;
+
+    @Option(names = "--ended", description = "Show ended work as a tree")
+    boolean ended;
+
+    @Option(names = "--watch", description = "Watch status updates")
+    boolean watch;
 
     StatusCommand(OperatorContext context) {
         this.context = context;
@@ -51,10 +67,13 @@ final class StatusCommand implements Callable<Integer> {
         if (record.isEmpty() || !record.get().processAlive()) {
             return notRunning();
         }
+        if (ended) {
+            return handleEnded(out);
+        }
         Map<String, Object> status;
         try {
-            status = fetch(context.runtime(false));
-        } catch (RuntimeUnavailableException e) {
+            status = fetchProjectStatus();
+        } catch (RuntimeUnavailableException _) {
             return notRunning();
         }
         if (json) {
@@ -64,6 +83,39 @@ final class StatusCommand implements Callable<Integer> {
         }
         out.flush();
         return 0;
+    }
+
+    private int handleEnded(PrintWriter out) throws IOException {
+        try {
+            var path = project != null && !".".equals(project)
+                    ? "/api/v1/projects/" + project + "/ended"
+                    : "/api/v1/status?ended=true";
+            var response = context.runtime(false).send(HttpRequest.get(path));
+            if (response.status() == 200) {
+                out.println(response.bodyText());
+                out.flush();
+                return 0;
+            }
+            throw new OperatorRefusedException("status --ended", response);
+        } catch (RuntimeUnavailableException _) {
+            return notRunning();
+        }
+    }
+
+    private Map<String, Object> fetchProjectStatus() throws IOException {
+        var path = RuntimeClient.STATUS_PATH;
+        if (project != null && !".".equals(project)) {
+            path += "?project=" + project;
+        }
+        var response = context.runtime(false).send(HttpRequest.get(path));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("status", response);
+        }
+        var status = JsonTree.asObject(JsonTree.parse(response.body()));
+        if (status == null) {
+            throw new OperatorRefusedException("status", response);
+        }
+        return status;
     }
 
     static Map<String, Object> fetch(RuntimeClient runtime) throws IOException {
@@ -97,7 +149,7 @@ final class StatusCommand implements Callable<Integer> {
         return text.toString();
     }
 
-    private static void line(StringBuilder text, String label, Object value) {
+    private static void line(StringBuilder text, String label, @Nullable Object value) {
         text.append(String.format("%-9s %s%n", label, value == null ? "-" : value));
     }
 }

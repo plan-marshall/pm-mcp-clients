@@ -11,7 +11,92 @@ Reference Specifications:
 
 ---
 
-## 1. Architectural Analysis: Dedicated IT Module vs In-Module Integration Tests
+## 1. Operational & Governance Discipline
+
+### Git & Worktree Workflow
+- **Isolated Worktree**: All implementation work is conducted on a dedicated git worktree (e.g., `/Users/oliver/git/worktrees/pm-mcp-clients-operator` on feature branch `feat/pm-operator`) branched from `main`.
+- **Build Tool Invariant**: **Always use the `./mvnw` wrapper** (never naked `mvn` or global installations).
+
+### PR, Quality Gate & Landing Cycle
+1. **Branch & PR**: Commit incremental, conventional changes and push to origin on the feature branch; open a GitHub Pull Request.
+2. **Review & Observation Window**: Wait 5 minutes for CI workflows, review bots (CodeRabbit, cuioss-review-bot), and SonarCloud analysis to complete.
+3. **Findings Resolution**:
+   - Triage and resolve all review comments (implement fixes or provide technical refutations).
+   - Resolve all SonarCloud findings (0 new issues, 0 security hotspots, 0% duplication, >= 80% test coverage).
+4. **Merge Queue & Landing**:
+   - Add the PR to the GitHub merge queue (`gh pr merge <pr-number> --squash` or `--auto`).
+   - Await merge queue CI validation and automatic landing onto `main`.
+   - Switch back to `main` and synchronize local repository (`git checkout main && git pull`).
+   - Clean up the worktree and feature branch.
+
+---
+
+## 2. Applicable Standards & Skills Matrix
+
+The implementation and verification strictly adhere to the following skillset:
+
+| Skill | Focus & Key Rules |
+|---|---|
+| **pm-dev-java:java-core** | Java 21/25 modern language features (records, sealed hierarchies, pattern matching switch, sequenced collections). Clean package structure, Command-Query Separation (CQS), no leaked streams/resources. |
+| **pm-dev-java:java-cdi** | Constructor injection, immutable dependencies (`final`), clean separation of concerns, decoupling terminal/runtime clients for testability. |
+| **pm-dev-java:java-lombok** | Use `@Builder`, `@UtilityClass` for static helpers; prefer Java records for immutable data carriers; avoid `@Value` or `@Data` on domain models. |
+| **pm-dev-java:java-null-safety** | Package-level `@NullMarked` in `package-info.java` using JSpecify; return `Optional<T>` instead of `@Nullable`; defensive `Objects.requireNonNull()` at public API boundaries. |
+| **pm-dev-java:java-quarkus** | GraalVM native image metadata, reflection hints for Picocli & JLine 4, strictly respecting the reactor ban on Quarkus runtime dependencies in client modules. |
+| **pm-dev-java:java-security** | Trust boundary input validation (`jakarta.validation`), secure token masking in logs/console, directory/file mode verification (`0700`/`0600`), and agent environment rejection (`PM-SEC-3`). |
+| **pm-dev-java:junit-core** | AAA pattern without phase comments, grouped assertions (`assertAll`), `@Nested` test classes, minimum 80% line/branch coverage, at least one test class per production class. |
+| **pm-dev-java:junit-integration** | Maven Failsafe (`*IT.java`) integration testing separated from Surefire (`*Test.java`), `-Pintegration-tests` lifecycle management. |
+| **pm-dev-java-cui:cui-http** | Use CUI `HttpHandler` and `HttpResult<T>` sealed interface with exhaustive pattern matching for all runtime REST communication (never raw `HttpClient` or unhandled exceptions). |
+| **pm-dev-java-cui:cui-http-testing**| `@EnableMockWebServer` with `@MockResponseConfig` and `URIBuilder` injection for HTTP client verification without hardcoded ports. |
+| **pm-dev-java-cui:cui-logging** | `CuiLogger` with DSL-style `LogMessages` / `LogRecord` constants; exception parameter first; `%s` format specifiers; verified in tests via `LogAsserts`. |
+| **pm-dev-java-cui:cui-testing** | Mandatory `Generators.*` for test data (`@EnableGeneratorController`); no manual test strings or `UUID.randomUUID()`; **no Mockito** (use stubs, DI, or EasyMock); JUL log testing via `@EnableTestLogger`. |
+
+---
+
+## 3. Analysis: JLine 4 Testing Architecture & Helper Libraries
+
+### Problem & Challenge
+Testing interactive console applications (JLine 4 + Picocli) often encounters hurdles:
+- Automated CI environments lack an interactive TTY (`isatty` returns false).
+- Native PTY (pseudo-terminal) libraries (`pty4j`, `jline-terminal-jansi`) can be flaky, OS-dependent, or extract native binaries at test time.
+- Standard I/O (`System.in`, `System.out`, `System.exit`) is global, causing test concurrency issues and JVM exit traps.
+
+### Evaluation of JLine Testing Approaches & Libraries
+1. **JLine Built-in Virtual/Dumb Terminal (`TerminalBuilder.builder().streams(in, out).dumb(true).build()`) [CORE STRATEGY]**:
+   - JLine 3 and 4 have first-class, built-in support for non-system terminals backed by arbitrary `InputStream` and `OutputStream`.
+   - Allows feeding pre-scripted user inputs (keystrokes, tab completion requests, multi-line entries) via `ByteArrayInputStream` or `PipedInputStream`, and capturing ANSI/plain output in `ByteArrayOutputStream`.
+   - **Advantage**: Zero external dependencies, 100% deterministic, instant execution, runs in any CI container without native PTY allocation.
+
+2. **Dependency Injection of Terminal & Console Engine**:
+   - Rather than invoking static `TerminalBuilder.terminal()` inside commands, design `PmConsole` and interactive prompt handlers with a `Terminal` / `LineReader` provider or context injection.
+   - Production uses the native FFM-backed system terminal.
+   - Unit tests inject an in-memory virtual terminal.
+
+3. **Picocli Built-in Testing (`CommandLine.execute(...)`)**:
+   - Picocli provides built-in stream redirection:
+     ```java
+     var out = new StringWriter();
+     var err = new StringWriter();
+     int exitCode = new CommandLine(new PmOperatorCommand())
+         .setOut(new PrintWriter(out))
+         .setErr(new PrintWriter(err))
+         .execute(args);
+     ```
+   - Avoids intercepting `System.out` or calling `System.exit`.
+
+4. **Environment & TTY Context Decoupling (`OperatorContext`)**:
+   - Testing `PM-SEC-3` (agent detection) and `PM-SEC-4` (terminal gates) requires varying environment variables and terminal states.
+   - Java 25 enforces strong encapsulation, making reflective mutation of `System.getenv()` illegal and fragile.
+   - **Solution**: `OperatorContext` provides functional hooks (`Predicate<String> hasEnv`, `Function<String, String> getEnv`, `BooleanSupplier isInteractiveTty`).
+   - Production delegates to `System::getenv` and `System.console() != null && System.console().isTerminal()`.
+   - Unit tests pass simple maps or lambdas without bytecode manipulation.
+
+5. **Helper Libraries**:
+   - **`org.junit-pioneer:junit-pioneer`**: Offers JUnit 5 extensions (`@StdIo`, `@SetEnvironmentVariable`, `@ClearSystemProperty`) if end-to-end process boundaries need testing in unit tests.
+   - **`cui-test-generator` & `cui-test-juli-logger`**: Supply test data and verify log records during CLI operations.
+
+---
+
+## 4. Architectural Analysis: Dedicated IT Module vs In-Module Integration Tests
 
 ### Problem Statement
 The user asked to consider whether we need a separate integration testing (IT) module for the CLI (similar to `pm-web-e2e` for `pm-web-app`).
@@ -52,29 +137,30 @@ The user asked to consider whether we need a separate integration testing (IT) m
 
 ---
 
-## 2. Implementation Tasks & Checklist
+## 5. Implementation Tasks & Checklist
 
 ### Phase 1: Security Gates & Process Context (`OperatorGate` & `OperatorContext`)
-- [ ] **Task 1.1: Interactive Terminal Gate**
+- [x] **Task 1.1: Interactive Terminal Gate**
   - Verify attached interactive terminal (`System.console() != null && System.console().isTerminal()`).
   - Implement bypass for test contexts via `OperatorContext`.
-- [ ] **Task 1.2: Host Integration Agent-Environment Signal Detection (`PM-SEC-3`)**
+- [x] **Task 1.2: Host Integration Agent-Environment Signal Detection (`PM-SEC-3`)**
   - Read environment signals from `pm-api` Host Integration Table (Claude Code: `CLAUDE_CODE`, `CLAUDE_PROJECT_ROOT`; Gemini/Antigravity: `GEMINI_CLI`; OpenCode: `OPENCODE_CLIENT`; Codex: `CODEX_*`).
   - Reject execution with exit code `4` and diagnostic message naming detected host if any agent signal is present.
-- [ ] **Task 1.3: Client Environment Capture (`01-cli-and-installer.adoc#client-environment`)**
+- [x] **Task 1.3: Client Environment Capture (`01-cli-and-installer.adoc#client-environment`)**
   - Capture terminal locale: `LC_ALL` -> `LC_MESSAGES` -> `LANG` -> default `en` (sent as `Accept-Language`).
   - Detect SSH session: check `SSH_CONNECTION` and `SSH_TTY`.
   - Capture login `PATH` and non-secret build environment variables (filtering out credential patterns).
-- [ ] **Task 1.4: Direct File Read & Permissions Verification (`PM-SEC-4`)**
+- [x] **Task 1.4: Direct File Read & Permissions Verification (`PM-SEC-4`)**
   - Restrict direct file reads strictly to: `state/runtime.json`, `run/runtime.token`, `state/install-records.json`, `machine-config.json`.
   - Verify `<PM_MCP_BASE>/run/` mode `0700`, owner = current user, not a symbolic link.
   - Verify `<PM_MCP_BASE>/run/runtime.token` mode `0600`, owner = current user, not a symbolic link.
   - Ensure token is sent as `Authorization: Bearer <token>`; on `401 Unauthorized`, re-read token once and retry once.
   - Ensure `$XDG_STATE_HOME/pm-operator/` (default `~/.local/state/pm-operator/`) directory permissions `0700` and files `0600`.
-- [ ] **Task 1.5: Unit Tests for Phase 1**
+- [x] **Task 1.5: Unit Tests for Phase 1**
   - Test terminal gate pass/fail.
   - Test agent environment rejection (exit code 4).
   - Test token permission and symlink rejections.
+
 
 ---
 
