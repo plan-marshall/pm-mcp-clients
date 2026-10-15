@@ -408,6 +408,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         var sub = path.substring("/api/v1/messages/".length());
         var parts = sub.split("/");
+        if (parts.length > 2) {
+            response.json(400, Map.of(KEY_ERROR, "bad_request", KEY_MESSAGE, "Unexpected path segments"));
+            return;
+        }
         var locale = parts[0];
         var area = parts.length > 1 ? parts[1] : "all";
 
