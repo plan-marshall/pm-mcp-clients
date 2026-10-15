@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>de.planmarshall</groupId>
+        <artifactId>pm-mcp-clients</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>pm-web-e2e</artifactId>
+    <packaging>pom</packaging>
+
+    <name>pm-web-e2e</name>
+    <description>End-to-End Playwright tests for pm-web-app</description>
+
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.install.skip>true</maven.install.skip>
+        <skip.lint>false</skip.lint>
+        <!-- Skipped by default in regular CI builds without browsers; enable via -Pe2e or -DskipPlaywrightTests=false -->
+        <skipPlaywrightTests>true</skipPlaywrightTests>
+        <playwright.output.dir>${project.build.directory}</playwright.output.dir>
+        <sonar.skip>true</sonar.skip>
+    </properties>
+
+    <build>
+        <plugins>
+            <!-- Node.js and npm management via frontend-maven-plugin -->
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${version.frontend-maven-plugin}</version>
+                <configuration>
+                    <nodeVersion>${frontend.node.version}</nodeVersion>
+                    <npmVersion>${frontend.npm.version}</npmVersion>
+                    <installDirectory>target</installDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>install-node-and-npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                    </execution>
+                    <execution>
+                        <id>npm-install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>initialize</phase>
+                        <configuration>
+                            <arguments>install</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm-lint</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>test</phase>
+                        <configuration>
+                            <arguments>run lint</arguments>
+                            <skip>${skip.lint}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Exec Maven Plugin to run Playwright test suite -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>install-playwright-browsers</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>npx</executable>
+                            <arguments>
+                                <argument>playwright</argument>
+                                <argument>install</argument>
+                                <argument>chromium</argument>
+                            </arguments>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>run-playwright-tests</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>integration-test</phase>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>npx</executable>
+                            <arguments>
+                                <argument>--yes</argument>
+                                <argument>playwright</argument>
+                                <argument>test</argument>
+                                <argument>--reporter=list</argument>
+                            </arguments>
+                            <environmentVariables>
+                                <PLAYWRIGHT_OUTPUT_DIR>${playwright.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
+                                <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
+                            </environmentVariables>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>e2e</id>
+            <properties>
+                <skipPlaywrightTests>false</skipPlaywrightTests>
+            </properties>
+        </profile>
+    </profiles>
+</project>
