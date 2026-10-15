@@ -405,12 +405,16 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Verschiebe {count, plural, one {# Token} other {# Tokens}}
 
 |`onboard.store.move.moved`
-|moved
-|verschoben
+|read back
+|zurückgelesen
 
 |`onboard.store.move.key_moved`
 |the enrolment key moved
 |der Schlüssel der Einschreibungen verschoben
+
+|`onboard.store.move.source_deleted`
+|the tokens deleted from {from}
+|die Tokens aus {from} gelöscht
 
 |`onboard.store.move.failed`
 |The move stopped: {token} could not be moved to {to} ({cause}). Every token stays in {from}.

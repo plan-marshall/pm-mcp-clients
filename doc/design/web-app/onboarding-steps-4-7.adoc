@@ -182,8 +182,8 @@ A later run of this step from the settings (link:machine-settings.adoc#aspects[M
 ----
   Moving the tokens
 
-    ✓  github                   moved
-    ✓  sonar                    moved
+    ✓  github                   read back
+    ✓  sonar                    read back
     ⠦  pm-mcp-clients/github
     ·  4 more
 

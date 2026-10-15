@@ -194,15 +194,17 @@ Check again? [Enter]   o) choose another store   ?   › ⏎
 $ pm-operator config credentials --store os
 Credentials · Move the tokens to the macOS Keychain?
   moves       7 tokens from ~/.plan-marshall-mcp/credentials/ to the Keychain
-  each        written, read back, then deleted from the files
+  each        written and read back; deleted from the files only once
+              every token is in the Keychain
   if stopped  the next run continues the move; no token is lost or doubled
 
 Move 7 tokens? [Enter]   b) back   ?   › ⏎
-    ✓  github                   moved
-    ✓  sonar                    moved
+    ✓  github                   read back
+    ✓  sonar                    read back
     …
-    ✓  pm-mcp-clients/github    moved
+    ✓  pm-mcp-clients/github    read back
     ✓  the enrolment key moved
+    ✓  the tokens deleted from the files
 ✓ Tokens are kept in the macOS Keychain
 ----
 
