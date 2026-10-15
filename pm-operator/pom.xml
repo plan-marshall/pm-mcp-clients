@@ -13,7 +13,7 @@
     <description>Operator CLI, native binary pm-operator.</description>
     <properties>
         <maven.jar.plugin.automatic.module.name>de.planmarshall.operator</maven.jar.plugin.automatic.module.name>
-        <version.jline>3.28.0</version.jline>
+        <version.jline>3.30.15</version.jline>
         <version.qrcodegen>1.8.0</version.qrcodegen>
         <!-- Enabled by the integration-tests profile -->
         <skipITs>true</skipITs>
