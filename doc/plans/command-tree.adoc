@@ -11,6 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * Every command of the command tree whose server side this milestone delivers, each a request through the socket client of `pm-api` with the on-demand start: among them `runtime install|uninstall`, `audit verify`, and `drain`. A command whose server side belongs to a later milestone is recorded `out of slice` in the trace matrix with that milestone.
+* `pm-mcp` keeps only `serve --job`: the relay of a host session goes, the `--client` form with its workspace metadata and its on-demand start, so that `pm-mcp` reads no file of `<PM_MCP_BASE>` and never starts the runtime (link:../../../plan-marshall-documentation/doc/specification/runtime-model/03-relay.adoc#_contract[Runtime Model § Relay, Contract]). The worker's generation (`PM_MCP_JOB_ID` as `PM-MCP-Generation`) and the relay rules stay.
 * The runtime-free verbs read only the closed list of files, through the read-only codec in `api.files`; a test fails for any other file read.
 
 == Trace
@@ -23,4 +24,4 @@ Requirements, specification sections, and watch documents stay in `plan-marshall
 
 == Done When
 
-Each verb has a test against the stub daemon of the module; `status` and the other runtime-free verbs start and write nothing.
+Each verb has a test against the stub daemon of the module; `status` and the other runtime-free verbs start and write nothing. `pm-mcp` offers no verb but `serve --job`, and no test or document of this repository names the `--client` form.

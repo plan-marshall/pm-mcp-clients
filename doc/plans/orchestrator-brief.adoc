@@ -20,7 +20,7 @@ Sibling epic:: `pm-mcp-core-m2-m4` in `pm-mcp-core`, run in parallel; an epic or
 
 In scope:: every package of the index except those named below.
 Not in scope:: `cli-design` and `web-design`: design work, run directly in Claude Code sessions without plan-marshall (each file's _How It Is Run_). The epic waits on them as on an outside dependency: a package that depends on one is parked until the index shows it `done`.
-Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a machine the operator provides; `enter-command`: to be retired.
+Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a machine the operator provides.
 
 [#order]
 == Order and Priority
@@ -43,8 +43,8 @@ Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a mac
 |Operator CLI
 |`operator-checks`, `command-tree`, `operator-enrolment-verbs`, `operator-harness-and-roles-verbs`
 
-|Relay and entry
-|`relay-generation-and-markers`, `enter-command` (to be retired: the specification has no `pm-mcp enter`; parked until the operator decides), `integration-layers`
+|Relay
+|`integration-layers`
 
 |Job launcher
 |`exec-read-denied-paths`, `landlock-on-wsl2`
@@ -74,4 +74,4 @@ To be carried into every staged plan spec, beside the rules of `CLAUDE.md` and o
 
 . *Prerequisite*: plan-marshall is set up for this repository (by the operator), as it is for `pm-mcp-core`.
 . Initialise the orchestrator with this file as the brief and the slug above; suggested parallelization scope 3, the ledger in the shared ledger worktree as in `pm-mcp-core`.
-. Decompose along the index: one staged plan per package in scope, the workstreams above, the order and priority above, the standing constraints in every spec, the design packages, `landlock-on-wsl2`, and `enter-command` parked.
+. Decompose along the index: one staged plan per package in scope, the workstreams above, the order and priority above, the standing constraints in every spec, the design packages, and `landlock-on-wsl2` parked.
