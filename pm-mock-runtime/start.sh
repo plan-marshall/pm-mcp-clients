@@ -48,7 +48,11 @@ fi
 
 if [ "$BUILD_NEEDED" = true ]; then
     echo "Building pm-mock-runtime (incremental ./mvnw -am, without clean)..."
-    "$REPO_ROOT/mvnw" -f "$REPO_ROOT/pom.xml" compile dependency:build-classpath -Dmdep.outputFile="$CP_FILE" -pl pm-mock-runtime -am
+    TMP_CP="$CP_FILE.tmp.$$"
+    trap 'rm -f "$TMP_CP"' EXIT INT TERM
+    (cd "$REPO_ROOT" && ./mvnw compile -pl pm-mock-runtime -am && ./mvnw dependency:build-classpath -Dmdep.outputFile="$TMP_CP" -pl pm-mock-runtime)
+    mv "$TMP_CP" "$CP_FILE"
+    trap - EXIT INT TERM
 fi
 
 # 3. Dynamic scenario selection
