@@ -2,7 +2,7 @@
   import '../styles/tokens.css';
   import '../styles/base.css';
   import { onMount } from 'svelte';
-  import { t, setLocale, currentLocale } from '../lib/i18n';
+  import { t, setLocale, currentLocale, initI18n } from '../lib/i18n';
   import { runtimeStore, initRuntime, navigateTo } from '../lib/stores/runtime';
   import Spinner from '../lib/components/Spinner.svelte';
 
@@ -21,7 +21,12 @@
     }
     document.documentElement.setAttribute('data-theme', theme);
 
-    await initRuntime();
+    // Initialize i18n concurrently with a timeout so a slow catalogue load doesn't block startup
+    const i18nPromise = Promise.race([
+      initI18n(),
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    await Promise.all([i18nPromise, initRuntime()]);
   });
 
   function toggleTheme() {

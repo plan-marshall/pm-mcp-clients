@@ -106,6 +106,14 @@ export class ApiClient {
     return data;
   }
 
+  public async getAvailableMessages(): Promise<{ locales: string[]; areas: string[] }> {
+    return this.request<{ locales: string[]; areas: string[] }>('GET', '/api/v1/messages');
+  }
+
+  public async getMessages(locale: string, area = 'all'): Promise<Record<string, string>> {
+    return this.request<Record<string, string>>('GET', `/api/v1/messages/${locale}/${area}`);
+  }
+
   public async getStatus(): Promise<StatusResponse> {
     return this.request<StatusResponse>('GET', '/api/v1/status');
   }

@@ -1,8 +1,25 @@
-import { describe, it, expect } from 'vitest';
-import { formatString, translate, setLocale, currentLocale } from './index';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  formatString,
+  translate,
+  setLocale,
+  currentLocale,
+  loadMessages,
+  messagesStore,
+  t,
+  initI18n,
+} from './index';
 import { get } from 'svelte/store';
+import { apiClient } from '../api/client';
 
-describe('i18n message formatting', () => {
+describe('i18n dynamic message formatting', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+  });
+
   it('replaces parameter placeholders in template strings', () => {
     // Arrange
     const template = 'Hello {name}, your code is {code}';
@@ -15,31 +32,55 @@ describe('i18n message formatting', () => {
     expect(result).toBe('Hello Oliver, your code is KXQB-MRTN');
   });
 
-  it('translates known keys in English and German', () => {
+  it('translates fallback messages when no remote bundle is loaded', () => {
     // Act & Assert
     expect(translate('en', 'web.pair.page.title')).toBe('Pair this browser');
-    expect(translate('de', 'web.pair.page.title')).toBe('Kopple diesen Browser');
+    const tFn = get(t);
+    expect(tFn('web.pair.page.title')).toBe('Pair this browser');
   });
 
-  it('falls back to English when German translation is missing', () => {
+  it('dynamically loads remote messages and updates t store', async () => {
     // Arrange
-    const key = 'onboard.step.language';
+    vi.spyOn(apiClient, 'getMessages').mockResolvedValue({
+      'custom.key': 'Remote Value {name}',
+    });
 
     // Act
-    const result = translate('de', key);
+    await loadMessages('en', 'common');
 
     // Assert
-    expect(result).toBe('Sprache');
+    const tFn = get(t);
+    expect(tFn('custom.key', { name: 'Test' })).toBe('Remote Value Test');
   });
 
-  it('updates reactive currentLocale store on setLocale', () => {
+  it('updates reactive currentLocale store and loads messages on setLocale', async () => {
+    // Arrange
+    const loadSpy = vi.spyOn(apiClient, 'getMessages').mockResolvedValue({
+      'web.pair.page.title': 'Kopple diesen Browser',
+    });
+
     // Act
-    setLocale('de');
+    await setLocale('de');
 
     // Assert
     expect(get(currentLocale)).toBe('de');
+    expect(localStorage.getItem('pm_locale')).toBe('de');
+    expect(loadSpy).toHaveBeenCalledWith('de', 'all');
 
-    // Teardown
-    setLocale('en');
+    const tFn = get(t);
+    expect(tFn('web.pair.page.title')).toBe('Kopple diesen Browser');
+  });
+
+  it('initializes locale from saved localStorage preference', async () => {
+    // Arrange
+    localStorage.setItem('pm_locale', 'de');
+    const loadSpy = vi.spyOn(apiClient, 'getMessages').mockResolvedValue({});
+
+    // Act
+    await initI18n();
+
+    // Assert
+    expect(get(currentLocale)).toBe('de');
+    expect(loadSpy).toHaveBeenCalledWith('de', 'all');
   });
 });

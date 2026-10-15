@@ -353,4 +353,43 @@ class MockRuntimeEngineTest {
         // Does not throw with zero streams
         assertNotNull(engine);
     }
+
+    @Test
+    @DisplayName("serves message catalogue metadata without authorization")
+    void messageCatalogueMetadata() throws Exception {
+        var res = send("GET", "/api/v1/messages", Map.of(), new byte[0], false);
+        assertEquals(200, res.status());
+        assertNotNull(res.json());
+        assertTrue(res.json().containsKey("locales"));
+        assertTrue(res.json().containsKey("areas"));
+    }
+
+    @Test
+    @DisplayName("serves area messages and merged all messages")
+    void areaMessages() throws Exception {
+        var enRes = send("GET", "/api/v1/messages/en/common", Map.of(), new byte[0], true);
+        assertEquals(200, enRes.status());
+        assertNotNull(enRes.json());
+        assertTrue(enRes.json().containsKey("web.common.copy"));
+
+        var deAllRes = send("GET", "/api/v1/messages/de/all", Map.of(), new byte[0], false);
+        assertEquals(200, deAllRes.status());
+        assertNotNull(deAllRes.json());
+        assertTrue(deAllRes.json().containsKey("web.common.copy"));
+
+        var emptyRes = send("GET", "/api/v1/messages/en/nonexistent", Map.of(), new byte[0], false);
+        assertEquals(200, emptyRes.status());
+        assertNotNull(emptyRes.json());
+        assertTrue(emptyRes.json().isEmpty());
+    }
+
+    @Test
+    @DisplayName("rejects non-GET or malformed message paths")
+    void messagePathValidation() throws Exception {
+        var postRes = send("POST", "/api/v1/messages", Map.of(), new byte[0], false);
+        assertEquals(405, postRes.status());
+
+        var malformedRes = send("GET", "/api/v1/messages/en/common/extra/segments", Map.of(), new byte[0], false);
+        assertEquals(400, malformedRes.status());
+    }
 }
