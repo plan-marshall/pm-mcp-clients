@@ -73,11 +73,7 @@ done
 CP="$CLASSES_DIR:$REPO_ROOT/pm-api/target/classes:$(cat "$CP_FILE")"
 JAVA_OPTS=(-XX:+IgnoreUnrecognizedVMOptions --enable-native-access=ALL-UNNAMED)
 
-if [ ${#PASSED_ARGS[@]} -gt 0 ]; then
-    JAVA_CMD=(java "${JAVA_OPTS[@]}" -cp "$CP" de.planmarshall.operator.PmOperator "${PASSED_ARGS[@]}")
-else
-    JAVA_CMD=(java "${JAVA_OPTS[@]}" -cp "$CP" de.planmarshall.operator.PmOperator)
-fi
+JAVA_CMD=(java "${JAVA_OPTS[@]}" -cp "$CP" de.planmarshall.operator.PmOperator ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"})
 
 if [ "$DAEMON" = true ]; then
     echo "Starting pm-operator in background..."
