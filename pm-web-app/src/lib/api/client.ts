@@ -111,7 +111,12 @@ export class ApiClient {
   }
 
   public async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) {
+    if (
+      !path.startsWith('/') ||
+      path.startsWith('//') ||
+      path.startsWith('/\\') ||
+      /[\t\n\r]/.test(path)
+    ) {
       throw new Error(`Invalid request path: ${path}`);
     }
 
