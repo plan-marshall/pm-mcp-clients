@@ -111,7 +111,7 @@ export class ApiClient {
   }
 
   public async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    if (!path.startsWith('/') || path.startsWith('//')) {
+    if (!path.startsWith('/') || path.startsWith('//') || path.startsWith('/\\')) {
       throw new Error(`Invalid request path: ${path}`);
     }
 
@@ -166,22 +166,42 @@ export class ApiClient {
     signal?: AbortSignal,
   ): () => void {
     let active = true;
+    let currentReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    const internalController = new AbortController();
+
+    if (signal) {
+      if (signal.aborted) {
+        internalController.abort();
+      } else {
+        signal.addEventListener('abort', () => internalController.abort(), { once: true });
+      }
+    }
+
+    const abortAll = () => {
+      active = false;
+      internalController.abort();
+      if (currentReader) {
+        void currentReader.cancel().catch(() => {});
+        currentReader = undefined;
+      }
+    };
 
     const connect = async () => {
       const secret = this.getSecret();
-      if (!secret || !active) return;
+      if (!secret || !active || internalController.signal.aborted) return;
 
       try {
         const res = await fetch(`${this.baseUrl}/api/v1/events`, {
           headers: {
             Authorization: `Bearer ${secret}`,
           },
-          signal,
+          signal: internalController.signal,
         });
 
         if (res.status === 401) {
           this.clearAuth();
           this.onRevokedCallback?.('unauthorized');
+          abortAll();
           return;
         }
 
@@ -190,13 +210,15 @@ export class ApiClient {
         }
 
         const reader = res.body.getReader();
+        currentReader = reader;
         const decoder = new TextDecoder();
         let buffer = '';
 
-        while (active) {
+        while (active && !internalController.signal.aborted) {
           const { done, value } = await reader.read();
           if (done) {
-            if (active) {
+            currentReader = undefined;
+            if (active && !internalController.signal.aborted) {
               setTimeout(() => {
                 void connect();
               }, 2000);
@@ -205,7 +227,7 @@ export class ApiClient {
           }
 
           buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split('\n\n');
+          const parts = buffer.split(/(?:\r\n|\r|\n){2}/);
           buffer = parts.pop() || '';
 
           for (const chunk of parts) {
@@ -218,14 +240,15 @@ export class ApiClient {
             });
 
             if (revoked) {
-              active = false;
+              abortAll();
               return;
             }
           }
         }
       } catch (err: unknown) {
+        currentReader = undefined;
         if ((err as Error)?.name === 'AbortError') return;
-        if (active) {
+        if (active && !internalController.signal.aborted) {
           setTimeout(() => {
             void connect();
           }, 2000);
@@ -236,13 +259,13 @@ export class ApiClient {
     void connect();
 
     return () => {
-      active = false;
+      abortAll();
     };
   }
 }
 
 function parseSseChunk(chunk: string): { eventType: string; eventData: string } | null {
-  const lines = chunk.split('\n');
+  const lines = chunk.split(/\r\n|\r|\n/);
   let eventType = 'message';
   let eventData = '';
 

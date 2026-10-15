@@ -114,4 +114,10 @@ describe('ApiClient', () => {
     expect(capturedMethod).toBe('POST');
     expect(nextState.state).toBe('harness.choose');
   });
+
+  it('rejects protocol-relative and slash-backslash paths', async () => {
+    await expect(client.request('GET', '//attacker.com')).rejects.toThrow('Invalid request path');
+    await expect(client.request('GET', '/\\attacker.com')).rejects.toThrow('Invalid request path');
+    await expect(client.request('GET', 'http://attacker.com')).rejects.toThrow('Invalid request path');
+  });
 });
