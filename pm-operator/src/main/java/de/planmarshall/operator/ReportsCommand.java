@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,8 @@ import picocli.CommandLine.Spec;
         })
 @OperatorVerb
 public final class ReportsCommand implements Callable<Integer> {
+
+    private static final String REPORTS_API = "/api/v1/reports/";
 
     private final OperatorContext context;
 
@@ -64,25 +67,37 @@ public final class ReportsCommand implements Callable<Integer> {
 
         var response = context.runtime(true).send(HttpRequest.get(path));
         if (response.status() == 200) {
-            var parsed = JsonTree.parse(response.body());
-            if (parsed instanceof List<?> list && !list.isEmpty()) {
-                out.printf("Reports · %d unread%n", list.size());
-                for (var item : list) {
-                    if (item instanceof Map<?, ?> rep) {
-                        var subject = rep.get("subject") != null ? rep.get("subject") : (rep.get("plan") != null ? rep.get("plan") : "");
-                        var summary = rep.get("summary") != null ? rep.get("summary") : "";
-                        out.printf("  %-10s %-20s %s%n", rep.get("id"), subject, summary);
-                    } else {
-                        out.println("  " + item);
-                    }
-                }
-            } else {
-                out.println("Nothing new. Reports you have read are not shown any more.");
-            }
-            out.flush();
+            printReports(out, response.body());
             return 0;
         }
         throw new OperatorRefusedException("reports", response);
+    }
+
+    private static void printReports(PrintWriter out, byte[] body) throws IOException {
+        var parsed = JsonTree.parse(body);
+        if (parsed instanceof List<?> list && !list.isEmpty()) {
+            out.printf("Reports · %d unread%n", list.size());
+            for (var item : list) {
+                printReportItem(out, item);
+            }
+        } else {
+            out.println("Nothing new. Reports you have read are not shown any more.");
+        }
+        out.flush();
+    }
+
+    private static void printReportItem(PrintWriter out, Object item) {
+        if (item instanceof Map<?, ?> rep) {
+            Object subjectObj = rep.get("subject");
+            if (subjectObj == null) {
+                subjectObj = rep.get("plan");
+            }
+            var subject = subjectObj != null ? subjectObj.toString() : "";
+            var summary = rep.get("summary") != null ? rep.get("summary").toString() : "";
+            out.printf("  %-10s %-20s %s%n", rep.get("id"), subject, summary);
+        } else {
+            out.println("  " + item);
+        }
     }
 
     @Command(name = "read", description = "Marks reports read.")
@@ -132,7 +147,7 @@ public final class ReportsCommand implements Callable<Integer> {
             for (var id : reportIds) {
                 var safeId = OperatorUrlUtil.encodePathSegment(id);
                 var response = context.runtime(true).send(
-                        HttpRequest.json("POST", "/api/v1/reports/" + safeId + "/read", "{}"));
+                        HttpRequest.json("POST", REPORTS_API + safeId + "/read", "{}"));
                 if (response.status() == 200 || response.status() == 204) {
                     marked++;
                 } else if (response.status() == 404) {
@@ -164,10 +179,10 @@ public final class ReportsCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var safeId = OperatorUrlUtil.encodePathSegment(reportId);
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/reports/" + safeId));
+            var response = context.runtime(true).send(HttpRequest.get(REPORTS_API + safeId));
             if (response.status() == 200) {
                 // Also mark as read
-                context.runtime(true).send(HttpRequest.json("POST", "/api/v1/reports/" + safeId + "/read", "{}"));
+                context.runtime(true).send(HttpRequest.json("POST", REPORTS_API + safeId + "/read", "{}"));
                 out.println(response.bodyText());
                 out.flush();
                 return 0;

@@ -21,6 +21,8 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 
 import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
 
 /**
  * Shared action execution and formatting support for plan, epic, and abort verbs.
@@ -28,6 +30,52 @@ import picocli.CommandLine.Model.CommandSpec;
 final class ActionSupport {
 
     private ActionSupport() {
+    }
+
+    static class TerminationOptions {
+        @Parameters(index = "0", arity = "0..1", description = "Work item ID")
+        @Nullable
+        String id;
+
+        @Option(names = "--reason", description = "Reason for termination")
+        @Nullable
+        String reason;
+
+        @Option(names = "--close-pr", description = "Close open pull request")
+        boolean closePr;
+
+        @Option(names = "--keep-pr", description = "Keep open pull request")
+        boolean keepPr;
+
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
+    }
+
+    static class CommonAddOptions {
+        @Option(names = "--project", description = "Target project ID")
+        @Nullable
+        String project;
+
+        @Option(names = "--title", description = "Title")
+        @Nullable
+        String title;
+
+        @Option(names = "--id", description = "Explicit ID")
+        @Nullable
+        String id;
+
+        @Option(names = "--description", description = "Description")
+        @Nullable
+        String description;
+    }
+
+    static void populateCommonAdd(Map<String, Object> payload, CommonAddOptions opts) {
+        if (opts.project != null && !".".equals(opts.project)) {
+            payload.put("project", opts.project);
+        }
+        if (opts.title != null) payload.put("title", opts.title);
+        if (opts.id != null) payload.put("id", opts.id);
+        if (opts.description != null) payload.put("description", opts.description);
     }
 
     /**

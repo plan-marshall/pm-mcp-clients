@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -58,24 +59,40 @@ public final class QuestionsCommand implements Callable<Integer> {
                     HttpRequest.get(OperatorUrlUtil.appendScope("/api/v1/questions", project, plan)));
         }
         if (response.status() == 200) {
-            var parsed = JsonTree.parse(response.body());
-            if (parsed instanceof List<?> list && !list.isEmpty()) {
-                out.printf("Open Questions · %d pending%n", list.size());
-                for (var item : list) {
-                    if (item instanceof Map<?, ?> q) {
-                        var scope = q.get("plan") != null ? q.get("plan") : (q.get("scope") != null ? q.get("scope") : "");
-                        var text = q.get("title") != null ? q.get("title") : (q.get("question") != null ? q.get("question") : "");
-                        out.printf("  %-8s %-20s %s%n", q.get("id"), scope, text);
-                    } else {
-                        out.println("  " + item);
-                    }
-                }
-            } else {
-                out.println("No open questions.");
-            }
-            out.flush();
+            printQuestions(out, response.body());
             return 0;
         }
         throw new OperatorRefusedException("questions", response);
+    }
+
+    private static void printQuestions(PrintWriter out, byte[] body) throws IOException {
+        var parsed = JsonTree.parse(body);
+        if (parsed instanceof List<?> list && !list.isEmpty()) {
+            out.printf("Open Questions · %d pending%n", list.size());
+            for (var item : list) {
+                printQuestionItem(out, item);
+            }
+        } else {
+            out.println("No open questions.");
+        }
+        out.flush();
+    }
+
+    private static void printQuestionItem(PrintWriter out, Object item) {
+        if (item instanceof Map<?, ?> q) {
+            Object scopeObj = q.get("plan");
+            if (scopeObj == null) {
+                scopeObj = q.get("scope");
+            }
+            var scope = scopeObj != null ? scopeObj.toString() : "";
+            Object textObj = q.get("title");
+            if (textObj == null) {
+                textObj = q.get("question");
+            }
+            var text = textObj != null ? textObj.toString() : "";
+            out.printf("  %-8s %-20s %s%n", q.get("id"), scope, text);
+        } else {
+            out.println("  " + item);
+        }
     }
 }

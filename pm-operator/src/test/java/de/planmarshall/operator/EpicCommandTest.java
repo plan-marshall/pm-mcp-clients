@@ -107,7 +107,7 @@ class EpicCommandTest {
     @Test
     @DisplayName("epic add with project routes to project entries")
     void epicAddWithProject() throws Exception {
-        var server = fixture.start((request, response) -> {
+        fixture.start((request, response) -> {
             if ("/api/v1/projects/my-proj/entries".equals(request.target()) && "POST".equals(request.method())) {
                 response.send(200, null, "");
             } else {

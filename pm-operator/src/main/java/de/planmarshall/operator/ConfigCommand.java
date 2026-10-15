@@ -119,12 +119,15 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", description = "Key or aspect name")
+        @Nullable
         String key;
 
         @Option(names = "--project", description = "Project scope")
+        @Nullable
         String project;
 
         @Option(names = "--plan", description = "Plan scope")
+        @Nullable
         String plan;
 
         ShowCommand(OperatorContext context) {
@@ -165,9 +168,11 @@ public final class ConfigCommand implements Callable<Integer> {
         String value;
 
         @Option(names = "--project", description = "Project scope")
+        @Nullable
         String project;
 
         @Option(names = "--plan", description = "Plan scope")
+        @Nullable
         String plan;
 
         SetCommand(OperatorContext context) {
@@ -216,6 +221,7 @@ public final class ConfigCommand implements Callable<Integer> {
         String key;
 
         @Option(names = "--project", description = "Project scope")
+        @Nullable
         String project;
 
         UnsetCommand(OperatorContext context) {
@@ -249,9 +255,11 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--interface", description = "Interface locale")
+        @Nullable
         String interfaceLocale;
 
         @Option(names = "--model", description = "Model text locale or 'same'")
+        @Nullable
         String modelLocale;
 
         LanguageCommand(OperatorContext context) {
@@ -286,12 +294,15 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--add", description = "Harness client ID to add")
+        @Nullable
         List<String> add;
 
         @Option(names = "--remove", description = "Harness client ID to remove")
+        @Nullable
         List<String> remove;
 
         @Option(names = "--default", description = "Default harness client ID")
+        @Nullable
         String defaultHarness;
 
         @Option(names = "--no-icons", description = "Disable harness icon fetching")
@@ -301,6 +312,7 @@ public final class ConfigCommand implements Callable<Integer> {
         boolean noInput;
 
         @Option(names = "--consent", description = "Grant consent for operation")
+        @Nullable
         List<String> consent;
 
         HarnessesCommand(OperatorContext context) {
@@ -345,6 +357,7 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--allow", description = "Allow client_id:model")
+        @Nullable
         List<String> allow;
 
         @Option(names = "--no-advice", description = "Decline model advice")
@@ -382,9 +395,11 @@ public final class ConfigCommand implements Callable<Integer> {
         boolean defaults;
 
         @Option(names = "--set", description = "Set role=client:model[:effort]")
+        @Nullable
         List<String> set;
 
         @Option(names = "--reset", description = "Reset specific role")
+        @Nullable
         String reset;
 
         @Option(names = "--reset-all", description = "Reset all roles")
@@ -421,6 +436,7 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--store", description = "Credential store type: os or file")
+        @Nullable
         String store;
 
         CredentialsCommand(OperatorContext context) {
@@ -451,9 +467,11 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--use", description = "Providers to use")
+        @Nullable
         List<String> use;
 
         @Option(names = "--without", description = "Providers to exclude")
+        @Nullable
         List<String> without;
 
         @Option(names = "--verify", description = "Verify recorded providers")
@@ -489,15 +507,19 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--landing", description = "Default landing method: pull-request, main, files")
+        @Nullable
         String landing;
 
         @Option(names = "--method", description = "Default method: test-first, tests-after")
+        @Nullable
         String method;
 
         @Option(names = "--asking", description = "Asking frequency: every-phase, key-points, questions-only")
+        @Nullable
         String asking;
 
         @Option(names = "--posture", description = "Verification posture: minimal, standard, full, unset")
+        @Nullable
         String posture;
 
         @Option(names = "--yes", description = "Confirm changes")
@@ -574,6 +596,7 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--mode", description = "Mode: copy, move, ask")
+        @Nullable
         String mode;
 
         DocumentsCommand(OperatorContext context) {

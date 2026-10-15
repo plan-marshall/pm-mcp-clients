@@ -229,7 +229,9 @@ public final class OperatorContext {
         if (os.contains("mac")) {
             new ProcessBuilder("/usr/bin/open", uri.toString()).start();
         } else if (os.contains("win")) {
-            new ProcessBuilder("rundll32.exe", "url.dll,FileProtocolHandler", uri.toString()).start();
+            var systemRoot = System.getenv("SystemRoot");
+            var rundll = systemRoot != null ? systemRoot + "\\System32\\rundll32.exe" : "C:\\Windows\\System32\\rundll32.exe";
+            new ProcessBuilder(rundll, "url.dll,FileProtocolHandler", uri.toString()).start();
         } else {
             new ProcessBuilder("/usr/bin/xdg-open", uri.toString()).start();
         }

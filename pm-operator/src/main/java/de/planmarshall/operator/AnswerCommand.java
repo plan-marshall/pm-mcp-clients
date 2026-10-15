@@ -10,12 +10,14 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.runtime.RuntimeClient;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -68,27 +70,33 @@ public final class AnswerCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (option == null && (words == null || words.isBlank())) {
-            // Read question detail
-            var qPath = plan != null
-                    ? "/api/v1/plans/" + plan + "/decisions/" + questionId
-                    : "/api/v1/decisions/" + questionId;
-            var qResponse = runtime.send(HttpRequest.get(qPath));
-            if (qResponse.status() == 200) {
-                out.println(qResponse.bodyText());
-            } else if (qResponse.status() == 404) {
-                out.printf("Question %s not found.%n", questionId);
-                out.flush();
-                return 1;
-            }
-            if (noInput) {
-                out.println("Choice or option required (--no-input specified).");
-                out.flush();
-                return 3;
-            }
-            out.flush();
-            return 0;
+            return fetchQuestionDetail(runtime, out);
         }
+        return submitAnswer(runtime, out);
+    }
 
+    private int fetchQuestionDetail(RuntimeClient runtime, PrintWriter out) throws IOException {
+        var qPath = plan != null
+                ? "/api/v1/plans/" + plan + "/decisions/" + questionId
+                : "/api/v1/decisions/" + questionId;
+        var qResponse = runtime.send(HttpRequest.get(qPath));
+        if (qResponse.status() == 200) {
+            out.println(qResponse.bodyText());
+        } else if (qResponse.status() == 404) {
+            out.printf("Question %s not found.%n", questionId);
+            out.flush();
+            return 1;
+        }
+        if (noInput) {
+            out.println("Choice or option required (--no-input specified).");
+            out.flush();
+            return 3;
+        }
+        out.flush();
+        return 0;
+    }
+
+    private int submitAnswer(RuntimeClient runtime, PrintWriter out) throws IOException {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("channel", "cli");
         if (option != null) payload.put("option", option);

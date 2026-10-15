@@ -25,6 +25,9 @@ public final class ConsoleNotice {
             "\\x1B(?:\\[[0-?]*[ -/]*[@-~]|\\].*?(?:\\x07|\\x1B\\\\))");
     private static final Pattern CONTROL_CHARS = Pattern.compile(
             "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]");
+    private static final String SCOPE = "scope";
+    private static final String PLAN_PREFIX = "◆ Plan ";
+    private static final String EPIC_PREFIX = "◆ Epic ";
 
     private ConsoleNotice() {
     }
@@ -57,7 +60,7 @@ public final class ConsoleNotice {
             @Nullable String recommendation) {
         var sb = new StringBuilder();
         sb.append("◆ Question ").append(Objects.requireNonNull(id, "id"))
-                .append(" · ").append(Objects.requireNonNull(scope, "scope"));
+                .append(" · ").append(Objects.requireNonNull(scope, SCOPE));
         if (summary != null && !summary.isBlank()) {
             sb.append(" · ").append(stripControlSequences(summary));
         }
@@ -83,7 +86,7 @@ public final class ConsoleNotice {
     public static String formatWaiverRequest(String id, String scope, @Nullable String gate) {
         var sb = new StringBuilder();
         sb.append("◆ Waiver request ").append(Objects.requireNonNull(id, "id"))
-                .append(" · ").append(Objects.requireNonNull(scope, "scope"));
+                .append(" · ").append(Objects.requireNonNull(scope, SCOPE));
         if (gate != null && !gate.isBlank()) {
             sb.append(" · gate ").append(stripControlSequences(gate));
         }
@@ -103,13 +106,13 @@ public final class ConsoleNotice {
     public static String formatHoldNotice(String kind, String scope, @Nullable String detail) {
         var sanitizedDetail = stripControlSequences(detail);
         return switch (kind) {
-            case "operator_wait" -> "◆ Plan " + scope + " waits for you: " + sanitizedDetail;
+            case "operator_wait" -> PLAN_PREFIX + scope + " waits for you: " + sanitizedDetail;
             case "integrity_pause" -> "◆ Integrity pause · plan " + scope + ": " + sanitizedDetail;
-            case "stalled" -> "◆ Plan " + scope + " stalled: " + sanitizedDetail;
-            case "condition" -> "◆ Plan " + scope + " needs a fix: " + sanitizedDetail;
-            case "held" -> "◆ Epic " + scope + ": " + sanitizedDetail;
-            case "landing_failed" -> "◆ Epic " + scope + ": the landing failed: " + sanitizedDetail;
-            case "findings" -> "◆ Epic " + scope + ": " + sanitizedDetail;
+            case "stalled" -> PLAN_PREFIX + scope + " stalled: " + sanitizedDetail;
+            case "condition" -> PLAN_PREFIX + scope + " needs a fix: " + sanitizedDetail;
+            case "held" -> EPIC_PREFIX + scope + ": " + sanitizedDetail;
+            case "landing_failed" -> EPIC_PREFIX + scope + ": the landing failed: " + sanitizedDetail;
+            case "findings" -> EPIC_PREFIX + scope + ": " + sanitizedDetail;
             case "setup" -> "◆ Project " + scope + ": the setup needs you: " + sanitizedDetail;
             default -> "◆ " + kind + " · " + scope + ": " + sanitizedDetail;
         };
@@ -168,13 +171,13 @@ public final class ConsoleNotice {
         return switch (type) {
             case "question", "decision" -> formatQuestion(
                     String.valueOf(event.getOrDefault("id", "Q-???")),
-                    String.valueOf(event.getOrDefault("scope", "plan")),
+                    String.valueOf(event.getOrDefault(SCOPE, "plan")),
                     (String) event.get("summary"),
                     (String) event.get("text"),
                     (String) event.get("recommendation"));
             case "waiver_request" -> formatWaiverRequest(
                     String.valueOf(event.getOrDefault("id", "WR-?")),
-                    String.valueOf(event.getOrDefault("scope", "plan")),
+                    String.valueOf(event.getOrDefault(SCOPE, "plan")),
                     (String) event.get("gate"));
             case "paired" -> formatPairedNotice(
                     String.valueOf(event.getOrDefault("label", "unknown")));
@@ -185,7 +188,7 @@ public final class ConsoleNotice {
             case "operator_wait", "integrity_pause", "stalled", "condition", "held", "landing_failed", "findings", "setup" ->
                 formatHoldNotice(
                         type,
-                        String.valueOf(event.getOrDefault("scope", "")),
+                        String.valueOf(event.getOrDefault(SCOPE, "")),
                         String.valueOf(event.getOrDefault("detail", event.getOrDefault("reason", ""))));
             default -> null;
         };

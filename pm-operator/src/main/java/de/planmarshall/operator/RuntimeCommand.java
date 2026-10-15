@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -181,6 +182,7 @@ public final class RuntimeCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", description = "Version to upgrade to")
+        @Nullable
         String version;
 
         @Option(names = "--check", description = "Check for newer version")

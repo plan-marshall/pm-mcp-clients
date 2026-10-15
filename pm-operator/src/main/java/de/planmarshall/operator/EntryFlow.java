@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.URI;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -41,6 +42,7 @@ public final class EntryFlow {
 
     static final int DEFAULT_WEB_PORT = 7420;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
 
     private static final List<String> STEP_NAMES = List.of(
             "Language", "Harnesses", "Models", "Roles", "Credentials", "Providers", "Plans");
@@ -84,8 +86,8 @@ public final class EntryFlow {
      * @throws IOException on I/O or transport failure
      */
     public EntryResult run(PrintWriter out, LineReader reader) throws IOException {
-        var record = RuntimeRecord.read(context.paths().runtimeRecord());
-        boolean wasAlive = record.isPresent() && record.get().processAlive();
+        var runtimeRecord = RuntimeRecord.read(context.paths().runtimeRecord());
+        boolean wasAlive = runtimeRecord.isPresent() && runtimeRecord.get().processAlive();
 
         var runtime = context.runtime(true);
         var status = StatusCommand.fetch(runtime);
@@ -146,7 +148,7 @@ public final class EntryFlow {
         String choice;
         try {
             choice = reader.readLine(prompt);
-        } catch (EndOfFileException | UserInterruptException e) {
+        } catch (EndOfFileException | UserInterruptException _) {
             return new EntryResult(status, List.of(ConsolePrompt.formatMachineSetupBadge(completedStep, 7)), null, null);
         }
         if (choice == null || choice.isBlank()) {
@@ -176,7 +178,7 @@ public final class EntryFlow {
             String beginChoice = null;
             try {
                 beginChoice = reader.readLine("Begin with step 1? [Enter]   a) decide everything for me   ?   › ");
-            } catch (EndOfFileException | UserInterruptException e) {
+            } catch (EndOfFileException | UserInterruptException _) {
                 // abort setup on interrupt/EOF
             }
             if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
@@ -193,7 +195,7 @@ public final class EntryFlow {
         var badges = extractWaitingBadges(status);
 
         if (isSsh) {
-            out.printf("✓ Web access on http://127.0.0.1:%d%n", webPort);
+            out.printf("✓ Web access on %s%d%n", LOOPBACK_URL_PREFIX, webPort);
             var pairing = issuePairingCode(runtime, webPort);
             printSshWaysIn(out, webPort, pairing.code());
             out.flush();
@@ -201,11 +203,11 @@ public final class EntryFlow {
         } else {
             var pairedDevice = findPairedBrowser(runtime);
             if (pairedDevice != null) {
-                out.printf("✓ Web app: http://127.0.0.1:%d   (paired: %s)%n", webPort, pairedDevice);
+                out.printf("✓ Web app: %s%d   (paired: %s)%n", LOOPBACK_URL_PREFIX, webPort, pairedDevice);
                 out.flush();
-                return new EntryResult(status, badges, null, "http://127.0.0.1:" + webPort);
+                return new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort);
             } else {
-                out.printf("✓ Web access on http://127.0.0.1:%d%n", webPort);
+                out.printf("✓ Web access on %s%d%n", LOOPBACK_URL_PREFIX, webPort);
                 var pairing = issuePairingCode(runtime, webPort);
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
                 out.flush();
@@ -215,7 +217,7 @@ public final class EntryFlow {
     }
 
     private void tryOpenBrowser(PrintWriter out, String url, String code, int port) {
-        var validUntil = LocalTime.now().plusMinutes(10).format(TIME_FORMATTER);
+        var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
         try {
             context.openBrowser(URI.create(url));
             out.println("✓ Browser opened with a pairing code, valid for 10 minutes");
@@ -235,14 +237,14 @@ public final class EntryFlow {
     }
 
     private void printWaysIn(PrintWriter out, int port, String code) {
-        var validUntil = LocalTime.now().plusMinutes(10).format(TIME_FORMATTER);
+        var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
         var user = context.environment().getOrDefault("USER", System.getProperty("user.name", "user"));
         var host = getHostname();
         out.println("  Ways in, from your own computer");
         out.printf("    1. Forward the port (VS Code and JetBrains do this on their own):%n");
         out.printf("       ssh -L %d:127.0.0.1:%d %s@%s%n", port, port, user, host);
         out.printf("    2. Open:%n");
-        out.printf("       http://127.0.0.1:%d/pair#code=%s%n", port, code);
+        out.printf("       %s%d/pair#code=%s%n", LOOPBACK_URL_PREFIX, port, code);
         out.printf("    Code %s, valid until %s%n", code, validUntil);
     }
 
@@ -260,7 +262,7 @@ public final class EntryFlow {
         body.put("port", port);
         try {
             runtime.send(HttpRequest.json("PUT", "/api/v1/web", JsonTree.write(body)));
-        } catch (IOException e) {
+        } catch (IOException _) {
             // best-effort enable
         }
     }
@@ -278,22 +280,19 @@ public final class EntryFlow {
             var response = runtime.send(HttpRequest.json("POST", "/api/v1/web/pairings", "{}"));
             if (response.status() == 200 || response.status() == 201) {
                 var json = JsonTree.asObject(JsonTree.parse(response.body()));
-                if (json != null) {
-                    var code = (String) json.get("code");
+                if (json != null && json.get("code") instanceof String code) {
                     var url = (String) json.get("url");
-                    if (code != null) {
-                        if (url == null || url.isBlank()) {
-                            url = "http://127.0.0.1:" + port + "/pair#code=" + code;
-                        }
-                        return new PairingCode(code, url);
+                    if (url == null || url.isBlank()) {
+                        url = LOOPBACK_URL_PREFIX + port + "/pair#code=" + code;
                     }
+                    return new PairingCode(code, url);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             // fallback
         }
         var fallbackCode = "KXQB-MRTN";
-        return new PairingCode(fallbackCode, "http://127.0.0.1:" + port + "/pair#code=" + fallbackCode);
+        return new PairingCode(fallbackCode, LOOPBACK_URL_PREFIX + port + "/pair#code=" + fallbackCode);
     }
 
     /**
@@ -320,7 +319,7 @@ public final class EntryFlow {
                     }
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             // not reachable
         }
         return null;
@@ -330,10 +329,8 @@ public final class EntryFlow {
         if (Boolean.TRUE.equals(status.get("onboarded"))) {
             return true;
         }
-        if (status.get("machine") instanceof Map<?, ?> machine) {
-            if (Boolean.TRUE.equals(machine.get("onboarded"))) {
-                return true;
-            }
+        if (status.get("machine") instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get("onboarded"))) {
+            return true;
         }
         if (status.get("onboard") instanceof Map<?, ?> onboard) {
             if ("onboard.completed".equals(onboard.get("state")) || Boolean.TRUE.equals(onboard.get("completed"))) {
@@ -382,7 +379,7 @@ public final class EntryFlow {
                     if (p > 0) {
                         return p;
                     }
-                } catch (NumberFormatException ignored) {
+                } catch (NumberFormatException _) {
                     // fallback to default
                 }
             }
@@ -401,7 +398,7 @@ public final class EntryFlow {
                 } else if (entry.getValue() instanceof JsonNumber jn) {
                     try {
                         countVal = (int) jn.longValue();
-                    } catch (NumberFormatException ignored) {
+                    } catch (NumberFormatException _) {
                         // ignore invalid
                     }
                 }
@@ -425,7 +422,7 @@ public final class EntryFlow {
             return InetAddress.getLocalHost().getHostName();
         }
         /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception e) {
+        catch (Exception _) {
             return "localhost";
         }
     }

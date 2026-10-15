@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
@@ -36,13 +37,11 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class RecipeCommand implements Callable<Integer> {
 
-    private final OperatorContext context;
-
     @Spec
     CommandSpec spec = CommandSpec.create();
 
     RecipeCommand(OperatorContext context) {
-        this.context = context;
+        Objects.requireNonNull(context, "context");
     }
 
     @Override

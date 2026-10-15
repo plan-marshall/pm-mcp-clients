@@ -10,12 +10,14 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.runtime.RuntimeClient;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -65,53 +67,59 @@ public final class AbortCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        var err = spec.commandLine().getErr();
         var runtime = context.runtime(true);
 
         if ("plan".equalsIgnoreCase(kind)) {
-            // Determine plan state
-            boolean isPaused = false;
-            var safeId = OperatorUrlUtil.encodePathSegment(targetId);
-            var planResponse = runtime.send(HttpRequest.get("/api/v1/plans/" + safeId));
-            if (planResponse.status() == 200) {
-                var parsed = JsonTree.parse(planResponse.body());
-                if (parsed instanceof Map<?, ?> map) {
-                    var state = String.valueOf(map.get("state"));
-                    isPaused = "paused".equalsIgnoreCase(state);
-                }
-            }
-
-            var payload = new LinkedHashMap<String, Object>();
-            payload.put("reason", reason);
-            payload.put("close_pr", !keepPr);
-
-            var endpoint = isPaused ? "/api/v1/plans/" + safeId + "/abandon" : "/api/v1/plans/" + safeId + "/cancel";
-            var response = runtime.send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 202) {
-                out.printf("✓ %s %s and archived%n", targetId, isPaused ? "abandoned" : "cancelled");
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("abort plan " + targetId, response);
+            return abortPlan(runtime, out);
         }
-
         if ("epic".equalsIgnoreCase(kind)) {
-            var payload = new LinkedHashMap<String, Object>();
-            payload.put("reason", reason);
-            payload.put("with_plans", !withoutPlans);
-
-            var safeId = OperatorUrlUtil.encodePathSegment(targetId);
-            var response = runtime.send(HttpRequest.json("POST", "/api/v1/epics/" + safeId + "/cancel", JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 202) {
-                out.printf("✓ %s cancelled%n", targetId);
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("abort epic " + targetId, response);
+            return abortEpic(runtime, out);
         }
 
+        var err = spec.commandLine().getErr();
         err.printf("Unknown abort target: %s. Expected 'plan' or 'epic'.%n", kind);
         err.flush();
         return 2;
+    }
+
+    private int abortPlan(RuntimeClient runtime, PrintWriter out) throws IOException {
+        boolean isPaused = false;
+        var safeId = OperatorUrlUtil.encodePathSegment(targetId);
+        var planResponse = runtime.send(HttpRequest.get("/api/v1/plans/" + safeId));
+        if (planResponse.status() == 200) {
+            var parsed = JsonTree.parse(planResponse.body());
+            if (parsed instanceof Map<?, ?> map) {
+                var state = String.valueOf(map.get("state"));
+                isPaused = "paused".equalsIgnoreCase(state);
+            }
+        }
+
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("reason", reason);
+        payload.put("close_pr", !keepPr);
+
+        var endpoint = isPaused ? "/api/v1/plans/" + safeId + "/abandon" : "/api/v1/plans/" + safeId + "/cancel";
+        var response = runtime.send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
+        if (response.status() == 200 || response.status() == 202) {
+            out.printf("✓ %s %s and archived%n", targetId, isPaused ? "abandoned" : "cancelled");
+            out.flush();
+            return 0;
+        }
+        throw new OperatorRefusedException("abort plan " + targetId, response);
+    }
+
+    private int abortEpic(RuntimeClient runtime, PrintWriter out) throws IOException {
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("reason", reason);
+        payload.put("with_plans", !withoutPlans);
+
+        var safeId = OperatorUrlUtil.encodePathSegment(targetId);
+        var response = runtime.send(HttpRequest.json("POST", "/api/v1/epics/" + safeId + "/cancel", JsonTree.write(payload)));
+        if (response.status() == 200 || response.status() == 202) {
+            out.printf("✓ %s cancelled%n", targetId);
+            out.flush();
+            return 0;
+        }
+        throw new OperatorRefusedException("abort epic " + targetId, response);
     }
 }

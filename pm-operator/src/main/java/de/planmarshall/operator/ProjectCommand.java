@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -97,6 +98,7 @@ public final class ProjectCommand implements Callable<Integer> {
         String projectId;
 
         @Parameters(index = "1", arity = "0..1", description = "Setup step name or number")
+        @Nullable
         String step;
 
         SetupCommand(OperatorContext context) {
@@ -168,6 +170,7 @@ public final class ProjectCommand implements Callable<Integer> {
         String projectId;
 
         @Option(names = "--reason", description = "Reason for releasing project")
+        @Nullable
         String reason;
 
         ReleaseCommand(OperatorContext context) {

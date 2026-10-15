@@ -10,11 +10,13 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -26,25 +28,27 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
 /**
- * {@code pm-operator client}: manages host client bundles (01-commands.adoc#commands).
+ * {@code pm-operator client}: manages client bundle installations into coding agent harnesses
+ * (01-commands.adoc#commands, 02-credentials-and-operator.adoc).
  */
-@Command(name = "client", description = "Manages coding agent client bundles.",
+@Command(name = "client", description = "Manages client bundle installations for coding agent harnesses.",
         subcommands = {
                 ClientCommand.StatusCommand.class,
                 ClientCommand.InstallCommand.class,
                 ClientCommand.UpdateCommand.class,
                 ClientCommand.RemoveCommand.class
         })
-@OperatorVerb
 public final class ClientCommand implements Callable<Integer> {
 
     private static final String HARNESSES = "harnesses";
+
+    private final OperatorContext context;
 
     @Spec
     CommandSpec spec = CommandSpec.create();
 
     ClientCommand(OperatorContext context) {
-        Objects.requireNonNull(context, "context");
+        this.context = Objects.requireNonNull(context, "context");
     }
 
     @Override
@@ -71,30 +75,53 @@ public final class ClientCommand implements Callable<Integer> {
                 if (response.status() == 200) {
                     var parsed = JsonTree.parse(response.body());
                     if (parsed instanceof List<?> list && !list.isEmpty()) {
-                        out.println("Client Bundles:");
-                        for (var item : list) {
-                            if (item instanceof Map<?, ?> bundle) {
-                                var version = bundle.get("version");
-                                out.printf("  %-16s %-10s %s%n",
-                                        bundle.get("name"),
-                                        bundle.get("status"),
-                                        version != null ? version : "");
-                            } else {
-                                out.println("  " + item);
-                            }
-                        }
+                        printBundles(out, list);
                     } else {
                         out.println("No client bundles installed.");
                     }
                 } else {
                     out.printf("Failed to query client bundles: HTTP %d%n", response.status());
                 }
-            } catch (RuntimeUnavailableException e) {
+            } catch (RuntimeUnavailableException _) {
                 out.println("runtime   not running");
             }
             out.flush();
             return 0;
         }
+
+        private void printBundles(PrintWriter out, List<?> list) {
+            out.println("Client Bundles:");
+            for (var item : list) {
+                if (item instanceof Map<?, ?> bundle) {
+                    var version = bundle.get("version");
+                    out.printf("  %-16s %-10s %s%n",
+                            bundle.get("name"),
+                            bundle.get("status"),
+                            version != null ? version : "");
+                } else {
+                    out.println("  " + item);
+                }
+            }
+        }
+    }
+
+    static int executeHarnessAction(OperatorContext context, CommandSpec spec, String action,
+            @Nullable List<String> harnesses, String successMsg) throws IOException {
+        context.gate().verify();
+        var body = new LinkedHashMap<String, Object>();
+        body.put(HARNESSES, harnesses != null ? harnesses : List.of());
+        var response = context.runtime(true).send(
+                HttpRequest.json("POST", "/api/v1/client/" + action, JsonTree.write(body)));
+        var out = spec.commandLine().getOut();
+        if (response.status() == 200 || response.status() == 201 || response.status() == 204) {
+            out.println(successMsg);
+            out.flush();
+            return 0;
+        }
+        var err = spec.commandLine().getErr();
+        err.printf("Client %s failed: HTTP %d%n", action, response.status());
+        err.flush();
+        return 1;
     }
 
     @Command(name = "install", description = "Installs client bundles for the specified harnesses.")
@@ -105,6 +132,7 @@ public final class ClientCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0..*", description = "Harness IDs to install")
+        @Nullable
         List<String> harnesses;
 
         InstallCommand(OperatorContext context) {
@@ -113,21 +141,8 @@ public final class ClientCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
-            var body = new LinkedHashMap<String, Object>();
-            body.put(HARNESSES, harnesses != null ? harnesses : List.of());
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/client/install", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
-            if (response.status() == 200 || response.status() == 201) {
-                out.println("✓ Client bundle installation completed");
-                out.flush();
-                return 0;
-            }
-            var err = spec.commandLine().getErr();
-            err.printf("Client installation failed: HTTP %d%n", response.status());
-            err.flush();
-            return 1;
+            return executeHarnessAction(context, spec, "install", harnesses,
+                    "✓ Client bundle installation completed");
         }
     }
 
@@ -139,6 +154,7 @@ public final class ClientCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0..*", description = "Harness IDs to update")
+        @Nullable
         List<String> harnesses;
 
         UpdateCommand(OperatorContext context) {
@@ -147,18 +163,8 @@ public final class ClientCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
-            var body = new LinkedHashMap<String, Object>();
-            body.put(HARNESSES, harnesses != null ? harnesses : List.of());
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/client/update", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
-            if (response.status() == 200) {
-                out.println("✓ Client bundle update completed");
-                out.flush();
-                return 0;
-            }
-            return 1;
+            return executeHarnessAction(context, spec, "update", harnesses,
+                    "✓ Client bundle update completed");
         }
     }
 
@@ -170,6 +176,7 @@ public final class ClientCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0..*", description = "Harness IDs to remove")
+        @Nullable
         List<String> harnesses;
 
         RemoveCommand(OperatorContext context) {
@@ -178,18 +185,8 @@ public final class ClientCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
-            var body = new LinkedHashMap<String, Object>();
-            body.put(HARNESSES, harnesses != null ? harnesses : List.of());
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/client/remove", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
-            if (response.status() == 200 || response.status() == 204) {
-                out.println("✓ Client bundle removal completed");
-                out.flush();
-                return 0;
-            }
-            return 1;
+            return executeHarnessAction(context, spec, "remove", harnesses,
+                    "✓ Client bundle removal completed");
         }
     }
 }

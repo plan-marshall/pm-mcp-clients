@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -62,16 +63,16 @@ public final class PmConsole {
      * Runs the console entry flow and main REPL loop.
      *
      * @return exit code (0 on normal exit)
-     * @throws Exception on fatal console or terminal error
+     * @throws IOException on fatal console or terminal error
      */
-    public int run() throws Exception {
+    public int run() throws IOException {
         var terminal = context.createTerminal();
         var out = new PrintWriter(terminal.writer(), true);
 
         var historyFile = context.stateDirectory().historyFile();
         try {
             context.stateDirectory().ensureFile(historyFile);
-        } catch (IOException e) {
+        } catch (IOException _) {
             // best-effort history file
         }
 
@@ -100,9 +101,7 @@ public final class PmConsole {
             runRepl(out, reader);
         } finally {
             running.set(false);
-            if (sseThread != null) {
-                sseThread.interrupt();
-            }
+            sseThread.interrupt();
             out.flush();
         }
 
@@ -151,7 +150,7 @@ public final class PmConsole {
             String beginChoice = null;
             try {
                 beginChoice = reader.readLine("Begin with step 1? [Enter]   a) decide everything for me   ?   › ");
-            } catch (EndOfFileException | UserInterruptException e) {
+            } catch (EndOfFileException | UserInterruptException _) {
                 // abort continuation on interrupt/EOF
             }
             if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
@@ -196,7 +195,7 @@ public final class PmConsole {
 
     private void printWebQr(PrintWriter out) {
         var url = activePairingUrl != null ? activePairingUrl : "http://127.0.0.1:" + webPort;
-        var validUntil = LocalTime.now().plusMinutes(10).format(TIME_FORMATTER);
+        var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
         var sideLines = new ArrayList<String>();
         sideLines.add(url);
         if (activePairingCode != null) {
@@ -221,7 +220,7 @@ public final class PmConsole {
             var pairing = new EntryFlow(context).issuePairingCode(context.runtime(true), webPort);
             activePairingCode = pairing.code();
             activePairingUrl = pairing.url();
-            var validUntil = LocalTime.now().plusMinutes(10).format(TIME_FORMATTER);
+            var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
             out.printf("✓ New code: %s, valid until %s. The previous code no longer works.%n",
                     pairing.code(), validUntil);
             out.printf("  %s%n", pairing.url());
@@ -261,14 +260,14 @@ public final class PmConsole {
                             handleSseEvent(event, reader);
                         }
                     }
-                } catch (IOException e) {
+                } catch (IOException _) {
                     if (!running.get()) {
                         break;
                     }
                     reconnecting.set(true);
                     try {
                         Thread.sleep(1000);
-                    } catch (InterruptedException ie) {
+                    } catch (InterruptedException _) {
                         Thread.currentThread().interrupt();
                         break;
                     }
@@ -281,7 +280,7 @@ public final class PmConsole {
     }
 
     private void handleSseEvent(SseEvent event, LineReader reader) {
-        if (event == null || event.data() == null || event.data().isBlank()) {
+        if (event.data() == null || event.data().isBlank()) {
             return;
         }
         try {
@@ -304,7 +303,7 @@ public final class PmConsole {
             }
         }
         /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception e) {
+        catch (Exception _) {
             // invalid json in event stream
         }
     }

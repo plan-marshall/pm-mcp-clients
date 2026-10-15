@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
@@ -67,36 +68,12 @@ final class StatusCommand implements Callable<Integer> {
             return notRunning();
         }
         if (ended) {
-            try {
-                var path = project != null && !".".equals(project)
-                        ? "/api/v1/projects/" + project + "/ended"
-                        : "/api/v1/status?ended=true";
-                var response = context.runtime(false).send(HttpRequest.get(path));
-                if (response.status() == 200) {
-                    out.println(response.bodyText());
-                    out.flush();
-                    return 0;
-                }
-                throw new OperatorRefusedException("status --ended", response);
-            } catch (RuntimeUnavailableException e) {
-                return notRunning();
-            }
+            return handleEnded(out);
         }
         Map<String, Object> status;
         try {
-            var path = RuntimeClient.STATUS_PATH;
-            if (project != null && !".".equals(project)) {
-                path += "?project=" + project;
-            }
-            var response = context.runtime(false).send(HttpRequest.get(path));
-            if (response.status() != 200) {
-                throw new OperatorRefusedException("status", response);
-            }
-            status = JsonTree.asObject(JsonTree.parse(response.body()));
-            if (status == null) {
-                throw new OperatorRefusedException("status", response);
-            }
-        } catch (RuntimeUnavailableException e) {
+            status = fetchProjectStatus();
+        } catch (RuntimeUnavailableException _) {
             return notRunning();
         }
         if (json) {
@@ -106,6 +83,39 @@ final class StatusCommand implements Callable<Integer> {
         }
         out.flush();
         return 0;
+    }
+
+    private int handleEnded(PrintWriter out) throws IOException {
+        try {
+            var path = project != null && !".".equals(project)
+                    ? "/api/v1/projects/" + project + "/ended"
+                    : "/api/v1/status?ended=true";
+            var response = context.runtime(false).send(HttpRequest.get(path));
+            if (response.status() == 200) {
+                out.println(response.bodyText());
+                out.flush();
+                return 0;
+            }
+            throw new OperatorRefusedException("status --ended", response);
+        } catch (RuntimeUnavailableException _) {
+            return notRunning();
+        }
+    }
+
+    private Map<String, Object> fetchProjectStatus() throws IOException {
+        var path = RuntimeClient.STATUS_PATH;
+        if (project != null && !".".equals(project)) {
+            path += "?project=" + project;
+        }
+        var response = context.runtime(false).send(HttpRequest.get(path));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("status", response);
+        }
+        var status = JsonTree.asObject(JsonTree.parse(response.body()));
+        if (status == null) {
+            throw new OperatorRefusedException("status", response);
+        }
+        return status;
     }
 
     static Map<String, Object> fetch(RuntimeClient runtime) throws IOException {

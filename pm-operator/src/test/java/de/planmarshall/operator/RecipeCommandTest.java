@@ -100,7 +100,7 @@ class RecipeCommandTest {
     @Test
     @DisplayName("recipe run defaults project to default when omitted")
     void runDefaultProject() throws Exception {
-        var server = runtime((request, response) -> {
+        runtime((request, response) -> {
             if ("/api/v1/projects/default/recipes/cleanup/run".equals(request.target())) {
                 response.send(200, null, "");
             } else {

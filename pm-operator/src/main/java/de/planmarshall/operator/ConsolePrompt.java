@@ -36,7 +36,7 @@ public final class ConsolePrompt {
      * @param reconnecting {@code true} if reconnecting to the runtime
      * @return the formatted prompt string
      */
-    public static String format(List<String> badges, boolean reconnecting) {
+    public static String format(@Nullable List<String> badges, boolean reconnecting) {
         if (reconnecting) {
             return RECONNECTING_PROMPT;
         }

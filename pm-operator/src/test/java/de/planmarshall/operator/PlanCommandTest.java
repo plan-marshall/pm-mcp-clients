@@ -156,7 +156,7 @@ class PlanCommandTest {
     @Test
     @DisplayName("plan add with project routes to project entries")
     void planAddWithProject() throws Exception {
-        var server = fixture.start((request, response) -> {
+        fixture.start((request, response) -> {
             if ("/api/v1/projects/my-proj/entries".equals(request.target()) && "POST".equals(request.method())) {
                 response.send(200, null, "");
             } else {

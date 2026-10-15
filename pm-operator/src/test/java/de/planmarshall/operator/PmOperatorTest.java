@@ -523,7 +523,7 @@ class PmOperatorTest {
         @Test
         @DisplayName("stop with --withdraw withdraws drain")
         void stopWithdraw() throws Exception {
-            var server = runtime((request, response) -> {
+            runtime((request, response) -> {
                 if ("/api/v1/runtime/stop".equals(request.target()) && "DELETE".equals(request.method())) {
                     response.send(200, null, "");
                 } else {

@@ -57,8 +57,8 @@ public final class SystemCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
-        var record = RuntimeRecord.read(context.paths().runtimeRecord());
-        if (record.isEmpty() || !record.get().processAlive()) {
+        var runtimeRecord = RuntimeRecord.read(context.paths().runtimeRecord());
+        if (runtimeRecord.isEmpty() || !runtimeRecord.get().processAlive()) {
             out.println("runtime   not running");
             out.flush();
             return 0;
@@ -87,7 +87,7 @@ public final class SystemCommand implements Callable<Integer> {
                 return 0;
             }
             throw new OperatorRefusedException("system", response);
-        } catch (RuntimeUnavailableException e) {
+        } catch (RuntimeUnavailableException _) {
             out.println("runtime   not running");
             out.flush();
             return 0;
