@@ -31,18 +31,36 @@ The mock runtime includes a command-line interface in `de.planmarshall.mock.cli.
 
 ==== Running the Server
 
-Run directly with `java -jar`:
+===== Via Lifecycle Scripts (`start.sh` and `stop.sh`)
+
+The simplest way to start the mock runtime is using `start.sh`:
 
 [source,bash]
 ----
-java -jar pm-mock-runtime.jar [options]
+# Run start.sh directly (interactively prompts to select from available scenarios if none passed)
+./pm-mock-runtime/start.sh
+
+# Or pass specific scenario and port directly:
+./pm-mock-runtime/start.sh --scenario onboarding-happy --web-port 7420
 ----
 
-Or via the Maven wrapper from the repository root:
+The script automatically:
+* Runs an incremental Maven build (`./mvnw -am` without `clean`) if sources have changed or target classes are missing.
+* Dynamically discovers and lists all available scenarios from `src/main/resources/scenarios/` with a numbered menu if no scenario argument is passed.
+* Starts the mock runtime in the background, writes its PID to `target/pm-mock-runtime.pid`, and outputs logs to `target/pm-mock-runtime.log`.
+
+To stop the background server:
 
 [source,bash]
 ----
-./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario onboarding-happy --web-port 8088"
+./pm-mock-runtime/stop.sh
+----
+
+===== Via Maven Wrapper
+
+[source,bash]
+----
+./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario onboarding-happy --web-port 7420"
 ----
 
 ==== Command-Line Options
@@ -109,36 +127,77 @@ The mock runtime exposes dedicated control endpoints on both listeners for test 
 
 === Testing Usage
 
-==== Integration Tests with `MockRuntime`
+==== JUnit 5 Integration with `@EnableMockRuntime`
 
-In tests, manage server lifecycle using `try-with-resources`:
+The recommended way to test against the mock runtime in JUnit 5 is via the `@EnableMockRuntime` extension:
+
+[source,java]
+----
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.mock.junit5.EnableMockRuntime;
+import de.planmarshall.api.runtime.RuntimeClient;
+
+@EnableMockRuntime(scenario = StandardScenarios.ONBOARDING_HAPPY)
+class MyClientTest {
+
+    @Test
+    void testClientInteraction(MockRuntime runtime, RuntimeClient client) throws Exception {
+        // RuntimeClient is pre-authenticated targeting the runtime Unix domain socket
+        var status = client.status();
+        assertNotNull(status);
+
+        // Dynamically switch scenario in-test using StandardScenarios constants
+        runtime.switchScenario(StandardScenarios.STATUS_ONLY);
+        assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
+    }
+
+    @Test
+    @EnableMockRuntime(scenario = StandardScenarios.WEB_PAIRING, webPort = 0)
+    void testWebPairing(MockRuntime runtime, URI loopbackUrl) {
+        // Methods can override class-level scenario and inject loopback URI
+        assertTrue(runtime.webPort() > 0);
+        assertNotNull(loopbackUrl);
+    }
+}
+----
+
+===== Injectable Parameters
+The `@EnableMockRuntime` extension automatically injects:
+* `MockRuntime`: running mock server instance
+* `RuntimeClient`: pre-authenticated client targeting the Unix socket
+* `MachinePaths`: path layout of the running runtime
+* `Path`: base directory (`PM_MCP_BASE`)
+* `URI`: loopback web URL (when `webPort >= 0`)
+* `Scenario`: active scenario definition
+* `MockRuntimeConfig`: configuration used to start the runtime
+
+==== Programmatic Lifecycle with `try-with-resources`
+
+For tests requiring low-level manual lifecycle control without JUnit annotations:
 
 [source,java]
 ----
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
-import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.mock.StandardScenarios;
 
-class MyClientIT {
+class ManualLifecycleIT {
 
     @Test
     void testClientInteraction() throws Exception {
         var config = MockRuntimeConfig.builder()
-                .scenario("onboarding-happy")
+                .scenario(StandardScenarios.ONBOARDING_HAPPY)
                 .webPort(0) // 0 selects an ephemeral TCP port
                 .build();
 
         try (var runtime = MockRuntime.start(config)) {
-            // Point the production client to the mock base
-            var client = new RuntimeClient(runtime.base());
-
-            // Interact with the runtime
+            var client = runtime.client();
             var status = client.status();
             assertNotNull(status);
 
-            // Dynamically switch scenario in-test
-            runtime.switchScenario("status-only");
-            assertEquals("status-only", runtime.currentScenarioName());
+            runtime.switchScenario(StandardScenarios.STATUS_ONLY);
+            assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
         }
     }
 }
@@ -262,12 +321,14 @@ To switch scenarios:
 
 === Bundled Scenarios
 
-The module ships with the following scenarios out of the box:
+The module ships with the following standard scenarios out of the box, declared as constants in `de.planmarshall.mock.StandardScenarios`:
 
-* `status-only`: represents an idle runtime serving machine status.
-* `onboarding-happy`: complete happy path machine onboarding flow through mode selection, language selection, harness verification, and confirmation.
-* `onboarding-harness-not-logged-in`: machine onboarding where harness probing fails with a missing login diagnosis and offers a fix link.
-* `web-pairing`: browser pairing flow demonstrating pairing code exchange and subsequent authenticated web client requests.
+* `StandardScenarios.STATUS_ONLY` (`"status-only"`): represents an idle runtime serving machine status.
+* `StandardScenarios.ONBOARDING_HAPPY` (`"onboarding-happy"`): complete happy path machine onboarding flow through mode selection, language selection, harness verification, and confirmation.
+* `StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN` (`"onboarding-harness-not-logged-in"`): machine onboarding where harness probing fails with a missing login diagnosis and offers a fix link.
+* `StandardScenarios.WEB_PAIRING` (`"web-pairing"`): browser pairing flow demonstrating pairing code exchange and subsequent authenticated web client requests.
+
+`StandardScenarios.ALL` provides an unmodifiable list of all delivered standard scenario names.
 
 == Extending the Mock Runtime
 

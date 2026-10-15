@@ -25,6 +25,9 @@ import java.util.Map;
 import java.util.Objects;
 
 import de.planmarshall.api.MachinePaths;
+import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.runtime.Authenticator;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpServer;
 import de.planmarshall.mock.runtime.MockRuntimeEngine;
@@ -325,6 +328,44 @@ public final class MockRuntime implements AutoCloseable {
         var env = new HashMap<String, String>();
         env.put(MachinePaths.ENV_BASE, base.toString());
         return env;
+    }
+
+    /**
+     * Creates a pre-authenticated {@link RuntimeClient} targeting this mock runtime's Unix domain socket.
+     *
+     * @return a runtime client targeting this runtime
+     */
+    public RuntimeClient client() {
+        return client(Map.of());
+    }
+
+    /**
+     * Creates a pre-authenticated {@link RuntimeClient} targeting this mock runtime's Unix domain socket
+     * with additional fixed headers.
+     *
+     * @param headers additional headers to include on each request
+     * @return a runtime client targeting this runtime
+     */
+    public RuntimeClient client(Map<String, String> headers) {
+        var authenticator = new Authenticator() {
+            private final Credential cred = new Credential("Authorization", "Bearer " + token);
+
+            @Override
+            public Credential credential() {
+                return cred;
+            }
+
+            @Override
+            public boolean renew() {
+                return false;
+            }
+        };
+        return new RuntimeClient(
+                new UnixSocketHttpClient(paths.socket()),
+                authenticator,
+                null,
+                headers != null ? headers : Map.of()
+        );
     }
 
     /**

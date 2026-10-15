@@ -65,7 +65,26 @@ export PM_MCP_BASE=/tmp/pm-mock-xyz/b
 
 ### Step 3: Run Verbs and Console
 
-#### Running Individual Verbs
+### Running with Lifecycle Scripts (`start.sh` & `stop.sh`)
+
+`pm-operator` includes smart lifecycle scripts that perform incremental builds (`./mvnw -am` without `clean`) automatically:
+
+```bash
+# Run verbs directly (foreground)
+./pm-operator/start.sh status
+./pm-operator/start.sh config show
+
+# Launch interactive JLine console (foreground)
+./pm-operator/start.sh
+
+# Run in background / daemon mode (stores PID in target/pm-operator.pid)
+./pm-operator/start.sh -d status
+
+# Stop background instance
+./pm-operator/stop.sh
+```
+
+#### Running Individual Verbs (Direct)
 ```bash
 # Via Maven Wrapper
 ./mvnw -pl pm-operator exec:java -Dexec.args="status"
@@ -81,7 +100,7 @@ java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar config show
 ./pm-operator/target/pm-operator status
 ```
 
-#### Running the Interactive Console
+#### Running the Interactive Console (Direct)
 Launching `pm-operator` without arguments opens the interactive JLine console:
 ```bash
 java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar

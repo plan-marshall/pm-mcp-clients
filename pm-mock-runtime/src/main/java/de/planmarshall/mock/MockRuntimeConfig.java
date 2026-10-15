@@ -11,6 +11,8 @@ package de.planmarshall.mock;
 
 import java.nio.file.Path;
 import java.util.UUID;
+
+
 import lombok.Builder;
 import lombok.Value;
 
@@ -29,7 +31,7 @@ public class MockRuntimeConfig {
 
     /** The initial scenario name (e.g. {@code status-only}) or file path. */
     @Builder.Default
-    String scenario = "status-only";
+    String scenario = StandardScenarios.STATUS_ONLY;
 
     /**
      * Port for the loopback web TCP listener: {@code -1} for disabled, {@code 0} for ephemeral, or

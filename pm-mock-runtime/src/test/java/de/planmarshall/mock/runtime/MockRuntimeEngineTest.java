@@ -20,12 +20,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
 import de.planmarshall.mock.scenario.LinkDefinition;
@@ -42,7 +44,7 @@ class MockRuntimeEngineTest {
     @BeforeEach
     void setUp() {
         registry = new ScenarioRegistry();
-        var initialScenario = registry.resolve("status-only");
+        var initialScenario = registry.resolve(StandardScenarios.STATUS_ONLY);
         engine = new MockRuntimeEngine(registry, initialScenario, "test-token", "test-secret");
     }
 
@@ -93,7 +95,7 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("initializes state and handles getters")
     void initialization() {
-        assertEquals("status-only", engine.currentScenario().name());
+        assertEquals(StandardScenarios.STATUS_ONLY, engine.currentScenario().name());
         assertEquals("runtime.idle", engine.currentStateId());
         assertEquals("test-token", engine.runtimeToken());
         assertEquals("test-secret", engine.deviceSecret());
@@ -104,7 +106,7 @@ class MockRuntimeEngineTest {
     void stateTransitions() {
         assertThrows(IllegalArgumentException.class, () -> engine.goToState("non-existent"));
 
-        engine.switchScenario("onboarding-happy");
+        engine.switchScenario(StandardScenarios.ONBOARDING_HAPPY);
         assertEquals("onboard.mode", engine.currentStateId());
 
         engine.goToState("harness.choose");
@@ -120,14 +122,14 @@ class MockRuntimeEngineTest {
         var res = send("GET", "/mock/state", Map.of(), new byte[0], false);
         assertEquals(200, res.status());
         assertNotNull(res.json());
-        assertEquals("status-only", res.json().get("scenario"));
+        assertEquals(StandardScenarios.STATUS_ONLY, res.json().get("scenario"));
         assertEquals("runtime.idle", res.json().get("state"));
     }
 
     @Test
     @DisplayName("control endpoint: POST /mock/reset resets state to scenario start")
     void controlReset() throws Exception {
-        engine.switchScenario("onboarding-happy");
+        engine.switchScenario(StandardScenarios.ONBOARDING_HAPPY);
         engine.goToState("harness.choose");
         assertEquals("harness.choose", engine.currentStateId());
 
@@ -141,22 +143,22 @@ class MockRuntimeEngineTest {
     @DisplayName("control endpoint: POST /mock/scenario switches active scenario by JSON body and query")
     void controlSwitchScenario() throws Exception {
         // 1. Switch via body
-        var body = "{\"scenario\":\"web-pairing\"}".getBytes(StandardCharsets.UTF_8);
+        var body = ("{\"scenario\":\"" + StandardScenarios.WEB_PAIRING + "\"}").getBytes(StandardCharsets.UTF_8);
         var res1 = send("POST", "/mock/scenario", Map.of(), body, false);
         assertEquals(200, res1.status());
         assertEquals("switched", res1.json().get("status"));
-        assertEquals("web-pairing", res1.json().get("scenario"));
+        assertEquals(StandardScenarios.WEB_PAIRING, res1.json().get("scenario"));
         assertEquals("web.pair", engine.currentStateId());
 
         // 2. Switch via query parameter ?name=...
-        var res2 = send("POST", "/mock/scenario?name=status-only", Map.of(), new byte[0], false);
+        var res2 = send("POST", "/mock/scenario?name=" + StandardScenarios.STATUS_ONLY, Map.of(), new byte[0], false);
         assertEquals(200, res2.status());
-        assertEquals("status-only", res2.json().get("scenario"));
+        assertEquals(StandardScenarios.STATUS_ONLY, res2.json().get("scenario"));
 
         // 3. Switch via query parameter ?scenario=...
-        var res3 = send("POST", "/mock/scenario?scenario=web-pairing", Map.of(), new byte[0], false);
+        var res3 = send("POST", "/mock/scenario?scenario=" + StandardScenarios.WEB_PAIRING, Map.of(), new byte[0], false);
         assertEquals(200, res3.status());
-        assertEquals("web-pairing", res3.json().get("scenario"));
+        assertEquals(StandardScenarios.WEB_PAIRING, res3.json().get("scenario"));
 
         // 4. Missing scenario name -> 400
         var res4 = send("POST", "/mock/scenario", Map.of(), new byte[0], false);
@@ -172,7 +174,7 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("control endpoint: POST /mock/goto transitions state and validates existence")
     void controlGoto() throws Exception {
-        engine.switchScenario("onboarding-happy");
+        engine.switchScenario(StandardScenarios.ONBOARDING_HAPPY);
         var res1 = send("POST", "/mock/goto/harness.choose", Map.of(), new byte[0], false);
         assertEquals(200, res1.status());
         assertEquals("transitioned", res1.json().get("status"));
@@ -204,7 +206,7 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("web authentication: pairing endpoint succeeds with valid code and rejects invalid code")
     void webPairingAuthentication() throws Exception {
-        engine.switchScenario("web-pairing");
+        engine.switchScenario(StandardScenarios.WEB_PAIRING);
 
         // 1. Pairing with matching code in JSON body
         var body = "{\"code\":\"KXQB-MRTN\"}".getBytes(StandardCharsets.UTF_8);
@@ -274,7 +276,7 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("matches state link, advances state, and returns next representation")
     void stateLinkTransition() throws Exception {
-        engine.switchScenario("onboarding-happy");
+        engine.switchScenario(StandardScenarios.ONBOARDING_HAPPY);
         assertEquals("onboard.mode", engine.currentStateId());
 
         // Send POST to /api/v1/operator/onboard/begin with begin link
@@ -335,7 +337,7 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("matches static routes from scenario")
     void staticRouteMatching() throws Exception {
-        engine.switchScenario("onboarding-harness-not-logged-in");
+        engine.switchScenario(StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN);
         assertEquals("harness.choose", engine.currentStateId());
 
         // GET /api/v1/status is a static route in this scenario

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
 
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -35,6 +36,8 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.runtime.Authenticator;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -46,7 +49,7 @@ class MockRuntimeTest {
     @Test
     @DisplayName("initializes filesystem layout with strict POSIX permissions and cleans up on close")
     void lifecycleAndFilesystem() throws Exception {
-        var runtime = MockRuntime.start("status-only");
+        var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY);
         var base = runtime.base();
         var paths = runtime.paths();
 
@@ -64,7 +67,7 @@ class MockRuntimeTest {
             assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(paths.runtimeToken())));
             assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(paths.runtimeRecord())));
 
-            assertEquals("status-only", runtime.currentScenarioName());
+            assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
             assertEquals("runtime.idle", runtime.currentStateName());
             assertEquals(runtime.base().toString(), runtime.environment().get(MachinePaths.ENV_BASE));
         }
@@ -76,7 +79,7 @@ class MockRuntimeTest {
     @Test
     @DisplayName("enforces Bearer token authentication on Unix domain socket")
     void unixAuthentication() throws Exception {
-        try (var runtime = MockRuntime.start("status-only")) {
+        try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
 
             // 1. Unauthenticated request -> 401
@@ -102,7 +105,7 @@ class MockRuntimeTest {
     @Test
     @DisplayName("handles hypermedia state transitions and reports mock_no_route on unmatched links")
     void hypermediaTransitions() throws Exception {
-        try (var runtime = MockRuntime.start("onboarding-harness-not-logged-in")) {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -138,30 +141,30 @@ class MockRuntimeTest {
     @Test
     @DisplayName("supports name-based scenario switching programmatically and via /mock/scenario")
     void scenarioSwitching() throws Exception {
-        try (var runtime = MockRuntime.start("onboarding-happy")) {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_HAPPY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
 
-            assertEquals("onboarding-happy", runtime.currentScenarioName());
+            assertEquals(StandardScenarios.ONBOARDING_HAPPY, runtime.currentScenarioName());
             assertEquals("onboard.mode", runtime.currentStateName());
 
             // Programmatic switch to status-only
-            runtime.switchScenario("status-only");
-            assertEquals("status-only", runtime.currentScenarioName());
+            runtime.switchScenario(StandardScenarios.STATUS_ONLY);
+            assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
             assertEquals("runtime.idle", runtime.currentStateName());
 
             // Control endpoint: GET /mock/state
             var stateRes = client.send(HttpRequest.get("/mock/state"));
             assertEquals(200, stateRes.status());
             var stateJson = JsonTree.asObject(JsonTree.parse(stateRes.body()));
-            assertEquals("status-only", JsonTree.string(stateJson, "scenario"));
+            assertEquals(StandardScenarios.STATUS_ONLY, JsonTree.string(stateJson, "scenario"));
             assertEquals("runtime.idle", JsonTree.string(stateJson, "state"));
 
             // Verify scenario switching control endpoint
-            var switchRes = client.send(HttpRequest.json("POST", "/mock/scenario", "{\"scenario\":\"web-pairing\"}"));
+            var switchRes = client.send(HttpRequest.json("POST", "/mock/scenario", "{\"scenario\":\"" + StandardScenarios.WEB_PAIRING + "\"}"));
             assertEquals(200, switchRes.status());
             var switchJson = JsonTree.asObject(JsonTree.parse(switchRes.body()));
             assertEquals("switched", JsonTree.string(switchJson, "status"));
-            assertEquals("web-pairing", JsonTree.string(switchJson, "scenario"));
+            assertEquals(StandardScenarios.WEB_PAIRING, JsonTree.string(switchJson, "scenario"));
             assertEquals("web.pair", runtime.currentStateName());
 
             // Verify jump to state control endpoint
@@ -179,7 +182,7 @@ class MockRuntimeTest {
     @Test
     @DisplayName("handles auto-transitions after configured delay")
     void autoTransitions() throws Exception {
-        try (var runtime = MockRuntime.start("onboarding-happy")) {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_HAPPY)) {
             assertEquals("onboard.mode", runtime.currentStateName());
 
             // Jump to state 'harness.probe' which has auto-transition to 'harness.confirm' after 250ms
@@ -198,7 +201,7 @@ class MockRuntimeTest {
     @Test
     @DisplayName("delivers scheduled Server-Sent Events to subscribers")
     void serverSentEvents() throws Exception {
-        try (var runtime = MockRuntime.start("onboarding-happy")) {
+        try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_HAPPY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -224,7 +227,7 @@ class MockRuntimeTest {
     @DisplayName("supports web pairing and device secret authentication over loopback TCP")
     void webPairingAndTcp() throws Exception {
         var config = MockRuntimeConfig.builder()
-                .scenario("web-pairing")
+                .scenario(StandardScenarios.WEB_PAIRING)
                 .webPort(0) // Ephemeral TCP port
                 .build();
 
@@ -280,7 +283,7 @@ class MockRuntimeTest {
         var tempBase = Files.createTempDirectory(Path.of("/tmp"), "pm-mb");
         try {
             var config = MockRuntimeConfig.builder()
-                    .scenario("status-only")
+                    .scenario(StandardScenarios.STATUS_ONLY)
                     .base(tempBase)
                     .cleanupBaseOnClose(false)
                     .build();
@@ -294,15 +297,15 @@ class MockRuntimeTest {
                 assertEquals(-1, runtime.webPort());
                 assertTrue(runtime.environment().containsKey(MachinePaths.ENV_BASE));
 
-                assertEquals("status-only", runtime.currentScenarioName());
+                assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
                 assertEquals("runtime.idle", runtime.currentStateName());
                 assertNotNull(runtime.currentScenario());
 
                 runtime.goToState("runtime.idle");
                 assertEquals("runtime.idle", runtime.currentStateName());
 
-                runtime.switchScenario("onboarding-happy");
-                assertEquals("onboarding-happy", runtime.currentScenarioName());
+                runtime.switchScenario(StandardScenarios.ONBOARDING_HAPPY);
+                assertEquals(StandardScenarios.ONBOARDING_HAPPY, runtime.currentScenarioName());
                 assertEquals("onboard.mode", runtime.currentStateName());
 
                 runtime.reset();
@@ -340,6 +343,26 @@ class MockRuntimeTest {
             assertEquals("synthetic-scenario", runtime.currentScenarioName());
             assertEquals("initial", runtime.currentStateName());
             assertNotNull(runtime.currentScenario());
+        }
+    }
+
+    @Test
+    @DisplayName("creates configured RuntimeClient instances targeting the Unix domain socket")
+    void clientCreation() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
+            var clientDefault = runtime.client();
+            assertNotNull(clientDefault);
+            assertTrue(clientDefault.isLive());
+
+            var clientWithHeaders = runtime.client(Map.of("X-Trace", "123"));
+            assertNotNull(clientWithHeaders);
+            assertTrue(clientWithHeaders.isLive());
+
+            var field = RuntimeClient.class.getDeclaredField("authenticator");
+            field.setAccessible(true);
+            var auth = (Authenticator) field.get(clientWithHeaders);
+            assertNotNull(auth.credential());
+            assertFalse(auth.renew());
         }
     }
 }

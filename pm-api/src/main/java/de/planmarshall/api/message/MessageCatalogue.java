@@ -76,7 +76,7 @@ public final class MessageCatalogue {
      */
     public static Map<String, String> getMessages(String locale, String area) {
         String effectiveLocale = normalizeLocale(locale);
-        String effectiveArea = (area == null || area.isBlank() || "all".equalsIgnoreCase(area)) ? "all" : area.toLowerCase();
+        String effectiveArea = area == null || area.isBlank() || "all".equalsIgnoreCase(area) ? "all" : area.toLowerCase();
         if (!"all".equals(effectiveArea) && !SUPPORTED_AREAS.contains(effectiveArea)) {
             return Map.of();
         }

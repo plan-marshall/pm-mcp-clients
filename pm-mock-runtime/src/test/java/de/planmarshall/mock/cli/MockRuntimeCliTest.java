@@ -21,9 +21,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.locks.LockSupport;
 
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import de.planmarshall.mock.StandardScenarios;
 
 @DisplayName("MockRuntimeCli")
 class MockRuntimeCliTest {
@@ -76,7 +79,7 @@ class MockRuntimeCliTest {
         assertTrue(result.isSuccess());
         var config = result.config();
         assertNotNull(config);
-        assertEquals("status-only", config.getScenario());
+        assertEquals(StandardScenarios.STATUS_ONLY, config.getScenario());
         assertNull(config.getBase());
         assertEquals(-1, config.getWebPort());
     }
@@ -85,7 +88,7 @@ class MockRuntimeCliTest {
     @DisplayName("parses customized CLI arguments")
     void customOptions() {
         var args = new String[]{
-                "--scenario", "onboarding-happy",
+                "--scenario", StandardScenarios.ONBOARDING_HAPPY,
                 "--base", "/tmp/pm-test-base",
                 "--web-port", "8088",
                 "--token", "secret-token-123"
@@ -95,7 +98,7 @@ class MockRuntimeCliTest {
         assertTrue(result.isSuccess());
         var config = result.config();
         assertNotNull(config);
-        assertEquals("onboarding-happy", config.getScenario());
+        assertEquals(StandardScenarios.ONBOARDING_HAPPY, config.getScenario());
         assertEquals(Path.of("/tmp/pm-test-base"), config.getBase());
         assertEquals(8088, config.getWebPort());
         assertEquals("secret-token-123", config.effectiveRuntimeToken());
@@ -117,7 +120,7 @@ class MockRuntimeCliTest {
     @DisplayName("parses short flags correctly")
     void shortFlags() {
         var args = new String[]{
-                "-s", "web-pairing",
+                "-s", StandardScenarios.WEB_PAIRING,
                 "-b", "/tmp/base-short",
                 "-p", "9999",
                 "-t", "tok"
@@ -125,7 +128,7 @@ class MockRuntimeCliTest {
         var result = MockRuntimeCli.parse(args, out, err);
         assertEquals(0, result.exitCode());
         assertTrue(result.isSuccess());
-        assertEquals("web-pairing", result.config().getScenario());
+        assertEquals(StandardScenarios.WEB_PAIRING, result.config().getScenario());
         assertEquals(Path.of("/tmp/base-short"), result.config().getBase());
         assertEquals(9999, result.config().getWebPort());
         assertEquals("tok", result.config().effectiveRuntimeToken());
@@ -170,7 +173,7 @@ class MockRuntimeCliTest {
             LockSupport.parkNanos(100_000_000L);
             currentThread.interrupt();
         });
-        var exitCode = MockRuntimeCli.run(new String[]{"-s", "status-only", "-p", "0"}, out, err);
+        var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.STATUS_ONLY, "-p", "0"}, out, err);
         assertEquals(0, exitCode);
         assertTrue(stdout().contains("Mock runtime started successfully"));
     }
