@@ -159,6 +159,153 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config harnesses updates harnesses successfully")
+    void configHarnessesSuccess() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/harnesses".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "harnesses", "--add", "codex", "--remove", "cursor",
+                "--default", "codex", "--no-icons", "--consent", "scan_harnesses");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Harnesses updated"));
+    }
+
+    @Test
+    @DisplayName("config language updates language settings")
+    void configLanguage() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/language".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "language", "--interface", "de", "--model", "same");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Language settings updated"));
+    }
+
+    @Test
+    @DisplayName("config models updates allowed models")
+    void configModels() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/models".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "models", "--allow", "anthropic:claude-3-5-sonnet", "--no-advice");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Models updated"));
+    }
+
+    @Test
+    @DisplayName("config roles updates role assignments")
+    void configRoles() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/roles".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "roles", "--defaults", "--set", "architect=anthropic:claude-3-5-sonnet:high",
+                "--reset", "auditor", "--reset-all");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Roles updated"));
+    }
+
+    @Test
+    @DisplayName("config credentials updates credential store")
+    void configCredentials() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/credentials".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "credentials", "--store", "os");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Credential store updated: os"));
+    }
+
+    @Test
+    @DisplayName("config providers updates provider settings")
+    void configProviders() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/providers".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "providers", "--use", "github", "--without", "gitlab", "--verify");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Providers updated"));
+    }
+
+    @Test
+    @DisplayName("config consents shows remembered consents")
+    void configConsents() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/consents".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "[\"scan_harnesses\",\"external_web\"]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "consents");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("Remembered consents:"));
+        assertTrue(out.toString().contains("scan_harnesses"));
+    }
+
+    @Test
+    @DisplayName("config consents shows empty message when none remembered")
+    void configConsentsEmpty() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/consents".equals(request.target())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "consents");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("No consent is remembered."));
+    }
+
+    @Test
+    @DisplayName("config documents updates documents mode")
+    void configDocuments() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/config/documents".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "documents", "--mode", "copy");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Documents mode updated: copy"));
+    }
+
+    @Test
     @DisplayName("config plan-defaults applies defaults with --yes")
     void configPlanDefaults() throws Exception {
         fixture.start((request, response) -> {
@@ -169,11 +316,14 @@ class ConfigCommandTest {
             }
         });
 
-        int code = execute("config", "plan-defaults", "--landing", "pull-request", "--method", "test-first", "--yes");
+        int code = execute("config", "plan-defaults", "--landing", "pull-request", "--method", "test-first",
+                "--asking", "key-points", "--posture", "standard", "--yes");
         assertAll(
                 () -> assertEquals(0, code),
                 () -> assertTrue(out.toString().contains("Plans · How should plans run on this machine?")),
                 () -> assertTrue(out.toString().contains("✓ Landing   pull-request")),
+                () -> assertTrue(out.toString().contains("✓ Method    test-first")),
+                () -> assertTrue(out.toString().contains("✓ Asking    key-points")),
                 () -> assertTrue(out.toString().contains("✓ Plan defaults recorded"))
         );
     }

@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
@@ -26,12 +27,10 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
 /**
- * {@code pm-operator epic}: manage epics, their child plans, reviews, and lifecycle.
- * Subcommands: {@code add}, {@code next}, {@code auto}, {@code decompose}, {@code archive},
- * {@code findings}, {@code watches}, {@code chat}, {@code cancel}.
- * Without a subcommand, displays epic details or lists epics.
+ * {@code pm-operator epic}: inspects, adds, steps, archives, decomposes, watches, or cancels epics
+ * (01-commands.adoc, 19-actions.adoc).
  */
-@Command(name = "epic", description = "Epic operations and actions.",
+@Command(name = "epic", description = "Inspects or controls epics.",
         subcommands = {
                 EpicCommand.AddCommand.class,
                 EpicCommand.NextCommand.class,
@@ -46,20 +45,35 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class EpicCommand implements Callable<Integer> {
 
+    private static final String KIND = "epic";
+
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Parameters(index = "0", arity = "0..1", description = "Epic ID")
     @Nullable
     String epicId;
 
-    @Option(names = "--tokens", description = "Show tokens per plan")
+    @Option(names = "--all", description = "Show all details")
+    boolean all;
+
+    @Option(names = "--depth", description = "Process tree depth")
+    @Nullable
+    Integer depth;
+
+    @Option(names = "--tokens", description = "Include tokens so far")
     boolean tokens;
 
+    @Option(names = "--components", description = "Include token components")
+    boolean components;
+
+    @Option(names = "--watch", description = "Watch updates")
+    boolean watch;
+
     EpicCommand(OperatorContext context) {
-        this.context = context;
+        this.context = Objects.requireNonNull(context, "context");
     }
 
     @Override
@@ -69,8 +83,10 @@ public final class EpicCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (epicId != null && !epicId.isBlank()) {
-            var path = "/api/v1/epics/" + epicId;
-            if (tokens) path += "?tokens=true";
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId);
+            if (depth != null) {
+                path += "/process?depth=" + depth;
+            }
             var response = runtime.send(HttpRequest.get(path));
             if (response.status() == 200) {
                 out.println(response.bodyText());
@@ -85,23 +101,12 @@ public final class EpicCommand implements Callable<Integer> {
             throw new OperatorRefusedException("epic " + epicId, response);
         }
 
-        // List epics
+        // List running epics
         var response = runtime.send(HttpRequest.get("/api/v1/epics"));
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());
             if (parsed instanceof List<?> list && !list.isEmpty()) {
-                out.println("Epics:");
-                for (var item : list) {
-                    if (item instanceof Map<?, ?> epic) {
-                        var title = epic.get("title");
-                        out.printf("  %-20s %-12s %s%n",
-                                epic.get("id"),
-                                epic.get("state"),
-                                title != null ? title : "");
-                    } else {
-                        out.println("  " + item);
-                    }
-                }
+                ActionSupport.printWorkList(out, "Epics:", "state", list);
             } else {
                 out.println("No epics running.");
             }
@@ -115,7 +120,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class AddCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--project", description = "Target project ID")
@@ -156,7 +161,7 @@ public final class EpicCommand implements Callable<Integer> {
             if (description != null) payload.put("description", description);
 
             var path = project != null && !".".equals(project)
-                    ? "/api/v1/projects/" + project + "/entries"
+                    ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(project) + "/entries"
                     : "/api/v1/epics";
 
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
@@ -174,7 +179,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class NextCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -195,8 +200,10 @@ public final class EpicCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var payload = Map.of("raise_scope", raiseScope);
+
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId) + "/next";
             var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/epics/" + epicId + "/next", JsonTree.write(payload)));
+                    HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ Next plan for %s started%n", epicId);
                 out.flush();
@@ -210,7 +217,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class AutoCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -239,8 +246,9 @@ public final class EpicCommand implements Callable<Integer> {
             if (commonFiles != null) {
                 payload.put("common_files", commonFiles);
             }
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId) + "/auto";
             var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/epics/" + epicId + "/auto", JsonTree.write(payload)));
+                    HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 if (commonFiles != null) {
                     out.printf("✓ Common files allowed for %s: %d%n", epicId, commonFiles);
@@ -258,7 +266,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class DecomposeCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -279,8 +287,9 @@ public final class EpicCommand implements Callable<Integer> {
             var payload = new LinkedHashMap<String, Object>();
             if (instruction != null) payload.put("instruction", instruction);
 
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId) + "/decompose";
             var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/epics/" + epicId + "/decompose", JsonTree.write(payload)));
+                    HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ %s decomposing%n", epicId);
                 out.flush();
@@ -294,7 +303,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ArchiveCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -308,8 +317,8 @@ public final class EpicCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/epics/" + epicId + "/archive", "{}"));
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId) + "/archive";
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             if (response.status() == 200 || response.status() == 204) {
                 out.printf("✓ %s archived%n", epicId);
                 out.flush();
@@ -323,7 +332,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class FindingsCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -337,7 +346,8 @@ public final class EpicCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/epics/" + epicId + "/findings"));
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId) + "/findings";
+            var response = context.runtime(true).send(HttpRequest.get(path));
             if (response.status() == 200) {
                 out.println(response.bodyText());
                 out.flush();
@@ -351,7 +361,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class WatchesCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -365,7 +375,8 @@ public final class EpicCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/epics/" + epicId + "/watches"));
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId) + "/watches";
+            var response = context.runtime(true).send(HttpRequest.get(path));
             if (response.status() == 200) {
                 out.println(response.bodyText());
                 out.flush();
@@ -379,7 +390,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ChatCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -395,27 +406,7 @@ public final class EpicCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
-            var out = spec.commandLine().getOut();
-            if (message != null && !message.isBlank()) {
-                var response = context.runtime(true).send(
-                        HttpRequest.json("POST", "/api/v1/epics/" + epicId + "/chat",
-                                JsonTree.write(Map.of("message", message))));
-                if (response.status() == 200 || response.status() == 201) {
-                    out.println(response.bodyText());
-                    out.flush();
-                    return 0;
-                }
-                throw new OperatorRefusedException("epic chat", response);
-            }
-
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/epics/" + epicId + "/chat"));
-            if (response.status() == 200) {
-                out.println(response.bodyText());
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("epic chat", response);
+            return ActionSupport.chat(context, spec, KIND, epicId, message);
         }
     }
 
@@ -423,7 +414,7 @@ public final class EpicCommand implements Callable<Integer> {
     @OperatorVerb
     static final class CancelCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Epic ID")
@@ -450,20 +441,21 @@ public final class EpicCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            if (reason == null || reason.isBlank()) {
+            var effectiveReason = reason;
+            if (effectiveReason == null || effectiveReason.isBlank()) {
                 if (noInput) {
                     out.println("Cancellation reason required (--reason)");
                     out.flush();
                     return 3;
                 }
-                reason = "Cancelled by operator";
+                effectiveReason = "Cancelled by operator";
             }
             var payload = new LinkedHashMap<String, Object>();
-            payload.put("reason", reason);
+            payload.put("reason", effectiveReason);
             payload.put("with_plans", !withoutPlans);
 
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/epics/" + epicId + "/cancel", JsonTree.write(payload)));
+            var path = "/api/v1/epics/" + OperatorUrlUtil.encodePathSegment(epicId) + "/cancel";
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ %s cancelled%n", epicId);
                 out.flush();

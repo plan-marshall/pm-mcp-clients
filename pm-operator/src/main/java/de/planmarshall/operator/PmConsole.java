@@ -27,6 +27,7 @@ import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jline.reader.impl.completer.StringsCompleter;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
@@ -46,8 +47,8 @@ public final class PmConsole {
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final List<String> badges = new CopyOnWriteArrayList<>();
 
-    private volatile String activePairingCode;
-    private volatile String activePairingUrl;
+    private volatile @Nullable String activePairingCode;
+    private volatile @Nullable String activePairingUrl;
     private volatile int webPort = EntryFlow.DEFAULT_WEB_PORT;
 
     /**

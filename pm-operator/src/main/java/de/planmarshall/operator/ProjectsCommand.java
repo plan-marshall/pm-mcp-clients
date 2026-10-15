@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -34,7 +35,7 @@ public final class ProjectsCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Option(names = "--list", description = "Prints the projects list into the terminal scrollback.")
     boolean list;
@@ -50,20 +51,11 @@ public final class ProjectsCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());
-            if (parsed instanceof List<?> list && !list.isEmpty()) {
+            if (parsed instanceof List<?> projectsList && !projectsList.isEmpty()) {
                 out.println("Projects");
                 out.println("─────────────────────────────────────────────────────────────────────────────");
-                for (var item : list) {
-                    if (item instanceof Map<?, ?> project) {
-                        var id = project.get("id");
-                        var state = project.get("state");
-                        var favourite = Boolean.TRUE.equals(project.get("favourite")) ? "★ " : "  ";
-                        var plans = project.get("plans_count");
-                        var plansStr = plans != null ? plans + " plans" : "";
-                        out.printf("%s%-20s %-12s %s%n", favourite, id != null ? id : "", state != null ? state : "ready", plansStr);
-                    } else {
-                        out.println("  " + item);
-                    }
+                for (var item : projectsList) {
+                    printProject(out, item);
                 }
             } else {
                 out.println("No projects enrolled yet. Use 'pm-operator project add' to enrol one.");
@@ -73,5 +65,18 @@ public final class ProjectsCommand implements Callable<Integer> {
         }
         out.flush();
         return 0;
+    }
+
+    private static void printProject(PrintWriter out, Object item) {
+        if (item instanceof Map<?, ?> project) {
+            var id = project.get("id");
+            var state = project.get("state");
+            var favourite = Boolean.TRUE.equals(project.get("favourite")) ? "★ " : "  ";
+            var plans = project.get("plans_count");
+            var plansStr = plans != null ? plans + " plans" : "";
+            out.printf("%s%-20s %-12s %s%n", favourite, id != null ? id : "", state != null ? state : "ready", plansStr);
+        } else {
+            out.println("  " + item);
+        }
     }
 }

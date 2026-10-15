@@ -36,7 +36,7 @@ final class StatusCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Option(names = "--json", description = "Prints the status as JSON.")
     boolean json;
@@ -139,7 +139,7 @@ final class StatusCommand implements Callable<Integer> {
         return text.toString();
     }
 
-    private static void line(StringBuilder text, String label, Object value) {
+    private static void line(StringBuilder text, String label, @Nullable Object value) {
         text.append(String.format("%-9s %s%n", label, value == null ? "-" : value));
     }
 }

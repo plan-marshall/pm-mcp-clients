@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Formats notice blocks printed above the prompt (via {@code LineReader.printAbove(...)})
@@ -34,7 +35,7 @@ public final class ConsoleNotice {
      * @param text the raw text
      * @return sanitized text safe for terminal rendering
      */
-    public static String stripControlSequences(String text) {
+    public static String stripControlSequences(@Nullable String text) {
         if (text == null) {
             return "";
         }
@@ -52,8 +53,8 @@ public final class ConsoleNotice {
      * @param recommendation recommendation string or {@code null}
      * @return multi-line formatted notice
      */
-    public static String formatQuestion(String id, String scope, String summary, String text,
-            String recommendation) {
+    public static String formatQuestion(String id, String scope, @Nullable String summary, @Nullable String text,
+            @Nullable String recommendation) {
         var sb = new StringBuilder();
         sb.append("◆ Question ").append(Objects.requireNonNull(id, "id"))
                 .append(" · ").append(Objects.requireNonNull(scope, "scope"));
@@ -79,7 +80,7 @@ public final class ConsoleNotice {
      * @param gate  the target gate (e.g. "ci_check:integration-tests")
      * @return multi-line formatted notice
      */
-    public static String formatWaiverRequest(String id, String scope, String gate) {
+    public static String formatWaiverRequest(String id, String scope, @Nullable String gate) {
         var sb = new StringBuilder();
         sb.append("◆ Waiver request ").append(Objects.requireNonNull(id, "id"))
                 .append(" · ").append(Objects.requireNonNull(scope, "scope"));
@@ -99,7 +100,7 @@ public final class ConsoleNotice {
      * @param detail additional explanation
      * @return formatted single-line notice
      */
-    public static String formatHoldNotice(String kind, String scope, String detail) {
+    public static String formatHoldNotice(String kind, String scope, @Nullable String detail) {
         var sanitizedDetail = stripControlSequences(detail);
         return switch (kind) {
             case "operator_wait" -> "◆ Plan " + scope + " waits for you: " + sanitizedDetail;
@@ -146,7 +147,8 @@ public final class ConsoleNotice {
      * @param answer   chosen option or answer
      * @return formatted notice
      */
-    public static String formatAnsweredElsewhere(String id, String channel, String device, String answer) {
+    public static String formatAnsweredElsewhere(String id, String channel, @Nullable String device,
+            @Nullable String answer) {
         var dev = device != null && !device.isBlank() ? " (" + stripControlSequences(device) + ")" : "";
         return "– " + id + " was answered in the " + channel + dev + ": "
                 + stripControlSequences(answer) + ". Nothing was sent from here.";
@@ -158,7 +160,7 @@ public final class ConsoleNotice {
      * @param event the event data map
      * @return formatted notice, or {@code null} if event requires no notice
      */
-    public static String fromEventMap(Map<String, Object> event) {
+    public static @Nullable String fromEventMap(@Nullable Map<String, Object> event) {
         if (event == null) {
             return null;
         }

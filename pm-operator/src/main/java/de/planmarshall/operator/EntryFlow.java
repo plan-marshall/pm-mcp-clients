@@ -24,6 +24,7 @@ import java.util.Objects;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.http.HttpRequest;
@@ -301,7 +302,7 @@ public final class EntryFlow {
      * @param runtime the runtime client
      * @return device label if paired, or {@code null}
      */
-    public String findPairedBrowser(RuntimeClient runtime) {
+    public @Nullable String findPairedBrowser(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
             if (response.status() == 200) {

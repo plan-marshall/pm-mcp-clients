@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
@@ -34,7 +35,7 @@ public final class SystemCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Option(names = "--project", description = "Target project ID")
     @Nullable
@@ -73,24 +74,12 @@ public final class SystemCommand implements Callable<Integer> {
                     var build = map.get("build") != null ? map.get("build") : "";
                     out.println("System");
                     out.printf("Runtime   %s · build %s%n", version, build);
-                    if (map.containsKey("uptime")) {
-                        out.printf("          running since %s%n", map.get("uptime"));
-                    }
-                    if (map.containsKey("memory")) {
-                        out.printf("          memory %s%n", map.get("memory"));
-                    }
-                    if (map.containsKey("work")) {
-                        out.printf("Work      %s%n", map.get("work"));
-                    }
-                    if (map.containsKey("workers")) {
-                        out.printf("Workers   %s%n", map.get("workers"));
-                    }
-                    if (map.containsKey("jobs")) {
-                        out.printf("Jobs      %s%n", map.get("jobs"));
-                    }
-                    if (map.containsKey("cleanup")) {
-                        out.printf("Cleanup   %s%n", map.get("cleanup"));
-                    }
+                    printDetail(out, map, "uptime", "          running since %s%n");
+                    printDetail(out, map, "memory", "          memory %s%n");
+                    printDetail(out, map, "work", "Work      %s%n");
+                    printDetail(out, map, "workers", "Workers   %s%n");
+                    printDetail(out, map, "jobs", "Jobs      %s%n");
+                    printDetail(out, map, "cleanup", "Cleanup   %s%n");
                 } else {
                     out.println(response.bodyText());
                 }
@@ -102,6 +91,12 @@ public final class SystemCommand implements Callable<Integer> {
             out.println("runtime   not running");
             out.flush();
             return 0;
+        }
+    }
+
+    private static void printDetail(PrintWriter out, Map<?, ?> map, String key, String format) {
+        if (map.containsKey(key)) {
+            out.printf(format, map.get(key));
         }
     }
 }

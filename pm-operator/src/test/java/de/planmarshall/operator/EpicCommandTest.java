@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.time.Duration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,11 +77,47 @@ class EpicCommandTest {
         var output = out.toString();
         assertAll(
                 () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("Epics:")),
+                () -> assertTrue(output.contains("Epics")),
                 () -> assertTrue(output.contains("ep-001")),
                 () -> assertTrue(output.contains("Hardening Relay")),
                 () -> assertTrue(output.contains("ep-002"))
         );
+    }
+
+    @Test
+    @DisplayName("epic add creates epic")
+    void epicAdd() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/epics".equals(request.target()) && "POST".equals(request.method())) {
+                response.send(201, null, "{\"id\":\"ep-new\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "add", "--title", "Refactor Auth", "--id", "ep-auth", "--description", "Desc");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ ep-auth has started"));
+
+        var req = server.awaitRequest(Duration.ofSeconds(1));
+        assertTrue(req.bodyText().contains("\"title\":\"Refactor Auth\""));
+        assertTrue(req.bodyText().contains("\"id\":\"ep-auth\""));
+    }
+
+    @Test
+    @DisplayName("epic add with project routes to project entries")
+    void epicAddWithProject() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/my-proj/entries".equals(request.target()) && "POST".equals(request.method())) {
+                response.send(200, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "add", "--project", "my-proj", "--adopt", "spec-auth");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ spec-auth has started"));
     }
 
     @Test
@@ -117,6 +154,70 @@ class EpicCommandTest {
                 () -> assertEquals(0, code),
                 () -> assertTrue(out.toString().contains("✓ Automatic for ep-001: on"))
         );
+    }
+
+    @Test
+    @DisplayName("epic auto updates common files")
+    void epicAutoCommonFiles() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/ep-001/auto".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "auto", "ep-001", "--common-files", "5");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Common files allowed for ep-001: 5"));
+    }
+
+    @Test
+    @DisplayName("epic decompose triggers decomposition")
+    void epicDecompose() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/ep-001/decompose".equals(request.target()) && "POST".equals(request.method())) {
+                response.send(202, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "decompose", "ep-001", "--instruction", "re-split tasks");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ ep-001 decomposing"));
+    }
+
+    @Test
+    @DisplayName("epic archive archives ended epic")
+    void epicArchive() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/ep-001/archive".equals(request.target()) && "POST".equals(request.method())) {
+                response.send(200, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "archive", "ep-001");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ ep-001 archived"));
+    }
+
+    @Test
+    @DisplayName("epic chat communicates with epic")
+    void epicChat() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/ep-001/chat".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"reply\":\"hi\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "chat", "ep-001", "--message", "status please");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("reply"));
     }
 
     @Test

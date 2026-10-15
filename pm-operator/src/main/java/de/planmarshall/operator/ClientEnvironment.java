@@ -28,10 +28,10 @@ import java.util.Set;
  * @param buildEnvironment safe non-secret build environment variables for job provenance
  */
 public record ClientEnvironment(
-        String locale,
-        boolean sshSession,
-        List<String> loginPath,
-        Map<String, String> buildEnvironment) {
+String locale,
+boolean sshSession,
+List<String> loginPath,
+Map<String, String> buildEnvironment) {
 
     /** Default locale when none is specified. */
     public static final String DEFAULT_LOCALE = "en";

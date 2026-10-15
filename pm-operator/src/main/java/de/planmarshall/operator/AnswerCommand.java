@@ -33,7 +33,7 @@ public final class AnswerCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Parameters(index = "0", description = "Question ID (e.g. Q-007)")
     String questionId = "";

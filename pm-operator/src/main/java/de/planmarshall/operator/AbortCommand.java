@@ -34,7 +34,7 @@ public final class AbortCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Parameters(index = "0", description = "Target kind: plan or epic")
     String kind = "";
@@ -71,7 +71,8 @@ public final class AbortCommand implements Callable<Integer> {
         if ("plan".equalsIgnoreCase(kind)) {
             // Determine plan state
             boolean isPaused = false;
-            var planResponse = runtime.send(HttpRequest.get("/api/v1/plans/" + targetId));
+            var safeId = OperatorUrlUtil.encodePathSegment(targetId);
+            var planResponse = runtime.send(HttpRequest.get("/api/v1/plans/" + safeId));
             if (planResponse.status() == 200) {
                 var parsed = JsonTree.parse(planResponse.body());
                 if (parsed instanceof Map<?, ?> map) {
@@ -84,7 +85,7 @@ public final class AbortCommand implements Callable<Integer> {
             payload.put("reason", reason);
             payload.put("close_pr", !keepPr);
 
-            var endpoint = isPaused ? "/api/v1/plans/" + targetId + "/abandon" : "/api/v1/plans/" + targetId + "/cancel";
+            var endpoint = isPaused ? "/api/v1/plans/" + safeId + "/abandon" : "/api/v1/plans/" + safeId + "/cancel";
             var response = runtime.send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ %s %s and archived%n", targetId, isPaused ? "abandoned" : "cancelled");
@@ -99,7 +100,8 @@ public final class AbortCommand implements Callable<Integer> {
             payload.put("reason", reason);
             payload.put("with_plans", !withoutPlans);
 
-            var response = runtime.send(HttpRequest.json("POST", "/api/v1/epics/" + targetId + "/cancel", JsonTree.write(payload)));
+            var safeId = OperatorUrlUtil.encodePathSegment(targetId);
+            var response = runtime.send(HttpRequest.json("POST", "/api/v1/epics/" + safeId + "/cancel", JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ %s cancelled%n", targetId);
                 out.flush();

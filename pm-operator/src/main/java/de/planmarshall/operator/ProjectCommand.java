@@ -38,13 +38,13 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class ProjectCommand implements Callable<Integer> {
 
-    private final OperatorContext context;
+    private static final String PROJECTS_API = "/api/v1/projects/";
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     ProjectCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(context, "context");
     }
 
     @Override
@@ -57,7 +57,7 @@ public final class ProjectCommand implements Callable<Integer> {
     @OperatorVerb
     static final class AddCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", defaultValue = ".", description = "Working directory or checkout path")
@@ -90,7 +90,7 @@ public final class ProjectCommand implements Callable<Integer> {
     @OperatorVerb
     static final class SetupCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
@@ -106,7 +106,7 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var path = "/api/v1/projects/" + projectId + "/setup";
+            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/setup";
             var body = new LinkedHashMap<String, Object>();
             if (step != null) body.put("step", step);
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(body)));
@@ -127,7 +127,7 @@ public final class ProjectCommand implements Callable<Integer> {
     @OperatorVerb
     static final class FavouriteCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
@@ -145,8 +145,8 @@ public final class ProjectCommand implements Callable<Integer> {
             context.gate().verify();
             var body = new LinkedHashMap<String, Object>();
             body.put("favourite", !off);
-            var response = context.runtime(true).send(
-                    HttpRequest.json("PUT", "/api/v1/projects/" + projectId + "/favourite", JsonTree.write(body)));
+            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/favourite";
+            var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
                 out.printf("✓ Project %s favourite: %s%n", projectId, off ? "off" : "on (★)");
@@ -161,7 +161,7 @@ public final class ProjectCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ReleaseCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
@@ -179,8 +179,8 @@ public final class ProjectCommand implements Callable<Integer> {
             context.gate().verify();
             var body = new LinkedHashMap<String, Object>();
             if (reason != null) body.put("reason", reason);
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/projects/" + projectId + "/release", JsonTree.write(body)));
+            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/release";
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
                 out.printf("✓ Project %s released%n", projectId);
@@ -198,7 +198,7 @@ public final class ProjectCommand implements Callable<Integer> {
     @OperatorVerb
     static final class UnenrolCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
@@ -211,8 +211,8 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/projects/" + projectId + "/unenrol", "{}"));
+            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/unenrol";
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
                 out.printf("✓ Project %s unenrolled%n", projectId);

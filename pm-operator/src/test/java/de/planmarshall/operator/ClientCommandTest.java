@@ -39,7 +39,6 @@ class ClientCommandTest {
     @BeforeEach
     void setUp() throws IOException {
         fixture = RuntimeFixture.create();
-        PmOperatorTest.writeLiveRecord(fixture);
         out = new StringWriter();
         err = new StringWriter();
     }
@@ -59,6 +58,7 @@ class ClientCommandTest {
     @Test
     @DisplayName("client status lists client bundles")
     void clientStatus() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> {
             if ("/api/v1/client/bundles".equals(request.target())) {
                 response.json(200, """
@@ -86,6 +86,7 @@ class ClientCommandTest {
     @Test
     @DisplayName("client install installs client bundle")
     void clientInstall() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> {
             if ("/api/v1/client/install".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, "{\"ok\":true}");
@@ -102,8 +103,53 @@ class ClientCommandTest {
     }
 
     @Test
+    @DisplayName("client update updates client bundle")
+    void clientUpdate() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/client/update".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("client", "update", "codex");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Client bundle update completed"));
+    }
+
+    @Test
+    @DisplayName("client remove removes client bundle")
+    void clientRemove() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/client/remove".equals(request.target()) && "POST".equals(request.method())) {
+                response.send(204, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("client", "remove", "codex");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Client bundle removal completed"));
+    }
+
+    @Test
+    @DisplayName("client status reports not running when runtime unavailable")
+    void clientStatusWhenNotRunning() {
+        int code = execute("client", "status");
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(out.toString().contains("runtime   not running"))
+        );
+    }
+
+    @Test
     @DisplayName("drain sends stop request with drain flag without starting runtime")
     void drainCommand() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> {
             if ("/api/v1/runtime/stop".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(202, "{\"draining\":true}");
@@ -122,9 +168,7 @@ class ClientCommandTest {
     @Test
     @DisplayName("drain reports not running when runtime unavailable")
     void drainWhenNotRunning() {
-        // Without starting fake server or writing live record
-        var context = new OperatorContext(fixture.environment(), tempDir, true);
-        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "drain");
+        int code = execute("drain");
         assertAll(
                 () -> assertEquals(0, code),
                 () -> assertTrue(out.toString().contains("runtime   not running"))

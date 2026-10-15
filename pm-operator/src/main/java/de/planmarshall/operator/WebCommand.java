@@ -18,10 +18,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
@@ -51,7 +53,7 @@ public final class WebCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     WebCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
@@ -67,7 +69,7 @@ public final class WebCommand implements Callable<Integer> {
     @OperatorVerb
     static final class EnableCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--lan", description = "HTTPS on all interfaces.")
@@ -92,7 +94,7 @@ public final class WebCommand implements Callable<Integer> {
     @OperatorVerb
     static final class DisableCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--port", paramLabel = "N", defaultValue = "" + DEFAULT_PORT,
@@ -114,7 +116,7 @@ public final class WebCommand implements Callable<Integer> {
     @OperatorVerb
     static final class PairCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--label", description = "Device label to record with pairing")
@@ -154,7 +156,7 @@ public final class WebCommand implements Callable<Integer> {
     @OperatorVerb
     static final class OpenCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--pair", description = "Force new pairing code even if browser already paired")
@@ -201,7 +203,7 @@ public final class WebCommand implements Callable<Integer> {
     @OperatorVerb
     static final class QrCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         QrCommand(OperatorContext context) {
@@ -228,7 +230,7 @@ public final class WebCommand implements Callable<Integer> {
     @OperatorVerb
     static final class DevicesCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", defaultValue = "list",
@@ -257,22 +259,31 @@ public final class WebCommand implements Callable<Integer> {
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
 
-            if ("rename".equalsIgnoreCase(action) && deviceId != null && newLabel != null) {
+            if ("rename".equalsIgnoreCase(action)) {
+                if (deviceId == null || newLabel == null) {
+                    throw new CommandLine.ParameterException(
+                            spec.commandLine(), "rename requires <deviceId> <newLabel>");
+                }
                 var body = JsonTree.write(Map.of("label", newLabel));
-                var response = runtime.send(HttpRequest.json("PUT", "/api/v1/web/devices/" + deviceId, body));
+                var response = runtime.send(HttpRequest.json("PUT",
+                        "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId), body));
                 if (response.status() == 200 || response.status() == 204) {
                     out.println("✓ Renamed: " + newLabel);
                 } else {
                     out.printf("Failed to rename device: HTTP %d%n", response.status());
                 }
             } else if ("revoke".equalsIgnoreCase(action)) {
+                if (!others && !all && deviceId == null) {
+                    throw new CommandLine.ParameterException(
+                            spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
+                }
                 String path = "/api/v1/web/devices";
                 if (others) {
                     path += "?scope=others";
                 } else if (all) {
                     path += "?scope=all";
                 } else if (deviceId != null) {
-                    path += "/" + deviceId;
+                    path += "/" + OperatorUrlUtil.encodePathSegment(deviceId);
                 }
                 var response = runtime.send(new HttpRequest("DELETE", path, Map.of(), null));
                 if (response.status() == 200 || response.status() == 204) {
@@ -340,7 +351,7 @@ public final class WebCommand implements Callable<Integer> {
      * @param web the {@code web} object of the status, may be {@code null}
      * @return a readable line
      */
-    static String describe(Map<String, Object> web) {
+    static String describe(@Nullable Map<String, Object> web) {
         if (web == null) {
             return "-";
         }

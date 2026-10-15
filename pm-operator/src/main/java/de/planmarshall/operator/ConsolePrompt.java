@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Formats the terminal client prompt: {@code pm › } when normal,
@@ -61,7 +62,7 @@ public final class ConsolePrompt {
      * @param count the waiting count
      * @return the formatted badge text, or {@code null} if count &lt;= 0
      */
-    public static String formatBadge(String kind, int count) {
+    public static @Nullable String formatBadge(String kind, int count) {
         Objects.requireNonNull(kind, "kind");
         if (count <= 0) {
             return null;

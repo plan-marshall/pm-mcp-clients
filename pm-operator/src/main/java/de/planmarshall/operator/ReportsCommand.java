@@ -40,7 +40,7 @@ public final class ReportsCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Option(names = "--project", description = "Filter by project ID")
     @Nullable
@@ -57,17 +57,12 @@ public final class ReportsCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        var path = new StringBuilder("/api/v1/reports");
-        var hasQuery = false;
-        if (project != null && !".".equals(project)) {
-            path.append("?project=").append(project);
-            hasQuery = true;
-        }
+        var path = OperatorUrlUtil.appendScope("/api/v1/reports", project, null);
         if (older) {
-            path.append(hasQuery ? "&older=true" : "?older=true");
+            path += (path.contains("?") ? "&" : "?") + "older=true";
         }
 
-        var response = context.runtime(true).send(HttpRequest.get(path.toString()));
+        var response = context.runtime(true).send(HttpRequest.get(path));
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());
             if (parsed instanceof List<?> list && !list.isEmpty()) {
@@ -94,7 +89,7 @@ public final class ReportsCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ReadCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(arity = "0..*", description = "Report IDs to mark read")
@@ -135,8 +130,9 @@ public final class ReportsCommand implements Callable<Integer> {
 
             int marked = 0;
             for (var id : reportIds) {
+                var safeId = OperatorUrlUtil.encodePathSegment(id);
                 var response = context.runtime(true).send(
-                        HttpRequest.json("POST", "/api/v1/reports/" + id + "/read", "{}"));
+                        HttpRequest.json("POST", "/api/v1/reports/" + safeId + "/read", "{}"));
                 if (response.status() == 200 || response.status() == 204) {
                     marked++;
                 } else if (response.status() == 404) {
@@ -153,7 +149,7 @@ public final class ReportsCommand implements Callable<Integer> {
     @OperatorVerb
     static final class OpenCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Report ID")
@@ -167,10 +163,11 @@ public final class ReportsCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/reports/" + reportId));
+            var safeId = OperatorUrlUtil.encodePathSegment(reportId);
+            var response = context.runtime(true).send(HttpRequest.get("/api/v1/reports/" + safeId));
             if (response.status() == 200) {
                 // Also mark as read
-                context.runtime(true).send(HttpRequest.json("POST", "/api/v1/reports/" + reportId + "/read", "{}"));
+                context.runtime(true).send(HttpRequest.json("POST", "/api/v1/reports/" + safeId + "/read", "{}"));
                 out.println(response.bodyText());
                 out.flush();
                 return 0;

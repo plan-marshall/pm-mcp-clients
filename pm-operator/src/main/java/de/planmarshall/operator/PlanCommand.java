@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
@@ -27,12 +28,10 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
 
 /**
- * {@code pm-operator plan}: manage plans, their execution lifecycle, chat, and reports.
- * Subcommands: {@code add}, {@code pause}, {@code start}, {@code cancel}, {@code abandon},
- * {@code chat}, {@code report}.
- * Without a subcommand, displays plan tree/activity or lists running plans.
+ * {@code pm-operator plan}: inspects, adds, pauses, starts, cancels, or abandons plans (01-commands.adoc,
+ * 19-actions.adoc).
  */
-@Command(name = "plan", description = "Plan operations and actions.",
+@Command(name = "plan", description = "Inspects or controls plans.",
         subcommands = {
                 PlanCommand.AddCommand.class,
                 PlanCommand.PauseCommand.class,
@@ -45,10 +44,12 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class PlanCommand implements Callable<Integer> {
 
+    private static final String KIND = "plan";
+
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Parameters(index = "0", arity = "0..1", description = "Plan ID")
     @Nullable
@@ -75,7 +76,7 @@ public final class PlanCommand implements Callable<Integer> {
     boolean watch;
 
     PlanCommand(OperatorContext context) {
-        this.context = context;
+        this.context = Objects.requireNonNull(context, "context");
     }
 
     @Override
@@ -85,9 +86,9 @@ public final class PlanCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (planId != null && !planId.isBlank()) {
-            var path = "/api/v1/plans/" + planId;
+            var path = "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(planId);
             if (activity != null && !activity.isBlank()) {
-                path += "/tasks/" + activity + "/activity";
+                path += "/tasks/" + OperatorUrlUtil.encodePathSegment(activity) + "/activity";
             } else if (depth != null) {
                 path += "/process?depth=" + depth;
             }
@@ -110,20 +111,9 @@ public final class PlanCommand implements Callable<Integer> {
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());
             if (parsed instanceof List<?> list && !list.isEmpty()) {
-                out.println("Running Plans:");
-                for (var item : list) {
-                    if (item instanceof Map<?, ?> plan) {
-                        var title = plan.get("title");
-                        out.printf("  %-20s %-12s %s%n",
-                                plan.get("id"),
-                                plan.get("phase"),
-                                title != null ? title : "");
-                    } else {
-                        out.println("  " + item);
-                    }
-                }
+                ActionSupport.printWorkList(out, "Running Plans:", "phase", list);
             } else {
-                out.println("No plans running.");
+                out.println("No running plans.");
             }
             out.flush();
             return 0;
@@ -135,7 +125,7 @@ public final class PlanCommand implements Callable<Integer> {
     @OperatorVerb
     static final class AddCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--project", description = "Target project ID")
@@ -203,7 +193,7 @@ public final class PlanCommand implements Callable<Integer> {
             if (move) payload.put("documents_mode", "move");
 
             var path = project != null && !".".equals(project)
-                    ? "/api/v1/projects/" + project + "/entries"
+                    ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(project) + "/entries"
                     : "/api/v1/plans";
 
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
@@ -221,7 +211,7 @@ public final class PlanCommand implements Callable<Integer> {
     @OperatorVerb
     static final class PauseCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Plan ID")
@@ -248,15 +238,13 @@ public final class PlanCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             String point = "after_task";
-            if (now) {
-                point = "now";
-            } else if (afterPhase) {
-                point = "after_phase";
-            }
+            if (now) point = "now";
+            if (afterPhase) point = "after_phase";
 
             var payload = Map.of("point", point);
+            var endpoint = "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(planId) + "/pause";
             var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/plans/" + planId + "/pause", JsonTree.write(payload)));
+                    HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 if (now) {
                     out.printf("✓ %s paused%n", planId);
@@ -270,11 +258,11 @@ public final class PlanCommand implements Callable<Integer> {
         }
     }
 
-    @Command(name = "start", description = "Starts or resumes a plan.")
+    @Command(name = "start", description = "Resumes a paused plan.")
     @OperatorVerb
     static final class StartCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Plan ID")
@@ -288,8 +276,8 @@ public final class PlanCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/plans/" + planId + "/start", "{}"));
+            var endpoint = "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(planId) + "/start";
+            var response = context.runtime(true).send(HttpRequest.json("POST", endpoint, "{}"));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ %s started%n", planId);
                 out.flush();
@@ -303,7 +291,7 @@ public final class PlanCommand implements Callable<Integer> {
     @OperatorVerb
     static final class CancelCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Plan ID")
@@ -328,28 +316,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
-            var out = spec.commandLine().getOut();
-            if (reason == null || reason.isBlank()) {
-                if (noInput) {
-                    out.println("Cancellation reason required (--reason)");
-                    out.flush();
-                    return 3;
-                }
-                reason = "Cancelled by operator";
-            }
-            var payload = new LinkedHashMap<String, Object>();
-            payload.put("reason", reason);
-            payload.put("close_pr", !keepPr);
-
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/plans/" + planId + "/cancel", JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 202) {
-                out.printf("✓ %s cancelled and archived%n", planId);
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("plan cancel", response);
+            return ActionSupport.endWork(context, spec, KIND, planId, reason, keepPr, noInput, "cancel");
         }
     }
 
@@ -357,7 +324,7 @@ public final class PlanCommand implements Callable<Integer> {
     @OperatorVerb
     static final class AbandonCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Plan ID")
@@ -382,28 +349,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
-            var out = spec.commandLine().getOut();
-            if (reason == null || reason.isBlank()) {
-                if (noInput) {
-                    out.println("Abandon reason required (--reason)");
-                    out.flush();
-                    return 3;
-                }
-                reason = "Abandoned by operator";
-            }
-            var payload = new LinkedHashMap<String, Object>();
-            payload.put("reason", reason);
-            payload.put("close_pr", !keepPr);
-
-            var response = context.runtime(true).send(
-                    HttpRequest.json("POST", "/api/v1/plans/" + planId + "/abandon", JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 202) {
-                out.printf("✓ %s abandoned and archived%n", planId);
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("plan abandon", response);
+            return ActionSupport.endWork(context, spec, KIND, planId, reason, keepPr, noInput, "abandon");
         }
     }
 
@@ -411,7 +357,7 @@ public final class PlanCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ChatCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Plan ID")
@@ -427,27 +373,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
-            var out = spec.commandLine().getOut();
-            if (message != null && !message.isBlank()) {
-                var response = context.runtime(true).send(
-                        HttpRequest.json("POST", "/api/v1/plans/" + planId + "/chat",
-                                JsonTree.write(Map.of("message", message))));
-                if (response.status() == 200 || response.status() == 201) {
-                    out.println(response.bodyText());
-                    out.flush();
-                    return 0;
-                }
-                throw new OperatorRefusedException("plan chat", response);
-            }
-
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/plans/" + planId + "/chat"));
-            if (response.status() == 200) {
-                out.println(response.bodyText());
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("plan chat", response);
+            return ActionSupport.chat(context, spec, KIND, planId, message);
         }
     }
 
@@ -455,7 +381,7 @@ public final class PlanCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ReportCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Plan ID")
@@ -475,7 +401,7 @@ public final class PlanCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var path = "/api/v1/plans/" + planId + "/completion";
+            var path = "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(planId) + "/completion";
             if (tokens) {
                 path += "?tokens=true";
                 if (components) path += "&components=true";

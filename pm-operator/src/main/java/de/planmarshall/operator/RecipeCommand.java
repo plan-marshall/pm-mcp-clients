@@ -39,7 +39,7 @@ public final class RecipeCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     RecipeCommand(OperatorContext context) {
         this.context = context;
@@ -55,7 +55,7 @@ public final class RecipeCommand implements Callable<Integer> {
     @OperatorVerb
     static final class RunCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", description = "Recipe key")

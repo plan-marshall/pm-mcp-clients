@@ -33,7 +33,7 @@ public final class QuestionsCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     @Option(names = "--project", description = "Filter by project ID")
     @Nullable
@@ -51,19 +51,11 @@ public final class QuestionsCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        var path = new StringBuilder("/api/v1/decisions");
-        var hasQuery = false;
-        if (project != null && !".".equals(project)) {
-            path.append("?project=").append(project);
-            hasQuery = true;
-        }
-        if (plan != null) {
-            path.append(hasQuery ? "&plan=" : "?plan=").append(plan);
-        }
-
-        var response = context.runtime(true).send(HttpRequest.get(path.toString()));
+        var path = OperatorUrlUtil.appendScope("/api/v1/decisions", project, plan);
+        var response = context.runtime(true).send(HttpRequest.get(path));
         if (response.status() == 404) {
-            response = context.runtime(true).send(HttpRequest.get("/api/v1/questions"));
+            response = context.runtime(true).send(
+                    HttpRequest.get(OperatorUrlUtil.appendScope("/api/v1/questions", project, plan)));
         }
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());

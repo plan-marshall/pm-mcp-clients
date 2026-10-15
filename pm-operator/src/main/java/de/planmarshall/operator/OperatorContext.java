@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.PmVersion;
@@ -107,7 +108,7 @@ public final class OperatorContext {
      * @param browserOpener       browser opener, {@code null} for default
      */
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
-            ClientEnvironment clientEnvironment, TerminalProvider terminalProvider, BrowserOpener browserOpener) {
+            ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider, @Nullable BrowserOpener browserOpener) {
         this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
         this.userHome = Objects.requireNonNull(userHome, "userHome");
         this.interactiveTerminal = interactiveTerminal;
@@ -226,11 +227,11 @@ public final class OperatorContext {
         }
         var os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         if (os.contains("mac")) {
-            new ProcessBuilder("open", uri.toString()).start();
+            new ProcessBuilder("/usr/bin/open", uri.toString()).start();
         } else if (os.contains("win")) {
-            new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", uri.toString()).start();
+            new ProcessBuilder("rundll32.exe", "url.dll,FileProtocolHandler", uri.toString()).start();
         } else {
-            new ProcessBuilder("xdg-open", uri.toString()).start();
+            new ProcessBuilder("/usr/bin/xdg-open", uri.toString()).start();
         }
     }
 }

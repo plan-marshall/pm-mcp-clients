@@ -127,9 +127,8 @@ public final class PmOperator implements Callable<Integer> {
         public <K> K create(Class<K> type) throws Exception {
             try {
                 var ctor = type.getDeclaredConstructor(OperatorContext.class);
-                ctor.setAccessible(true);
                 return ctor.newInstance(context);
-            } catch (NoSuchMethodException e) {
+            } catch (NoSuchMethodException _) {
                 return CommandLine.defaultFactory().create(type);
             }
         }

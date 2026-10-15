@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -47,15 +48,18 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class ConfigCommand implements Callable<Integer> {
 
+    static final String CONFIG_PATH = "/api/v1/config";
+    private static final String ROLES = "roles";
+
     static final List<String> ASPECT_OWNED_KEYS = List.of(
             "language.", "credentials.store", "providers.", "plan_defaults.",
-            "sources.documents_mode", "roles.", "roles"
+            "sources.documents_mode", "roles.", ROLES
     );
 
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     ConfigCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
@@ -65,7 +69,7 @@ public final class ConfigCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var runtime = context.runtime(true);
-        var response = runtime.send(HttpRequest.get("/api/v1/config"));
+        var response = runtime.send(HttpRequest.get(CONFIG_PATH));
         var out = spec.commandLine().getOut();
         if (response.status() == 200) {
             out.println("Machine Settings:");
@@ -84,7 +88,7 @@ public final class ConfigCommand implements Callable<Integer> {
         return 0;
     }
 
-    static boolean isAspectOwned(String key) {
+    static boolean isAspectOwned(@Nullable String key) {
         if (key == null) {
             return false;
         }
@@ -96,13 +100,14 @@ public final class ConfigCommand implements Callable<Integer> {
         return false;
     }
 
-    static String getOwningAspect(String key) {
+    static String getOwningAspect(@Nullable String key) {
+        if (key == null) return "config";
         if (key.startsWith("language.")) return "language";
         if (key.startsWith("credentials.")) return "credentials";
         if (key.startsWith("providers.")) return "providers";
         if (key.startsWith("plan_defaults.")) return "plan-defaults";
         if (key.startsWith("sources.documents_mode")) return "documents";
-        if (key.startsWith("roles")) return "roles";
+        if (key.startsWith(ROLES)) return ROLES;
         return "config";
     }
 
@@ -110,7 +115,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ShowCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", description = "Key or aspect name")
@@ -129,15 +134,11 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var path = "/api/v1/config";
+            var path = CONFIG_PATH;
             if (key != null && !key.isBlank()) {
-                path += "/" + key;
+                path += "/" + OperatorUrlUtil.encodePathSegment(key);
             }
-            if (project != null) {
-                path += "?project=" + project;
-            } else if (plan != null) {
-                path += "?plan=" + plan;
-            }
+            path = OperatorUrlUtil.appendScope(path, project, plan);
             var response = context.runtime(true).send(HttpRequest.get(path));
             var out = spec.commandLine().getOut();
             if (response.status() == 200) {
@@ -154,7 +155,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class SetCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Configuration key")
@@ -190,7 +191,7 @@ public final class ConfigCommand implements Callable<Integer> {
             if (project != null) body.put("project", project);
             if (plan != null) body.put("plan", plan);
 
-            var response = context.runtime(true).send(HttpRequest.json("PUT", "/api/v1/config", JsonTree.write(body)));
+            var response = context.runtime(true).send(HttpRequest.json("PUT", CONFIG_PATH, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
                 out.printf("✓ Config %s set to %s%n", key, value);
@@ -208,7 +209,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class UnsetCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Configuration key")
@@ -224,10 +225,8 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var path = "/api/v1/config/" + key;
-            if (project != null) {
-                path += "?project=" + project;
-            }
+            var path = CONFIG_PATH + "/" + OperatorUrlUtil.encodePathSegment(key);
+            path = OperatorUrlUtil.appendScope(path, project, null);
             var response = context.runtime(true).send(new HttpRequest("DELETE", path, Map.of(), null));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
@@ -246,7 +245,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class LanguageCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--interface", description = "Interface locale")
@@ -283,7 +282,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class HarnessesCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--add", description = "Harness client ID to add")
@@ -342,7 +341,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ModelsCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--allow", description = "Allow client_id:model")
@@ -376,7 +375,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class RolesCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--defaults", description = "Reset to default role assignments")
@@ -418,7 +417,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class CredentialsCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--store", description = "Credential store type: os or file")
@@ -448,7 +447,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ProvidersCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--use", description = "Providers to use")
@@ -486,7 +485,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class PlanDefaultsCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--landing", description = "Default landing method: pull-request, main, files")
@@ -537,7 +536,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class ConsentsCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         ConsentsCommand(OperatorContext context) {
@@ -571,7 +570,7 @@ public final class ConfigCommand implements Callable<Integer> {
     @OperatorVerb
     static final class DocumentsCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--mode", description = "Mode: copy, move, ask")

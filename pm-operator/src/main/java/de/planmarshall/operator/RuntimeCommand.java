@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -38,10 +39,12 @@ import picocli.CommandLine.Spec;
         })
 public final class RuntimeCommand implements Callable<Integer> {
 
+    private static final String DRAIN = "drain";
+
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     RuntimeCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
@@ -56,7 +59,7 @@ public final class RuntimeCommand implements Callable<Integer> {
     @Command(name = "start", description = "Starts the runtime unless one runs. Runs without operator checks.")
     static final class StartCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         StartCommand(OperatorContext context) {
@@ -77,7 +80,7 @@ public final class RuntimeCommand implements Callable<Integer> {
     @OperatorVerb
     static final class StopCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--drain", description = "Stop gracefully after active work completes")
@@ -97,23 +100,23 @@ public final class RuntimeCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            if (withdraw) {
-                var response = context.runtime(false).send(
-                        new HttpRequest("DELETE", "/api/v1/runtime/stop", Map.of(), null));
-                if (response.status() == 200 || response.status() == 204) {
-                    out.println("runtime   drain withdrawn");
-                    out.flush();
-                    return 0;
-                }
-                var err = spec.commandLine().getErr();
-                err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
-                err.flush();
-                return 1;
-            }
-
             try {
+                if (withdraw) {
+                    var response = context.runtime(false).send(
+                            new HttpRequest("DELETE", "/api/v1/runtime/stop", Map.of(), null));
+                    if (response.status() == 200 || response.status() == 204) {
+                        out.println("runtime   drain withdrawn");
+                        out.flush();
+                        return 0;
+                    }
+                    var err = spec.commandLine().getErr();
+                    err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
+                    err.flush();
+                    return 1;
+                }
+
                 var body = new LinkedHashMap<String, Object>();
-                if (drain) body.put("drain", true);
+                if (drain) body.put(DRAIN, true);
                 if (now) body.put("now", true);
 
                 var response = context.runtime(false).send(
@@ -134,7 +137,7 @@ public final class RuntimeCommand implements Callable<Integer> {
     @OperatorVerb
     static final class RestartCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Option(names = "--drain", description = "Restart after active work completes")
@@ -156,7 +159,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var body = new LinkedHashMap<String, Object>();
             body.put("then", "restart");
-            if (drain) body.put("drain", true);
+            if (drain) body.put(DRAIN, true);
             if (now) body.put("now", true);
 
             var response = context.runtime(true).send(
@@ -174,7 +177,7 @@ public final class RuntimeCommand implements Callable<Integer> {
     @OperatorVerb
     static final class UpgradeCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", description = "Version to upgrade to")
@@ -207,41 +210,54 @@ public final class RuntimeCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             if (notes) {
-                var response = context.runtime(false).send(HttpRequest.get("/api/v1/system/release-notes"));
-                if (response.status() == 200) {
-                    out.println(response.bodyText());
-                } else {
-                    out.println("No release notes found.");
-                }
-                out.flush();
-                return 0;
+                return showNotes(out);
             }
-
             if (check) {
-                var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade/check", "{}"));
-                if (response.status() == 200) {
-                    out.println("✓ Version check completed");
-                } else {
-                    out.printf("Version check failed: HTTP %d%n", response.status());
-                }
-                out.flush();
-                return 0;
+                return runCheck(out);
             }
-
             if (withdraw) {
-                var response = context.runtime(false).send(new HttpRequest("DELETE", "/api/v1/operator/runtime/upgrade", Map.of(), null));
-                if (response.status() == 200 || response.status() == 204) {
-                    out.println("runtime   upgrade withdrawn");
-                } else {
-                    out.printf("Failed to withdraw upgrade: HTTP %d%n", response.status());
-                }
-                out.flush();
-                return 0;
+                return withdrawUpgrade(out);
             }
+            return executeUpgrade(out);
+        }
 
+        private int showNotes(PrintWriter out) throws IOException {
+            var response = context.runtime(false).send(HttpRequest.get("/api/v1/system/release-notes"));
+            if (response.status() == 200) {
+                out.println(response.bodyText());
+            } else {
+                out.println("No release notes found.");
+            }
+            out.flush();
+            return 0;
+        }
+
+        private int runCheck(PrintWriter out) throws IOException {
+            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade/check", "{}"));
+            if (response.status() == 200) {
+                out.println("✓ Version check completed");
+            } else {
+                out.printf("Version check failed: HTTP %d%n", response.status());
+            }
+            out.flush();
+            return 0;
+        }
+
+        private int withdrawUpgrade(PrintWriter out) throws IOException {
+            var response = context.runtime(false).send(new HttpRequest("DELETE", "/api/v1/operator/runtime/upgrade", Map.of(), null));
+            if (response.status() == 200 || response.status() == 204) {
+                out.println("runtime   upgrade withdrawn");
+            } else {
+                out.printf("Failed to withdraw upgrade: HTTP %d%n", response.status());
+            }
+            out.flush();
+            return 0;
+        }
+
+        private int executeUpgrade(PrintWriter out) throws IOException {
             var body = new LinkedHashMap<String, Object>();
             if (version != null) body.put("version", version);
-            if (drain) body.put("drain", true);
+            if (drain) body.put(DRAIN, true);
             if (now) body.put("now", true);
 
             var response = context.runtime(true).send(

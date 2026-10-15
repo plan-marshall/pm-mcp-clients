@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.time.Duration;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,6 +85,22 @@ class PlanCommandTest {
     }
 
     @Test
+    @DisplayName("plan list reports no running plans when empty")
+    void planListEmpty() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans".equals(request.target())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("No running plans."));
+    }
+
+    @Test
     @DisplayName("plan <id> views plan details")
     void planDetail() throws Exception {
         fixture.start((request, response) -> {
@@ -102,9 +119,19 @@ class PlanCommandTest {
     }
 
     @Test
-    @DisplayName("plan add starts a new plan")
+    @DisplayName("plan <id> reports not found on 404")
+    void planDetailNotFound() throws Exception {
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = execute("plan", "p-missing");
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Plan p-missing not found."));
+    }
+
+    @Test
+    @DisplayName("plan add starts a new plan with options")
     void planAdd() throws Exception {
-        fixture.start((request, response) -> {
+        var server = fixture.start((request, response) -> {
             if ("/api/v1/plans".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, "{\"ok\":true}");
             } else {
@@ -112,11 +139,34 @@ class PlanCommandTest {
             }
         });
 
-        int code = execute("plan", "add", "--title", "Add relay feature", "--id", "relay-feature");
+        int code = execute("plan", "add", "--title", "Add relay feature", "--id", "relay-feature",
+                "--description", "relays messages", "--document", "doc.md", "--issue", "42",
+                "--lesson", "L-001", "--local-changes", "--pull-request", "12", "--copy");
         assertAll(
                 () -> assertEquals(0, code),
                 () -> assertTrue(out.toString().contains("✓ relay-feature has started"))
         );
+
+        var req = server.awaitRequest(Duration.ofSeconds(1));
+        assertTrue(req.bodyText().contains("\"documents_mode\":\"copy\""));
+        assertTrue(req.bodyText().contains("\"local_changes\":true"));
+        assertTrue(req.bodyText().contains("\"issues\":[\"42\"]"));
+    }
+
+    @Test
+    @DisplayName("plan add with project routes to project entries")
+    void planAddWithProject() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/my-proj/entries".equals(request.target()) && "POST".equals(request.method())) {
+                response.send(200, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "add", "--project", "my-proj", "--title", "Project Plan", "--move");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Project Plan has started"));
     }
 
     @Test
@@ -135,6 +185,23 @@ class PlanCommandTest {
                 () -> assertEquals(0, code),
                 () -> assertTrue(out.toString().contains("✓ p-001 paused"))
         );
+    }
+
+    @Test
+    @DisplayName("plan pause with after-task or after-phase")
+    void planPauseAfter() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/plans/p-001/pause".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "pause", "p-001", "--after-task");
+        assertEquals(0, code);
+        var req = server.awaitRequest(Duration.ofSeconds(1));
+        assertTrue(req.bodyText().contains("\"point\":\"after_task\""));
     }
 
     @Test
@@ -189,6 +256,22 @@ class PlanCommandTest {
                 () -> assertEquals(0, code),
                 () -> assertTrue(out.toString().contains("✓ p-001 abandoned and archived"))
         );
+    }
+
+    @Test
+    @DisplayName("plan chat communicates with plan")
+    void planChat() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans/p-001/chat".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"reply\":\"hello plan\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "chat", "p-001", "--message", "hello plan");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("hello plan"));
     }
 
     @Test

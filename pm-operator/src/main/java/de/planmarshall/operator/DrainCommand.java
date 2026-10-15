@@ -32,7 +32,7 @@ public final class DrainCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     DrainCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
@@ -53,7 +53,7 @@ public final class DrainCommand implements Callable<Integer> {
                 err.flush();
                 return 1;
             }
-        } catch (RuntimeUnavailableException e) {
+        } catch (RuntimeUnavailableException _) {
             out.println("runtime   not running");
         }
         out.flush();

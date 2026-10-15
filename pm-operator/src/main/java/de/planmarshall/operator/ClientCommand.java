@@ -38,13 +38,13 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class ClientCommand implements Callable<Integer> {
 
-    private final OperatorContext context;
+    private static final String HARNESSES = "harnesses";
 
     @Spec
-    CommandSpec spec;
+    CommandSpec spec = CommandSpec.create();
 
     ClientCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(context, "context");
     }
 
     @Override
@@ -56,7 +56,7 @@ public final class ClientCommand implements Callable<Integer> {
     @Command(name = "status", description = "Shows installation status of client bundles. Never starts runtime.")
     static final class StatusCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         StatusCommand(OperatorContext context) {
@@ -101,7 +101,7 @@ public final class ClientCommand implements Callable<Integer> {
     @OperatorVerb
     static final class InstallCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0..*", description = "Harness IDs to install")
@@ -115,7 +115,7 @@ public final class ClientCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var body = new LinkedHashMap<String, Object>();
-            body.put("harnesses", harnesses != null ? harnesses : List.of());
+            body.put(HARNESSES, harnesses != null ? harnesses : List.of());
             var response = context.runtime(true).send(
                     HttpRequest.json("POST", "/api/v1/client/install", JsonTree.write(body)));
             var out = spec.commandLine().getOut();
@@ -135,7 +135,7 @@ public final class ClientCommand implements Callable<Integer> {
     @OperatorVerb
     static final class UpdateCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0..*", description = "Harness IDs to update")
@@ -149,7 +149,7 @@ public final class ClientCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var body = new LinkedHashMap<String, Object>();
-            body.put("harnesses", harnesses != null ? harnesses : List.of());
+            body.put(HARNESSES, harnesses != null ? harnesses : List.of());
             var response = context.runtime(true).send(
                     HttpRequest.json("POST", "/api/v1/client/update", JsonTree.write(body)));
             var out = spec.commandLine().getOut();
@@ -166,7 +166,7 @@ public final class ClientCommand implements Callable<Integer> {
     @OperatorVerb
     static final class RemoveCommand implements Callable<Integer> {
         @Spec
-        CommandSpec spec;
+        CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
         @Parameters(index = "0..*", description = "Harness IDs to remove")
@@ -180,7 +180,7 @@ public final class ClientCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var body = new LinkedHashMap<String, Object>();
-            body.put("harnesses", harnesses != null ? harnesses : List.of());
+            body.put(HARNESSES, harnesses != null ? harnesses : List.of());
             var response = context.runtime(true).send(
                     HttpRequest.json("POST", "/api/v1/client/remove", JsonTree.write(body)));
             var out = spec.commandLine().getOut();
