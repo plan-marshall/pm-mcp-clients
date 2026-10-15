@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:system.adoc[System] » Cleanup
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6] (its report) and link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]; the stores of link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#retention[Retention & Rotation], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/02-startup-recovery-drain.adoc#periodic-sweep[Periodic Sweep], link:../../../../plan-marshall-documentation/doc/specification/filesystem-layout/03-project-store.adoc#archives[Archives], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#cleanup-journal[Cleanup Journal], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc[Event Catalogue]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#retention[Retention & Rotation], link:../../../../pm-mcp-core/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#periodic-sweep[Periodic Sweep], link:../../../../pm-mcp-core/doc/specification/filesystem-layout/03-project-store.adoc#archives[Archives], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#cleanup-journal[Cleanup Journal], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc[Event Catalogue]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/26-cleanup.adoc[Terminal Client, Cleanup], link:../web-app/README.adoc#structure[Web App]. A part of link:system.adoc[System]; its texts are in link:cleanup-texts.adoc[a part of their own].
 
@@ -45,7 +45,7 @@ Two classes, kept apart:
 
 * *Technical residue* is removed by the periodic sweep of the runtime by itself, each removal audited, and never asked: temporary files, caches, the worker directories of ended jobs, stale locks and leases, fenced generations, rotated audit files, and the candidates of the evidence-based sweeps (ended task records, old rows of the workspace, retired lesson bodies). The cleanup view shows it as figures per step only (<<residue>>); in the terminal `pm-operator sweep` lists what the next pass would remove, and `--apply` runs it now.
 * *Never offered*: an unread report, a pending entry (a start not finished), an archived plan that still owes an item (it is never due while it does), anything of running work but the logs of its ended jobs, and anything outside the machine store: a branch, a pull request, the remote, a checkout, the team's `.marshall/`. Unread reports and pending entries never expire.
-* *No automatic deletion of work history*: no retention period applies to it; an archived plan and a job log wait for the cleanup however old they are (link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]).
+* *No automatic deletion of work history*: no retention period applies to it; an archived plan and a job log wait for the cleanup however old they are (link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]).
 
 [#durations]
 == How Long Work Is Kept
@@ -204,7 +204,7 @@ What the runtime removes without asking, as figures per step of the sweep, each 
 ----
 
 * The figures are the runtime's, per sweep step, as it last ran; a step that has not run since the start says `not run yet`. Nothing here is a command; in the terminal `pm-operator sweep` lists what the next pass would remove and `pm-operator sweep --apply` runs it at once (link:../terminal-client/26-cleanup.adoc#t-sweep[Terminal Client, Cleanup]).
-* The remaining keys of `retention` (the retired lesson bodies, the quiet window of `arch-constraint` lessons, the old rows of the workspace) govern these steps and are operator settings of the project's `local-config.json`, with machine-wide defaults (link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#retention-days[Retention of Residue]); they are not shown as durations of the cleanup.
+* The remaining keys of `retention` (the retired lesson bodies, the quiet window of `arch-constraint` lessons, the old rows of the workspace) govern these steps and are operator settings of the project's `local-config.json`, with machine-wide defaults (link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#retention-days[Retention of Residue]); they are not shown as durations of the cleanup.
 
 [#deleting]
 == What Deleting Does, and What It Leaves
@@ -228,7 +228,7 @@ What the runtime removes without asking, as figures per step of the sweep, each 
 [#channels]
 == Who May
 
-Reading the job, the kept list, and the residue figures is a read. Deciding a job, releasing kept items, and changing the durations are operator acts, from the terminal client's operator verbs and from a paired browser, the operator's two channels, never from a tool of a model (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[Operator Channel Isolation]); each is audited with its channel and device. While the runtime stops or upgrades, _Delete_ is refused with `The runtime is stopping; nothing new starts.` (link:system.adoc#draining[System, While It Stops]); _Ask me again_ and _Ignore_ are accepted.
+Reading the job, the kept list, and the residue figures is a read. Deciding a job, releasing kept items, and changing the durations are operator acts, from the terminal client's operator verbs and from a paired browser, the operator's two channels, never from a tool of a model (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation]); each is audited with its channel and device. While the runtime stops or upgrades, _Delete_ is refused with `The runtime is stopping; nothing new starts.` (link:system.adoc#draining[System, While It Stops]); _Ask me again_ and _Ignore_ are accepted.
 
 [#safety]
 == Untrusted Text
@@ -238,7 +238,7 @@ The titles, outcomes' reasons, and report subjects of the details come from mode
 [#requests]
 == The Requests
 
-The specification names the requests (link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]); the clients use them as it names them:
+The specification names the requests (link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]); the clients use them as it names them:
 
 * `GET /api/v1/system/cleanup`: the open job (its id `cln-NNNN`, its state `open`, `postponed`, `deleting`, or `done`, since when it is due, the summary with the space it frees, the details paged per project, the links of its three commands) or none with the time of the next check; the durations in force, the count of kept items, and the residue figures per sweep step with the time of its last run. It is the state `cleanup.job` of link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3].
 * `POST /api/v1/system/cleanup/{job_id}/delete` with the unchecked items, after `cleanup.confirm`; `POST /api/v1/system/cleanup/{job_id}/remind`; `POST /api/v1/system/cleanup/{job_id}/ignore`. Each closes the job; on a job already decided each answers the decision taken, with who took it.

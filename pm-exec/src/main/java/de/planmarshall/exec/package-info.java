@@ -9,11 +9,11 @@
  */
 /**
  * The job launcher {@code pm-exec}: a tiny native binary the runtime starts every job through
- * (doc/specification/job-runtime/01-pipeline-and-subprocesses.adoc, Process-Group Creation via the
+ * (pm-mcp-core/doc/specification/job-runtime/01-pipeline-and-subprocesses.adoc, Process-Group Creation via the
  * {@code pm-exec} Launcher; PM-SEC-5, PM-TECH-4).
  * <p>
  * The launcher places itself into its own process group ({@code setpgid(0, 0)}), confines itself on
- * Linux ({@code PR_SET_NO_NEW_PRIVS} and a Landlock ruleset, doc/specification/job-runtime/
+ * Linux ({@code PR_SET_NO_NEW_PRIVS} and a Landlock ruleset, pm-mcp-core/doc/specification/job-runtime/
  * 02-confinement-and-environment.adoc) and replaces itself with the verified job executable through
  * {@code execve}. All native calls go through the Foreign Function &amp; Memory API.
  *

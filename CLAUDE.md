@@ -11,9 +11,11 @@ daemon: `pm-api`, the job launcher `pm-exec`, the relay `pm-relay` (binary `pm-m
 
 The only listing of the repositories, the modules, their responsibilities and allowed dependencies is the Module
 Structure Specification of the product (`doc/specification/module-structure.adoc` in
-`plan-marshall/plan-marshall-mcp`, later in `plan-marshall/plan-marshall-documentation`); name modules from there and
-never repeat the listing here. All project documentation (requirements, specifications, implementation watch,
-roadmap, concept, developer and user documentation) lives there, not in this repository. The one exception is the
+`plan-marshall/plan-marshall-documentation`); name modules from there and never repeat the listing here. All project
+documentation (requirements, specifications, implementation watch, roadmap, concept, developer and user documentation)
+lives there, not in this repository, except the specifications of the engine with their implementation watch, which
+live beside its code in `plan-marshall/pm-mcp-core` (`doc/Specification.adoc`, `doc/specification/`; the store
+schemas, the identifiers, the timeouts, the client profiles and model work among them). The one exception is the
 design of the two clients and of what they share, in `doc/design/` (index `doc/design/README.adoc`): it is the
 specification their implementation follows and lives here, beside the code. The use cases stay there, one set for both
 clients. Every concrete
@@ -88,8 +90,8 @@ The work of this repository is planned as work packages in `doc/plans/`, one fil
 `doc/plans/README.adoc`, the only place that states the status of a package and what it depends on (also packages
 of the other repositories). A package is ready when it is open and everything it depends on is done; the roadmap milestone it serves says for which exit it
 is needed, not when it may start. The plan files hold the tasks only: requirements, specifications and watch
-items stay in `plan-marshall-documentation` and are linked by relative paths that assume the repositories checked
-out beside each other. A package is worked in the usual plan-marshall flow of the section "Git Workflow" (branch,
+items stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are linked by relative paths
+that assume the repositories checked out beside each other. A package is worked in the usual plan-marshall flow of the section "Git Workflow" (branch,
 commits, pull request at finalize), and its row in the index is set to `done` within those commits. A plan that
 changes what a specification or requirement states updates the documents concerned there directly, as part of its
 own work.

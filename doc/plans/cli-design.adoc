@@ -27,7 +27,7 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 * Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]
 * Design: link:../design/web-app/onboarding.adoc[Web App, Onboarding]; link:../design/shared/texts-and-languages.adoc[Texts and Languages]
-* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[§ Operator Channel Isolation]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[§ Operator Channel Isolation]
 
 == Done When
 

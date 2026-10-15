@@ -103,7 +103,7 @@ Accept 1, reject 1? [Enter]   toggle: 1-2   b) back   ?   › ⏎
 Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
 ----
 
-* The steward runs on the default harness of step 2 with the model its profile maps to the tier `standard`, outside the model catalogue and exempt from qualification; it is not among the 31 roles this step assigns (link:../../../../plan-marshall-documentation/doc/specification/model-work/01-roles-and-configuration.adoc#steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
+* The steward runs on the default harness of step 2 with the model its profile maps to the tier `standard`, outside the model catalogue and exempt from qualification; it is not among the 31 roles this step assigns (link:../../../../pm-mcp-core/doc/specification/model-work/01-roles-and-configuration.adoc#steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
 * A failed or left model task returns to `roles.review` as it was, with one line: `– The steward gave no proposal: <reason>.`
 * `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
 
@@ -318,9 +318,9 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
 ✓ Plan defaults recorded
 ----
 
-* The three lines of the landing are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../plan-marshall-documentation/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-axes[Plan Behaviour Axes]); `?1` to `?3` name the variant with what it lands: the branch, the pull request, its reviews and the merge; a commit pushed on the base branch; no commit, the changes left in the working tree and the plan handed back.
+* The three lines of the landing are the variants `landing.pull-request`, `landing.main`, and `landing.files` (link:../../../../pm-mcp-core/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-axes[Plan Behaviour Axes]); `?1` to `?3` name the variant with what it lands: the branch, the pull request, its reviews and the merge; a commit pushed on the base branch; no commit, the changes left in the working tree and the plan handed back.
 * A variant that cannot run on this machine is listed without a number and with its reason (`Branch and Pull Request   needs a provider: none is available`).
-* *A later run* (`config plan-defaults`, or `7` of `config`) adds a fourth line the first run never shows: the posture of a plan (`plan_defaults.posture`), unset by default, so that a plan asks its posture at its start (`init.options`) while no level sets it (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc#state-defaults.review[State Catalogue, `defaults.review`]):
+* *A later run* (`config plan-defaults`, or `7` of `config`) adds a fourth line the first run never shows: the posture of a plan (`plan_defaults.posture`), unset by default, so that a plan asks its posture at its start (`init.options`) while no level sets it (link:../../../../pm-mcp-core/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc#state-defaults.review[State Catalogue, `defaults.review`]):
 +
 [source,text]
 ----

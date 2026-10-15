@@ -229,7 +229,7 @@ Copy from now on? [Enter]   b) back   ?   › ⏎
 ✓ Documents are copied into a plan; the start no longer asks.
 ----
 
-* The value is the machine's `sources.documents_mode`: `copy`, `move`, or `ask`, the default (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#documents-source[Documents]); answering _always this_ at a plan's start writes the same setting (xref:18-starting.adoc[Starting Work]). `settings.record` records and audits it.
+* The value is the machine's `sources.documents_mode`: `copy`, `move`, or `ask`, the default (link:../../../../pm-mcp-core/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#documents-source[Documents]); answering _always this_ at a plan's start writes the same setting (xref:18-starting.adoc[Starting Work]). `settings.record` records and audits it.
 * *Changed meanwhile*: where another client changed the mode after the question was shown, the change is refused with `conflict` and nothing is applied; the line `Changed meanwhile: it is now Ask each time. Yours was not applied.` asks `Apply yours again? [Enter]   k) keep the current value`. Every setting of `config` does the same (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]).
 * `--mode copy|move|ask` answers the choice. With _Move_ the machine's default, a move is still accepted only from this client and from a browser on the loopback listener; a device on the network copies.
 

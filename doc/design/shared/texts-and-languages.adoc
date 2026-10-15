@@ -115,7 +115,7 @@ A word not in the glossary is translated. A new domain word is added here before
 [#numbers]
 == Numbers: Tokens
 
-Every count of tokens is shown in one format, defined here and nowhere else: the plan view, the epic view, the completion report, the system view, and the harness list use it (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). The runtime sends exact counts; the client only formats them, through the keys below, and never adds or derives a figure.
+Every count of tokens is shown in one format, defined here and nowhere else: the plan view, the epic view, the completion report, the system view, and the harness list use it (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). The runtime sends exact counts; the client only formats them, through the keys below, and never adds or derives a figure.
 
 [cols="2,1,1",options="header"]
 |===
