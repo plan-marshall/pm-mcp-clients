@@ -31,18 +31,20 @@
     if (!rawLinks || typeof rawLinks !== 'object') return [];
 
     return Object.entries(rawLinks).map(([id, val], index, arr) => {
-      const link: HypermediaLink = typeof val === 'string' ? { href: val } : val;
-      // Last link is considered primary by convention
+      let link: HypermediaLink = typeof val === 'string' ? { href: val } : { ...val };
+      if (!link.href.startsWith('/') || link.href.startsWith('//')) {
+        link = { ...link, href: `/${link.href.replace(/^[/.]+/, '')}` };
+      }
       const isPrimary = index === arr.length - 1;
       return { id, link, isPrimary };
     });
   }
 
-  async function handleLinkClick(link: HypermediaLink | string) {
+  async function handleLinkClick(link: HypermediaLink | string, body?: unknown) {
     if (isSubmitting) return;
     isSubmitting = true;
     try {
-      await executeLink(link);
+      await executeLink(link, body);
     } catch {
       // Error handled
     } finally {
@@ -50,17 +52,26 @@
     }
   }
 
-  function handleConsentAccept(_remember: boolean) {
-    const primary = offeredLinks.find((l) => l.isPrimary);
-    if (primary) {
-      handleLinkClick(primary.link);
+  function handleConsentAccept(remember: boolean) {
+    let target = remember
+      ? offeredLinks.find((l) => l.id === 'remember' || l.id === 'grant_remember')
+      : null;
+    if (!target) {
+      target = offeredLinks.find(
+        (l) => l.id === 'grant' || l.id === 'accept' || l.id === 'yes' || l.isPrimary,
+      );
+    }
+    if (target) {
+      handleLinkClick(target.link, { remember });
     }
   }
 
   function handleConsentDecline() {
-    const secondary = offeredLinks.find((l) => !l.isPrimary);
-    if (secondary) {
-      handleLinkClick(secondary.link);
+    const target = offeredLinks.find(
+      (l) => l.id === 'deny' || l.id === 'decline' || l.id === 'no' || !l.isPrimary,
+    );
+    if (target) {
+      handleLinkClick(target.link, { remember: false });
     }
   }
 </script>
@@ -180,13 +191,13 @@
             {:else}
               <Button
                 variant="secondary"
-                on:click={() => handleLinkClick('/api/v1/operator/onboard/begin')}
+                on:click={() => handleLinkClick('/api/v1/operator/onboard/auto', { mode: 'auto' })}
               >
                 {$t('onboard.mode.auto')}
               </Button>
               <Button
                 variant="primary"
-                on:click={() => handleLinkClick('/api/v1/operator/onboard/begin')}
+                on:click={() => handleLinkClick('/api/v1/operator/onboard/begin', { mode: 'guided' })}
               >
                 {$t('onboard.mode.guided')}
               </Button>

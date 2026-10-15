@@ -14,6 +14,8 @@
 
   let devices: PairedDevice[] = [];
   let isLoading = false;
+  let loadError = '';
+  let actionError = '';
   let renamingId: string | null = null;
   let renameValue = '';
 
@@ -32,28 +34,17 @@
 
   async function loadDevices() {
     isLoading = true;
+    loadError = '';
     try {
       const res = await apiClient.request<PairedDevice[]>('GET', '/api/v1/web/devices');
-      devices = Array.isArray(res)
-        ? res
-        : [
-            {
-              device_id: 'mock-device-1',
-              label: $runtimeStore.deviceLabel || 'Current Browser',
-              created_at: new Date().toISOString(),
-              last_used_at: 'Just now',
-            },
-          ];
+      if (Array.isArray(res)) {
+        devices = res;
+      } else {
+        devices = [];
+      }
     } catch {
-      // Fallback display
-      devices = [
-        {
-          device_id: 'mock-device-1',
-          label: $runtimeStore.deviceLabel || 'Current Browser',
-          created_at: new Date().toISOString(),
-          last_used_at: 'Just now',
-        },
-      ];
+      loadError = 'Failed to load paired devices.';
+      devices = [];
     } finally {
       isLoading = false;
     }
@@ -61,21 +52,24 @@
 
   async function revokeDevice(deviceId: string) {
     if (!confirm('Revoke this device? It will be disconnected immediately.')) return;
+    actionError = '';
     try {
       await apiClient.request('DELETE', `/api/v1/web/devices/${deviceId}`);
       devices = devices.filter((d) => d.device_id !== deviceId);
     } catch {
-      devices = devices.filter((d) => d.device_id !== deviceId);
+      actionError = 'Failed to revoke device. Please try again.';
     }
   }
 
   function startRename(device: PairedDevice) {
     renamingId = device.device_id;
     renameValue = device.label;
+    actionError = '';
   }
 
   async function saveRename(deviceId: string) {
     if (!renameValue.trim()) return;
+    actionError = '';
     try {
       await apiClient.request('POST', `/api/v1/web/devices/${deviceId}/rename`, {
         label: renameValue.trim(),
@@ -85,10 +79,7 @@
       );
       renamingId = null;
     } catch {
-      devices = devices.map((d) =>
-        d.device_id === deviceId ? { ...d, label: renameValue.trim() } : d,
-      );
-      renamingId = null;
+      actionError = 'Failed to rename device. Please try again.';
     }
   }
 </script>
@@ -105,12 +96,18 @@
     <h2 class="settings-section__title">{$t('web.settings.aspects')}</h2>
     <div class="aspects-grid">
       {#each aspects as aspect}
-        <div class="aspect-card">
+        <div class="aspect-card" data-aspect={aspect.id}>
           <div class="aspect-card__info">
             <h3 class="aspect-card__title">{aspect.title}</h3>
             <p class="aspect-card__desc">{aspect.desc}</p>
           </div>
-          <Button variant="secondary" on:click={() => navigateTo('onboarding')}>Configure</Button>
+          <Button
+            variant="secondary"
+            aria-label={`Configure ${aspect.title}`}
+            on:click={() => navigateTo('onboarding')}
+          >
+            Configure
+          </Button>
         </div>
       {/each}
     </div>
@@ -119,8 +116,15 @@
   <section class="settings-section">
     <h2 class="settings-section__title">{$t('web.settings.devices')}</h2>
     <div class="devices-card">
+      {#if actionError}
+        <p class="error-text" role="alert">{actionError}</p>
+      {/if}
       {#if isLoading}
         <p>Loading devices…</p>
+      {:else if loadError}
+        <p class="empty-text error-text">{loadError}</p>
+      {:else if devices.length === 0}
+        <p class="empty-text">No paired devices found.</p>
       {:else}
         <table class="devices-table">
           <thead>

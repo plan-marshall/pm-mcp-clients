@@ -50,6 +50,19 @@ function deriveStepFromState(stateId?: string): number {
   return 1;
 }
 
+let hashListenerRegistered = false;
+let eventsUnsubscribe: (() => void) | null = null;
+
+function subscribeToEvents(): void {
+  if (eventsUnsubscribe) {
+    eventsUnsubscribe();
+    eventsUnsubscribe = null;
+  }
+  eventsUnsubscribe = apiClient.subscribeEvents((event, data) => {
+    handleRuntimeEvent(event, data);
+  });
+}
+
 export async function checkUrlHashForCode(): Promise<boolean> {
   if (typeof window !== 'undefined' && window.location.hash) {
     const match = window.location.hash.match(/code=([^&]+)/);
@@ -68,10 +81,11 @@ export async function checkUrlHashForCode(): Promise<boolean> {
 }
 
 export async function initRuntime(): Promise<void> {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && !hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
       checkUrlHashForCode();
     });
+    hashListenerRegistered = true;
   }
 
   apiClient.setOnRevoked((reason) => {
@@ -138,9 +152,7 @@ export async function initRuntime(): Promise<void> {
       isRevoked: false,
     }));
 
-    apiClient.subscribeEvents((event, data) => {
-      handleRuntimeEvent(event, data);
-    });
+    subscribeToEvents();
   } catch (err: unknown) {
     if ((err as Error)?.message === 'unauthorized') {
       return;
@@ -190,9 +202,7 @@ export async function pairBrowser(code: string): Promise<void> {
     isOffline: false,
   }));
 
-  apiClient.subscribeEvents((event, data) => {
-    handleRuntimeEvent(event, data);
-  });
+  subscribeToEvents();
 }
 
 export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {

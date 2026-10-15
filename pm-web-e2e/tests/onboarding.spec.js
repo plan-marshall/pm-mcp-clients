@@ -8,11 +8,10 @@ test.describe('Onboarding Flow', () => {
     await page.goto('/#code=KXQB-MRTN');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-    // Navigate to Settings then click Configure on an aspect
+    // Navigate to Settings then click Configure on Harnesses aspect
     const settingsBtn = page.getByRole('button', { name: /Settings/i });
     await settingsBtn.click();
-    const configureBtns = page.getByRole('button', { name: 'Configure' });
-    await configureBtns.first().click();
+    await page.locator('[data-aspect="harnesses"]').getByRole('button', { name: 'Configure' }).click();
   });
 
   test('displays onboarding step bar and steps overview', async ({ page }) => {

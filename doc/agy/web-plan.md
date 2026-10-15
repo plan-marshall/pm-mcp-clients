@@ -122,3 +122,16 @@ Implementation plan for the web client module (`pm-web-app`) and its end-to-end 
   - [x] 12.7 Run Playwright E2E tests in `pm-web-e2e` against `pm-mock-runtime`.
   - [x] 12.8 Verify full Maven reactor build (`mvn clean install`) and inspect JAR `META-INF/resources`.
   - [x] 12.9 Commit migration changes to `feat/web-app`.
+
+- [x] **Task 13: Address Code Review Comments & Stabilize CI**
+  - [x] 13.1 Fix CI Playwright execution by setting `<skipPlaywrightTests>true</skipPlaywrightTests>` by default in `pm-web-e2e/pom.xml` and adding `-Pe2e` profile.
+  - [x] 13.2 Move `npm-lint` execution in `pm-web-e2e/pom.xml` to `test` phase for fail-fast feedback.
+  - [x] 13.3 Resolve Svelte 5 deprecation warnings in `+layout.svelte` by using `onclick` attributes.
+  - [x] 13.4 Delete unused legacy `src/App.svelte` and consolidate SPA routing in `src/routes/+page.svelte`.
+  - [x] 13.5 Remove duplicate URL hash pairing in `PairingView.svelte` and manage single SSE subscription in `runtime.ts`.
+  - [x] 13.6 Enhance `validateProcess` in `ProcessDesigner.svelte` with header syntax regex check.
+  - [x] 13.7 Fix device error handling in `SettingsView.svelte` without fake device fallbacks and add error states.
+  - [x] 13.8 Bind `WorkspaceView.svelte` system status and projects to real runtime responses.
+  - [x] 13.9 Harden API client path validation against SSRF / protocol-relative URLs and handle clean SSE reconnects.
+  - [x] 13.10 Refine E2E test locators in `onboarding.spec.js` and URL assertions in `pairing.spec.js`.
+

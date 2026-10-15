@@ -18,8 +18,8 @@
         <maven.deploy.skip>true</maven.deploy.skip>
         <maven.install.skip>true</maven.install.skip>
         <skip.lint>false</skip.lint>
-        <!-- Executed in integration-test phase unless skipped -->
-        <skipPlaywrightTests>false</skipPlaywrightTests>
+        <!-- Skipped by default in regular CI builds without browsers; enable via -Pe2e or -DskipPlaywrightTests=false -->
+        <skipPlaywrightTests>true</skipPlaywrightTests>
         <playwright.output.dir>${project.build.directory}</playwright.output.dir>
     </properties>
 
@@ -58,7 +58,7 @@
                         <goals>
                             <goal>npm</goal>
                         </goals>
-                        <phase>verify</phase>
+                        <phase>test</phase>
                         <configuration>
                             <arguments>run lint</arguments>
                             <skip>${skip.lint}</skip>
@@ -72,6 +72,23 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <executions>
+                    <execution>
+                        <id>install-playwright-browsers</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>pre-integration-test</phase>
+                        <configuration>
+                            <workingDirectory>${project.basedir}</workingDirectory>
+                            <executable>npx</executable>
+                            <arguments>
+                                <argument>playwright</argument>
+                                <argument>install</argument>
+                                <argument>chromium</argument>
+                            </arguments>
+                            <skip>${skipPlaywrightTests}</skip>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>run-playwright-tests</id>
                         <goals>
@@ -101,9 +118,9 @@
 
     <profiles>
         <profile>
-            <id>skip-e2e</id>
+            <id>e2e</id>
             <properties>
-                <skipPlaywrightTests>true</skipPlaywrightTests>
+                <skipPlaywrightTests>false</skipPlaywrightTests>
             </properties>
         </profile>
     </profiles>

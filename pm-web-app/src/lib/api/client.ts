@@ -111,6 +111,10 @@ export class ApiClient {
   }
 
   public async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    if (!path.startsWith('/') || path.startsWith('//')) {
+      throw new Error(`Invalid request path: ${path}`);
+    }
+
     const secret = this.getSecret();
     const headers: Record<string, string> = {};
 
@@ -191,7 +195,10 @@ export class ApiClient {
 
         while (active) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            if (active) setTimeout(connect, 2000);
+            return;
+          }
 
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split('\n\n');

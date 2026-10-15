@@ -42,7 +42,7 @@
   {#if $runtimeStore.isOffline}
     <div class="offline-banner" role="alert">
       <span>{$t('web.offline.unreachable')}</span>
-      <button class="offline-reconnect" on:click={initRuntime}>
+      <button class="offline-reconnect" onclick={initRuntime}>
         {$t('web.offline.reconnecting')}
       </button>
     </div>
@@ -64,24 +64,24 @@
         <button
           class="header-action-btn"
           aria-label={$t('web.frame.nav.explorer')}
-          on:click={() => navigateTo('workspace')}
+          onclick={() => navigateTo('workspace')}
         >
           {$t('web.frame.nav.explorer')}
         </button>
         <button
           class="header-action-btn"
           aria-label={$t('web.frame.settings')}
-          on:click={() => navigateTo('settings')}
+          onclick={() => navigateTo('settings')}
         >
           ⚙ <span class="header-action-btn__text">{$t('web.frame.settings')}</span>
         </button>
       {/if}
 
-      <button class="header-action-btn" on:click={toggleLocale} aria-label="Toggle language">
+      <button class="header-action-btn" onclick={toggleLocale} aria-label="Toggle language">
         {$currentLocale === 'en' ? 'DE' : 'EN'}
       </button>
 
-      <button class="header-action-btn" on:click={toggleTheme} aria-label="Toggle light/dark theme">
+      <button class="header-action-btn" onclick={toggleTheme} aria-label="Toggle light/dark theme">
         {theme === 'light' ? '🌙' : '☀️'}
       </button>
     </div>

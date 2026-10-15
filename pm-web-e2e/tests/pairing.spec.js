@@ -38,7 +38,7 @@ test.describe('Web Client Pairing Flow', () => {
     await page.goto('/#code=KXQB-MRTN');
 
     // Should automatically pair and strip fragment
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/$/);
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
   });
 });

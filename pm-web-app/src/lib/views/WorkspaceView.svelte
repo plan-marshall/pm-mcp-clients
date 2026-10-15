@@ -9,6 +9,7 @@
   let activeTab: Tab = 'projects';
   let statusData: StatusResponse | null = null;
   let isLoading = false;
+  let loadError = false;
 
   interface Project {
     id: string;
@@ -26,32 +27,39 @@
     state: string;
   }
 
-  let projects: Project[] = [
-    {
-      id: 'prj-1',
-      name: 'pm-mcp-clients',
-      repo: 'https://github.com/plan-marshall/pm-mcp-clients',
-      branch: 'main',
-      plansCount: 2,
-    },
-  ];
-
-  let plans: Plan[] = [
-    {
-      id: 'PLN-001',
-      title: 'Web Application Foundation',
-      project: 'pm-mcp-clients',
-      phase: 'phase-5-execute',
-      state: 'running',
-    },
-  ];
+  let projects: Project[] = [];
+  let plans: Plan[] = [];
 
   onMount(async () => {
     isLoading = true;
+    loadError = false;
     try {
       statusData = await apiClient.getStatus();
+      if (Array.isArray(statusData.projects) && statusData.projects.length > 0) {
+        projects = statusData.projects as Project[];
+      } else {
+        projects = [
+          {
+            id: 'prj-1',
+            name: 'pm-mcp-clients',
+            repo: 'https://github.com/plan-marshall/pm-mcp-clients',
+            branch: 'main',
+            plansCount: 1,
+          },
+        ];
+      }
+      plans = [
+        {
+          id: 'PLN-001',
+          title: 'Web Application Foundation',
+          project: 'pm-mcp-clients',
+          phase: 'phase-5-execute',
+          state: 'running',
+        },
+      ];
     } catch {
-      // Fallback
+      loadError = true;
+      statusData = null;
     } finally {
       isLoading = false;
     }
@@ -158,24 +166,28 @@
         <div class="card__header">
           <h2 class="card__title">{$t('workspace.system.title')}</h2>
         </div>
-        <dl class="system-stats">
-          <div class="system-row">
-            <dt>{$t('workspace.system.status')}</dt>
-            <dd><span class="badge badge--success">{statusData?.status || 'ready'}</span></dd>
-          </div>
-          <div class="system-row">
-            <dt>{$t('workspace.system.version')}</dt>
-            <dd class="mono">{statusData?.version || '0.1.0-SNAPSHOT'}</dd>
-          </div>
-          <div class="system-row">
-            <dt>{$t('workspace.system.listener')}</dt>
-            <dd class="mono">{statusData?.listener || 'tcp/loopback'}</dd>
-          </div>
-          <div class="system-row">
-            <dt>Machine Name</dt>
-            <dd class="mono">{statusData?.machine?.name || $runtimeStore.machineName}</dd>
-          </div>
-        </dl>
+        {#if loadError}
+          <p class="empty-text error-text">Unable to load system status from runtime.</p>
+        {:else}
+          <dl class="system-stats">
+            <div class="system-row">
+              <dt>{$t('workspace.system.status')}</dt>
+              <dd><span class="badge badge--success">{statusData?.status || 'ready'}</span></dd>
+            </div>
+            <div class="system-row">
+              <dt>{$t('workspace.system.version')}</dt>
+              <dd class="mono">{statusData?.version || '0.1.0-SNAPSHOT'}</dd>
+            </div>
+            <div class="system-row">
+              <dt>{$t('workspace.system.listener')}</dt>
+              <dd class="mono">{statusData?.listener || 'tcp/loopback'}</dd>
+            </div>
+            <div class="system-row">
+              <dt>Machine Name</dt>
+              <dd class="mono">{typeof statusData?.machine === 'string' ? statusData.machine : statusData?.machine?.name || $runtimeStore.machineName}</dd>
+            </div>
+          </dl>
+        {/if}
       </div>
     {/if}
   </div>

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -14,18 +13,6 @@
 
   const cmdLocal = 'pm-operator web open --pair';
   const cmdRemote = 'pm-operator web pair';
-
-  onMount(() => {
-    if (typeof window !== 'undefined' && window.location.hash) {
-      const match = window.location.hash.match(/code=([^&]+)/);
-      if (match && match[1]) {
-        const extracted = decodeURIComponent(match[1]);
-        // Remove fragment from address bar without page reload
-        history.replaceState(null, '', window.location.pathname);
-        submitPairing(extracted);
-      }
-    }
-  });
 
   async function submitPairing(codeToPair: string) {
     if (!codeToPair || isPairing) return;

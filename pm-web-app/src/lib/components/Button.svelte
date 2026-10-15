@@ -10,6 +10,7 @@
   class="btn btn--{variant}"
   class:btn--loading={loading}
   disabled={disabled || loading}
+  {...$$restProps}
   on:click
 >
   {#if loading}
