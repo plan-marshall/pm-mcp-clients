@@ -26,7 +26,16 @@ import picocli.CommandLine.Command;
  */
 @Command(name = "pm-operator", mixinStandardHelpOptions = true, versionProvider = PmOperator.Version.class,
         description = "Operator command line of PM-MCP.",
-        subcommands = {StatusCommand.class, WebCommand.class, RuntimeCommand.class})
+        subcommands = {
+                StatusCommand.class,
+                WebCommand.class,
+                RuntimeCommand.class,
+                DrainCommand.class,
+                ConfigCommand.class,
+                ProjectCommand.class,
+                ProjectsCommand.class,
+                ClientCommand.class
+        })
 @OperatorVerb
 public final class PmOperator implements Callable<Integer> {
 
@@ -108,19 +117,13 @@ public final class PmOperator implements Callable<Integer> {
     private record Factory(OperatorContext context) implements CommandLine.IFactory {
         @Override
         public <K> K create(Class<K> type) throws Exception {
-            Object command;
-            if (type == PmOperator.class) {
-                command = new PmOperator(context);
-            } else if (type == StatusCommand.class) {
-                command = new StatusCommand(context);
-            } else if (type == WebCommand.class) {
-                command = new WebCommand(context);
-            } else if (type == RuntimeCommand.class) {
-                command = new RuntimeCommand(context);
-            } else {
+            try {
+                var ctor = type.getDeclaredConstructor(OperatorContext.class);
+                ctor.setAccessible(true);
+                return ctor.newInstance(context);
+            } catch (NoSuchMethodException e) {
                 return CommandLine.defaultFactory().create(type);
             }
-            return type.cast(command);
         }
     }
 }
