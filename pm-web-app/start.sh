@@ -44,7 +44,7 @@ else
     if [ -f "$PACKAGE_JSON" ]; then
         PKG_MTIME="$(stat -f "%m" "$PACKAGE_JSON" 2>/dev/null || stat -c "%Y" "$PACKAGE_JSON" 2>/dev/null || echo 0)"
         NM_MTIME="$(stat -f "%m" "$NODE_MODULES" 2>/dev/null || stat -c "%Y" "$NODE_MODULES" 2>/dev/null || echo 0)"
-        if [ "$PKG_MTIME" -gt "$NM_MTIME" ]; then
+        if [ "${PKG_MTIME:-0}" -gt "${NM_MTIME:-0}" ]; then
             BUILD_NEEDED=true
         fi
     fi

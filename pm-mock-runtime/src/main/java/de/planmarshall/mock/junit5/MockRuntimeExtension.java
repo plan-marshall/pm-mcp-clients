@@ -82,7 +82,7 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
         var config = createConfig(annotation.orElse(null));
         context.getStore(NAMESPACE).put(CONFIG_KEY, config);
 
-        var manualStart = annotation.map(EnableMockRuntime::manualStart).orElse(false);
+        boolean manualStart = annotation.map(EnableMockRuntime::manualStart).orElse(Boolean.FALSE);
         if (manualStart) {
             LOGGER.debug("Manual start configured, MockRuntime not started automatically");
             return;
@@ -95,7 +95,7 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
             LOGGER.debug("MockRuntime started at base: %s, socket: %s", runtime.base(), runtime.socketPath());
             runtime = null;
         }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        // cui-rewrite:disable InvalidExceptionUsageRecipe
         catch (IOException | RuntimeException e) {
             LOGGER.error(e, "Error during MockRuntime setup: %s", e.getMessage());
             throw e;
@@ -116,7 +116,7 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
                 runtime.close();
                 LOGGER.debug("MockRuntime closed successfully");
             }
-            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (RuntimeException e) {
                 LOGGER.error(e, "Failed to close MockRuntime: %s", e.getMessage());
                 throw new IllegalStateException("Failed to properly close MockRuntime", e);

@@ -36,6 +36,8 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.runtime.Authenticator;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -341,6 +343,26 @@ class MockRuntimeTest {
             assertEquals("synthetic-scenario", runtime.currentScenarioName());
             assertEquals("initial", runtime.currentStateName());
             assertNotNull(runtime.currentScenario());
+        }
+    }
+
+    @Test
+    @DisplayName("creates configured RuntimeClient instances targeting the Unix domain socket")
+    void clientCreation() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
+            var clientDefault = runtime.client();
+            assertNotNull(clientDefault);
+            assertTrue(clientDefault.isLive());
+
+            var clientWithHeaders = runtime.client(Map.of("X-Trace", "123"));
+            assertNotNull(clientWithHeaders);
+            assertTrue(clientWithHeaders.isLive());
+
+            var field = RuntimeClient.class.getDeclaredField("authenticator");
+            field.setAccessible(true);
+            var auth = (Authenticator) field.get(clientWithHeaders);
+            assertNotNull(auth.credential());
+            assertFalse(auth.renew());
         }
     }
 }

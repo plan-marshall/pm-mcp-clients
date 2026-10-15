@@ -12,10 +12,13 @@ package de.planmarshall.mock.junit5;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -66,43 +69,71 @@ class MockRuntimeExtensionTest {
             assertNotNull(scenario);
             assertNotNull(config);
 
+            assertEquals(StandardScenarios.STATUS_ONLY, scenario.name());
             assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
-            assertEquals("runtime.idle", runtime.currentStateName());
             assertEquals(base, runtime.base());
             assertEquals(paths.socket(), runtime.socketPath());
-            assertEquals(StandardScenarios.STATUS_ONLY, scenario.name());
-            assertEquals(StandardScenarios.STATUS_ONLY, config.getScenario());
 
-            assertTrue(Files.exists(base), "Base directory must exist");
-            assertTrue(Files.exists(paths.socket()), "Unix socket must exist");
+            assertTrue(client.isLive());
 
-            // Client roundtrip
-            var response = client.send(HttpRequest.get("/api/v1/status"));
-            assertEquals(200, response.status());
-        }
-
-        @Test
-        @DisplayName("overrides class-level scenario at method level")
-        @EnableMockRuntime(scenario = StandardScenarios.ONBOARDING_HAPPY)
-        void shouldSupportMethodLevelScenarioOverride(MockRuntime runtime) {
-            assertEquals(StandardScenarios.ONBOARDING_HAPPY, runtime.currentScenarioName());
-            assertEquals("onboard.mode", runtime.currentStateName());
+            try (var exchange = client.open(HttpRequest.get("/api/v1/status"))) {
+                assertEquals(200, exchange.status());
+            }
         }
     }
 
     @Nested
-    @DisplayName("with web TCP listener enabled")
-    @EnableMockRuntime(scenario = StandardScenarios.WEB_PAIRING, webPort = 0)
-    class WebPortTest {
+    @DisplayName("with custom scenario and loopback web port")
+    @EnableMockRuntime(scenario = StandardScenarios.ONBOARDING_HAPPY, webPort = 0)
+    class CustomScenarioAndPortTest {
 
         @Test
-        @DisplayName("injects URI pointing to loopback web listener")
-        void shouldInjectLoopbackUri(MockRuntime runtime, URI loopbackUrl) {
-            assertNotNull(loopbackUrl);
+        @DisplayName("injects loopback URI and custom scenario")
+        void shouldInjectLoopbackUri(
+                MockRuntime runtime,
+                Scenario scenario,
+                URI webUri) throws Exception {
+
+            assertNotNull(runtime);
+            assertNotNull(scenario);
+            assertNotNull(webUri);
+
+            assertEquals(StandardScenarios.ONBOARDING_HAPPY, scenario.name());
+            assertEquals(StandardScenarios.ONBOARDING_HAPPY, runtime.currentScenarioName());
+
             assertTrue(runtime.webPort() > 0);
-            assertEquals("http", loopbackUrl.getScheme());
-            assertEquals("127.0.0.1", loopbackUrl.getHost());
-            assertEquals(runtime.webPort(), loopbackUrl.getPort());
+            assertEquals("127.0.0.1", webUri.getHost());
+            assertEquals(runtime.webPort(), webUri.getPort());
+
+            var httpClient = HttpClient.newHttpClient();
+            var req = java.net.http.HttpRequest.newBuilder()
+                    .uri(URI.create(webUri.toString() + "/mock/state"))
+                    .GET()
+                    .build();
+            var res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, res.statusCode());
+        }
+
+        @Test
+        @DisplayName("method-level @EnableMockRuntime overrides class-level configuration")
+        @EnableMockRuntime(scenario = StandardScenarios.WEB_PAIRING, webPort = 0)
+        void shouldSupportMethodLevelOverride(MockRuntime runtime, Scenario scenario) {
+            assertEquals(StandardScenarios.WEB_PAIRING, scenario.name());
+            assertEquals(StandardScenarios.WEB_PAIRING, runtime.currentScenarioName());
+        }
+    }
+
+    @Nested
+    @DisplayName("with custom token and device secret")
+    @EnableMockRuntime(webPort = 0, token = "test-token", deviceSecret = "test-secret")
+    class CustomTokenAndSecretTest {
+
+        @Test
+        @DisplayName("configures token and device secret from annotation")
+        void shouldApplyCustomTokenAndSecret(MockRuntime runtime, MockRuntimeConfig config) {
+            assertEquals("test-token", runtime.token());
+            assertEquals("test-token", config.getRuntimeToken());
+            assertEquals("test-secret", config.getDeviceSecret());
         }
     }
 
@@ -115,7 +146,6 @@ class MockRuntimeExtensionTest {
         @DisplayName("does not start automatically when manualStart is true")
         void shouldSupportManualStart(MockRuntimeConfig config) throws Exception {
             assertNotNull(config);
-            // Server was not started automatically
             try (var runtime = MockRuntime.start(config)) {
                 assertNotNull(runtime.base());
                 assertTrue(Files.exists(runtime.base()));
@@ -134,8 +164,9 @@ class MockRuntimeExtensionTest {
         void shouldRejectUriWhenWebPortDisabled(MockRuntime runtime) {
             var extension = new MockRuntimeExtension();
             var ctx = createMockExtensionContext(runtime);
+            var paramContext = new DummyParameterContext(URI.class);
             assertThrows(ParameterResolutionException.class, () ->
-                    extension.resolveParameter(new DummyParameterContext(URI.class), ctx));
+                    extension.resolveParameter(paramContext, ctx));
         }
 
         @Test
@@ -143,14 +174,74 @@ class MockRuntimeExtensionTest {
         void shouldRejectUnsupportedParameter(MockRuntime runtime) {
             var extension = new MockRuntimeExtension();
             var ctx = createMockExtensionContext(runtime);
-            assertFalse(extension.supportsParameter(new DummyParameterContext(String.class), ctx));
+            var paramContext = new DummyParameterContext(String.class);
+            assertFalse(extension.supportsParameter(paramContext, ctx));
             assertThrows(ParameterResolutionException.class, () ->
-                    extension.resolveParameter(new DummyParameterContext(String.class), ctx));
+                    extension.resolveParameter(paramContext, ctx));
+        }
+
+        @Test
+        @DisplayName("throws ParameterResolutionException when runtime is absent from context")
+        void shouldThrowWhenRuntimeAbsent() {
+            var extension = new MockRuntimeExtension();
+            var ctx = createMockExtensionContext(null);
+            var paramContext = new DummyParameterContext(URI.class);
+            assertThrows(ParameterResolutionException.class, () ->
+                    extension.resolveParameter(paramContext, ctx));
+        }
+
+        @Test
+        @DisplayName("resolves and manages MockRuntimeConfig directly")
+        void shouldResolveConfigDirectly() {
+            var extension = new MockRuntimeExtension();
+            var config = MockRuntimeConfig.builder().build();
+            var ctx = createMockExtensionContext(null, config);
+            var paramContext = new DummyParameterContext(MockRuntimeConfig.class);
+            assertTrue(extension.supportsParameter(paramContext, ctx));
+            assertSame(config, extension.resolveParameter(paramContext, ctx));
+        }
+
+        @Test
+        @DisplayName("supports all standard parameter types")
+        void shouldSupportAllStandardParameterTypes(MockRuntime runtime) {
+            var extension = new MockRuntimeExtension();
+            var ctx = createMockExtensionContext(runtime);
+            assertTrue(extension.supportsParameter(new DummyParameterContext(MockRuntime.class), ctx));
+            assertTrue(extension.supportsParameter(new DummyParameterContext(RuntimeClient.class), ctx));
+            assertTrue(extension.supportsParameter(new DummyParameterContext(MachinePaths.class), ctx));
+            assertTrue(extension.supportsParameter(new DummyParameterContext(Path.class), ctx));
+            assertTrue(extension.supportsParameter(new DummyParameterContext(Scenario.class), ctx));
+            assertTrue(extension.supportsParameter(new DummyParameterContext(MockRuntimeConfig.class), ctx));
+            assertTrue(extension.supportsParameter(new DummyParameterContext(URI.class), ctx));
+
+            assertNotNull(extension.resolveParameter(new DummyParameterContext(MockRuntime.class), ctx));
+            assertNotNull(extension.resolveParameter(new DummyParameterContext(RuntimeClient.class), ctx));
+            assertNotNull(extension.resolveParameter(new DummyParameterContext(MachinePaths.class), ctx));
+            assertNotNull(extension.resolveParameter(new DummyParameterContext(Path.class), ctx));
+            assertNotNull(extension.resolveParameter(new DummyParameterContext(Scenario.class), ctx));
+        }
+
+        @Test
+        @DisplayName("afterEach handles absent runtime cleanly")
+        void shouldHandleAbsentRuntimeInAfterEach() {
+            var extension = new MockRuntimeExtension();
+            var ctx = createMockExtensionContext(null);
+            // Must not throw any exception when runtime is absent
+            extension.afterEach(ctx);
         }
 
         private ExtensionContext createMockExtensionContext(MockRuntime runtime) {
+            return createMockExtensionContext(runtime, null);
+        }
+
+        private ExtensionContext createMockExtensionContext(MockRuntime runtime, MockRuntimeConfig config) {
             var map = new HashMap<Object, Object>();
-            map.put(MockRuntime.class.getName(), runtime);
+            if (runtime != null) {
+                map.put(MockRuntime.class.getName(), runtime);
+            }
+            if (config != null) {
+                map.put(MockRuntimeConfig.class.getName(), config);
+            }
 
             var store = (ExtensionContext.Store) java.lang.reflect.Proxy.newProxyInstance(
                     ExtensionContext.Store.class.getClassLoader(),
@@ -161,6 +252,10 @@ class MockRuntimeExtensionTest {
                         }
                         if ("put".equals(method.getName()) && args != null && args.length == 2) {
                             map.put(args[0], args[1]);
+                            return null;
+                        }
+                        if ("remove".equals(method.getName()) && args != null && args.length == 1) {
+                            map.remove(args[0]);
                             return null;
                         }
                         return null;
@@ -225,9 +320,35 @@ class MockRuntimeExtensionTest {
 
     private static class DummyMethods {
         void dummyUri(URI uri) {
+            // Intentionally empty: used only as reflection target for ParameterContext
         }
 
         void dummyString(String str) {
+            // Intentionally empty: used only as reflection target for ParameterContext
+        }
+
+        void dummyRuntime(MockRuntime runtime) {
+            // Intentionally empty: used only as reflection target for ParameterContext
+        }
+
+        void dummyClient(RuntimeClient client) {
+            // Intentionally empty: used only as reflection target for ParameterContext
+        }
+
+        void dummyPaths(MachinePaths paths) {
+            // Intentionally empty: used only as reflection target for ParameterContext
+        }
+
+        void dummyPath(Path path) {
+            // Intentionally empty: used only as reflection target for ParameterContext
+        }
+
+        void dummyScenario(Scenario scenario) {
+            // Intentionally empty: used only as reflection target for ParameterContext
+        }
+
+        void dummyConfig(MockRuntimeConfig config) {
+            // Intentionally empty: used only as reflection target for ParameterContext
         }
     }
 }

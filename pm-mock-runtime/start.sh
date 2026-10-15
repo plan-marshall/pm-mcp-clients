@@ -39,9 +39,9 @@ if [ ! -d "$CLASSES_DIR" ] || [ ! -f "$CP_FILE" ]; then
     BUILD_NEEDED=true
 else
     # Check if any sources in pm-mock-runtime or pm-api are newer than target/classes
-    NEWEST_SRC="$(find "$SCRIPT_DIR/src" "$REPO_ROOT/pm-api/src" -type f 2>/dev/null | xargs stat -f "%m" 2>/dev/null | sort -nr | head -n1 || echo 0)"
-    TARGET_MTIME="$(stat -f "%m" "$CLASSES_DIR" 2>/dev/null || echo 0)"
-    if [ "$NEWEST_SRC" -gt "$TARGET_MTIME" ]; then
+    NEWEST_SRC="$((find "$SCRIPT_DIR/src" "$REPO_ROOT/pm-api/src" -type f -exec stat -f "%m" {} + 2>/dev/null || find "$SCRIPT_DIR/src" "$REPO_ROOT/pm-api/src" -type f -exec stat -c "%Y" {} + 2>/dev/null) | sort -nr | head -n1 || echo 0)"
+    TARGET_MTIME="$(stat -f "%m" "$CLASSES_DIR" 2>/dev/null || stat -c "%Y" "$CLASSES_DIR" 2>/dev/null || echo 0)"
+    if [ "${NEWEST_SRC:-0}" -gt "${TARGET_MTIME:-0}" ]; then
         BUILD_NEEDED=true
     fi
 fi
