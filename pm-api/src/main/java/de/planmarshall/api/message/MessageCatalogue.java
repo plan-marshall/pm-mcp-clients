@@ -100,7 +100,7 @@ public final class MessageCatalogue {
      */
     public static Map<String, Object> getAvailableLocalesAndAreas() {
         return Map.of(
-                "locales", List.of("en", "de"),
+                "locales", SUPPORTED_LOCALES.stream().sorted().toList(),
                 "areas", SUPPORTED_AREAS
         );
     }

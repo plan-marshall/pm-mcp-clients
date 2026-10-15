@@ -21,8 +21,12 @@
     }
     document.documentElement.setAttribute('data-theme', theme);
 
-    await initI18n();
-    await initRuntime();
+    // Initialize i18n concurrently with a timeout so a slow catalogue load doesn't block startup
+    const i18nPromise = Promise.race([
+      initI18n(),
+      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+    ]);
+    await Promise.all([i18nPromise, initRuntime()]);
   });
 
   function toggleTheme() {

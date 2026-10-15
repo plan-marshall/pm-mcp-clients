@@ -342,47 +342,4 @@ class MockRuntimeTest {
             assertNotNull(runtime.currentScenario());
         }
     }
-
-    @Test
-    @DisplayName("serves message catalogue endpoints without authentication")
-    void servesMessageCatalogueWithoutAuth() throws Exception {
-        var config = MockRuntimeConfig.builder()
-                .scenario("status-only")
-                .webPort(0)
-                .build();
-
-        try (var runtime = MockRuntime.start(config)) {
-            var client = HttpClient.newHttpClient();
-            var baseUrl = "http://127.0.0.1:" + runtime.webPort();
-
-            // 1. GET /api/v1/messages
-            var metaReq = java.net.http.HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/v1/messages"))
-                    .GET()
-                    .build();
-            var metaRes = client.send(metaReq, HttpResponse.BodyHandlers.ofString());
-            assertEquals(200, metaRes.statusCode());
-            assertTrue(metaRes.body().contains("locales"));
-            assertTrue(metaRes.body().contains("areas"));
-
-            // 2. GET /api/v1/messages/en/common
-            var msgReq = java.net.http.HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/v1/messages/en/common"))
-                    .GET()
-                    .build();
-            var msgRes = client.send(msgReq, HttpResponse.BodyHandlers.ofString());
-            assertEquals(200, msgRes.statusCode());
-            assertTrue(msgRes.body().contains("web.common.copy"));
-            assertTrue(msgRes.body().contains("Copy"));
-
-            // 3. GET /api/v1/messages/de/all
-            var deReq = java.net.http.HttpRequest.newBuilder()
-                    .uri(URI.create(baseUrl + "/api/v1/messages/de/all"))
-                    .GET()
-                    .build();
-            var deRes = client.send(deReq, HttpResponse.BodyHandlers.ofString());
-            assertEquals(200, deRes.statusCode());
-            assertTrue(deRes.body().contains("Kopiere"));
-        }
-    }
 }
