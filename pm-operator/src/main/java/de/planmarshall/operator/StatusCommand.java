@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -40,6 +41,20 @@ final class StatusCommand implements Callable<Integer> {
     @Option(names = "--json", description = "Prints the status as JSON.")
     boolean json;
 
+    @Option(names = "--project", description = "Target project ID")
+    @Nullable
+    String project;
+
+    @Option(names = "--by", description = "Group by epic")
+    @Nullable
+    String by;
+
+    @Option(names = "--ended", description = "Show ended work as a tree")
+    boolean ended;
+
+    @Option(names = "--watch", description = "Watch status updates")
+    boolean watch;
+
     StatusCommand(OperatorContext context) {
         this.context = context;
     }
@@ -51,9 +66,36 @@ final class StatusCommand implements Callable<Integer> {
         if (record.isEmpty() || !record.get().processAlive()) {
             return notRunning();
         }
+        if (ended) {
+            try {
+                var path = project != null && !".".equals(project)
+                        ? "/api/v1/projects/" + project + "/ended"
+                        : "/api/v1/status?ended=true";
+                var response = context.runtime(false).send(HttpRequest.get(path));
+                if (response.status() == 200) {
+                    out.println(response.bodyText());
+                    out.flush();
+                    return 0;
+                }
+                throw new OperatorRefusedException("status --ended", response);
+            } catch (RuntimeUnavailableException e) {
+                return notRunning();
+            }
+        }
         Map<String, Object> status;
         try {
-            status = fetch(context.runtime(false));
+            var path = RuntimeClient.STATUS_PATH;
+            if (project != null && !".".equals(project)) {
+                path += "?project=" + project;
+            }
+            var response = context.runtime(false).send(HttpRequest.get(path));
+            if (response.status() != 200) {
+                throw new OperatorRefusedException("status", response);
+            }
+            status = JsonTree.asObject(JsonTree.parse(response.body()));
+            if (status == null) {
+                throw new OperatorRefusedException("status", response);
+            }
         } catch (RuntimeUnavailableException e) {
             return notRunning();
         }

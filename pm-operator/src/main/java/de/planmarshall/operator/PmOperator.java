@@ -34,7 +34,15 @@ import picocli.CommandLine.Command;
                 ConfigCommand.class,
                 ProjectCommand.class,
                 ProjectsCommand.class,
-                ClientCommand.class
+                ClientCommand.class,
+                PlanCommand.class,
+                EpicCommand.class,
+                AbortCommand.class,
+                RecipeCommand.class,
+                QuestionsCommand.class,
+                AnswerCommand.class,
+                ReportsCommand.class,
+                SystemCommand.class
         })
 @OperatorVerb
 public final class PmOperator implements Callable<Integer> {

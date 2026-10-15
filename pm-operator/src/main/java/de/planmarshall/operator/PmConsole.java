@@ -166,12 +166,7 @@ public final class PmConsole {
 
         switch (verb) {
             case "help" -> printHelp(out, parts);
-            case "status" -> PmOperator.execute(context, out, out, "status");
-            case "plans" -> listPlans(out);
-            case "plan" -> showPlan(out, parts);
-            case "epic" -> showEpic(out, parts);
-            case "questions" -> listQuestions(out);
-            case "answer" -> answerQuestion(out, reader, parts);
+            case "plans" -> PmOperator.execute(context, out, out, "plan");
             case "web" -> handleWebCommand(out, parts);
             default -> {
                 var args = parseArgs(line);
@@ -234,100 +229,6 @@ public final class PmConsole {
         }
     }
 
-    private void listPlans(PrintWriter out) {
-        try {
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/plans"));
-            if (response.status() == 200) {
-                var json = JsonTree.parse(response.body());
-                if (json instanceof List<?> list && !list.isEmpty()) {
-                    for (var item : list) {
-                        out.println("  " + item);
-                    }
-                    return;
-                }
-            }
-        } catch (IOException e) {
-            // fallback
-        }
-        out.println("No plans running.");
-    }
-
-    private void showPlan(PrintWriter out, String[] parts) {
-        if (parts.length < 2) {
-            out.println("Usage: plan <id>");
-            return;
-        }
-        var planId = parts[1];
-        try {
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/plans/" + planId));
-            if (response.status() == 200) {
-                out.println(response.bodyText());
-                return;
-            }
-        } catch (IOException e) {
-            // fallback
-        }
-        out.println("Plan " + planId + " not found or unavailable.");
-    }
-
-    private void showEpic(PrintWriter out, String[] parts) {
-        if (parts.length < 2) {
-            out.println("Usage: epic <id>");
-            return;
-        }
-        var epicId = parts[1];
-        try {
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/epics/" + epicId));
-            if (response.status() == 200) {
-                out.println(response.bodyText());
-                return;
-            }
-        } catch (IOException e) {
-            // fallback
-        }
-        out.println("Epic " + epicId + " not found or unavailable.");
-    }
-
-    private void listQuestions(PrintWriter out) {
-        try {
-            var response = context.runtime(true).send(HttpRequest.get("/api/v1/questions"));
-            if (response.status() == 200) {
-                var json = JsonTree.parse(response.body());
-                if (json instanceof List<?> list && !list.isEmpty()) {
-                    for (var q : list) {
-                        out.println("  " + q);
-                    }
-                    return;
-                }
-            }
-        } catch (IOException e) {
-            // fallback
-        }
-        out.println("No open questions.");
-    }
-
-    private void answerQuestion(PrintWriter out, LineReader reader, String[] parts) {
-        if (parts.length < 2) {
-            out.println("Usage: answer <id> [<option>]");
-            return;
-        }
-        var id = parts[1];
-        var option = parts.length >= 3 ? parts[2] : null;
-        if (option != null) {
-            try {
-                var body = JsonTree.write(Map.of("answer", option));
-                var response = context.runtime(true).send(
-                        HttpRequest.json("POST", "/api/v1/questions/" + id + "/answers", body));
-                if (response.status() == 200 || response.status() == 204) {
-                    out.println("✓ Answered " + id + " with option " + option + ".");
-                    return;
-                }
-            } catch (IOException e) {
-                // fallback
-            }
-        }
-        out.println("Opening question " + id + "...");
-    }
 
     private void printHelp(PrintWriter out, String[] parts) {
         if (parts.length >= 2) {

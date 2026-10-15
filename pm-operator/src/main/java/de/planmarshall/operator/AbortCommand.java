@@ -1,0 +1,115 @@
+/*
+ * Copyright © 2026-present Oliver Wolff
+ *
+ * SPDX-License-Identifier: LicenseRef-Proprietary
+ *
+ * All rights reserved. This file is part of plan-marshall-mcp, which is proprietary software.
+ * No right to use, copy, modify or distribute this file is granted; see the LICENSE.md file at
+ * the root of this repository.
+ */
+package de.planmarshall.operator;
+
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
+
+import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.json.JsonTree;
+
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
+import picocli.CommandLine.Spec;
+
+/**
+ * {@code pm-operator abort plan|epic <id> --reason <text>}: the shell form of plan cancel or abandon
+ * by the plan's state, and of epic cancel (xref:19-actions.adoc).
+ */
+@Command(name = "abort", description = "Aborts a plan or epic by state.")
+@OperatorVerb
+public final class AbortCommand implements Callable<Integer> {
+
+    private final OperatorContext context;
+
+    @Spec
+    CommandSpec spec;
+
+    @Parameters(index = "0", description = "Target kind: plan or epic")
+    String kind = "";
+
+    @Parameters(index = "1", description = "Target plan or epic ID")
+    String targetId = "";
+
+    @Option(names = "--reason", required = true, description = "Reason for abort")
+    String reason = "";
+
+    @Option(names = "--close-pr", description = "Close open pull request")
+    boolean closePr;
+
+    @Option(names = "--keep-pr", description = "Keep open pull request")
+    boolean keepPr;
+
+    @Option(names = "--with-plans", description = "Cancel child plans as well (for epic)")
+    boolean withPlans;
+
+    @Option(names = "--without-plans", description = "Leave child plans running (for epic)")
+    boolean withoutPlans;
+
+    AbortCommand(OperatorContext context) {
+        this.context = context;
+    }
+
+    @Override
+    public Integer call() throws IOException {
+        context.gate().verify();
+        var out = spec.commandLine().getOut();
+        var err = spec.commandLine().getErr();
+        var runtime = context.runtime(true);
+
+        if ("plan".equalsIgnoreCase(kind)) {
+            // Determine plan state
+            boolean isPaused = false;
+            var planResponse = runtime.send(HttpRequest.get("/api/v1/plans/" + targetId));
+            if (planResponse.status() == 200) {
+                var parsed = JsonTree.parse(planResponse.body());
+                if (parsed instanceof Map<?, ?> map) {
+                    var state = String.valueOf(map.get("state"));
+                    isPaused = "paused".equalsIgnoreCase(state);
+                }
+            }
+
+            var payload = new LinkedHashMap<String, Object>();
+            payload.put("reason", reason);
+            payload.put("close_pr", !keepPr);
+
+            var endpoint = isPaused ? "/api/v1/plans/" + targetId + "/abandon" : "/api/v1/plans/" + targetId + "/cancel";
+            var response = runtime.send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
+            if (response.status() == 200 || response.status() == 202) {
+                out.printf("✓ %s %s and archived%n", targetId, isPaused ? "abandoned" : "cancelled");
+                out.flush();
+                return 0;
+            }
+            throw new OperatorRefusedException("abort plan " + targetId, response);
+        }
+
+        if ("epic".equalsIgnoreCase(kind)) {
+            var payload = new LinkedHashMap<String, Object>();
+            payload.put("reason", reason);
+            payload.put("with_plans", !withoutPlans);
+
+            var response = runtime.send(HttpRequest.json("POST", "/api/v1/epics/" + targetId + "/cancel", JsonTree.write(payload)));
+            if (response.status() == 200 || response.status() == 202) {
+                out.printf("✓ %s cancelled%n", targetId);
+                out.flush();
+                return 0;
+            }
+            throw new OperatorRefusedException("abort epic " + targetId, response);
+        }
+
+        err.printf("Unknown abort target: %s. Expected 'plan' or 'epic'.%n", kind);
+        err.flush();
+        return 2;
+    }
+}
