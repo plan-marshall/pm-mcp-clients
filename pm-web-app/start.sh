@@ -95,11 +95,7 @@ if [ "$FOREGROUND" = true ]; then
     echo "Starting pm-web-app in foreground..."
     echo "$$" > "$PID_FILE"
     trap 'rm -f "$PID_FILE"' EXIT INT TERM
-    if [ ${#PASSED_ARGS[@]} -gt 0 ]; then
-        exec "$NODE_BIN" "$VITE_BIN" "${PASSED_ARGS[@]}"
-    else
-        exec "$NODE_BIN" "$VITE_BIN"
-    fi
+    exec "$NODE_BIN" "$VITE_BIN" ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
 else
     # Check if port 5173 is already in use
     EXISTING_PORT_PID="$(lsof -ti :5173 2>/dev/null || true)"
@@ -113,8 +109,7 @@ else
     : > "$LOG_FILE"
 
     # Spawn Vite in a detached session so esbuild and worker daemons survive terminal exit
-    if [ ${#PASSED_ARGS[@]} -gt 0 ]; then
-        "$NODE_BIN" -e "
+    "$NODE_BIN" -e "
 const { spawn } = require('child_process');
 const fs = require('fs');
 const out = fs.openSync(process.argv[2], 'w');
@@ -125,21 +120,7 @@ const child = spawn(process.execPath, args, {
 });
 child.unref();
 fs.writeFileSync(process.argv[1], String(child.pid));
-" "$PID_FILE" "$LOG_FILE" "$VITE_BIN" "${PASSED_ARGS[@]}"
-    else
-        "$NODE_BIN" -e "
-const { spawn } = require('child_process');
-const fs = require('fs');
-const out = fs.openSync(process.argv[2], 'w');
-const args = [process.argv[3]];
-const child = spawn(process.execPath, args, {
-  detached: true,
-  stdio: ['ignore', out, out]
-});
-child.unref();
-fs.writeFileSync(process.argv[1], String(child.pid));
-" "$PID_FILE" "$LOG_FILE" "$VITE_BIN"
-    fi
+" "$PID_FILE" "$LOG_FILE" "$VITE_BIN" ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
 
     PID="$(cat "$PID_FILE" 2>/dev/null || true)"
     if [ -z "$PID" ]; then
