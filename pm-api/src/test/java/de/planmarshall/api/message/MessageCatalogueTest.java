@@ -86,4 +86,10 @@ class MessageCatalogueTest {
         assertEquals("en", MessageCatalogue.normalizeLocale("fr"));
         assertEquals("de", MessageCatalogue.normalizeLocale("DE"));
     }
+
+    @Test
+    void shouldReturnEmptyMapForUnsupportedAreaWithoutCaching() {
+        var result = MessageCatalogue.getMessages("en", "invalid_area_attack");
+        assertTrue(result.isEmpty());
+    }
 }

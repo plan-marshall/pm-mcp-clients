@@ -31,7 +31,11 @@ export function formatString(template: string, params?: Record<string, string | 
 export async function loadMessages(locale: Locale, area = 'all'): Promise<void> {
   try {
     const msgs = await apiClient.getMessages(locale, area);
-    messagesStore.update((curr) => ({ ...curr, ...msgs }));
+    if (area === 'all') {
+      messagesStore.set(msgs);
+    } else {
+      messagesStore.update((curr) => ({ ...curr, ...msgs }));
+    }
   } catch {
     // Retain existing messages or fallbacks on failure
   }
@@ -42,7 +46,7 @@ export async function setLocale(locale: Locale): Promise<void> {
   if (typeof window !== 'undefined') {
     localStorage.setItem('pm_locale', locale);
   }
-  await loadMessages(locale);
+  await loadMessages(locale, 'all');
 }
 
 export async function initI18n(): Promise<void> {
@@ -51,12 +55,12 @@ export async function initI18n(): Promise<void> {
     const saved = localStorage.getItem('pm_locale') as Locale | null;
     if (saved === 'en' || saved === 'de') {
       initialLocale = saved;
-    } else if (navigator.language && navigator.language.startsWith('de')) {
+    } else if (navigator?.language?.startsWith('de')) {
       initialLocale = 'de';
     }
   }
   currentLocale.set(initialLocale);
-  await loadMessages(initialLocale);
+  await loadMessages(initialLocale, 'all');
 }
 
 export function translate(

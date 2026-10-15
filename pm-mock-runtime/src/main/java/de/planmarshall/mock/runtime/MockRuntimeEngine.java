@@ -220,24 +220,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
 
-        if (isWeb) {
-            if ("/api/v1/pair".equals(path) || "/pair".equals(path)) {
-                handlePairing(request, response);
+        return isWeb ? authorizeWeb(request, response) : authorizeLocal(request, response);
+    }
+
+    private boolean authorizeWeb(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if ("/api/v1/pair".equals(path) || "/pair".equals(path)) {
+            handlePairing(request, response);
+            return false;
+        }
+        var auth = request.header("Authorization");
+        if (auth == null || !auth.equals("Bearer " + deviceSecret)) {
+            response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing device secret"));
+            return false;
+        }
+        return true;
+    }
+
+    private boolean authorizeLocal(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var auth = request.header("Authorization");
+        if (auth == null || !auth.equals("Bearer " + runtimeToken)) {
+            var jobToken = request.header("PM-MCP-Job-Token");
+            if (jobToken == null || !request.path().startsWith("/mcp")) {
+                response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing runtime token"));
                 return false;
-            }
-            var auth = request.header("Authorization");
-            if (auth == null || !auth.equals("Bearer " + deviceSecret)) {
-                response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing device secret"));
-                return false;
-            }
-        } else {
-            var auth = request.header("Authorization");
-            if (auth == null || !auth.equals("Bearer " + runtimeToken)) {
-                var jobToken = request.header("PM-MCP-Job-Token");
-                if (jobToken == null || !path.startsWith("/mcp")) {
-                    response.json(401, Map.of(KEY_ERROR, "unauthorized", KEY_MESSAGE, "Invalid or missing runtime token"));
-                    return false;
-                }
             }
         }
         return true;
