@@ -145,17 +145,27 @@ if [ "$HAS_PORT" = false ]; then
     FINAL_ARGS+=(--web-port 7420)
 fi
 
-FINAL_ARGS+=("${PASSED_ARGS[@]}")
+if [ ${#PASSED_ARGS[@]} -gt 0 ]; then
+    FINAL_ARGS+=("${PASSED_ARGS[@]}")
+fi
 
 # 4. Launch runtime
 CP="$(cat "$CP_FILE"):$CLASSES_DIR:$REPO_ROOT/pm-api/target/classes"
 
 if [ "$FOREGROUND" = true ]; then
     echo "Starting pm-mock-runtime in foreground..."
-    exec java -cp "$CP" de.planmarshall.mock.cli.MockRuntimeCli "${FINAL_ARGS[@]}"
+    if [ ${#FINAL_ARGS[@]} -gt 0 ]; then
+        exec java -cp "$CP" de.planmarshall.mock.cli.MockRuntimeCli "${FINAL_ARGS[@]}"
+    else
+        exec java -cp "$CP" de.planmarshall.mock.cli.MockRuntimeCli
+    fi
 else
     echo "Starting pm-mock-runtime in background..."
-    nohup java -cp "$CP" de.planmarshall.mock.cli.MockRuntimeCli "${FINAL_ARGS[@]}" < /dev/null > "$LOG_FILE" 2>&1 &
+    if [ ${#FINAL_ARGS[@]} -gt 0 ]; then
+        nohup java -cp "$CP" de.planmarshall.mock.cli.MockRuntimeCli "${FINAL_ARGS[@]}" < /dev/null > "$LOG_FILE" 2>&1 &
+    else
+        nohup java -cp "$CP" de.planmarshall.mock.cli.MockRuntimeCli < /dev/null > "$LOG_FILE" 2>&1 &
+    fi
     PID=$!
     echo "$PID" > "$PID_FILE"
 
