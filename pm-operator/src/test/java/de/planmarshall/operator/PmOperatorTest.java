@@ -13,12 +13,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.Map;
+import org.jline.terminal.impl.DumbTerminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -78,6 +83,33 @@ class PmOperatorTest {
     void version() {
         assertEquals(0, run("--version"));
         assertEquals("pm-operator " + PmVersion.current(), out.toString().strip());
+    }
+
+    @Test
+    @DisplayName("bare pm-operator opens console and executes exit")
+    void bareOperatorOpensConsole() throws Exception {
+        runtime((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"version\":\"0.1\",\"pid\":42,\"onboarded\":true,\"web\":{\"enabled\":true,\"lan\":false,\"port\":7420,\"open\":true}}");
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[]");
+            } else if ("/api/v1/web/pairings".equals(request.target())) {
+                response.json(201, "{\"code\":\"TEST-CODE\",\"url\":\"http://127.0.0.1:7420/pair#code=TEST-CODE\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var inStream = new ByteArrayInputStream("exit\n".getBytes(StandardCharsets.UTF_8));
+        var context = new OperatorContext(
+                fixture.environment(), fixture.base().getParent(), true,
+                ClientEnvironment.capture(fixture.environment()),
+                () -> new DumbTerminal(inStream, new ByteArrayOutputStream()),
+                null
+        );
+
+        int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err));
+        assertEquals(0, exitCode);
     }
 
     @Nested
@@ -197,8 +229,8 @@ class PmOperatorTest {
         @DisplayName("refuses execution when token file has insecure permissions (PM-SEC-4)")
         void insecureTokenFile() throws Exception {
             runtime((request, response) -> response.json(200, "{\"enabled\":true}"));
-            java.nio.file.Files.setPosixFilePermissions(fixture.paths().runtimeToken(),
-                    java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+            Files.setPosixFilePermissions(fixture.paths().runtimeToken(),
+                    PosixFilePermissions.fromString("rw-r--r--"));
 
             assertEquals(PmOperator.EXIT_FAILURE, run("web", "enable"));
             assertTrue(err.toString().contains("has mode 0644, expected 0600"));

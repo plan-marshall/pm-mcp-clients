@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
@@ -71,7 +70,7 @@ class OperatorStateDirectoryTest {
 
         @Test
         @DisplayName("ensureDirectory creates directory with mode 0700")
-        void createsWithMode0700() throws IOException {
+        void createsWithMode0700() throws Exception {
             var dir = tempDir.resolve("state-dir");
             var state = new OperatorStateDirectory(dir);
 
@@ -85,7 +84,7 @@ class OperatorStateDirectoryTest {
 
         @Test
         @DisplayName("verifyDirectory rejects symbolic links")
-        void rejectsSymlinkDirectory() throws IOException {
+        void rejectsSymlinkDirectory() throws Exception {
             var realDir = tempDir.resolve("real-dir");
             Files.createDirectory(realDir);
             var symlink = tempDir.resolve("symlink-dir");
@@ -98,7 +97,7 @@ class OperatorStateDirectoryTest {
 
         @Test
         @DisplayName("verifyDirectory rejects insecure permissions like 0755")
-        void rejectsInsecureDirectoryPermissions() throws IOException {
+        void rejectsInsecureDirectoryPermissions() throws Exception {
             var dir = tempDir.resolve("insecure-dir");
             Files.createDirectory(dir);
             Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("rwxr-xr-x"));
@@ -110,7 +109,7 @@ class OperatorStateDirectoryTest {
 
         @Test
         @DisplayName("verifyFile accepts mode 0600 and rejects mode 0644 or symlinks")
-        void verifyFilePermissions() throws IOException {
+        void verifyFilePermissions() throws Exception {
             var file = tempDir.resolve("test-file");
             Files.createFile(file);
             Files.setPosixFilePermissions(file, RuntimeTokenFile.FILE_MODE);
@@ -128,6 +127,21 @@ class OperatorStateDirectoryTest {
             var ex2 = assertThrows(InsecureOperatorFileException.class,
                     () -> OperatorStateDirectory.verifyFile(symlink));
             assertTrue(ex2.getMessage().contains("is a symbolic link"));
+        }
+
+        @Test
+        @DisplayName("ensureFile creates file with mode 0600 within directory")
+        void ensureFileCreatesWith0600() throws Exception {
+            var dir = tempDir.resolve("state-file-dir");
+            var state = new OperatorStateDirectory(dir);
+            var history = state.historyFile();
+
+            state.ensureFile(history);
+
+            assertAll(
+                    () -> assertTrue(Files.isRegularFile(history)),
+                    () -> assertEquals(RuntimeTokenFile.FILE_MODE, Files.getPosixFilePermissions(history))
+            );
         }
     }
 }

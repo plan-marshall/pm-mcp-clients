@@ -56,9 +56,10 @@ public final class PmOperator implements Callable<Integer> {
     }
 
     @Override
-    public Integer call() {
+    public Integer call() throws Exception {
         if (context != null) {
             context.gate().verify();
+            return new PmConsole(context).run();
         }
         return 0;
     }

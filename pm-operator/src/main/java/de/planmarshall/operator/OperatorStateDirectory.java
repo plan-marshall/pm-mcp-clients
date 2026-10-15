@@ -10,13 +10,16 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import de.planmarshall.api.runtime.RuntimeTokenFile;
 
@@ -86,12 +89,33 @@ public final class OperatorStateDirectory {
             try {
                 Files.createDirectory(root, PosixFilePermissions.asFileAttribute(RuntimeTokenFile.DIRECTORY_MODE));
                 setDirectoryPermissions(root);
-            } catch (java.nio.file.FileAlreadyExistsException e) {
+            } catch (FileAlreadyExistsException e) {
                 // created concurrently
             }
         }
         verifyDirectory(root);
         return root;
+    }
+
+    /**
+     * Ensures the file exists with mode {@code 0600} within the state directory.
+     *
+     * @param file the file path
+     * @return the verified file path
+     * @throws IOException on I/O failure or security verification failure
+     */
+    public Path ensureFile(Path file) throws IOException {
+        ensureDirectory();
+        if (!Files.exists(file, LinkOption.NOFOLLOW_LINKS)) {
+            try {
+                Files.createFile(file, PosixFilePermissions.asFileAttribute(RuntimeTokenFile.FILE_MODE));
+                setFilePermissions(file);
+            } catch (FileAlreadyExistsException e) {
+                // created concurrently
+            }
+        }
+        verifyFile(file);
+        return file;
     }
 
     /**
@@ -140,7 +164,7 @@ public final class OperatorStateDirectory {
         }
     }
 
-    static String octal(java.util.Set<java.nio.file.attribute.PosixFilePermission> permissions) {
+    static String octal(Set<PosixFilePermission> permissions) {
         var mode = 0;
         for (var permission : permissions) {
             mode |= 1 << 8 - permission.ordinal();

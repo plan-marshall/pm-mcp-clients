@@ -15,9 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +49,7 @@ class DirectFileAccessTest {
         @Test
         @DisplayName("allowedPaths contains exactly the 4 direct read files")
         void allowedPathsContent() {
-            var expected = java.util.Set.of(
+            var expected = Set.of(
                     paths.runtimeRecord(),
                     paths.runtimeToken(),
                     base.resolve("state/install-records.json"),
@@ -88,7 +88,7 @@ class DirectFileAccessTest {
 
         @Test
         @DisplayName("reads machineConfig and installRecords when present")
-        void readsConfigAndRecords() throws IOException {
+        void readsConfigAndRecords() throws Exception {
             Files.createDirectories(paths.stateDir());
             Files.writeString(direct.machineConfigPath(), "{\"web\":{\"port\":7420}}");
             Files.writeString(direct.installRecordsPath(), "{\"bundles\":[]}");
@@ -101,7 +101,7 @@ class DirectFileAccessTest {
 
         @Test
         @DisplayName("returns empty when machineConfig or installRecords is absent")
-        void returnsEmptyWhenAbsent() throws IOException {
+        void returnsEmptyWhenAbsent() throws Exception {
             assertAll(
                     () -> assertTrue(direct.readMachineConfig().isEmpty()),
                     () -> assertTrue(direct.readInstallRecords().isEmpty())

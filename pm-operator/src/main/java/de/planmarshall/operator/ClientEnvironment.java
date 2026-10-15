@@ -75,11 +75,11 @@ public record ClientEnvironment(
         var locale = resolveLocale(environment);
         var ssh = environment.containsKey("SSH_CONNECTION") || environment.containsKey("SSH_TTY");
         var rawPath = environment.get("PATH");
-        var pathList = (rawPath == null || rawPath.isBlank())
+        var pathList = rawPath == null || rawPath.isBlank()
                 ? List.<String>of()
                 : Arrays.stream(rawPath.split(File.pathSeparator))
-                        .filter(p -> !p.isBlank())
-                        .toList();
+                .filter(p -> !p.isBlank())
+                .toList();
 
         var buildEnv = new LinkedHashMap<String, String>();
         for (var entry : environment.entrySet()) {

@@ -12,5 +12,7 @@
  * {@code status}, {@code runtime start|stop}, and {@code web enable|disable}. It depends on
  * {@code pm-api} and picocli only.
  */
-@org.jspecify.annotations.NullMarked
+@NullMarked
 package de.planmarshall.operator;
+
+import org.jspecify.annotations.NullMarked;
