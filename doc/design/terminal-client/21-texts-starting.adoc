@@ -134,6 +134,14 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 |Follow it
 |Folge ihm
 
+|`operator.start.adopt.option`
+|adopt {epic}
+|übernimm {epic}
+
+|`operator.start.adopt.done`
+|{epic} adopted from the ledger: {workstreams, plural, one {# workstream} other {# workstreams}}, {plans, plural, one {# plan} other {# plans}} staged
+|{epic} aus dem Ledger übernommen: {workstreams, plural, one {# Workstream} other {# Workstreams}}, {plans, plural, one {# Plan} other {# Pläne}} bereitgestellt
+
 |`operator.start.back_to_project`
 |back to the project
 |zurück zum Projekt
@@ -258,7 +266,7 @@ The texts of the steps, sources, and states are those of link:../shared/starting
 [#starting-keys]
 === Keys of the Prompts
 
-The mnemonics of starting work, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `n) no`, and `o) choose another` are the common ones there. _Chat_ has the letters of the actions (xref:22-texts-actions.adoc#actions-keys[Actions, Keys]), in the list of sources (`start.sources`, free there: `d f i l c p x` in English, `b d i l a p x` in German) as in the decomposition. Within each state every key is unique, in both languages.
+The mnemonics of starting work, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `n) no`, and `o) choose another` are the common ones there. _Chat_ has the letters of the actions (xref:22-texts-actions.adoc#actions-keys[Actions, Keys]), in the list of sources (`start.sources`, free there: `d f i l c p x` in English, `b d i l a p x` in German; `a` and `u` adopt an epic in `start-epic.sources`) as in the decomposition. Within each state every key is unique, in both languages.
 
 [cols="3,3,3",options="header"]
 |===
@@ -319,6 +327,10 @@ The mnemonics of starting work, one letter per link relation, in the catalogue l
 |`operator.start.key.follow`
 |f
 |f
+
+|`operator.start.key.adopt`
+|a
+|u
 
 |`operator.start.key.continue_entry`
 |c

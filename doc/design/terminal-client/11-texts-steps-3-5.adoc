@@ -389,8 +389,8 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |jedes
 
 |`onboard.store.move.each_value`
-|written, read back, then deleted from {from}
-|geschrieben, zurückgelesen, dann aus {from} gelöscht
+|written and read back; deleted from {from} only once every token is in {to}
+|geschrieben und zurückgelesen; aus {from} erst gelöscht, wenn jedes Token in {to} ist
 
 |`onboard.store.move.if_stopped`
 |if stopped
@@ -405,10 +405,18 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |Verschiebe {count, plural, one {# Token} other {# Tokens}}
 
 |`onboard.store.move.moved`
-|moved
-|verschoben
+|read back
+|zurückgelesen
 
 |`onboard.store.move.key_moved`
 |the enrolment key moved
 |der Schlüssel der Einschreibungen verschoben
+
+|`onboard.store.move.source_deleted`
+|the tokens deleted from {from}
+|die Tokens aus {from} gelöscht
+
+|`onboard.store.move.failed`
+|The move stopped: {token} could not be moved to {to} ({cause}). Every token stays in {from}.
+|Das Verschieben wurde angehalten: {token} ließ sich nicht nach {to} verschieben ({cause}). Jedes Token bleibt in {from}.
 |===

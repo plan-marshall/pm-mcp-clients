@@ -12,7 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 * `pm-relay`: `stdout` hygiene, relay termination, and the relay rules at the process level against the stub daemon.
 * `pm-operator`: the operator checks and the runtime-free verbs at the process level.
-* What needs the real daemon (restart in the generation, `hello` from a second connection) is link:../../../plan-marshall-mcp/doc/plans/integration-layers.adoc[`plan-marshall-mcp` / `integration-layers`].
+* What needs the real daemon (a worker relay restarted in its generation) is link:../../../plan-marshall-mcp/doc/plans/integration-layers.adoc[`plan-marshall-mcp` / `integration-layers`].
 
 == Trace
 

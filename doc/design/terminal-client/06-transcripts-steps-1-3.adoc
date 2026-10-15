@@ -45,7 +45,7 @@ Verwende Deutsch hier, English für Modelle? [Enter]   anders: 1-5   ?   › ⏎
 ----
 
 * `language.detect` and `language.record` print no line of their own beyond the result; `language.done` is the result line.
-* The state opens in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`), else in English. A change of the interface language reprints the whole state in it before it is recorded, so the operator reads it first; a change of the model language marks the line `✎` and changes nothing else (xref:03-dialogues.adoc#language[Language of the Terminal]).
+* The state opens in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`), else in English. A change of the interface language takes effect once it is recorded (`language.record`), from the next text on; a change of the model language marks the line `✎` and changes nothing else (xref:03-dialogues.adoc#language[Language of the Terminal]).
 
 [#t-harness]
 == 2 Harnesses
@@ -139,10 +139,10 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › n
   Found on this machine:
     1) [x] Claude Code   2.4.1   ~/.local/bin/claude         ✓ supported   ★ default
                                  tokens complete
-    2) [x] OpenCode      1.9.0   /opt/homebrew/bin/opencode  ✓ supported
-                                 tokens complete
            Codex         0.31.2  /opt/homebrew/bin/codex     ✗ cannot run workers
                                  tokens not reported
+    2) [x] OpenCode      1.9.0   /opt/homebrew/bin/opencode  ✓ supported
+                                 tokens complete
            Antigravity   —       not found
 
   The default runs the steward of the next steps and is proposed for new
@@ -156,7 +156,7 @@ Check 2 harnesses, OpenCode the default? [Enter]   toggle: 1-2   d) set the defa
 Check 2 harnesses, Claude Code the default? [Enter]   toggle: 1-2   d) set the default   a) add …   l) look again   ?   › ⏎
 ----
 
-* Every supported harness found is preselected, the first of them the default (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#preselect-first[Preselect as much as possible]). A harness that cannot run workers is listed without a number and with its reason; one not found is listed so that the operator sees what was looked for.
+* The harnesses found are listed in the order of their client id (`claude`, `codex`, `opencode`); every supported one that can run workers is preselected, the first of them in that order the default (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#preselect-first[Preselect as much as possible]). A harness that cannot run workers is listed without a number and with its reason; one not found is listed so that the operator sees what was looked for.
 * The default is one of the chosen ones: unchecking it moves the mark to the first chosen one that is left, and a line says so (`OpenCode is now the default.`). With none chosen the prompt reads `Choose at least one: 1-2   a) add …` and has no `Enter`.
 * `a` is what the web app keeps under _Advanced_ (<<t-harness-add>>); the terminal offers it in the prompt line.
 * *What a harness reports of its tokens* stands below each found harness, from its profile and, for a verified profile, from its verification (link:../web-app/onboarding.adoc#harness-tokens[Web App, Onboarding, What a Harness Reports]): `complete`, `partial` with what is missing (`partial: no cache figures`), or `not reported`. It is information, never a condition: a harness that reports less is chosen and enrolled like any other, and its tasks' figures say what was not measured.
@@ -305,14 +305,14 @@ The harnesses are enrolled in step 2; this step only asks them for their models 
        runs   claude models list, opencode models
        tokens none
   2  Ask the steward which models suit which work
-       runs   a steward task on the default harness, Claude Code · opus-5.5 (tier standard)
+       runs   a steward task on the default harness, Claude Code · sonnet-5.5 (tier standard)
        tokens not known yet: first run
 
   1  List the models?   y) yes   r) yes, and don't ask again   n) not now   ?   › y
   2  Ask the steward?    y) yes   r) yes, and don't ask again   n) no, without advice   ?   › y
   ✓  Claude Code    3 models
   ✓  OpenCode       5 models
-  ⠴  steward is working on Claude Code · opus-5.5      0:18   about 50 k tokens
+  ⠴  steward is working on Claude Code · sonnet-5.5      0:18   about 50 k tokens
 
 [3/7] Models · Choose the models plans may use
   Recommendation by steward: Claude Code for writing roles, OpenCode with a

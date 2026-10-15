@@ -39,12 +39,6 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:api-contract.adoc[`api-contract`]; link:operator-checks.adoc[`operator-checks`]
 |Milestone 2
 
-|link:relay-generation-and-markers.adoc[`relay-generation-and-markers`]
-|Session relay: generation and host markers
-|`open`
-|link:../../../pm-mcp-core/doc/plans/session-log-and-generations.adoc[`pm-mcp-core` / `session-log-and-generations`]
-|Milestone 2
-
 |link:installation-layout.adoc[`installation-layout`]
 |Installation layout seen from the binaries
 |`open`
@@ -54,19 +48,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:integration-layers.adoc[`integration-layers`]
 |Exit: integration-test layers of this repository
 |`open`
-|link:operator-checks.adoc[`operator-checks`]; link:command-tree.adoc[`command-tree`]; link:relay-generation-and-markers.adoc[`relay-generation-and-markers`]
+|link:operator-checks.adoc[`operator-checks`]; link:command-tree.adoc[`command-tree`]
 |Milestone 2
 
 |link:operator-enrolment-verbs.adoc[`operator-enrolment-verbs`]
 |Operator verbs of enrolment and store integrity
 |`open`
 |link:api-contract.adoc[`api-contract`]; link:operator-checks.adoc[`operator-checks`]; link:command-tree.adoc[`command-tree`]
-|Milestone 3
-
-|link:enter-command.adoc[`enter-command`]
-|`pm-mcp enter` as an API request
-|`blocked`
-|the operator's decision to retire it: the specification has no `pm-mcp enter` (no work package)
 |Milestone 3
 
 |link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]

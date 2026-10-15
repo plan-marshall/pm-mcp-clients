@@ -170,7 +170,7 @@ This table names the keys for reading; their values are texts of the catalogue, 
 |`e`, `o`
 |`b`, `o`
 |edit my words, choose an option instead
-|`decision.read-back`, `decision.clarify`
+|`decision.read-back`
 
 |`!`
 |`!`
@@ -237,7 +237,7 @@ A check is one line that starts with a spinner and ends in `✓` or `✗` (link:
 While the state is a server state, the client shows what the runtime reports on the event stream (`GET /api/v1/events`): the checks as they report, a line of progress (`Looking for harnesses …  3 of 4 programs`), and the time so far after five seconds. A model state shows the role, the harness and model, the time so far, and the tokens expected from earlier runs (`common.consent.tokens.estimate`) or `not known yet: first run` (link:../web-app/onboarding.adoc#frame[Web App, Onboarding, Frame], Model at work):
 
 ----
-  ⠼  steward is working on Claude Code · opus-5.5      0:42   about 40 k tokens
+  ⠼  steward is working on Claude Code · sonnet-5.5      0:42   about 40 k tokens
      q) leave: the advice continues; its result is reported above the prompt
 ----
 
@@ -280,4 +280,4 @@ A refused request is printed as a `✗` line with the text of its error code fro
 [#language]
 === Language of the Terminal
 
-The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. After `language.choose` the client switches at once: the state is printed again in the chosen language before it is recorded, so the operator sees it first (link:../web-app/onboarding.adoc#language[Web App, Onboarding, Language]). `pm-mcp` prints in the same interface language as `pm-operator` (link:../shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).
+The client prints in the interface language of the machine (`language.interface`); before it is recorded, in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`, in that order), else in English. The state stays in the language it was printed in until the choice is recorded (`language.record`); every text after it is in the chosen interface language, as in the web app (link:../web-app/onboarding.adoc#language[Web App, Onboarding, Language]). `pm-mcp` prints in the same interface language as `pm-operator` (link:../shared/texts-and-languages.adoc#two-languages[Texts and Languages, Two Languages]).

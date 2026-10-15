@@ -120,7 +120,7 @@ The project's setup offers, after its aspects, _Release the project…_ and _Une
                                                   [Back]  [Release the project…]
 ----
 
-* *The reason*: the release asks it (it goes to every archive); unenrolling takes an optional one, recorded in the audit trail.
+* *The reason*: the release asks it, and it goes to every archive; unenrolling asks none.
 * *Afterwards*: a released project stays listed with `released` and offers _Enrol again_; an unenrolled one leaves the list, and a client that shows it says so and moves to the list.
 
 [#marks]

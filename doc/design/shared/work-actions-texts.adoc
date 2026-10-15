@@ -222,6 +222,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Common files allowed: {count}
 |Erlaubte gemeinsame Dateien: {count}
 
+|`control.epic.overlap_done`
+|{epic} allows {count, plural, =0 {no common file} one {# common file} other {# common files}}{started, select, none {} other {; {started} started}}
+|{epic} erlaubt {count, plural, =0 {keine gemeinsame Datei} one {# gemeinsame Datei} other {# gemeinsame Dateien}}{started, select, none {} other {; {started} gestartet}}
+
 |`control.epic.overlap_means`
 |a plan starts beside a running one only while they share at most {count, plural, =0 {no file} one {# file} other {# files}}
 |ein Plan startet neben einem laufenden nur, solange sie höchstens {count, plural, =0 {keine Datei} one {# Datei} other {# Dateien}} teilen
