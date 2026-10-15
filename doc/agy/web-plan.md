@@ -104,3 +104,21 @@ Implementation plan for the web client module (`pm-web-app`) and its end-to-end 
   - [x] 11.1 Build full Maven reactor (`mvn clean install` / `mvn verify`).
   - [x] 11.2 Verify static JAR artifact packaging (`pm-web-app` `META-INF/resources`).
   - [x] 11.3 Review all changes, commit on worktree branch `feat/web-app`, update plan with check-markers.
+
+- [x] **Task 12: Migration to SvelteKit SPA (`@sveltejs/kit` + `@sveltejs/adapter-static`)**
+  - [x] 12.1 Update `pm-web-app/package.json` with `@sveltejs/kit` and `@sveltejs/adapter-static`.
+  - [x] 12.2 Configure `pm-web-app/svelte.config.js` with `adapter-static` (`fallback: 'index.html'`, `pages: 'build'`, `assets: 'build'`).
+  - [x] 12.3 Update `pm-web-app/vite.config.ts` with `sveltekit()` plugin and proxy configuration.
+  - [x] 12.4 Setup SvelteKit routes:
+    - `src/app.html`: SvelteKit HTML entry template with `%sveltekit.head%` and `%sveltekit.body%`.
+    - `src/routes/+layout.ts`: Disable SSR (`ssr = false`, `prerender = false`) for static SPA.
+    - `src/routes/+layout.svelte`: Global frame, tokens, base styles, header, theme & locale toggles.
+    - `src/routes/+page.svelte`: Entry route (pairing / workspace / onboarding).
+    - `src/routes/settings/+page.svelte`: Settings view.
+    - `src/routes/designer/+page.svelte`: Process Designer view.
+    - `src/routes/onboarding/+page.svelte`: Onboarding view.
+  - [x] 12.5 Run `npm test` and verify Vitest unit/component tests pass.
+  - [x] 12.6 Run `npm run lint` and `npm run format:check` to ensure code style compliance.
+  - [x] 12.7 Run Playwright E2E tests in `pm-web-e2e` against `pm-mock-runtime`.
+  - [x] 12.8 Verify full Maven reactor build (`mvn clean install`) and inspect JAR `META-INF/resources`.
+  - [x] 12.9 Commit migration changes to `feat/web-app`.

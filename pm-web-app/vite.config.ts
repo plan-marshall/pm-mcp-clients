@@ -1,14 +1,10 @@
+import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [sveltekit()],
   resolve: {
     conditions: ['browser'],
-  },
-  build: {
-    outDir: 'build',
-    emptyOutDir: true,
   },
   server: {
     port: 5173,

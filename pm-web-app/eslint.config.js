@@ -58,6 +58,6 @@ export default [
     },
   },
   {
-    ignores: ['build/**', 'dist/**', 'node_modules/**', 'target/**'],
+    ignores: ['.svelte-kit/**', 'build/**', 'dist/**', 'node_modules/**', 'target/**'],
   },
 ];
