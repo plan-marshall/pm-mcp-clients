@@ -15,6 +15,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.PmVersion;
 
@@ -50,7 +51,7 @@ public final class PmOperator implements Callable<Integer> {
     /** Exit code of a failed verb. */
     static final int EXIT_FAILURE = 1;
 
-    private final OperatorContext context;
+    private final @Nullable OperatorContext context;
 
     /** Supplies the release version to {@code --version}. */
     static final class Version implements CommandLine.IVersionProvider {
@@ -68,7 +69,7 @@ public final class PmOperator implements Callable<Integer> {
     /**
      * @param context the operator context
      */
-    public PmOperator(OperatorContext context) {
+    public PmOperator(@Nullable OperatorContext context) {
         this.context = context;
     }
 

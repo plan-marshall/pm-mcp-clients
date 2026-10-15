@@ -162,10 +162,10 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Configuration key")
-        String key;
+        String key = "";
 
         @Parameters(index = "1", description = "Value to set")
-        String value;
+        String value = "";
 
         @Option(names = "--project", description = "Project scope")
         @Nullable
@@ -218,7 +218,7 @@ public final class ConfigCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Configuration key")
-        String key;
+        String key = "";
 
         @Option(names = "--project", description = "Project scope")
         @Nullable

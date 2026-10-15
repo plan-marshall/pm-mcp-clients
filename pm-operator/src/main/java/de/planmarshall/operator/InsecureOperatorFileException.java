@@ -22,7 +22,7 @@ public class InsecureOperatorFileException extends IOException {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private final Path path;
+    private final transient Path path;
 
     /**
      * @param path    the offending path

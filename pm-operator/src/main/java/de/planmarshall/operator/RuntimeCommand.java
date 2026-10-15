@@ -42,13 +42,11 @@ public final class RuntimeCommand implements Callable<Integer> {
 
     private static final String DRAIN = "drain";
 
-    private final OperatorContext context;
-
     @Spec
     CommandSpec spec = CommandSpec.create();
 
     RuntimeCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(context, "context");
     }
 
     @Override

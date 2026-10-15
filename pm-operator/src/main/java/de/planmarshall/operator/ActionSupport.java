@@ -78,43 +78,43 @@ final class ActionSupport {
         if (opts.description != null) payload.put("description", opts.description);
     }
 
+    static final String CANCEL = "cancel";
+
     /**
      * Executes work cancellation or abandonment (plan, epic).
      *
      * @param context    the operator context
      * @param spec       the picocli command specification
      * @param kind       "plan" or "epic"
-     * @param id         the work item ID
-     * @param reason     the optional reason string
-     * @param keepPr     whether to keep the PR open
-     * @param noInput    whether to fail if reason is missing
+     * @param options    the termination options
      * @param actionVerb "cancel" or "abandon"
      * @return exit code (0 on success, 3 on missing input)
      * @throws IOException on network or runtime error
      */
-    static int endWork(OperatorContext context, CommandSpec spec, String kind, String id,
-            @Nullable String reason, boolean keepPr, boolean noInput, String actionVerb) throws IOException {
+    static int endWork(OperatorContext context, CommandSpec spec, String kind,
+            TerminationOptions options, String actionVerb) throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        String effectiveReason = reason;
+        var id = options.id != null ? options.id : "";
+        String effectiveReason = options.reason;
         if (effectiveReason == null || effectiveReason.isBlank()) {
-            if (noInput) {
-                var label = "cancel".equalsIgnoreCase(actionVerb) ? "Cancellation" : "Abandon";
+            if (options.noInput) {
+                var label = CANCEL.equalsIgnoreCase(actionVerb) ? "Cancellation" : "Abandon";
                 out.printf("%s reason required (--reason)%n", label);
                 out.flush();
                 return 3;
             }
-            effectiveReason = ("cancel".equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned") + " by operator";
+            effectiveReason = (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned") + " by operator";
         }
 
         var payload = new LinkedHashMap<String, Object>();
         payload.put("reason", effectiveReason);
-        payload.put("close_pr", !keepPr);
+        payload.put("close_pr", !options.keepPr);
 
         var endpoint = "/api/v1/" + kind + "s/" + OperatorUrlUtil.encodePathSegment(id) + "/" + actionVerb;
         var response = context.runtime(true).send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
         if (response.status() == 200 || response.status() == 202) {
-            var past = "cancel".equalsIgnoreCase(actionVerb) ? "cancelled" : "abandoned";
+            var past = CANCEL.equalsIgnoreCase(actionVerb) ? "cancelled" : "abandoned";
             out.printf("✓ %s %s and archived%n", id, past);
             out.flush();
             return 0;

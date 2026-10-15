@@ -54,13 +54,11 @@ public final class WebCommand implements Callable<Integer> {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LABEL = "label";
 
-    private final OperatorContext context;
-
     @Spec
     CommandSpec spec = CommandSpec.create();
 
     WebCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(context, "context");
     }
 
     @Override
@@ -329,27 +327,35 @@ public final class WebCommand implements Callable<Integer> {
         private void handleList(RuntimeClient runtime, PrintWriter out) throws IOException {
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
             if (response.status() == 200) {
-                var parsed = JsonTree.parse(response.body());
-                if (parsed instanceof List<?> list && !list.isEmpty()) {
-                    out.println("Paired devices · The browsers that can act on this machine");
-                    int idx = 1;
-                    for (var item : list) {
-                        if (item instanceof Map<?, ?> dev) {
-                            var labelVal = dev.get(LABEL);
-                            var pairedFrom = dev.get("paired_from");
-                            out.printf("    %d) %-25s paired from %s%n",
-                                    idx++,
-                                    labelVal != null ? labelVal : "browser",
-                                    pairedFrom != null ? pairedFrom : "loopback");
-                        } else {
-                            out.printf("    %d) %s%n", idx++, item);
-                        }
-                    }
-                } else {
-                    out.println("No paired devices.");
-                }
+                renderDevices(response.body(), out);
             } else {
                 out.printf("Failed to list devices: HTTP %d%n", response.status());
+            }
+        }
+
+        private static void renderDevices(byte[] body, PrintWriter out) throws IOException {
+            var parsed = JsonTree.parse(body);
+            if (parsed instanceof List<?> list && !list.isEmpty()) {
+                out.println("Paired devices · The browsers that can act on this machine");
+                int idx = 1;
+                for (var item : list) {
+                    printDevice(out, idx++, item);
+                }
+            } else {
+                out.println("No paired devices.");
+            }
+        }
+
+        private static void printDevice(PrintWriter out, int idx, Object item) {
+            if (item instanceof Map<?, ?> dev) {
+                var labelVal = dev.get(LABEL);
+                var pairedFrom = dev.get("paired_from");
+                out.printf("    %d) %-25s paired from %s%n",
+                        idx,
+                        labelVal != null ? labelVal : "browser",
+                        pairedFrom != null ? pairedFrom : "loopback");
+            } else {
+                out.printf("    %d) %s%n", idx, item);
             }
         }
     }

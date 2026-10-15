@@ -25,6 +25,8 @@ public final class OperatorGate {
     /** Exit code of a verb refused by the operator checks. */
     public static final int EXIT_OPERATOR_CHECKS = 4;
 
+    private static final String CODEX = "codex";
+
     private final OperatorContext context;
 
     /**
@@ -80,12 +82,12 @@ public final class OperatorGate {
             return Optional.of("claude");
         }
 
-        if (hasHostSignal("codex", environment)) {
-            return Optional.of("codex");
+        if (hasHostSignal(CODEX, environment)) {
+            return Optional.of(CODEX);
         }
         for (var key : environment.keySet()) {
             if (key.startsWith("CODEX_")) {
-                return Optional.of("codex");
+                return Optional.of(CODEX);
             }
         }
 

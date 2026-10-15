@@ -352,8 +352,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            return ActionSupport.endWork(context, spec, KIND, options.id != null ? options.id : "",
-                    options.reason, options.keepPr, options.noInput, "cancel");
+            return ActionSupport.endWork(context, spec, KIND, options, ActionSupport.CANCEL);
         }
     }
 
@@ -373,8 +372,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            return ActionSupport.endWork(context, spec, KIND, options.id != null ? options.id : "",
-                    options.reason, options.keepPr, options.noInput, "abandon");
+            return ActionSupport.endWork(context, spec, KIND, options, "abandon");
         }
     }
 

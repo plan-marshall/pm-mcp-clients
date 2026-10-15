@@ -125,7 +125,7 @@ class PmOperatorTest {
                 fixture.environment(), fixture.base().getParent(), true,
                 ClientEnvironment.capture(fixture.environment()),
                 () -> new DumbTerminal(inStream, new ByteArrayOutputStream()),
-                uri -> openedUris.add(uri)
+                openedUris::add
         );
 
         int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err));

@@ -68,15 +68,26 @@ class ActionSupportTest {
         return fixture.start(handler);
     }
 
+    private ActionSupport.TerminationOptions terminationOptions(String id, String reason, boolean keepPr, boolean noInput) {
+        var opts = new ActionSupport.TerminationOptions();
+        opts.id = id;
+        opts.reason = reason;
+        opts.keepPr = keepPr;
+        opts.noInput = noInput;
+        return opts;
+    }
+
     @Test
     @DisplayName("endWork requires reason when noInput is true")
     void endWorkRequiresReason() throws Exception {
-        var code = ActionSupport.endWork(context, spec, "plan", "p-1", null, false, true, "cancel");
+        var opts1 = terminationOptions("p-1", null, false, true);
+        var code = ActionSupport.endWork(context, spec, "plan", opts1, ActionSupport.CANCEL);
         assertEquals(3, code);
         assertTrue(out.toString().contains("Cancellation reason required (--reason)"));
 
         out.getBuffer().setLength(0);
-        var abandonCode = ActionSupport.endWork(context, spec, "epic", "e-1", "", false, true, "abandon");
+        var opts2 = terminationOptions("e-1", "", false, true);
+        var abandonCode = ActionSupport.endWork(context, spec, "epic", opts2, "abandon");
         assertEquals(3, abandonCode);
         assertTrue(out.toString().contains("Abandon reason required (--reason)"));
     }
@@ -92,7 +103,8 @@ class ActionSupportTest {
             }
         });
 
-        var code = ActionSupport.endWork(context, spec, "plan", "p-1", null, false, false, "cancel");
+        var opts = terminationOptions("p-1", null, false, false);
+        var code = ActionSupport.endWork(context, spec, "plan", opts, ActionSupport.CANCEL);
         assertEquals(0, code);
         assertTrue(out.toString().contains("✓ p-1 cancelled and archived"));
     }
@@ -110,7 +122,8 @@ class ActionSupportTest {
             }
         });
 
-        var code = ActionSupport.endWork(context, spec, "epic", "e-1", "no longer relevant", true, false, "abandon");
+        var opts = terminationOptions("e-1", "no longer relevant", true, false);
+        var code = ActionSupport.endWork(context, spec, "epic", opts, "abandon");
         assertEquals(0, code);
         assertTrue(out.toString().contains("✓ e-1 abandoned and archived"));
     }
@@ -120,8 +133,9 @@ class ActionSupportTest {
     void endWorkRefused() throws Exception {
         runtime((request, response) -> response.json(500, "{\"code\":\"server_error\"}"));
 
+        var opts = terminationOptions("p-1", "test", false, false);
         assertThrows(OperatorRefusedException.class, () ->
-                ActionSupport.endWork(context, spec, "plan", "p-1", "test", false, false, "cancel"));
+                ActionSupport.endWork(context, spec, "plan", opts, ActionSupport.CANCEL));
     }
 
     @Test

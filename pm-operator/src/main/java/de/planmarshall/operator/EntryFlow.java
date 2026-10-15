@@ -65,7 +65,7 @@ public final class EntryFlow {
      * @param activeUrl      active web or pairing URL
      */
     public record EntryResult(Map<String, Object> status, List<String> initialBadges,
-    String activeCode, String activeUrl) {
+    @Nullable String activeCode, @Nullable String activeUrl) {
     }
 
     /**

@@ -101,7 +101,7 @@ class DirectFileAccessTest {
 
         @Test
         @DisplayName("returns empty when machineConfig or installRecords is absent")
-        void returnsEmptyWhenAbsent() throws Exception {
+        void returnsEmptyWhenAbsent() {
             assertAll(
                     () -> assertTrue(direct.readMachineConfig().isEmpty()),
                     () -> assertTrue(direct.readInstallRecords().isEmpty())

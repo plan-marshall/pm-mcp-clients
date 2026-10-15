@@ -33,6 +33,8 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class AbortCommand implements Callable<Integer> {
 
+    private static final String PLANS_API = "/api/v1/plans/";
+
     private final OperatorContext context;
 
     @Spec
@@ -85,7 +87,7 @@ public final class AbortCommand implements Callable<Integer> {
     private int abortPlan(RuntimeClient runtime, PrintWriter out) throws IOException {
         boolean isPaused = false;
         var safeId = OperatorUrlUtil.encodePathSegment(targetId);
-        var planResponse = runtime.send(HttpRequest.get("/api/v1/plans/" + safeId));
+        var planResponse = runtime.send(HttpRequest.get(PLANS_API + safeId));
         if (planResponse.status() == 200) {
             var parsed = JsonTree.parse(planResponse.body());
             if (parsed instanceof Map<?, ?> map) {
@@ -98,7 +100,7 @@ public final class AbortCommand implements Callable<Integer> {
         payload.put("reason", reason);
         payload.put("close_pr", !keepPr);
 
-        var endpoint = isPaused ? "/api/v1/plans/" + safeId + "/abandon" : "/api/v1/plans/" + safeId + "/cancel";
+        var endpoint = isPaused ? PLANS_API + safeId + "/abandon" : PLANS_API + safeId + "/cancel";
         var response = runtime.send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
         if (response.status() == 200 || response.status() == 202) {
             out.printf("✓ %s %s and archived%n", targetId, isPaused ? "abandoned" : "cancelled");

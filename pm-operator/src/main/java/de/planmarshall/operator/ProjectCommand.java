@@ -62,7 +62,7 @@ public final class ProjectCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", defaultValue = ".", description = "Working directory or checkout path")
-        String path;
+        String path = ".";
 
         AddCommand(OperatorContext context) {
             this.context = context;
@@ -95,7 +95,7 @@ public final class ProjectCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
-        String projectId;
+        String projectId = "";
 
         @Parameters(index = "1", arity = "0..1", description = "Setup step name or number")
         @Nullable
@@ -133,7 +133,7 @@ public final class ProjectCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
-        String projectId;
+        String projectId = "";
 
         @Option(names = "--off", description = "Remove favourite mark")
         boolean off;
@@ -167,7 +167,7 @@ public final class ProjectCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
-        String projectId;
+        String projectId = "";
 
         @Option(names = "--reason", description = "Reason for releasing project")
         @Nullable
@@ -205,7 +205,7 @@ public final class ProjectCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", description = "Project ID")
-        String projectId;
+        String projectId = "";
 
         UnenrolCommand(OperatorContext context) {
             this.context = context;
