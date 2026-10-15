@@ -45,7 +45,7 @@ Verwende Deutsch hier, English für Modelle? [Enter]   anders: 1-5   ?   › ⏎
 ----
 
 * `language.detect` and `language.record` print no line of their own beyond the result; `language.done` is the result line.
-* The state opens in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`), else in English. A change of the interface language reprints the whole state in it before it is recorded, so the operator reads it first; a change of the model language marks the line `✎` and changes nothing else (xref:03-dialogues.adoc#language[Language of the Terminal]).
+* The state opens in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`), else in English. A change of the interface language takes effect once it is recorded (`language.record`), from the next text on; a change of the model language marks the line `✎` and changes nothing else (xref:03-dialogues.adoc#language[Language of the Terminal]).
 
 [#t-harness]
 == 2 Harnesses

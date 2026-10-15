@@ -26,6 +26,14 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |blocks the epic
 |blockiert das Epic
 
+|`decision.blocks.setup`
+|blocks the project's setup
+|blockiert die Einrichtung des Projekts
+
+|`decision.blocks.entry`
+|blocks the start
+|blockiert den Start
+
 |`decision.blocks.task`
 |blocks one task; the plan goes on
 |blockiert einen Task; der Plan läuft weiter

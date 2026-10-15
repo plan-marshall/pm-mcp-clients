@@ -171,7 +171,8 @@ A later run of this step from the settings (link:machine-settings.adoc#aspects[M
 
     moves       7 tokens from ~/.plan-marshall-mcp/credentials/ to the
                 macOS Keychain
-    each        written, read back, then deleted from the files
+    each        written and read back; deleted from the files only once
+                every token is in the Keychain
     if stopped  the next run continues the move; no token is lost or doubled
 
   [ Back ]                                              [ Move 7 tokens ]
@@ -189,7 +190,7 @@ A later run of this step from the settings (link:machine-settings.adoc#aspects[M
   ✓ Tokens are kept in the macOS Keychain
 ----
 
-* The new store is checked first as in <<store-check>>; the move starts only when it passes. The enrolment integrity key moves last of all, once the enrolments verify under it in the new store, which the last line says (`✓  the enrolment key moved`, `onboard.store.move.key_moved`); only then is the new store recorded. A copy that fails or a token that does not read back from the new store stops the move: that token is marked ✗ with the cause, the copies already made are deleted from the new store, and every token stays in the old one, which stays the recorded store (`onboard.store.move.failed`); the step then shows <<store-unavailable>> with its cause, where *Check again* checks the new store again and *Choose another store* returns to the choice. Closing the page does not stop the move; the next visit shows where it is.
+* The new store is checked first as in <<store-check>>; the move starts only when it passes. The enrolment integrity key moves last of all, once the enrolments verify under it in the new store, which the last line says (`✓  the enrolment key moved`, `onboard.store.move.key_moved`); only then is the new store recorded, and only after that are the tokens deleted from the old store. A copy that fails or a token that does not read back from the new store stops the move: that token is marked ✗ with the cause, every entry this move wrote to the new store is deleted, a partly written one included, and every token stays in the old one, which stays the recorded store (`onboard.store.move.failed`); the step then shows <<store-unavailable>> with its cause, where *Check again* checks the new store again and *Choose another store* returns to the choice. Closing the page does not stop the move; the next visit shows where it is.
 
 Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-credentials[Terminal Client, transcript].
 

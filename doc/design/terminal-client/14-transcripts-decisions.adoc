@@ -126,8 +126,8 @@ Unclear, then a new option in the operator's words:
 ----
 Your answer (Enter sends it): › do whatever the reviewer would do
   ⠴  interpret is reading your answer       0:02
-interpret asks: Should main be merged into the branch, as the reviewer voted, or
-  something else?
+interpret asks: Which reviewer do you mean, and what would they do here: merge
+  main into the branch, or something else?
 Your reply (Enter sends it): › neither: squash the branch into one commit on main
   ⠴  interpret is reading your answer       0:03
 

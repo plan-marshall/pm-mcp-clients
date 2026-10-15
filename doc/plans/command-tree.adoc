@@ -24,4 +24,4 @@ Requirements, specification sections, and watch documents stay in `plan-marshall
 
 == Done When
 
-Each verb has a test against the stub daemon of the module; `status` and the other runtime-free verbs start and write nothing. `pm-mcp` offers no verb but `serve --job`, and no test or document of this repository names the `--client` form.
+Each verb has a test against the stub daemon of the module; `status` and the other runtime-free verbs start and write nothing. `pm-mcp` offers no verb but `serve --job`, and no test, help text, or user-facing document presents `pm-mcp serve --client` as supported.
