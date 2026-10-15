@@ -31,8 +31,22 @@ In a terminal, start `pm-mock-runtime` with the web listener enabled on port 742
 ```
 The mock server will listen on `http://127.0.0.1:7420` and provide scenario mock data for `/api/v1/*` and `/mock/*`.
 
-### Step 2: Install Dependencies & Run the Dev Server
-In another terminal, navigate to `pm-web-app` and start Vite:
+### Step 2: Run the Web Client (`start.sh` & `stop.sh`)
+
+`pm-web-app` includes smart lifecycle scripts that perform incremental dependency setup (`./mvnw -am` without `clean`) automatically:
+
+```bash
+# Start Vite development server in background (default)
+./pm-web-app/start.sh
+
+# Or start in foreground
+./pm-web-app/start.sh --foreground
+
+# Stop background instance
+./pm-web-app/stop.sh
+```
+
+Alternatively, you can run directly via npm:
 ```bash
 cd pm-web-app
 npm install

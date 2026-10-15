@@ -24,8 +24,20 @@ For local development and manual verification of the operator interfaces, the re
 
 ### 1. Starting the Mock Runtime
 
-In a dedicated terminal, launch the mock runtime with the desired initial scenario and web listener port:
+Launch the mock runtime using its lifecycle script (with smart incremental build and dynamic scenario selection):
 
+```bash
+# Interactively choose scenario from dynamic menu:
+./pm-mock-runtime/start.sh
+
+# Or specify scenario and web port directly:
+./pm-mock-runtime/start.sh --scenario onboarding-happy --web-port 7420
+
+# Stop mock runtime:
+./pm-mock-runtime/stop.sh
+```
+
+Or via the Maven wrapper:
 ```bash
 ./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario onboarding-happy --web-port 7420"
 ```
@@ -53,25 +65,32 @@ export PM_MCP_BASE=/tmp/pm-mock-xyz/b
 ```
 
 #### Running Commands
-You can run verbs directly via the Maven wrapper, via the executable JAR, or as a native binary:
+You can run verbs directly via the lifecycle script (with implicit incremental build), via the Maven wrapper, via the executable JAR, or as a native binary:
 
 ```bash
-# 1. Via Maven Wrapper
+# 1. Via Lifecycle Scripts (start.sh & stop.sh)
+./pm-operator/start.sh status
+./pm-operator/start.sh config show
+./pm-operator/start.sh                 # opens interactive console
+./pm-operator/start.sh -d status       # background mode (target/pm-operator.pid)
+./pm-operator/stop.sh                  # stops background instance
+
+# 2. Via Maven Wrapper
 ./mvnw -pl pm-operator exec:java -Dexec.args="status"
 ./mvnw -pl pm-operator exec:java -Dexec.args="config show"
 ./mvnw -pl pm-operator exec:java -Dexec.args="web pair"
 ./mvnw -pl pm-operator exec:java -Dexec.args="project add ."
 
-# 2. Via Standalone Executable JAR
+# 3. Via Standalone Executable JAR
 ./mvnw package -DskipTests -pl pm-operator
 java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar status
 java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar config show
 
-# 3. Interactive Console (JLine)
+# 4. Interactive Console (JLine)
 # Running pm-operator without arguments launches the interactive terminal console:
 java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar
 
-# 4. GraalVM Native Image
+# 5. GraalVM Native Image
 ./mvnw package -Pnative -DskipTests -pl pm-operator
 ./pm-operator/target/pm-operator status
 ./pm-operator/target/pm-operator # opens console
@@ -94,6 +113,16 @@ Detailed instructions are available in [`pm-web-app/README.md`](pm-web-app/READM
 #### Running the Development Server
 With `pm-mock-runtime` running on port 7420:
 ```bash
+# Start Vite in background (default, target/pm-web-app.pid):
+./pm-web-app/start.sh
+
+# Or start in foreground:
+./pm-web-app/start.sh --foreground
+
+# Stop Vite background instance:
+./pm-web-app/stop.sh
+
+# Or manually via npm:
 cd pm-web-app
 npm install
 npm run dev

@@ -18,6 +18,7 @@ import java.nio.file.Path;
 
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.StandardScenarios;
 
 /**
  * Command-line entrypoint for starting a standalone mock runtime process.
@@ -72,7 +73,7 @@ public final class MockRuntimeCli {
      * @return parse result
      */
     public static CliParseResult parse(String[] args, PrintStream out, PrintStream err) {
-        String scenario = "status-only";
+        String scenario = StandardScenarios.STATUS_ONLY;
         Path base = null;
         int webPort = -1;
         String token = null;

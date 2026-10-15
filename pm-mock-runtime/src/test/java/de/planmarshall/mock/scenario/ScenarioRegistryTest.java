@@ -18,10 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import de.planmarshall.mock.StandardScenarios;
 
 @DisplayName("ScenarioRegistry")
 class ScenarioRegistryTest {
@@ -36,24 +39,24 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("resolves scenario by bare name from classpath")
     void resolvesByBareName() {
-        var scenario = registry.resolve("status-only");
+        var scenario = registry.resolve(StandardScenarios.STATUS_ONLY);
         assertNotNull(scenario);
-        assertEquals("status-only", scenario.name());
+        assertEquals(StandardScenarios.STATUS_ONLY, scenario.name());
     }
 
     @Test
     @DisplayName("resolves scenario with .json suffix")
     void resolvesWithJsonSuffix() {
-        var scenario = registry.resolve("onboarding-happy.json");
+        var scenario = registry.resolve(StandardScenarios.ONBOARDING_HAPPY + ".json");
         assertNotNull(scenario);
-        assertEquals("onboarding-happy", scenario.name());
+        assertEquals(StandardScenarios.ONBOARDING_HAPPY, scenario.name());
     }
 
     @Test
     @DisplayName("caches resolved scenarios")
     void cachesScenarios() {
-        var first = registry.resolve("status-only");
-        var second = registry.resolve("status-only");
+        var first = registry.resolve(StandardScenarios.STATUS_ONLY);
+        var second = registry.resolve(StandardScenarios.STATUS_ONLY);
         assertSame(first, second);
     }
 
@@ -98,11 +101,11 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("finds scenario safely returning Optional and handles clear")
     void findAndClear() {
-        assertTrue(registry.find("status-only").isPresent());
+        assertTrue(registry.find(StandardScenarios.STATUS_ONLY).isPresent());
         assertTrue(registry.find("unknown-scenario").isEmpty());
         assertTrue(registry.find(null).isEmpty());
 
         registry.clear();
-        assertTrue(registry.find("status-only").isPresent());
+        assertTrue(registry.find(StandardScenarios.STATUS_ONLY).isPresent());
     }
 }
