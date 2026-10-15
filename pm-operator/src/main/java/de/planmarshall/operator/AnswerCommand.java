@@ -76,9 +76,10 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private int fetchQuestionDetail(RuntimeClient runtime, PrintWriter out) throws IOException {
+        var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
         var qPath = plan != null
-                ? "/api/v1/plans/" + plan + "/decisions/" + questionId
-                : "/api/v1/decisions/" + questionId;
+                ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid
+                : "/api/v1/decisions/" + safeQid;
         var qResponse = runtime.send(HttpRequest.get(qPath));
         if (qResponse.status() == 200) {
             out.println(qResponse.bodyText());
@@ -103,13 +104,14 @@ public final class AnswerCommand implements Callable<Integer> {
         if (words != null) payload.put("words", words);
         if (note != null) payload.put("note", note);
 
+        var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
         var answerPath = plan != null
-                ? "/api/v1/plans/" + plan + "/decisions/" + questionId + "/answer"
-                : "/api/v1/decisions/" + questionId + "/answer";
+                ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid + "/answer"
+                : "/api/v1/decisions/" + safeQid + "/answer";
 
         var response = runtime.send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
         if (response.status() == 404) {
-            response = runtime.send(HttpRequest.json("POST", "/api/v1/questions/" + questionId + "/answers", JsonTree.write(payload)));
+            response = runtime.send(HttpRequest.json("POST", "/api/v1/questions/" + safeQid + "/answers", JsonTree.write(payload)));
         }
         if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
             var answerDisplay = option != null ? option : words;

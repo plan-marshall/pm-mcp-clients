@@ -113,4 +113,22 @@ class AbortCommandTest {
                 () -> assertTrue(out.toString().contains("✓ ep-001 cancelled"))
         );
     }
+
+    @Test
+    @DisplayName("rejects mutually exclusive flags and unknown kind")
+    void rejectsInvalidCombinations() {
+        int code1 = execute("abort", "plan", "p-001", "--reason", "r", "--close-pr", "--keep-pr");
+        assertEquals(2, code1);
+        assertTrue(err.toString().contains("--close-pr and --keep-pr are mutually exclusive"));
+
+        err.getBuffer().setLength(0);
+        int code2 = execute("abort", "epic", "e-001", "--reason", "r", "--with-plans", "--without-plans");
+        assertEquals(2, code2);
+        assertTrue(err.toString().contains("--with-plans and --without-plans are mutually exclusive"));
+
+        err.getBuffer().setLength(0);
+        int code3 = execute("abort", "other", "o-001", "--reason", "r");
+        assertEquals(2, code3);
+        assertTrue(err.toString().contains("Unknown abort target"));
+    }
 }

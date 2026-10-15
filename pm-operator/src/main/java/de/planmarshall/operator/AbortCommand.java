@@ -68,6 +68,18 @@ public final class AbortCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         context.gate().verify();
+        if (closePr && keepPr) {
+            var err = spec.commandLine().getErr();
+            err.println("--close-pr and --keep-pr are mutually exclusive.");
+            err.flush();
+            return 2;
+        }
+        if (withPlans && withoutPlans) {
+            var err = spec.commandLine().getErr();
+            err.println("--with-plans and --without-plans are mutually exclusive.");
+            err.flush();
+            return 2;
+        }
         var out = spec.commandLine().getOut();
         var runtime = context.runtime(true);
 

@@ -65,6 +65,7 @@ class PmOperatorTest {
 
     @AfterEach
     void tearDown() throws IOException {
+        System.clearProperty("pm.test.no.browser");
         fixture.close();
     }
 

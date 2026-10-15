@@ -95,7 +95,8 @@ public final class RecipeCommand implements Callable<Integer> {
             if (!sources.isEmpty()) payload.put("sources", sources);
 
             var proj = project != null && !".".equals(project) ? project : "default";
-            var path = "/api/v1/projects/" + proj + "/recipes/" + recipeKey + "/run";
+            var path = "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(proj)
+                    + "/recipes/" + OperatorUrlUtil.encodePathSegment(recipeKey) + "/run";
 
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 201) {
