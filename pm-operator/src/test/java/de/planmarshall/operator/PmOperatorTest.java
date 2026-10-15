@@ -159,6 +159,7 @@ class PmOperatorTest {
             assertEquals("PUT", request.method());
             assertEquals("/api/v1/web", request.target());
             assertEquals("{\"enabled\":true,\"lan\":true,\"port\":8443}", request.bodyText());
+            assertEquals("en", request.header("accept-language"));
             assertEquals("web       enabled (lan), port 8443, open", out.toString().strip());
         }
 
@@ -190,6 +191,17 @@ class PmOperatorTest {
             assertEquals("-", WebCommand.describe(null));
             assertEquals("enabled (loopback), port 1, not open", WebCommand.describe(Map.of("enabled", true,
                     "port", 1)));
+        }
+
+        @Test
+        @DisplayName("refuses execution when token file has insecure permissions (PM-SEC-4)")
+        void insecureTokenFile() throws Exception {
+            runtime((request, response) -> response.json(200, "{\"enabled\":true}"));
+            java.nio.file.Files.setPosixFilePermissions(fixture.paths().runtimeToken(),
+                    java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+
+            assertEquals(PmOperator.EXIT_FAILURE, run("web", "enable"));
+            assertTrue(err.toString().contains("has mode 0644, expected 0600"));
         }
     }
 

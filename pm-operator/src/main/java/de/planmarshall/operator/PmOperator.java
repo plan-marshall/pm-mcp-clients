@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.Callable;
 
 import de.planmarshall.api.PmVersion;
 
@@ -26,10 +27,13 @@ import picocli.CommandLine.Command;
 @Command(name = "pm-operator", mixinStandardHelpOptions = true, versionProvider = PmOperator.Version.class,
         description = "Operator command line of PM-MCP.",
         subcommands = {StatusCommand.class, WebCommand.class, RuntimeCommand.class})
-public final class PmOperator {
+@OperatorVerb
+public final class PmOperator implements Callable<Integer> {
 
     /** Exit code of a failed verb. */
     static final int EXIT_FAILURE = 1;
+
+    private final OperatorContext context;
 
     /** Supplies the release version to {@code --version}. */
     static final class Version implements CommandLine.IVersionProvider {
@@ -39,7 +43,24 @@ public final class PmOperator {
         }
     }
 
-    private PmOperator() {
+    /** Default constructor for CLI reflection / tooling. */
+    public PmOperator() {
+        this(null);
+    }
+
+    /**
+     * @param context the operator context
+     */
+    public PmOperator(OperatorContext context) {
+        this.context = context;
+    }
+
+    @Override
+    public Integer call() {
+        if (context != null) {
+            context.gate().verify();
+        }
+        return 0;
     }
 
     /**
@@ -63,10 +84,15 @@ public final class PmOperator {
      * @return the exit code
      */
     static int execute(OperatorContext context, PrintWriter out, PrintWriter err, String... args) {
-        var commandLine = new CommandLine(new PmOperator(), new Factory(context));
+        var commandLine = new CommandLine(new PmOperator(context), new Factory(context));
         commandLine.setOut(out);
         commandLine.setErr(err);
         commandLine.setExecutionExceptionHandler((exception, command, parseResult) -> {
+            if (exception instanceof OperatorSecurityException ose) {
+                err.println(command.getCommandName() + ": " + ose.getMessage());
+                err.flush();
+                return ose.exitCode();
+            }
             err.println(command.getCommandName() + ": " + exception.getMessage());
             err.flush();
             return EXIT_FAILURE;
@@ -83,7 +109,7 @@ public final class PmOperator {
         public <K> K create(Class<K> type) throws Exception {
             Object command;
             if (type == PmOperator.class) {
-                command = new PmOperator();
+                command = new PmOperator(context);
             } else if (type == StatusCommand.class) {
                 command = new StatusCommand(context);
             } else if (type == WebCommand.class) {

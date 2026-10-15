@@ -23,9 +23,10 @@ import picocli.CommandLine.Spec;
 
 /**
  * {@code pm-operator web enable|disable}: opens or closes the runtime's web listener while it runs
- * ({@code PUT /api/v1/web}); starts the runtime on demand.
+ * ({@code PUT /api/v1/web}); starts the runtime on demand. An operator verb subject to operator checks.
  */
 @Command(name = "web", description = "Enables or disables the runtime's web access.")
+@OperatorVerb
 final class WebCommand {
 
     /** The default port of the web listener ({@code machine-config.json}, {@code web.port}). */
@@ -41,16 +42,20 @@ final class WebCommand {
     }
 
     @Command(name = "enable", description = "Opens the web listener (loopback, or all interfaces with --lan).")
+    @OperatorVerb
     int enable(@Option(names = "--lan", description = "HTTPS on all interfaces.") boolean lan,
             @Option(names = "--port", paramLabel = "N", defaultValue = "" + DEFAULT_PORT,
                     description = "TCP port, default ${DEFAULT-VALUE}.") int port)
             throws IOException {
+        context.gate().verify();
         return put(true, lan, port);
     }
 
     @Command(name = "disable", description = "Closes the web listener.")
+    @OperatorVerb
     int disable(@Option(names = "--port", paramLabel = "N", defaultValue = "" + DEFAULT_PORT,
             description = "TCP port, default ${DEFAULT-VALUE}.") int port) throws IOException {
+        context.gate().verify();
         return put(false, false, port);
     }
 

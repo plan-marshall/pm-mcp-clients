@@ -140,26 +140,27 @@ The user asked to consider whether we need a separate integration testing (IT) m
 ## 5. Implementation Tasks & Checklist
 
 ### Phase 1: Security Gates & Process Context (`OperatorGate` & `OperatorContext`)
-- [ ] **Task 1.1: Interactive Terminal Gate**
+- [x] **Task 1.1: Interactive Terminal Gate**
   - Verify attached interactive terminal (`System.console() != null && System.console().isTerminal()`).
   - Implement bypass for test contexts via `OperatorContext`.
-- [ ] **Task 1.2: Host Integration Agent-Environment Signal Detection (`PM-SEC-3`)**
+- [x] **Task 1.2: Host Integration Agent-Environment Signal Detection (`PM-SEC-3`)**
   - Read environment signals from `pm-api` Host Integration Table (Claude Code: `CLAUDE_CODE`, `CLAUDE_PROJECT_ROOT`; Gemini/Antigravity: `GEMINI_CLI`; OpenCode: `OPENCODE_CLIENT`; Codex: `CODEX_*`).
   - Reject execution with exit code `4` and diagnostic message naming detected host if any agent signal is present.
-- [ ] **Task 1.3: Client Environment Capture (`01-cli-and-installer.adoc#client-environment`)**
+- [x] **Task 1.3: Client Environment Capture (`01-cli-and-installer.adoc#client-environment`)**
   - Capture terminal locale: `LC_ALL` -> `LC_MESSAGES` -> `LANG` -> default `en` (sent as `Accept-Language`).
   - Detect SSH session: check `SSH_CONNECTION` and `SSH_TTY`.
   - Capture login `PATH` and non-secret build environment variables (filtering out credential patterns).
-- [ ] **Task 1.4: Direct File Read & Permissions Verification (`PM-SEC-4`)**
+- [x] **Task 1.4: Direct File Read & Permissions Verification (`PM-SEC-4`)**
   - Restrict direct file reads strictly to: `state/runtime.json`, `run/runtime.token`, `state/install-records.json`, `machine-config.json`.
   - Verify `<PM_MCP_BASE>/run/` mode `0700`, owner = current user, not a symbolic link.
   - Verify `<PM_MCP_BASE>/run/runtime.token` mode `0600`, owner = current user, not a symbolic link.
   - Ensure token is sent as `Authorization: Bearer <token>`; on `401 Unauthorized`, re-read token once and retry once.
   - Ensure `$XDG_STATE_HOME/pm-operator/` (default `~/.local/state/pm-operator/`) directory permissions `0700` and files `0600`.
-- [ ] **Task 1.5: Unit Tests for Phase 1**
+- [x] **Task 1.5: Unit Tests for Phase 1**
   - Test terminal gate pass/fail.
   - Test agent environment rejection (exit code 4).
   - Test token permission and symlink rejections.
+
 
 ---
 

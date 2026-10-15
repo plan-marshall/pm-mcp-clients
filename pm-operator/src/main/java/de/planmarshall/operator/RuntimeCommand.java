@@ -44,7 +44,9 @@ final class RuntimeCommand {
     }
 
     @Command(name = "stop", description = "Asks the runtime to stop.")
+    @OperatorVerb
     int stop() throws IOException {
+        context.gate().verify();
         try {
             var response = context.runtime(false).send(new HttpRequest("POST", "/api/v1/runtime/stop",
                     Map.of(), null));
