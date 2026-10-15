@@ -15,7 +15,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 * Transcript files beside the scenarios; a changed transcript shows as a diff to review, never as a silent update.
 * The native-image spike of the console's line editor (JLine 4, link:../design/terminal-client/README.adoc#open-points[Terminal Client, Open Points]): size and time to the first prompt with and without it, terminal resize and `Ctrl+C` in the native binary, the native libraries of `jline-native` kept out; the console's transcript tests drive it through a pseudo terminal.
 * The same tests in the JVM and against the native binary in the integration-test profile.
-* If the seam the operator checks accept is one for tests only, the package states it in Operator Channel Isolation, item 2 (link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#operator-channel-isolation[CLI & Security § Operator Channel Isolation]), as part of its own work.
+* If the seam the operator checks accept is one for tests only, the package states it in Operator Channel Isolation, item 2 (link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[CLI & Security § Operator Channel Isolation]), as part of its own work.
 
 == Trace
 

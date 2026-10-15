@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » Machine Settings
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the machine settings: one aspect again, a remembered consent withdrawn, the documents mode, the cleanup's durations, a token rotated or replaced, the paired devices), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (a later run of one aspect), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4] (the harnesses again), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8] (providers verified again), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (the paired devices), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3] (the cleanup's durations)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/14-machine-onboarding.adoc#state-catalogue-settings[State Catalogue, The Machine's Settings], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#provider-verification[CLI, Coordination & Security, Provider Verification], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#concurrent-changes[Concurrent Changes of a Setting]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-machine-onboarding.adoc#state-catalogue-settings[State Catalogue, The Machine's Settings], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../pm-mcp-core/doc/specification/credentials-and-enrolment/01-provider-credentials.adoc#provider-verification[CLI, Coordination & Security, Provider Verification], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#concurrent-changes[Concurrent Changes of a Setting]_
 
 Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding: the page is the state `settings.choose`, reached from `onboard.completed` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]). They show what the onboarding recorded and change it by running one aspect again, or through the settings' own states (a consent withdrawn, the documents mode, the cleanup's durations, a token rotated or replaced); every change is audited. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
 
@@ -112,7 +112,7 @@ Terminal: `pm-operator config harnesses` (link:../terminal-client/08-transcripts
 [#providers]
 == Providers Verified Again
 
-Every provider shows the result and the time of its last verification, from the onboarding or from a later check. *Check* runs the verification of that provider (`providers.verify`, link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-credentials-and-operator.adoc#provider-verification[Provider Verification], _Again later_), *Check all* of every provider the machine records; the consent `verify_providers` (`providers.verify-consent`, link:onboarding-steps-4-7.adoc#providers-verify-consent[Onboarding, Consent]) comes first unless it is remembered. The lines appear in place, as in the onboarding:
+Every provider shows the result and the time of its last verification, from the onboarding or from a later check. *Check* runs the verification of that provider (`providers.verify`, link:../../../../pm-mcp-core/doc/specification/credentials-and-enrolment/01-provider-credentials.adoc#provider-verification[Provider Verification], _Again later_), *Check all* of every provider the machine records; the consent `verify_providers` (`providers.verify-consent`, link:onboarding-steps-4-7.adoc#providers-verify-consent[Onboarding, Consent]) comes first unless it is remembered. The lines appear in place, as in the onboarding:
 
 [source,text]
 ----
@@ -144,7 +144,7 @@ Terminal: `pm-operator config consents` (link:../terminal-client/08-transcripts-
 [#documents]
 == The Documents Mode (`settings.documents-mode`, `settings.record`)
 
-How documents are taken into a plan at its start: the machine's `sources.documents_mode` (link:../../../../plan-marshall-documentation/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#documents-source[State Catalogue, Documents as a Source]). *Change* opens the choice in place:
+How documents are taken into a plan at its start: the machine's `sources.documents_mode` (link:../../../../pm-mcp-core/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#documents-source[State Catalogue, Documents as a Source]). *Change* opens the choice in place:
 
 [source,text]
 ----
@@ -165,7 +165,7 @@ Terminal: `pm-operator config documents` (link:../terminal-client/08-transcripts
 [#cleanup]
 == The Cleanup's Durations (`settings.cleanup-durations`, `settings.record`)
 
-How long ended work is kept before the cleanup offers it, the machine's `cleanup.*` (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]; link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[Timeouts & Budgets, One Cleanup]); the line sums them up (`system.cleanup.durations.summary`), and *Change* opens them in place:
+How long ended work is kept before the cleanup offers it, the machine's `cleanup.*` (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]; link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[Timeouts & Budgets, One Cleanup]); the line sums them up (`system.cleanup.durations.summary`), and *Change* opens them in place:
 
 [source,text]
 ----

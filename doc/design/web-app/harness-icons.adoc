@@ -7,12 +7,12 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » Harness Icons
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (a worker in the plan views)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#harness-icons[Client Profiles, Harness Icons], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-security-headers[CLI, Coordination & Security, Request Validation & Security Headers] (harness icons)_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#harness-icons[Client Profiles, Harness Icons], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-security-headers[CLI, Coordination & Security, Request Validation & Security Headers] (harness icons)_
 
 [#icons]
 == Harness Icons
 
-Where a harness is shown (the harness list, the role assignment, a worker in the plan views), it carries its icon: bundled, or fetched by the runtime from the maker's own URL after the operator's consent (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#harness-icons[Client Profiles, Harness Icons]), else a monogram. The terminal shows the harness's name only.
+Where a harness is shown (the harness list, the role assignment, a worker in the plan views), it carries its icon: bundled, or fetched by the runtime from the maker's own URL after the operator's consent (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#harness-icons[Client Profiles, Harness Icons]), else a monogram. The terminal shows the harness's name only.
 
 *Research note (not legal advice).* The question was whether icons the project may not bundle can instead be referenced by URL so that the browser loads them from the maker. What was found:
 

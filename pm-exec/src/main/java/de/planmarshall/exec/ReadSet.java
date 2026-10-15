@@ -22,7 +22,7 @@ import lombok.experimental.UtilityClass;
  * <p>
  * Landlock rules only grant access, so a rule on {@code /} would also grant the base. The read set
  * is therefore one rule per entry of every directory from the root down to the parent of the base,
- * leaving out the next directory on that path (doc/specification/job-runtime/
+ * leaving out the next directory on that path (pm-mcp-core/doc/specification/job-runtime/
  * 02-confinement-and-environment.adoc, Read set). An entry whose real path (symbolic links
  * resolved) lies inside the base or contains it is left out as well, since the kernel attaches a
  * rule to the inode the link points to. Entries created after enumeration are not readable.

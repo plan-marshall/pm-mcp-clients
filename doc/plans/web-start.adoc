@@ -17,7 +17,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-9], link:../../../plan-marshall-documentation/doc/specification/state-catalogue.adoc#chat[State Catalogue § Chatting with the Planning Role]
+* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc[UC-STA-1 to UC-STA-9], link:../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[State Catalogue § Chatting with the Planning Role]
 * Specification: the sections link:start-contract.adoc[`start-contract`] implements in the contract, which this package shows
 * Design: link:../design/shared/starting-work.adoc[Starting Work] (its texts in link:../design/shared/starting-work-texts.adoc[Texts] and link:../design/shared/starting-work-sources-texts.adoc[Texts of the Sources]) with link:../design/shared/starting-work.adoc#chat[Chatting About the Request]; the web app's views of `web-design`
 

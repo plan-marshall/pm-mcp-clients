@@ -160,7 +160,7 @@ pm [1 question] ›
 * On JLine 4 alone, without another library: `Display` draws the screen and updates only the cells that changed, `BindingReader` and `KeyMap` read the keys, the terminal's capabilities switch to the alternate screen, hide the cursor, and set the keypad mode; everything is restored in a `finally`, also on an error, and the terminal's resize signal redraws. JLine's own `ttop` is built the same way.
 * The view model (the rows, the selection by id, the filter, the actions of the keys) is kept apart from the drawing, so that the drawing can change its library later without the model.
 * One thread draws: the events of the runtime only update the model and mark it changed, and the view's loop redraws, waiting for a key with a short timeout.
-* `console.full_screen` of `machine-config.json` (link:../../../../plan-marshall-documentation/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store]) chooses whether the views open full screen: `true` where the terminal allows it; `false`, and `plans` prints the tree as `status` does.
+* `console.full_screen` of `machine-config.json` (link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store]) chooses whether the views open full screen: `true` where the terminal allows it; `false`, and `plans` prints the tree as `status` does.
 
 [#overview-persistence]
 === Where the Operator Left It

@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Confines the launcher on Linux before {@code execve} (PM-SEC-5, doc/specification/job-runtime/
+ * Confines the launcher on Linux before {@code execve} (PM-SEC-5, pm-mcp-core/doc/specification/job-runtime/
  * 02-confinement-and-environment.adoc): {@code PR_SET_NO_NEW_PRIVS}, then, with Landlock ABI 2 or
  * higher, a ruleset with the write set and the enumerated read set. ABI 1 applies no ruleset
  * ({@code partial(abi=1)}), no Landlock records {@code unavailable}.

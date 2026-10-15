@@ -88,7 +88,7 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 [#activity]
 === A Worker at Work
 
-`Enter` on a task of a leaf opens what its worker does as a level of the view, live while it is shown; `plan <plan_id> --activity <task_id>` prints the same into the scrollback, and with `--watch` follows it until `q` (link:../shared/plan-view.adoc#worker[Plan View, A Worker at Work]; link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#worker-activity[What a Worker Does]):
+`Enter` on a task of a leaf opens what its worker does as a level of the view, live while it is shown; `plan <plan_id> --activity <task_id>` prints the same into the scrollback, and with `--watch` follows it until `q` (link:../shared/plan-view.adoc#worker[Plan View, A Worker at Work]; link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#worker-activity[What a Worker Does]):
 
 ----
   fix-relay › execute › execute.envelope · TASK-003

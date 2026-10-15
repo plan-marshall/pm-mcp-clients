@@ -7,7 +7,7 @@ link:README.adoc[Terminal Client] » Cleanup
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10] (the durations)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../plan-marshall-documentation/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]_
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree], link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[One Cleanup]_
 
 What the cleanup offers, what its commands do, and what deleting leaves is link:../shared/cleanup.adoc[Cleanup], for both clients. This part is how the console offers it. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 

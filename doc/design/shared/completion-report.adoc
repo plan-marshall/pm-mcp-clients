@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Completion Report
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (ended work)_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../plan-marshall-documentation/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History]_
 
 Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
 
@@ -40,14 +40,14 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 * *Ran*: from its start to its end, and how long it was paused by the operator, where it was.
 * *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
 * *Re-planning*: how often the plan was revised, each with its trigger (the base moved, a failed gate, a chat of the operator) and what changed in one line; opening one leads to it in the plan's history.
-* *Decisions*: how many were asked, each with its id, the answer, and how it was taken, as its decision record names it (link:../../../../plan-marshall-documentation/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words]): by you, with the channel and device, chosen, interpreted from your words, your own option, or left to the plan, which took the part's recommendation (`delegated`); by a quorum; or withdrawn; opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
+* *Decisions*: how many were asked, each with its id, the answer, and how it was taken, as its decision record names it (link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words]): by you, with the channel and device, chosen, interpreted from your words, your own option, or left to the plan, which took the part's recommendation (`delegated`); by a quorum; or withdrawn; opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
 * *Tokens*: the tokens the plan used, with the split and the wall time, the workers, the models, and the coverage; _Tokens_ opens the section of its own, one step away (<<tokens>>). No money is shown.
 * *Actions*: _Its plan view_ opens the plan as it ended; _Chat_ opens the read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). The report has no other action: the archive never changes.
 
 [#tokens]
 == Tokens
 
-What the plan used, in tokens and never in money (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). Every figure is one the runtime derived from the plan's usage records; the client formats it (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]) and adds nothing up.
+What the plan used, in tokens and never in money (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). Every figure is one the runtime derived from the plan's usage records; the client formats it (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]) and adds nothing up.
 
 ----
   fix-relay · tokens                                merged · #214 · today 11:20

@@ -7,7 +7,7 @@ link:README.adoc[Terminal Client] » Texts: Actions on Plans and Epics
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]_
 
-_Relies on: link:../../../../plan-marshall-documentation/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`]_
 
 The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
 

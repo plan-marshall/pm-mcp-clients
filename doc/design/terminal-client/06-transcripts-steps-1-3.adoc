@@ -71,7 +71,7 @@ y) yes   r) yes, and don't ask again   n) not now   ?   › y
   ✓  Looking for harnesses: 3 found
 ----
 
-* The scan is one: every executable of every profile, in the directories of the login `PATH` and the profiles' install locations, with its version probe and nothing else (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#harness-scan[Harness Scan]).
+* The scan is one: every executable of every profile, in the directories of the login `PATH` and the profiles' install locations, with its version probe and nothing else (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#harness-scan[Harness Scan]).
 
 [#t-harness-none]
 === None Found (`harness.none`)
@@ -109,7 +109,7 @@ Look again? [Enter]   a) add a harness that is not listed   q) later   ?   ›
 [#t-harness-icons]
 === Icons (`harness.icons-consent`, `harness.fetch-icons`)
 
-The terminal shows no icon. It asks the consent all the same, because the runtime fetches the icons once for both clients and the web app shows them; a run in the terminal and a later look in the web app are one machine (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#harness-icons[Harness Icons], link:../web-app/harness-icons.adoc[Web App, Harness Icons]).
+The terminal shows no icon. It asks the consent all the same, because the runtime fetches the icons once for both clients and the web app shows them; a run in the terminal and a later look in the web app are one machine (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#harness-icons[Harness Icons], link:../web-app/harness-icons.adoc[Web App, Harness Icons]).
 
 [source,text]
 ----
@@ -189,7 +189,7 @@ Check Claude Code again? [Enter]   x) leave it out   o) choose again   ?   › �
     ✓  logged in
 ----
 
-* One consent covers the login probes of every chosen harness, each named in `runs`. A harness whose profile has no login probe is checked by one minimal headless call; the consent states the call and the tokens it uses (link:../../../../plan-marshall-documentation/doc/specification/client-profiles/01-profile-schema.adoc#login-probe[Login Probe]):
+* One consent covers the login probes of every chosen harness, each named in `runs`. A harness whose profile has no login probe is checked by one minimal headless call; the consent states the call and the tokens it uses (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#login-probe[Login Probe]):
 
 [source,text]
 ----
@@ -334,6 +334,6 @@ Allow 5 models? [Enter]   toggle: 1-5   b) back   ?   › ⏎
 ----
 
 * The two consents of `catalogue.consent` are the kinds `probe_harness_models` and `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]), answered one after the other, each with `y`, `r` (remembered for its own kind), and `n`. `n` to the model probes leaves the step where it is (`Nothing was done.`) and the second is not asked; `n` to the advice goes on to `catalogue.select` without a recommendation. A remembered consent is shown as its line and not asked; with both remembered the state is passed.
-* The steward runs on the default harness chosen in step 2, with the model its profile maps to the tier `standard` (link:../../../../plan-marshall-documentation/doc/specification/model-work/01-roles-and-configuration.adoc#steward-role[Steward Role]); a failed or left task leads to `catalogue.select` without a recommendation and the line `– The steward gave no proposal: <reason>.`
+* The steward runs on the default harness chosen in step 2, with the model its profile maps to the tier `standard` (link:../../../../pm-mcp-core/doc/specification/model-work/01-roles-and-configuration.adoc#steward-role[Steward Role]); a failed or left task leads to `catalogue.select` without a recommendation and the line `– The steward gave no proposal: <reason>.`
 * `?0` is the recommendation's rationale, `?n` the rationale of item `n` with its limits.
 * A harness that cannot list its models shows `a) add a model id` as its only entry; `a` asks `Model id for OpenCode › `. A harness of which no model is allowed stays enrolled and is used by no role; the result line names it (`OpenCode: no model allowed`).

@@ -10,6 +10,6 @@
 /**
  * The identifiers on the local API.
  * <p>
- * Specification: {@code doc/specification/identifiers.adoc}.
+ * Specification: {@code pm-mcp-core/doc/specification/identifiers.adoc}.
  */
 package de.planmarshall.api.id;
