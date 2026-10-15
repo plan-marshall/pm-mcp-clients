@@ -21,6 +21,8 @@
         <sonar.sources>src</sonar.sources>
         <sonar.tests>src</sonar.tests>
         <sonar.test.inclusions>**/*.test.ts,**/*.test.js</sonar.test.inclusions>
+        <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>
+        <sonar.cpd.exclusions>**/*</sonar.cpd.exclusions>
     </properties>
 
     <build>

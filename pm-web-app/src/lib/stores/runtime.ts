@@ -65,8 +65,8 @@ function subscribeToEvents(): void {
 
 export async function checkUrlHashForCode(): Promise<boolean> {
   if (typeof window !== 'undefined' && window.location.hash) {
-    const match = window.location.hash.match(/code=([^&]+)/);
-    if (match && match[1]) {
+    const match = /code=([^&]+)/.exec(window.location.hash);
+    if (match?.[1]) {
       const extracted = decodeURIComponent(match[1]);
       history.replaceState(null, '', window.location.pathname);
       try {
@@ -83,7 +83,7 @@ export async function checkUrlHashForCode(): Promise<boolean> {
 export async function initRuntime(): Promise<void> {
   if (typeof window !== 'undefined' && !hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
-      checkUrlHashForCode();
+      void checkUrlHashForCode();
     });
     hashListenerRegistered = true;
   }
@@ -168,7 +168,7 @@ export async function initRuntime(): Promise<void> {
 export function handleRuntimeEvent(event: string, data: unknown): void {
   if (event === 'state_transition' || event === 'check') {
     const stateData = data as StateRepresentation;
-    if (stateData && stateData.state) {
+    if (stateData?.state) {
       const activeStep = deriveStepFromState(stateData.state);
       runtimeStore.update((s) => ({
         ...s,
@@ -207,7 +207,7 @@ export async function pairBrowser(code: string): Promise<void> {
 
 export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {
   const nextRep = await apiClient.followLink(link, body);
-  if (nextRep && nextRep.state) {
+  if (nextRep?.state) {
     const activeStep = deriveStepFromState(nextRep.state);
     runtimeStore.update((s) => ({
       ...s,

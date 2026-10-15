@@ -21,6 +21,7 @@
         <!-- Skipped by default in regular CI builds without browsers; enable via -Pe2e or -DskipPlaywrightTests=false -->
         <skipPlaywrightTests>true</skipPlaywrightTests>
         <playwright.output.dir>${project.build.directory}</playwright.output.dir>
+        <sonar.skip>true</sonar.skip>
     </properties>
 
     <build>

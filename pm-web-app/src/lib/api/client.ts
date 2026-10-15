@@ -36,7 +36,7 @@ const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
 const STORAGE_KEY_LABEL = 'pm_device_label';
 
 export class ApiClient {
-  private baseUrl = '';
+  private readonly baseUrl: string;
   private onRevokedCallback?: (reason?: string) => void;
   private onOfflineCallback?: () => void;
 
@@ -196,7 +196,11 @@ export class ApiClient {
         while (active) {
           const { done, value } = await reader.read();
           if (done) {
-            if (active) setTimeout(connect, 2000);
+            if (active) {
+              setTimeout(() => {
+                void connect();
+              }, 2000);
+            }
             return;
           }
 
@@ -205,48 +209,71 @@ export class ApiClient {
           buffer = parts.pop() || '';
 
           for (const chunk of parts) {
-            const lines = chunk.split('\n');
-            let eventType = 'message';
-            let eventData = '';
+            const parsed = parseSseChunk(chunk);
+            if (!parsed) continue;
 
-            for (const line of lines) {
-              if (line.startsWith('event:')) {
-                eventType = line.slice(6).trim();
-              } else if (line.startsWith('data:')) {
-                eventData += line.slice(5).trim();
-              }
-            }
+            const revoked = handleSseMessage(parsed.eventType, parsed.eventData, onEvent, (reason) => {
+              this.clearAuth();
+              this.onRevokedCallback?.(reason);
+            });
 
-            if (eventData) {
-              try {
-                const parsed = JSON.parse(eventData);
-                onEvent(eventType, parsed);
-                if (eventType === 'web_device_revoked') {
-                  this.clearAuth();
-                  this.onRevokedCallback?.(parsed.reason);
-                  active = false;
-                  return;
-                }
-              } catch {
-                onEvent(eventType, eventData);
-              }
+            if (revoked) {
+              active = false;
+              return;
             }
           }
         }
       } catch (err: unknown) {
         if ((err as Error)?.name === 'AbortError') return;
         if (active) {
-          setTimeout(connect, 2000);
+          setTimeout(() => {
+            void connect();
+          }, 2000);
         }
       }
     };
 
-    connect();
+    void connect();
 
     return () => {
       active = false;
     };
   }
+}
+
+function parseSseChunk(chunk: string): { eventType: string; eventData: string } | null {
+  const lines = chunk.split('\n');
+  let eventType = 'message';
+  let eventData = '';
+
+  for (const line of lines) {
+    if (line.startsWith('event:')) {
+      eventType = line.slice(6).trim();
+    } else if (line.startsWith('data:')) {
+      eventData += line.slice(5).trim();
+    }
+  }
+
+  return eventData ? { eventType, eventData } : null;
+}
+
+function handleSseMessage(
+  eventType: string,
+  eventData: string,
+  onEvent: (event: string, data: unknown) => void,
+  onRevoke: (reason?: string) => void,
+): boolean {
+  try {
+    const parsed = JSON.parse(eventData);
+    onEvent(eventType, parsed);
+    if (eventType === 'web_device_revoked') {
+      onRevoke(parsed.reason);
+      return true;
+    }
+  } catch {
+    onEvent(eventType, eventData);
+  }
+  return false;
 }
 
 export const apiClient = new ApiClient();
