@@ -9,6 +9,7 @@
  */
 package de.planmarshall.mock.junit5;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -226,8 +227,7 @@ class MockRuntimeExtensionTest {
         void shouldHandleAbsentRuntimeInAfterEach() {
             var extension = new MockRuntimeExtension();
             var ctx = createMockExtensionContext(null);
-            // Must not throw any exception when runtime is absent
-            extension.afterEach(ctx);
+            assertDoesNotThrow(() -> extension.afterEach(ctx));
         }
 
         private ExtensionContext createMockExtensionContext(MockRuntime runtime) {
