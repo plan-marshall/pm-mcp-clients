@@ -27,16 +27,16 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |nothing
 |Milestone 2
 
-|link:operator-checks.adoc[`operator-checks`]
+|link:implemented/operator-checks.adoc[`operator-checks`]
 |Operator checks of `pm-operator`
-|`open`
+|`done`
 |link:profile-documents.adoc[`profile-documents`]
 |Milestone 2
 
-|link:command-tree.adoc[`command-tree`]
+|link:implemented/command-tree.adoc[`command-tree`]
 |Command tree of both binaries
-|`open`
-|link:api-contract.adoc[`api-contract`]; link:operator-checks.adoc[`operator-checks`]
+|`done`
+|link:api-contract.adoc[`api-contract`]; link:implemented/operator-checks.adoc[`operator-checks`]
 |Milestone 2
 
 |link:installation-layout.adoc[`installation-layout`]
@@ -48,13 +48,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:integration-layers.adoc[`integration-layers`]
 |Exit: integration-test layers of this repository
 |`open`
-|link:operator-checks.adoc[`operator-checks`]; link:command-tree.adoc[`command-tree`]
+|link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
 |Milestone 2
 
 |link:operator-enrolment-verbs.adoc[`operator-enrolment-verbs`]
 |Operator verbs of enrolment and store integrity
 |`open`
-|link:api-contract.adoc[`api-contract`]; link:operator-checks.adoc[`operator-checks`]; link:command-tree.adoc[`command-tree`]
+|link:api-contract.adoc[`api-contract`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
 |Milestone 3
 
 |link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]
@@ -66,7 +66,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:operator-harness-and-roles-verbs.adoc[`operator-harness-and-roles-verbs`]
 |Operator verbs of harness enrolment and roles
 |`open`
-|link:api-contract.adoc[`api-contract`]; link:command-tree.adoc[`command-tree`]
+|link:api-contract.adoc[`api-contract`]; link:implemented/command-tree.adoc[`command-tree`]
 |Milestone 4
 
 |link:landlock-on-wsl2.adoc[`landlock-on-wsl2`]
@@ -75,58 +75,58 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |a Windows machine with WSL2 (the operator provides it) (no work package)
 |Milestone 4
 
-|link:mock-runtime.adoc[`mock-runtime`]
+|link:implemented/mock-runtime.adoc[`mock-runtime`]
 |Mock runtime `pm-mock-runtime` and its scenario format
-|`open`
+|`done`
 |link:api-contract.adoc[`api-contract`]
 |Milestone 2; epic clients
 
-|link:message-catalogue.adoc[`message-catalogue`]
+|link:implemented/message-catalogue.adoc[`message-catalogue`]
 |Message catalogue in `pm-api`, English and German packs, served by the mock runtime
-|`open`
-|link:mock-runtime.adoc[`mock-runtime`]
+|`done`
+|link:implemented/mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
 |link:cli-test-infra.adoc[`cli-test-infra`]
 |Transcript tests of `pm-operator` against the mock runtime
 |`open`
-|link:mock-runtime.adoc[`mock-runtime`]
+|link:implemented/mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
-|link:cli-design.adoc[`cli-design`]
+|link:implemented/cli-design.adoc[`cli-design`]
 |Logical design of the terminal client, accepted by the operator
-|`open`
+|`done`
 |nothing
 |epic clients
 
-|link:web-design.adoc[`web-design`]
+|link:implemented/web-design.adoc[`web-design`]
 |Visual design of the web app (Claude Design), accepted by the operator
-|`open`
+|`done`
 |nothing
 |epic clients
 
 |link:cli-onboarding.adoc[`cli-onboarding`]
 |The console `pm-operator`: entry and onboarding
 |`open`
-|link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:operator-checks.adoc[`operator-checks`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
+|link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
 |epic clients
 
-|link:web-app-foundation.adoc[`web-app-foundation`]
+|link:implemented/web-app-foundation.adoc[`web-app-foundation`]
 |Module `pm-web-app`, its design system and test infrastructure
-|`open`
-|link:web-design.adoc[`web-design`]; link:mock-runtime.adoc[`mock-runtime`]; link:message-catalogue.adoc[`message-catalogue`]
+|`done`
+|link:implemented/web-design.adoc[`web-design`]; link:implemented/mock-runtime.adoc[`mock-runtime`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |Milestone 11, pulled forward; epic clients
 
 |link:web-onboarding.adoc[`web-onboarding`]
 |Onboarding and start in the web app
 |`open`
-|link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
+|link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
 |epic clients
 
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |What every operator interaction shares: a state for a client, the operator's links, the event catalogue, texts, client inputs
 |`open`
-|link:api-contract.adoc[`api-contract`]; link:mock-runtime.adoc[`mock-runtime`]
+|link:api-contract.adoc[`api-contract`]; link:implemented/mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
 |link:decision-contract.adoc[`decision-contract`]
@@ -138,7 +138,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:onboarding-contract.adoc[`onboarding-contract`]
 |Onboarding: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:entry-contract.adoc[`entry-contract`]
@@ -150,13 +150,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-decisions.adoc[`cli-decisions`]
 |Decisions in the terminal
 |`open`
-|link:decision-contract.adoc[`decision-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
+|link:decision-contract.adoc[`decision-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
 |epic clients
 
 |link:web-decisions.adoc[`web-decisions`]
 |Decisions in the web app
 |`open`
-|link:decision-contract.adoc[`decision-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
+|link:decision-contract.adoc[`decision-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
 |epic clients
 
 |link:project-contract.adoc[`project-contract`]
@@ -240,19 +240,19 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-overview.adoc[`cli-overview`]
 |Overview of running work in the terminal
 |`open`
-|link:overview-contract.adoc[`overview-contract`]; link:cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:message-catalogue.adoc[`message-catalogue`]
+|link:overview-contract.adoc[`overview-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:web-overview.adoc[`web-overview`]
 |Overview of running work in the web app
 |`open`
-|link:overview-contract.adoc[`overview-contract`]; link:web-app-foundation.adoc[`web-app-foundation`]; link:web-design.adoc[`web-design`]
+|link:overview-contract.adoc[`overview-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
 |link:report-contract.adoc[`report-contract`]
 |Reports to the operator and a plan's completion report: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:cli-reports.adoc[`cli-reports`]
@@ -270,7 +270,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:system-contract.adoc[`system-contract`]
 |The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:report-contract.adoc[`report-contract`] (the closed kinds of reports)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:report-contract.adoc[`report-contract`] (the closed kinds of reports)
 |epic clients
 
 |link:cli-system.adoc[`cli-system`]
@@ -282,19 +282,19 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:web-system.adoc[`web-system`]
 |The system view, the runtime's lifecycle, and the cleanup in the web app
 |`open`
-|link:system-contract.adoc[`system-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-design.adoc[`web-design`]
+|link:system-contract.adoc[`system-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
 |link:designer-contract.adoc[`designer-contract`]
 |Designing a process: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:message-catalogue.adoc[`message-catalogue`]; link:process-contract.adoc[`process-contract`] (the composed process)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:process-contract.adoc[`process-contract`] (the composed process)
 |epic clients
 
 |link:web-designer.adoc[`web-designer`]
 |The process designer in the web app (the web app only)
 |`open`
-|link:designer-contract.adoc[`designer-contract`]; link:web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:web-projects.adoc[`web-projects`] (a project's setup); link:web-design.adoc[`web-design`]
+|link:designer-contract.adoc[`designer-contract`]; link:web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:web-projects.adoc[`web-projects`] (a project's setup); link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
 |===

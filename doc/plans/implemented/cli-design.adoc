@@ -1,14 +1,14 @@
 = Logical design of the terminal client
 :nofooter:
 
-link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-design`
+link:../README.adoc[Work packages of `pm-mcp-clients`] » `cli-design`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]; no roadmap milestone yet
-Where:: this repository, link:../design/terminal-client/README.adoc[`doc/design/terminal-client/`], the specification the implementation follows; corrections of the use cases in `plan-marshall-documentation`; no code
-Part of:: link:epic-clients.adoc[the client work]
+Serves:: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]; no roadmap milestone yet
+Where:: this repository, link:../../design/terminal-client/README.adoc[`doc/design/terminal-client/`], the specification the implementation follows; corrections of the use cases in `plan-marshall-documentation`; no code
+Part of:: link:../epic-clients.adoc[the client work]
 Worked by:: a Claude Code session directly, not through plan-marshall (<<run>>)
-Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+Status and dependencies:: in the link:../README.adoc#packages[index], the only place that states them
 
 == What
 
@@ -23,11 +23,11 @@ A thorough logical design of `pm-operator` as the operator's second client, revi
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the design of the terminal client is the deliverable of this package and lives here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:README.adoc#how[How to work a package]).
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the design of the terminal client is the deliverable of this package and lives here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:../README.adoc#how[How to work a package]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]
-* Design: link:../design/web-app/onboarding.adoc[Web App, Onboarding]; link:../design/shared/texts-and-languages.adoc[Texts and Languages]
-* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[§ Operator Channel Isolation]
+* Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[Use Cases, Onboarding]; link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]
+* Design: link:../../design/web-app/onboarding.adoc[Web App, Onboarding]; link:../../design/shared/texts-and-languages.adoc[Texts and Languages]
+* Specification: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI & Security § Command Tree]; link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[§ Operator Channel Isolation]
 
 == Done When
 
