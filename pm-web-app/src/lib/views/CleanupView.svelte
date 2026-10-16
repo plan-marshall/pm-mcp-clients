@@ -159,8 +159,10 @@
     try {
       actionError = '';
       const ids = all ? [] : Object.keys(selectedKeptIds);
-      await apiClient.releaseKeptCleanup(ids, all);
-      actionSuccess = 'Selected items released back to cleanup.';
+      const res = await apiClient.releaseKeptCleanup(ids, all);
+      actionSuccess = $t('system.cleanup.kept.released', {
+        count: res.released_count || (all ? keptItems.length : ids.length),
+      });
       selectedKeptIds = {};
       void loadData();
     } catch (err: unknown) {

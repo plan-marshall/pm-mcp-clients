@@ -646,7 +646,7 @@ export class ApiClient {
     jobId: string,
     excludeIds?: string[],
   ): Promise<{ status: string; freed_bytes: number }> {
-    const body = excludeIds && excludeIds.length > 0 ? { exclude: excludeIds } : {};
+    const body = { unchecked_ids: excludeIds || [] };
     return this.request<{ status: string; freed_bytes: number }>(
       'POST',
       `/api/v1/system/cleanup/${encodeURIComponent(jobId)}/delete`,
@@ -670,10 +670,10 @@ export class ApiClient {
     itemIds?: string[],
     all = false,
   ): Promise<{ released_count: number }> {
-    const body = all ? { all: true } : { items: itemIds || [] };
+    const body = all ? { all: true } : { item_ids: itemIds || [] };
     return this.request<{ released_count: number }>(
-      'POST',
-      '/api/v1/system/cleanup/kept/release',
+      'PUT',
+      '/api/v1/system/cleanup/kept',
       body,
     );
   }

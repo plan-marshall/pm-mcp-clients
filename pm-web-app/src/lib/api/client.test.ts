@@ -226,7 +226,7 @@ describe('ApiClient', () => {
           if (url.includes('/delete')) {
             return { status: 'deleted', freed_bytes: 1825361100 };
           }
-          if (url.includes('/kept/release')) {
+          if (url.endsWith('/system/cleanup/kept') && init?.method === 'PUT') {
             return { released_count: 2 };
           }
           return { job_id: 'cln-0007', summary: { freed_bytes: 1932735283 } };
@@ -240,7 +240,7 @@ describe('ApiClient', () => {
 
     const deleteRes = await client.executeCleanup('cln-0007', ['item-1']);
     expect(lastUrl).toContain('/api/v1/system/cleanup/cln-0007/delete');
-    expect(lastBody).toEqual({ exclude: ['item-1'] });
+    expect(lastBody).toEqual({ unchecked_ids: ['item-1'] });
     expect(deleteRes.freed_bytes).toBe(1825361100);
 
     await client.remindCleanup('cln-0007');
@@ -252,7 +252,9 @@ describe('ApiClient', () => {
     expect(lastMethod).toBe('POST');
 
     const releaseRes = await client.releaseKeptCleanup(['k-1', 'k-2']);
-    expect(lastUrl).toContain('/api/v1/system/cleanup/kept/release');
+    expect(lastUrl).toContain('/api/v1/system/cleanup/kept');
+    expect(lastMethod).toBe('PUT');
+    expect(lastBody).toEqual({ item_ids: ['k-1', 'k-2'] });
     expect(releaseRes.released_count).toBe(2);
   });
 });

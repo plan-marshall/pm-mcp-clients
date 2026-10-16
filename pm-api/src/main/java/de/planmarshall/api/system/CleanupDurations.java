@@ -80,20 +80,20 @@ public record CleanupDurations(
      */
     public static CleanupDurations fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var plans = (int) JsonTree.integer(map, "plans_after_days");
-        var epics = (int) JsonTree.integer(map, "epics_after_days");
-        var logs = (int) JsonTree.integer(map, "logs_after_days");
-        var reports = (int) JsonTree.integer(map, "reports_after_days");
-        var unenrolled = (int) JsonTree.integer(map, "unenrolled_after_days");
-        var remind = (int) JsonTree.integer(map, "remind_after_days");
+        var plansVal = JsonTree.integer(map, "plans_after_days");
+        var epicsVal = JsonTree.integer(map, "epics_after_days");
+        var logsVal = JsonTree.integer(map, "logs_after_days");
+        var reportsVal = JsonTree.integer(map, "reports_after_days");
+        var unenrolledVal = JsonTree.integer(map, "unenrolled_after_days");
+        var remindVal = JsonTree.integer(map, "remind_after_days");
 
         return new CleanupDurations(
-                plans != 0 ? plans : DEFAULT_DAYS,
-                epics != 0 ? epics : DEFAULT_DAYS,
-                logs != 0 ? logs : DEFAULT_DAYS,
-                reports != 0 ? reports : DEFAULT_DAYS,
-                unenrolled != 0 ? unenrolled : DEFAULT_DAYS,
-                remind != 0 ? remind : DEFAULT_REMIND_DAYS
+                plansVal != null ? plansVal.intValue() : DEFAULT_DAYS,
+                epicsVal != null ? epicsVal.intValue() : DEFAULT_DAYS,
+                logsVal != null ? logsVal.intValue() : DEFAULT_DAYS,
+                reportsVal != null ? reportsVal.intValue() : DEFAULT_DAYS,
+                unenrolledVal != null ? unenrolledVal.intValue() : DEFAULT_DAYS,
+                remindVal != null ? remindVal.intValue() : DEFAULT_REMIND_DAYS
         );
     }
 

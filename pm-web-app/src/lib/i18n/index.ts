@@ -181,6 +181,7 @@ export const fallbackMessages: Record<string, string> = {
   'system.cleanup.kept.title': 'Kept for good',
   'system.cleanup.kept.release': 'Release {count} selected',
   'system.cleanup.kept.release_all': 'Release all',
+  'system.cleanup.kept.released': '{count, plural, one {# item goes} other {# items go}} back to the cleanup; due at the next check where past its duration.',
   'system.cleanup.kept.none': 'Nothing is kept for good.',
   'system.cleanup.residue.title': 'Removed by itself',
   'system.cleanup.residue.last': 'last sweep {time}',

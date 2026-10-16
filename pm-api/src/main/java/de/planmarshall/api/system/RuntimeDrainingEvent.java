@@ -76,7 +76,8 @@ public record RuntimeDrainingEvent(
         if (who == null) {
             throw new JsonFormatException("Missing who in RuntimeDrainingEvent");
         }
-        var remainingCount = (int) JsonTree.integer(map, "remaining_count");
+        var remVal = JsonTree.integer(map, "remaining_count");
+        var remainingCount = remVal != null ? remVal.intValue() : 0;
         var remainingItems = new ArrayList<String>();
         if (map.get("remaining_items") instanceof List<?> list) {
             for (var item : list) {
