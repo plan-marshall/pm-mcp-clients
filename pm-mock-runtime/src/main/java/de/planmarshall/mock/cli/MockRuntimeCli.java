@@ -174,11 +174,9 @@ public final class MockRuntimeCli {
         out.println("  Initial State:      " + runtime.currentStateName());
         out.println("  Runtime Token:      " + runtime.token());
         var pairingCode = runtime.pairingCode();
-        if (pairingCode != null && !pairingCode.isBlank()) {
+        if (pairingCode != null && !pairingCode.isBlank() && runtime.webPort() >= 0) {
             out.println("  Pairing Code:       " + pairingCode);
-            if (runtime.webPort() >= 0) {
-                out.println("  Web App URL:        http://localhost:5173/pair#code=" + pairingCode);
-            }
+            out.println("  Web App URL:        http://localhost:5173/pair#code=" + pairingCode);
         }
         out.println();
         out.println("Use 'pm-operator' with PM_MCP_BASE=" + runtime.base() + " to interact.");
