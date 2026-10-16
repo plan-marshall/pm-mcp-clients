@@ -20,6 +20,7 @@ import de.planmarshall.api.runtime.RuntimeUnavailableException;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
+import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
 
 /**
@@ -34,6 +35,9 @@ public final class DrainCommand implements Callable<Integer> {
     @Spec
     CommandSpec spec = CommandSpec.create();
 
+    @Option(names = {"--withdraw", "-w"}, description = "Withdraw a requested drain")
+    boolean withdraw;
+
     DrainCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
     }
@@ -42,16 +46,31 @@ public final class DrainCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
         try {
-            var body = JsonTree.write(Map.of("drain", true));
-            var response = context.runtime(false).send(
-                                                  HttpRequest.json("POST", "/api/v1/runtime/stop", body));
-            if (response.status() == 200 || response.status() == 202) {
-                out.println("runtime   draining");
+            if (withdraw) {
+                var response = context.runtime(false).send(
+                                    HttpRequest.delete("/api/v1/runtime/stop"));
+                if (response.status() == 200 || response.status() == 204) {
+                    out.println("runtime   drain withdrawn");
+                } else if (response.status() == 409) {
+                    out.println("runtime   drain not active");
+                } else {
+                    var err = spec.commandLine().getErr();
+                    err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
+                    err.flush();
+                    return 1;
+                }
             } else {
-                var err = spec.commandLine().getErr();
-                err.printf("Failed to drain runtime: HTTP %d%n", response.status());
-                err.flush();
-                return 1;
+                var body = JsonTree.write(Map.of("when", "drain", "then", "exit", "drain", true));
+                var response = context.runtime(false).send(
+                                    HttpRequest.json("POST", "/api/v1/runtime/stop", body));
+                if (response.status() == 200 || response.status() == 202) {
+                    out.println("runtime   draining");
+                } else {
+                    var err = spec.commandLine().getErr();
+                    err.printf("Failed to drain runtime: HTTP %d%n", response.status());
+                    err.flush();
+                    return 1;
+                }
             }
         } catch (RuntimeUnavailableException _) {
             out.println("runtime   not running");

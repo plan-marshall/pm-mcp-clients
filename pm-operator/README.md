@@ -62,6 +62,7 @@ In another terminal, export `PM_MCP_BASE`:
 ```bash
 export PM_MCP_BASE=/tmp/pm-mock-xyz/b
 ```
+*(Note: `./pm-operator/start.sh` automatically detects `PM_MCP_BASE` when `pm-mock-runtime` was started in the background with `./pm-mock-runtime/start.sh`; the direct `exec:java` command above does not create the PID and log files used for detection).*
 
 ### Step 3: Run Verbs and Console
 

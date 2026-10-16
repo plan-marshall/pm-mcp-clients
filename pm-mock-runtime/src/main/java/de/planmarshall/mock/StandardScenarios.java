@@ -53,7 +53,6 @@ public final class StandardScenarios {
     public static final String PAIRED_DEVICES = "paired-devices";
 
     /**
-                             /**
      * Overview of running work across projects, plans, and epics with ended work archive (UC-PLN-4).
      */
     public static final String RUNNING_WORK = "running-work";
@@ -71,6 +70,11 @@ public final class StandardScenarios {
     public static final String DECISIONS = "decisions";
 
     /**
+     * System view, runtime lifecycle controls, and cleanup operations (UC-SYS-1..3).
+     */
+    public static final String SYSTEM = "system";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -81,6 +85,7 @@ public final class StandardScenarios {
             PAIRED_DEVICES,
             RUNNING_WORK,
             REPORTS,
-            DECISIONS
+            DECISIONS,
+            SYSTEM
     );
 }

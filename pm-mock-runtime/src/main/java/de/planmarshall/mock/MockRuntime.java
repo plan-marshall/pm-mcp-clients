@@ -10,7 +10,6 @@
 package de.planmarshall.mock;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -327,6 +326,13 @@ public final class MockRuntime implements AutoCloseable {
      */
     public String deviceSecret() {
         return deviceSecret;
+    }
+
+    /**
+     * @return the accepted pairing code for web clients
+     */
+    public String pairingCode() {
+        return engine.currentScenario().pairingCode();
     }
 
     /**

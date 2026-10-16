@@ -19,13 +19,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 
+import de.planmarshall.api.MachinePaths;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
-import de.planmarshall.api.MachinePaths;
 
 @DisplayName("DirectFileAccess")
 class DirectFileAccessTest {
@@ -50,10 +50,10 @@ class DirectFileAccessTest {
         @DisplayName("allowedPaths contains exactly the 4 direct read files")
         void allowedPathsContent() {
             var expected = Set.of(
-                                                  paths.runtimeRecord(),
-                                                  paths.runtimeToken(),
-                                                  base.resolve("state/install-records.json"),
-                                                  base.resolve("machine-config.json")
+                                paths.runtimeRecord(),
+                                paths.runtimeToken(),
+                                base.resolve("state/install-records.json"),
+                                base.resolve("machine-config.json")
             );
 
             assertEquals(expected, direct.allowedPaths());
@@ -63,13 +63,13 @@ class DirectFileAccessTest {
         @DisplayName("isAllowed returns true only for the 4 direct read files")
         void isAllowed() {
             assertAll(
-                                                  () -> assertTrue(direct.isAllowed(paths.runtimeRecord())),
-                                                  () -> assertTrue(direct.isAllowed(paths.runtimeToken())),
-                                                  () -> assertTrue(direct.isAllowed(direct.installRecordsPath())),
-                                                  () -> assertTrue(direct.isAllowed(direct.machineConfigPath())),
-                                                  () -> assertFalse(direct.isAllowed(paths.runtimeLock())),
-                                                  () -> assertFalse(direct.isAllowed(paths.daemonLog())),
-                                                  () -> assertFalse(direct.isAllowed(base.resolve("projects/proj1/store.json")))
+                                () -> assertTrue(direct.isAllowed(paths.runtimeRecord())),
+                                () -> assertTrue(direct.isAllowed(paths.runtimeToken())),
+                                () -> assertTrue(direct.isAllowed(direct.installRecordsPath())),
+                                () -> assertTrue(direct.isAllowed(direct.machineConfigPath())),
+                                () -> assertFalse(direct.isAllowed(paths.runtimeLock())),
+                                () -> assertFalse(direct.isAllowed(paths.daemonLog())),
+                                () -> assertFalse(direct.isAllowed(base.resolve("projects/proj1/store.json")))
             );
         }
 
@@ -94,8 +94,8 @@ class DirectFileAccessTest {
             Files.writeString(direct.installRecordsPath(), "{\"bundles\":[]}");
 
             assertAll(
-                                                  () -> assertEquals("{\"web\":{\"port\":7420}}", direct.readMachineConfig().orElseThrow()),
-                                                  () -> assertEquals("{\"bundles\":[]}", direct.readInstallRecords().orElseThrow())
+                                () -> assertEquals("{\"web\":{\"port\":7420}}", direct.readMachineConfig().orElseThrow()),
+                                () -> assertEquals("{\"bundles\":[]}", direct.readInstallRecords().orElseThrow())
             );
         }
 
@@ -103,8 +103,8 @@ class DirectFileAccessTest {
         @DisplayName("returns empty when machineConfig or installRecords is absent")
         void returnsEmptyWhenAbsent() {
             assertAll(
-                                                  () -> assertTrue(direct.readMachineConfig().isEmpty()),
-                                                  () -> assertTrue(direct.readInstallRecords().isEmpty())
+                                () -> assertTrue(direct.readMachineConfig().isEmpty()),
+                                () -> assertTrue(direct.readInstallRecords().isEmpty())
             );
         }
     }

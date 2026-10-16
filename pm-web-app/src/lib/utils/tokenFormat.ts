@@ -53,3 +53,27 @@ export function formatSplit(
 
   return `${totalFormatted} (${inFormatted} ${inLabel} · ${outFormatted} ${outLabel})`;
 }
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const kb = bytes / 1024;
+  if (kb < 1024) {
+    return `${Math.round(kb)} KB`;
+  }
+  const mb = kb / 1024;
+  if (mb < 1024) {
+    return `${Math.round(mb)} MB`;
+  }
+  const gb = mb / 1024;
+  if (gb >= 10) {
+    return `${Math.round(gb)} GB`;
+  }
+  const rounded = Math.round(gb * 10) / 10;
+  if (rounded === Math.floor(rounded)) {
+    return `${rounded} GB`;
+  }
+  return `${rounded.toFixed(1)} GB`;
+}
+

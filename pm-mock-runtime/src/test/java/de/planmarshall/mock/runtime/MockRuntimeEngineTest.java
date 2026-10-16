@@ -124,6 +124,7 @@ class MockRuntimeEngineTest {
         assertNotNull(res.json());
         assertEquals(StandardScenarios.STATUS_ONLY, res.json().get("scenario"));
         assertEquals("runtime.idle", res.json().get("state"));
+        assertEquals("MOCKMOCK", res.json().get("pairing_code"));
     }
 
     @Test

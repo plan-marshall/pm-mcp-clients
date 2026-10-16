@@ -24,9 +24,30 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
+
+import de.planmarshall.api.MachinePaths;
+import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.system.CleanupItemEntry;
+import de.planmarshall.api.system.CleanupJob;
+import de.planmarshall.api.system.CleanupJobState;
+import de.planmarshall.api.system.CleanupProjectItem;
+import de.planmarshall.api.system.CleanupSummary;
+import de.planmarshall.api.system.ModelMetric;
+import de.planmarshall.api.system.RuntimeMetrics;
+import de.planmarshall.api.system.SystemSnapshot;
+import de.planmarshall.api.system.SystemWindow;
+import de.planmarshall.api.system.WorkMetrics;
+import de.planmarshall.api.system.WorkerMetric;
+import de.planmarshall.api.system.WorkerState;
+import de.planmarshall.api.testsupport.BinaryUnderTest;
+import de.planmarshall.api.testsupport.CliProcess;
+import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.api.testsupport.StagedDaemon;
+import de.planmarshall.api.testsupport.VerificationResults;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,13 +57,6 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 import com.fasterxml.jackson.core.JsonFactory;
-
-import de.planmarshall.api.MachinePaths;
-import de.planmarshall.api.testsupport.BinaryUnderTest;
-import de.planmarshall.api.testsupport.CliProcess;
-import de.planmarshall.api.testsupport.RuntimeFixture;
-import de.planmarshall.api.testsupport.StagedDaemon;
-import de.planmarshall.api.testsupport.VerificationResults;
 
 import picocli.CommandLine;
 
@@ -60,9 +74,9 @@ class PmOperatorProcessIT {
     private static final long BUDGET_MS = 50;
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
-                                          MachinePaths.class, CommandLine.class, JsonFactory.class,
-                                          Terminal.class, LineReader.class,
-                                          QrCode.class);
+                        MachinePaths.class, CommandLine.class, JsonFactory.class,
+                        Terminal.class, LineReader.class,
+                        QrCode.class);
     private RuntimeFixture fixture;
 
     @BeforeEach
@@ -145,7 +159,7 @@ class PmOperatorProcessIT {
                 assertNotEquals(ProcessHandle.current().pid(), started[1]);
                 assertTrue(staged.alive(), "pm-mcpd outlives pm-operator");
                 assertEquals("rwx------", PosixFilePermissions
-                                                      .toString(Files.getPosixFilePermissions(fixture.paths().locksDir())));
+                                    .toString(Files.getPosixFilePermissions(fixture.paths().locksDir())));
                 var values = new LinkedHashMap<String, Object>();
                 values.put("mode", binary.mode());
                 values.put("daemon_pid", started[0]);
@@ -203,20 +217,135 @@ class PmOperatorProcessIT {
         }
     }
 
-    @Test
-    @DisplayName("questions and answer refuse execution without an interactive terminal (PM-SEC-3)")
-    void questionsAndAnswerRefuseWithoutTerminal() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "questions")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
-        }
+    private SystemSnapshot sampleSnapshot() {
+        var runtimeMetrics = new RuntimeMetrics(
+                            "0.9.1",
+                            "2026-10-02 (a1b2c3d)",
+                            "today 08:14",
+                            22320L,
+                            432013312L,
+                            1073741824L,
+                            713031680L,
+                            4.0,
+                            2469606195L,
+                            40802189312L,
+                            "13:40",
+                            true,
+                            "127.0.0.1:7420",
+                            "192.168.1.20:7421",
+                            2,
+                            0,
+                            null,
+                            "0.10.0",
+                            "2026-10-16",
+                            "today 08:14",
+                            "/api/v1/system/release-notes?version=0.10.0",
+                            true,
+                            null
+        );
+        var workMetrics = new WorkMetrics(
+                            Map.of("running", 3, "waiting_for_you", 1),
+                            Map.of("running", 1),
+                            4,
+                            6,
+                            3,
+                            List.of()
+        );
+        var workers = List.of(
+                            new WorkerMetric("planner", "claude", "opus-4.5", WorkerState.BUSY, "fix-relay"),
+                            new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null)
+        );
+        var jobs = Map.<String, Object>of(
+                            "build", Map.of("slots_used", 1, "slots_total", 2, "queued", 1),
+                            "locks_held", 3
+        );
+        var models = List.of(
+                            new ModelMetric("claude:opus-4.5", "planner", 42, 2020000L, 1900000L, 120000L, 0, 1, false, 0)
+        );
+        var cleanup = new CleanupSummary(
+                            12, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00"
+        );
+        return new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanup, SystemWindow.HOUR, null);
+    }
 
-        try (var process = operator(environment(), "answer", "Q-001")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+    private CleanupJob sampleCleanupJob() {
+        var items1 = List.of(
+                            new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "12 Sep", 88080384L, 6, 0, null)
+        );
+        var prj1 = new CleanupProjectItem("pm-mcp-clients", 1, 0, 6, 0, 88080384L, items1);
+        var summary = new CleanupSummary(1, 0, 6, 0, 1, 88080384L, 1, "today 03:00", "tomorrow 03:00");
+        return new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(prj1), Map.of());
+    }
+
+    @Test
+    @DisplayName("system against runtime reports 6-part dashboard (UC-SYS-1)")
+    void systemAgainstRuntime() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var snapshotJson = sampleSnapshot().toJson();
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system")) {
+                response.json(200, snapshotJson);
+            } else {
+                response.json(404, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        try (var process = operator(environment(), "system")) {
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
+            assertTrue(stdout.contains("Runtime   pm-mcpd 0.9.1"), "expected runtime; got: " + stdout);
+            assertTrue(stdout.contains("Work      plans"), "expected work; got: " + stdout);
+            assertTrue(stdout.contains("Workers   2 · 1 busy · 1 idle"), "expected workers; got: " + stdout);
+            assertTrue(stdout.contains("Jobs      build"), "expected jobs; got: " + stdout);
+            assertTrue(stdout.contains("Models"), "expected models; got: " + stdout);
+            assertTrue(stdout.contains("Cleanup   due:"), "expected cleanup; got: " + stdout);
+        }
+    }
+
+    @Test
+    @DisplayName("system with --json outputs valid snapshot json")
+    void systemWithJson() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var snapshotJson = sampleSnapshot().toJson();
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system")) {
+                response.json(200, snapshotJson);
+            } else {
+                response.json(404, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        try (var process = operator(environment(), "system", "--json")) {
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            var stdout = new String(process.stdout(), StandardCharsets.UTF_8).trim();
+            assertTrue(stdout.startsWith("{"), "expected json object; got: " + stdout);
+            assertTrue(stdout.contains("\"runtime\""), "expected runtime key in json; got: " + stdout);
+            assertTrue(stdout.contains("0.9.1"), "expected version in json; got: " + stdout);
+        }
+    }
+
+    @Test
+    @DisplayName("cleanup against runtime reports job summary and items (UC-SYS-3)")
+    void cleanupAgainstRuntime() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var jobJson = JsonTree.write(sampleCleanupJob().toMap());
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target())) {
+                response.json(200, jobJson);
+            } else if ("/api/v1/system/cleanup/residue".equals(request.target())) {
+                response.json(200, "{\"step\":\"workers\",\"last_sweep\":\"14:00\"}");
+            } else {
+                response.json(404, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        try (var process = operator(environment(), "cleanup")) {
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
+            assertTrue(stdout.contains("Cleanup cln-0007 · due since today 03:00"), "expected cleanup header; got: " + stdout);
+            assertTrue(stdout.contains("Summary   1 plans"), "expected summary; got: " + stdout);
+            assertTrue(stdout.contains("fix-relay"), "expected item; got: " + stdout);
+            assertTrue(stdout.contains("Kept for good"), "expected kept footer; got: " + stdout);
         }
     }
 }

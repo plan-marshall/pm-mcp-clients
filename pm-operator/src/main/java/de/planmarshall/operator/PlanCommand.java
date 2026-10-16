@@ -45,17 +45,17 @@ import picocli.CommandLine.Spec;
  * (01-commands.adoc, 19-actions.adoc).
  */
 @Command(name = "plan", description = "Inspects or controls plans.",
-                                      subcommands = {
-                                                                            PlanCommand.AddCommand.class,
-                                                                            PlanCommand.PauseCommand.class,
-                                                                            PlanCommand.StartCommand.class,
-                                                                            PlanCommand.FindingsCommand.class,
-                                                                            PlanCommand.WatchesCommand.class,
-                                                                            PlanCommand.CancelCommand.class,
-                                                                            PlanCommand.AbandonCommand.class,
-                                                                            PlanCommand.ChatCommand.class,
-                                                                            PlanCommand.ReportCommand.class
-                                      })
+                    subcommands = {
+                                        PlanCommand.AddCommand.class,
+                                        PlanCommand.PauseCommand.class,
+                                        PlanCommand.StartCommand.class,
+                                        PlanCommand.FindingsCommand.class,
+                                        PlanCommand.WatchesCommand.class,
+                                        PlanCommand.CancelCommand.class,
+                                        PlanCommand.AbandonCommand.class,
+                                        PlanCommand.ChatCommand.class,
+                                        PlanCommand.ReportCommand.class
+                    })
 @OperatorVerb
 public final class PlanCommand implements Callable<Integer> {
 
@@ -190,8 +190,8 @@ public final class PlanCommand implements Callable<Integer> {
             var payload = buildPayload();
 
             var path = common.project != null && !".".equals(common.project)
-                                                  ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(common.project) + "/entries"
-                                                  : "/api/v1/plans";
+                                ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(common.project) + "/entries"
+                                : "/api/v1/plans";
 
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 201) {
@@ -246,7 +246,7 @@ public final class PlanCommand implements Callable<Integer> {
             var payload = Map.of("point", point);
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/pause";
             var response = context.runtime(true).send(
-                                                  HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
+                                HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 if (now) {
                     out.printf("✓ %s paused%n", planId);
@@ -280,7 +280,7 @@ public final class PlanCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/start";
             var response = context.runtime(true).send(
-                                                  HttpRequest.json("POST", endpoint, "{}"));
+                                HttpRequest.json("POST", endpoint, "{}"));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ %s started%n", planId);
                 out.flush();
@@ -442,7 +442,7 @@ public final class PlanCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var response = context.runtime(true).send(
-                                                  HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/completion"));
+                                HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/completion"));
             if (response.status() == 409) {
                 var state = "running";
                 try {
@@ -454,7 +454,7 @@ public final class PlanCommand implements Callable<Integer> {
                     // Ignore unparseable 409 body
                 }
                 out.println(MessageCatalogue.format("operator.reports.not_ended",
-                                                      Map.of("plan", planId, KEY_STATE, state)));
+                                    Map.of("plan", planId, KEY_STATE, state)));
                 out.flush();
                 return 1;
             }
@@ -564,10 +564,10 @@ public final class PlanCommand implements Callable<Integer> {
             if (!replanningRecords.isEmpty()) {
                 var first = replanningRecords.get(0);
                 var repSummary = String.format("%d · after %s (%s): %s",
-                                                      replanningRecords.size(),
-                                                      ConsoleNotice.stripControlSequences(first.trigger()),
-                                                      first.time() != null ? first.time() : "",
-                                                      ConsoleNotice.stripControlSequences(first.change()));
+                                    replanningRecords.size(),
+                                    ConsoleNotice.stripControlSequences(first.trigger()),
+                                    first.time() != null ? first.time() : "",
+                                    ConsoleNotice.stripControlSequences(first.change()));
                 out.printf(FMT_14S, "re-planning", repSummary);
             }
         }
@@ -600,7 +600,7 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf(FMT_14S, "tokens", totalSplit + " · " + (ran != null ? ran : ""));
                 int unmeasured = usage.tasksTotal() - usage.tasksMeasured();
                 var covText = String.format("%d workers · %d models · %d of %d tasks not measured",
-                                                      usage.workersCount(), usage.modelsCount(), unmeasured, usage.tasksTotal());
+                                    usage.workersCount(), usage.modelsCount(), unmeasured, usage.tasksTotal());
                 out.printf(FMT_INDENT, covText);
                 out.printf("                 plan report %s --tokens%n", planId);
             }
@@ -684,11 +684,11 @@ public final class PlanCommand implements Callable<Integer> {
                 return "";
             }
             return String.format("input %s · cache read %s · cache write %s · output %s · reasoning %s",
-                                                  TokenFormat.formatTokens(c.input(), false, "en"),
-                                                  TokenFormat.formatTokens(c.cacheRead(), false, "en"),
-                                                  TokenFormat.formatTokens(c.cacheWrite(), false, "en"),
-                                                  TokenFormat.formatTokens(c.output(), false, "en"),
-                                                  TokenFormat.formatTokens(c.reasoning(), false, "en"));
+                                TokenFormat.formatTokens(c.input(), false, "en"),
+                                TokenFormat.formatTokens(c.cacheRead(), false, "en"),
+                                TokenFormat.formatTokens(c.cacheWrite(), false, "en"),
+                                TokenFormat.formatTokens(c.output(), false, "en"),
+                                TokenFormat.formatTokens(c.reasoning(), false, "en"));
         }
 
         private static String formatDuration(long seconds) {

@@ -12,7 +12,6 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
@@ -32,12 +31,12 @@ import picocli.CommandLine.Spec;
  * 25-system.adoc).
  */
 @Command(name = "runtime", description = "Starts, stops, restarts, or upgrades the runtime.",
-                                      subcommands = {
-                                                                            RuntimeCommand.StartCommand.class,
-                                                                            RuntimeCommand.StopCommand.class,
-                                                                            RuntimeCommand.RestartCommand.class,
-                                                                            RuntimeCommand.UpgradeCommand.class
-                                      })
+                    subcommands = {
+                                        RuntimeCommand.StartCommand.class,
+                                        RuntimeCommand.StopCommand.class,
+                                        RuntimeCommand.RestartCommand.class,
+                                        RuntimeCommand.UpgradeCommand.class
+                    })
 public final class RuntimeCommand implements Callable<Integer> {
 
     private static final String DRAIN = "drain";
@@ -102,7 +101,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             try {
                 if (withdraw) {
                     var response = context.runtime(false).send(
-                                                          new HttpRequest("DELETE", "/api/v1/runtime/stop", Map.of(), null));
+                                        HttpRequest.delete("/api/v1/runtime/stop"));
                     if (response.status() == 200 || response.status() == 204) {
                         out.println("runtime   drain withdrawn");
                         out.flush();
@@ -115,11 +114,13 @@ public final class RuntimeCommand implements Callable<Integer> {
                 }
 
                 var body = new LinkedHashMap<String, Object>();
+                body.put("when", drain ? "drain" : "now");
+                body.put("then", "exit");
                 if (drain) body.put(DRAIN, true);
                 if (now) body.put("now", true);
 
                 var response = context.runtime(false).send(
-                                                      HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
+                                    HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
                 if (response.status() != 202 && response.status() != 200) {
                     throw new OperatorRefusedException("runtime stop", response);
                 }
@@ -158,11 +159,12 @@ public final class RuntimeCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var body = new LinkedHashMap<String, Object>();
             body.put("then", "restart");
+            body.put("when", drain ? "drain" : "now");
             if (drain) body.put(DRAIN, true);
             if (now) body.put("now", true);
 
             var response = context.runtime(true).send(
-                                                  HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
+                                HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 202) {
                 out.println("runtime   restarting");
                 out.flush();
@@ -222,7 +224,8 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private int showNotes(PrintWriter out) throws IOException {
-            var response = context.runtime(false).send(HttpRequest.get("/api/v1/system/release-notes"));
+            var url = "/api/v1/system/release-notes" + (version != null ? "?version=" + version : "");
+            var response = context.runtime(false).send(HttpRequest.get(url));
             if (response.status() == 200) {
                 out.println(response.bodyText());
             } else {
@@ -244,7 +247,7 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private int withdrawUpgrade(PrintWriter out) throws IOException {
-            var response = context.runtime(false).send(new HttpRequest("DELETE", "/api/v1/operator/runtime/upgrade", Map.of(), null));
+            var response = context.runtime(false).send(HttpRequest.delete("/api/v1/operator/runtime/upgrade"));
             if (response.status() == 200 || response.status() == 204) {
                 out.println("runtime   upgrade withdrawn");
             } else {
@@ -257,11 +260,12 @@ public final class RuntimeCommand implements Callable<Integer> {
         private int executeUpgrade(PrintWriter out) throws IOException {
             var body = new LinkedHashMap<String, Object>();
             if (version != null) body.put("version", version);
+            body.put("when", drain ? "drain" : "now");
             if (drain) body.put(DRAIN, true);
             if (now) body.put("now", true);
 
             var response = context.runtime(true).send(
-                                                  HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));
+                                HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 202) {
                 out.println("runtime   upgrading");
                 out.flush();

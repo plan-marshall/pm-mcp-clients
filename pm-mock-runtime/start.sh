@@ -169,7 +169,7 @@ else
     fi
 
     echo "Mock runtime started successfully (PID: $PID)."
-    grep -E "Base \(PM_MCP_BASE\)|Unix Socket|Loopback Web Port|Scenario|Initial State" "$LOG_FILE" || true
+    grep -E "Base \(PM_MCP_BASE\)|Unix Socket|Loopback Web Port|Scenario|Initial State|Pairing Code|Web App URL" "$LOG_FILE" || true
     echo ""
     echo "Logs: $LOG_FILE"
     echo "To stop: $SCRIPT_DIR/stop.sh"

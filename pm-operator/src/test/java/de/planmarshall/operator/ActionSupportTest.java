@@ -20,15 +20,15 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
 
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
+import de.planmarshall.api.testsupport.RuntimeFixture;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.api.testsupport.FakeRuntimeServer;
-import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
@@ -64,7 +64,7 @@ class ActionSupportTest {
         var self = ProcessHandle.current();
         Files.createDirectories(fixture.paths().stateDir());
         Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
-                                              + self.info().startInstant().orElseThrow() + "\"}");
+                            + self.info().startInstant().orElseThrow() + "\"}");
         return fixture.start(handler);
     }
 
@@ -135,7 +135,7 @@ class ActionSupportTest {
 
         var opts = terminationOptions("p-1", "test", false, false);
         assertThrows(OperatorRefusedException.class, () ->
-                                              ActionSupport.endWork(context, spec, "plan", opts, ActionSupport.CANCEL));
+                            ActionSupport.endWork(context, spec, "plan", opts, ActionSupport.CANCEL));
     }
 
     @Test
@@ -177,9 +177,9 @@ class ActionSupportTest {
         runtime((request, response) -> response.json(404, "{\"code\":\"not_found\"}"));
 
         assertThrows(OperatorRefusedException.class, () ->
-                                              ActionSupport.chat(context, spec, "plan", "p-1", "hello"));
+                            ActionSupport.chat(context, spec, "plan", "p-1", "hello"));
         assertThrows(OperatorRefusedException.class, () ->
-                                              ActionSupport.chat(context, spec, "plan", "p-1", null));
+                            ActionSupport.chat(context, spec, "plan", "p-1", null));
     }
 
     @Test
@@ -192,9 +192,9 @@ class ActionSupportTest {
 
         out.getBuffer().setLength(0);
         ActionSupport.printWorkList(pw, "Epics", "state", List.of(
-                                              Map.of("id", "epic-1", "state", "RUNNING", "title", "Refactor Auth"),
-                                              Map.of("id", "epic-2", "state", "PAUSED"),
-                                              "simple-string-item"
+                            Map.of("id", "epic-1", "state", "RUNNING", "title", "Refactor Auth"),
+                            Map.of("id", "epic-2", "state", "PAUSED"),
+                            "simple-string-item"
         ));
         pw.flush();
         var result = out.toString();

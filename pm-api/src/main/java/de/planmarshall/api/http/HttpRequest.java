@@ -70,6 +70,39 @@ public record HttpRequest(String method, String target, Map<String, String> head
     }
 
     /**
+     * @param target the request target
+     * @return a {@code POST} request without body
+     */
+    public static HttpRequest post(String target) {
+        return new HttpRequest("POST", target, Map.of(), null);
+    }
+
+    /**
+     * @param target the request target
+     * @return a {@code DELETE} request without body
+     */
+    public static HttpRequest delete(String target) {
+        return new HttpRequest("DELETE", target, Map.of(), null);
+    }
+
+    /**
+     * @param target the request target
+     * @return a {@code PUT} request without body
+     */
+    public static HttpRequest put(String target) {
+        return new HttpRequest("PUT", target, Map.of(), null);
+    }
+
+    /**
+     * @param target the request target
+     * @param json   the JSON body
+     * @return a {@code PUT} request with JSON body
+     */
+    public static HttpRequest put(String target, String json) {
+        return json("PUT", target, json);
+    }
+
+    /**
      * @param name  the header name
      * @param value the header value
      * @return a copy of this request with the header added or replaced
@@ -78,6 +111,16 @@ public record HttpRequest(String method, String target, Map<String, String> head
         var copy = new LinkedHashMap<>(headers);
         copy.put(name, value);
         return new HttpRequest(method, target, copy, body);
+    }
+
+    /**
+     * @param json the JSON body
+     * @return a copy of this request with the JSON body and application/json Content-Type
+     */
+    public HttpRequest withBody(String json) {
+        var copy = new LinkedHashMap<>(headers);
+        copy.put("Content-Type", APPLICATION_JSON);
+        return new HttpRequest(method, target, copy, json.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
