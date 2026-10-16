@@ -311,9 +311,6 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST OUTPUT ===\n" + output + "\n=== TEST ERR ===\n" + err.toString());
         // Runtime header
         assertTrue(output.contains("Runtime pm-mcpd 0.9.1, running since 08:14 · 2 workers · 1 of 2 build slots in use"));
 
@@ -365,9 +362,6 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST GROUP BY EPIC OUTPUT ===\n" + output);
         assertTrue(output.contains("epic  client work"));
         assertTrue(output.contains("2 running · 3 staged"));
         assertTrue(output.contains("├─"));
@@ -387,9 +381,6 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST ENDED WORK OUTPUT ===\n" + output);
         assertTrue(output.contains("pm-mcp-clients · ended work"));
         assertTrue(output.contains("plan  Relay drops events on reconnect"));
         assertTrue(output.contains("merged"));
@@ -462,9 +453,6 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST GERMAN OUTPUT ===\n" + output);
         assertTrue(output.contains("3 Pläne · 1 Epic"));
         assertTrue(output.contains("belegt"));
     }

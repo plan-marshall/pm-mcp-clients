@@ -795,7 +795,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
             copy.remove("pages");
-            response.json(200, copy);
+            response.json(route.status(), copy);
             return;
         }
         response.json(route.status(), rep);
