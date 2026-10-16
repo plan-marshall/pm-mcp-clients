@@ -56,7 +56,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         var response = context.runtime(true).send(HttpRequest.get(path));
         if (response.status() == 404) {
             response = context.runtime(true).send(
-                          HttpRequest.get(OperatorUrlUtil.appendScope("/api/v1/questions", project, plan)));
+                                HttpRequest.get(OperatorUrlUtil.appendScope("/api/v1/questions", project, plan)));
         }
         if (response.status() == 200) {
             printQuestions(out, response.body());

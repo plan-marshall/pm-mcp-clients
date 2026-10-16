@@ -92,7 +92,7 @@ final class ActionSupport {
      * @throws IOException on network or runtime error
      */
     static int endWork(OperatorContext context, CommandSpec spec, String kind,
-                  TerminationOptions options, String actionVerb) throws IOException {
+                        TerminationOptions options, String actionVerb) throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
         var id = options.id != null ? options.id : "";
@@ -134,13 +134,13 @@ final class ActionSupport {
      * @throws IOException on network or runtime error
      */
     static int chat(OperatorContext context, CommandSpec spec, String kind, String id,
-                  @Nullable String message) throws IOException {
+                        @Nullable String message) throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
         var endpoint = "/api/v1/" + kind + "s/" + OperatorUrlUtil.encodePathSegment(id) + "/chat";
         if (message != null && !message.isBlank()) {
             var response = context.runtime(true).send(
-                          HttpRequest.json("POST", endpoint, JsonTree.write(Map.of("message", message))));
+                                HttpRequest.json("POST", endpoint, JsonTree.write(Map.of("message", message))));
             if (response.status() == 200 || response.status() == 201) {
                 out.println(response.bodyText());
                 out.flush();
@@ -179,9 +179,9 @@ final class ActionSupport {
             if (item instanceof Map<?, ?> work) {
                 var title = work.get("title");
                 out.printf("  %-20s %-12s %s%n",
-                              work.get("id"),
-                              work.get(stateKey),
-                              title != null ? title : "");
+                                    work.get("id"),
+                                    work.get(stateKey),
+                                    title != null ? title : "");
             } else {
                 out.println("  " + item);
             }

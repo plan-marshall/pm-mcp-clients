@@ -27,12 +27,18 @@ export interface RuntimeState {
     | 'designer'
     | 'revoked'
     | 'overview'
-    | 'reports';
+    | 'reports'
+    | 'system'
+    | 'cleanup';
   currentState: StateRepresentation | null;
   isRevoked: boolean;
   revokedReason: string;
   revokedInfo?: RevokedInfo | null;
   isOffline: boolean;
+  isDraining: boolean;
+  drainInfo?: { count?: number; what?: string; who?: string; since?: string } | null;
+  isStopped: boolean;
+  stoppedInfo?: { command?: string; who?: string; time?: string } | null;
   activeStep: number;
   unreadReportsCount: number;
   unreadReportsArrivalNotice?: string | null;
@@ -52,6 +58,10 @@ const initialState: RuntimeState = {
   revokedReason: '',
   revokedInfo: null,
   isOffline: false,
+  isDraining: false,
+  drainInfo: null,
+  isStopped: false,
+  stoppedInfo: null,
   activeStep: 1,
   unreadReportsCount: 0,
   unreadReportsArrivalNotice: null,
@@ -240,6 +250,27 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: Math.max(0, s.unreadReportsCount - 1),
+    }));
+  } else if (event === 'runtime.draining') {
+    const drainData = (data || {}) as { count?: number; what?: string; who?: string; since?: string };
+    runtimeStore.update((s) => ({
+      ...s,
+      isDraining: true,
+      drainInfo: drainData,
+    }));
+  } else if (event === 'drain.withdrawn') {
+    runtimeStore.update((s) => ({
+      ...s,
+      isDraining: false,
+      drainInfo: null,
+    }));
+  } else if (event === 'runtime.stopped') {
+    const stoppedData = (data || {}) as { command?: string; who?: string; time?: string };
+    runtimeStore.update((s) => ({
+      ...s,
+      isDraining: false,
+      isStopped: true,
+      stoppedInfo: stoppedData,
     }));
   }
 }

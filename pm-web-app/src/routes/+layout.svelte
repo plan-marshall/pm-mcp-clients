@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import { t, setLocale, currentLocale, initI18n } from '../lib/i18n';
   import { runtimeStore, initRuntime, navigateTo } from '../lib/stores/runtime';
+  import { apiClient } from '../lib/api/client';
   import Spinner from '../lib/components/Spinner.svelte';
 
   interface Props {
@@ -77,6 +78,36 @@
     </div>
   {/if}
 
+  {#if $runtimeStore.isDraining}
+    <div class="draining-banner" role="status">
+      <span class="draining-text">
+        {$t('system.stopping.line', {
+          count: $runtimeStore.drainInfo?.count ?? 0,
+          what: $runtimeStore.drainInfo?.what ?? 'running work',
+        })}
+      </span>
+      <div class="draining-actions">
+        <button
+          class="draining-btn draining-btn--stop"
+          onclick={async () => {
+            await apiClient.stopRuntime('now');
+          }}
+        >
+          {$t('system.stopping.stop_now')}
+        </button>
+        <button
+          class="draining-btn draining-btn--withdraw"
+          onclick={async () => {
+            await apiClient.withdrawStop();
+            runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+          }}
+        >
+          {$t('system.confirm.keep')}
+        </button>
+      </div>
+    </div>
+  {/if}
+
   <header class="app-header">
     <div class="app-header__brand">
       <span class="app-header__logo" aria-hidden="true">✦</span>
@@ -115,6 +146,13 @@
               {$runtimeStore.unreadReportsCount}
             </span>
           {/if}
+        </button>
+        <button
+          class="header-action-btn"
+          aria-label={$t('system.view.title')}
+          onclick={() => navigateTo('system')}
+        >
+          🖥 <span class="header-action-btn__text">{$t('system.view.title')}</span>
         </button>
         <button
           class="header-action-btn"
@@ -244,6 +282,47 @@
     font-size: var(--text-sm);
     font-weight: 500;
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .draining-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background-color: var(--color-warning-subtle, #fef3c7);
+    color: var(--color-warning-text, #92400e);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .draining-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .draining-btn {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 1px solid currentColor;
+    background: transparent;
+  }
+
+  .draining-btn--stop {
+    background-color: var(--color-danger, #ef4444);
+    color: #ffffff;
+    border-color: transparent;
+  }
+
+  .draining-btn--withdraw {
+    background-color: transparent;
+    color: inherit;
   }
 
   .reports-arrival-btn {

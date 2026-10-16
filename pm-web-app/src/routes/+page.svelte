@@ -8,6 +8,8 @@
   import RevokedView from '../lib/views/RevokedView.svelte';
   import OverviewView from '../lib/views/OverviewView.svelte';
   import ReportsView from '../lib/views/ReportsView.svelte';
+  import SystemView from '../lib/views/SystemView.svelte';
+  import CleanupView from '../lib/views/CleanupView.svelte';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -20,6 +22,10 @@
   <ReportsView />
 {:else if $runtimeStore.currentRoute === 'settings'}
   <SettingsView />
+{:else if $runtimeStore.currentRoute === 'system'}
+  <SystemView />
+{:else if $runtimeStore.currentRoute === 'cleanup'}
+  <CleanupView />
 {:else if $runtimeStore.currentRoute === 'designer'}
   <ProcessDesigner />
 {:else if $runtimeStore.currentRoute === 'workspace'}

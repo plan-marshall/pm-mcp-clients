@@ -52,8 +52,8 @@ class OperatorGateTest {
 
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                          () -> assertEquals("operator refused: interactive terminal required", ex.getMessage())
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
+                                () -> assertEquals("operator refused: interactive terminal required", ex.getMessage())
             );
         }
     }
@@ -72,8 +72,8 @@ class OperatorGateTest {
 
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                          () -> assertEquals("operator refused: coding-agent environment detected (claude)", ex.getMessage())
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
+                                () -> assertEquals("operator refused: coding-agent environment detected (claude)", ex.getMessage())
             );
         }
 
@@ -87,8 +87,8 @@ class OperatorGateTest {
 
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                          () -> assertEquals("operator refused: coding-agent environment detected (antigravity)", ex.getMessage())
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
+                                () -> assertEquals("operator refused: coding-agent environment detected (antigravity)", ex.getMessage())
             );
         }
 
@@ -102,8 +102,8 @@ class OperatorGateTest {
 
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                          () -> assertEquals("operator refused: coding-agent environment detected (opencode)", ex.getMessage())
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
+                                () -> assertEquals("operator refused: coding-agent environment detected (opencode)", ex.getMessage())
             );
         }
 
@@ -117,8 +117,8 @@ class OperatorGateTest {
 
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                          () -> assertEquals("operator refused: coding-agent environment detected (codex)", ex.getMessage())
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
+                                () -> assertEquals("operator refused: coding-agent environment detected (codex)", ex.getMessage())
             );
         }
 
@@ -131,8 +131,8 @@ class OperatorGateTest {
 
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                          () -> assertEquals("operator refused: coding-agent environment detected", ex.getMessage())
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
+                                () -> assertEquals("operator refused: coding-agent environment detected", ex.getMessage())
             );
         }
 
@@ -140,15 +140,15 @@ class OperatorGateTest {
         @DisplayName("applies fixed normative precedence: antigravity -> opencode -> claude -> codex")
         void appliesPrecedence() {
             assertAll(
-                          () -> assertEquals("antigravity", OperatorGate.detectHost(Map.of(
-                                        "ANTIGRAVITY_AGENT", "1", "OPENCODE", "1", "CLAUDE_CODE", "1")).orElseThrow()),
-                          () -> assertEquals("opencode", OperatorGate.detectHost(Map.of(
-                                        "OPENCODE", "1", "CLAUDE_CODE", "1")).orElseThrow()),
-                          () -> assertEquals("claude", OperatorGate.detectHost(Map.of(
-                                        "CLAUDE_CODE", "1", "CODEX_CI", "1")).orElseThrow()),
-                          () -> assertEquals("codex", OperatorGate.detectHost(Map.of(
-                                        "CODEX_CI", "1")).orElseThrow()),
-                          () -> assertFalse(OperatorGate.detectHost(Map.of("SAFE_VAR", "1")).isPresent())
+                                () -> assertEquals("antigravity", OperatorGate.detectHost(Map.of(
+                                                    "ANTIGRAVITY_AGENT", "1", "OPENCODE", "1", "CLAUDE_CODE", "1")).orElseThrow()),
+                                () -> assertEquals("opencode", OperatorGate.detectHost(Map.of(
+                                                    "OPENCODE", "1", "CLAUDE_CODE", "1")).orElseThrow()),
+                                () -> assertEquals("claude", OperatorGate.detectHost(Map.of(
+                                                    "CLAUDE_CODE", "1", "CODEX_CI", "1")).orElseThrow()),
+                                () -> assertEquals("codex", OperatorGate.detectHost(Map.of(
+                                                    "CODEX_CI", "1")).orElseThrow()),
+                                () -> assertFalse(OperatorGate.detectHost(Map.of("SAFE_VAR", "1")).isPresent())
             );
         }
     }
@@ -167,8 +167,8 @@ class OperatorGateTest {
             var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "web", "enable");
 
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                          () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (claude)"))
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
+                                () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (claude)"))
             );
         }
 
@@ -182,8 +182,8 @@ class OperatorGateTest {
             var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "web", "disable");
 
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                          () -> assertTrue(err.toString().contains("operator refused: interactive terminal required"))
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
+                                () -> assertTrue(err.toString().contains("operator refused: interactive terminal required"))
             );
         }
 
@@ -197,8 +197,8 @@ class OperatorGateTest {
             var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "runtime", "stop");
 
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                          () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (opencode)"))
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
+                                () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (opencode)"))
             );
         }
 
@@ -212,8 +212,8 @@ class OperatorGateTest {
             var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err));
 
             assertAll(
-                          () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                          () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (antigravity)"))
+                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
+                                () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (antigravity)"))
             );
         }
 
@@ -227,8 +227,8 @@ class OperatorGateTest {
             var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "status");
 
             assertAll(
-                          () -> assertEquals(0, code),
-                          () -> assertEquals("runtime   not running", out.toString().strip())
+                                () -> assertEquals(0, code),
+                                () -> assertEquals("runtime   not running", out.toString().strip())
             );
         }
     }

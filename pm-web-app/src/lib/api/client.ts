@@ -261,6 +261,140 @@ export interface PlanCompletionReport {
   ran?: string;
 }
 
+export interface RuntimeMetrics {
+  version: string;
+  build_date?: string;
+  git_commit?: string;
+  uptime_seconds?: number;
+  uptime_formatted?: string;
+  memory_used_bytes?: number;
+  memory_max_bytes?: number;
+  memory_resident_bytes?: number;
+  cpu_percent?: number | null;
+  cpu_measured?: boolean;
+  machine_store_bytes?: number;
+  disk_free_bytes?: number;
+  disk_measured_at?: string;
+  socket_listener?: boolean;
+  loopback_address?: string | null;
+  lan_address?: string | null;
+  lan_devices_count?: number;
+  relays_behind_count?: number;
+  relays_behind_version?: string | null;
+  upgrade_available_version?: string | null;
+  upgrade_available_date?: string | null;
+  upgrade_checked_at?: string | null;
+  upgrade_release_notes_url?: string | null;
+  upgrade_possible?: boolean;
+  upgrade_disabled_reason?: string | null;
+}
+
+export interface WorkMetrics {
+  plans_by_state?: Record<string, number>;
+  epics_by_state?: Record<string, number>;
+  tasks_running?: number;
+  tasks_queued?: number;
+  active_projects_count?: number;
+  recovering_projects?: string[];
+}
+
+export interface WorkerMetric {
+  role: string;
+  harness: string;
+  model: string;
+  state: string;
+  current_plan_title?: string | null;
+}
+
+export interface ModelMetric {
+  id: string;
+  role?: string;
+  calls_count: number;
+  tokens_total: number;
+  tokens_in: number;
+  tokens_out: number;
+  errors_count: number;
+  retries_count: number;
+  tokens_unmeasured?: boolean;
+  unmeasured_calls?: number;
+}
+
+export interface CleanupSummary {
+  plans_count: number;
+  epics_count: number;
+  logs_count: number;
+  read_reports_count?: number;
+  unenrolled_projects_count?: number;
+  freed_bytes: number;
+  kept_for_good_count: number;
+  last_sweep_at?: string;
+  next_check_at?: string;
+}
+
+export interface SystemSnapshot {
+  runtime: RuntimeMetrics;
+  work: WorkMetrics;
+  workers: WorkerMetric[];
+  jobs: {
+    build?: { slots_used: number; slots_total: number; queued?: number };
+    test?: { slots_used: number; slots_total: number; queued?: number };
+    locks_held?: number;
+  };
+  models: ModelMetric[];
+  cleanup: CleanupSummary;
+  window: 'hour' | 'today' | '7d';
+  project?: string | null;
+}
+
+export interface CleanupItemEntry {
+  id: string;
+  kind: 'plan' | 'epic' | 'logs' | 'report' | 'unenrolled' | string;
+  title: string;
+  ended_at?: string;
+  freed_bytes: number;
+  detail?: string;
+}
+
+export interface CleanupProjectItem {
+  project_id: string;
+  display_name: string;
+  items: CleanupItemEntry[];
+}
+
+export interface CleanupKeptItem {
+  item_id: string;
+  kind: string;
+  title: string;
+  why: 'ignore' | 'exclude' | string;
+  kept_at: string;
+  who: string;
+}
+
+export interface CleanupResidue {
+  step: string;
+  last_sweep_at?: string;
+  items_removed?: number;
+}
+
+export interface CleanupDurations {
+  plans_days: number;
+  epics_days: number;
+  logs_days: number;
+  reports_days: number;
+  unenrolled_days: number;
+  remind_days: number;
+}
+
+export interface CleanupJob {
+  job_id: string;
+  due_since?: string;
+  summary: CleanupSummary;
+  projects: CleanupProjectItem[];
+  kept: CleanupKeptItem[];
+  residue: CleanupResidue[];
+  durations: CleanupDurations;
+}
+
 const STORAGE_KEY_SECRET = 'pm_device_secret';
 const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
 const STORAGE_KEY_LABEL = 'pm_device_label';
@@ -452,6 +586,100 @@ export class ApiClient {
       'GET',
       `/api/v1/plans/${encodeURIComponent(planId)}/completion`,
     );
+  }
+
+  public async getSystemSnapshot(
+    window?: 'hour' | 'today' | '7d',
+    project?: string,
+  ): Promise<SystemSnapshot> {
+    const params = new URLSearchParams();
+    if (window) params.set('window', window);
+    if (project) params.set('project', project);
+    const qs = params.toString();
+    return this.request<SystemSnapshot>('GET', `/api/v1/system${qs ? `?${qs}` : ''}`);
+  }
+
+  public async stopRuntime(
+    when: 'drain' | 'now',
+    then?: 'restart' | 'upgrade',
+  ): Promise<{ lifecycle_state: string }> {
+    const body: Record<string, unknown> = {
+      now: when === 'now',
+      drain: when === 'drain',
+    };
+    if (then) body['then'] = then;
+    return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body);
+  }
+
+  public async withdrawStop(): Promise<void> {
+    await this.request('DELETE', '/api/v1/runtime/stop');
+  }
+
+  public async upgradeRuntime(
+    version?: string,
+    when: 'drain' | 'now' = 'drain',
+  ): Promise<{ status: string }> {
+    const body: Record<string, unknown> = {
+      when,
+    };
+    if (version) body['version'] = version;
+    return this.request<{ status: string }>('POST', '/api/v1/operator/runtime/upgrade', body);
+  }
+
+  public async withdrawUpgrade(): Promise<void> {
+    await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
+  }
+
+  public async checkUpgrade(): Promise<{
+    current_version: string;
+    latest_version?: string;
+    release_notes_url?: string;
+  }> {
+    return this.request('POST', '/api/v1/operator/runtime/upgrade/check', {});
+  }
+
+  public async getCleanupJob(): Promise<CleanupJob> {
+    return this.request<CleanupJob>('GET', '/api/v1/system/cleanup');
+  }
+
+  public async executeCleanup(
+    jobId: string,
+    excludeIds?: string[],
+  ): Promise<{ status: string; freed_bytes: number }> {
+    const body = excludeIds && excludeIds.length > 0 ? { exclude: excludeIds } : {};
+    return this.request<{ status: string; freed_bytes: number }>(
+      'POST',
+      `/api/v1/system/cleanup/${encodeURIComponent(jobId)}/delete`,
+      body,
+    );
+  }
+
+  public async remindCleanup(jobId: string): Promise<void> {
+    await this.request('POST', `/api/v1/system/cleanup/${encodeURIComponent(jobId)}/remind`, {});
+  }
+
+  public async ignoreCleanup(jobId: string): Promise<void> {
+    await this.request('POST', `/api/v1/system/cleanup/${encodeURIComponent(jobId)}/ignore`, {});
+  }
+
+  public async getKeptCleanup(): Promise<{ items: CleanupKeptItem[] }> {
+    return this.request<{ items: CleanupKeptItem[] }>('GET', '/api/v1/system/cleanup/kept');
+  }
+
+  public async releaseKeptCleanup(
+    itemIds?: string[],
+    all = false,
+  ): Promise<{ released_count: number }> {
+    const body = all ? { all: true } : { items: itemIds || [] };
+    return this.request<{ released_count: number }>(
+      'POST',
+      '/api/v1/system/cleanup/kept/release',
+      body,
+    );
+  }
+
+  public async getCleanupDurations(): Promise<CleanupDurations> {
+    return this.request<CleanupDurations>('GET', '/api/v1/system/cleanup/durations');
   }
 
   public async request<T>(method: string, path: string, body?: unknown): Promise<T> {

@@ -77,4 +77,19 @@ This directory archives work packages that have been implemented, verified, and 
 |Reports and the completion report in the web app
 |`pm-web-app` `/reports` grouped view, `CompletionReportView.svelte` with deliverables, re-planning, decisions, and tokens breakdown, header badge, and arrival banner
 |epic clients
+
+|link:system-contract.adoc[`system-contract`]
+|The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
+|`de.planmarshall.api.system` records and DTOs, message catalogue (`system.{en,de}.properties`), and `pm-mock-runtime` `system.json` scenario with dynamic handlers
+|epic clients; UC-SYS-1..3
+
+|link:cli-system.adoc[`cli-system`]
+|The system view, the runtime's lifecycle, and the cleanup in the terminal
+|`pm-operator system`, `pm-operator drain`, and `pm-operator cleanup` verbs with 6-part dashboard, drain operations, and interactive cleanup
+|epic clients; UC-SYS-1..3
+
+|link:web-system.adoc[`web-system`]
+|The system view, the runtime's lifecycle, and the cleanup in the web app
+|`SystemView.svelte` dashboard, draining header banner, lifecycle modals, and `CleanupView.svelte` review and deletion flows
+|epic clients; UC-SYS-1..3
 |===

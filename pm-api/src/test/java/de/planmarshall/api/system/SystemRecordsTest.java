@@ -1,0 +1,298 @@
+/*
+ * Copyright © 2026-present Oliver Wolff
+ *
+ * SPDX-License-Identifier: LicenseRef-Proprietary
+ *
+ * All rights reserved. This file is part of plan-marshall-mcp, which is proprietary software.
+ * No right to use, copy, modify or distribute this file is granted; see the LICENSE.md file at
+ * the root of this repository.
+ */
+package de.planmarshall.api.system;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
+class SystemRecordsTest {
+
+    @Test
+    void systemEnums() {
+        assertEquals(SystemWindow.HOUR, SystemWindow.fromValue("hour"));
+        assertEquals(SystemWindow.TODAY, SystemWindow.fromValue("today"));
+        assertEquals(SystemWindow.SEVEN_DAYS, SystemWindow.fromValue("7d"));
+        assertEquals(SystemWindow.SEVEN_DAYS, SystemWindow.fromValue("week"));
+
+        assertEquals(RuntimeLifecycleState.RUNNING, RuntimeLifecycleState.fromValue("running"));
+        assertEquals(RuntimeLifecycleState.DRAINING, RuntimeLifecycleState.fromValue("draining"));
+        assertEquals(RuntimeLifecycleState.STOPPING, RuntimeLifecycleState.fromValue("stopping"));
+        assertEquals(RuntimeLifecycleState.UPGRADING, RuntimeLifecycleState.fromValue("upgrading"));
+        assertEquals(RuntimeLifecycleState.STOPPED, RuntimeLifecycleState.fromValue("stopped"));
+
+        assertEquals(WorkerState.BUSY, WorkerState.fromValue("busy"));
+        assertEquals(WorkerState.IDLE, WorkerState.fromValue("idle"));
+        assertEquals(WorkerState.STARTING, WorkerState.fromValue("starting"));
+        assertEquals(WorkerState.RESTARTING, WorkerState.fromValue("restarting"));
+
+        assertEquals(CleanupJobState.OPEN, CleanupJobState.fromValue("open"));
+        assertEquals(CleanupJobState.POSTPONED, CleanupJobState.fromValue("postponed"));
+        assertEquals(CleanupJobState.DELETING, CleanupJobState.fromValue("deleting"));
+        assertEquals(CleanupJobState.DONE, CleanupJobState.fromValue("done"));
+
+        assertEquals(StopAction.DRAIN, StopAction.fromValue("drain"));
+        assertEquals(StopAction.NOW, StopAction.fromValue("now"));
+
+        assertEquals(PostStopAction.EXIT, PostStopAction.fromValue("exit"));
+        assertEquals(PostStopAction.RESTART, PostStopAction.fromValue("restart"));
+    }
+
+    @Test
+    void runtimeMetricsRoundTrip() throws Exception {
+        var metrics = new RuntimeMetrics(
+                "0.9.1",
+                "2026-10-02 (a1b2c3d)",
+                "today 08:14",
+                22320,
+                432013312L,
+                1073741824L,
+                713031680L,
+                4.0,
+                2469606195L,
+                40802189312L,
+                "13:40",
+                true,
+                "127.0.0.1:7420",
+                "192.168.1.20:7421",
+                2,
+                0,
+                null,
+                "0.10.0",
+                "2026-10-11",
+                "today 09:00",
+                "/api/v1/system/release-notes?version=0.10.0",
+                true,
+                null
+        );
+
+        var json = metrics.toJson();
+        assertNotNull(json);
+
+        var restored = RuntimeMetrics.fromJson(json);
+        assertEquals(metrics.version(), restored.version());
+        assertEquals(metrics.build(), restored.build());
+        assertEquals(metrics.uptimeSeconds(), restored.uptimeSeconds());
+        assertEquals(metrics.heapUsedBytes(), restored.heapUsedBytes());
+        assertEquals(metrics.heapMaxBytes(), restored.heapMaxBytes());
+        assertEquals(metrics.residentMemoryBytes(), restored.residentMemoryBytes());
+        assertEquals(metrics.cpuPercent(), restored.cpuPercent());
+        assertEquals(metrics.machineStoreBytes(), restored.machineStoreBytes());
+        assertEquals(metrics.diskFreeBytes(), restored.diskFreeBytes());
+        assertEquals(metrics.loopbackListener(), restored.loopbackListener());
+        assertEquals(metrics.networkListener(), restored.networkListener());
+        assertEquals(metrics.pairedDevicesCount(), restored.pairedDevicesCount());
+        assertEquals(metrics.newerVersion(), restored.newerVersion());
+        assertTrue(restored.upgradeSupported());
+    }
+
+    @Test
+    void workMetricsRoundTrip() throws Exception {
+        var work = new WorkMetrics(
+                Map.of("running", 3, "waiting", 1, "held", 1, "paused", 2),
+                Map.of("running", 1, "waiting", 1),
+                4,
+                6,
+                3,
+                List.of("recovering-proj")
+        );
+
+        var json = work.toJson();
+        var restored = WorkMetrics.fromJson(json);
+
+        assertEquals(work.plansByState(), restored.plansByState());
+        assertEquals(work.epicsByState(), restored.epicsByState());
+        assertEquals(4, restored.tasksRunning());
+        assertEquals(6, restored.tasksQueued());
+        assertEquals(3, restored.activeProjectsCount());
+        assertEquals(List.of("recovering-proj"), restored.recoveringProjects());
+    }
+
+    @Test
+    void workerMetricRoundTrip() throws Exception {
+        var worker = new WorkerMetric(
+                "planner",
+                "claude",
+                "opus-4.5",
+                WorkerState.BUSY,
+                "fix-relay"
+        );
+
+        var json = worker.toJson();
+        var restored = WorkerMetric.fromJson(json);
+
+        assertEquals("planner", restored.role());
+        assertEquals("claude", restored.harness());
+        assertEquals("opus-4.5", restored.model());
+        assertEquals(WorkerState.BUSY, restored.state());
+        assertEquals("fix-relay", restored.currentPlanTitle());
+    }
+
+    @Test
+    void modelMetricRoundTrip() throws Exception {
+        var model = new ModelMetric(
+                "claude:opus-4.5",
+                "planner",
+                42,
+                2020000L,
+                1900000L,
+                120000L,
+                0,
+                1,
+                false,
+                0
+        );
+
+        var json = model.toJson();
+        var restored = ModelMetric.fromJson(json);
+
+        assertEquals("claude:opus-4.5", restored.harnessAndModel());
+        assertEquals(42, restored.callsCount());
+        assertEquals(2020000L, restored.tokensTotal());
+        assertEquals(1, restored.retriesCount());
+        assertFalse(restored.isFloor());
+    }
+
+    @Test
+    void cleanupJobRoundTrip() throws Exception {
+        var summary = new CleanupSummary(
+                12,
+                2,
+                40,
+                5,
+                1,
+                1800000000L,
+                4,
+                "today 03:00",
+                "tomorrow 03:00"
+        );
+
+        var item = new CleanupItemEntry(
+                "plan:fix-relay",
+                "plan",
+                "fix-relay",
+                "merged (#214)",
+                "12 Sep",
+                88080384L,
+                6,
+                0,
+                null
+        );
+
+        var projectItem = new CleanupProjectItem(
+                "pm-mcp-clients",
+                2,
+                1,
+                20,
+                3,
+                100000000L,
+                List.of(item)
+        );
+
+        var job = new CleanupJob(
+                "cln-0012",
+                CleanupJobState.OPEN,
+                "today 03:00",
+                summary,
+                List.of(projectItem),
+                Map.of("delete", "/api/v1/system/cleanup/cln-0012/delete")
+        );
+
+        var json = job.toJson();
+        var restored = CleanupJob.fromJson(json);
+
+        assertEquals("cln-0012", restored.jobId());
+        assertEquals(CleanupJobState.OPEN, restored.state());
+        assertEquals(12, restored.summary().plansCount());
+        assertEquals(1, restored.projectItems().size());
+        assertEquals("pm-mcp-clients", restored.projectItems().getFirst().projectId());
+        assertEquals(1, restored.projectItems().getFirst().items().size());
+        assertEquals("plan:fix-relay", restored.projectItems().getFirst().items().getFirst().id());
+    }
+
+    @Test
+    void cleanupDurationsRoundTrip() throws Exception {
+        var durations = new CleanupDurations(30, 30, 14, 30, 60, 3);
+        var json = durations.toJson();
+        var restored = CleanupDurations.fromJson(json);
+
+        assertEquals(30, restored.plansAfterDays());
+        assertEquals(14, restored.logsAfterDays());
+        assertEquals(60, restored.unenrolledAfterDays());
+        assertEquals(3, restored.remindAfterDays());
+    }
+
+    @Test
+    void systemSnapshotRoundTrip() throws Exception {
+        var runtime = new RuntimeMetrics(
+                "0.9.1",
+                "commit-123",
+                "today 08:00",
+                3600,
+                1000L,
+                2000L,
+                3000L,
+                2.5,
+                4000L,
+                5000L,
+                "12:00",
+                true,
+                "127.0.0.1:7420",
+                "off",
+                0,
+                0,
+                null,
+                null,
+                null,
+                null,
+                null,
+                true,
+                null
+        );
+
+        var work = new WorkMetrics(Map.of("running", 1), Map.of(), 1, 0, 1, List.of());
+        var workers = List.of(new WorkerMetric("impl", "claude", "sonnet-4.5", WorkerState.IDLE, null));
+        var summary = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, null, null);
+        var snapshot = new SystemSnapshot(runtime, work, workers, Map.of("locks", 0), List.of(), summary, SystemWindow.HOUR, null);
+
+        var json = snapshot.toJson();
+        var restored = SystemSnapshot.fromJson(json);
+
+        assertEquals("0.9.1", restored.runtime().version());
+        assertEquals(SystemWindow.HOUR, restored.window());
+        assertEquals(1, restored.workers().size());
+        assertEquals("sonnet-4.5", restored.workers().getFirst().model());
+    }
+
+    @Test
+    void eventsRoundTrip() throws Exception {
+        var metricsEvent = new SystemMetricsEvent(Map.of("cpu_percent", 5.0, "tasks_running", 2));
+        var restoredMetrics = SystemMetricsEvent.fromJson(metricsEvent.toJson());
+        assertEquals(String.valueOf(metricsEvent.metrics().get("tasks_running")), String.valueOf(restoredMetrics.metrics().get("tasks_running")));
+
+        var drainEvent = new RuntimeDrainingEvent("the console", 2, List.of("task-1", "job-2"), true, "14:02");
+        var restoredDrain = RuntimeDrainingEvent.fromJson(drainEvent.toJson());
+        assertEquals("the console", restoredDrain.who());
+        assertEquals(2, restoredDrain.remainingCount());
+        assertTrue(restoredDrain.withdrawable());
+
+        var decidedEvent = new CleanupDecidedEvent("cln-0012", "delete", "the console", 5, 1000000L, "14:15");
+        var restoredDecided = CleanupDecidedEvent.fromJson(decidedEvent.toJson());
+        assertEquals("cln-0012", restoredDecided.jobId());
+        assertEquals("delete", restoredDecided.decision());
+        assertEquals(5, restoredDecided.deletedCount());
+    }
+}

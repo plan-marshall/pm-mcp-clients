@@ -35,10 +35,10 @@ import picocli.CommandLine.Spec;
  * according to {@code 24-reports.adoc} and {@code shared/reports.adoc}.
  */
 @Command(name = "reports", description = "Reports operations.",
-              subcommands = {
-                            ReportsCommand.ReadCommand.class,
-                            ReportsCommand.OpenCommand.class
-              })
+                    subcommands = {
+                                        ReportsCommand.ReadCommand.class,
+                                        ReportsCommand.OpenCommand.class
+                    })
 @OperatorVerb
 public final class ReportsCommand implements Callable<Integer> {
 
@@ -160,13 +160,13 @@ public final class ReportsCommand implements Callable<Integer> {
         var targetName = resolveTargetName(item);
         var subject = ConsoleNotice.stripControlSequences(item.subject());
         var timeStr = ConsoleNotice.stripControlSequences(
-                      item.isSentLater() ? item.created() + " · sent " + item.sent() : item.created());
+                            item.isSentLater() ? item.created() + " · sent " + item.sent() : item.created());
 
         out.printf("%s%-10s %-19s %-37s %s%n", indent, id, targetName, subject, timeStr);
 
         var body = item.body() != null && !item.body().isBlank() ? ConsoleNotice.stripControlSequences(item.body()) : "";
         var detailHint = item.detail() != null && !item.detail().isBlank()
-                      ? MessageCatalogue.format("operator.reports.open_hint", Map.of("id", id)) : "";
+                            ? MessageCatalogue.format("operator.reports.open_hint", Map.of("id", id)) : "";
 
         printItemBodyAndDetail(out, indent, body, detailHint);
     }
@@ -208,7 +208,7 @@ public final class ReportsCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (all) {
                 var response = context.runtime(true).send(
-                              HttpRequest.json("POST", "/api/v1/reports/read", "{\"all\":true}"));
+                                    HttpRequest.json("POST", "/api/v1/reports/read", "{\"all\":true}"));
                 if (response.status() == 200 || response.status() == 204) {
                     var parsed = ReadReportsResponse.fromJson(response.bodyText());
                     out.printf("✓ %d reports marked read.%n", parsed.markedCount());
@@ -228,7 +228,7 @@ public final class ReportsCommand implements Callable<Integer> {
             for (var id : reportIds) {
                 var safeId = OperatorUrlUtil.encodePathSegment(id);
                 var response = context.runtime(true).send(
-                              HttpRequest.json("POST", REPORTS_API + safeId + "/read", "{}"));
+                                    HttpRequest.json("POST", REPORTS_API + safeId + "/read", "{}"));
                 if (response.status() == 200 || response.status() == 204) {
                     marked++;
                 } else if (response.status() == 404) {

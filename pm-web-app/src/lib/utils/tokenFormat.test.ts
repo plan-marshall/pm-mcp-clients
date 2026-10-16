@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatTokens, formatSplit } from './tokenFormat';
+import { formatTokens, formatSplit, formatBytes } from './tokenFormat';
 
 describe('tokenFormat utility', () => {
   it('formats counts below 1000 as plain number', () => {
@@ -32,5 +32,15 @@ describe('tokenFormat utility', () => {
   it('formats split in and out tokens', () => {
     expect(formatSplit(412000, 380000, 32000, true, 'en')).toBe('≥ 412 k (≥ 380 k in · ≥ 32 k out)');
     expect(formatSplit(412000, 380000, 32000, false, 'de')).toBe('412 Tsd. (380 Tsd. rein · 32 Tsd. raus)');
+  });
+
+  it('formats bytes into human readable units', () => {
+    expect(formatBytes(512)).toBe('512 B');
+    expect(formatBytes(2048)).toBe('2 KB');
+    expect(formatBytes(412 * 1024 * 1024)).toBe('412 MB');
+    expect(formatBytes(1825361100)).toBe('1.7 GB');
+    expect(formatBytes(1932735283)).toBe('1.8 GB');
+    expect(formatBytes(1073741824)).toBe('1 GB');
+    expect(formatBytes(38 * 1024 * 1024 * 1024)).toBe('38 GB');
   });
 });

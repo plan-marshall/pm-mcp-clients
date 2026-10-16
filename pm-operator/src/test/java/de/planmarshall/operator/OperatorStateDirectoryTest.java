@@ -19,14 +19,14 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Map;
 
+import de.planmarshall.api.runtime.RuntimeTokenFile;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
-
-import de.planmarshall.api.runtime.RuntimeTokenFile;
 
 @DisplayName("OperatorStateDirectory")
 class OperatorStateDirectoryTest {
@@ -45,8 +45,8 @@ class OperatorStateDirectoryTest {
             var state = OperatorStateDirectory.resolve(Map.of("XDG_STATE_HOME", xdg.toString()), tempDir);
 
             assertAll(
-                          () -> assertEquals(xdg.resolve("pm-operator"), state.root()),
-                          () -> assertEquals(xdg.resolve("pm-operator/history"), state.historyFile())
+                                () -> assertEquals(xdg.resolve("pm-operator"), state.root()),
+                                () -> assertEquals(xdg.resolve("pm-operator/history"), state.historyFile())
             );
         }
 
@@ -57,8 +57,8 @@ class OperatorStateDirectoryTest {
             var state2 = OperatorStateDirectory.resolve(Map.of("XDG_STATE_HOME", " "), tempDir);
 
             assertAll(
-                          () -> assertEquals(tempDir.resolve(".local/state/pm-operator"), state1.root()),
-                          () -> assertEquals(tempDir.resolve(".local/state/pm-operator"), state2.root())
+                                () -> assertEquals(tempDir.resolve(".local/state/pm-operator"), state1.root()),
+                                () -> assertEquals(tempDir.resolve(".local/state/pm-operator"), state2.root())
             );
         }
     }
@@ -77,8 +77,8 @@ class OperatorStateDirectoryTest {
             state.ensureDirectory();
 
             assertAll(
-                          () -> assertTrue(Files.isDirectory(dir)),
-                          () -> assertEquals(RuntimeTokenFile.DIRECTORY_MODE, Files.getPosixFilePermissions(dir))
+                                () -> assertTrue(Files.isDirectory(dir)),
+                                () -> assertEquals(RuntimeTokenFile.DIRECTORY_MODE, Files.getPosixFilePermissions(dir))
             );
         }
 
@@ -91,7 +91,7 @@ class OperatorStateDirectoryTest {
             Files.createSymbolicLink(symlink, realDir);
 
             var ex = assertThrows(InsecureOperatorFileException.class,
-                          () -> OperatorStateDirectory.verifyDirectory(symlink));
+                                () -> OperatorStateDirectory.verifyDirectory(symlink));
             assertTrue(ex.getMessage().contains("is a symbolic link"));
         }
 
@@ -103,7 +103,7 @@ class OperatorStateDirectoryTest {
             Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("rwxr-xr-x"));
 
             var ex = assertThrows(InsecureOperatorFileException.class,
-                          () -> OperatorStateDirectory.verifyDirectory(dir));
+                                () -> OperatorStateDirectory.verifyDirectory(dir));
             assertTrue(ex.getMessage().contains("expected 0700"));
         }
 
@@ -118,14 +118,14 @@ class OperatorStateDirectoryTest {
 
             Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-r--r--"));
             var ex1 = assertThrows(InsecureOperatorFileException.class,
-                          () -> OperatorStateDirectory.verifyFile(file));
+                                () -> OperatorStateDirectory.verifyFile(file));
             assertTrue(ex1.getMessage().contains("expected 0600"));
 
             var symlink = tempDir.resolve("symlink-file");
             Files.setPosixFilePermissions(file, RuntimeTokenFile.FILE_MODE);
             Files.createSymbolicLink(symlink, file);
             var ex2 = assertThrows(InsecureOperatorFileException.class,
-                          () -> OperatorStateDirectory.verifyFile(symlink));
+                                () -> OperatorStateDirectory.verifyFile(symlink));
             assertTrue(ex2.getMessage().contains("is a symbolic link"));
         }
 
@@ -139,8 +139,8 @@ class OperatorStateDirectoryTest {
             state.ensureFile(history);
 
             assertAll(
-                          () -> assertTrue(Files.isRegularFile(history)),
-                          () -> assertEquals(RuntimeTokenFile.FILE_MODE, Files.getPosixFilePermissions(history))
+                                () -> assertTrue(Files.isRegularFile(history)),
+                                () -> assertEquals(RuntimeTokenFile.FILE_MODE, Files.getPosixFilePermissions(history))
             );
         }
     }
