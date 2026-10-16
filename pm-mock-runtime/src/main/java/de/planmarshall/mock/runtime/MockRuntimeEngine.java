@@ -39,6 +39,7 @@ import de.planmarshall.mock.scenario.StateDefinition;
 /**
  * The core state machine and request dispatcher for the mock runtime.
  */
+@SuppressWarnings("java:S1075")
 public final class MockRuntimeEngine implements AutoCloseable {
 
     private static final String KEY_ERROR = "error";
@@ -607,44 +608,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
-        var method = request.method();
+        return switch (request.method()) {
+            case "GET" -> handleGetDeviceRoutes(path, response);
+            case "POST" -> handlePostDeviceRoutes(request, response, path);
+            case "PATCH", "PUT" -> handlePutDeviceRoutes(request, response, path);
+            case METHOD_DELETE -> handleDeleteDeviceRoutes(request, response, path, isWeb);
+            default -> false;
+        };
+    }
 
-        if ("POST".equals(method) && "/api/v1/web/pairings".equals(path)) {
-            handleCreatePairing(response);
-            return true;
-        }
-
-        if ("GET".equals(method) && PATH_DEVICES.equals(path)) {
+    private boolean handleGetDeviceRoutes(String path, MockHttpResponse response) throws IOException {
+        if (PATH_DEVICES.equals(path)) {
             handleListDevices(response);
             return true;
         }
-
-        if (("PATCH".equals(method) || "PUT".equals(method) || "POST".equals(method)) && path.startsWith(PATH_DEVICES_SLASH)) {
-            handleRenameDevice(request, response, path);
-            return true;
-        }
-
-        if (METHOD_DELETE.equals(method) && path.startsWith(PATH_DEVICES_SLASH) && !PATH_DEVICES.equals(path)) {
-            handleRevokeSingleDevice(response, path, isWeb);
-            return true;
-        }
-
-        if (METHOD_DELETE.equals(method) && PATH_DEVICES.equals(path)) {
-            handleRevokeAllDevices(request, response, isWeb);
-            return true;
-        }
-
-        if (METHOD_DELETE.equals(method) && "/api/v1/web/listeners/lan".equals(path)) {
-            handleCloseLanListener(response);
-            return true;
-        }
-
-        if ("PUT".equals(method) && "/api/v1/web".equals(path)) {
-            handleUpdateWebConfig(request, response);
-            return true;
-        }
-
-        if ("GET".equals(method) && "/api/v1/web".equals(path)) {
+        if ("/api/v1/web".equals(path)) {
             var resp = new LinkedHashMap<String, Object>();
             resp.put("enabled", true);
             resp.put("lan", lanListenerOn);
@@ -653,7 +631,46 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, resp);
             return true;
         }
+        return false;
+    }
 
+    private boolean handlePostDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
+        if ("/api/v1/web/pairings".equals(path)) {
+            handleCreatePairing(response);
+            return true;
+        }
+        if (path.startsWith(PATH_DEVICES_SLASH)) {
+            handleRenameDevice(request, response, path);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handlePutDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
+        if (path.startsWith(PATH_DEVICES_SLASH)) {
+            handleRenameDevice(request, response, path);
+            return true;
+        }
+        if ("/api/v1/web".equals(path)) {
+            handleUpdateWebConfig(request, response);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleDeleteDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path, boolean isWeb) throws IOException {
+        if (path.startsWith(PATH_DEVICES_SLASH)) {
+            handleRevokeSingleDevice(response, path, isWeb);
+            return true;
+        }
+        if (PATH_DEVICES.equals(path)) {
+            handleRevokeAllDevices(request, response, isWeb);
+            return true;
+        }
+        if ("/api/v1/web/listeners/lan".equals(path)) {
+            handleCloseLanListener(response);
+            return true;
+        }
         return false;
     }
 

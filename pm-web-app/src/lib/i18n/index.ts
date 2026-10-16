@@ -47,29 +47,47 @@ export const fallbackMessages: Record<string, string> = {
 export const currentLocale = writable<Locale>('en');
 export const messagesStore = writable<Record<string, string>>({});
 
+function skipWhitespace(text: string, startIndex: number): number {
+  let i = startIndex;
+  while (i < text.length && /\s/.test(text[i])) {
+    i++;
+  }
+  return i;
+}
+
+function readBraceBlock(body: string, startIndex: number): { text: string; nextIndex: number } {
+  let depth = 1;
+  let i = startIndex;
+  while (i < body.length && depth > 0) {
+    if (body[i] === '{') {
+      depth++;
+    } else if (body[i] === '}') {
+      depth--;
+    }
+    i++;
+  }
+  return { text: body.slice(startIndex, i - 1), nextIndex: i };
+}
+
 function parseSelectBranches(body: string): Record<string, string> {
   const branches: Record<string, string> = {};
   let i = 0;
   while (i < body.length) {
-    while (i < body.length && /\s/.test(body[i])) i++;
+    i = skipWhitespace(body, i);
     if (i >= body.length) break;
 
     const keyStart = i;
-    while (i < body.length && /[a-zA-Z0-9_-]/.test(body[i])) i++;
-    const key = body.slice(keyStart, i);
-
-    while (i < body.length && /\s/.test(body[i])) i++;
-    if (i >= body.length || body[i] !== '{') break;
-    i++;
-
-    let depth = 1;
-    const valStart = i;
-    while (i < body.length && depth > 0) {
-      if (body[i] === '{') depth++;
-      else if (body[i] === '}') depth--;
+    while (i < body.length && /[a-zA-Z0-9_-]/.test(body[i])) {
       i++;
     }
-    branches[key] = body.slice(valStart, i - 1);
+    const key = body.slice(keyStart, i);
+
+    i = skipWhitespace(body, i);
+    if (i >= body.length || body[i] !== '{') break;
+
+    const block = readBraceBlock(body, i + 1);
+    branches[key] = block.text;
+    i = block.nextIndex;
   }
   return branches;
 }

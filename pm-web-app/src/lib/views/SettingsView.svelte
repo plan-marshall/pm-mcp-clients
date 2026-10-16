@@ -18,6 +18,7 @@
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
 
   let unsubscribeEvents: (() => void) | null = null;
+  let isMounted = true;
 
   const aspects = [
     { id: 'harnesses', title: 'Harnesses', desc: 'Coding agents and CLI harnesses' },
@@ -28,14 +29,16 @@
     { id: 'plans', title: 'Plans', desc: 'Plan defaults and landing method' },
   ];
 
-  onMount(async () => {
-    await loadData();
+  onMount(() => {
+    isMounted = true;
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
+    void loadData();
   });
 
   onDestroy(() => {
+    isMounted = false;
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
@@ -66,15 +69,19 @@
         apiClient.getDevices(),
         apiClient.getStatus().catch(() => null),
       ]);
+      if (!isMounted) return;
       devices = Array.isArray(devList) ? devList : [];
       if (status?.web && typeof status.web.lan === 'boolean') {
         lanListenerOn = status.web.lan;
       }
     } catch {
+      if (!isMounted) return;
       loadError = 'Failed to load paired devices.';
       devices = [];
     } finally {
-      isLoading = false;
+      if (isMounted) {
+        isLoading = false;
+      }
     }
   }
 
