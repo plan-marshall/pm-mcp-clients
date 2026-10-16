@@ -47,12 +47,19 @@ public final class StandardScenarios {
     public static final String WEB_PAIRING = "web-pairing";
 
     /**
+     * Paired devices management flow demonstrating listing, renaming, revoking devices,
+     * and network listener toggling.
+     */
+    public static final String PAIRED_DEVICES = "paired-devices";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
             STATUS_ONLY,
             ONBOARDING_HAPPY,
             ONBOARDING_HARNESS_NOT_LOGGED_IN,
-            WEB_PAIRING
+            WEB_PAIRING,
+            PAIRED_DEVICES
     );
 }

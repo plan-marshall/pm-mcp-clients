@@ -6,16 +6,24 @@ import {
   type HypermediaLink,
 } from '../api/client';
 
+export interface RevokedInfo {
+  reason?: string;
+  revoked_by?: string;
+  revoked_at?: string;
+  details?: string;
+}
+
 export interface RuntimeState {
   isInitialized: boolean;
   isPaired: boolean;
   isOnboarded: boolean;
   deviceLabel: string;
   machineName: string;
-  currentRoute: 'pair' | 'onboarding' | 'workspace' | 'settings' | 'designer';
+  currentRoute: 'pair' | 'onboarding' | 'workspace' | 'settings' | 'designer' | 'revoked';
   currentState: StateRepresentation | null;
   isRevoked: boolean;
   revokedReason: string;
+  revokedInfo?: RevokedInfo | null;
   isOffline: boolean;
   activeStep: number;
 }
@@ -30,6 +38,7 @@ const initialState: RuntimeState = {
   currentState: null,
   isRevoked: false,
   revokedReason: '',
+  revokedInfo: null,
   isOffline: false,
   activeStep: 1,
 };
@@ -88,13 +97,16 @@ export async function initRuntime(): Promise<void> {
     hashListenerRegistered = true;
   }
 
-  apiClient.setOnRevoked((reason) => {
+  apiClient.setOnRevoked((info) => {
+    const reasonStr = typeof info === 'string' ? info : info?.reason || 'device_revoked';
+    const revokedObj: RevokedInfo = typeof info === 'object' && info !== null ? info : { reason: reasonStr };
     runtimeStore.update((s) => ({
       ...s,
       isPaired: false,
       isRevoked: true,
-      revokedReason: reason || 'Its pairing is no longer accepted.',
-      currentRoute: 'pair',
+      revokedReason: reasonStr,
+      revokedInfo: revokedObj,
+      currentRoute: 'revoked',
     }));
   });
 
@@ -175,6 +187,19 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
         currentState: stateData,
         activeStep,
         isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
+      }));
+    }
+  } else if (event === 'stream.closed') {
+    const payload = data as RevokedInfo;
+    if (payload?.reason === 'device_revoked' || payload?.reason === 'device_expired') {
+      apiClient.clearAuth();
+      runtimeStore.update((s) => ({
+        ...s,
+        isPaired: false,
+        isRevoked: true,
+        revokedReason: payload.reason || 'device_revoked',
+        revokedInfo: payload,
+        currentRoute: 'revoked',
       }));
     }
   }

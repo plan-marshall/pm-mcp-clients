@@ -157,4 +157,30 @@ class PmOperatorProcessIT {
             }
         }
     }
+
+    @Test
+    @DisplayName("web devices executes as a process and lists paired devices")
+    void webDevicesProcess() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, PmOperatorTest.STATUS);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, """
+                        [
+                          {"label":"Firefox on mbp-oliver","paired_from":"loopback","created_at":"2026-05-12T10:00:00Z","last_used_at":"2026-10-16T14:02:00Z"}
+                        ]
+                        """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        try (var process = operator(environment(), "web", "devices")) {
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
+            assertTrue(stdout.contains("Paired devices"));
+            assertTrue(stdout.contains("Firefox on mbp-oliver"));
+        }
+    }
 }

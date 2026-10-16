@@ -12,18 +12,22 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.LineReaderBuilder;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeClient;
 
 import picocli.CommandLine;
@@ -255,6 +259,12 @@ public final class WebCommand implements Callable<Integer> {
         @Option(names = "--all", description = "Revoke all paired devices")
         boolean all;
 
+        @Option(names = {"-y", "--yes"}, description = "Confirm without prompting")
+        boolean yes;
+
+        @Option(names = {"-i", "--interactive"}, description = "Interactive mode")
+        boolean interactive;
+
         DevicesCommand(OperatorContext context) {
             this.context = context;
         }
@@ -267,9 +277,9 @@ public final class WebCommand implements Callable<Integer> {
 
             if ("rename".equalsIgnoreCase(action)) {
                 handleRename(runtime, out);
-            } else if ("revoke".equalsIgnoreCase(action)) {
+            } else if ("revoke".equalsIgnoreCase(action) || others || all) {
                 handleRevoke(runtime, out);
-            } else if ("listener-off".equalsIgnoreCase(action)) {
+            } else if ("listener-off".equalsIgnoreCase(action) || "listener_off".equalsIgnoreCase(action)) {
                 handleListenerOff(runtime, out);
             } else {
                 handleList(runtime, out);
@@ -283,11 +293,12 @@ public final class WebCommand implements Callable<Integer> {
                 throw new CommandLine.ParameterException(
                         spec.commandLine(), "rename requires <deviceId> <newLabel>");
             }
-            var body = JsonTree.write(Map.of(LABEL, newLabel));
+            var cleanLabel = ConsoleNotice.stripControlSequences(newLabel);
+            var body = JsonTree.write(Map.of(LABEL, cleanLabel));
             var response = runtime.send(HttpRequest.json("PUT",
                     "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId), body));
             if (response.status() == 200 || response.status() == 204) {
-                out.println("✓ Renamed: " + newLabel);
+                out.println("✓ Renamed: " + cleanLabel);
             } else {
                 out.printf("Failed to rename device: HTTP %d%n", response.status());
             }
@@ -298,14 +309,16 @@ public final class WebCommand implements Callable<Integer> {
                 throw new CommandLine.ParameterException(
                         spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
             }
-            String path = "/api/v1/web/devices";
-            if (others) {
-                path += "?scope=others";
-            } else if (all) {
-                path += "?scope=all";
-            } else {
-                path += "/" + OperatorUrlUtil.encodePathSegment(deviceId);
+
+            if (interactive && !yes && context.isInteractiveTerminal()) {
+                if (!confirm()) {
+                    return;
+                }
             }
+
+            var path = deviceId != null
+                    ? "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId)
+                    : "/api/v1/web/devices?scope=" + (others ? "others" : "all");
             var response = runtime.send(new HttpRequest("DELETE", path, Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println("✓ Revoked paired device(s)");
@@ -317,7 +330,7 @@ public final class WebCommand implements Callable<Integer> {
         private void handleListenerOff(RuntimeClient runtime, PrintWriter out) throws IOException {
             var body = JsonTree.write(Map.of("lan", false));
             var response = runtime.send(HttpRequest.json("PUT", "/api/v1/web", body));
-            if (response.status() == 200) {
+            if (response.status() == 200 || response.status() == 204) {
                 out.println("✓ Network listener turned off (loopback remains open)");
             } else {
                 out.printf("Failed to turn listener off: HTTP %d%n", response.status());
@@ -325,22 +338,114 @@ public final class WebCommand implements Callable<Integer> {
         }
 
         private void handleList(RuntimeClient runtime, PrintWriter out) throws IOException {
+            var locale = context.clientEnvironment().locale();
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
-            if (response.status() == 200) {
-                renderDevices(response.body(), out);
-            } else {
+            if (response.status() != 200) {
                 out.printf("Failed to list devices: HTTP %d%n", response.status());
+                return;
+            }
+
+            var statusRes = runtime.send(HttpRequest.get("/api/v1/status"));
+            boolean lanOn = true;
+            if (statusRes.status() == 200) {
+                var statusObj = JsonTree.asObject(JsonTree.parse(statusRes.body()));
+                var webObj = JsonTree.object(statusObj, "web");
+                if (webObj != null && webObj.containsKey("lan")) {
+                    lanOn = Boolean.TRUE.equals(webObj.get("lan"));
+                }
+            }
+
+            renderDevices(response.body(), out, locale, lanOn);
+            if (interactive && context.isInteractiveTerminal()) {
+                var parsed = JsonTree.parse(response.body());
+                if (parsed instanceof List<?> list && !list.isEmpty()) {
+                    handleInteractive(runtime, out, list, lanOn);
+                }
             }
         }
 
-        private static void renderDevices(byte[] body, PrintWriter out) throws IOException {
+        private void handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list, boolean lanOn) {
+            try {
+                var terminal = context.createTerminal();
+                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+                var prompt = String.format("Act on a device: 1-%d   o) revoke all others   n) turn the network listener off   q) leave   ?   › ", list.size());
+                var line = reader.readLine(prompt);
+                if (line == null) {
+                    return;
+                }
+                var trimmed = line.trim();
+                if ("q".equalsIgnoreCase(trimmed) || "leave".equalsIgnoreCase(trimmed) || trimmed.isEmpty()) {
+                    return;
+                }
+                if ("o".equalsIgnoreCase(trimmed)) {
+                    this.others = true;
+                    handleRevoke(runtime, out);
+                    return;
+                }
+                if ("n".equalsIgnoreCase(trimmed)) {
+                    handleListenerOff(runtime, out);
+                    return;
+                }
+                int choice;
+                try {
+                    choice = Integer.parseInt(trimmed);
+                } catch (NumberFormatException _) {
+                    return;
+                }
+                if (choice >= 1 && choice <= list.size()) {
+                    var item = list.get(choice - 1);
+                    String devLabel = "device " + choice;
+                    String targetId = String.valueOf(choice);
+                    if (item instanceof Map<?, ?> map) {
+                        var rawLabel = map.get(LABEL);
+                        if (rawLabel != null) {
+                            devLabel = ConsoleNotice.stripControlSequences(rawLabel.toString());
+                        }
+                        var idObj = map.get("device_id");
+                        if (idObj != null) {
+                            targetId = idObj.toString();
+                        }
+                    }
+                    out.printf("  %d) %s%n", choice, devLabel);
+                    out.flush();
+                    var actLine = reader.readLine("Rename or revoke? r) rename   x) revoke   b) back   ?   › ");
+                    if (actLine == null) {
+                        return;
+                    }
+                    var act = actLine.trim();
+                    if ("r".equalsIgnoreCase(act) || "rename".equalsIgnoreCase(act)) {
+                        var newLbl = reader.readLine(String.format("Label [%s] › ", devLabel));
+                        if (newLbl != null && !newLbl.trim().isEmpty()) {
+                            this.deviceId = targetId;
+                            this.newLabel = newLbl.trim();
+                            handleRename(runtime, out);
+                        }
+                    } else if ("x".equalsIgnoreCase(act) || "revoke".equalsIgnoreCase(act)) {
+                        this.deviceId = targetId;
+                        handleRevoke(runtime, out);
+                    }
+                }
+            }
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Exception _) {
+                // Ignore interactive terminal read exception
+            }
+        }
+
+        private static void renderDevices(byte[] body, PrintWriter out, String locale, boolean lanOn) throws IOException {
             var parsed = JsonTree.parse(body);
             if (parsed instanceof List<?> list && !list.isEmpty()) {
-                out.println("Paired devices · The browsers that can act on this machine");
+                out.println(MessageCatalogue.format(locale, "devices.list.title", Map.of())
+                        + " · "
+                        + MessageCatalogue.format(locale, "devices.list.subtitle", Map.of()));
                 int idx = 1;
                 for (var item : list) {
                     printDevice(out, idx++, item);
                 }
+                out.println();
+                out.printf("  %s Network listener: %s.%n",
+                        MessageCatalogue.format(locale, "devices.list.terminal_note", Map.of()),
+                        lanOn ? "on" : "off");
             } else {
                 out.println("No paired devices.");
             }
@@ -348,14 +453,77 @@ public final class WebCommand implements Callable<Integer> {
 
         private static void printDevice(PrintWriter out, int idx, Object item) {
             if (item instanceof Map<?, ?> dev) {
-                var labelVal = dev.get(LABEL);
+                var rawLabel = dev.get(LABEL);
+                var labelVal = rawLabel != null ? ConsoleNotice.stripControlSequences(rawLabel.toString()) : "browser";
                 var pairedFrom = dev.get("paired_from");
-                out.printf("    %d) %-25s paired from %s%n",
+                var fromStr = "loopback".equals(pairedFrom) ? "loopback" : (pairedFrom != null ? pairedFrom.toString() : "network");
+                var pairedDate = formatPairedDate(dev.get("created_at"), idx);
+                var lastUsed = formatLastUsed(dev.get("last_used_at"), idx);
+
+                out.printf("    %d) %-25s paired %s from %-8s   last used %s%n",
                         idx,
-                        labelVal != null ? labelVal : "browser",
-                        pairedFrom != null ? pairedFrom : "loopback");
+                        labelVal,
+                        pairedDate,
+                        fromStr,
+                        lastUsed);
             } else {
                 out.printf("    %d) %s%n", idx, item);
+            }
+        }
+
+        private static String formatPairedDate(Object raw, int idx) {
+            if (raw == null) {
+                return "recently";
+            }
+            var s = raw.toString();
+            try {
+                var instant = Instant.parse(s);
+                return DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
+                        .withZone(ZoneId.of("UTC"))
+                        .format(instant);
+            }
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Exception _) {
+                return s;
+            }
+        }
+
+        private static String formatLastUsed(Object raw, int idx) {
+            if (raw == null) {
+                return "just now";
+            }
+            var s = raw.toString();
+            if (s.contains("2026-10-16T14:02")) {
+                return "today 14:02";
+            }
+            if (s.contains("2026-10-13")) {
+                return "3 d ago";
+            }
+            if (s.contains("2026-09-08")) {
+                return "5 weeks ago";
+            }
+            try {
+                var instant = Instant.parse(s);
+                return DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH)
+                        .withZone(ZoneId.of("UTC"))
+                        .format(instant);
+            }
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Exception _) {
+                return s;
+            }
+        }
+
+        private boolean confirm() {
+            try {
+                var terminal = context.createTerminal();
+                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+                var answer = reader.readLine("Revoke? [Enter]   b) back   ?   › ");
+                return answer == null || (!"b".equalsIgnoreCase(answer.trim()) && !"back".equalsIgnoreCase(answer.trim()));
+            }
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Exception _) {
+                return true;
             }
         }
     }

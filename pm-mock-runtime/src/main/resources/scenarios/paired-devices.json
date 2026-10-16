@@ -1,0 +1,49 @@
+{
+  "format_version": 1,
+  "name": "paired-devices",
+  "description": "Stateful paired devices management with network listener",
+  "start": "devices.list",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "machine": "mock-machine",
+        "onboarded": true,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    }
+  },
+  "states": {
+    "devices.list": {
+      "representation": {
+        "scope": "workspace",
+        "state": "devices.list",
+        "summary": "Paired devices · The browsers that can act on this machine",
+        "lan_listener_on": true
+      },
+      "links": {
+        "rename": {
+          "method": "PATCH",
+          "href": "/api/v1/web/devices",
+          "next": "devices.list"
+        },
+        "revoke": {
+          "method": "DELETE",
+          "href": "/api/v1/web/devices",
+          "next": "devices.list"
+        },
+        "listener_off": {
+          "method": "DELETE",
+          "href": "/api/v1/web/listeners/lan",
+          "next": "devices.list"
+        }
+      }
+    }
+  }
+}

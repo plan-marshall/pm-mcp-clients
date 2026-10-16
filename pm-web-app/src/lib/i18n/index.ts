@@ -13,6 +13,35 @@ export const fallbackMessages: Record<string, string> = {
   'web.pair.page.action': 'Pair this browser',
   'web.pair.page.pairing': 'Pairing this browser …',
   'web.common.close': 'Close',
+  'web.common.back': 'Back',
+  'web.settings.title': 'Machine Settings',
+  'web.settings.aspects': 'Configuration Aspects',
+  'web.settings.devices': 'Paired Devices',
+  'devices.list.title': 'Paired devices',
+  'devices.list.subtitle': 'The browsers that can act on this machine',
+  'devices.list.empty': 'No browser is paired.',
+  'devices.list.this_one': 'This browser',
+  'devices.act.rename': 'Rename',
+  'devices.act.label': 'Label',
+  'devices.act.renamed': 'Renamed: {label}',
+  'devices.act.revoke': 'Revoke…',
+  'devices.act.revoke_others': 'Revoke all others',
+  'devices.act.listener_off': 'Turn the network listener off',
+  'devices.revoke.title': 'Revoke {label}?',
+  'devices.revoke.explain': 'It is signed out at once; its open pages close with the reason.',
+  'devices.revoke.this_one':
+    'It is the browser you are using: its pages close and show the pairing page; a new code pairs it again.',
+  'devices.revoke.others_title':
+    'Revoke {count} devices other than this one ({label})?',
+  'devices.revoke.keep': 'Keep it',
+  'devices.revoke.action': 'Revoke it',
+  'devices.listener_off.done':
+    'The network listener is off; the devices on the network stay paired and work again once it is on.',
+  'devices.revoked.title': 'This browser is no longer paired',
+  'devices.revoked.reason': 'It was revoked from {by} {time}.',
+  'devices.revoked.how_back':
+    'To use the web app here again, pair it with a new code: run pm-operator in a terminal of this machine.',
+  'devices.revoked.pair': 'Pair this browser',
 };
 
 export const currentLocale = writable<Locale>('en');

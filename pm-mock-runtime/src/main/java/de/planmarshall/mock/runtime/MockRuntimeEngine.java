@@ -10,6 +10,7 @@
 package de.planmarshall.mock.runtime;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,10 +26,12 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.web.PairedDevice;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
 import de.planmarshall.mock.scenario.LinkDefinition;
+import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -53,6 +56,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
+    private final Object devicesLock = new Object();
+    private final List<PairedDevice> pairedDevices = new ArrayList<>();
+    private volatile boolean lanListenerOn = true;
     private volatile boolean closed;
 
     /**
@@ -83,6 +89,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private synchronized void setScenario(Scenario scenario) {
         this.currentScenario.set(scenario);
+        initDefaultDevices();
         transitionTo(scenario.start());
     }
 
@@ -90,7 +97,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Resets the active scenario back to its start state.
      */
     public synchronized void reset() {
+        initDefaultDevices();
         transitionTo(currentScenario.get().start());
+    }
+
+    private void initDefaultDevices() {
+        synchronized (devicesLock) {
+            pairedDevices.clear();
+            pairedDevices.add(new PairedDevice("dev-1", "Firefox on mbp-oliver", "loopback",
+                    Instant.parse("2026-05-12T10:00:00Z"), Instant.parse("2026-10-16T14:02:00Z")));
+            pairedDevices.add(new PairedDevice("dev-2", "Safari on iPad", "network",
+                    Instant.parse("2026-05-20T10:00:00Z"), Instant.parse("2026-10-13T10:00:00Z")));
+            pairedDevices.add(new PairedDevice("dev-3", "Chrome on build-box", "loopback",
+                    Instant.parse("2026-06-02T10:00:00Z"), Instant.parse("2026-09-08T10:00:00Z")));
+            lanListenerOn = true;
+        }
     }
 
     /**
@@ -191,25 +212,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        // 3. SSE event stream subscription
+        // 3. Dynamic device and web routes
+        if (handleDeviceRoutes(request, response, isWeb)) {
+            return;
+        }
+
+        // 4. SSE event stream subscription
         if ("GET".equals(request.method()) && ("/api/v1/events".equals(path) || path.endsWith("/events"))) {
             handleEventStream(response);
             return;
         }
 
-        // 4. Match against current state links
+        // 5. Match against current state links
         if (handleStateLink(request, response)) {
             return;
         }
 
-        // 5. Match against static routes
+        // 6. Match against static routes
         var route = currentScenario.get().route(request.method(), path);
         if (route != null) {
-            response.json(route.status(), route.representation());
+            handleRouteWithDynamicStatus(route, path, response);
             return;
         }
 
-        // 6. No match: answer mock_no_route
+        // 7. No match: answer mock_no_route
         handleNoRoute(request, response);
     }
 
@@ -388,10 +414,233 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "device_id", "mock-device-1",
                     "label", "Mock Browser"
             );
+            synchronized (devicesLock) {
+                boolean found = false;
+                for (var d : pairedDevices) {
+                    if ("mock-device-1".equals(d.deviceId())) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    pairedDevices.add(new PairedDevice("mock-device-1", "Mock Browser", "loopback", Instant.now(), Instant.now()));
+                }
+            }
             response.json(200, body);
         } else {
             response.json(400, Map.of(KEY_ERROR, "invalid_code", KEY_MESSAGE, "The pairing code does not match"));
         }
+    }
+
+    private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        var path = request.path();
+        var method = request.method();
+
+        // POST /api/v1/web/pairings
+        if ("POST".equals(method) && "/api/v1/web/pairings".equals(path)) {
+            var code = currentScenario.get().pairingCode();
+            if (code == null || code.isBlank()) {
+                code = "KXQB-MRTN";
+            }
+            var url = "http://127.0.0.1:7420/pair#code=" + code;
+            response.json(201, Map.of("code", code, "url", url, "valid_until", "10m"));
+            return true;
+        }
+
+        // GET /api/v1/web/devices
+        if ("GET".equals(method) && "/api/v1/web/devices".equals(path)) {
+            var list = new ArrayList<Map<String, Object>>();
+            synchronized (devicesLock) {
+                for (var dev : pairedDevices) {
+                    list.add(dev.toMap());
+                }
+            }
+            response.json(200, list);
+            return true;
+        }
+
+        // PATCH, PUT, POST on /api/v1/web/devices/{id} or /api/v1/web/devices/{id}/rename
+        if (("PATCH".equals(method) || "PUT".equals(method) || "POST".equals(method)) && path.startsWith("/api/v1/web/devices/")) {
+            var sub = path.substring("/api/v1/web/devices/".length());
+            if (sub.endsWith("/rename")) {
+                sub = sub.substring(0, sub.length() - "/rename".length());
+            }
+            var targetId = sub;
+            String newLabel = null;
+            if (request.body().length > 0) {
+                try {
+                    var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                    if (parsed != null) {
+                        newLabel = JsonTree.string(parsed, "label");
+                    }
+                    // cui-rewrite:disable InvalidExceptionUsageRecipe
+                } catch (IOException | RuntimeException _) {
+                }
+            }
+            if (newLabel == null || newLabel.isBlank()) {
+                response.json(400, Map.of(KEY_ERROR, "invalid_label", KEY_MESSAGE, "Device label must not be blank"));
+                return true;
+            }
+
+            PairedDevice updated = null;
+            synchronized (devicesLock) {
+                for (int i = 0; i < pairedDevices.size(); i++) {
+                    var dev = pairedDevices.get(i);
+                    if (dev.deviceId().equals(targetId) || String.valueOf(i + 1).equals(targetId)) {
+                        updated = new PairedDevice(dev.deviceId(), newLabel, dev.pairedFrom(), dev.createdAt(), Instant.now());
+                        pairedDevices.set(i, updated);
+                        break;
+                    }
+                }
+            }
+
+            if (updated != null) {
+                broadcastEvent("device.renamed", Map.of("device_id", updated.deviceId(), "label", updated.label()));
+                response.json(200, updated.toMap());
+            } else {
+                response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
+            }
+            return true;
+        }
+
+        // DELETE /api/v1/web/devices/{id}
+        if ("DELETE".equals(method) && path.startsWith("/api/v1/web/devices/") && !"/api/v1/web/devices".equals(path)) {
+            var targetId = path.substring("/api/v1/web/devices/".length());
+            PairedDevice removed = null;
+            synchronized (devicesLock) {
+                for (int i = 0; i < pairedDevices.size(); i++) {
+                    var dev = pairedDevices.get(i);
+                    if (dev.deviceId().equals(targetId) || String.valueOf(i + 1).equals(targetId)) {
+                        removed = pairedDevices.remove(i);
+                        break;
+                    }
+                }
+            }
+
+            if (removed != null) {
+                broadcastEvent("device.revoked", Map.of("device_id", removed.deviceId()));
+                broadcastEvent("stream.closed", Map.of(
+                        "reason", "device_revoked",
+                        "details", "Revoked",
+                        "revoked_by", isWeb ? "another device" : "the terminal client",
+                        "revoked_at", "today at 14:10"
+                ));
+                response.json(200, Map.of("status", "revoked", "device_id", removed.deviceId(), "label", removed.label()));
+            } else {
+                response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
+            }
+            return true;
+        }
+
+        // DELETE /api/v1/web/devices (revoke all or revoke others)
+        if ("DELETE".equals(method) && "/api/v1/web/devices".equals(path)) {
+            var query = request.query() != null ? request.query().toLowerCase() : "";
+            boolean isOthers = query.contains("others");
+            boolean isAll = query.contains("all");
+
+            var removedList = new ArrayList<PairedDevice>();
+            PairedDevice kept = null;
+            synchronized (devicesLock) {
+                if (isOthers && isWeb) {
+                    if (!pairedDevices.isEmpty()) {
+                        kept = pairedDevices.getFirst();
+                        for (int i = pairedDevices.size() - 1; i >= 1; i--) {
+                            removedList.add(pairedDevices.remove(i));
+                        }
+                    }
+                } else {
+                    removedList.addAll(pairedDevices);
+                    pairedDevices.clear();
+                }
+            }
+
+            for (var dev : removedList) {
+                broadcastEvent("device.revoked", Map.of("device_id", dev.deviceId()));
+                broadcastEvent("stream.closed", Map.of(
+                        "reason", "device_revoked",
+                        "details", "Revoked",
+                        "revoked_by", isWeb ? "another device" : "the terminal client",
+                        "revoked_at", "today at 14:10"
+                ));
+            }
+
+            var resp = new LinkedHashMap<String, Object>();
+            resp.put("status", "revoked");
+            resp.put("revoked_count", removedList.size());
+            resp.put("remaining_count", pairedDevices.size());
+            if (kept != null) {
+                resp.put("kept_label", kept.label());
+            }
+            response.json(200, resp);
+            return true;
+        }
+
+        // DELETE /api/v1/web/listeners/lan
+        if ("DELETE".equals(method) && "/api/v1/web/listeners/lan".equals(path)) {
+            lanListenerOn = false;
+            broadcastEvent("stream.closed", Map.of(
+                    "reason", "listener_closed",
+                    "details", "The network listener was turned off"
+            ));
+            response.json(200, Map.of("lan", false, "status", "listener_off"));
+            return true;
+        }
+
+        // PUT /api/v1/web
+        if ("PUT".equals(method) && "/api/v1/web".equals(path)) {
+            if (request.body().length > 0) {
+                try {
+                    var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                    if (parsed != null && parsed.containsKey("lan")) {
+                        lanListenerOn = Boolean.TRUE.equals(parsed.get("lan"));
+                    }
+                    // cui-rewrite:disable InvalidExceptionUsageRecipe
+                } catch (IOException | RuntimeException _) {
+                }
+            }
+            var resp = new LinkedHashMap<String, Object>();
+            resp.put("enabled", true);
+            resp.put("lan", lanListenerOn);
+            resp.put("port", 7420);
+            resp.put("open", true);
+            response.json(200, resp);
+            return true;
+        }
+
+        // GET /api/v1/web
+        if ("GET".equals(method) && "/api/v1/web".equals(path)) {
+            var resp = new LinkedHashMap<String, Object>();
+            resp.put("enabled", true);
+            resp.put("lan", lanListenerOn);
+            resp.put("port", 7420);
+            resp.put("open", true);
+            response.json(200, resp);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
+        var rep = route.representation();
+        if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map && map.containsKey("web")) {
+            var copy = new LinkedHashMap<String, Object>();
+            for (var entry : map.entrySet()) {
+                if ("web".equals(entry.getKey()) && entry.getValue() instanceof Map<?, ?> webMap) {
+                    var webCopy = new LinkedHashMap<String, Object>();
+                    for (var w : webMap.entrySet()) {
+                        webCopy.put(String.valueOf(w.getKey()), w.getValue());
+                    }
+                    webCopy.put("lan", lanListenerOn);
+                    copy.put("web", webCopy);
+                } else {
+                    copy.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+            response.json(route.status(), copy);
+            return;
+        }
+        response.json(route.status(), rep);
     }
 
     private void handleMessages(MockHttpRequest request, MockHttpResponse response) throws IOException {
@@ -585,6 +834,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** @return the accepted device secret */
     public String deviceSecret() {
         return deviceSecret;
+    }
+
+    /** @return active paired devices */
+    public List<PairedDevice> pairedDevices() {
+        synchronized (devicesLock) {
+            return List.copyOf(pairedDevices);
+        }
+    }
+
+    /** @return whether LAN listener is active */
+    public boolean lanListenerOn() {
+        return lanListenerOn;
     }
 
     @Override

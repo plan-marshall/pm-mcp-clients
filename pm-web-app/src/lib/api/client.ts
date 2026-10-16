@@ -4,6 +4,22 @@ export interface PairingResponse {
   label: string;
 }
 
+export interface PairedDevice {
+  device_id: string;
+  label: string;
+  paired_from?: string;
+  created_at: string;
+  last_used_at: string;
+}
+
+export interface RevokedEventData {
+  reason?: string;
+  revoked_by?: string;
+  revoked_at?: string;
+  details?: string;
+  [key: string]: unknown;
+}
+
 export interface StatusResponse {
   status: string;
   version?: string;
@@ -14,6 +30,11 @@ export interface StatusResponse {
     onboarded?: boolean;
   };
   projects?: unknown[];
+  web?: {
+    enabled?: boolean;
+    lan?: boolean;
+    port?: number;
+  };
 }
 
 export interface HypermediaLink {
@@ -37,14 +58,14 @@ const STORAGE_KEY_LABEL = 'pm_device_label';
 
 export class ApiClient {
   private readonly baseUrl: string;
-  private onRevokedCallback?: (reason?: string) => void;
+  private onRevokedCallback?: (info?: string | RevokedEventData) => void;
   private onOfflineCallback?: () => void;
 
   constructor(baseUrl = '') {
     this.baseUrl = baseUrl;
   }
 
-  public setOnRevoked(callback: (reason?: string) => void): void {
+  public setOnRevoked(callback: (info?: string | RevokedEventData) => void): void {
     this.onRevokedCallback = callback;
   }
 
@@ -116,6 +137,34 @@ export class ApiClient {
 
   public async getStatus(): Promise<StatusResponse> {
     return this.request<StatusResponse>('GET', '/api/v1/status');
+  }
+
+  public async getDevices(): Promise<PairedDevice[]> {
+    return this.request<PairedDevice[]>('GET', '/api/v1/web/devices');
+  }
+
+  public async renameDevice(deviceId: string, label: string): Promise<PairedDevice> {
+    return this.request<PairedDevice>(
+      'PUT',
+      `/api/v1/web/devices/${encodeURIComponent(deviceId)}`,
+      { label },
+    );
+  }
+
+  public async revokeDevice(deviceId: string): Promise<void> {
+    await this.request('DELETE', `/api/v1/web/devices/${encodeURIComponent(deviceId)}`);
+  }
+
+  public async revokeOtherDevices(): Promise<void> {
+    await this.request('DELETE', '/api/v1/web/devices?others');
+  }
+
+  public async turnOffLanListener(): Promise<void> {
+    try {
+      await this.request('DELETE', '/api/v1/web/listeners/lan');
+    } catch {
+      await this.request('PUT', '/api/v1/web', { lan: false });
+    }
   }
 
   public async request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -297,13 +346,19 @@ function handleSseMessage(
   eventType: string,
   eventData: string,
   onEvent: (event: string, data: unknown) => void,
-  onRevoke: (reason?: string) => void,
+  onRevoke: (info?: string | RevokedEventData) => void,
 ): boolean {
   try {
     const parsed = JSON.parse(eventData);
     onEvent(eventType, parsed);
+    if (eventType === 'stream.closed') {
+      if (parsed.reason === 'device_revoked' || parsed.reason === 'device_expired') {
+        onRevoke(parsed);
+        return true;
+      }
+    }
     if (eventType === 'web_device_revoked') {
-      onRevoke(parsed.reason);
+      onRevoke(parsed.reason || parsed);
       return true;
     }
   } catch {
