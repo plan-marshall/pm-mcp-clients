@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import CompletionReportView from './CompletionReportView.svelte';
 import { apiClient, type PlanCompletionReport } from '../api/client';
 
@@ -25,9 +25,7 @@ describe('CompletionReportView component', () => {
       { name: 'a test per transport, websocket and SSE', state: 'done' },
       { name: 'fsync of the cursor file', state: 'done' },
     ],
-    replanning_records: [
-      { trigger: 'the base moved', time: '09:55', change: 'TASK-5 added' },
-    ],
+    replanning_records: [{ trigger: 'the base moved', time: '09:55', change: 'TASK-5 added' }],
     decision_records: [
       {
         id: 'Q-003',
@@ -113,7 +111,9 @@ describe('CompletionReportView component', () => {
     expect(screen.getByText('merged')).toBeInTheDocument();
     expect(screen.getByText('#214')).toBeInTheDocument();
     expect(screen.getByText('the pull request #214 was merged into main')).toBeInTheDocument();
-    expect(screen.getByText('2 h 40 min, 08:40 to 11:20 · paused 20 min by you')).toBeInTheDocument();
+    expect(
+      screen.getByText('2 h 40 min, 08:40 to 11:20 · paused 20 min by you'),
+    ).toBeInTheDocument();
 
     // Deliverables
     expect(screen.getByText('3 of 3 done')).toBeInTheDocument();
@@ -133,7 +133,9 @@ describe('CompletionReportView component', () => {
     render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
 
     expect(screen.getByText('Tokens')).toBeInTheDocument();
-    expect(screen.getByText(/3 of 41 tasks not measured: their worker was terminated/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/3 of 41 tasks not measured: their worker was terminated/),
+    ).toBeInTheDocument();
 
     // By phase
     expect(screen.getByText('refine')).toBeInTheDocument();

@@ -60,9 +60,9 @@ class PmOperatorProcessIT {
     private static final long BUDGET_MS = 50;
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
-                  MachinePaths.class, CommandLine.class, JsonFactory.class,
-                  Terminal.class, LineReader.class,
-                  QrCode.class);
+                        MachinePaths.class, CommandLine.class, JsonFactory.class,
+                        Terminal.class, LineReader.class,
+                        QrCode.class);
     private RuntimeFixture fixture;
 
     @BeforeEach
@@ -145,7 +145,7 @@ class PmOperatorProcessIT {
                 assertNotEquals(ProcessHandle.current().pid(), started[1]);
                 assertTrue(staged.alive(), "pm-mcpd outlives pm-operator");
                 assertEquals("rwx------", PosixFilePermissions
-                              .toString(Files.getPosixFilePermissions(fixture.paths().locksDir())));
+                                    .toString(Files.getPosixFilePermissions(fixture.paths().locksDir())));
                 var values = new LinkedHashMap<String, Object>();
                 values.put("mode", binary.mode());
                 values.put("daemon_pid", started[0]);
@@ -197,6 +197,23 @@ class PmOperatorProcessIT {
         }
 
         try (var process = operator(environment(), "reports", "read", "--all")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
+
+    @Test
+    @DisplayName("questions and answer refuse execution without an interactive terminal (PM-SEC-3)")
+    void questionsAndAnswerRefuseWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "questions")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+
+        try (var process = operator(environment(), "answer", "Q-001")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);

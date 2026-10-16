@@ -8,6 +8,7 @@
   import RevokedView from '../lib/views/RevokedView.svelte';
   import OverviewView from '../lib/views/OverviewView.svelte';
   import ReportsView from '../lib/views/ReportsView.svelte';
+  import DecisionView from '../lib/views/DecisionView.svelte';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -18,6 +19,8 @@
   <OnboardingView />
 {:else if $runtimeStore.currentRoute === 'reports'}
   <ReportsView />
+{:else if $runtimeStore.currentRoute === 'decisions'}
+  <DecisionView />
 {:else if $runtimeStore.currentRoute === 'settings'}
   <SettingsView />
 {:else if $runtimeStore.currentRoute === 'designer'}

@@ -157,4 +157,66 @@ describe('ApiClient', () => {
     expect(meta.locales).toContain('en');
     expect(messages['web.common.copy']).toBe('Copy');
   });
+
+  it('fetches decisions and answers a decision', async () => {
+    // Arrange
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes('/api/v1/decisions?project=pm-mcp-clients')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [{ id: 'Q-007', title: 'Rebase conflict', subject: 'plan fix-relay' }],
+        });
+      }
+      if (url.endsWith('/api/v1/decisions/Q-007')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: 'Q-007',
+            title: 'Rebase conflict',
+            subject: 'plan fix-relay',
+            parts: [],
+          }),
+        });
+      }
+      if (url.endsWith('/api/v1/decisions/Q-007/answer') && init?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        });
+      }
+      if (url.endsWith('/api/v1/decisions/Q-007/interpret') && init?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ interpretation_type: 'OPTION', read_back_text: 'Rebase onto main' }),
+        });
+      }
+      if (url.endsWith('/api/v1/decisions/Q-007/withdraw') && init?.method === 'POST') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true }),
+        });
+      }
+      return Promise.reject(new Error(`Unexpected url: ${url}`));
+    });
+
+    // Act
+    const list = await client.getDecisions({ project: 'pm-mcp-clients' });
+    const single = await client.getDecision('Q-007');
+    const answerRes = await client.answerDecision('Q-007', { option: '2' });
+    const interp = await client.interpretDecision('Q-007', 'rebase');
+    const withdrawRes = await client.withdrawDecision('Q-007');
+
+    // Assert
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe('Q-007');
+    expect(single.id).toBe('Q-007');
+    expect(answerRes.ok).toBe(true);
+    expect(interp.read_back_text).toBe('Rebase onto main');
+    expect(withdrawRes.ok).toBe(true);
+  });
 });

@@ -32,12 +32,12 @@ import picocli.CommandLine.Spec;
  * 25-system.adoc).
  */
 @Command(name = "runtime", description = "Starts, stops, restarts, or upgrades the runtime.",
-              subcommands = {
-                            RuntimeCommand.StartCommand.class,
-                            RuntimeCommand.StopCommand.class,
-                            RuntimeCommand.RestartCommand.class,
-                            RuntimeCommand.UpgradeCommand.class
-              })
+                    subcommands = {
+                                        RuntimeCommand.StartCommand.class,
+                                        RuntimeCommand.StopCommand.class,
+                                        RuntimeCommand.RestartCommand.class,
+                                        RuntimeCommand.UpgradeCommand.class
+                    })
 public final class RuntimeCommand implements Callable<Integer> {
 
     private static final String DRAIN = "drain";
@@ -102,7 +102,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             try {
                 if (withdraw) {
                     var response = context.runtime(false).send(
-                                  new HttpRequest("DELETE", "/api/v1/runtime/stop", Map.of(), null));
+                                        new HttpRequest("DELETE", "/api/v1/runtime/stop", Map.of(), null));
                     if (response.status() == 200 || response.status() == 204) {
                         out.println("runtime   drain withdrawn");
                         out.flush();
@@ -119,7 +119,7 @@ public final class RuntimeCommand implements Callable<Integer> {
                 if (now) body.put("now", true);
 
                 var response = context.runtime(false).send(
-                              HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
+                                    HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
                 if (response.status() != 202 && response.status() != 200) {
                     throw new OperatorRefusedException("runtime stop", response);
                 }
@@ -162,7 +162,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             if (now) body.put("now", true);
 
             var response = context.runtime(true).send(
-                          HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
+                                HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 202) {
                 out.println("runtime   restarting");
                 out.flush();
@@ -261,7 +261,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             if (now) body.put("now", true);
 
             var response = context.runtime(true).send(
-                          HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));
+                                HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 202) {
                 out.println("runtime   upgrading");
                 out.flush();

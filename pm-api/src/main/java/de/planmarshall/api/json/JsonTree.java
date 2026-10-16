@@ -255,4 +255,22 @@ public class JsonTree {
         var num = number(object, name);
         return num != null ? num.intValue() : null;
     }
+
+    /**
+     * @param object an object, may be {@code null}
+     * @param name   the member name
+     * @return the member as Boolean, or {@code null}
+     */
+    public static Boolean bool(Map<String, Object> object, String name) {
+        if (object == null) {
+            return null;
+        }
+        var val = object.get(name);
+        return switch (val) {
+            case null -> null;
+            case Boolean b -> b;
+            case String s -> Boolean.parseBoolean(s);
+            default -> null;
+        };
+    }
 }

@@ -62,11 +62,11 @@ class ClientCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/client/bundles".equals(request.target())) {
                 response.json(200, """
-                              [
-                                {"name":"claude","status":"installed","version":"2.4.1"},
-                                {"name":"codex","status":"available"}
-                              ]
-                              """);
+                                    [
+                                      {"name":"claude","status":"installed","version":"2.4.1"},
+                                      {"name":"codex","status":"available"}
+                                    ]
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -75,11 +75,11 @@ class ClientCommandTest {
         int code = execute("client", "status");
         var output = out.toString();
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(output.contains("Client Bundles:")),
-                      () -> assertTrue(output.contains("claude")),
-                      () -> assertTrue(output.contains("installed")),
-                      () -> assertTrue(output.contains("codex"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("Client Bundles:")),
+                            () -> assertTrue(output.contains("claude")),
+                            () -> assertTrue(output.contains("installed")),
+                            () -> assertTrue(output.contains("codex"))
         );
     }
 
@@ -97,8 +97,8 @@ class ClientCommandTest {
 
         int code = execute("client", "install", "codex");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("✓ Client bundle installation completed"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ Client bundle installation completed"))
         );
     }
 
@@ -141,8 +141,8 @@ class ClientCommandTest {
     void clientStatusWhenNotRunning() {
         int code = execute("client", "status");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("runtime   not running"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("runtime   not running"))
         );
     }
 
@@ -160,8 +160,8 @@ class ClientCommandTest {
 
         int code = execute("drain");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("runtime   draining"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("runtime   draining"))
         );
     }
 
@@ -170,8 +170,8 @@ class ClientCommandTest {
     void drainWhenNotRunning() {
         int code = execute("drain");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("runtime   not running"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("runtime   not running"))
         );
     }
 }

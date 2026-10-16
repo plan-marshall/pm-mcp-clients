@@ -145,7 +145,9 @@
         {#if data.ran || data.duration_seconds > 0}
           <div class="summary-row">
             <span class="summary-label">Ran</span>
-            <span class="summary-value">{data.ran || `${Math.round(data.duration_seconds / 60)} min`}</span>
+            <span class="summary-value"
+              >{data.ran || `${Math.round(data.duration_seconds / 60)} min`}</span
+            >
           </div>
         {/if}
       </section>
@@ -156,7 +158,8 @@
           Deliverables
           {#if data.deliverables && data.deliverables.length > 0}
             <span class="section-badge">
-              {data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length} of {data.deliverables.length} done
+              {data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length} of {data
+                .deliverables.length} done
             </span>
           {/if}
         </h2>
@@ -166,7 +169,9 @@
           <ul class="deliverables-list">
             {#each data.deliverables as d}
               <li class="deliverable-item deliverable-item--{d.state?.toLowerCase()}">
-                <span class="deliverable-mark" aria-hidden="true">{getDeliverableMark(d.state)}</span>
+                <span class="deliverable-mark" aria-hidden="true"
+                  >{getDeliverableMark(d.state)}</span
+                >
                 <span class="deliverable-state mono">{d.state}</span>
                 <span class="deliverable-title">{d.name || d.title}</span>
               </li>
@@ -237,7 +242,13 @@
             <div class="total-row">
               <span class="total-label">Total</span>
               <span class="total-value mono font-semibold">
-                {formatSplit(usage.total, usage.input, usage.output, usage.is_floor, $currentLocale)}
+                {formatSplit(
+                  usage.total,
+                  usage.input,
+                  usage.output,
+                  usage.is_floor,
+                  $currentLocale,
+                )}
                 {#if data.ran}
                   <span class="total-ran text-muted">· {data.ran}</span>
                 {/if}
@@ -247,7 +258,9 @@
               <span class="coverage-label">Coverage</span>
               <span>
                 {#if usage.tasks_total > usage.tasks_measured}
-                  {usage.tasks_total - usage.tasks_measured} of {usage.tasks_total} tasks not measured{usage.unmeasured_reason ? `: ${usage.unmeasured_reason}` : ''}
+                  {usage.tasks_total - usage.tasks_measured} of {usage.tasks_total} tasks not measured{usage.unmeasured_reason
+                    ? `: ${usage.unmeasured_reason}`
+                    : ''}
                 {:else}
                   {usage.tasks_total} of {usage.tasks_total} tasks measured
                 {/if}
@@ -265,7 +278,13 @@
                     <tr>
                       <td class="col-name mono">{item.name}</td>
                       <td class="col-value mono">
-                        {formatSplit(item.total, item.input, item.output, item.floor, $currentLocale)}
+                        {formatSplit(
+                          item.total,
+                          item.input,
+                          item.output,
+                          item.floor,
+                          $currentLocale,
+                        )}
                       </td>
                       <td class="col-extra text-muted">
                         {#if item.unmeasured > 0}
@@ -276,11 +295,14 @@
                     {#if showRawComponents && item.components}
                       <tr class="raw-components-row">
                         <td colspan="3" class="mono text-muted">
-                          input {formatTokens(item.components.input, false, $currentLocale)} ·
-                          cache read {formatTokens(item.components.cache_read, false, $currentLocale)} ·
-                          cache write {formatTokens(item.components.cache_write, false, $currentLocale)} ·
-                          output {formatTokens(item.components.output, false, $currentLocale)} ·
-                          reasoning {formatTokens(item.components.reasoning, false, $currentLocale)}
+                          input {formatTokens(item.components.input, false, $currentLocale)} · cache read
+                          {formatTokens(item.components.cache_read, false, $currentLocale)} · cache write
+                          {formatTokens(item.components.cache_write, false, $currentLocale)} · output
+                          {formatTokens(item.components.output, false, $currentLocale)} · reasoning {formatTokens(
+                            item.components.reasoning,
+                            false,
+                            $currentLocale,
+                          )}
                         </td>
                       </tr>
                     {/if}
@@ -305,7 +327,13 @@
                         {/if}
                       </td>
                       <td class="col-value mono">
-                        {formatSplit(item.total, item.input, item.output, item.floor, $currentLocale)}
+                        {formatSplit(
+                          item.total,
+                          item.input,
+                          item.output,
+                          item.floor,
+                          $currentLocale,
+                        )}
                       </td>
                       <td class="col-extra text-muted">
                         {#if item.unmeasured > 0}
@@ -316,11 +344,14 @@
                     {#if showRawComponents && item.components}
                       <tr class="raw-components-row">
                         <td colspan="4" class="mono text-muted">
-                          input {formatTokens(item.components.input, false, $currentLocale)} ·
-                          cache read {formatTokens(item.components.cache_read, false, $currentLocale)} ·
-                          cache write {formatTokens(item.components.cache_write, false, $currentLocale)} ·
-                          output {formatTokens(item.components.output, false, $currentLocale)} ·
-                          reasoning {formatTokens(item.components.reasoning, false, $currentLocale)}
+                          input {formatTokens(item.components.input, false, $currentLocale)} · cache read
+                          {formatTokens(item.components.cache_read, false, $currentLocale)} · cache write
+                          {formatTokens(item.components.cache_write, false, $currentLocale)} · output
+                          {formatTokens(item.components.output, false, $currentLocale)} · reasoning {formatTokens(
+                            item.components.reasoning,
+                            false,
+                            $currentLocale,
+                          )}
                         </td>
                       </tr>
                     {/if}
@@ -340,7 +371,13 @@
                     <tr>
                       <td class="col-name mono">{item.name}</td>
                       <td class="col-value mono">
-                        {formatSplit(item.total, item.input, item.output, item.floor, $currentLocale)}
+                        {formatSplit(
+                          item.total,
+                          item.input,
+                          item.output,
+                          item.floor,
+                          $currentLocale,
+                        )}
                       </td>
                       <td class="col-extra text-muted">
                         {#if item.unmeasured > 0}
@@ -351,11 +388,14 @@
                     {#if showRawComponents && item.components}
                       <tr class="raw-components-row">
                         <td colspan="3" class="mono text-muted">
-                          input {formatTokens(item.components.input, false, $currentLocale)} ·
-                          cache read {formatTokens(item.components.cache_read, false, $currentLocale)} ·
-                          cache write {formatTokens(item.components.cache_write, false, $currentLocale)} ·
-                          output {formatTokens(item.components.output, false, $currentLocale)} ·
-                          reasoning {formatTokens(item.components.reasoning, false, $currentLocale)}
+                          input {formatTokens(item.components.input, false, $currentLocale)} · cache read
+                          {formatTokens(item.components.cache_read, false, $currentLocale)} · cache write
+                          {formatTokens(item.components.cache_write, false, $currentLocale)} · output
+                          {formatTokens(item.components.output, false, $currentLocale)} · reasoning {formatTokens(
+                            item.components.reasoning,
+                            false,
+                            $currentLocale,
+                          )}
                         </td>
                       </tr>
                     {/if}
@@ -387,8 +427,12 @@
                         {w.waste_class}
                       {/if}
                     </span>
-                    <span class="waste-tokens mono">{formatTokens(w.tokens, false, $currentLocale)}</span>
-                    <span class="waste-cause text-muted">{w.cause_summary || `${w.tasks_count} tasks`}</span>
+                    <span class="waste-tokens mono"
+                      >{formatTokens(w.tokens, false, $currentLocale)}</span
+                    >
+                    <span class="waste-cause text-muted"
+                      >{w.cause_summary || `${w.tasks_count} tasks`}</span
+                    >
                   </li>
                 {/each}
               </ul>

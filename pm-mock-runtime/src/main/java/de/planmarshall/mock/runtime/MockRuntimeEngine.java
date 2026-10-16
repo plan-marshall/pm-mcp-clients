@@ -24,6 +24,21 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+
+import org.jspecify.annotations.Nullable;
+
+import de.planmarshall.api.decision.AnswerType;
+import de.planmarshall.api.decision.DecisionAnswerRequest;
+import de.planmarshall.api.decision.DecisionEnvelope;
+import de.planmarshall.api.decision.DecisionInterpretation;
+import de.planmarshall.api.decision.DecisionOption;
+import de.planmarshall.api.decision.DecisionPart;
+import de.planmarshall.api.decision.DecisionScope;
+import de.planmarshall.api.decision.InterpretationType;
+import de.planmarshall.api.decision.QuorumBand;
+import de.planmarshall.api.decision.QuorumSupport;
+import de.planmarshall.api.decision.QuorumVote;
+import de.planmarshall.api.decision.Reversibility;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.report.DecisionRecord;
@@ -99,6 +114,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Object reportsLock = new Object();
     private final List<ReportItem> mockReports = new ArrayList<>();
     private final Map<String, PlanCompletionReport> completionReports = new ConcurrentHashMap<>();
+    private final Object decisionsLock = new Object();
+    private final Map<String, DecisionEnvelope> openDecisions = new LinkedHashMap<>();
     private volatile boolean lanListenerOn = true;
     private volatile boolean closed;
 
@@ -132,6 +149,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.currentScenario.set(scenario);
         initDefaultDevices();
         initDefaultReports();
+        initDefaultDecisions();
         transitionTo(scenario.start());
     }
 
@@ -141,6 +159,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     public synchronized void reset() {
         initDefaultDevices();
         initDefaultReports();
+        initDefaultDecisions();
         transitionTo(currentScenario.get().start());
     }
 
@@ -267,6 +286,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 3b. Dynamic report routes
         if (handleReportRoutes(request, response, isWeb)) {
+            return;
+        }
+
+        // 3c. Dynamic decision routes
+        if (handleDecisionRoutes(request, response, isWeb)) {
             return;
         }
 
@@ -1418,6 +1442,454 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** @return whether LAN listener is active */
     public boolean lanListenerOn() {
         return lanListenerOn;
+    }
+
+    private void initDefaultDecisions() {
+        synchronized (decisionsLock) {
+            openDecisions.clear();
+
+            // Q-007 (fix-relay)
+            var q007VotesOpt2 = List.of(
+                    new QuorumVote("implement", "claude-3.7-sonnet", 88, "Keeps git history linear"),
+                    new QuorumVote("architecture", "gemini-2.5-pro", 85, "Standard clean rebase")
+            );
+            var q007SupportOpt2 = new QuorumSupport(2, 3, 2, QuorumBand.CLEAR_MAJORITY,
+                    "the branch was pushed; a rebase rewrites what others pulled.", q007VotesOpt2);
+            var q007VotesOpt1 = List.of(
+                    new QuorumVote("quorum-b", "gpt-4o", 70, "The branch was pushed; a rebase rewrites what others pulled.")
+            );
+            var q007SupportOpt1 = new QuorumSupport(1, 3, 1, QuorumBand.CLEAR_MAJORITY, null, q007VotesOpt1);
+
+            var q007Opt1 = new DecisionOption("1", "Merge main into the branch", "Preserves commit SHAs", null, null, q007SupportOpt1);
+            var q007Opt2 = new DecisionOption("2", "Rebase onto main", "Keeps history linear", null, null, q007SupportOpt2);
+            var q007Opt3 = new DecisionOption("3", "Stop the plan and ask me later", "Pauses execution", null, null, null);
+
+            var q007Part = new DecisionPart("1", "How should the conflict be resolved?", AnswerType.ONE_OPTION,
+                    List.of(q007Opt1, q007Opt2, q007Opt3), "2", "Rebase onto main. Keeps the history linear.",
+                    "implement", null, true, true);
+
+            var q007 = new DecisionEnvelope(
+                    "Q-007", 1, "Resolve rebase conflict", "Conflict", "plan fix-relay",
+                    DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
+                    "The change conflicts with main in RelayServer.java.",
+                    Map.of("file", "RelayServer.java", "lines", "42-58", "summary", "both versions of the method"),
+                    List.of(q007Part), Instant.parse("2026-10-16T14:02:00Z"),
+                    false, null, null, null
+            );
+            openDecisions.put("Q-007", q007);
+
+            // Q-009 (drop-legacy-api)
+            var q009Opt1 = new DecisionOption("1", "Delete them now", null, "Breaking change for existing v1 consumers", null,
+                    new QuorumSupport(1, 3, 1, QuorumBand.SPLIT, "two clients of v1 are known; both migrated last week.",
+                            List.of(new QuorumVote("quorum-a", "model-a", 65, "Fast cleanup"))));
+            var q009Opt2 = new DecisionOption("2", "Deprecate them, delete in 0.11", null, "Deprecation header on v1 responses", null,
+                    new QuorumSupport(1, 3, 1, QuorumBand.SPLIT, null,
+                            List.of(new QuorumVote("architecture", "model-b", 80, "Graceful migration"))));
+            var q009Opt3 = new DecisionOption("3", "Keep them", null, "Maintains legacy code indefinitely", null,
+                    new QuorumSupport(1, 3, 1, QuorumBand.SPLIT, null,
+                            List.of(new QuorumVote("quorum-c", "model-c", 60, "Zero disruption"))));
+
+            var q009Part = new DecisionPart("1", "Delete the published v1 endpoints from the release branch?", AnswerType.ONE_OPTION,
+                    List.of(q009Opt1, q009Opt2, q009Opt3), "2", "Deprecate them, delete in 0.11.",
+                    "architecture", null, true, false);
+
+            var q009 = new DecisionEnvelope(
+                    "Q-009", 1, "Delete published v1 endpoints?", null, "plan drop-legacy-api",
+                    DecisionScope.PLAN, "finalize", "architecture", "plan", Reversibility.IRREVERSIBLE,
+                    "Delete the published v1 endpoints from the release branch?",
+                    Map.of("endpoints", "/api/v1/legacy, /api/v1/old"),
+                    List.of(q009Part), Instant.parse("2026-10-16T14:15:00Z"),
+                    false, null, null, null
+            );
+            openDecisions.put("Q-009", q009);
+
+            // Q-012 (storage-v2) - Multi-part
+            var q012Part1 = new DecisionPart("1", "Where does the data live?", AnswerType.ONE_OPTION,
+                    List.of(new DecisionOption("1", "A file per plan", "Isolated files", null, null, null),
+                            new DecisionOption("2", "One database for the machine", "Central storage", null, null, null)),
+                    "1", "A file per plan. Simple isolation.", "outline", null, true, false);
+            var q012Part2 = new DecisionPart("2", "How is it migrated?", AnswerType.ONE_OPTION,
+                    List.of(new DecisionOption("1", "At the first start of the new release", "Automatic migration", null, null, null),
+                            new DecisionOption("2", "By a verb the operator runs", "Manual control", null, null, null)),
+                    "1", "Automated transition.", "outline", "depends on part 1: A file per plan", true, false);
+            var q012Part3 = new DecisionPart("3", "Which format?", AnswerType.ONE_OPTION,
+                    List.of(new DecisionOption("1", "JSON lines", "Append-only text", null, null, null),
+                            new DecisionOption("2", "SQLite per plan", "Structured queries", null, null, null)),
+                    "1", "JSON lines matches repository standards.", "outline", null, true, false);
+
+            var q012 = new DecisionEnvelope(
+                    "Q-012", 1, "How should the new store be introduced?", null, "plan storage-v2",
+                    DecisionScope.PLAN, "outline", "outline", "plan", Reversibility.REVERSIBLE,
+                    "How should the new store be introduced?",
+                    Map.of("measurements", "current store size: 12MB"),
+                    List.of(q012Part1, q012Part2, q012Part3), Instant.parse("2026-10-16T14:30:00Z"),
+                    false, null, null, null
+            );
+            openDecisions.put("Q-012", q012);
+
+            // Q-031 (setup of pm-mcp-clients)
+            var q031Part = new DecisionPart("1", "Should the generated sources of pm-api be described as a module of their own?", AnswerType.ONE_OPTION,
+                    List.of(new DecisionOption("1", "yes", "Dedicated module entry", null, null, null),
+                            new DecisionOption("2", "no, with pm-api", "Keep bundled with pm-api", null, null, null)),
+                    "2", "no, with pm-api", "enrich", null, true, true);
+
+            var q031 = new DecisionEnvelope(
+                    "Q-031", 1, "Module description for generated sources", null, "setup of pm-mcp-clients",
+                    DecisionScope.PROJECT_SETUP, "descriptions", "enrich", "setup", Reversibility.REVERSIBLE,
+                    "Should the generated sources of pm-api be described as a module of their own?",
+                    null, List.of(q031Part), Instant.parse("2026-10-16T14:45:00Z"),
+                    false, null, null, null
+            );
+            openDecisions.put("Q-031", q031);
+
+            // WR-2 (fix-relay waiver)
+            var wr2 = new DecisionEnvelope(
+                    "WR-2", 1, "fix-relay asks for a waiver", null, "plan fix-relay",
+                    DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
+                    "The test needs a second machine the CI does not have.",
+                    Map.of("run", "CI run #412", "test", "RelayIntegrationTest.java"),
+                    List.of(), Instant.parse("2026-10-16T13:10:00Z"),
+                    true, "ci_check:integration-tests", "failing: needs second machine",
+                    "The test needs a second machine the CI does not have."
+            );
+            openDecisions.put("WR-2", wr2);
+
+            // WR-3 (session-log waiver)
+            var wr3 = new DecisionEnvelope(
+                    "WR-3", 1, "session-log asks for a waiver", null, "plan session-log",
+                    DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
+                    "the classes are generated by the annotation processor",
+                    Map.of("coverage", "76%", "target", "80%"),
+                    List.of(), Instant.parse("2026-10-16T14:02:00Z"),
+                    true, "coverage:pm-api", "76 %: 3 classes without a test",
+                    "the classes are generated by the annotation processor"
+            );
+            openDecisions.put("WR-3", wr3);
+        }
+    }
+
+    /**
+     * Adds an open decision and broadcasts {@code decision.opened}.
+     *
+     * @param decision the decision envelope
+     */
+    public void addDecisionAndBroadcast(DecisionEnvelope decision) {
+        synchronized (decisionsLock) {
+            openDecisions.put(decision.id(), decision);
+        }
+        broadcastEvent("decision.opened", Map.of("decision", decision.toMap()));
+    }
+
+    private static @Nullable String extractPlan(DecisionEnvelope entry) {
+        var sub = entry.subject();
+        if (sub.startsWith("plan ")) {
+            return sub.substring("plan ".length()).trim();
+        }
+        return null;
+    }
+
+    private static String extractProject(DecisionEnvelope entry) {
+        var sub = entry.subject();
+        if (sub.contains("session-log") || sub.contains("pm-mcp-core")) {
+            return "pm-mcp-core";
+        }
+        if (sub.contains("plan-marshall")) {
+            return "plan-marshall";
+        }
+        return "pm-mcp-clients";
+    }
+
+    private boolean handleDecisionRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        var path = request.path();
+        var method = request.method();
+
+        // 1. List decisions
+        if ("GET".equals(method) && ("/api/v1/decisions".equals(path) || "/api/v1/questions".equals(path))) {
+            handleListDecisions(request, response, null);
+            return true;
+        }
+        if ("GET".equals(method) && path.startsWith("/api/v1/plans/") && path.endsWith("/decisions")) {
+            var plan = path.substring("/api/v1/plans/".length(), path.length() - "/decisions".length());
+            handleListDecisions(request, response, plan);
+            return true;
+        }
+
+        // 2. Decision specific routes
+        String decisionId = null;
+        String action = null;
+        if (path.startsWith("/api/v1/decisions/")) {
+            var sub = path.substring("/api/v1/decisions/".length());
+            int slash = sub.indexOf('/');
+            if (slash < 0) {
+                decisionId = sub;
+            } else {
+                decisionId = sub.substring(0, slash);
+                action = sub.substring(slash + 1);
+            }
+        } else if (path.startsWith("/api/v1/questions/") && path.contains("/answers")) {
+            var sub = path.substring("/api/v1/questions/".length());
+            int slash = sub.indexOf('/');
+            if (slash > 0) {
+                decisionId = sub.substring(0, slash);
+                action = "answer";
+            }
+        } else if (path.startsWith("/api/v1/plans/") && path.contains("/decisions/")) {
+            var sub = path.substring(path.indexOf("/decisions/") + "/decisions/".length());
+            int slash = sub.indexOf('/');
+            if (slash < 0) {
+                decisionId = sub;
+            } else {
+                decisionId = sub.substring(0, slash);
+                action = sub.substring(slash + 1);
+            }
+        }
+
+        if (decisionId != null) {
+            if ("GET".equals(method) && action == null) {
+                handleGetDecision(response, decisionId);
+                return true;
+            }
+            if ("POST".equals(method) && ("answer".equals(action) || "answers".equals(action))) {
+                handleAnswerDecision(request, response, decisionId, isWeb);
+                return true;
+            }
+            if ("POST".equals(method) && "interpret".equals(action)) {
+                handleInterpretDecision(request, response, decisionId);
+                return true;
+            }
+            if ("POST".equals(method) && "withdraw".equals(action)) {
+                handleWithdrawDecision(request, response, decisionId);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void handleListDecisions(MockHttpRequest request, MockHttpResponse response, @Nullable String planFromPath) throws IOException {
+        var query = request.query() != null ? request.query() : "";
+        String planFilter = planFromPath;
+        String projectFilter = null;
+        for (var part : query.split("&")) {
+            if (part.startsWith("plan=")) {
+                planFilter = part.substring("plan=".length());
+            } else if (part.startsWith("project=")) {
+                projectFilter = part.substring("project=".length());
+            }
+        }
+        if (".".equals(projectFilter)) {
+            projectFilter = "pm-mcp-clients";
+        }
+
+        var list = new ArrayList<Map<String, Object>>();
+        synchronized (decisionsLock) {
+            for (var entry : openDecisions.values()) {
+                var itemPlan = extractPlan(entry);
+                if (planFilter != null && !planFilter.isBlank() && !planFilter.equals(itemPlan)) {
+                    continue;
+                }
+                if (projectFilter != null && !projectFilter.isBlank()) {
+                    var itemProject = extractProject(entry);
+                    if (!projectFilter.equals(itemProject)) {
+                        continue;
+                    }
+                }
+                var map = new LinkedHashMap<String, Object>(entry.toMap());
+                if (itemPlan != null) {
+                    map.put("plan", itemPlan);
+                }
+                map.put("project", extractProject(entry));
+                list.add(map);
+            }
+        }
+        response.json(200, list);
+    }
+
+    private void handleGetDecision(MockHttpResponse response, String decisionId) throws IOException {
+        DecisionEnvelope envelope;
+        synchronized (decisionsLock) {
+            envelope = openDecisions.get(decisionId);
+        }
+        if (envelope != null) {
+            var map = new LinkedHashMap<String, Object>(envelope.toMap());
+            var itemPlan = extractPlan(envelope);
+            if (itemPlan != null) {
+                map.put("plan", itemPlan);
+            }
+            map.put("project", extractProject(envelope));
+            response.json(200, map);
+        } else {
+            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+        }
+    }
+
+    private void handleAnswerDecision(MockHttpRequest request, MockHttpResponse response, String decisionId, boolean isWeb) throws IOException {
+        DecisionEnvelope envelope;
+        synchronized (decisionsLock) {
+            envelope = openDecisions.get(decisionId);
+        }
+        if (envelope == null) {
+            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            return;
+        }
+
+        DecisionAnswerRequest answerReq;
+        try {
+            answerReq = DecisionAnswerRequest.fromJson(request.bodyText());
+        }
+        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (Exception _) {
+            answerReq = new DecisionAnswerRequest(Map.of(), null, null, null, null, null, isWeb ? "web" : "cli", null);
+        }
+
+        // Waiver handling
+        if (envelope.isWaiver()) {
+            var action = answerReq.action() != null ? answerReq.action() : (answerReq.option() != null ? answerReq.option() : "waive");
+            if ("later".equalsIgnoreCase(action) || "later".equalsIgnoreCase(answerReq.option())) {
+                response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
+                return;
+            }
+            var reason = answerReq.reason();
+            if (reason == null || reason.isBlank()) {
+                response.json(400, Map.of(KEY_ERROR, "invalid_answer", KEY_MESSAGE, "A reason is required."));
+                return;
+            }
+            var outcome = "decline".equalsIgnoreCase(action) || "d".equalsIgnoreCase(action) ? "declined" : "waived";
+            synchronized (decisionsLock) {
+                openDecisions.remove(decisionId);
+            }
+            broadcastEvent("decision.answered", Map.of(
+                    "id", decisionId,
+                    "answer", outcome + " (" + reason + ")",
+                    "channel", answerReq.channel(),
+                    "device", answerReq.device() != null ? answerReq.device() : ""
+            ));
+            broadcastEvent("decision.closed", Map.of(
+                    "id", decisionId,
+                    "outcome", outcome,
+                    "reason", reason
+            ));
+            response.json(200, Map.of(KEY_STATUS, outcome, "id", decisionId, "reason", reason));
+            return;
+        }
+
+        // Regular decision
+        var chosen = answerReq.option();
+        if (chosen == null && answerReq.ownWords() != null) {
+            chosen = answerReq.ownWords();
+        }
+        if (chosen == null && !answerReq.partAnswers().isEmpty()) {
+            chosen = answerReq.partAnswers().values().iterator().next().toString();
+        }
+        if ("later".equalsIgnoreCase(chosen) || "l".equalsIgnoreCase(chosen)) {
+            response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
+            return;
+        }
+        if (chosen == null) {
+            chosen = "1";
+        }
+
+        synchronized (decisionsLock) {
+            openDecisions.remove(decisionId);
+        }
+
+        var channel = answerReq.channel();
+        var device = answerReq.device() != null ? answerReq.device() : "";
+        broadcastEvent("decision.answered", Map.of(
+                "id", decisionId,
+                "answer", chosen,
+                "channel", channel,
+                "device", device
+        ));
+        broadcastEvent("decision.closed", Map.of(
+                "id", decisionId,
+                "outcome", "answered",
+                "answer", chosen
+        ));
+        response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, "answer", chosen));
+    }
+
+    private void handleInterpretDecision(MockHttpRequest request, MockHttpResponse response, String decisionId) throws IOException {
+        String words = "";
+        try {
+            var map = JsonTree.asObject(JsonTree.parse(request.body()));
+            if (map != null) {
+                words = JsonTree.string(map, "words");
+                if (words == null) words = JsonTree.string(map, "own_words");
+            }
+        }
+        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (Exception _) {
+            // Ignore
+        }
+        if (words == null) words = "";
+        var lower = words.toLowerCase();
+
+        DecisionInterpretation interp;
+        if (lower.contains("release/0.9") || lower.contains("provided") || lower.contains("frozen") || lower.contains("untouched")) {
+            interp = new DecisionInterpretation(
+                    InterpretationType.OPTION_WITH_CONDITION, "2", "release/0.9 stays as it is",
+                    "Rebase onto main, provided release/0.9 stays as it is.", null,
+                    List.of("rebase", "release/0.9")
+            );
+        } else if (lower.contains("whatever") || lower.contains("reviewer") || lower.contains("unclear")) {
+            interp = new DecisionInterpretation(
+                    InterpretationType.UNCLEAR, null, null, null,
+                    "Which reviewer do you mean, and what would they do here: merge main into the branch, or something else?",
+                    List.of()
+            );
+        } else if (lower.contains("neither") || lower.contains("squash")) {
+            interp = new DecisionInterpretation(
+                    InterpretationType.OWN_OPTION, null, null,
+                    "your own answer: squash the branch into one commit on main.", null,
+                    List.of("squash the branch into one commit on main")
+            );
+        } else if (lower.contains("leave") || lower.contains("delegate")) {
+            interp = new DecisionInterpretation(
+                    InterpretationType.DELEGATION, "2", null,
+                    "you leave it to the plan", null,
+                    List.of("leave it to the plan")
+            );
+        } else {
+            interp = new DecisionInterpretation(
+                    InterpretationType.OPTION, "2", null,
+                    "Rebase onto main", null,
+                    List.of(words)
+            );
+        }
+
+        response.json(200, interp.toMap());
+    }
+
+    private void handleWithdrawDecision(MockHttpRequest request, MockHttpResponse response, String decisionId) throws IOException {
+        DecisionEnvelope removed;
+        synchronized (decisionsLock) {
+            removed = openDecisions.remove(decisionId);
+        }
+        if (removed == null) {
+            response.json(404, Map.of(KEY_ERROR, "not_found", KEY_MESSAGE, "Question " + decisionId + " not found."));
+            return;
+        }
+
+        broadcastEvent("decision.closed", Map.of(
+                "id", decisionId,
+                "outcome", "withdrawn",
+                "reason", "none_fits"
+        ));
+
+        // When Q-007 is withdrawn, ask anew as Q-009 or replacement
+        var replacement = new DecisionEnvelope(
+                "Q-009", 1, "Resolve rebase conflict (asked anew)", null, removed.subject(),
+                removed.scope(), removed.askingPhase(), removed.askingRole(), removed.blocks(),
+                removed.reversibility(), "The role implement asked anew after " + decisionId,
+                removed.evidence(), removed.parts(), Instant.now(), false, null, null, null
+        );
+        synchronized (decisionsLock) {
+            openDecisions.put("Q-009", replacement);
+        }
+        broadcastEvent("decision.opened", Map.of("decision", replacement.toMap()));
+
+        response.json(200, Map.of(KEY_STATUS, "withdrawn", "id", decisionId));
     }
 
     @Override

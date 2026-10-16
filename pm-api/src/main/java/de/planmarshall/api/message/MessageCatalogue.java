@@ -44,7 +44,8 @@ public final class MessageCatalogue {
             "workspace",
             "devices",
             "overview",
-            "reports"
+            "reports",
+            "decisions"
     );
 
     private static final String DEFAULT_LOCALE = "en";
@@ -123,6 +124,29 @@ public final class MessageCatalogue {
                 "locales", SUPPORTED_LOCALES.stream().sorted().toList(),
                 "areas", SUPPORTED_AREAS
         );
+    }
+
+    /**
+     * Checks if a message key exists in the default locale.
+     *
+     * @param key the message key
+     * @return {@code true} if present
+     */
+    public static boolean hasKey(String key) {
+        return hasKey(DEFAULT_LOCALE, key);
+    }
+
+    /**
+     * Checks if a message key exists in the specified locale.
+     *
+     * @param locale the locale
+     * @param key    the message key
+     * @return {@code true} if present
+     */
+    public static boolean hasKey(String locale, String key) {
+        if (key == null) return false;
+        String effectiveLocale = normalizeLocale(locale);
+        return getMessages(effectiveLocale, "all").containsKey(key);
     }
 
     /**

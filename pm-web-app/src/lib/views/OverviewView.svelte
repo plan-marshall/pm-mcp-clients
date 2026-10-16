@@ -96,17 +96,11 @@
     isLoadingDetail = true;
     try {
       const res = await apiClient.getProjectDetail(projectId);
-      if (
-        projectId === selectedProjectId &&
-        requestGeneration === detailRequestGeneration
-      ) {
+      if (projectId === selectedProjectId && requestGeneration === detailRequestGeneration) {
         detail = res;
       }
     } catch (err: unknown) {
-      if (
-        projectId === selectedProjectId &&
-        requestGeneration === detailRequestGeneration
-      ) {
+      if (projectId === selectedProjectId && requestGeneration === detailRequestGeneration) {
         detail = null;
       }
     } finally {
@@ -176,18 +170,12 @@
     isLoadingEnded = true;
     try {
       const res = await apiClient.getEndedWork(projectId, page);
-      if (
-        projectId === selectedProjectId &&
-        requestGeneration === endedRequestGeneration
-      ) {
+      if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
         endedPage = res;
         currentEndedPage = page;
       }
     } catch (err: unknown) {
-      if (
-        projectId === selectedProjectId &&
-        requestGeneration === endedRequestGeneration
-      ) {
+      if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
         endedPage = null;
       }
     } finally {
@@ -669,7 +657,9 @@
                 {#each detail.alongside_landings as landing}
                   <div class="alongside-row">
                     {#if landing.state === 'failed'}
-                      <span class="badge badge--attention">! {$t('overview.needs.landing_failed')}</span>
+                      <span class="badge badge--attention"
+                        >! {$t('overview.needs.landing_failed')}</span
+                      >
                     {/if}
                     <span class="alongside-desc">
                       {#if landing.unit}

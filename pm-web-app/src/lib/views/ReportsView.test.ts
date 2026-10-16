@@ -132,7 +132,7 @@ describe('ReportsView component', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Nothing new. Reports you have read are not shown any more.')
+        screen.getByText('Nothing new. Reports you have read are not shown any more.'),
       ).toBeInTheDocument();
     });
   });

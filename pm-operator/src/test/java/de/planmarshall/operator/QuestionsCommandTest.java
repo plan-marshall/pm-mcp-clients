@@ -62,10 +62,10 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                              [
-                                {"id":"Q-007","plan":"fix-relay","title":"Resolve rebase conflict"}
-                              ]
-                              """);
+                                    [
+                                      {"id":"Q-007","plan":"fix-relay","title":"Resolve rebase conflict"}
+                                    ]
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -74,11 +74,11 @@ class QuestionsCommandTest {
         int code = execute("questions");
         var output = out.toString();
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(output.contains("Open Questions · 1 pending")),
-                      () -> assertTrue(output.contains("Q-007")),
-                      () -> assertTrue(output.contains("fix-relay")),
-                      () -> assertTrue(output.contains("Resolve rebase conflict"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("Open Questions · 1 pending")),
+                            () -> assertTrue(output.contains("Q-007")),
+                            () -> assertTrue(output.contains("fix-relay")),
+                            () -> assertTrue(output.contains("Resolve rebase conflict"))
         );
     }
 
@@ -139,8 +139,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "2");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
         );
     }
 
@@ -157,8 +157,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "--words", "rebase onto origin/main");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
         );
     }
 
@@ -229,5 +229,53 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-008", "yes");
         assertEquals(PmOperator.EXIT_FAILURE, code);
+    }
+
+    @Test
+    @DisplayName("answer waiver without reason returns code 3")
+    void answerWaiverWithoutReason() throws Exception {
+        int code = execute("answer", "WR-2", "waive");
+        assertEquals(3, code);
+        assertTrue(out.toString().contains("reason is required"));
+    }
+
+    @Test
+    @DisplayName("answer waiver with reason succeeds")
+    void answerWaiverWithReason() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/WR-2/answer".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "WR-2", "waive", "--reason", "hotfix on prod");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Answered WR-2 with option waive."));
+    }
+
+    @Test
+    @DisplayName("answer later leaves decision open")
+    void answerLater() throws Exception {
+        int code = execute("answer", "Q-007", "later");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("stays open"));
+    }
+
+    @Test
+    @DisplayName("answer withdraw invokes think-again endpoint")
+    void answerWithdraw() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-007/withdraw".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "Q-007", "withdraw");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("you asked to think again"));
     }
 }

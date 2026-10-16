@@ -77,6 +77,30 @@
     </div>
   {/if}
 
+  {#if $runtimeStore.newDecisionArrivalNotice}
+    <div class="reports-arrival-banner decisions-arrival-banner" role="status">
+      <span>{$runtimeStore.newDecisionArrivalNotice}</span>
+      <button
+        class="reports-arrival-btn"
+        onclick={() => {
+          navigateTo('decisions');
+          runtimeStore.update((s) => ({ ...s, newDecisionArrivalNotice: null }));
+        }}
+      >
+        {$t('decisions.arrival.show_them') || 'Show decision'}
+      </button>
+      <button
+        class="reports-arrival-close"
+        aria-label="Dismiss notice"
+        onclick={() => {
+          runtimeStore.update((s) => ({ ...s, newDecisionArrivalNotice: null }));
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  {/if}
+
   <header class="app-header">
     <div class="app-header__brand">
       <span class="app-header__logo" aria-hidden="true">✦</span>
@@ -103,6 +127,21 @@
           onclick={() => navigateTo('workspace')}
         >
           {$t('web.frame.nav.explorer')}
+        </button>
+        <button
+          class="header-action-btn header-action-btn--decisions"
+          aria-label={$t('web.frame.nav.decisions')}
+          onclick={() => navigateTo('decisions')}
+        >
+          {$t('web.frame.nav.decisions')}
+          {#if $runtimeStore.openDecisionsCount > 0}
+            <span
+              class="reports-badge decisions-badge"
+              aria-label="{$runtimeStore.openDecisionsCount} open"
+            >
+              {$runtimeStore.openDecisionsCount}
+            </span>
+          {/if}
         </button>
         <button
           class="header-action-btn header-action-btn--reports"
@@ -141,6 +180,7 @@
 
   <div class="sr-only" aria-live="polite">
     {$runtimeStore.quietReportNotice || ''}
+    {$runtimeStore.quietDecisionNotice || ''}
   </div>
 {/if}
 

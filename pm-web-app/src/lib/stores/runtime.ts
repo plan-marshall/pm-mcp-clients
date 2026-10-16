@@ -27,7 +27,8 @@ export interface RuntimeState {
     | 'designer'
     | 'revoked'
     | 'overview'
-    | 'reports';
+    | 'reports'
+    | 'decisions';
   currentState: StateRepresentation | null;
   isRevoked: boolean;
   revokedReason: string;
@@ -38,6 +39,9 @@ export interface RuntimeState {
   unreadReportsArrivalNotice?: string | null;
   quietReportNotice?: string | null;
   selectedReportDetailPlanId?: string | null;
+  openDecisionsCount: number;
+  newDecisionArrivalNotice?: string | null;
+  quietDecisionNotice?: string | null;
 }
 
 const initialState: RuntimeState = {
@@ -57,6 +61,9 @@ const initialState: RuntimeState = {
   unreadReportsArrivalNotice: null,
   quietReportNotice: null,
   selectedReportDetailPlanId: null,
+  openDecisionsCount: 0,
+  newDecisionArrivalNotice: null,
+  quietDecisionNotice: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -183,6 +190,7 @@ export async function initRuntime(): Promise<void> {
 
     subscribeToEvents();
     void refreshReportsCount();
+    void refreshDecisionsCount();
   } catch (err: unknown) {
     if ((err as Error)?.message === 'unauthorized') {
       return;
@@ -216,6 +224,26 @@ export async function refreshReportsCount(): Promise<void> {
   }
 }
 
+export async function refreshDecisionsCount(): Promise<void> {
+  if (!apiClient.isPaired()) return;
+  try {
+    const decisions = await apiClient.getDecisions();
+    runtimeStore.update((s) => {
+      let arrivalNotice = s.newDecisionArrivalNotice;
+      if (decisions.length > 0 && !arrivalNotice && s.openDecisionsCount === 0) {
+        arrivalNotice = `${decisions.length} open decision${decisions.length > 1 ? 's' : ''}`;
+      }
+      return {
+        ...s,
+        openDecisionsCount: decisions.length,
+        newDecisionArrivalNotice: arrivalNotice,
+      };
+    });
+  } catch {
+    // Ignore fetch failures
+  }
+}
+
 export function handleRuntimeEvent(event: string, data: unknown): void {
   if (event === 'state_transition' || event === 'check') {
     const stateData = data as StateRepresentation;
@@ -240,6 +268,20 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: Math.max(0, s.unreadReportsCount - 1),
+    }));
+  } else if (event === 'decision.opened') {
+    const dec = (data || {}) as { title?: string; question?: string; id?: string };
+    const notice = dec.title || dec.question || 'A new decision requires attention';
+    runtimeStore.update((s) => ({
+      ...s,
+      openDecisionsCount: s.openDecisionsCount + 1,
+      newDecisionArrivalNotice: notice,
+      quietDecisionNotice: notice,
+    }));
+  } else if (event === 'decision.answered' || event === 'decision.closed') {
+    runtimeStore.update((s) => ({
+      ...s,
+      openDecisionsCount: Math.max(0, s.openDecisionsCount - 1),
     }));
   }
 }
@@ -268,6 +310,7 @@ export async function pairBrowser(code: string): Promise<void> {
 
   subscribeToEvents();
   void refreshReportsCount();
+  void refreshDecisionsCount();
 }
 
 export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {

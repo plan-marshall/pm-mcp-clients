@@ -2,7 +2,13 @@
  * Token number formatting according to texts-and-languages.adoc#numbers.
  */
 
-function formatWithDecimals(val: number, factor: number, decimals: number, floor: boolean, decimalPoint: string): string {
+function formatWithDecimals(
+  val: number,
+  factor: number,
+  decimals: number,
+  floor: boolean,
+  decimalPoint: string,
+): string {
   const rounded = floor ? Math.floor(val * factor) / factor : Math.round(val * factor) / factor;
   return rounded.toFixed(decimals).replace('.', decimalPoint);
 }
@@ -35,7 +41,7 @@ export function formatSplit(
   inTokens: number,
   outTokens: number,
   floor = false,
-  locale = 'en'
+  locale = 'en',
 ): string {
   const isDe = locale.startsWith('de');
   const totalFormatted = formatTokens(total, floor, locale);

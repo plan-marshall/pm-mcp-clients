@@ -63,11 +63,11 @@ class EpicCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/epics".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                              [
-                                {"id":"ep-001","state":"running","title":"Hardening Relay"},
-                                {"id":"ep-002","state":"staged","title":"Storage Migration"}
-                              ]
-                              """);
+                                    [
+                                      {"id":"ep-001","state":"running","title":"Hardening Relay"},
+                                      {"id":"ep-002","state":"staged","title":"Storage Migration"}
+                                    ]
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -76,11 +76,11 @@ class EpicCommandTest {
         int code = execute("epic");
         var output = out.toString();
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(output.contains("Epics")),
-                      () -> assertTrue(output.contains("ep-001")),
-                      () -> assertTrue(output.contains("Hardening Relay")),
-                      () -> assertTrue(output.contains("ep-002"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("Epics")),
+                            () -> assertTrue(output.contains("ep-001")),
+                            () -> assertTrue(output.contains("Hardening Relay")),
+                            () -> assertTrue(output.contains("ep-002"))
         );
     }
 
@@ -133,8 +133,8 @@ class EpicCommandTest {
 
         int code = execute("epic", "next", "ep-001", "--raise-scope");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("✓ Next plan for ep-001 started"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ Next plan for ep-001 started"))
         );
     }
 
@@ -151,8 +151,8 @@ class EpicCommandTest {
 
         int code = execute("epic", "auto", "ep-001", "on");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("✓ Automatic for ep-001: on"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ Automatic for ep-001: on"))
         );
     }
 
@@ -233,8 +233,8 @@ class EpicCommandTest {
 
         int code = execute("epic", "cancel", "ep-001", "--reason", "Scope cancelled");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("✓ ep-001 cancelled"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ ep-001 cancelled"))
         );
     }
 }

@@ -129,9 +129,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:api-contract.adoc[`api-contract`]; link:implemented/mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
-|link:decision-contract.adoc[`decision-contract`]
+|link:implemented/decision-contract.adoc[`decision-contract`]
 |Decisions: contract and mock runtime
-|`open`
+|`done`
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
@@ -147,16 +147,16 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
-|link:cli-decisions.adoc[`cli-decisions`]
+|link:implemented/cli-decisions.adoc[`cli-decisions`]
 |Decisions in the terminal
-|`open`
-|link:decision-contract.adoc[`decision-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
+|`done`
+|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
 |epic clients
 
-|link:web-decisions.adoc[`web-decisions`]
+|link:implemented/web-decisions.adoc[`web-decisions`]
 |Decisions in the web app
-|`open`
-|link:decision-contract.adoc[`decision-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
+|`done`
+|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
 |epic clients
 
 |link:project-contract.adoc[`project-contract`]

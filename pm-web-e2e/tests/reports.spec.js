@@ -15,7 +15,9 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
   });
 
-  test('displays unread reports arrival notice on load and navigates to reports view', async ({ page }) => {
+  test('displays unread reports arrival notice on load and navigates to reports view', async ({
+    page,
+  }) => {
     // Check arrival banner if present or click Reports button
     const reportsBtn = page.getByRole('button', { name: /Reports/i });
     await expect(reportsBtn).toBeVisible();
@@ -88,6 +90,8 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
     // Should transition to empty state
     await expect(page.locator('.empty-state')).toBeVisible();
-    await expect(page.getByText('Nothing new. Reports you have read are not shown any more.')).toBeVisible();
+    await expect(
+      page.getByText('Nothing new. Reports you have read are not shown any more.'),
+    ).toBeVisible();
   });
 });

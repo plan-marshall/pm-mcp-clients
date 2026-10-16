@@ -30,7 +30,11 @@ describe('tokenFormat utility', () => {
   });
 
   it('formats split in and out tokens', () => {
-    expect(formatSplit(412000, 380000, 32000, true, 'en')).toBe('≥ 412 k (≥ 380 k in · ≥ 32 k out)');
-    expect(formatSplit(412000, 380000, 32000, false, 'de')).toBe('412 Tsd. (380 Tsd. rein · 32 Tsd. raus)');
+    expect(formatSplit(412000, 380000, 32000, true, 'en')).toBe(
+      '≥ 412 k (≥ 380 k in · ≥ 32 k out)',
+    );
+    expect(formatSplit(412000, 380000, 32000, false, 'de')).toBe(
+      '412 Tsd. (380 Tsd. rein · 32 Tsd. raus)',
+    );
   });
 });
