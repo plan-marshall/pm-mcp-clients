@@ -120,7 +120,7 @@ final class StatusCommand implements Callable<Integer> {
             if (projectsResponse.status() == 200) {
                 var overview = ProjectOverviewResponse.fromJson(projectsResponse.bodyText());
                 if (!overview.projects().isEmpty() || status.containsKey("running_since")
-                                          || status.containsKey("workers_count") || project != null) {
+                                                || status.containsKey("workers_count") || project != null) {
                     renderOverviewTree(out, status, overview.projects());
                     out.flush();
                     return 0;
@@ -140,8 +140,8 @@ final class StatusCommand implements Callable<Integer> {
         if (json) {
             try {
                 var path = project != null && !".".equals(project)
-                                          ? "/api/v1/projects/" + project + "/ended"
-                                          : "/api/v1/status?ended=true";
+                                                ? "/api/v1/projects/" + project + "/ended"
+                                                : "/api/v1/status?ended=true";
                 var response = context.runtime(false).send(HttpRequest.get(path));
                 if (response.status() == 200) {
                     out.println(response.bodyText());
@@ -216,25 +216,25 @@ final class StatusCommand implements Callable<Integer> {
     private void renderEndedItems(PrintWriter out, List<EndedWorkItem> items, String locale) {
         for (var item : items) {
             var kind = "epic".equalsIgnoreCase(item.kind())
-                                      ? MessageCatalogue.format(locale, "overview.kind.epic", Map.of())
-                                      : MessageCatalogue.format(locale, "overview.kind.plan", Map.of());
+                                            ? MessageCatalogue.format(locale, "overview.kind.epic", Map.of())
+                                            : MessageCatalogue.format(locale, "overview.kind.plan", Map.of());
             var title = OutputSafety.stripControlSequences(item.title());
             var outcome = "epic".equalsIgnoreCase(item.kind())
-                                      ? MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", Objects.toString(item.terminalReason(), "ended")))
-                                      : MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", Objects.toString(item.outcome(), "ended")));
+                                            ? MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", Objects.toString(item.terminalReason(), "ended")))
+                                            : MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", Objects.toString(item.outcome(), "ended")));
             var time = formatRelativeTime(item.endedAt());
             out.printf("  %-4s  %-30s   %s \u00b7 %s%n", kind, title, outcome, time);
 
             if (item.pullRequestNumber() != null) {
                 var prText = MessageCatalogue.format(locale, "operator.status.pull_request", Map.of(
-                                          "number", item.pullRequestNumber(),
-                                          "url", OutputSafety.stripControlSequences(Objects.toString(item.pullRequestUrl(), ""))
+                                                "number", item.pullRequestNumber(),
+                                                "url", OutputSafety.stripControlSequences(Objects.toString(item.pullRequestUrl(), ""))
                 ));
                 out.printf("        %s%n", prText);
             }
             if (item.reason() != null && !item.reason().isBlank()) {
                 var reasonText = MessageCatalogue.format(locale, "operator.status.reason", Map.of(
-                                          "reason", OutputSafety.stripControlSequences(item.reason())
+                                                "reason", OutputSafety.stripControlSequences(item.reason())
                 ));
                 out.printf("        %s%n", reasonText);
             }
@@ -255,18 +255,18 @@ final class StatusCommand implements Callable<Integer> {
         var total = status.get("build_slots_total") != null ? status.get("build_slots_total") : 0;
 
         var header = MessageCatalogue.format(locale, "operator.status.runtime", Map.of(
-                                  "version", version,
-                                  "time", runningSince,
-                                  "workers", workers,
-                                  "slots", slots,
-                                  "total", total
+                                        "version", version,
+                                        "time", runningSince,
+                                        "workers", workers,
+                                        "slots", slots,
+                                        "total", total
         ));
         out.println(header);
         out.println();
 
         var filteredProjects = projects.stream()
-                                  .filter(p -> project == null || ".".equals(project) || project.equals(p.projectId()))
-                                  .toList();
+                                        .filter(p -> project == null || ".".equals(project) || project.equals(p.projectId()))
+                                        .toList();
 
         if (filteredProjects.isEmpty()) {
             out.println(MessageCatalogue.format(locale, "overview.projects.empty", Map.of()));
@@ -282,8 +282,8 @@ final class StatusCommand implements Callable<Integer> {
 
     private void renderProjectNode(PrintWriter out, ProjectSummary p, boolean groupByEpic, String locale) {
         String markerCol = p.needsOperatorCount() > 0
-                                  ? String.format("! %-2d ", p.needsOperatorCount())
-                                  : (p.setupNeedsOperator() ? "! 1  " : "     ");
+                                        ? String.format("! %-2d ", p.needsOperatorCount())
+                                        : (p.setupNeedsOperator() ? "! 1  " : "     ");
 
         var pName = OutputSafety.stripControlSequences(p.displayName() != null ? p.displayName() : p.projectId());
         String countsPart;
@@ -291,16 +291,16 @@ final class StatusCommand implements Callable<Integer> {
             countsPart = MessageCatalogue.format(locale, "overview.project.setup", Map.of());
         } else if (p.activePlansCount() > 0 && p.activeEpicsCount() > 0) {
             countsPart = MessageCatalogue.format(locale, "overview.project.counts", Map.of(
-                                      "plans", p.activePlansCount(),
-                                      "epics", p.activeEpicsCount()
+                                            "plans", p.activePlansCount(),
+                                            "epics", p.activeEpicsCount()
             ));
         } else if (p.activePlansCount() > 0) {
             countsPart = MessageCatalogue.format(locale, "overview.project.plans_only", Map.of(
-                                      "plans", p.activePlansCount()
+                                            "plans", p.activePlansCount()
             ));
         } else if (p.activeEpicsCount() > 0) {
             countsPart = MessageCatalogue.format(locale, "overview.project.epics_only", Map.of(
-                                      "epics", p.activeEpicsCount()
+                                            "epics", p.activeEpicsCount()
             ));
         } else {
             countsPart = "";
@@ -340,8 +340,8 @@ final class StatusCommand implements Callable<Integer> {
         String marker;
         if (plan.needsOperatorCount() != null && plan.needsOperatorCount() > 0) {
             var kind = plan.needsOperatorKind() != null
-                                      ? MessageCatalogue.format(locale, "overview.needs." + plan.needsOperatorKind(), Map.of())
-                                      : "attention";
+                                            ? MessageCatalogue.format(locale, "overview.needs." + plan.needsOperatorKind(), Map.of())
+                                            : "attention";
             marker = String.format("! %-8s ", kind);
         } else {
             marker = "           ";
@@ -352,8 +352,8 @@ final class StatusCommand implements Callable<Integer> {
         var rawState = plan.phaseState();
         var stateKey = "waiting_for_you".equals(rawState) ? "waiting" : rawState;
         var state = stateKey != null
-                                  ? MessageCatalogue.format(locale, "overview.state." + stateKey, Map.of())
-                                  : "running";
+                                        ? MessageCatalogue.format(locale, "overview.state." + stateKey, Map.of())
+                                        : "running";
         var timeInPhase = formatDuration(plan.phaseEnteredAt());
         var timePart = timeInPhase.isEmpty() ? "" : " \u00b7 " + timeInPhase;
 
@@ -364,15 +364,15 @@ final class StatusCommand implements Callable<Integer> {
         if (plan.epicTitle() != null || plan.epicId() != null) {
             var epTitle = plan.epicTitle() != null ? plan.epicTitle() : plan.epicId();
             details.add(MessageCatalogue.format(locale, "overview.plan.belongs_to",
-                                      Map.of("epic", "epic " + OutputSafety.stripControlSequences(epTitle))));
+                                            Map.of("epic", "epic " + OutputSafety.stripControlSequences(epTitle))));
         }
         if (plan.tasksTotal() > 0) {
             details.add(MessageCatalogue.format(locale, "overview.progress.tasks",
-                                      Map.of("done", plan.tasksDone(), "total", plan.tasksTotal())));
+                                            Map.of("done", plan.tasksDone(), "total", plan.tasksTotal())));
         }
         if (plan.offTrackSignal() != null) {
             details.add(MessageCatalogue.format(locale, "overview.plan.off_track",
-                                      Map.of("signal", OutputSafety.stripControlSequences(plan.offTrackSignal()))));
+                                            Map.of("signal", OutputSafety.stripControlSequences(plan.offTrackSignal()))));
         }
 
         if (!details.isEmpty()) {
@@ -380,8 +380,8 @@ final class StatusCommand implements Callable<Integer> {
         }
         if (plan.pullRequestNumber() != null) {
             var prText = MessageCatalogue.format(locale, "operator.status.pull_request", Map.of(
-                                      "number", plan.pullRequestNumber(),
-                                      "url", OutputSafety.stripControlSequences(Objects.toString(plan.pullRequestUrl(), ""))
+                                            "number", plan.pullRequestNumber(),
+                                            "url", OutputSafety.stripControlSequences(Objects.toString(plan.pullRequestUrl(), ""))
             ));
             out.printf("%s                       %s%n", baseIndent, prText);
         }
@@ -390,12 +390,12 @@ final class StatusCommand implements Callable<Integer> {
     private void renderProjectByEpic(PrintWriter out, ProjectDetailResponse detail, String locale) {
         for (var epic : detail.epics()) {
             String epicMarker = epic.needsOperatorCount() != null && epic.needsOperatorCount() > 0
-                                      ? String.format("! %-8s ", epic.needsOperatorKind() != null ? OutputSafety.stripControlSequences(epic.needsOperatorKind()) : "attention")
-                                      : "           ";
+                                            ? String.format("! %-8s ", epic.needsOperatorKind() != null ? OutputSafety.stripControlSequences(epic.needsOperatorKind()) : "attention")
+                                            : "           ";
             var epicTitle = OutputSafety.stripControlSequences(epic.title());
             var plansCount = MessageCatalogue.format(locale, "overview.epic.plans", Map.of(
-                                      "running", epic.runningPlansCount(),
-                                      "staged", epic.stagedPlansCount()
+                                            "running", epic.runningPlansCount(),
+                                            "staged", epic.stagedPlansCount()
             ));
             out.printf("     %sepic  %-30s   %s%n", epicMarker, epicTitle, plansCount);
 
@@ -410,8 +410,8 @@ final class StatusCommand implements Callable<Integer> {
 
         // Plans without epic
         var withoutEpic = detail.plans().stream()
-                                  .filter(p -> p.epicId() == null)
-                                  .toList();
+                                        .filter(p -> p.epicId() == null)
+                                        .toList();
         if (!withoutEpic.isEmpty()) {
             out.printf("     %s%n", MessageCatalogue.format(locale, "overview.group.without_epic", Map.of()));
             for (var plan : withoutEpic) {
@@ -427,8 +427,8 @@ final class StatusCommand implements Callable<Integer> {
         out.printf("     %s%n", MessageCatalogue.format(locale, "overview.group.alongside", Map.of()));
         for (var landing : landings) {
             String marker = "failed".equalsIgnoreCase(landing.state())
-                                      ? "! landing failed   "
-                                      : "                   ";
+                                            ? "! landing failed   "
+                                            : "                   ";
             String desc;
             if (landing.unit() != null) {
                 desc = "landing " + OutputSafety.stripControlSequences(landing.unit());

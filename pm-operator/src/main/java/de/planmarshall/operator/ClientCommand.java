@@ -32,12 +32,12 @@ import picocli.CommandLine.Spec;
  * (01-commands.adoc#commands, 02-credentials-and-operator.adoc).
  */
 @Command(name = "client", description = "Manages client bundle installations for coding agent harnesses.",
-                          subcommands = {
-                                                    ClientCommand.StatusCommand.class,
-                                                    ClientCommand.InstallCommand.class,
-                                                    ClientCommand.UpdateCommand.class,
-                                                    ClientCommand.RemoveCommand.class
-                          })
+                                subcommands = {
+                                                                ClientCommand.StatusCommand.class,
+                                                                ClientCommand.InstallCommand.class,
+                                                                ClientCommand.UpdateCommand.class,
+                                                                ClientCommand.RemoveCommand.class
+                                })
 public final class ClientCommand implements Callable<Integer> {
 
     private static final String HARNESSES = "harnesses";
@@ -95,9 +95,9 @@ public final class ClientCommand implements Callable<Integer> {
                 if (item instanceof Map<?, ?> bundle) {
                     var version = bundle.get("version");
                     out.printf("  %-16s %-10s %s%n",
-                                              bundle.get("name"),
-                                              bundle.get("status"),
-                                              version != null ? version : "");
+                                                    bundle.get("name"),
+                                                    bundle.get("status"),
+                                                    version != null ? version : "");
                 } else {
                     out.println("  " + item);
                 }
@@ -106,12 +106,12 @@ public final class ClientCommand implements Callable<Integer> {
     }
 
     static int executeHarnessAction(OperatorContext context, CommandSpec spec, String action,
-                              @Nullable List<String> harnesses, String successMsg) throws IOException {
+                                    @Nullable List<String> harnesses, String successMsg) throws IOException {
         context.gate().verify();
         var body = new LinkedHashMap<String, Object>();
         body.put(HARNESSES, harnesses != null ? harnesses : List.of());
         var response = context.runtime(true).send(
-                                  HttpRequest.json("POST", "/api/v1/client/" + action, JsonTree.write(body)));
+                                        HttpRequest.json("POST", "/api/v1/client/" + action, JsonTree.write(body)));
         var out = spec.commandLine().getOut();
         if (response.status() == 200 || response.status() == 201 || response.status() == 204) {
             out.println(successMsg);
@@ -142,7 +142,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "install", harnesses,
-                                      "✓ Client bundle installation completed");
+                                            "✓ Client bundle installation completed");
         }
     }
 
@@ -164,7 +164,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "update", harnesses,
-                                      "✓ Client bundle update completed");
+                                            "✓ Client bundle update completed");
         }
     }
 
@@ -186,7 +186,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "remove", harnesses,
-                                      "✓ Client bundle removal completed");
+                                            "✓ Client bundle removal completed");
         }
     }
 }

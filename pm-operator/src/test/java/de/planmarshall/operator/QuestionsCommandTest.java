@@ -74,10 +74,10 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                                          [
-                                            {"id":"Q-007","plan":"fix-relay","title":"Resolve rebase conflict"}
-                                          ]
-                                          """);
+                                                [
+                                                  {"id":"Q-007","plan":"fix-relay","title":"Resolve rebase conflict"}
+                                                ]
+                                                """);
             } else {
                 response.send(404, null, "");
             }
@@ -86,11 +86,11 @@ class QuestionsCommandTest {
         int code = execute("questions");
         var output = out.toString();
         assertAll(
-                                  () -> assertEquals(0, code),
-                                  () -> assertTrue(output.contains("Open Questions · 1 pending")),
-                                  () -> assertTrue(output.contains("Q-007")),
-                                  () -> assertTrue(output.contains("fix-relay")),
-                                  () -> assertTrue(output.contains("Resolve rebase conflict"))
+                                        () -> assertEquals(0, code),
+                                        () -> assertTrue(output.contains("Open Questions · 1 pending")),
+                                        () -> assertTrue(output.contains("Q-007")),
+                                        () -> assertTrue(output.contains("fix-relay")),
+                                        () -> assertTrue(output.contains("Resolve rebase conflict"))
         );
     }
 
@@ -151,8 +151,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "2");
         assertAll(
-                                  () -> assertEquals(0, code),
-                                  () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
+                                        () -> assertEquals(0, code),
+                                        () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
         );
     }
 
@@ -169,8 +169,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "--words", "rebase onto origin/main");
         assertAll(
-                                  () -> assertEquals(0, code),
-                                  () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
+                                        () -> assertEquals(0, code),
+                                        () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
         );
     }
 
@@ -298,47 +298,47 @@ class QuestionsCommandTest {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
-                                          {
-                                            "id": "Q-001",
-                                            "revision": 1,
-                                            "title": "Select merge strategy",
-                                            "subject": "fix-relay",
-                                            "scope": "plan",
-                                            "asking_phase": "refine",
-                                            "asking_role": "outline",
-                                            "blocks": "plan",
-                                            "reversibility": "reversible",
-                                            "description": "Preserve clean history",
-                                            "evidence": {"diff": "+10 -2"},
-                                            "parts": [
-                                              {
-                                                "part_id": "part-1",
-                                                "question": "How should branch be updated?",
-                                                "answer_type": "one_option",
-                                                "recommendation": "rebase",
-                                                "recommending_role": "outline",
-                                                "recommendation_rationale": "Keeps clean git log",
-                                                "options": [
-                                                  {
-                                                    "key": "rebase",
-                                                    "label": "Rebase onto main",
-                                                    "quorum_support": {
-                                                      "votes_count": 2,
-                                                      "total_votes": 3,
-                                                      "models_count": 2,
-                                                      "band": "clear_majority",
-                                                      "dissent_summary": "Merge keeps commits"
+                                                {
+                                                  "id": "Q-001",
+                                                  "revision": 1,
+                                                  "title": "Select merge strategy",
+                                                  "subject": "fix-relay",
+                                                  "scope": "plan",
+                                                  "asking_phase": "refine",
+                                                  "asking_role": "outline",
+                                                  "blocks": "plan",
+                                                  "reversibility": "reversible",
+                                                  "description": "Preserve clean history",
+                                                  "evidence": {"diff": "+10 -2"},
+                                                  "parts": [
+                                                    {
+                                                      "part_id": "part-1",
+                                                      "question": "How should branch be updated?",
+                                                      "answer_type": "one_option",
+                                                      "recommendation": "rebase",
+                                                      "recommending_role": "outline",
+                                                      "recommendation_rationale": "Keeps clean git log",
+                                                      "options": [
+                                                        {
+                                                          "key": "rebase",
+                                                          "label": "Rebase onto main",
+                                                          "quorum_support": {
+                                                            "votes_count": 2,
+                                                            "total_votes": 3,
+                                                            "models_count": 2,
+                                                            "band": "clear_majority",
+                                                            "dissent_summary": "Merge keeps commits"
+                                                          }
+                                                        },
+                                                        {
+                                                          "key": "merge",
+                                                          "label": "Merge main into branch"
+                                                        }
+                                                      ]
                                                     }
-                                                  },
-                                                  {
-                                                    "key": "merge",
-                                                    "label": "Merge main into branch"
-                                                  }
-                                                ]
-                                              }
-                                            ]
-                                          }
-                                          """);
+                                                  ]
+                                                }
+                                                """);
             } else if ("/api/v1/decisions/Q-001/answer".equals(target) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
             } else {
@@ -363,28 +363,28 @@ class QuestionsCommandTest {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
-                                          {
-                                            "id": "Q-001",
-                                            "revision": 1,
-                                            "title": "Select merge strategy",
-                                            "subject": "fix-relay",
-                                            "scope": "plan",
-                                            "asking_phase": "refine",
-                                            "blocks": "plan",
-                                            "reversibility": "costly",
-                                            "parts": [
-                                              {
-                                                "part_id": "part-1",
-                                                "question": "Choose strategy",
-                                                "answer_type": "one_option",
-                                                "options": [
-                                                  {"key": "rebase", "label": "Rebase"},
-                                                  {"key": "merge", "label": "Merge", "consequences": "Creates merge commit"}
-                                                ]
-                                              }
-                                            ]
-                                          }
-                                          """);
+                                                {
+                                                  "id": "Q-001",
+                                                  "revision": 1,
+                                                  "title": "Select merge strategy",
+                                                  "subject": "fix-relay",
+                                                  "scope": "plan",
+                                                  "asking_phase": "refine",
+                                                  "blocks": "plan",
+                                                  "reversibility": "costly",
+                                                  "parts": [
+                                                    {
+                                                      "part_id": "part-1",
+                                                      "question": "Choose strategy",
+                                                      "answer_type": "one_option",
+                                                      "options": [
+                                                        {"key": "rebase", "label": "Rebase"},
+                                                        {"key": "merge", "label": "Merge", "consequences": "Creates merge commit"}
+                                                      ]
+                                                    }
+                                                  ]
+                                                }
+                                                """);
             } else if ("/api/v1/decisions/Q-001/answer".equals(target) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
             } else {
@@ -407,17 +407,17 @@ class QuestionsCommandTest {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
-                                          {
-                                            "id": "Q-001",
-                                            "revision": 1,
-                                            "title": "Select merge strategy",
-                                            "subject": "plan fix-relay",
-                                            "scope": "plan",
-                                            "blocks": "plan",
-                                            "reversibility": "reversible",
-                                            "parts": []
-                                          }
-                                          """);
+                                                {
+                                                  "id": "Q-001",
+                                                  "revision": 1,
+                                                  "title": "Select merge strategy",
+                                                  "subject": "plan fix-relay",
+                                                  "scope": "plan",
+                                                  "blocks": "plan",
+                                                  "reversibility": "reversible",
+                                                  "parts": []
+                                                }
+                                                """);
             } else if ("/api/v1/decisions/Q-001/withdraw".equals(target)) {
                 response.json(200, "{\"ok\":true}");
             } else {
@@ -442,34 +442,34 @@ class QuestionsCommandTest {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
-                                          {
-                                            "id": "Q-001",
-                                            "revision": 1,
-                                            "title": "Select merge strategy",
-                                            "subject": "fix-relay",
-                                            "scope": "plan",
-                                            "blocks": "plan",
-                                            "reversibility": "reversible",
-                                            "parts": [
-                                              {
-                                                "part_id": "part-1",
-                                                "question": "How?",
-                                                "answer_type": "one_option",
-                                                "options": [{"key": "rebase", "label": "Rebase"}]
-                                              }
-                                            ]
-                                          }
-                                          """);
+                                                {
+                                                  "id": "Q-001",
+                                                  "revision": 1,
+                                                  "title": "Select merge strategy",
+                                                  "subject": "fix-relay",
+                                                  "scope": "plan",
+                                                  "blocks": "plan",
+                                                  "reversibility": "reversible",
+                                                  "parts": [
+                                                    {
+                                                      "part_id": "part-1",
+                                                      "question": "How?",
+                                                      "answer_type": "one_option",
+                                                      "options": [{"key": "rebase", "label": "Rebase"}]
+                                                    }
+                                                  ]
+                                                }
+                                                """);
             } else if ("/api/v1/decisions/Q-001/interpret".equals(target)) {
                 response.json(200, """
-                                          {
-                                            "words": "Use rebase please",
-                                            "read_back_text": "Rebase onto main",
-                                            "interpretation_type": "option",
-                                            "option": "rebase",
-                                            "understood": true
-                                          }
-                                          """);
+                                                {
+                                                  "words": "Use rebase please",
+                                                  "read_back_text": "Rebase onto main",
+                                                  "interpretation_type": "option",
+                                                  "option": "rebase",
+                                                  "understood": true
+                                                }
+                                                """);
             } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
                 response.json(200, "{\"ok\":true}");
             } else {
@@ -493,37 +493,37 @@ class QuestionsCommandTest {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
-                                          {
-                                            "id": "Q-001",
-                                            "revision": 1,
-                                            "title": "Select merge strategy",
-                                            "subject": "fix-relay",
-                                            "scope": "plan",
-                                            "blocks": "plan",
-                                            "reversibility": "reversible",
-                                            "parts": []
-                                          }
-                                          """);
+                                                {
+                                                  "id": "Q-001",
+                                                  "revision": 1,
+                                                  "title": "Select merge strategy",
+                                                  "subject": "fix-relay",
+                                                  "scope": "plan",
+                                                  "blocks": "plan",
+                                                  "reversibility": "reversible",
+                                                  "parts": []
+                                                }
+                                                """);
             } else if ("/api/v1/decisions/Q-001/interpret".equals(target)) {
                 count[0]++;
                 if (count[0] == 1) {
                     response.json(200, """
-                                              {
-                                                "words": "unclear words",
-                                                "interpretation_type": "unclear",
-                                                "clarification_question": "Which branch should be target?",
-                                                "understood": false
-                                              }
-                                              """);
+                                                    {
+                                                      "words": "unclear words",
+                                                      "interpretation_type": "unclear",
+                                                      "clarification_question": "Which branch should be target?",
+                                                      "understood": false
+                                                    }
+                                                    """);
                 } else {
                     response.json(200, """
-                                              {
-                                                "words": "unclear words. main branch",
-                                                "read_back_text": "Rebase onto main branch",
-                                                "interpretation_type": "option",
-                                                "understood": true
-                                              }
-                                              """);
+                                                    {
+                                                      "words": "unclear words. main branch",
+                                                      "read_back_text": "Rebase onto main branch",
+                                                      "interpretation_type": "option",
+                                                      "understood": true
+                                                    }
+                                                    """);
                 }
             } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
                 response.json(200, "{\"ok\":true}");
@@ -547,18 +547,18 @@ class QuestionsCommandTest {
             var target = request.target();
             if ("/api/v1/decisions/WR-1".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
-                                          {
-                                            "id": "WR-1",
-                                            "revision": 1,
-                                            "title": "Coverage waiver",
-                                            "subject": "plan fix-relay",
-                                            "scope": "plan",
-                                            "is_waiver": true,
-                                            "waiver_gate": "coverage >= 80%",
-                                            "waiver_reason": "generated files",
-                                            "evidence": {"coverage": "76%"}
-                                          }
-                                          """);
+                                                {
+                                                  "id": "WR-1",
+                                                  "revision": 1,
+                                                  "title": "Coverage waiver",
+                                                  "subject": "plan fix-relay",
+                                                  "scope": "plan",
+                                                  "is_waiver": true,
+                                                  "waiver_gate": "coverage >= 80%",
+                                                  "waiver_reason": "generated files",
+                                                  "evidence": {"coverage": "76%"}
+                                                }
+                                                """);
             } else if ("/api/v1/decisions/WR-1/answer".equals(target) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
             } else {
@@ -594,17 +594,17 @@ class QuestionsCommandTest {
             if (target.startsWith("/api/v1/decisions")) {
                 if (target.contains("project=my-proj")) {
                     response.json(200, """
-                                              [
-                                                {"id": "WR-5", "is_waiver": true, "subject": "my-plan", "waiver_gate": "pitest", "title": "Pitest waiver"}
-                                              ]
-                                              """);
+                                                    [
+                                                      {"id": "WR-5", "is_waiver": true, "subject": "my-plan", "waiver_gate": "pitest", "title": "Pitest waiver"}
+                                                    ]
+                                                    """);
                 } else {
                     response.json(200, """
-                                              [
-                                                "String item raw",
-                                                {"id": "Q-009", "subject": "start in my-proj", "asking_phase": "entry", "title": "Allow network"}
-                                              ]
-                                              """);
+                                                    [
+                                                      "String item raw",
+                                                      {"id": "Q-009", "subject": "start in my-proj", "asking_phase": "entry", "title": "Allow network"}
+                                                    ]
+                                                    """);
                 }
             } else {
                 response.send(404, null, "");
@@ -626,5 +626,102 @@ class QuestionsCommandTest {
         assertTrue(mixOut.contains("Open Questions · 2 pending"));
         assertTrue(mixOut.contains("String item raw"));
         assertTrue(mixOut.contains("Q-009"));
+    }
+
+    @Test
+    @DisplayName("non-interactive answer command displays waiver details")
+    void answerNonInteractiveWaiverDetails() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/WR-1".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                                {
+                                                  "id": "WR-1",
+                                                  "revision": 1,
+                                                  "title": "Coverage waiver",
+                                                  "subject": "plan fix-relay",
+                                                  "scope": "plan",
+                                                  "is_waiver": true,
+                                                  "waiver_gate": "coverage >= 80%",
+                                                  "waiver_reason": "generated files"
+                                                }
+                                                """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "WR-1");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("Waiver request WR-1"));
+        assertTrue(output.contains("coverage >= 80%"));
+        assertTrue(output.contains("generated files"));
+    }
+
+    @Test
+    @DisplayName("interactive decision prompt handles evidence query and invalid option")
+    void answerInteractivePromptEvidenceAndInvalid() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                                {
+                                                  "id": "Q-001",
+                                                  "revision": 1,
+                                                  "title": "Select merge strategy",
+                                                  "subject": "fix-relay",
+                                                  "scope": "plan",
+                                                  "blocks": "plan",
+                                                  "reversibility": "reversible",
+                                                  "evidence": {"diff": "+10 -2"},
+                                                  "parts": [
+                                                    {
+                                                      "part_id": "part-1",
+                                                      "question": "How?",
+                                                      "answer_type": "one_option",
+                                                      "options": [{"key": "rebase", "label": "Rebase"}]
+                                                    }
+                                                  ]
+                                                }
+                                                """);
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // ? -> invalid -> rebase
+        int code = executeInteractive("?\ninvalid\nrebase\n", "answer", "Q-001", "-i");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("Evidence details:"));
+        assertTrue(output.contains("Please choose a valid option or action."));
+        assertTrue(output.contains("✓ Q-001 answered: Rebase"));
+    }
+
+    @Test
+    @DisplayName("cli action flags decline and withdraw")
+    void answerCliActionDeclineAndWithdraw() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/WR-1/answer".equals(target) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else if ("/api/v1/decisions/Q-001/withdraw".equals(target) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int codeDecline = execute("answer", "WR-1", "--action", "decline", "--reason", "Not approved");
+        assertEquals(0, codeDecline);
+        assertTrue(out.toString().contains("Answered WR-1 with option decline"));
+
+        out = new StringWriter();
+        int codeWithdraw = execute("answer", "Q-001", "--action", "withdraw");
+        assertEquals(0, codeWithdraw);
+        assertTrue(out.toString().contains("you asked to think again"));
     }
 }

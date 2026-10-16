@@ -41,12 +41,12 @@ class OperatorUrlUtilTest {
         assertEquals("/api/v1/items", OperatorUrlUtil.appendScope("/api/v1/items", "", ""));
         assertEquals("/api/v1/items", OperatorUrlUtil.appendScope("/api/v1/items", ".", ""));
         assertEquals("/api/v1/items?project=my-project",
-                                  OperatorUrlUtil.appendScope("/api/v1/items", "my-project", null));
+                                        OperatorUrlUtil.appendScope("/api/v1/items", "my-project", null));
         assertEquals("/api/v1/items?plan=my-plan",
-                                  OperatorUrlUtil.appendScope("/api/v1/items", null, "my-plan"));
+                                        OperatorUrlUtil.appendScope("/api/v1/items", null, "my-plan"));
         assertEquals("/api/v1/items?project=my-project&plan=my-plan",
-                                  OperatorUrlUtil.appendScope("/api/v1/items", "my-project", "my-plan"));
+                                        OperatorUrlUtil.appendScope("/api/v1/items", "my-project", "my-plan"));
         assertEquals("/api/v1/items?filter=active&project=my-project&plan=my-plan",
-                                  OperatorUrlUtil.appendScope("/api/v1/items?filter=active", "my-project", "my-plan"));
+                                        OperatorUrlUtil.appendScope("/api/v1/items?filter=active", "my-project", "my-plan"));
     }
 }

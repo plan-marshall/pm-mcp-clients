@@ -23,6 +23,8 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.planmarshall.api.message.MessageCatalogue;
+
 @DisplayName("Decision Records and Codecs (UC-PLN-2)")
 class DecisionRecordsTest {
 
@@ -241,5 +243,39 @@ class DecisionRecordsTest {
         assertEquals(DecisionClosedEvent.EVENT_NAME, "decision.closed");
         var closedParsed = DecisionClosedEvent.fromJson(closed.toJson());
         assertEquals("answered", closedParsed.outcome());
+    }
+
+    @Test
+    @DisplayName("DecisionPart handles dependency and id fallbacks")
+    void decisionPartFallbacks() {
+        var part = new DecisionPart("part-1", "q", AnswerType.ONE_OPTION, List.of(), "rec", "rationale", "role", "dep-1", true, true);
+        var map = part.toMap();
+        assertEquals("dep-1", map.get("dependency"));
+
+        var fromId = DecisionPart.fromMap(Map.of("id", "custom-id", "question", "q"));
+        assertEquals("custom-id", fromId.partId());
+
+        var fromDefault = DecisionPart.fromMap(Map.of("question", "q"));
+        assertEquals("1", fromDefault.partId());
+    }
+
+    @Test
+    @DisplayName("DecisionAnswerRequest serializes reason and parses option fallback")
+    void decisionAnswerRequestReasonAndOptionFallback() throws Exception {
+        var req = new DecisionAnswerRequest(Map.of(), null, null, null, "waive", "build passed", "cli", null);
+        var json = req.toJson();
+        assertTrue(json.contains("\"reason\":\"build passed\""));
+
+        var parsed = DecisionAnswerRequest.fromJson("{\"option\":\"opt1\"}");
+        assertEquals("opt1", parsed.partAnswers().get("1"));
+    }
+
+    @Test
+    @DisplayName("MessageCatalogue hasKey checks")
+    void messageCatalogueHasKey() {
+        assertTrue(MessageCatalogue.hasKey("decision.blocks.plan"));
+        assertFalse(MessageCatalogue.hasKey("non.existent.key"));
+        assertTrue(MessageCatalogue.hasKey(null, "decision.blocks.plan"));
+        assertFalse(MessageCatalogue.hasKey("en", null));
     }
 }

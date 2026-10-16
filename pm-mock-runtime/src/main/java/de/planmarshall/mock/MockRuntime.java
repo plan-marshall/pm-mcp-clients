@@ -280,6 +280,13 @@ public final class MockRuntime implements AutoCloseable {
     }
 
     /**
+     * @return the underlying mock runtime engine
+     */
+    public MockRuntimeEngine engine() {
+        return engine;
+    }
+
+    /**
      * @return the machine root base path
      */
     public Path base() {

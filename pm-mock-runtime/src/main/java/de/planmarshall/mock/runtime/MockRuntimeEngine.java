@@ -1626,10 +1626,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 decisionId = sub.substring(0, slash);
                 action = sub.substring(slash + 1);
             }
-        } else if (path.startsWith("/api/v1/questions/") && path.contains("/answers")) {
+        } else if (path.startsWith("/api/v1/questions/")) {
             var sub = path.substring("/api/v1/questions/".length());
             int slash = sub.indexOf('/');
-            if (slash > 0) {
+            if (slash < 0) {
+                decisionId = sub;
+            } else {
                 decisionId = sub.substring(0, slash);
                 action = "answer";
             }
@@ -1781,7 +1783,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (chosen == null && !answerReq.partAnswers().isEmpty()) {
             chosen = answerReq.partAnswers().values().iterator().next().toString();
         }
-        if ("later".equalsIgnoreCase(chosen) || "l".equalsIgnoreCase(chosen)) {
+        if ("later".equalsIgnoreCase(answerReq.action()) || "later".equalsIgnoreCase(chosen) || "l".equalsIgnoreCase(chosen)) {
             response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }

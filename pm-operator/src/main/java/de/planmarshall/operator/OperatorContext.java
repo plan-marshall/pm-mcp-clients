@@ -93,7 +93,7 @@ public final class OperatorContext {
      * @param clientEnvironment   the captured client environment
      */
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
-                              ClientEnvironment clientEnvironment) {
+                                    ClientEnvironment clientEnvironment) {
         this(environment, userHome, interactiveTerminal, clientEnvironment, null, null);
     }
 
@@ -108,7 +108,7 @@ public final class OperatorContext {
      * @param browserOpener       browser opener, {@code null} for default
      */
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
-                              ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider, @Nullable BrowserOpener browserOpener) {
+                                    ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider, @Nullable BrowserOpener browserOpener) {
         this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
         this.userHome = Objects.requireNonNull(userHome, "userHome");
         this.interactiveTerminal = interactiveTerminal;
@@ -117,7 +117,7 @@ public final class OperatorContext {
         this.stateDirectory = OperatorStateDirectory.resolve(environment, userHome);
         this.directFiles = new DirectFileAccess(paths());
         this.terminalProvider = terminalProvider != null ? terminalProvider
-                                  : () -> defaultTerminal(interactiveTerminal);
+                                        : () -> defaultTerminal(interactiveTerminal);
         this.browserOpener = browserOpener != null ? browserOpener : OperatorContext::defaultBrowserOpen;
     }
 
@@ -175,8 +175,8 @@ public final class OperatorContext {
      */
     public RuntimeClient runtime(boolean startOnDemand) throws IOException {
         var headers = Map.of(
-                                  "User-Agent", "pm-operator/" + PmVersion.current(),
-                                  "Accept-Language", clientEnvironment.locale());
+                                        "User-Agent", "pm-operator/" + PmVersion.current(),
+                                        "Accept-Language", clientEnvironment.locale());
         return RuntimeAccess.local(environment, userHome, headers, startOnDemand);
     }
 
@@ -209,16 +209,16 @@ public final class OperatorContext {
 
     private static Terminal defaultTerminal(boolean interactive) throws IOException {
         return TerminalBuilder.builder()
-                                  .system(interactive)
-                                  .ffm(true)
-                                  .dumb(true)
-                                  .build();
+                                        .system(interactive)
+                                        .ffm(true)
+                                        .dumb(true)
+                                        .build();
     }
 
     static void defaultBrowserOpen(URI uri) throws IOException {
         if (Boolean.getBoolean("pm.test.no.browser")
-                                  || System.getenv("PM_TEST_NO_BROWSER") != null
-                                  || GraphicsEnvironment.isHeadless()) {
+                                        || System.getenv("PM_TEST_NO_BROWSER") != null
+                                        || GraphicsEnvironment.isHeadless()) {
             throw new IOException("Headless or non-desktop environment: browser not supported");
         }
         if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
