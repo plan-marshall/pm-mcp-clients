@@ -209,10 +209,11 @@ Implementing any use case spans 6 sequential phases across all repository module
 
 4. **Transition to Operational Lifecycle**:
    - Once all local tests and fixtures pass, transition to the operational development SOP in [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md):
-     - **Step 3**: Pre-commit verification (`./mvnw verify -Ppre-commit`).
-     - **Step 4**: Conventional commit & PR creation.
-     - **Step 5**: 5-minute review window & 100% findings resolution.
-     - **Step 6**: Merge queue landing & worktree cleanup.
+     - **Step 3**: Plan completion report (`<topic>-plan-report.md`) & moving plan to `doc/agy/implemented/<topic>-plan.md`.
+     - **Step 4**: Pre-commit verification (`./mvnw verify -Ppre-commit`).
+     - **Step 5**: Conventional commit & PR creation (with `--label "skip-bot-review"` if authorized).
+     - **Step 6**: Review window & 100% findings resolution.
+     - **Step 7**: Merge queue landing & worktree cleanup.
 
 ---
 

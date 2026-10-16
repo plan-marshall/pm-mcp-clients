@@ -53,14 +53,14 @@ Instead, the agent loads and adopts the following specialized personas as cognit
 
 ---
 
-## 2. General Development Process (The 6-Step Discipline)
+## 2. General Development Process (The 7-Step Discipline)
 
 Every feature, refactoring, or bug fix must follow this sequential lifecycle:
 
 ```
-[1. Worktree Creation] -> [2. Incremental Build & Impl] -> [3. Pre-Commit Verification]
+[1. Worktree Creation] -> [2. Incremental Build & Impl] -> [3. Report & Plan Archival]
                                                                      |
-[6. Sync & Cleanup]    <- [5. 5-Min Wait & 100% Findings]  <- [4. Push & Open PR]
+[7. Sync & Cleanup]    <- [6. Review Window & Bots]    <- [5. Push & Open PR] <- [4. Pre-Commit Verification]
 ```
 
 ### Step 1: Isolated Git Worktree Lifecycle
@@ -93,17 +93,40 @@ Never implement directly on `main` within the repository root workspace.
    ```
 4. Test locally in the affected module using targeted tests.
 
-### Step 3: Pre-Commit Verification (Code vs. Documentation Distinction)
+### Step 3: Plan Completion Report & Archival
+
+Before running the final pre-commit verification and opening the PR:
+
+1. **Write the Final Completion Report**:
+   Create a comprehensive completion report in `doc/agy/<topic>-plan-report.md` (e.g. `doc/agy/uc-ent-2-plan-report.md`).
+   The report must document:
+   - **Executive Summary**: Overview of the implemented use case or work package and its key outcomes.
+   - **Delivered Artifacts**: Full listing of created/modified files across all modules (`pm-api`, `pm-mock-runtime`, `pm-operator`, `pm-web-app`, `pm-web-e2e`).
+   - **Test & Verification Results**: Outcomes of unit tests, mock scenarios, CLI transcript tests, Vitest component tests, and Playwright E2E tests.
+   - **Domain Invariants**: Verification status of all architecture invariants (Java 25, no uncatalogued strings, bilingual catalogue in EN & DE, mock runtime completeness, responsive layout down to 320px).
+   - **Build & Quality Evidence**: Evidence of clean `./mvnw verify -Ppre-commit` execution.
+
+2. **Move Completed Plan to `implemented/`**:
+   Move the initial plan from `doc/agy/<topic>-plan.md` into the `doc/agy/implemented/` subdirectory:
+   ```bash
+   mv doc/agy/<topic>-plan.md doc/agy/implemented/
+   ```
+   Update [`doc/agy/implemented/README.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/README.md) to record the implemented plan and link to its completion report.
+
+3. **Roadmap Archival (`doc/plans/`)**:
+   If the plan completes an active work package in `doc/plans/`, mark it as `done` in `doc/plans/README.adoc` and move the package file to `doc/plans/implemented/`.
+
+### Step 4: Pre-Commit Verification (Code vs. Documentation Distinction)
 
 Before committing changes, determine the nature of the changes:
 
-- **Documentation-Only Changes (`doc/**`, `*.md`, `*.adoc`, inline doc revisions)**:
+- **Standalone Documentation-Only Changes (`doc/**`, `*.md`, `*.adoc`, excluding inline code edits in `.java` / `.ts`)**:
   - **Do NOT execute `./mvnw verify -Ppre-commit`**!
   - Running a 3–4 minute full Maven reactor build, OpenRewrite suite, and unit tests for markdown/AsciiDoc changes wastes time and compute.
   - Instead: verify document formatting, confirm internal links/references are valid, and ensure `git status` shows only documentation files modified.
-  - Proceed directly to Step 4 (Commit & Pull Request Creation).
+  - Proceed directly to Step 5 (Commit & Pull Request Creation).
 
-- **Code, Configuration, or Build Changes (Java, TypeScript, POMs, shell scripts, resources)**:
+- **Code, Configuration, or Build Changes (Java, TypeScript, POMs, shell scripts, resources, or inline Javadocs)**:
   - Execute the full repository pre-commit gate:
     ```bash
     ./mvnw verify -Ppre-commit
@@ -116,7 +139,7 @@ Before committing changes, determine the nature of the changes:
     - Complete unit test suite across all modules in the reactor.
   - **Requirement**: Must complete with `BUILD SUCCESS` and a clean `git status` (no untracked artifacts or uncommitted reformatted files).
 
-### Step 4: Commit & Pull Request Creation
+### Step 5: Commit & Pull Request Creation
 
 1. Commit with Conventional Commits format:
    ```bash
@@ -131,10 +154,11 @@ Before committing changes, determine the nature of the changes:
    ```bash
    gh pr create --title "<type>(<scope>): <clear summary>" --body "<Detailed description of changes, rationale, and impacted components>"
    ```
+   - *Tip*: If fast-path review is authorized or for bot review bypass, add `--label "skip-bot-review"`.
 
-### Step 5: Mandatory 5-Minute Review Window & 100% Findings Resolution
+### Step 6: Review Window & 100% Findings Resolution
 
-There is a **zero-tolerance policy** for unaddressed automated findings or skipped review bots.
+There is a **zero-tolerance policy** for unaddressed automated findings or skipped review bots (unless `skip-bot-review` is explicitly authorized).
 
 1. **Mandatory 5-Minute Wait**:
    Immediately after opening a PR (or after pushing any subsequent fix commit), schedule a 300-second timer using the `schedule` tool:
@@ -142,6 +166,7 @@ There is a **zero-tolerance policy** for unaddressed automated findings or skipp
    schedule(DurationSeconds=300, Prompt="Check CI status and review comments for PR #<PR_NUMBER>", TimerCondition="never")
    ```
    *Do not poll in a loop.* Wait for the notification. This window allows GitHub Actions CI, SonarCloud analysis, and AI review bots (Sourcery, CodeRabbit, cuioss-review-bot) to finish.
+   If checks or bots are still running when the timer fires, repeat the wait until all checks are complete.
 
 2. **Inspecting Checks & Reviews**:
    - Check CI status: `gh pr checks <PR_NUMBER>`
@@ -157,14 +182,15 @@ There is a **zero-tolerance policy** for unaddressed automated findings or skipp
 4. **Explicit Thread Replies**:
    For every inline review comment addressed, reply directly to the comment thread:
    ```bash
-   gh api repos/plan-marshall/pm-mcp-clients/pulls/<PR_NUMBER>/comments/<comment_id>/replies \
-     -f body="Addressed in <commit_sha> by <explanation>."
+   gh api repos/plan-marshall/pm-mcp-clients/pulls/<PR_NUMBER>/comments \
+     -f body="Addressed in <commit_sha> by <explanation>." \
+     -F in_reply_to=<comment_id>
    ```
 
 5. **Re-Review Cycle**:
    If code changes were pushed to fix review findings, schedule another 300-second timer to ensure the updated commit passes all automated re-reviews cleanly.
 
-### Step 6: GitHub Merge Queue & Workspace Cleanup
+### Step 7: GitHub Merge Queue & Workspace Cleanup
 
 The repository's `main` branch is protected by GitHub Rulesets and uses GitHub's Merge Queue with squash merging.
 
@@ -249,7 +275,8 @@ Include this standardized checklist at the start of any new plan (`doc/agy/*-pla
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
 - [ ] 3. Incremental implementation with tests.
-- [ ] 4. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for documentation-only changes).
-- [ ] 5. PR opened, 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 6. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [ ] 4. Final completion report written (`doc/agy/<topic>-plan-report.md`) and initial plan moved to `doc/agy/implemented/<topic>-plan.md`.
+- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 ```

@@ -29,9 +29,10 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
 - [ ] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
-- [ ] 4. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for documentation-only changes).
-- [ ] 5. PR opened, 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 6. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [ ] 4. Final completion report written (`doc/agy/uc-ent-2-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-ent-2-plan.md`.
+- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for documentation-only changes).
+- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 
 ---
 
@@ -133,18 +134,22 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 - [ ] **6.3 Domain Invariants Verification**:
   - Verify against checklist in Section 5 of `doc/meta/implement_use-cases.md`.
 
-### Phase 7: Pre-Commit, Review Gate & Landing (Runbook Discipline)
-- [ ] **7.1 Pre-Commit Gate**:
+### Phase 7: Completion Report, Pre-Commit, Review Gate & Landing (Runbook Discipline)
+- [ ] **7.1 Final Completion Report**:
+  - Generate comprehensive completion report in `doc/agy/uc-ent-2-plan-report.md`.
+- [ ] **7.2 Plan Archival**:
+  - Move `doc/agy/uc-ent-2-plan.md` to `doc/agy/implemented/uc-ent-2-plan.md` and record entry in `doc/agy/implemented/README.md`.
+- [ ] **7.3 Pre-Commit Gate**:
   - Run `./mvnw verify -Ppre-commit` to validate OpenRewrite formatting, Checkstyle, and full test suite.
-- [ ] **7.2 Commit & PR**:
+- [ ] **7.4 Commit & PR**:
   - Commit changes with Conventional Commits message (`feat(web,operator): implement UC-ENT-2 manage paired devices`).
-  - Open PR via `gh pr create`.
-- [ ] **7.3 5-Minute Review Window**:
+  - Open PR via `gh pr create` (with `--label "skip-bot-review"` if authorized).
+- [ ] **7.5 5-Minute Review Window**:
   - Schedule 300s timer (`schedule` tool) and await CI, SonarCloud, Sourcery, and CodeRabbit.
-- [ ] **7.4 100% Findings Resolution**:
+- [ ] **7.6 100% Findings Resolution**:
   - Evaluate all automated findings with `persona-code-reviewer` adversarial refutation and resolve 100% of issues.
-- [ ] **7.5 Merge Queue & Cleanup**:
+- [ ] **7.7 Merge Queue & Cleanup**:
   - Enqueue PR via `gh pr merge --auto --squash`.
   - Upon merge, synchronize `main`, remove worktree and delete topic branch.
-- [ ] **7.6 Roadmap Archival**:
+- [ ] **7.8 Roadmap Archival**:
   - Update `doc/plans/README.adoc` and move completed package documentation to `doc/plans/implemented/`.
