@@ -5,7 +5,13 @@ This document establishes the canonical, step-by-step methodology for planning a
 Whenever a session is instructed:
 > **"Plan the use-case `<UC-XXX>` using `doc/meta/implement_use-cases.md`"**
 
-the agent shall follow the phased process and task breakdown defined in this guide.
+the agent shall follow the phased technical process and task breakdown defined in this guide.
+
+### The Three Pillars of Implementation
+The implementation workflow integrates three coordinated layers:
+1. **Governance & Scope (`doc/plans/`)**: Declares the roadmap milestones, package dependencies, and formal specifications/contracts (`*-contract.adoc`, `cli-*.adoc`, etc.). Once completed, packages move to `doc/plans/implemented/`.
+2. **Technical Implementation Recipe (`doc/meta/implement_use-cases.md`)**: Defines *how to build* across the 5 modules (`pm-api` ──▶ `pm-mock-runtime` ──▶ `pm-operator` ──▶ `pm-web-app` ──▶ integration tests), maintaining strict invariants (both clients one state, catalogue-only text, mock-first).
+3. **Operational Lifecycle & SOP (`doc/agy/runbook.md`)**: Governs *how the agent/developer executes* (isolated git worktrees, engineering personas, pre-commit checks, PR review gate with 5-minute wait, 100% findings resolution, and merge queue landing).
 
 ---
 
@@ -195,11 +201,18 @@ Implementing any use case spans 6 sequential phases across all repository module
    - Add/extend integration tests in `pm-operator/src/test/java/.../*IT.java`.
    - Verify process exit codes, stdout/stderr invariants, and security preconditions (`PM-SEC-3`).
 
-3. **Quality Gate Verification**:
-   - Run `./mvnw compile`.
-   - Run `./mvnw verify -Ppre-commit` and check for any formatting / OpenRewrite changes.
-   - Run full `./mvnw verify` to guarantee 0 regressions, all tests passing, and 80%+ coverage.
-   - Run `npm test` in `pm-web-app` and Playwright tests in `pm-web-e2e`.
+3. **Local Test & Quality Verification**:
+   - Run `./mvnw test` across modified modules to verify unit and scenario tests.
+   - Run `npm test` in `pm-web-app` for Svelte components.
+   - Run Playwright E2E tests in `pm-web-e2e`.
+   - Verify 80%+ test coverage and 0 regressions.
+
+4. **Transition to Operational Lifecycle**:
+   - Once all local tests and fixtures pass, transition to the operational development SOP in [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md):
+     - **Step 3**: Pre-commit verification (`./mvnw verify -Ppre-commit`).
+     - **Step 4**: Conventional commit & PR creation.
+     - **Step 5**: 5-minute review window & 100% findings resolution.
+     - **Step 6**: Merge queue landing & worktree cleanup.
 
 ---
 
@@ -274,19 +287,19 @@ When instructed to plan or implement `UC-ENT-2`, execute the following task brea
   - Test revoking current device and verifying immediate transition to Revoked Page.
   - Test turning off network listener.
 - [ ] **5.2 pm-operator IT Suite**: Add integration test in `PmOperatorProcessIT.java` executing `web devices` commands against `pm-mock-runtime`.
-- [ ] **5.3 Quality Gate Sweep**: Run `./mvnw verify -Ppre-commit` and `./mvnw verify`, ensuring all checks pass cleanly.
+- [ ] **5.3 Pre-Commit & Operational Gate**: Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md).
 
 ---
 
-## 5. Verification Checklist for New Use Cases
+## 5. Domain Invariants Checklist for New Use Cases
 
-Before declaring any use-case implementation complete, verify:
+Before declaring any use-case implementation complete, verify against these domain invariants:
 
 - [ ] All Java code adheres to Java 25 standards, Lombok, and package-private visibility where possible.
-- [ ] No uncatalogued, user-facing hardcoded strings remain in either client.
-- [ ] Messages are present and verified in both English and German.
-- [ ] Mock runtime scenario loads and handles all documented state branches.
+- [ ] No uncatalogued, user-facing hardcoded strings remain in either client (`pm-operator` or `pm-web-app`).
+- [ ] Messages are present and verified in both English and German resource bundles.
+- [ ] Mock runtime scenario loads and handles all documented state branches and events.
 - [ ] `pm-operator` respects `PM-SEC-3` security preconditions and provides safe terminal rendering.
 - [ ] `pm-web-app` handles responsive layout down to mobile width (320px).
 - [ ] Integration tests pass in `pm-web-e2e` and `pm-operator`.
-- [ ] Code formatting and OpenRewrite recipes pass cleanly via `./mvnw verify -Ppre-commit`.
+- [ ] Full operational lifecycle checklist in [`doc/agy/runbook.md#4-plan-template-checklist`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md#4-plan-template-checklist) is completed (pre-commit, PR creation, 5-min review wait, 100% findings resolved, merge queue).
