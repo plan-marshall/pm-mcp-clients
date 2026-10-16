@@ -32,14 +32,24 @@ Before implementing or reviewing tasks in specific areas of the repository, acti
 | `pm-dev-frontend:lint-config` | ESLint flat config, Prettier, Stylelint integration. |
 | `pm-dev-frontend:css` | Modern CSS standards, native nesting, cascade layers, Container Queries, custom properties, responsive design, WCAG accessibility. |
 
-### 1.3 Foundational & Architecture Governance
+### 1.3 Engineering Personas & Methodologies
 
-| Skill | Focus & Key Standards |
-|---|---|
-| `plan-marshall:persona-plan-marshall-agent` | Foundational agent rules: tool invariants, non-interactive execution discipline, avoiding document proliferation. |
-| `plan-marshall:manage-architecture` | Architectural fitness functions, dependency boundaries, module layering. |
-| `plan-marshall:manage-lessons` | Global lessons learned resolution, capture, and retrieval. |
-| `plan-marshall:recipe-agentfile-hygiene` | Context hygiene rubric and maintenance of agent instructions. |
+Plans running under this runbook execute directly within Antigravity or agent sessions without invoking Plan-Marshall orchestrator scripts or pipeline tooling (`manage-personas`, `ext-point-verify`, `TASK-*.json`, etc.).
+
+Instead, the agent loads and adopts the following specialized personas as cognitive lenses, applying their underlying standards during the relevant plan phases:
+
+| Persona Skill | Primary Plan Phasing & Applicability | Key Standards & Focus |
+|---|---|---|
+| `plan-marshall-persona-implementer` | **Implementation Tasks** (Step 2: writing & refactoring production code) | Clean code principles, Single Responsibility Principle (SRP), Command-Query Separation (CQS), immutability, refactoring triggers, and error handling (via `plan-marshall-ref-code-quality`). |
+| `plan-marshall-persona-module-tester` | **Unit Testing** (Step 2: unit & module test suites) | AAA (Arrange-Act-Assert) pattern, test isolation, deterministic fixtures, boundary value analysis, coverage thresholds, avoiding test anti-patterns (via `standards/testing-methodology.md` and `testing-coverage.md`). |
+| `plan-marshall-persona-integration-tester` | **Integration & E2E Testing** (Step 2: collaborator verification) | Multi-module interaction testing, real collaborators vs. test doubles, MockWebServer lifecycle, HTTP/REST endpoint contract validation, and network error resilience. |
+| `plan-marshall-persona-security-expert` | **Security Review & Hardening** (Step 2: boundary validation & sensitive code) | OWASP Top 10 defenses, STRIDE threat modeling, trust boundaries, inbound input validation, secrets management, safe subprocess execution, secure logging (via `standards/*.md`). |
+| `plan-marshall-persona-documenter` | **Documentation Tasks** (Step 2: docs, specs, and runbook updates) | AsciiDoc and Markdown technical documentation authoring, architecture notes, narrative clarity, doc drift prevention, and documentation accuracy. |
+| `plan-marshall-persona-code-reviewer` | **Review & Triage** (Step 3: pre-commit review; Step 5: PR review & bot feedback) | Adversarial refutation of candidate findings (defect vs. preference, surplus vs. load-bearing, real vs. false-positive drift, severity sanity via `standards/adversarial-refute.md`), and the code-review spine checklist. |
+
+> [!IMPORTANT]
+> **No Plan-Marshall Tooling/Process Dependencies**:
+> When an agent loads these persona skills, it must treat them strictly as **cognitive standards and engineering methodologies**. Any references within the persona skills to Plan-Marshall internal plumbing (such as `manage-personas resolve`, `ExtensionBase`, `ext-point-verify`, or `orchestrator` pipelines) are Plan-Marshall marketplace internals and must be **ignored**. Plans driven by this runbook execute directly using the runbook steps, standard build tools (`./mvnw`), and native IDE/editor tools.
 
 ---
 
@@ -71,11 +81,17 @@ Never implement directly on `main` within the repository root workspace.
 ### Step 2: Incremental Implementation & Plan Tracking
 
 1. When working against a plan (e.g. `doc/agy/*-plan.md`), check off completed items (`- [x]`) as progress is made.
-2. Build incrementally without `clean` to preserve compiler cache:
+2. Load and adopt the corresponding persona for each specific task type:
+   - Apply `plan-marshall-persona-implementer` when writing or refactoring production code.
+   - Apply `plan-marshall-persona-module-tester` when authoring unit tests, asserting AAA structure, and verifying coverage.
+   - Apply `plan-marshall-persona-integration-tester` when writing integration tests, E2E tests, or MockWebServer scenarios.
+   - Apply `plan-marshall-persona-security-expert` when establishing trust boundaries, validating input, or handling credentials.
+   - Apply `plan-marshall-persona-documenter` when writing or updating documentation, specifications, ADRs, or runbooks.
+3. Build incrementally without `clean` to preserve compiler cache:
    ```bash
    ./mvnw compile -pl <module> -am
    ```
-3. Test locally in the affected module using targeted tests.
+4. Test locally in the affected module using targeted tests.
 
 ### Step 3: Pre-Commit Verification (Code vs. Documentation Distinction)
 
@@ -131,7 +147,8 @@ There is a **zero-tolerance policy** for unaddressed automated findings or skipp
    - Check CI status: `gh pr checks <PR_NUMBER>`
    - Inspect PR comments & reviews: `gh pr view <PR_NUMBER> --comments` and `gh api repos/<owner>/<repo>/pulls/<PR_NUMBER>/comments`
 
-3. **100% Findings Resolution Bar**:
+3. **100% Findings Resolution Bar (Evaluated via `plan-marshall-persona-code-reviewer`)**:
+   - Apply the adversarial-refute lenses from `standards/adversarial-refute.md` (distinguish genuine defects from style preferences, verify whether flagged structure is truly surplus or load-bearing, confirm documentation drift against current sources of truth).
    - **SonarCloud**: Quality Gate must pass (0 new issues, 0 accepted issues, 0 security hotspots, code coverage meeting project threshold, 0% duplication).
    - **Sourcery AI**: All blocking/high/medium findings must be fixed in code.
    - **CodeRabbit AI**: All actionable suggestions and issue reports must be reviewed and addressed.
@@ -225,9 +242,14 @@ Include this standardized checklist at the start of any new plan (`doc/agy/*-pla
 ```markdown
 ### Workflow Checklist (conforming to `doc/agy/runbook.md`)
 - [ ] 1. Isolated worktree created on topic branch off latest `main`.
-- [ ] 2. Domain skills loaded and consulted.
+- [ ] 2. Domain skills & engineering personas loaded where applicable:
+  - `persona-implementer` & `persona-module-tester` for code & unit tests
+  - `persona-integration-tester` for multi-module/integration tests
+  - `persona-security-expert` for trust boundaries & input validation
+  - `persona-documenter` for documentation & ADRs
+  - `persona-code-reviewer` for finding evaluation & adversarial refutation
 - [ ] 3. Incremental implementation with tests.
 - [ ] 4. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for documentation-only changes).
-- [ ] 5. PR opened, 5-minute review timer scheduled, 100% of bot & Sonar findings resolved.
+- [ ] 5. PR opened, 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 6. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 ```
