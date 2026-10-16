@@ -74,4 +74,19 @@ public record CleanupResidue(
         var lastSweep = JsonTree.string(map, "last_sweep");
         return new CleanupResidue(step, count, bytes, lastSweep);
     }
+
+    /**
+     * Parses from JSON string.
+     *
+     * @param json JSON string
+     * @return parsed residue
+     * @throws IOException on error
+     */
+    public static CleanupResidue fromJson(String json) throws IOException {
+        var obj = JsonTree.asObject(JsonTree.parse(json));
+        if (obj == null) {
+            throw new JsonFormatException("Expected JSON object for CleanupResidue");
+        }
+        return fromMap(obj);
+    }
 }

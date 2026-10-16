@@ -56,7 +56,7 @@ public record SystemMetricsEvent(
      * @return parsed event
      * @throws IOException on error
      */
-    public static SystemMetricsEvent fromMap(Map<String, Object> map) throws IOException {
+    public static SystemMetricsEvent fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         if (map.get("metrics") instanceof Map<?, ?> m) {
             var mm = new LinkedHashMap<String, Object>();

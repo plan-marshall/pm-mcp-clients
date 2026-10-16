@@ -86,6 +86,21 @@ public record CleanupKeptItem(
     }
 
     /**
+     * Parses from JSON string.
+     *
+     * @param json JSON string
+     * @return parsed kept item
+     * @throws IOException on error
+     */
+    public static CleanupKeptItem fromJson(String json) throws IOException {
+        var obj = JsonTree.asObject(JsonTree.parse(json));
+        if (obj == null) {
+            throw new JsonFormatException("Expected JSON object for CleanupKeptItem");
+        }
+        return fromMap(obj);
+    }
+
+    /**
      * Parses a list of kept items from JSON string.
      *
      * @param json JSON array string

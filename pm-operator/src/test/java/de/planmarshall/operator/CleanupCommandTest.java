@@ -341,4 +341,84 @@ class CleanupCommandTest {
                             () -> assertTrue(out.toString().contains("The runtime is stopping; nothing new starts."))
         );
     }
+
+    @Test
+    @DisplayName("cleanup actions when no job is open print Nothing is due")
+    void cleanupActionsWhenNoJob() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var noJobJson = "{\"open\":false,\"next_check_at\":\"tomorrow 03:00\"}";
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target())) {
+                response.json(200, noJobJson);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int codeRemind = execute("cleanup", "--remind");
+        assertEquals(0, codeRemind);
+        assertTrue(out.toString().contains("Nothing is due. The next check is tomorrow 03:00."));
+
+        out.getBuffer().setLength(0);
+        int codeIgnore = execute("cleanup", "--ignore");
+        assertEquals(0, codeIgnore);
+        assertTrue(out.toString().contains("Nothing is due. The next check is tomorrow 03:00."));
+
+        out.getBuffer().setLength(0);
+        int codeDelete = execute("cleanup", "--delete");
+        assertEquals(0, codeDelete);
+        assertTrue(out.toString().contains("Nothing is due. The next check is tomorrow 03:00."));
+    }
+
+    @Test
+    @DisplayName("cleanup --ignore rejects --exclude")
+    void cleanupIgnoreRejectsExclude() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        int code = execute("cleanup", "--ignore", "--exclude", "plan:foo");
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("--exclude is for --delete only"));
+    }
+
+    @Test
+    @DisplayName("cleanup --release --all --yes releases all items")
+    void cleanupReleaseAllConfirmed() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var keptJson = """
+                            [
+                              {"id": "token-usage", "kind": "plan", "title": "pm-mcp-core › token-usage", "how": "exclude", "kept_at": "13 Oct", "who": "the console"}
+                            ]
+                            """;
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup/kept".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, keptJson);
+            } else if ("/api/v1/system/cleanup/kept".equals(request.target()) && "PUT".equals(request.method())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--release", "--all", "--yes");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ 1 items go back to the cleanup; due at the next check where past its duration."));
+    }
+
+    @Test
+    @DisplayName("cleanup --kept reports when nothing is kept")
+    void cleanupKeptEmpty() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup/kept".equals(request.target())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--kept");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("Nothing is kept for good."));
+    }
 }

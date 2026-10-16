@@ -56,6 +56,16 @@ public record RuntimeMetrics(
         networkListener = networkListener != null ? networkListener : "off";
     }
 
+    private static final String KEY_VERSION = "version";
+    private static final String KEY_UPTIME_SECONDS = "uptime_seconds";
+    private static final String KEY_HEAP_USED_BYTES = "heap_used_bytes";
+    private static final String KEY_HEAP_MAX_BYTES = "heap_max_bytes";
+    private static final String KEY_RESIDENT_MEMORY_BYTES = "resident_memory_bytes";
+    private static final String KEY_MACHINE_STORE_BYTES = "machine_store_bytes";
+    private static final String KEY_DISK_FREE_BYTES = "disk_free_bytes";
+    private static final String KEY_PAIRED_DEVICES_COUNT = "paired_devices_count";
+    private static final String KEY_RELAYS_BEHIND_COUNT = "relays_behind_count";
+
     /**
      * Converts to JSON map.
      *
@@ -63,24 +73,24 @@ public record RuntimeMetrics(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("version", version);
+        map.put(KEY_VERSION, version);
         map.put("build", build);
         map.put("started_at", startedAt);
-        map.put("uptime_seconds", uptimeSeconds);
-        map.put("heap_used_bytes", heapUsedBytes);
-        map.put("heap_max_bytes", heapMaxBytes);
-        map.put("resident_memory_bytes", residentMemoryBytes);
+        map.put(KEY_UPTIME_SECONDS, uptimeSeconds);
+        map.put(KEY_HEAP_USED_BYTES, heapUsedBytes);
+        map.put(KEY_HEAP_MAX_BYTES, heapMaxBytes);
+        map.put(KEY_RESIDENT_MEMORY_BYTES, residentMemoryBytes);
         if (cpuPercent != null) {
             map.put("cpu_percent", cpuPercent);
         }
-        map.put("machine_store_bytes", machineStoreBytes);
-        map.put("disk_free_bytes", diskFreeBytes);
+        map.put(KEY_MACHINE_STORE_BYTES, machineStoreBytes);
+        map.put(KEY_DISK_FREE_BYTES, diskFreeBytes);
         map.put("measured_at", measuredAt);
         map.put("socket_listener", socketListener);
         map.put("loopback_listener", loopbackListener);
         map.put("network_listener", networkListener);
-        map.put("paired_devices_count", pairedDevicesCount);
-        map.put("relays_behind_count", relaysBehindCount);
+        map.put(KEY_PAIRED_DEVICES_COUNT, pairedDevicesCount);
+        map.put(KEY_RELAYS_BEHIND_COUNT, relaysBehindCount);
         if (relaysBehindVersion != null) {
             map.put("relays_behind_version", relaysBehindVersion);
         }
@@ -112,6 +122,25 @@ public record RuntimeMetrics(
         return JsonTree.write(toMap());
     }
 
+    private static @Nullable Double parseCpuPercent(@Nullable Object cpuObj) {
+        if (cpuObj instanceof Number n) {
+            return n.doubleValue();
+        } else if (cpuObj instanceof JsonNumber(String text)) {
+            try {
+                return Double.parseDouble(text);
+            } catch (NumberFormatException _) {
+                return null;
+            }
+        } else if (cpuObj instanceof String s) {
+            try {
+                return Double.parseDouble(s);
+            } catch (NumberFormatException _) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     /**
      * Parses from a JSON map.
      *
@@ -121,41 +150,25 @@ public record RuntimeMetrics(
      */
     public static RuntimeMetrics fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var version = JsonTree.string(map, "version");
+        var version = JsonTree.string(map, KEY_VERSION);
         if (version == null) {
             throw new JsonFormatException("Missing version in RuntimeMetrics");
         }
         var build = JsonTree.string(map, "build");
         var startedAt = JsonTree.string(map, "started_at");
-        var uptimeSeconds = JsonTree.number(map, "uptime_seconds") != null ? JsonTree.number(map, "uptime_seconds").longValue() : 0L;
-        var heapUsedBytes = JsonTree.number(map, "heap_used_bytes") != null ? JsonTree.number(map, "heap_used_bytes").longValue() : 0L;
-        var heapMaxBytes = JsonTree.number(map, "heap_max_bytes") != null ? JsonTree.number(map, "heap_max_bytes").longValue() : 0L;
-        var residentMemoryBytes = JsonTree.number(map, "resident_memory_bytes") != null ? JsonTree.number(map, "resident_memory_bytes").longValue() : 0L;
-        Double cpuPercent = null;
-        var cpuObj = map.get("cpu_percent");
-        if (cpuObj instanceof Number n) {
-            cpuPercent = n.doubleValue();
-        } else if (cpuObj instanceof JsonNumber jn) {
-            try {
-                cpuPercent = Double.parseDouble(jn.text());
-            } catch (NumberFormatException _) {
-                // Ignore parse exception
-            }
-        } else if (cpuObj instanceof String s) {
-            try {
-                cpuPercent = Double.parseDouble(s);
-            } catch (NumberFormatException _) {
-                // Ignore parse exception
-            }
-        }
-        var machineStoreBytes = JsonTree.number(map, "machine_store_bytes") != null ? JsonTree.number(map, "machine_store_bytes").longValue() : 0L;
-        var diskFreeBytes = JsonTree.number(map, "disk_free_bytes") != null ? JsonTree.number(map, "disk_free_bytes").longValue() : 0L;
+        var uptimeVal = JsonTree.number(map, KEY_UPTIME_SECONDS);
+        var heapUsedVal = JsonTree.number(map, KEY_HEAP_USED_BYTES);
+        var heapMaxVal = JsonTree.number(map, KEY_HEAP_MAX_BYTES);
+        var resMemVal = JsonTree.number(map, KEY_RESIDENT_MEMORY_BYTES);
+        var cpuPercent = parseCpuPercent(map.get("cpu_percent"));
+        var storeVal = JsonTree.number(map, KEY_MACHINE_STORE_BYTES);
+        var diskVal = JsonTree.number(map, KEY_DISK_FREE_BYTES);
         var measuredAt = JsonTree.string(map, "measured_at");
         var socketListener = !Boolean.FALSE.equals(map.get("socket_listener"));
         var loopbackListener = JsonTree.string(map, "loopback_listener");
         var networkListener = JsonTree.string(map, "network_listener");
-        var pairedDevicesCount = JsonTree.integer(map, "paired_devices_count") != null ? (int) JsonTree.integer(map, "paired_devices_count") : 0;
-        var relaysBehindCount = JsonTree.integer(map, "relays_behind_count") != null ? (int) JsonTree.integer(map, "relays_behind_count") : 0;
+        var pairedVal = JsonTree.integer(map, KEY_PAIRED_DEVICES_COUNT);
+        var relaysVal = JsonTree.integer(map, KEY_RELAYS_BEHIND_COUNT);
         var relaysBehindVersion = JsonTree.string(map, "relays_behind_version");
         var newerVersion = JsonTree.string(map, "newer_version");
         var newerVersionDate = JsonTree.string(map, "newer_version_date");
@@ -168,19 +181,19 @@ public record RuntimeMetrics(
                 version,
                 build != null ? build : "",
                 startedAt != null ? startedAt : "",
-                uptimeSeconds,
-                heapUsedBytes,
-                heapMaxBytes,
-                residentMemoryBytes,
+                uptimeVal != null ? uptimeVal.longValue() : 0L,
+                heapUsedVal != null ? heapUsedVal.longValue() : 0L,
+                heapMaxVal != null ? heapMaxVal.longValue() : 0L,
+                resMemVal != null ? resMemVal.longValue() : 0L,
                 cpuPercent,
-                machineStoreBytes,
-                diskFreeBytes,
+                storeVal != null ? storeVal.longValue() : 0L,
+                diskVal != null ? diskVal.longValue() : 0L,
                 measuredAt != null ? measuredAt : "",
                 socketListener,
                 loopbackListener != null ? loopbackListener : "off",
                 networkListener != null ? networkListener : "off",
-                pairedDevicesCount,
-                relaysBehindCount,
+                pairedVal != null ? pairedVal.intValue() : 0,
+                relaysVal != null ? relaysVal.intValue() : 0,
                 relaysBehindVersion,
                 newerVersion,
                 newerVersionDate,

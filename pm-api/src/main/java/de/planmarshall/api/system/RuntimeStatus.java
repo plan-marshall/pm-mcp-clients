@@ -44,6 +44,9 @@ public record RuntimeStatus(
         drainRemainingItems = drainRemainingItems != null ? List.copyOf(drainRemainingItems) : List.of();
     }
 
+    private static final String KEY_VERSION = "version";
+    private static final String KEY_DRAIN_REMAINING_COUNT = "drain_remaining_count";
+
     /**
      * Converts to JSON map.
      *
@@ -51,13 +54,13 @@ public record RuntimeStatus(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("version", version);
+        map.put(KEY_VERSION, version);
         map.put("state", state.value());
         if (drainingBy != null) {
             map.put("draining_by", drainingBy);
         }
         map.put("drain_withdrawable", drainWithdrawable);
-        map.put("drain_remaining_count", drainRemainingCount);
+        map.put(KEY_DRAIN_REMAINING_COUNT, drainRemainingCount);
         map.put("drain_remaining_items", drainRemainingItems);
         if (drainStartedAt != null) {
             map.put("drain_started_at", drainStartedAt);
@@ -99,7 +102,7 @@ public record RuntimeStatus(
      */
     public static RuntimeStatus fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var version = JsonTree.string(map, "version");
+        var version = JsonTree.string(map, KEY_VERSION);
         if (version == null) {
             throw new JsonFormatException("Missing version in RuntimeStatus");
         }
@@ -107,7 +110,8 @@ public record RuntimeStatus(
         var state = RuntimeLifecycleState.fromValue(stateStr);
         var drainingBy = JsonTree.string(map, "draining_by");
         var drainWithdrawable = Boolean.TRUE.equals(map.get("drain_withdrawable"));
-        var drainRemainingCount = JsonTree.integer(map, "drain_remaining_count") != null ? (int) JsonTree.integer(map, "drain_remaining_count") : 0;
+        var remVal = JsonTree.integer(map, KEY_DRAIN_REMAINING_COUNT);
+        var drainRemainingCount = remVal != null ? remVal.intValue() : 0;
         var drainRemainingItems = new ArrayList<String>();
         if (map.get("drain_remaining_items") instanceof List<?> list) {
             for (var item : list) {

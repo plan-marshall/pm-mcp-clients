@@ -12,12 +12,17 @@ package de.planmarshall.api.system;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+
+import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonNumber;
 
 class SystemRecordsTest {
 
@@ -294,5 +299,146 @@ class SystemRecordsTest {
         assertEquals("cln-0012", restoredDecided.jobId());
         assertEquals("delete", restoredDecided.decision());
         assertEquals(5, restoredDecided.deletedCount());
+    }
+
+    @Test
+    void runtimeStatusRoundTripAndValidation() throws Exception {
+        var status = new RuntimeStatus(
+                "0.9.1",
+                RuntimeLifecycleState.DRAINING,
+                "the console",
+                true,
+                2,
+                List.of("task-1", "task-2"),
+                "today 14:00",
+                "0.10.0",
+                "today 13:00",
+                null,
+                true,
+                null,
+                "success"
+        );
+
+        var json = status.toJson();
+        var restored = RuntimeStatus.fromJson(json);
+
+        assertEquals("0.9.1", restored.version());
+        assertEquals(RuntimeLifecycleState.DRAINING, restored.state());
+        assertEquals("the console", restored.drainingBy());
+        assertTrue(restored.drainWithdrawable());
+        assertEquals(2, restored.drainRemainingCount());
+        assertEquals(List.of("task-1", "task-2"), restored.drainRemainingItems());
+        assertEquals("today 14:00", restored.drainStartedAt());
+        assertEquals("0.10.0", restored.newerVersion());
+        assertTrue(restored.upgradeSupported());
+        assertEquals("success", restored.lastUpgradeResult());
+
+        // Defaults in constructor
+        var minimal = new RuntimeStatus("0.9.1", null, null, false, 0, null, null, null, null, null, false, null, null);
+        assertEquals(RuntimeLifecycleState.RUNNING, minimal.state());
+        assertTrue(minimal.drainRemainingItems().isEmpty());
+
+        // Missing version throws
+        assertThrows(JsonFormatException.class, () -> RuntimeStatus.fromMap(Map.of("state", "running")));
+    }
+
+    @Test
+    void cleanupKeptItemRoundTripAndValidation() throws Exception {
+        var item = new CleanupKeptItem("token-usage", "plan", "pm-mcp-core › token-usage", "exclude", "13 Oct", "the console");
+        var json = item.toJson();
+        var restored = CleanupKeptItem.fromJson(json);
+
+        assertEquals("token-usage", restored.id());
+        assertEquals("plan", restored.kind());
+        assertEquals("pm-mcp-core › token-usage", restored.title());
+        assertEquals("exclude", restored.how());
+        assertEquals("13 Oct", restored.keptAt());
+        assertEquals("the console", restored.who());
+
+        // parseList
+        var listJson = "[" + json + "]";
+        var list = CleanupKeptItem.parseList(listJson);
+        assertEquals(1, list.size());
+        assertEquals("token-usage", list.getFirst().id());
+
+        // parseList with empty/null array
+        assertTrue(CleanupKeptItem.parseList("[]").isEmpty());
+        assertTrue(CleanupKeptItem.parseList("{}").isEmpty());
+
+        // Missing fields throw
+        assertThrows(JsonFormatException.class, () -> CleanupKeptItem.fromMap(Map.of("kind", "plan", "title", "t")));
+        assertThrows(JsonFormatException.class, () -> CleanupKeptItem.fromMap(Map.of("id", "i", "title", "t")));
+        assertThrows(JsonFormatException.class, () -> CleanupKeptItem.fromMap(Map.of("id", "i", "kind", "k")));
+    }
+
+    @Test
+    void cleanupResidueRoundTripAndValidation() throws Exception {
+        var residue = new CleanupResidue("temporary files", 214, 356515840L, "today 03:00");
+        var json = residue.toJson();
+        var restored = CleanupResidue.fromJson(json);
+
+        assertEquals("temporary files", restored.step());
+        assertEquals(214, restored.count());
+        assertEquals(356515840L, restored.bytes());
+        assertEquals("today 03:00", restored.lastSweep());
+
+        assertThrows(JsonFormatException.class, () -> CleanupResidue.fromMap(Map.of("count", 1)));
+    }
+
+    @Test
+    void cleanupJobOpenedEventRoundTripAndValidation() throws Exception {
+        var summary = new CleanupSummary(1, 0, 0, 0, 1, 1000L, 0, null, null);
+        var job = new CleanupJob("cln-0001", CleanupJobState.OPEN, null, summary, List.of(), Map.of());
+        var event = new CleanupJobOpenedEvent(job);
+
+        // Nested job format
+        var restored = CleanupJobOpenedEvent.fromJson(event.toJson());
+        assertEquals("cln-0001", restored.job().jobId());
+
+        // Flat job format
+        var flatEvent = CleanupJobOpenedEvent.fromMap(job.toMap());
+        assertEquals("cln-0001", flatEvent.job().jobId());
+
+        // Missing job throws
+        assertThrows(JsonFormatException.class, () -> CleanupJobOpenedEvent.fromMap(Map.of("other", "value")));
+    }
+
+    @Test
+    void systemSnapshotValidation() {
+        var runtime = new RuntimeMetrics("0.9.1", "", "", 0, 0L, 0L, 0L, null, 0L, 0L, "", true, "off", "off", 0, 0, null, null, null, null, null, true, null);
+        var work = new WorkMetrics(Map.of(), Map.of(), 0, 0, 0, List.of());
+        var summary = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, null, null);
+
+        assertThrows(JsonFormatException.class, () -> SystemSnapshot.fromMap(Map.of("work", work.toMap(), "cleanup", summary.toMap())));
+        assertThrows(JsonFormatException.class, () -> SystemSnapshot.fromMap(Map.of("runtime", runtime.toMap(), "cleanup", summary.toMap())));
+        assertThrows(JsonFormatException.class, () -> SystemSnapshot.fromMap(Map.of("runtime", runtime.toMap(), "work", work.toMap())));
+    }
+
+    @Test
+    void runtimeMetricsCpuPercentAndValidation() throws Exception {
+        // Missing version throws
+        assertThrows(JsonFormatException.class, () -> RuntimeMetrics.fromMap(Map.of("uptime_seconds", 100)));
+
+        // CPU variations: JsonNumber, String, invalid String
+        var mapWithJsonNum = Map.<String, Object>of(
+                "version", "0.9.1",
+                "cpu_percent", new JsonNumber("12.5")
+        );
+        var r1 = RuntimeMetrics.fromMap(mapWithJsonNum);
+        assertEquals(12.5, r1.cpuPercent());
+
+        var mapWithString = Map.<String, Object>of(
+                "version", "0.9.1",
+                "cpu_percent", "8.0"
+        );
+        var r2 = RuntimeMetrics.fromMap(mapWithString);
+        assertEquals(8.0, r2.cpuPercent());
+
+        var mapWithInvalidString = Map.<String, Object>of(
+                "version", "0.9.1",
+                "cpu_percent", "invalid"
+        );
+        var r3 = RuntimeMetrics.fromMap(mapWithInvalidString);
+        assertNull(r3.cpuPercent());
     }
 }

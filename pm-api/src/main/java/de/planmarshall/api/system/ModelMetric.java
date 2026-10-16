@@ -37,6 +37,14 @@ public record ModelMetric(
         Objects.requireNonNull(harnessAndModel, "harnessAndModel");
     }
 
+    private static final String KEY_CALLS_COUNT = "calls_count";
+    private static final String KEY_TOKENS_TOTAL = "tokens_total";
+    private static final String KEY_TOKENS_IN = "tokens_in";
+    private static final String KEY_TOKENS_OUT = "tokens_out";
+    private static final String KEY_ERRORS_COUNT = "errors_count";
+    private static final String KEY_RETRIES_COUNT = "retries_count";
+    private static final String KEY_UNMEASURED_CALLS = "unmeasured_calls";
+
     /**
      * Converts to JSON map.
      *
@@ -48,14 +56,14 @@ public record ModelMetric(
         if (role != null) {
             map.put("role", role);
         }
-        map.put("calls_count", callsCount);
-        map.put("tokens_total", tokensTotal);
-        map.put("tokens_in", tokensIn);
-        map.put("tokens_out", tokensOut);
-        map.put("errors_count", errorsCount);
-        map.put("retries_count", retriesCount);
+        map.put(KEY_CALLS_COUNT, callsCount);
+        map.put(KEY_TOKENS_TOTAL, tokensTotal);
+        map.put(KEY_TOKENS_IN, tokensIn);
+        map.put(KEY_TOKENS_OUT, tokensOut);
+        map.put(KEY_ERRORS_COUNT, errorsCount);
+        map.put(KEY_RETRIES_COUNT, retriesCount);
         map.put("is_floor", isFloor);
-        map.put("unmeasured_calls", unmeasuredCalls);
+        map.put(KEY_UNMEASURED_CALLS, unmeasuredCalls);
         return map;
     }
 
@@ -85,18 +93,27 @@ public record ModelMetric(
             throw new JsonFormatException("Missing harness_and_model in ModelMetric");
         }
         var role = JsonTree.string(map, "role");
-        var callsCount = JsonTree.integer(map, "calls_count") != null ? (int) JsonTree.integer(map, "calls_count") : 0;
-        var tokensTotal = JsonTree.number(map, "tokens_total") != null ? JsonTree.number(map, "tokens_total").longValue() : 0L;
-        var tokensIn = JsonTree.number(map, "tokens_in") != null ? JsonTree.number(map, "tokens_in").longValue() : 0L;
-        var tokensOut = JsonTree.number(map, "tokens_out") != null ? JsonTree.number(map, "tokens_out").longValue() : 0L;
-        var errorsCount = JsonTree.integer(map, "errors_count") != null ? (int) JsonTree.integer(map, "errors_count") : 0;
-        var retriesCount = JsonTree.integer(map, "retries_count") != null ? (int) JsonTree.integer(map, "retries_count") : 0;
+        var callsVal = JsonTree.integer(map, KEY_CALLS_COUNT);
+        var totalVal = JsonTree.number(map, KEY_TOKENS_TOTAL);
+        var inVal = JsonTree.number(map, KEY_TOKENS_IN);
+        var outVal = JsonTree.number(map, KEY_TOKENS_OUT);
+        var errVal = JsonTree.integer(map, KEY_ERRORS_COUNT);
+        var retVal = JsonTree.integer(map, KEY_RETRIES_COUNT);
         var isFloor = Boolean.TRUE.equals(map.get("is_floor")) || Boolean.TRUE.equals(map.get("floor"));
-        var unmeasuredCalls = JsonTree.integer(map, "unmeasured_calls") != null
-                ? JsonTree.integer(map, "unmeasured_calls")
-                : 0;
+        var unmeasuredVal = JsonTree.integer(map, KEY_UNMEASURED_CALLS);
 
-        return new ModelMetric(harnessAndModel, role, callsCount, tokensTotal, tokensIn, tokensOut, errorsCount, retriesCount, isFloor, unmeasuredCalls);
+        return new ModelMetric(
+                harnessAndModel,
+                role,
+                callsVal != null ? callsVal.intValue() : 0,
+                totalVal != null ? totalVal.longValue() : 0L,
+                inVal != null ? inVal.longValue() : 0L,
+                outVal != null ? outVal.longValue() : 0L,
+                errVal != null ? errVal.intValue() : 0,
+                retVal != null ? retVal.intValue() : 0,
+                isFloor,
+                unmeasuredVal != null ? unmeasuredVal.intValue() : 0
+        );
     }
 
     /**

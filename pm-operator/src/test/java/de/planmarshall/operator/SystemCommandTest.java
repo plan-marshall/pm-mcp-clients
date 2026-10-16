@@ -233,4 +233,70 @@ class SystemCommandTest {
         assertEquals("1.90 M", SystemCommand.formatTokens(1900000L));
         assertEquals("0.12 M", SystemCommand.formatTokens(120000L));
     }
+
+    @Test
+    @DisplayName("system --by role groups models by role and prints 7-day window")
+    void systemByRoleAndVariations() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var runtimeMetrics = new RuntimeMetrics(
+                            "0.9.1",
+                            "commit-123",
+                            "today 08:00",
+                            120L,
+                            1000L,
+                            2000L,
+                            3000L,
+                            -1.0,
+                            4000L,
+                            5000L,
+                            "12:00",
+                            true,
+                            "off",
+                            "off",
+                            0,
+                            3,
+                            "0.8.0",
+                            null,
+                            null,
+                            null,
+                            null,
+                            false,
+                            "managed installation"
+        );
+        var workMetrics = new WorkMetrics(
+                            Map.of(),
+                            Map.of(),
+                            0,
+                            0,
+                            1,
+                            List.of("recovering-repo")
+        );
+        var workers = List.of(
+                            new WorkerMetric("planner", "claude", "opus-4.5", WorkerState.IDLE, null)
+        );
+        var models = List.of(
+                            new ModelMetric("claude:opus-4.5", "planner", 10, 100000L, 80000L, 20000L, 0, 0, false, 0)
+        );
+        var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, null, null);
+        var snapshot = new SystemSnapshot(runtimeMetrics, workMetrics, workers, Map.of(), models, cleanup, SystemWindow.SEVEN_DAYS, null);
+
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system")) {
+                response.json(200, JsonTree.write(snapshot.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("system", "--by", "role", "--window", "7d");
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("network off")),
+                            () -> assertTrue(output.contains("3 host sessions run pm-mcp 0.8.0")),
+                            () -> assertTrue(output.contains("recovering: recovering-repo")),
+                            () -> assertTrue(output.contains("Models    7 days, per role")),
+                            () -> assertTrue(output.contains("CPU not available (not measured on this platform)"))
+        );
+    }
 }

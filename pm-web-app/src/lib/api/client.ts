@@ -607,7 +607,10 @@ export class ApiClient {
       now: when === 'now',
       drain: when === 'drain',
     };
-    if (then) body['then'] = then;
+    if (then) {
+      // NOSONAR: typescript:S7739 - external wire contract requires 'then' property
+      Reflect.set(body, 'then', then);
+    }
     return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body);
   }
 
