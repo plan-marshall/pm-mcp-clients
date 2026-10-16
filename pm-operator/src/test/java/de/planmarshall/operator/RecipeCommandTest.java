@@ -57,7 +57,7 @@ class RecipeCommandTest {
         var self = ProcessHandle.current();
         Files.createDirectories(fixture.paths().stateDir());
         Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
-                + self.info().startInstant().orElseThrow() + "\"}");
+                      + self.info().startInstant().orElseThrow() + "\"}");
         return fixture.start(handler);
     }
 
@@ -80,7 +80,7 @@ class RecipeCommandTest {
     void runSuccess() throws Exception {
         var server = runtime((request, response) -> {
             if ("/api/v1/projects/my-proj/recipes/code-review/run".equals(request.target())
-                    && "POST".equals(request.method())) {
+                          && "POST".equals(request.method())) {
                 response.send(201, null, "{\"plan_id\":\"plan-42\"}");
             } else {
                 response.send(404, null, "");
@@ -88,7 +88,7 @@ class RecipeCommandTest {
         });
 
         assertEquals(0, run("recipe", "run", "code-review", "--project", "my-proj",
-                "--title", "Review Auth", "--param", "depth=deep", "--source", "src/"));
+                      "--title", "Review Auth", "--param", "depth=deep", "--source", "src/"));
         assertTrue(out.toString().contains("✓ Recipe code-review started"));
 
         var recorded = server.awaitRequest(Duration.ofSeconds(1));

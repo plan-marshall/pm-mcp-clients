@@ -29,13 +29,13 @@ import picocli.CommandLine.Spec;
  * 17-projects.adoc).
  */
 @Command(name = "project", description = "Manages project enrolments and lifecycle.",
-        subcommands = {
-                ProjectCommand.AddCommand.class,
-                ProjectCommand.SetupCommand.class,
-                ProjectCommand.FavouriteCommand.class,
-                ProjectCommand.ReleaseCommand.class,
-                ProjectCommand.UnenrolCommand.class
-        })
+              subcommands = {
+                            ProjectCommand.AddCommand.class,
+                            ProjectCommand.SetupCommand.class,
+                            ProjectCommand.FavouriteCommand.class,
+                            ProjectCommand.ReleaseCommand.class,
+                            ProjectCommand.UnenrolCommand.class
+              })
 @OperatorVerb
 public final class ProjectCommand implements Callable<Integer> {
 

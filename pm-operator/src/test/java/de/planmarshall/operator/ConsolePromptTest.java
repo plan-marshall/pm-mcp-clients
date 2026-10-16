@@ -31,8 +31,8 @@ class ConsolePromptTest {
         @DisplayName("renders default prompt when badges are null or empty")
         void defaultPrompt() {
             assertAll(
-                    () -> assertEquals("pm › ", ConsolePrompt.format(null, false)),
-                    () -> assertEquals("pm › ", ConsolePrompt.format(Collections.emptyList(), false))
+                          () -> assertEquals("pm › ", ConsolePrompt.format(null, false)),
+                          () -> assertEquals("pm › ", ConsolePrompt.format(Collections.emptyList(), false))
             );
         }
 
@@ -40,8 +40,8 @@ class ConsolePromptTest {
         @DisplayName("renders reconnecting prompt when reconnecting")
         void reconnectingPrompt() {
             assertAll(
-                    () -> assertEquals("pm (reconnecting) › ", ConsolePrompt.format(null, true)),
-                    () -> assertEquals("pm (reconnecting) › ", ConsolePrompt.format(List.of("1 question"), true))
+                          () -> assertEquals("pm (reconnecting) › ", ConsolePrompt.format(null, true)),
+                          () -> assertEquals("pm (reconnecting) › ", ConsolePrompt.format(List.of("1 question"), true))
             );
         }
 
@@ -59,8 +59,8 @@ class ConsolePromptTest {
             var three = ConsolePrompt.format(List.of("2 questions", "1 waiver request", "setup 3/7"), false);
 
             assertAll(
-                    () -> assertEquals("pm [1 question · setup 3/7] › ", two),
-                    () -> assertEquals("pm [2 questions · 1 waiver request · setup 3/7] › ", three)
+                          () -> assertEquals("pm [1 question · setup 3/7] › ", two),
+                          () -> assertEquals("pm [2 questions · 1 waiver request · setup 3/7] › ", three)
             );
         }
 
@@ -68,11 +68,11 @@ class ConsolePromptTest {
         @DisplayName("truncates more than three badges to first three and plus remainder count")
         void truncateMoreThanThreeBadges() {
             var badges = List.of(
-                    "2 questions",
-                    "1 waiver request",
-                    "1 stalled",
-                    "1 needs a fix",
-                    "setup 3/7"
+                          "2 questions",
+                          "1 waiver request",
+                          "1 stalled",
+                          "1 needs a fix",
+                          "setup 3/7"
             );
             var prompt = ConsolePrompt.format(badges, false);
             assertEquals("pm [2 questions · 1 waiver request · 1 stalled · +2] › ", prompt);
@@ -87,10 +87,10 @@ class ConsolePromptTest {
         @DisplayName("formats question badges singular and plural")
         void questionBadges() {
             assertAll(
-                    () -> assertEquals("1 question", ConsolePrompt.formatBadge("question", 1)),
-                    () -> assertEquals("1 question", ConsolePrompt.formatBadge("decision", 1)),
-                    () -> assertEquals("3 questions", ConsolePrompt.formatBadge("question", 3)),
-                    () -> assertEquals("2 questions", ConsolePrompt.formatBadge("decision", 2))
+                          () -> assertEquals("1 question", ConsolePrompt.formatBadge("question", 1)),
+                          () -> assertEquals("1 question", ConsolePrompt.formatBadge("decision", 1)),
+                          () -> assertEquals("3 questions", ConsolePrompt.formatBadge("question", 3)),
+                          () -> assertEquals("2 questions", ConsolePrompt.formatBadge("decision", 2))
             );
         }
 
@@ -98,8 +98,8 @@ class ConsolePromptTest {
         @DisplayName("formats waiver request badges singular and plural")
         void waiverRequestBadges() {
             assertAll(
-                    () -> assertEquals("1 waiver request", ConsolePrompt.formatBadge("waiver_request", 1)),
-                    () -> assertEquals("4 waiver requests", ConsolePrompt.formatBadge("waiver_request", 4))
+                          () -> assertEquals("1 waiver request", ConsolePrompt.formatBadge("waiver_request", 1)),
+                          () -> assertEquals("4 waiver requests", ConsolePrompt.formatBadge("waiver_request", 4))
             );
         }
 
@@ -107,8 +107,8 @@ class ConsolePromptTest {
         @DisplayName("formats operator wait badges")
         void operatorWaitBadges() {
             assertAll(
-                    () -> assertEquals("1 waits for you", ConsolePrompt.formatBadge("operator_wait", 1)),
-                    () -> assertEquals("2 wait for you", ConsolePrompt.formatBadge("operator_wait", 2))
+                          () -> assertEquals("1 waits for you", ConsolePrompt.formatBadge("operator_wait", 1)),
+                          () -> assertEquals("2 wait for you", ConsolePrompt.formatBadge("operator_wait", 2))
             );
         }
 
@@ -116,8 +116,8 @@ class ConsolePromptTest {
         @DisplayName("formats integrity pause badges")
         void integrityPauseBadges() {
             assertAll(
-                    () -> assertEquals("1 integrity pause", ConsolePrompt.formatBadge("integrity_pause", 1)),
-                    () -> assertEquals("2 integrity pauses", ConsolePrompt.formatBadge("integrity_pause", 2))
+                          () -> assertEquals("1 integrity pause", ConsolePrompt.formatBadge("integrity_pause", 1)),
+                          () -> assertEquals("2 integrity pauses", ConsolePrompt.formatBadge("integrity_pause", 2))
             );
         }
 
@@ -125,13 +125,13 @@ class ConsolePromptTest {
         @DisplayName("formats hold and status badges")
         void holdBadges() {
             assertAll(
-                    () -> assertEquals("1 stalled", ConsolePrompt.formatBadge("stalled", 1)),
-                    () -> assertEquals("2 needs a fix", ConsolePrompt.formatBadge("condition", 2)),
-                    () -> assertEquals("1 held", ConsolePrompt.formatBadge("held", 1)),
-                    () -> assertEquals("1 landing failed", ConsolePrompt.formatBadge("landing_failed", 1)),
-                    () -> assertEquals("3 new findings", ConsolePrompt.formatBadge("findings", 3)),
-                    () -> assertEquals("1 setup", ConsolePrompt.formatBadge("setup", 1)),
-                    () -> assertEquals("2 custom", ConsolePrompt.formatBadge("custom", 2))
+                          () -> assertEquals("1 stalled", ConsolePrompt.formatBadge("stalled", 1)),
+                          () -> assertEquals("2 needs a fix", ConsolePrompt.formatBadge("condition", 2)),
+                          () -> assertEquals("1 held", ConsolePrompt.formatBadge("held", 1)),
+                          () -> assertEquals("1 landing failed", ConsolePrompt.formatBadge("landing_failed", 1)),
+                          () -> assertEquals("3 new findings", ConsolePrompt.formatBadge("findings", 3)),
+                          () -> assertEquals("1 setup", ConsolePrompt.formatBadge("setup", 1)),
+                          () -> assertEquals("2 custom", ConsolePrompt.formatBadge("custom", 2))
             );
         }
 
@@ -139,8 +139,8 @@ class ConsolePromptTest {
         @DisplayName("returns null when count is zero or negative")
         void zeroOrNegativeCount() {
             assertAll(
-                    () -> assertNull(ConsolePrompt.formatBadge("question", 0)),
-                    () -> assertNull(ConsolePrompt.formatBadge("question", -1))
+                          () -> assertNull(ConsolePrompt.formatBadge("question", 0)),
+                          () -> assertNull(ConsolePrompt.formatBadge("question", -1))
             );
         }
 

@@ -30,11 +30,11 @@ import de.planmarshall.api.json.JsonTree;
  * @param alongsideLandings short landings running alongside plans/epics
  */
 public record ProjectDetailResponse(
-String projectId,
-String displayName,
-List<ActivePlanSummary> plans,
-List<ActiveEpicSummary> epics,
-List<AlongsideLanding> alongsideLandings
+        String projectId,
+        String displayName,
+        List<ActivePlanSummary> plans,
+        List<ActiveEpicSummary> epics,
+        List<AlongsideLanding> alongsideLandings
 ) {
     public ProjectDetailResponse {
         Objects.requireNonNull(projectId, "projectId");

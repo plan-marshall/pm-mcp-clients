@@ -45,14 +45,14 @@ import picocli.CommandLine.Spec;
  * (01-commands.adoc#commands, 03-web-server.adoc).
  */
 @Command(name = "web", description = "Enables, pairs, or configures the runtime's web access.",
-        subcommands = {
-                WebCommand.EnableCommand.class,
-                WebCommand.DisableCommand.class,
-                WebCommand.PairCommand.class,
-                WebCommand.OpenCommand.class,
-                WebCommand.QrCommand.class,
-                WebCommand.DevicesCommand.class
-        })
+              subcommands = {
+                            WebCommand.EnableCommand.class,
+                            WebCommand.DisableCommand.class,
+                            WebCommand.PairCommand.class,
+                            WebCommand.OpenCommand.class,
+                            WebCommand.QrCommand.class,
+                            WebCommand.DevicesCommand.class
+              })
 @OperatorVerb
 public final class WebCommand implements Callable<Integer> {
 
@@ -86,7 +86,7 @@ public final class WebCommand implements Callable<Integer> {
         boolean lan;
 
         @Option(names = "--port", paramLabel = "N", defaultValue = "" + DEFAULT_PORT,
-                description = "TCP port, default ${DEFAULT-VALUE}.")
+                      description = "TCP port, default ${DEFAULT-VALUE}.")
         int port;
 
         EnableCommand(OperatorContext context) {
@@ -108,7 +108,7 @@ public final class WebCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Option(names = "--port", paramLabel = "N", defaultValue = "" + DEFAULT_PORT,
-                description = "TCP port, default ${DEFAULT-VALUE}.")
+                      description = "TCP port, default ${DEFAULT-VALUE}.")
         int port;
 
         DisableCommand(OperatorContext context) {
@@ -245,7 +245,7 @@ public final class WebCommand implements Callable<Integer> {
         private final OperatorContext context;
 
         @Parameters(index = "0", arity = "0..1", defaultValue = "list",
-                description = "Action: list, rename, revoke, listener-off")
+                      description = "Action: list, rename, revoke, listener-off")
         @Nullable
         String action;
 
@@ -295,12 +295,12 @@ public final class WebCommand implements Callable<Integer> {
         private void handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {
             if (deviceId == null || newLabel == null) {
                 throw new CommandLine.ParameterException(
-                        spec.commandLine(), "rename requires <deviceId> <newLabel>");
+                              spec.commandLine(), "rename requires <deviceId> <newLabel>");
             }
             var cleanLabel = ConsoleNotice.stripControlSequences(newLabel);
             var body = JsonTree.write(Map.of(LABEL, cleanLabel));
             var response = runtime.send(HttpRequest.json("PUT",
-                    "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId), body));
+                          "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId), body));
             if (response.status() == 200 || response.status() == 204) {
                 out.println("✓ Renamed: " + cleanLabel);
             } else {
@@ -311,7 +311,7 @@ public final class WebCommand implements Callable<Integer> {
         private void handleRevoke(RuntimeClient runtime, PrintWriter out) throws IOException {
             if (!others && !all && deviceId == null) {
                 throw new CommandLine.ParameterException(
-                        spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
+                              spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
             }
 
             if (interactive && !yes && context.isInteractiveTerminal() && !confirm()) {
@@ -320,8 +320,8 @@ public final class WebCommand implements Callable<Integer> {
 
             var scope = others ? "others" : "all";
             var path = deviceId != null
-                    ? "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId)
-                    : "/api/v1/web/devices?scope=" + scope;
+                          ? "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId)
+                          : "/api/v1/web/devices?scope=" + scope;
             var response = runtime.send(new HttpRequest("DELETE", path, Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println("✓ Revoked paired device(s)");
@@ -453,16 +453,16 @@ public final class WebCommand implements Callable<Integer> {
             var parsed = JsonTree.parse(body);
             if (parsed instanceof List<?> list && !list.isEmpty()) {
                 out.println(MessageCatalogue.format(locale, "devices.list.title", Map.of())
-                        + " · "
-                        + MessageCatalogue.format(locale, "devices.list.subtitle", Map.of()));
+                              + " · "
+                              + MessageCatalogue.format(locale, "devices.list.subtitle", Map.of()));
                 int idx = 1;
                 for (var item : list) {
                     printDevice(out, idx++, item);
                 }
                 out.println();
                 out.printf("  %s Network listener: %s.%n",
-                        MessageCatalogue.format(locale, "devices.list.terminal_note", Map.of()),
-                        lanOn ? "on" : "off");
+                              MessageCatalogue.format(locale, "devices.list.terminal_note", Map.of()),
+                              lanOn ? "on" : "off");
             } else {
                 out.println("No paired devices.");
             }
@@ -483,11 +483,11 @@ public final class WebCommand implements Callable<Integer> {
                 var lastUsed = formatLastUsed(dev.get("last_used_at"));
 
                 out.printf("    %d) %-25s paired %s from %-8s   last used %s%n",
-                        idx,
-                        labelVal,
-                        pairedDate,
-                        fromStr,
-                        lastUsed);
+                              idx,
+                              labelVal,
+                              pairedDate,
+                              fromStr,
+                              lastUsed);
             } else {
                 out.printf("    %d) %s%n", idx, item);
             }
@@ -501,8 +501,8 @@ public final class WebCommand implements Callable<Integer> {
             try {
                 var instant = Instant.parse(s);
                 return DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
-                        .withZone(ZoneId.of("UTC"))
-                        .format(instant);
+                              .withZone(ZoneId.of("UTC"))
+                              .format(instant);
             } catch (DateTimeParseException _) {
                 return s;
             }
@@ -521,8 +521,8 @@ public final class WebCommand implements Callable<Integer> {
                 var hours = diff.toHours();
                 if (days == 0 && hours < 24) {
                     var timeStr = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
-                            .withZone(ZoneId.of("UTC"))
-                            .format(instant);
+                                  .withZone(ZoneId.of("UTC"))
+                                  .format(instant);
                     return "today " + timeStr;
                 }
                 if (days < 7) {
@@ -533,8 +533,8 @@ public final class WebCommand implements Callable<Integer> {
                     return weeks + (weeks == 1 ? " week ago" : " weeks ago");
                 }
                 return DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH)
-                        .withZone(ZoneId.of("UTC"))
-                        .format(instant);
+                              .withZone(ZoneId.of("UTC"))
+                              .format(instant);
             } catch (DateTimeParseException _) {
                 return s;
             }
@@ -554,7 +554,7 @@ public final class WebCommand implements Callable<Integer> {
     }
 
     static int put(OperatorContext context, CommandSpec spec, boolean enabled, boolean lan, int port)
-            throws IOException {
+                  throws IOException {
         var body = new LinkedHashMap<String, Object>();
         body.put("enabled", enabled);
         body.put("lan", lan);
@@ -581,6 +581,6 @@ public final class WebCommand implements Callable<Integer> {
             return "disabled";
         }
         return "enabled (" + (Boolean.TRUE.equals(web.get("lan")) ? "lan" : LOOPBACK) + "), port "
-                + web.get("port") + ", " + (Boolean.TRUE.equals(web.get("open")) ? "open" : "not open");
+                      + web.get("port") + ", " + (Boolean.TRUE.equals(web.get("open")) ? "open" : "not open");
     }
 }

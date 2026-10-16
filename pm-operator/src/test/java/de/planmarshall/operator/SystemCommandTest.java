@@ -60,8 +60,8 @@ class SystemCommandTest {
     void systemNotRunning() {
         int code = execute("system");
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(out.toString().contains("runtime   not running"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(out.toString().contains("runtime   not running"))
         );
     }
 
@@ -72,17 +72,17 @@ class SystemCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/system".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                        {
-                          "version": "pm-mcpd 0.9.1",
-                          "build": "2026-10-02 (a1b2c3d)",
-                          "uptime": "today 08:14 · 6 h 12 min",
-                          "memory": "412 MB in use of 1 GB",
-                          "work": "plans 3 running · epics 1 running",
-                          "workers": "5 · 3 busy · 2 idle",
-                          "jobs": "build 1 of 2 slots · locks 3 held",
-                          "cleanup": "due: 12 plans"
-                        }
-                        """);
+                              {
+                                "version": "pm-mcpd 0.9.1",
+                                "build": "2026-10-02 (a1b2c3d)",
+                                "uptime": "today 08:14 · 6 h 12 min",
+                                "memory": "412 MB in use of 1 GB",
+                                "work": "plans 3 running · epics 1 running",
+                                "workers": "5 · 3 busy · 2 idle",
+                                "jobs": "build 1 of 2 slots · locks 3 held",
+                                "cleanup": "due: 12 plans"
+                              }
+                              """);
             } else {
                 response.send(404, null, "");
             }
@@ -91,11 +91,11 @@ class SystemCommandTest {
         int code = execute("system");
         var output = out.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("System")),
-                () -> assertTrue(output.contains("pm-mcpd 0.9.1")),
-                () -> assertTrue(output.contains("412 MB in use of 1 GB")),
-                () -> assertTrue(output.contains("plans 3 running"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("System")),
+                      () -> assertTrue(output.contains("pm-mcpd 0.9.1")),
+                      () -> assertTrue(output.contains("412 MB in use of 1 GB")),
+                      () -> assertTrue(output.contains("plans 3 running"))
         );
     }
 }

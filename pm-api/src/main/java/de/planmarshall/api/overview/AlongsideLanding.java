@@ -28,11 +28,11 @@ import de.planmarshall.api.json.JsonTree;
  * @param holdKind the hold reason if failed ("landing_failed"), or {@code null}
  */
 public record AlongsideLanding(
-@Nullable String unit,
-String state,
-@Nullable Integer count,
-String kind,
-@Nullable String holdKind
+        @Nullable String unit,
+        String state,
+        @Nullable Integer count,
+        String kind,
+        @Nullable String holdKind
 ) {
     public AlongsideLanding {
         state = state != null ? state : "running";

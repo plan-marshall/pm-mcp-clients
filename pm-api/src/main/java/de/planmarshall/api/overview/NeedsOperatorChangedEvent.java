@@ -29,11 +29,11 @@ import de.planmarshall.api.json.JsonTree;
  * @param count     number of items waiting
  */
 public record NeedsOperatorChangedEvent(
-@Nullable String projectId,
-@Nullable String planId,
-@Nullable String epicId,
-@Nullable String kind,
-int count
+        @Nullable String projectId,
+        @Nullable String planId,
+        @Nullable String epicId,
+        @Nullable String kind,
+        int count
 ) {
     public static final String EVENT_NAME = "needs_operator.changed";
 

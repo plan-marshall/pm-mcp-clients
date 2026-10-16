@@ -28,10 +28,10 @@ import de.planmarshall.api.json.JsonTree;
  * @param phaseEnteredAt timestamp when new phase was entered
  */
 public record PhaseChangedEvent(
-String planId,
-@Nullable String oldPhase,
-String newPhase,
-Instant phaseEnteredAt
+        String planId,
+        @Nullable String oldPhase,
+        String newPhase,
+        Instant phaseEnteredAt
 ) {
     public static final String EVENT_NAME = "phase.changed";
 

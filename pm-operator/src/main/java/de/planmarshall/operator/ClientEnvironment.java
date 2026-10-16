@@ -37,24 +37,24 @@ Map<String, String> buildEnvironment) {
     public static final String DEFAULT_LOCALE = "en";
 
     private static final Set<String> EXCLUDED_CREDENTIAL_NAMES = Set.of(
-            "GH_TOKEN", "GITHUB_TOKEN", "GITLAB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITLAB_PRIVATE_TOKEN",
-            "GIT_ASKPASS", "SSH_ASKPASS", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT",
-            "ANTHROPIC_API_KEY", "CODEX_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY");
+                  "GH_TOKEN", "GITHUB_TOKEN", "GITLAB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITLAB_PRIVATE_TOKEN",
+                  "GIT_ASKPASS", "SSH_ASKPASS", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT",
+                  "ANTHROPIC_API_KEY", "CODEX_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY");
 
     private static final Set<String> EXCLUDED_SYSTEM_VARS = Set.of(
-            "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "MVND_DAEMON_STORAGE");
+                  "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "MVND_DAEMON_STORAGE");
 
     private static final Set<String> EXCLUDED_FLAG_INJECTING_VARS = Set.of(
-            "MAVEN_OPTS", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "GRADLE_OPTS");
+                  "MAVEN_OPTS", "JAVA_TOOL_OPTIONS", "_JAVA_OPTIONS", "GRADLE_OPTS");
 
     private static final Set<String> EXCLUDED_AGENT_VARS = Set.of(
-            "CLAUDE_CODE", "CLAUDE_PROJECT_ROOT", "CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CLAUDE_PID",
-            "ANTIGRAVITY_AGENT", "ANTIGRAVITY_CONVERSATION_ID", "GEMINI_CLI",
-            "OPENCODE", "OPENCODE_PID", "OPENCODE_CLIENT",
-            "AI_AGENT");
+                  "CLAUDE_CODE", "CLAUDE_PROJECT_ROOT", "CLAUDECODE", "CLAUDE_CODE_SESSION_ID", "CLAUDE_PID",
+                  "ANTIGRAVITY_AGENT", "ANTIGRAVITY_CONVERSATION_ID", "GEMINI_CLI",
+                  "OPENCODE", "OPENCODE_PID", "OPENCODE_CLIENT",
+                  "AI_AGENT");
 
     private static final Set<String> EXCLUDED_PM_INTERNAL_VARS = Set.of(
-            "PM_MCP_JOB_TOKEN", "PM_MCP_JOB_ID", "PM_MCP_TOKEN");
+                  "PM_MCP_JOB_TOKEN", "PM_MCP_JOB_ID", "PM_MCP_TOKEN");
 
     /**
      * Compact constructor creating immutable copies.
@@ -76,10 +76,10 @@ Map<String, String> buildEnvironment) {
         var ssh = environment.containsKey("SSH_CONNECTION") || environment.containsKey("SSH_TTY");
         var rawPath = environment.get("PATH");
         var pathList = rawPath == null || rawPath.isBlank()
-                ? List.<String>of()
-                : Arrays.stream(rawPath.split(File.pathSeparator))
-                .filter(p -> !p.isBlank())
-                .toList();
+                      ? List.<String>of()
+                      : Arrays.stream(rawPath.split(File.pathSeparator))
+                      .filter(p -> !p.isBlank())
+                      .toList();
 
         var buildEnv = new LinkedHashMap<String, String>();
         for (var entry : environment.entrySet()) {
@@ -144,16 +144,16 @@ Map<String, String> buildEnvironment) {
     public static boolean isExcludedFromBuildEnvironment(String name) {
         var upper = name.toUpperCase(Locale.ROOT);
         if (upper.endsWith("_TOKEN") || upper.endsWith("_PASSWORD") || upper.endsWith("_SECRET")
-                || upper.endsWith("_KEY") || upper.endsWith("_AUTH")) {
+                      || upper.endsWith("_KEY") || upper.endsWith("_AUTH")) {
             return true;
         }
         if (upper.startsWith("CODEX_")) {
             return true;
         }
         return EXCLUDED_CREDENTIAL_NAMES.contains(name)
-                || EXCLUDED_SYSTEM_VARS.contains(name)
-                || EXCLUDED_FLAG_INJECTING_VARS.contains(name)
-                || EXCLUDED_AGENT_VARS.contains(name)
-                || EXCLUDED_PM_INTERNAL_VARS.contains(name);
+                      || EXCLUDED_SYSTEM_VARS.contains(name)
+                      || EXCLUDED_FLAG_INJECTING_VARS.contains(name)
+                      || EXCLUDED_AGENT_VARS.contains(name)
+                      || EXCLUDED_PM_INTERNAL_VARS.contains(name);
     }
 }

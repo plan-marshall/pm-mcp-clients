@@ -30,12 +30,12 @@ import de.planmarshall.api.json.JsonTree;
  * @param hasOlder   whether an older page exists
  */
 public record EndedWorkPage(
-String projectId,
-List<EndedWorkItem> items,
-int page,
-int totalPages,
-boolean hasNewer,
-boolean hasOlder
+        String projectId,
+        List<EndedWorkItem> items,
+        int page,
+        int totalPages,
+        boolean hasNewer,
+        boolean hasOlder
 ) {
     public EndedWorkPage {
         Objects.requireNonNull(projectId, "projectId");

@@ -78,8 +78,8 @@ public final class AnswerCommand implements Callable<Integer> {
     private int fetchQuestionDetail(RuntimeClient runtime, PrintWriter out) throws IOException {
         var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
         var qPath = plan != null
-                ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid
-                : "/api/v1/decisions/" + safeQid;
+                      ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid
+                      : "/api/v1/decisions/" + safeQid;
         var qResponse = runtime.send(HttpRequest.get(qPath));
         if (qResponse.status() == 200) {
             out.println(qResponse.bodyText());
@@ -106,8 +106,8 @@ public final class AnswerCommand implements Callable<Integer> {
 
         var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
         var answerPath = plan != null
-                ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid + "/answer"
-                : "/api/v1/decisions/" + safeQid + "/answer";
+                      ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid + "/answer"
+                      : "/api/v1/decisions/" + safeQid + "/answer";
 
         var response = runtime.send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
         if (response.status() == 404) {

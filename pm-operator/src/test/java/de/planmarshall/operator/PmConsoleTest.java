@@ -57,8 +57,8 @@ class PmConsoleTest {
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
-                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
-                        """);
+                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                              """);
             } else if ("/api/v1/web/devices".equals(request.target())) {
                 response.json(200, "[{\"label\":\"local browser\",\"paired_by\":\"open\"}]");
             } else {
@@ -70,10 +70,10 @@ class PmConsoleTest {
         var outStream = new ByteArrayOutputStream();
 
         var context = new OperatorContext(
-                fixture.environment(), tempDir, true,
-                ClientEnvironment.capture(fixture.environment()),
-                () -> new DumbTerminal(inStream, outStream),
-                null
+                      fixture.environment(), tempDir, true,
+                      ClientEnvironment.capture(fixture.environment()),
+                      () -> new DumbTerminal(inStream, outStream),
+                      null
         );
 
         int exitCode = new PmConsole(context).run();
@@ -88,8 +88,8 @@ class PmConsoleTest {
             var target = request.target();
             if ("/api/v1/status".equals(target)) {
                 response.json(200, """
-                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
-                        """);
+                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                              """);
             } else if ("/api/v1/web/devices".equals(target)) {
                 response.json(200, "[{\"label\":\"local browser\",\"paired_by\":\"open\"}]");
             } else if ("/api/v1/plans".equals(target)) {
@@ -110,44 +110,44 @@ class PmConsoleTest {
         });
 
         var commands = String.join("\n",
-                "help",
-                "help status",
-                "status",
-                "plans",
-                "plan fix-relay",
-                "epic storage-v2",
-                "questions",
-                "answer Q-007 2",
-                "web copy ssh",
-                "web qr",
-                "web pair",
-                "exit\n"
+                      "help",
+                      "help status",
+                      "status",
+                      "plans",
+                      "plan fix-relay",
+                      "epic storage-v2",
+                      "questions",
+                      "answer Q-007 2",
+                      "web copy ssh",
+                      "web qr",
+                      "web pair",
+                      "exit\n"
         );
 
         var inStream = new ByteArrayInputStream(commands.getBytes(StandardCharsets.UTF_8));
         var outStream = new ByteArrayOutputStream();
 
         var context = new OperatorContext(
-                fixture.environment(), tempDir, true,
-                ClientEnvironment.capture(fixture.environment()),
-                () -> new DumbTerminal(inStream, outStream),
-                null
+                      fixture.environment(), tempDir, true,
+                      ClientEnvironment.capture(fixture.environment()),
+                      () -> new DumbTerminal(inStream, outStream),
+                      null
         );
 
         int exitCode = new PmConsole(context).run();
         var output = outStream.toString(StandardCharsets.UTF_8);
 
         assertAll(
-                () -> assertEquals(0, exitCode),
-                () -> assertTrue(output.contains("Commands:"), "Should show help list"),
-                () -> assertTrue(output.contains("Help for status:"), "Should show help for status"),
-                () -> assertTrue(output.contains("plan fix-relay (running)"), "Should list running plan"),
-                () -> assertTrue(output.contains("\"id\":\"fix-relay\""), "Should show plan details"),
-                () -> assertTrue(output.contains("\"id\":\"storage-v2\""), "Should show epic details"),
-                () -> assertTrue(output.contains("Q-007 (pending)"), "Should show questions"),
-                () -> assertTrue(output.contains("✓ Answered Q-007 with option 2."), "Should answer question"),
-                () -> assertTrue(output.contains("✓ Copied, if your terminal allows it; the text is above."), "Should copy ssh"),
-                () -> assertTrue(output.contains("✓ New code: NEW-CODE1"), "Should issue new pairing code")
+                      () -> assertEquals(0, exitCode),
+                      () -> assertTrue(output.contains("Commands:"), "Should show help list"),
+                      () -> assertTrue(output.contains("Help for status:"), "Should show help for status"),
+                      () -> assertTrue(output.contains("plan fix-relay (running)"), "Should list running plan"),
+                      () -> assertTrue(output.contains("\"id\":\"fix-relay\""), "Should show plan details"),
+                      () -> assertTrue(output.contains("\"id\":\"storage-v2\""), "Should show epic details"),
+                      () -> assertTrue(output.contains("Q-007 (pending)"), "Should show questions"),
+                      () -> assertTrue(output.contains("✓ Answered Q-007 with option 2."), "Should answer question"),
+                      () -> assertTrue(output.contains("✓ Copied, if your terminal allows it; the text is above."), "Should copy ssh"),
+                      () -> assertTrue(output.contains("✓ New code: NEW-CODE1"), "Should issue new pairing code")
         );
     }
 
@@ -157,8 +157,8 @@ class PmConsoleTest {
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
-                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":1},"web":{"enabled":true,"port":7420}}
-                        """);
+                              {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":1},"web":{"enabled":true,"port":7420}}
+                              """);
             } else {
                 response.send(404, null, "");
             }
@@ -171,18 +171,18 @@ class PmConsoleTest {
         var outStream = new ByteArrayOutputStream();
 
         var context = new OperatorContext(
-                fixture.environment(), tempDir, true,
-                ClientEnvironment.capture(fixture.environment()),
-                () -> new DumbTerminal(inStream, outStream),
-                null
+                      fixture.environment(), tempDir, true,
+                      ClientEnvironment.capture(fixture.environment()),
+                      () -> new DumbTerminal(inStream, outStream),
+                      null
         );
 
         int exitCode = new PmConsole(context).run();
         var output = outStream.toString(StandardCharsets.UTF_8);
 
         assertAll(
-                () -> assertEquals(0, exitCode),
-                () -> assertTrue(output.contains("Left the setup before step 1. Nothing was sent. Enter continues the setup."))
+                      () -> assertEquals(0, exitCode),
+                      () -> assertTrue(output.contains("Left the setup before step 1. Nothing was sent. Enter continues the setup."))
         );
     }
 
@@ -205,8 +205,8 @@ class PmConsoleTest {
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
-                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
-                        """);
+                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                              """);
             } else if ("/api/v1/web/devices".equals(request.target())) {
                 response.json(200, "[]");
             } else if ("/api/v1/web/pairings".equals(request.target())) {
@@ -220,10 +220,10 @@ class PmConsoleTest {
         var outStream = new ByteArrayOutputStream();
 
         var context = new OperatorContext(
-                fixture.environment(), tempDir, true,
-                ClientEnvironment.capture(fixture.environment()),
-                () -> new DumbTerminal(inStream, outStream),
-                null
+                      fixture.environment(), tempDir, true,
+                      ClientEnvironment.capture(fixture.environment()),
+                      () -> new DumbTerminal(inStream, outStream),
+                      null
         );
 
         new PmConsole(context).run();
