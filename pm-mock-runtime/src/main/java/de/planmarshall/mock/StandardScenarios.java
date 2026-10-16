@@ -53,7 +53,6 @@ public final class StandardScenarios {
     public static final String PAIRED_DEVICES = "paired-devices";
 
     /**
-                        /**
      * Overview of running work across projects, plans, and epics with ended work archive (UC-PLN-4).
      */
     public static final String RUNNING_WORK = "running-work";
@@ -63,6 +62,12 @@ public final class StandardScenarios {
      * arrival notices, and plan completion reports.
      */
     public static final String REPORTS = "reports";
+
+    /**
+     * Decisions scenario demonstrating open questions, multi-part decisions,
+     * quorum voting, own-words interpretations, and waiver requests (UC-PLN-2).
+     */
+    public static final String DECISIONS = "decisions";
 
     /**
      * System view, runtime lifecycle controls, and cleanup operations (UC-SYS-1..3).
@@ -80,6 +85,7 @@ public final class StandardScenarios {
             PAIRED_DEVICES,
             RUNNING_WORK,
             REPORTS,
+            DECISIONS,
             SYSTEM
     );
 }

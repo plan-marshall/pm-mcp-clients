@@ -1,0 +1,68 @@
+{
+  "format_version": 1,
+  "name": "decisions",
+  "description": "Open decisions, quorum voting, own words, and waivers (UC-PLN-2)",
+  "start": "decisions.active",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "listener": "unix",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "running_since": "08:14",
+        "workers_count": 2,
+        "build_slots_used": 1,
+        "build_slots_total": 2,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    }
+  },
+  "states": {
+    "decisions.active": {
+      "summary": "Decisions and questions waiting for operator input",
+      "representation": {
+        "open_decisions_count": 6
+      },
+      "links": {
+        "answer_q007": {
+          "href": "/api/v1/decisions/Q-007/answer",
+          "method": "POST",
+          "next": "decisions.q007_answered",
+          "status": 200
+        },
+        "waive_wr2": {
+          "href": "/api/v1/decisions/WR-2/answer",
+          "method": "POST",
+          "next": "decisions.wr2_waived",
+          "status": 200
+        }
+      }
+    },
+    "decisions.q007_answered": {
+      "summary": "Decision Q-007 answered",
+      "representation": {
+        "status": "answered",
+        "decision_id": "Q-007"
+      },
+      "links": {}
+    },
+    "decisions.wr2_waived": {
+      "summary": "Waiver request WR-2 waived",
+      "representation": {
+        "status": "waived",
+        "decision_id": "WR-2"
+      },
+      "links": {}
+    }
+  }
+}

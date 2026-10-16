@@ -164,5 +164,26 @@ class JsonTreeTest {
             assertNull(JsonTree.number(null, "int"));
             assertNull(JsonTree.integer(null, "int"));
         }
+
+        @Test
+        @DisplayName("bool extracts boolean values with string and null fallbacks")
+        void boolAccessors() {
+            var map = new LinkedHashMap<String, Object>();
+            map.put("boolTrue", true);
+            map.put("boolFalse", false);
+            map.put("strTrue", "true");
+            map.put("strFalse", "false");
+            map.put("nullVal", null);
+            map.put("other", 123);
+
+            assertEquals(Boolean.TRUE, JsonTree.bool(map, "boolTrue"));
+            assertEquals(Boolean.FALSE, JsonTree.bool(map, "boolFalse"));
+            assertEquals(Boolean.TRUE, JsonTree.bool(map, "strTrue"));
+            assertEquals(Boolean.FALSE, JsonTree.bool(map, "strFalse"));
+            assertNull(JsonTree.bool(map, "nullVal"));
+            assertNull(JsonTree.bool(map, "other"));
+            assertNull(JsonTree.bool(map, "missingKey"));
+            assertNull(JsonTree.bool(null, "boolTrue"));
+        }
     }
 }

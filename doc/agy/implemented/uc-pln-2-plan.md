@@ -47,7 +47,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-pln-2-decisions /Users/oliver/git/worktrees/pm-mcp-clients-uc-pln-2 main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-pln-2-decisions /Users/oliver/git/worktrees/pm-mcp-clients-uc-pln-2 main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
@@ -79,7 +79,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 5. Phased Task Breakdown
 
 ### Phase 1: Traceability & Design Alignment
-- [ ] **1.1 Design Specification Audit**: Review `doc/design/shared/decisions.adoc` and `doc/plans/decision-contract.adoc`:
+- [x] **1.1 Design Specification Audit**: Review `doc/design/shared/decisions.adoc` and `doc/plans/decision-contract.adoc`:
   - Resource routes: `GET /api/v1/decisions`, `GET /api/v1/decisions/{id}`, `POST /api/v1/decisions/{id}/answer`, `POST /api/v1/decisions/{id}/interpret`, `POST /api/v1/decisions/{id}/withdraw`.
   - SSE events: `GET /api/v1/decisions/events` with events `decision.opened`, `decision.changed`, `decision.answered`, `decision.closed`.
   - Closed enumerations: `DecisionScope` (`PLAN`, `EPIC`, `PROJECT_SETUP`, `MACHINE`), `Reversibility` (`REVERSIBLE`, `COSTLY`, `IRREVERSIBLE`), `AnswerType` (`ONE_OPTION`, `SEVERAL_OPTIONS`, `VALUE`), `InterpretationType` (`OPTION`, `OPTION_WITH_CONDITION`, `OWN_OPTION`, `DELEGATION`, `UNCLEAR`), `QuorumBand` (`UNANIMOUS`, `CLEAR_MAJORITY`, `SPLIT`, `NO_CONSENSUS`).
@@ -87,7 +87,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - Extract the complete set of keys needed for `messages/decisions.{en,de}.properties`.
 
 ### Phase 2: `pm-api` Contracts & Message Catalogue
-- [ ] **2.1 Decision Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.decision`:
+- [x] **2.1 Decision Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.decision`:
   - `DecisionId`: Scope coordinate and question identifier (`scopeId/questionId`).
   - `DecisionEnvelope`: `id`, `revision`, `title`, `header`, `subject`, `scope`, `askingPhase`, `askingRole`, `blocks`, `reversibility`, `description`, `evidence`, `parts`, `deliveredAt`.
   - `DecisionPart`: `partId`, `question`, `answerType`, `options`, `recommendation`, `recommendationRationale`, `recommendingRole`, `dependency`, `allowOwnWords`, `allowNote`.
@@ -96,37 +96,37 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - `QuorumVote`: `role`, `model`, `confidencePercent`.
   - `DecisionAnswerRequest`: `partAnswers` (map of partId to chosen options or values), `ownWords`, `note`, `channel`, `device`.
   - `DecisionInterpretation`: `interpretationType`, `mappedOptionKey`, `condition`, `readBackText`.
-- [ ] **2.2 Decision Events**: Implement SSE event payload records:
+- [x] **2.2 Decision Events**: Implement SSE event payload records:
   - `DecisionOpenedEvent`, `DecisionChangedEvent`, `DecisionAnsweredEvent`, `DecisionClosedEvent`.
-- [ ] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
-- [ ] **2.4 Message Catalogue Entries**:
+- [x] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
+- [x] **2.4 Message Catalogue Entries**:
   - Populate `pm-api/src/main/resources/messages/decisions.en.properties` with keys from `decisions.adoc#texts`.
   - Populate `pm-api/src/main/resources/messages/decisions.de.properties` with German translations.
   - Register `"decisions"` in `MessageCatalogue.SUPPORTED_AREAS`.
-- [ ] **2.5 Unit Tests**:
+- [x] **2.5 Unit Tests**:
   - `DecisionRecordsTest.java`: Round-trip serialization and deserialization of decision envelopes, quorum support, and answer payloads.
   - `DecisionCatalogueTest.java`: Key presence and ICU parameter validation across English and German bundles.
 
 ### Phase 3: `pm-mock-runtime` Scenarios & Handlers
-- [ ] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/decisions.json`:
+- [x] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/decisions.json`:
   - Open decisions across scopes (active plan question, setup question, waiver request).
   - Quorum vote fixtures with unanimous, clear majority, and split consensus bands.
   - Evidence fixtures (diffs, file lines, finding links).
   - Waiver request fixture with decline/waive flows.
-- [ ] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
+- [x] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
   - `GET /api/v1/decisions`: Returns open decisions list sorted newest first.
   - `GET /api/v1/decisions/{id}`: Returns full decision envelope.
   - `POST /api/v1/decisions/{id}/answer`: Records operator answer and broadcasts `decision.answered` / `decision.closed`.
   - `POST /api/v1/decisions/{id}/interpret`: Simulates role interpretation of own words.
   - `POST /api/v1/decisions/{id}/withdraw`: Closes decision as withdrawn ("none fits").
   - `GET /api/v1/decisions/events`: SSE stream for decisions.
-- [ ] **3.3 Scenario Registration**:
+- [x] **3.3 Scenario Registration**:
   - Add `DECISIONS = "decisions"` constant in `StandardScenarios.java` and register in `ALL`.
-- [ ] **3.4 Scenario Tests**:
+- [x] **3.4 Scenario Tests**:
   - `DecisionsScenarioTest.java` asserting scenario loading, REST responses, answering flows, and SSE event emissions.
 
 ### Phase 4: `pm-operator` Terminal Client Implementation
-- [ ] **4.1 Questions & Answer Commands Refactoring**:
+- [x] **4.1 Questions & Answer Commands Refactoring**:
   - Enhance `QuestionsCommand.java` to list open decisions with subject, blocking status, and reversibility.
   - Enhance `AnswerCommand.java` supporting interactive JLine prompts:
     - Renders what is asked, why now, and evidence.
@@ -134,49 +134,49 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
     - Dissent summary display.
     - Support for choosing options, typing own words, or selecting `none fits` / `later`.
     - Support for waiver requests (`waive` / `decline`).
-- [ ] **4.2 Output Safety**:
+- [x] **4.2 Output Safety**:
   - Sanitize all decision titles, headers, descriptions, and option texts using `OutputSafety.stripControlSequences`.
-- [ ] **4.3 CLI Unit & Transcript Tests**:
+- [x] **4.3 CLI Unit & Transcript Tests**:
   - `DecisionsCommandTest.java`: Validate questions table layout, interactive answering, waiver handling, and exit codes.
 
 ### Phase 5: `pm-web-app` Client Implementation
-- [ ] **5.1 API Client Extensions**:
+- [x] **5.1 API Client Extensions**:
   - Add `getDecisions()`, `getDecision(id)`, `answerDecision(id, answer)`, `interpretDecision(id, text)`, and `withdrawDecision(id)` to `pm-web-app/src/lib/api/client.ts`.
   - Extend SSE event listener to handle `decision.opened`, `decision.answered`, and `decision.closed`.
-- [ ] **5.2 Decision View / Modal (`DecisionView.svelte`)**:
+- [x] **5.2 Decision View / Modal (`DecisionView.svelte`)**:
   - Display open decision cards with title, subject path, asking phase/role, and reversibility badge.
   - Evidence disclosure toggle (showing diffs or finding details).
   - Parts renderer: options list, recommended option styling, quorum support badges, dissent quote.
   - Input forms: option select, own-words textarea with read-back confirmation.
   - Waiver request view with explicit `Waive` and `Decline` action buttons.
-- [ ] **5.3 Navigation Frame Integration**:
+- [x] **5.3 Navigation Frame Integration**:
   - Header attention badge linking to open decisions.
   - Announcement banner when a new decision opens while app is active.
-- [ ] **5.4 Responsive Styling**:
+- [x] **5.4 Responsive Styling**:
   - Mobile card layout (320px+) with accessible touch targets and responsive forms.
-- [ ] **5.5 Vitest Tests**:
+- [x] **5.5 Vitest Tests**:
   - `DecisionView.test.ts` verifying rendering, option selection, own-words flow, and waiver actions.
 
 ### Phase 6: Integration Testing & Verification
-- [ ] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/decisions.spec.js`:
+- [x] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/decisions.spec.js`:
   - Test viewing open decisions list.
   - Test answering a multi-option decision with recommendation.
   - Test answering a decision using own words with read-back.
   - Test resolving a waiver request.
   - Test cross-client update when decision is answered elsewhere via SSE.
-- [ ] **6.2 Operator Process IT**:
+- [x] **6.2 Operator Process IT**:
   - Add process test in `PmOperatorProcessIT.java` executing `questions` and `answer` against running `pm-mock-runtime`.
-- [ ] **6.3 Domain Invariants Verification**:
+- [x] **6.3 Domain Invariants Verification**:
   - Verify against checklist in Section 1 of `doc/meta/implement_use-cases.md`.
 
 ### Phase 7: Completion Report, Pre-Commit, Review Gate & Landing (Runbook Discipline)
-- [ ] **7.1 Final Completion Report**:
+- [x] **7.1 Final Completion Report**:
   - Generate comprehensive completion report in `doc/agy/uc-pln-2-plan-report.md`.
-- [ ] **7.2 Plan Archival**:
+- [x] **7.2 Plan Archival**:
   - Move `doc/agy/uc-pln-2-plan.md` to `doc/agy/implemented/uc-pln-2-plan.md` and record entry in `doc/agy/implemented/README.md`.
-- [ ] **7.3 Pre-Commit Gate**:
+- [x] **7.3 Pre-Commit Gate**:
   - Run `./mvnw verify -Ppre-commit` to validate OpenRewrite formatting, Checkstyle, and full test suite.
-- [ ] **7.4 Commit & PR**:
+- [x] **7.4 Commit & PR**:
   - Commit changes with Conventional Commits message (`feat(decisions): implement UC-PLN-2 decide what a plan asks`).
   - Open PR via `gh pr create` (with `--label "skip-bot-review"` if authorized).
 - [ ] **7.5 5-Minute Review Window**:
@@ -186,5 +186,5 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 - [ ] **7.7 Merge Queue & Cleanup**:
   - Enqueue PR via `gh pr merge --auto --squash`.
   - Upon merge, synchronize `main`, remove worktree and delete topic branch.
-- [ ] **7.8 Roadmap Archival**:
+- [x] **7.8 Roadmap Archival**:
   - Update `doc/plans/README.adoc` and move completed package documentation (`decision-contract.adoc`, `cli-decisions.adoc`, `web-decisions.adoc`) to `doc/plans/implemented/`.

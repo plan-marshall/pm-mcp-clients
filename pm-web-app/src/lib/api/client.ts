@@ -261,6 +261,83 @@ export interface PlanCompletionReport {
   ran?: string;
 }
 
+export interface QuorumVote {
+  role: string;
+  model: string;
+  confidence_percent: number;
+}
+
+export interface QuorumSupport {
+  votes_count: number;
+  total_votes: number;
+  models_count: number;
+  band: string;
+  dissent_summary?: string;
+  votes?: QuorumVote[];
+}
+
+export interface DecisionOption {
+  key: string;
+  label: string;
+  tradeoff_description?: string;
+  consequences?: string;
+  preview_diff?: string;
+  quorum_support?: QuorumSupport;
+}
+
+export interface DecisionPart {
+  part_id: string;
+  question: string;
+  answer_type: string;
+  options: DecisionOption[];
+  recommendation?: string;
+  recommendation_rationale?: string;
+  recommending_role?: string;
+  dependency?: string;
+  allow_own_words?: boolean;
+  allow_note?: boolean;
+}
+
+export interface DecisionEnvelope {
+  id: string;
+  revision: number;
+  title: string;
+  header?: string;
+  subject: string;
+  scope: string;
+  asking_phase?: string;
+  asking_role?: string;
+  blocks: string;
+  reversibility: string;
+  description?: string;
+  evidence?: Record<string, unknown>;
+  parts: DecisionPart[];
+  delivered_at?: string;
+  is_waiver?: boolean;
+  waiver_gate?: string;
+  waiver_result?: string;
+  waiver_reason?: string;
+}
+
+export interface DecisionAnswerPayload {
+  part_answers?: Record<string, string[] | string>;
+  option?: string;
+  words?: string;
+  note?: string;
+  action?: string;
+  reason?: string;
+  channel?: string;
+  device?: string;
+}
+
+export interface DecisionInterpretation {
+  interpretation_type: string;
+  mapped_option_key?: string;
+  condition?: string;
+  read_back_text?: string;
+  clarification_question?: string;
+}
+
 export interface RuntimeMetrics {
   version: string;
   build_date?: string;
@@ -585,6 +662,55 @@ export class ApiClient {
     return this.request<PlanCompletionReport>(
       'GET',
       `/api/v1/plans/${encodeURIComponent(planId)}/completion`,
+    );
+  }
+
+  public async getDecisions(params?: {
+    project?: string;
+    plan?: string;
+  }): Promise<DecisionEnvelope[]> {
+    let path = '/api/v1/decisions';
+    const q = new URLSearchParams();
+    if (params?.project) q.set('project', params.project);
+    if (params?.plan) q.set('plan', params.plan);
+    const qs = q.toString();
+    if (qs) path += `?${qs}`;
+    return this.request<DecisionEnvelope[]>('GET', path);
+  }
+
+  public async getDecision(id: string, plan?: string): Promise<DecisionEnvelope> {
+    const safeQid = encodeURIComponent(id);
+    const path = plan
+      ? `/api/v1/plans/${encodeURIComponent(plan)}/decisions/${safeQid}`
+      : `/api/v1/decisions/${safeQid}`;
+    return this.request<DecisionEnvelope>('GET', path);
+  }
+
+  public async answerDecision(
+    id: string,
+    payload: DecisionAnswerPayload,
+    plan?: string,
+  ): Promise<Record<string, unknown>> {
+    const safeQid = encodeURIComponent(id);
+    const path = plan
+      ? `/api/v1/plans/${encodeURIComponent(plan)}/decisions/${safeQid}/answer`
+      : `/api/v1/decisions/${safeQid}/answer`;
+    return this.request<Record<string, unknown>>('POST', path, payload);
+  }
+
+  public async interpretDecision(id: string, words: string): Promise<DecisionInterpretation> {
+    const safeQid = encodeURIComponent(id);
+    return this.request<DecisionInterpretation>('POST', `/api/v1/decisions/${safeQid}/interpret`, {
+      words,
+    });
+  }
+
+  public async withdrawDecision(id: string): Promise<Record<string, unknown>> {
+    const safeQid = encodeURIComponent(id);
+    return this.request<Record<string, unknown>>(
+      'POST',
+      `/api/v1/decisions/${safeQid}/withdraw`,
+      {},
     );
   }
 

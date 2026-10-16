@@ -3,11 +3,7 @@
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
-  import {
-    apiClient,
-    type ReportItem,
-    type ReportsPage,
-  } from '../api/client';
+  import { apiClient, type ReportItem, type ReportsPage } from '../api/client';
   import { runtimeStore, refreshReportsCount } from '../stores/runtime';
   import CompletionReportView from './CompletionReportView.svelte';
 
@@ -218,11 +214,7 @@
             {/if}
           </h1>
           {#if items.length > 0}
-            <Button
-              variant="secondary"
-              size="small"
-              onclick={markAllShownRead}
-            >
+            <Button variant="secondary" size="small" onclick={markAllShownRead}>
               {$t('report.action.mark_all_read') || 'Mark all shown read'}
             </Button>
           {/if}
@@ -243,7 +235,8 @@
       {:else if items.length === 0}
         <div class="empty-state">
           <p class="empty-title">
-            {$t('report.list.empty') || 'Nothing new. Reports you have read are not shown any more.'}
+            {$t('report.list.empty') ||
+              'Nothing new. Reports you have read are not shown any more.'}
           </p>
         </div>
       {:else}
@@ -389,15 +382,12 @@
         <!-- Pagination -->
         {#if hasOlder}
           <div class="pagination-bar">
-            <Button
-              variant="secondary"
-              disabled={isLoadingOlder}
-              onclick={loadOlder}
-            >
+            <Button variant="secondary" disabled={isLoadingOlder} onclick={loadOlder}>
               {#if isLoadingOlder}
                 Loading older reports…
               {:else}
-                {$t('report.list.show_older', { count: olderCount }) || (olderCount > 0 ? `Show ${olderCount} older` : 'Show older')}
+                {$t('report.list.show_older', { count: olderCount }) ||
+                  (olderCount > 0 ? `Show ${olderCount} older` : 'Show older')}
               {/if}
             </Button>
           </div>
