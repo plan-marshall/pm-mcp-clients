@@ -62,11 +62,11 @@ class ProjectCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/projects".equals(request.target())) {
                 response.json(200, """
-                                                [
-                                                  {"id":"pm-mcp-clients","state":"ready","favourite":true,"plans_count":3},
-                                                  {"id":"cui-http","state":"ready","favourite":false,"plans_count":0}
-                                                ]
-                                                """);
+                                                      [
+                                                        {"id":"pm-mcp-clients","state":"ready","favourite":true,"plans_count":3},
+                                                        {"id":"cui-http","state":"ready","favourite":false,"plans_count":0}
+                                                      ]
+                                                      """);
             } else {
                 response.send(404, null, "");
             }
@@ -75,11 +75,11 @@ class ProjectCommandTest {
         int code = execute("projects");
         var output = out.toString();
         assertAll(
-                                        () -> assertEquals(0, code),
-                                        () -> assertTrue(output.contains("Projects")),
-                                        () -> assertTrue(output.contains("★ pm-mcp-clients")),
-                                        () -> assertTrue(output.contains("3 plans")),
-                                        () -> assertTrue(output.contains("cui-http"))
+                                              () -> assertEquals(0, code),
+                                              () -> assertTrue(output.contains("Projects")),
+                                              () -> assertTrue(output.contains("★ pm-mcp-clients")),
+                                              () -> assertTrue(output.contains("3 plans")),
+                                              () -> assertTrue(output.contains("cui-http"))
         );
     }
 
@@ -96,8 +96,8 @@ class ProjectCommandTest {
 
         int code = execute("project", "add", "/git/new-app");
         assertAll(
-                                        () -> assertEquals(0, code),
-                                        () -> assertTrue(out.toString().contains("✓ Project onboarding started for /git/new-app"))
+                                              () -> assertEquals(0, code),
+                                              () -> assertTrue(out.toString().contains("✓ Project onboarding started for /git/new-app"))
         );
     }
 
@@ -114,15 +114,15 @@ class ProjectCommandTest {
 
         int code = execute("project", "favourite", "my-app");
         assertAll(
-                                        () -> assertEquals(0, code),
-                                        () -> assertTrue(out.toString().contains("✓ Project my-app favourite: on (★)"))
+                                              () -> assertEquals(0, code),
+                                              () -> assertTrue(out.toString().contains("✓ Project my-app favourite: on (★)"))
         );
 
         out.getBuffer().setLength(0);
         int code2 = execute("project", "favourite", "my-app", "--off");
         assertAll(
-                                        () -> assertEquals(0, code2),
-                                        () -> assertTrue(out.toString().contains("✓ Project my-app favourite: off"))
+                                              () -> assertEquals(0, code2),
+                                              () -> assertTrue(out.toString().contains("✓ Project my-app favourite: off"))
         );
     }
 
@@ -139,8 +139,8 @@ class ProjectCommandTest {
 
         int code = execute("project", "release", "old-app", "--reason", "archived");
         assertAll(
-                                        () -> assertEquals(0, code),
-                                        () -> assertTrue(out.toString().contains("✓ Project old-app released"))
+                                              () -> assertEquals(0, code),
+                                              () -> assertTrue(out.toString().contains("✓ Project old-app released"))
         );
     }
 
@@ -157,8 +157,8 @@ class ProjectCommandTest {
 
         int code = execute("project", "unenrol", "old-app");
         assertAll(
-                                        () -> assertEquals(0, code),
-                                        () -> assertTrue(out.toString().contains("✓ Project old-app unenrolled"))
+                                              () -> assertEquals(0, code),
+                                              () -> assertTrue(out.toString().contains("✓ Project old-app unenrolled"))
         );
     }
 }

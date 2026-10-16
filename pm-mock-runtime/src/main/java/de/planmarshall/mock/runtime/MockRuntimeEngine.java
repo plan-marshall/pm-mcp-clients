@@ -1738,44 +1738,47 @@ public final class MockRuntimeEngine implements AutoCloseable {
         DecisionAnswerRequest answerReq;
         try {
             answerReq = DecisionAnswerRequest.fromJson(request.bodyText());
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        } catch (IOException | IllegalArgumentException | IllegalStateException _) {
             answerReq = new DecisionAnswerRequest(Map.of(), null, null, null, null, null, isWeb ? "web" : "cli", null);
         }
 
-        // Waiver handling
         if (envelope.isWaiver()) {
-            var action = answerReq.action() != null ? answerReq.action() : (answerReq.option() != null ? answerReq.option() : "waive");
-            if ("later".equalsIgnoreCase(action) || "later".equalsIgnoreCase(answerReq.option())) {
-                response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
-                return;
-            }
-            var reason = answerReq.reason();
-            if (reason == null || reason.isBlank()) {
-                response.json(400, Map.of(KEY_ERROR, "invalid_answer", KEY_MESSAGE, "A reason is required."));
-                return;
-            }
-            var outcome = "decline".equalsIgnoreCase(action) || "d".equalsIgnoreCase(action) ? "declined" : "waived";
-            synchronized (decisionsLock) {
-                openDecisions.remove(decisionId);
-            }
-            broadcastEvent("decision.answered", Map.of(
-                    "id", decisionId,
-                    "answer", outcome + " (" + reason + ")",
-                    "channel", answerReq.channel(),
-                    "device", answerReq.device() != null ? answerReq.device() : ""
-            ));
-            broadcastEvent("decision.closed", Map.of(
-                    "id", decisionId,
-                    "outcome", outcome,
-                    "reason", reason
-            ));
-            response.json(200, Map.of(KEY_STATUS, outcome, "id", decisionId, "reason", reason));
+            handleWaiverAnswer(response, decisionId, answerReq);
+        } else {
+            handleRegularDecisionAnswer(response, decisionId, answerReq);
+        }
+    }
+
+    private void handleWaiverAnswer(MockHttpResponse response, String decisionId, DecisionAnswerRequest answerReq) throws IOException {
+        var action = answerReq.action() != null ? answerReq.action() : (answerReq.option() != null ? answerReq.option() : "waive");
+        if ("later".equalsIgnoreCase(action) || "later".equalsIgnoreCase(answerReq.option())) {
+            response.json(200, Map.of(KEY_STATUS, "open", "id", decisionId));
             return;
         }
+        var reason = answerReq.reason();
+        if (reason == null || reason.isBlank()) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_answer", KEY_MESSAGE, "A reason is required."));
+            return;
+        }
+        var outcome = "decline".equalsIgnoreCase(action) || "d".equalsIgnoreCase(action) ? "declined" : "waived";
+        synchronized (decisionsLock) {
+            openDecisions.remove(decisionId);
+        }
+        broadcastEvent("decision.answered", Map.of(
+                "id", decisionId,
+                "answer", outcome + " (" + reason + ")",
+                "channel", answerReq.channel(),
+                "device", answerReq.device() != null ? answerReq.device() : ""
+        ));
+        broadcastEvent("decision.closed", Map.of(
+                "id", decisionId,
+                "outcome", outcome,
+                "reason", reason
+        ));
+        response.json(200, Map.of(KEY_STATUS, outcome, "id", decisionId, "reason", reason));
+    }
 
-        // Regular decision
+    private void handleRegularDecisionAnswer(MockHttpResponse response, String decisionId, DecisionAnswerRequest answerReq) throws IOException {
         var chosen = answerReq.option();
         if (chosen == null && answerReq.ownWords() != null) {
             chosen = answerReq.ownWords();

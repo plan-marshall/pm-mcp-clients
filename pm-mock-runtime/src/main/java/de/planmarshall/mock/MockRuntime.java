@@ -124,6 +124,7 @@ public final class MockRuntime implements AutoCloseable {
      * @return the running mock runtime
      * @throws IOException on startup failure
      */
+    @SuppressWarnings("java:S2095")
     public static MockRuntime start(MockRuntimeConfig config) throws IOException {
         Objects.requireNonNull(config, "config");
 

@@ -26,26 +26,26 @@ import picocli.CommandLine.Command;
  * The operator command line {@code pm-operator}: the verbs a human runs at a terminal.
  */
 @Command(name = "pm-operator", mixinStandardHelpOptions = true, versionProvider = PmOperator.Version.class,
-                                description = "Operator command line of PM-MCP.",
-                                subcommands = {
-                                                                StatusCommand.class,
-                                                                PlansCommand.class,
-                                                                WebCommand.class,
-                                                                RuntimeCommand.class,
-                                                                DrainCommand.class,
-                                                                ConfigCommand.class,
-                                                                ProjectCommand.class,
-                                                                ProjectsCommand.class,
-                                                                ClientCommand.class,
-                                                                PlanCommand.class,
-                                                                EpicCommand.class,
-                                                                AbortCommand.class,
-                                                                RecipeCommand.class,
-                                                                QuestionsCommand.class,
-                                                                AnswerCommand.class,
-                                                                ReportsCommand.class,
-                                                                SystemCommand.class
-                                })
+                                      description = "Operator command line of PM-MCP.",
+                                      subcommands = {
+                                                                            StatusCommand.class,
+                                                                            PlansCommand.class,
+                                                                            WebCommand.class,
+                                                                            RuntimeCommand.class,
+                                                                            DrainCommand.class,
+                                                                            ConfigCommand.class,
+                                                                            ProjectCommand.class,
+                                                                            ProjectsCommand.class,
+                                                                            ClientCommand.class,
+                                                                            PlanCommand.class,
+                                                                            EpicCommand.class,
+                                                                            AbortCommand.class,
+                                                                            RecipeCommand.class,
+                                                                            QuestionsCommand.class,
+                                                                            AnswerCommand.class,
+                                                                            ReportsCommand.class,
+                                                                            SystemCommand.class
+                                      })
 @OperatorVerb
 public final class PmOperator implements Callable<Integer> {
 
@@ -90,9 +90,9 @@ public final class PmOperator implements Callable<Integer> {
      */
     public static void main(String[] args) {
         var out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(FileDescriptor.out),
-                                        StandardCharsets.UTF_8), false);
+                                              StandardCharsets.UTF_8), false);
         var err = new PrintWriter(new OutputStreamWriter(new FileOutputStream(FileDescriptor.err),
-                                        StandardCharsets.UTF_8), true);
+                                              StandardCharsets.UTF_8), true);
         System.exit(execute(OperatorContext.system(), out, err, args));
     }
 

@@ -68,10 +68,10 @@ public final class DirectFileAccess {
      */
     public Set<Path> allowedPaths() {
         return Set.of(
-                                        paths.runtimeRecord().toAbsolutePath().normalize(),
-                                        paths.runtimeToken().toAbsolutePath().normalize(),
-                                        installRecordsPath().toAbsolutePath().normalize(),
-                                        machineConfigPath().toAbsolutePath().normalize());
+                                              paths.runtimeRecord().toAbsolutePath().normalize(),
+                                              paths.runtimeToken().toAbsolutePath().normalize(),
+                                              installRecordsPath().toAbsolutePath().normalize(),
+                                              machineConfigPath().toAbsolutePath().normalize());
     }
 
     /**

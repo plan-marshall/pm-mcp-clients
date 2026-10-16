@@ -77,15 +77,15 @@ public final class PmConsole {
         }
 
         var completer = new StringsCompleter(
-                                        "exit", "quit", "help", "status", "plans", "plan", "epic", "questions", "answer",
-                                        "web", "runtime", "config", "projects", "project", "client", "drain"
+                                              "exit", "quit", "help", "status", "plans", "plan", "epic", "questions", "answer",
+                                              "web", "runtime", "config", "projects", "project", "client", "drain"
         );
 
         var reader = LineReaderBuilder.builder()
-                                        .terminal(terminal)
-                                        .completer(completer)
-                                        .variable(LineReader.HISTORY_FILE, historyFile)
-                                        .build();
+                                              .terminal(terminal)
+                                              .completer(completer)
+                                              .variable(LineReader.HISTORY_FILE, historyFile)
+                                              .build();
 
         var entryFlow = new EntryFlow(context);
         var entryResult = entryFlow.run(out, reader);
@@ -228,7 +228,7 @@ public final class PmConsole {
             activePairingUrl = pairing.url();
             var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
             out.printf("✓ New code: %s, valid until %s. The previous code no longer works.%n",
-                                            pairing.code(), validUntil);
+                                                  pairing.code(), validUntil);
             out.printf("  %s%n", pairing.url());
         } catch (IOException e) {
             out.println("✗ Failed to issue new pairing code: " + e.getMessage());

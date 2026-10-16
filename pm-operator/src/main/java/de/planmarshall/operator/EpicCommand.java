@@ -32,17 +32,17 @@ import picocli.CommandLine.Spec;
  * (01-commands.adoc, 19-actions.adoc).
  */
 @Command(name = "epic", description = "Inspects or controls epics.",
-                                subcommands = {
-                                                                EpicCommand.AddCommand.class,
-                                                                EpicCommand.NextCommand.class,
-                                                                EpicCommand.AutoCommand.class,
-                                                                EpicCommand.DecomposeCommand.class,
-                                                                EpicCommand.ArchiveCommand.class,
-                                                                EpicCommand.FindingsCommand.class,
-                                                                EpicCommand.WatchesCommand.class,
-                                                                EpicCommand.ChatCommand.class,
-                                                                EpicCommand.CancelCommand.class
-                                })
+                                      subcommands = {
+                                                                            EpicCommand.AddCommand.class,
+                                                                            EpicCommand.NextCommand.class,
+                                                                            EpicCommand.AutoCommand.class,
+                                                                            EpicCommand.DecomposeCommand.class,
+                                                                            EpicCommand.ArchiveCommand.class,
+                                                                            EpicCommand.FindingsCommand.class,
+                                                                            EpicCommand.WatchesCommand.class,
+                                                                            EpicCommand.ChatCommand.class,
+                                                                            EpicCommand.CancelCommand.class
+                                      })
 @OperatorVerb
 public final class EpicCommand implements Callable<Integer> {
 
@@ -144,8 +144,8 @@ public final class EpicCommand implements Callable<Integer> {
             var payload = buildPayload();
 
             var path = common.project != null && !".".equals(common.project)
-                                            ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(common.project) + "/entries"
-                                            : "/api/v1/epics";
+                                                  ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(common.project) + "/entries"
+                                                  : "/api/v1/epics";
 
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 201) {
@@ -193,7 +193,7 @@ public final class EpicCommand implements Callable<Integer> {
 
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/next";
             var response = context.runtime(true).send(
-                                            HttpRequest.json("POST", path, JsonTree.write(payload)));
+                                                  HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ Next plan for %s started%n", epicId);
                 out.flush();
@@ -238,7 +238,7 @@ public final class EpicCommand implements Callable<Integer> {
             }
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/auto";
             var response = context.runtime(true).send(
-                                            HttpRequest.json("POST", path, JsonTree.write(payload)));
+                                                  HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 if (commonFiles != null) {
                     out.printf("✓ Common files allowed for %s: %d%n", epicId, commonFiles);
@@ -279,7 +279,7 @@ public final class EpicCommand implements Callable<Integer> {
 
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/decompose";
             var response = context.runtime(true).send(
-                                            HttpRequest.json("POST", path, JsonTree.write(payload)));
+                                                  HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 out.printf("✓ %s decomposing%n", epicId);
                 out.flush();

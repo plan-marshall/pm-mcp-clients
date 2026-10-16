@@ -28,6 +28,6 @@ public class OperatorRefusedException extends IOException {
      */
     public OperatorRefusedException(String verb, HttpResponse response) {
         super(verb + " refused by the runtime (HTTP " + response.status() + ")"
-                                        + (response.body().length == 0 ? "" : ": " + response.bodyText().strip()));
+                                              + (response.body().length == 0 ? "" : ": " + response.bodyText().strip()));
     }
 }
