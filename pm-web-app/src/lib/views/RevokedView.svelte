@@ -6,7 +6,7 @@
   $: info = $runtimeStore.revokedInfo;
   $: reasonKey = info?.reason || $runtimeStore.revokedReason || 'device_revoked';
   $: by = info?.revoked_by || 'the terminal client';
-  $: time = info?.revoked_at || 'today at 14:10';
+  $: time = info?.revoked_at || '';
 
   function handlePair() {
     runtimeStore.update((s) => ({
@@ -24,13 +24,7 @@
     <hr class="revoked-divider" />
     
     <p class="revoked-reason" data-testid="revoked-reason">
-      {#if reasonKey === 'device_revoked'}
-        It was revoked from {by} {time}.
-      {:else if reasonKey === 'device_expired'}
-        It expired after not being used since {time}.
-      {:else}
-        {$t('devices.revoked.reason', { reason: reasonKey, by, time })}
-      {/if}
+      {$t('devices.revoked.reason', { reason: reasonKey, by, time })}
     </p>
 
     <p class="revoked-how-back">

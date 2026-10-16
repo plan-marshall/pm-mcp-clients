@@ -189,19 +189,6 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
         isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
       }));
     }
-  } else if (event === 'stream.closed') {
-    const payload = data as RevokedInfo;
-    if (payload?.reason === 'device_revoked' || payload?.reason === 'device_expired') {
-      apiClient.clearAuth();
-      runtimeStore.update((s) => ({
-        ...s,
-        isPaired: false,
-        isRevoked: true,
-        revokedReason: payload.reason || 'device_revoked',
-        revokedInfo: payload,
-        currentRoute: 'revoked',
-      }));
-    }
   }
 }
 

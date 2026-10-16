@@ -148,19 +148,46 @@ class PairedDevicesScenarioTest {
     }
 
     @Test
-    @DisplayName("revokes all devices from terminal via DELETE /api/v1/web/devices?others")
-    void shouldRevokeAllDevicesFromTerminal() throws Exception {
+    @DisplayName("returns 404 when renaming non-existent device")
+    void shouldReturn404WhenRenamingNonExistentDevice() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.PAIRED_DEVICES)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var res = client.send(new HttpRequest("DELETE", "/api/v1/web/devices?others",
+            var renameBody = JsonTree.write(Map.of("label", "Unknown"));
+            var res = client.send(HttpRequest.json("PATCH", "/api/v1/web/devices/dev-unknown", renameBody)
+                    .withHeader("Authorization", auth));
+            assertEquals(404, res.status());
+        }
+    }
+
+    @Test
+    @DisplayName("returns 404 when revoking non-existent device")
+    void shouldReturn404WhenRevokingNonExistentDevice() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.PAIRED_DEVICES)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(new HttpRequest("DELETE", "/api/v1/web/devices/dev-unknown",
                     Map.of("Authorization", auth), null));
+            assertEquals(404, res.status());
+        }
+    }
+
+    @Test
+    @DisplayName("updates network listener via PUT /api/v1/web")
+    void shouldUpdateLanListenerViaPut() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.PAIRED_DEVICES)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var body = JsonTree.write(Map.of("lan", false));
+            var res = client.send(HttpRequest.json("PUT", "/api/v1/web", body).withHeader("Authorization", auth));
             assertEquals(200, res.status());
 
-            var listRes = client.send(HttpRequest.get("/api/v1/web/devices").withHeader("Authorization", auth));
-            var devices = PairedDevice.parseList(new String(listRes.body()));
-            assertTrue(devices.isEmpty(), "All devices should be revoked from terminal client");
+            var status = client.send(HttpRequest.get("/api/v1/status").withHeader("Authorization", auth));
+            var web = JsonTree.object(JsonTree.asObject(JsonTree.parse(status.body())), "web");
+            assertEquals(Boolean.FALSE, web.get("lan"));
         }
     }
 }

@@ -79,6 +79,8 @@
   }
 
   function isThisBrowser(device: PairedDevice): boolean {
+    const currentId = apiClient.getDeviceId();
+    if (currentId) return device.device_id === currentId;
     const currentLabel = $runtimeStore.deviceLabel || apiClient.getLabel();
     return Boolean(currentLabel && device.label === currentLabel);
   }
@@ -140,7 +142,8 @@
           isPaired: false,
           isRevoked: true,
           revokedReason: 'device_revoked',
-          currentRoute: 'pair',
+          revokedInfo: { reason: 'device_revoked', revoked_by: 'this browser', details: 'Revoked' },
+          currentRoute: 'revoked',
         }));
       }
     } catch {
@@ -177,11 +180,24 @@
 
   function formatLastUsed(rawDate?: string): string {
     if (!rawDate) return 'just now';
-    if (rawDate.includes('14:02')) return 'today 14:02';
-    if (rawDate.includes('2026-10-13')) return '3 d ago';
-    if (rawDate.includes('2026-09-08')) return '5 weeks ago';
     try {
       const d = new Date(rawDate);
+      if (isNaN(d.getTime())) return rawDate;
+      const now = Date.now();
+      const diffMs = now - d.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      if (diffDays === 0 && diffMs >= 0) {
+        const hours = String(d.getUTCHours()).padStart(2, '0');
+        const mins = String(d.getUTCMinutes()).padStart(2, '0');
+        return `today ${hours}:${mins}`;
+      }
+      if (diffDays >= 1 && diffDays < 7) {
+        return `${diffDays} d ago`;
+      }
+      const weeks = Math.floor(diffDays / 7);
+      if (weeks >= 1 && weeks < 8) {
+        return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+      }
       const day = d.getUTCDate();
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const month = months[d.getUTCMonth()];

@@ -3,13 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('Paired Devices Flow (UC-ENT-2)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to paired-devices scenario
-    try {
-      await request.post('http://127.0.0.1:7420/mock/scenario', {
-        data: { scenario: 'paired-devices' },
-      });
-    } catch {
-      // Ignore if scenario switch is not available
-    }
+    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'paired-devices' },
+    });
+    expect(res.ok()).toBeTruthy();
 
     // Clear localStorage and pair with code
     await page.goto('/');

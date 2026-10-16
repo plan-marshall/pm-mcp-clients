@@ -83,6 +83,11 @@ export class ApiClient {
     return localStorage.getItem(STORAGE_KEY_LABEL);
   }
 
+  public getDeviceId(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(STORAGE_KEY_DEVICE_ID);
+  }
+
   public isPaired(): boolean {
     return Boolean(this.getSecret());
   }
@@ -162,7 +167,9 @@ export class ApiClient {
   public async turnOffLanListener(): Promise<void> {
     try {
       await this.request('DELETE', '/api/v1/web/listeners/lan');
-    } catch {
+    } catch (err) {
+      const msg = (err as Error)?.message;
+      if (msg !== 'HTTP 404' && msg !== 'HTTP 405') throw err;
       await this.request('PUT', '/api/v1/web', { lan: false });
     }
   }

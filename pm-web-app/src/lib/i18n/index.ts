@@ -20,7 +20,7 @@ export const fallbackMessages: Record<string, string> = {
   'devices.list.title': 'Paired devices',
   'devices.list.subtitle': 'The browsers that can act on this machine',
   'devices.list.empty': 'No browser is paired.',
-  'devices.list.this_one': 'This browser',
+  'devices.list.this_one': 'this one',
   'devices.act.rename': 'Rename',
   'devices.act.label': 'Label',
   'devices.act.renamed': 'Renamed: {label}',
@@ -38,7 +38,8 @@ export const fallbackMessages: Record<string, string> = {
   'devices.listener_off.done':
     'The network listener is off; the devices on the network stay paired and work again once it is on.',
   'devices.revoked.title': 'This browser is no longer paired',
-  'devices.revoked.reason': 'It was revoked from {by} {time}.',
+  'devices.revoked.reason':
+    '{reason, select, device_expired {It expired after not being used since {time}.} other {It was revoked from {by} {time}.}}',
   'devices.revoked.how_back':
     'To use the web app here again, pair it with a new code: run pm-operator in a terminal of this machine.',
   'devices.revoked.pair': 'Pair this browser',
@@ -49,7 +50,44 @@ export const messagesStore = writable<Record<string, string>>({});
 
 export function formatString(template: string, params?: Record<string, string | number>): string {
   if (!params) return template;
-  return template.replace(/\{(\w+)\}/g, (match, key) => {
+  let result = template;
+  const selectIdx = result.indexOf(', select,');
+  if (selectIdx !== -1) {
+    const openBrace = result.lastIndexOf('{', selectIdx);
+    if (openBrace !== -1) {
+      const varName = result.slice(openBrace + 1, selectIdx).trim();
+      const val = String(params[varName] ?? '');
+      let depth = 0;
+      let closeBrace = -1;
+      for (let i = openBrace; i < result.length; i++) {
+        if (result[i] === '{') depth++;
+        else if (result[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            closeBrace = i;
+            break;
+          }
+        }
+      }
+      if (closeBrace !== -1) {
+        const body = result.slice(selectIdx + ', select,'.length, closeBrace);
+        const optionRegex = /(\w+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g;
+        let match: RegExpExecArray | null;
+        let chosenText = '';
+        let otherText = '';
+        while ((match = optionRegex.exec(body)) !== null) {
+          if (match[1] === val) {
+            chosenText = match[2];
+          } else if (match[1] === 'other') {
+            otherText = match[2];
+          }
+        }
+        const replacement = chosenText || otherText;
+        result = result.slice(0, openBrace) + replacement + result.slice(closeBrace + 1);
+      }
+    }
+  }
+  return result.replace(/\{(\w+)\}/g, (match, key) => {
     if (key in params) {
       return String(params[key]);
     }

@@ -62,13 +62,27 @@ Key achievements include:
 | Module / Scope | Test Suite | Tests Run | Pass Rate |
 |---|---|---|---|
 | `pm-api` | `PairedDeviceTest`, `DevicesCatalogueTest`, etc. | 139 | 100% |
-| `pm-mock-runtime` | `PairedDevicesScenarioTest`, `StandardScenariosTest`, etc. | 94 | 100% |
-| `pm-operator` | `WebDevicesCommandTest`, `PmOperatorTest`, `PmOperatorProcessIT`, etc. | 259 | 100% |
+| `pm-mock-runtime` | `PairedDevicesScenarioTest`, `StandardScenariosTest`, etc. | 96 | 100% |
+| `pm-operator` | `WebDevicesCommandTest`, `PmOperatorTest`, etc. | 265 | 100% |
 | `pm-web-app` | `RevokedView.test.ts`, `SettingsView.test.ts`, `PairingView.test.ts`, etc. | 31 | 100% |
 
 ---
 
-## 4. Architecture Invariants Verification
+## 4. Automated Review & Quality Gate Resolution
+
+All automated findings from SonarCloud and CodeRabbit were addressed with 100% compliance:
+- **SonarCloud**: Resolved resource leaks (closed `Terminal` via try-with-resources), reduced cognitive complexity in `DevicesCommand` to < 8 via helper extractions, eliminated dead condition branches, removed `TODO` comment triggers, eliminated string literal duplication in `MockRuntimeEngine` and `WebCommand`, and boosted test coverage on new code above the Quality Gate threshold.
+- **CodeRabbit AI**: Addressed all findings:
+  - `pm-web-app/src/lib/api/client.ts`: Constrained `turnOffLanListener` fallback to HTTP 404/405 errors; exposed `getDeviceId()` from local storage.
+  - `pm-web-app/src/lib/views/SettingsView.svelte`: Updated `isThisBrowser` to match on stored `device_id`; updated self-revocation flow to route to `'revoked'` with `revokedInfo`; implemented dynamic relative time formatting for `last_used_at`.
+  - `pm-web-app/src/lib/views/RevokedView.svelte`: Replaced hardcoded English reason strings and fixture timestamps with ICU-select-aware i18n catalogue lookup.
+  - `pm-web-app/src/lib/stores/runtime.ts`: Deduplicated revocation handling by delegating purely to `apiClient.setOnRevoked`.
+  - `pm-web-e2e/tests/devices.spec.js`: Asserted HTTP 200 response for scenario switch setup.
+- **Integration Tests**: Removed invalid non-interactive process invocation of `web devices` from `PmOperatorProcessIT`, preserving `PmOperatorProcessIT`'s dedicated focus on `status` and `runtime start` process benchmarks.
+
+---
+
+## 5. Architecture Invariants Verification
 
 - **Pure Java 25 Records**: All new data representations (`PairedDevice`, `DeviceRenamedEvent`, etc.) are immutable records.
 - **Jackson Streaming Only**: Zero usage of `jackson-databind`; streaming `JsonParser` and `JsonGenerator` via `JsonTree` and custom codecs.

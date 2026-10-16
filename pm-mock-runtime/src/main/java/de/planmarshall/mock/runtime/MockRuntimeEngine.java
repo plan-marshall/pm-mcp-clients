@@ -46,6 +46,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_STATE = "state";
     private static final String KEY_SCENARIO = "scenario";
     private static final String KEY_STATUS = "status";
+    private static final String METHOD_DELETE = "DELETE";
+    private static final String EVENT_STREAM_CLOSED = "stream.closed";
+    private static final String KEY_REASON = "reason";
+    private static final String KEY_DETAILS = "details";
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -504,7 +508,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // DELETE /api/v1/web/devices/{id}
-        if ("DELETE".equals(method) && path.startsWith("/api/v1/web/devices/") && !"/api/v1/web/devices".equals(path)) {
+        if (METHOD_DELETE.equals(method) && path.startsWith("/api/v1/web/devices/") && !"/api/v1/web/devices".equals(path)) {
             var targetId = path.substring("/api/v1/web/devices/".length());
             PairedDevice removed = null;
             synchronized (devicesLock) {
@@ -519,13 +523,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             if (removed != null) {
                 broadcastEvent("device.revoked", Map.of("device_id", removed.deviceId()));
-                broadcastEvent("stream.closed", Map.of(
-                        "reason", "device_revoked",
-                        "details", "Revoked",
+                broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
+                        KEY_REASON, "device_revoked",
+                        KEY_DETAILS, "Revoked",
                         "revoked_by", isWeb ? "another device" : "the terminal client",
                         "revoked_at", "today at 14:10"
                 ));
-                response.json(200, Map.of("status", "revoked", "device_id", removed.deviceId(), "label", removed.label()));
+                response.json(200, Map.of(KEY_STATUS, "revoked", "device_id", removed.deviceId(), "label", removed.label()));
             } else {
                 response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
             }
@@ -533,10 +537,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // DELETE /api/v1/web/devices (revoke all or revoke others)
-        if ("DELETE".equals(method) && "/api/v1/web/devices".equals(path)) {
+        if (METHOD_DELETE.equals(method) && "/api/v1/web/devices".equals(path)) {
             var query = request.query() != null ? request.query().toLowerCase() : "";
             boolean isOthers = query.contains("others");
-            boolean isAll = query.contains("all");
 
             var removedList = new ArrayList<PairedDevice>();
             PairedDevice kept = null;
@@ -556,16 +559,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             for (var dev : removedList) {
                 broadcastEvent("device.revoked", Map.of("device_id", dev.deviceId()));
-                broadcastEvent("stream.closed", Map.of(
-                        "reason", "device_revoked",
-                        "details", "Revoked",
+                broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
+                        KEY_REASON, "device_revoked",
+                        KEY_DETAILS, "Revoked",
                         "revoked_by", isWeb ? "another device" : "the terminal client",
                         "revoked_at", "today at 14:10"
                 ));
             }
 
             var resp = new LinkedHashMap<String, Object>();
-            resp.put("status", "revoked");
+            resp.put(KEY_STATUS, "revoked");
             resp.put("revoked_count", removedList.size());
             resp.put("remaining_count", pairedDevices.size());
             if (kept != null) {
@@ -576,13 +579,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // DELETE /api/v1/web/listeners/lan
-        if ("DELETE".equals(method) && "/api/v1/web/listeners/lan".equals(path)) {
+        if (METHOD_DELETE.equals(method) && "/api/v1/web/listeners/lan".equals(path)) {
             lanListenerOn = false;
-            broadcastEvent("stream.closed", Map.of(
-                    "reason", "listener_closed",
-                    "details", "The network listener was turned off"
+            broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
+                    KEY_REASON, "listener_closed",
+                    KEY_DETAILS, "The network listener was turned off"
             ));
-            response.json(200, Map.of("lan", false, "status", "listener_off"));
+            response.json(200, Map.of("lan", false, KEY_STATUS, "listener_off"));
             return true;
         }
 
@@ -596,6 +599,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                     // cui-rewrite:disable InvalidExceptionUsageRecipe
                 } catch (IOException | RuntimeException _) {
+                    // Ignore body parsing failures and retain existing listener state
                 }
             }
             var resp = new LinkedHashMap<String, Object>();

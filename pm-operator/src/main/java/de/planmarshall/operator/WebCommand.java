@@ -12,16 +12,19 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jspecify.annotations.Nullable;
 
@@ -57,6 +60,7 @@ public final class WebCommand implements Callable<Integer> {
     static final int DEFAULT_PORT = 7420;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LABEL = "label";
+    private static final String LOOPBACK = "loopback";
 
     @Spec
     CommandSpec spec = CommandSpec.create();
@@ -310,15 +314,14 @@ public final class WebCommand implements Callable<Integer> {
                         spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
             }
 
-            if (interactive && !yes && context.isInteractiveTerminal()) {
-                if (!confirm()) {
-                    return;
-                }
+            if (interactive && !yes && context.isInteractiveTerminal() && !confirm()) {
+                return;
             }
 
+            var scope = others ? "others" : "all";
             var path = deviceId != null
                     ? "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId)
-                    : "/api/v1/web/devices?scope=" + (others ? "others" : "all");
+                    : "/api/v1/web/devices?scope=" + scope;
             var response = runtime.send(new HttpRequest("DELETE", path, Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 out.println("✓ Revoked paired device(s)");
@@ -359,77 +362,91 @@ public final class WebCommand implements Callable<Integer> {
             if (interactive && context.isInteractiveTerminal()) {
                 var parsed = JsonTree.parse(response.body());
                 if (parsed instanceof List<?> list && !list.isEmpty()) {
-                    handleInteractive(runtime, out, list, lanOn);
+                    handleInteractive(runtime, out, list);
                 }
             }
         }
 
-        private void handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list, boolean lanOn) {
-            try {
-                var terminal = context.createTerminal();
+        private void handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list) {
+            try (var terminal = context.createTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(terminal).build();
                 var prompt = String.format("Act on a device: 1-%d   o) revoke all others   n) turn the network listener off   q) leave   ?   › ", list.size());
                 var line = reader.readLine(prompt);
-                if (line == null) {
-                    return;
-                }
-                var trimmed = line.trim();
-                if ("q".equalsIgnoreCase(trimmed) || "leave".equalsIgnoreCase(trimmed) || trimmed.isEmpty()) {
-                    return;
-                }
-                if ("o".equalsIgnoreCase(trimmed)) {
-                    this.others = true;
-                    handleRevoke(runtime, out);
-                    return;
-                }
-                if ("n".equalsIgnoreCase(trimmed)) {
-                    handleListenerOff(runtime, out);
-                    return;
-                }
-                int choice;
-                try {
-                    choice = Integer.parseInt(trimmed);
-                } catch (NumberFormatException _) {
-                    return;
-                }
-                if (choice >= 1 && choice <= list.size()) {
-                    var item = list.get(choice - 1);
-                    String devLabel = "device " + choice;
-                    String targetId = String.valueOf(choice);
-                    if (item instanceof Map<?, ?> map) {
-                        var rawLabel = map.get(LABEL);
-                        if (rawLabel != null) {
-                            devLabel = ConsoleNotice.stripControlSequences(rawLabel.toString());
-                        }
-                        var idObj = map.get("device_id");
-                        if (idObj != null) {
-                            targetId = idObj.toString();
-                        }
-                    }
-                    out.printf("  %d) %s%n", choice, devLabel);
-                    out.flush();
-                    var actLine = reader.readLine("Rename or revoke? r) rename   x) revoke   b) back   ?   › ");
-                    if (actLine == null) {
-                        return;
-                    }
-                    var act = actLine.trim();
-                    if ("r".equalsIgnoreCase(act) || "rename".equalsIgnoreCase(act)) {
-                        var newLbl = reader.readLine(String.format("Label [%s] › ", devLabel));
-                        if (newLbl != null && !newLbl.trim().isEmpty()) {
-                            this.deviceId = targetId;
-                            this.newLabel = newLbl.trim();
-                            handleRename(runtime, out);
-                        }
-                    } else if ("x".equalsIgnoreCase(act) || "revoke".equalsIgnoreCase(act)) {
-                        this.deviceId = targetId;
-                        handleRevoke(runtime, out);
-                    }
+                if (line != null) {
+                    processInteractiveChoice(runtime, out, reader, list, line.trim());
                 }
             }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (IOException | RuntimeException _) {
                 // Ignore interactive terminal read exception
             }
+        }
+
+        private void processInteractiveChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
+            if ("q".equalsIgnoreCase(choice) || "leave".equalsIgnoreCase(choice) || choice.isEmpty()) {
+                return;
+            }
+            if ("o".equalsIgnoreCase(choice)) {
+                this.others = true;
+                handleRevoke(runtime, out);
+                return;
+            }
+            if ("n".equalsIgnoreCase(choice)) {
+                handleListenerOff(runtime, out);
+                return;
+            }
+            processDeviceIndexChoice(runtime, out, reader, list, choice);
+        }
+
+        private void processDeviceIndexChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
+            int num;
+            try {
+                num = Integer.parseInt(choice);
+            } catch (NumberFormatException _) {
+                return;
+            }
+            if (num < 1 || num > list.size()) {
+                return;
+            }
+            var item = list.get(num - 1);
+            var devInfo = extractDeviceInfo(item, num);
+            out.printf("  %d) %s%n", num, devInfo.label());
+            out.flush();
+            var actLine = reader.readLine("Rename or revoke? r) rename   x) revoke   b) back   ?   › ");
+            if (actLine == null) {
+                return;
+            }
+            var act = actLine.trim();
+            if ("r".equalsIgnoreCase(act) || "rename".equalsIgnoreCase(act)) {
+                var newLbl = reader.readLine(String.format("Label [%s] › ", devInfo.label()));
+                if (newLbl != null && !newLbl.trim().isEmpty()) {
+                    this.deviceId = devInfo.id();
+                    this.newLabel = newLbl.trim();
+                    handleRename(runtime, out);
+                }
+            } else if ("x".equalsIgnoreCase(act) || "revoke".equalsIgnoreCase(act)) {
+                this.deviceId = devInfo.id();
+                handleRevoke(runtime, out);
+            }
+        }
+
+        private record DeviceInfo(String id, String label) {
+        }
+
+        private static DeviceInfo extractDeviceInfo(Object item, int fallbackIdx) {
+            String label = "device " + fallbackIdx;
+            String id = String.valueOf(fallbackIdx);
+            if (item instanceof Map<?, ?> map) {
+                var rawLabel = map.get(LABEL);
+                if (rawLabel != null) {
+                    label = ConsoleNotice.stripControlSequences(rawLabel.toString());
+                }
+                var idObj = map.get("device_id");
+                if (idObj != null) {
+                    id = idObj.toString();
+                }
+            }
+            return new DeviceInfo(id, label);
         }
 
         private static void renderDevices(byte[] body, PrintWriter out, String locale, boolean lanOn) throws IOException {
@@ -456,9 +473,9 @@ public final class WebCommand implements Callable<Integer> {
                 var rawLabel = dev.get(LABEL);
                 var labelVal = rawLabel != null ? ConsoleNotice.stripControlSequences(rawLabel.toString()) : "browser";
                 var pairedFrom = dev.get("paired_from");
-                var fromStr = "loopback".equals(pairedFrom) ? "loopback" : (pairedFrom != null ? pairedFrom.toString() : "network");
-                var pairedDate = formatPairedDate(dev.get("created_at"), idx);
-                var lastUsed = formatLastUsed(dev.get("last_used_at"), idx);
+                var fromStr = LOOPBACK.equals(pairedFrom) ? LOOPBACK : (pairedFrom != null ? pairedFrom.toString() : "network");
+                var pairedDate = formatPairedDate(dev.get("created_at"));
+                var lastUsed = formatLastUsed(dev.get("last_used_at"));
 
                 out.printf("    %d) %-25s paired %s from %-8s   last used %s%n",
                         idx,
@@ -471,7 +488,7 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        private static String formatPairedDate(Object raw, int idx) {
+        private static String formatPairedDate(@Nullable Object raw) {
             if (raw == null) {
                 return "recently";
             }
@@ -481,48 +498,51 @@ public final class WebCommand implements Callable<Integer> {
                 return DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
                         .withZone(ZoneId.of("UTC"))
                         .format(instant);
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            } catch (DateTimeParseException _) {
                 return s;
             }
         }
 
-        private static String formatLastUsed(Object raw, int idx) {
+        private static String formatLastUsed(@Nullable Object raw) {
             if (raw == null) {
                 return "just now";
             }
             var s = raw.toString();
-            if (s.contains("2026-10-16T14:02")) {
-                return "today 14:02";
-            }
-            if (s.contains("2026-10-13")) {
-                return "3 d ago";
-            }
-            if (s.contains("2026-09-08")) {
-                return "5 weeks ago";
-            }
             try {
                 var instant = Instant.parse(s);
+                var now = Instant.now();
+                var diff = Duration.between(instant, now);
+                var days = diff.toDays();
+                var hours = diff.toHours();
+                if (days == 0 && hours < 24) {
+                    var timeStr = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
+                            .withZone(ZoneId.of("UTC"))
+                            .format(instant);
+                    return "today " + timeStr;
+                }
+                if (days < 7) {
+                    return days + " d ago";
+                }
+                var weeks = days / 7;
+                if (weeks < 8) {
+                    return weeks + (weeks == 1 ? " week ago" : " weeks ago");
+                }
                 return DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH)
                         .withZone(ZoneId.of("UTC"))
                         .format(instant);
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            } catch (DateTimeParseException _) {
                 return s;
             }
         }
 
         private boolean confirm() {
-            try {
-                var terminal = context.createTerminal();
+            try (var terminal = context.createTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(terminal).build();
                 var answer = reader.readLine("Revoke? [Enter]   b) back   ?   › ");
                 return answer == null || (!"b".equalsIgnoreCase(answer.trim()) && !"back".equalsIgnoreCase(answer.trim()));
             }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (IOException | RuntimeException _) {
                 return true;
             }
         }

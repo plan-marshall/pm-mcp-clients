@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -246,6 +247,134 @@ class WebDevicesCommandTest {
                 () -> assertTrue(output.contains("Paired devices · The browsers that can act on this machine")),
                 () -> assertTrue(output.contains("2) Safari on iPad")),
                 () -> assertTrue(output.contains("✓ Renamed: iPad Oliver"))
+        );
+    }
+
+    @Test
+    @DisplayName("handles interactive revoke flow faithfully matching transcript")
+    void interactiveRevokeFlow() throws Exception {
+        seedRuntimeRoutes(true);
+
+        // Input sequence: "3" -> "x"
+        var context = createContext("3\nx\n");
+
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(output.contains("3) Chrome on build-box")),
+                () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
+        );
+    }
+
+    @Test
+    @DisplayName("handles interactive revoke all others flow")
+    void interactiveRevokeOthersFlow() throws Exception {
+        seedRuntimeRoutes(true);
+
+        var context = createContext("o\n");
+
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
+        );
+    }
+
+    @Test
+    @DisplayName("handles interactive listener-off flow")
+    void interactiveListenerOffFlow() throws Exception {
+        seedRuntimeRoutes(true);
+
+        var context = createContext("n\n");
+
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(output.contains("✓ Network listener turned off (loopback remains open)"))
+        );
+    }
+
+    @Test
+    @DisplayName("handles interactive leave flow")
+    void interactiveLeaveFlow() throws Exception {
+        seedRuntimeRoutes(true);
+
+        var context = createContext("q\n");
+
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        assertEquals(0, code);
+    }
+
+    @Test
+    @DisplayName("revoke confirmation aborted when user types b")
+    void revokeAbortedOnBack() throws Exception {
+        seedRuntimeRoutes(true);
+
+        var context = createContext("b\n");
+
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", "dev-3", "-i");
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertFalse(output.contains("✓ Revoked paired device(s)"))
+        );
+    }
+
+    @Test
+    @DisplayName("reports empty list when no devices are paired")
+    void reportsEmptyListWhenNoDevices() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                        """);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var context = createContext("");
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute();
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(output.contains("No paired devices."))
         );
     }
 }
