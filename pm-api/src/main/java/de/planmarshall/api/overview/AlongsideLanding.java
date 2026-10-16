@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -60,6 +61,15 @@ String kind,
     }
 
     /**
+     * Serializes to JSON string.
+     *
+     * @return JSON string
+     */
+    public String toJson() {
+        return JsonTree.write(toMap());
+    }
+
+    /**
      * Parses from JSON tree map.
      *
      * @param map map representation
@@ -84,5 +94,20 @@ String kind,
             holdKind = JsonTree.string(map, "holdKind");
         }
         return new AlongsideLanding(unit, state, count, kind, holdKind);
+    }
+
+    /**
+     * Parses from JSON string.
+     *
+     * @param json JSON string
+     * @return parsed alongside landing
+     * @throws IOException on format error
+     */
+    public static AlongsideLanding fromJson(String json) throws IOException {
+        var obj = JsonTree.asObject(JsonTree.parse(json));
+        if (obj == null) {
+            throw new JsonFormatException("Expected JSON object for AlongsideLanding");
+        }
+        return fromMap(obj);
     }
 }

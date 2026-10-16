@@ -164,4 +164,33 @@ class RunningWorkScenarioTest {
             }
         }
     }
+
+    @Test
+    @DisplayName("handles dynamic fallback routes for unknown projects and ended work pages")
+    void shouldHandleFallbackRoutes() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            // Unknown project detail fallback
+            var resUnknown = client.send(HttpRequest.get("/api/v1/projects/non-existent-proj").withHeader("Authorization", auth));
+            assertEquals(200, resUnknown.status());
+            var detailUnknown = ProjectDetailResponse.fromJson(new String(resUnknown.body()));
+            assertEquals("non-existent-proj", detailUnknown.projectId());
+            assertTrue(detailUnknown.plans().isEmpty());
+
+            // Unknown project ended work fallback
+            var resEndedUnknown = client.send(HttpRequest.get("/api/v1/projects/non-existent-proj/ended").withHeader("Authorization", auth));
+            assertEquals(200, resEndedUnknown.status());
+            var endedUnknown = EndedWorkPage.fromJson(new String(resEndedUnknown.body()));
+            assertEquals("non-existent-proj", endedUnknown.projectId());
+            assertTrue(endedUnknown.items().isEmpty());
+
+            // Non-numeric page param falls back to page 1
+            var resInvalidPage = client.send(HttpRequest.get("/api/v1/projects/pm-mcp-clients/ended?page=not_a_num").withHeader("Authorization", auth));
+            assertEquals(200, resInvalidPage.status());
+            var invalidPage = EndedWorkPage.fromJson(new String(resInvalidPage.body()));
+            assertEquals(1, invalidPage.page());
+        }
+    }
 }

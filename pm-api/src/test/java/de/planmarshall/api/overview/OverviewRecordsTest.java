@@ -12,14 +12,19 @@ package de.planmarshall.api.overview;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("OverviewRecordsTest")
 class OverviewRecordsTest {
@@ -43,6 +48,31 @@ class OverviewRecordsTest {
     }
 
     @Test
+    @DisplayName("validates all enumeration values and wire round-trip")
+    void allEnumerationValues() {
+        for (NeedsOperatorKind kind : NeedsOperatorKind.values()) {
+            assertNotNull(kind.value());
+            assertEquals(kind, NeedsOperatorKind.fromValue(kind.value()));
+            assertEquals(kind, NeedsOperatorKind.parse(kind.value()));
+        }
+        for (PlanActivity act : PlanActivity.values()) {
+            assertNotNull(act.value());
+            assertEquals(act, PlanActivity.fromValue(act.value()));
+            assertEquals(act, PlanActivity.parse(act.value()));
+        }
+        for (EndedOutcome outcome : EndedOutcome.values()) {
+            assertNotNull(outcome.value());
+            assertEquals(outcome, EndedOutcome.fromValue(outcome.value()));
+            assertEquals(outcome, EndedOutcome.parse(outcome.value()));
+        }
+        for (EpicTerminalReason reason : EpicTerminalReason.values()) {
+            assertNotNull(reason.value());
+            assertEquals(reason, EpicTerminalReason.fromValue(reason.value()));
+            assertEquals(reason, EpicTerminalReason.parse(reason.value()));
+        }
+    }
+
+    @Test
     @DisplayName("round-trip serializes AlongsideLanding")
     void alongsideLanding() throws Exception {
         var landing = new AlongsideLanding("remediation.ci-failure", "failed", null, "unit", "landing_failed");
@@ -58,6 +88,11 @@ class OverviewRecordsTest {
         var parsedRemoval = AlongsideLanding.fromMap(removal.toMap());
         assertEquals(2, parsedRemoval.count());
         assertEquals("removal", parsedRemoval.kind());
+
+        var landingJson = landing.toJson();
+        var parsedFromJson = AlongsideLanding.fromJson(landingJson);
+        assertEquals(landing.unit(), parsedFromJson.unit());
+        assertEquals(landing.holdKind(), parsedFromJson.holdKind());
     }
 
     @Test
@@ -93,6 +128,12 @@ class OverviewRecordsTest {
 
         assertEquals(1, parsedResp.projects().size());
         assertEquals("pm-mcp-clients", parsedResp.projects().getFirst().projectId());
+
+        // writeList and parseList
+        var listJson = ProjectSummary.writeList(List.of(summary));
+        var parsedList = ProjectSummary.parseList(listJson);
+        assertEquals(1, parsedList.size());
+        assertEquals("pm-mcp-clients", parsedList.getFirst().projectId());
     }
 
     @Test
@@ -240,30 +281,160 @@ class OverviewRecordsTest {
     @DisplayName("round-trip serializes overview SSE events")
     void overviewEvents() throws Exception {
         var pChanged = new ProjectWorkChangedEvent("pm-mcp-clients", "work_started", 3, 1, 2);
+        assertEquals("project.changed", ProjectWorkChangedEvent.EVENT_CHANGED);
         var parsedPChanged = ProjectWorkChangedEvent.fromJson(pChanged.toJson());
         assertEquals("pm-mcp-clients", parsedPChanged.projectId());
         assertEquals("work_started", parsedPChanged.changeType());
         assertEquals(3, parsedPChanged.activePlansCount());
+        assertEquals(1, parsedPChanged.activeEpicsCount());
+        assertEquals(2, parsedPChanged.needsOperatorCount());
 
         var now = Instant.now();
         var phChanged = new PhaseChangedEvent("PLN-001", "outline", "execute", now);
+        assertEquals("phase.changed", PhaseChangedEvent.EVENT_NAME);
         var parsedPhChanged = PhaseChangedEvent.fromJson(phChanged.toJson());
         assertEquals("PLN-001", parsedPhChanged.planId());
+        assertEquals("outline", parsedPhChanged.oldPhase());
         assertEquals("execute", parsedPhChanged.newPhase());
+        assertNotNull(parsedPhChanged.phaseEnteredAt());
 
         var actChanged = new ActivityChangedEvent("PLN-001", "pausing", "task");
+        assertEquals("activity.changed", ActivityChangedEvent.EVENT_NAME);
         var parsedActChanged = ActivityChangedEvent.fromJson(actChanged.toJson());
+        assertEquals("PLN-001", parsedActChanged.planId());
         assertEquals("pausing", parsedActChanged.activity());
         assertEquals("task", parsedActChanged.point());
 
         var needsChanged = new NeedsOperatorChangedEvent("pm-mcp-clients", "PLN-001", null, "decision", 1);
+        assertEquals("needs_operator.changed", NeedsOperatorChangedEvent.EVENT_NAME);
         var parsedNeedsChanged = NeedsOperatorChangedEvent.fromJson(needsChanged.toJson());
+        assertEquals("pm-mcp-clients", parsedNeedsChanged.projectId());
+        assertEquals("PLN-001", parsedNeedsChanged.planId());
+        assertNull(parsedNeedsChanged.epicId());
         assertEquals("decision", parsedNeedsChanged.kind());
         assertEquals(1, parsedNeedsChanged.count());
 
         var offTrack = new TaskOffTrackEvent("PLN-001", "TSK-003", "repeating", true);
+        assertEquals("task.off_track", TaskOffTrackEvent.EVENT_NAME);
         var parsedOffTrack = TaskOffTrackEvent.fromJson(offTrack.toJson());
+        assertEquals("PLN-001", parsedOffTrack.planId());
+        assertEquals("TSK-003", parsedOffTrack.taskId());
         assertEquals("repeating", parsedOffTrack.signal());
         assertTrue(parsedOffTrack.offTrack());
+    }
+
+    @Test
+    @DisplayName("tests fallback fields and parsing from arrays")
+    void recordAliasesAndFallbacks() throws Exception {
+        // ProjectSummary aliases (id, name, plans_count, epics_count, setupNeedsOperator)
+        var pSummaryMap = Map.<String, Object>of(
+                "id", "prj-alias",
+                "name", "Project Alias",
+                "plans_count", 5,
+                "epics_count", 2,
+                "setupNeedsOperator", true
+        );
+        var parsedSummary = ProjectSummary.fromMap(pSummaryMap);
+        assertEquals("prj-alias", parsedSummary.projectId());
+        assertEquals("Project Alias", parsedSummary.displayName());
+        assertEquals(5, parsedSummary.activePlansCount());
+        assertEquals(2, parsedSummary.activeEpicsCount());
+        assertTrue(parsedSummary.setupNeedsOperator());
+
+        // Null display name defaults to projectId
+        var nullNameSummary = new ProjectSummary("raw-id", null, 0, 0, 0, null, false, null);
+        assertEquals("raw-id", nullNameSummary.displayName());
+
+        // ProjectOverviewResponse from array
+        var arrayResponse = ProjectOverviewResponse.fromJson("[{\"id\":\"p-arr\",\"name\":\"Arr Prj\"}]");
+        assertEquals(1, arrayResponse.projects().size());
+        assertEquals("p-arr", arrayResponse.projects().getFirst().projectId());
+
+        // ActivePlanSummary aliases (id, phase, state, created_at, off_track, needs_operator)
+        var planAliasMap = Map.<String, Object>of(
+                "id", "pln-alias",
+                "title", "Alias Plan",
+                "phase", "finalize",
+                "state", "paused",
+                "created_at", "2026-10-16T12:00:00Z",
+                "off_track", "timeout",
+                "needs_operator", "stalled",
+                "needs_operator_count", 1
+        );
+        var parsedPlan = ActivePlanSummary.fromMap(planAliasMap);
+        assertEquals("pln-alias", parsedPlan.planId());
+        assertEquals("finalize", parsedPlan.currentPhase());
+        assertEquals("paused", parsedPlan.phaseState());
+        assertEquals("timeout", parsedPlan.offTrackSignal());
+        assertEquals("stalled", parsedPlan.needsOperatorKind());
+
+        // ActiveEpicSummary aliases (id, created_at, needs_operator)
+        var epicAliasMap = Map.<String, Object>of(
+                "id", "epc-alias",
+                "title", "Alias Epic",
+                "created_at", "2026-10-10T08:00:00Z",
+                "needs_operator", "decision"
+        );
+        var parsedEpic = ActiveEpicSummary.fromMap(epicAliasMap);
+        assertEquals("epc-alias", parsedEpic.epicId());
+        assertEquals("decision", parsedEpic.needsOperatorKind());
+        assertTrue(parsedEpic.plans().isEmpty());
+
+        // EndedWorkPage from array
+        var endedArrayJson = "[{\"id\":\"pln-ended-arr\",\"kind\":\"plan\",\"outcome\":\"merged\",\"ended_at\":\"2026-10-16T09:00:00Z\"}]";
+        var parsedEndedPage = EndedWorkPage.fromJson(endedArrayJson);
+        assertEquals("unknown", parsedEndedPage.projectId());
+        assertEquals(1, parsedEndedPage.items().size());
+        assertEquals("pln-ended-arr", parsedEndedPage.items().getFirst().id());
+
+        // EndedWorkItem terminal_reason alias
+        var endedItemMap = Map.<String, Object>of(
+                "id", "epc-ended",
+                "kind", "epic",
+                "title", "Ended Epic",
+                "terminal_reason", "completed",
+                "ended_at", "2026-10-16T08:00:00Z"
+        );
+        var parsedItem = EndedWorkItem.fromMap(endedItemMap);
+        assertEquals("epc-ended", parsedItem.id());
+        assertEquals("completed", parsedItem.terminalReason());
+        assertNull(parsedItem.outcome());
+    }
+
+    @Test
+    @DisplayName("validates error conditions on missing required fields or bad JSON")
+    void recordValidationErrors() {
+        assertThrows(NullPointerException.class, () -> new ProjectSummary(null, "Name", 0, 0, 0, null, false, null));
+        assertThrows(NullPointerException.class, () -> new ActivePlanSummary(null, "T", "p", "s", null, null, null, 0, 0, null, null, null, null, null, null, null));
+        assertThrows(NullPointerException.class, () -> new ActiveEpicSummary(null, "T", null, 0, 0, 0, 0, null, null, null));
+        assertThrows(NullPointerException.class, () -> new ProjectDetailResponse(null, "D", null, null, null));
+        assertThrows(NullPointerException.class, () -> new EndedWorkPage(null, null, 1, 1, false, false));
+        assertThrows(NullPointerException.class, () -> new EndedWorkItem(null, "plan", "T", "merged", null, null, null, null, null));
+
+        assertThrows(JsonFormatException.class, () -> ProjectSummary.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> ProjectSummary.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> ProjectSummary.parseList("{}"));
+        assertThrows(JsonFormatException.class, () -> ActivePlanSummary.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> ActivePlanSummary.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> ActiveEpicSummary.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> ActiveEpicSummary.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> ProjectOverviewResponse.fromJson("\"invalid\""));
+        assertThrows(JsonFormatException.class, () -> ProjectDetailResponse.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> ProjectDetailResponse.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> EndedWorkPage.fromJson("\"invalid\""));
+        assertThrows(JsonFormatException.class, () -> EndedWorkItem.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> EndedWorkItem.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> AlongsideLanding.fromJson("[]"));
+
+        assertThrows(JsonFormatException.class, () -> ProjectWorkChangedEvent.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> ProjectWorkChangedEvent.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> PhaseChangedEvent.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> PhaseChangedEvent.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> ActivityChangedEvent.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> ActivityChangedEvent.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> NeedsOperatorChangedEvent.fromJson("[]"));
+        assertThrows(NullPointerException.class, () -> NeedsOperatorChangedEvent.fromMap(null));
+        assertThrows(JsonFormatException.class, () -> TaskOffTrackEvent.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> TaskOffTrackEvent.fromMap(Map.of()));
     }
 }

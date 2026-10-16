@@ -72,9 +72,7 @@ public final class PlansCommand implements Callable<Integer> {
                 statusCmd.watch = this.watch;
                 return statusCmd.call();
             }
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        } catch (IOException _) {
             // Fall back to listing plans
         }
 

@@ -157,5 +157,53 @@ class OverviewCatalogueTest {
 
         var outcomeMerged = MessageCatalogue.format("en", "overview.ended.outcome", Map.of("outcome", "merged"));
         assertEquals("merged", outcomeMerged);
+
+        // Verify newly added keys for waiver and waits_for_you
+        assertEquals("waiver", MessageCatalogue.format("en", "overview.needs.waiver", Map.of()));
+        assertEquals("Waiver", MessageCatalogue.format("de", "overview.needs.waiver", Map.of()));
+        assertEquals("waits for you", MessageCatalogue.format("en", "overview.needs.waits_for_you", Map.of()));
+        assertEquals("wartet auf dich", MessageCatalogue.format("de", "overview.needs.waits_for_you", Map.of()));
+    }
+
+    @Test
+    @DisplayName("should normalize locale and handle fallback languages")
+    void shouldNormalizeLocale() {
+        assertEquals("en", MessageCatalogue.normalizeLocale(null));
+        assertEquals("en", MessageCatalogue.normalizeLocale(""));
+        assertEquals("en", MessageCatalogue.normalizeLocale("   "));
+        assertEquals("en", MessageCatalogue.normalizeLocale("en"));
+        assertEquals("de", MessageCatalogue.normalizeLocale("de"));
+        assertEquals("en", MessageCatalogue.normalizeLocale("en-US"));
+        assertEquals("de", MessageCatalogue.normalizeLocale("de_DE"));
+        assertEquals("en", MessageCatalogue.normalizeLocale("fr-FR"));
+        assertEquals("en", MessageCatalogue.normalizeLocale("es_ES"));
+    }
+
+    @Test
+    @DisplayName("should handle ICU parser edge cases and branch coverage")
+    void shouldHandleIcuEdgeCases() {
+        // Fallback when key is missing completely
+        assertEquals("unknown.key", MessageCatalogue.format("en", "unknown.key", Map.of()));
+
+        // Template without braces
+        assertEquals("Running work", MessageCatalogue.format("en", "overview.running.title", null));
+
+        // Plural exact match (=0) vs one vs other
+        var reports0 = MessageCatalogue.format("en", "operator.overview.keys.reports", Map.of("count", 0));
+        assertEquals("reports", reports0);
+        var reports1 = MessageCatalogue.format("en", "operator.overview.keys.reports", Map.of("count", 1));
+        assertEquals("1 report", reports1);
+        var reports5 = MessageCatalogue.format("en", "operator.overview.keys.reports", Map.of("count", 5));
+        assertEquals("5 reports", reports5);
+        var reportsInvalid = MessageCatalogue.format("en", "operator.overview.keys.reports", Map.of("count", "not_a_num"));
+        assertEquals("reports", reportsInvalid);
+
+        // Select other fallback
+        var pausingPhase = MessageCatalogue.format("en", "overview.state.pausing", Map.of("point", "other_point"));
+        assertEquals("pausing after the phase", pausingPhase);
+
+        // Ended outcome other fallback
+        var outcomeOther = MessageCatalogue.format("en", "overview.ended.outcome", Map.of("outcome", "unknown_outcome"));
+        assertEquals("ended", outcomeOther);
     }
 }

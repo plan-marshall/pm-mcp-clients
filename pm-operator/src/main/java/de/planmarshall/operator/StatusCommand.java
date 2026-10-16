@@ -104,9 +104,7 @@ final class StatusCommand implements Callable<Integer> {
                         out.flush();
                         return 0;
                     }
-                }
-                /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                catch (Exception _) {
+                } catch (IOException _) {
                     // Fall back to status json
                 }
             }
@@ -127,9 +125,7 @@ final class StatusCommand implements Callable<Integer> {
                     return 0;
                 }
             }
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        } catch (IOException _) {
             // Fall through to legacy render
         }
 
@@ -301,9 +297,7 @@ final class StatusCommand implements Callable<Integer> {
             if (res.status() == 200) {
                 detail = ProjectDetailResponse.fromJson(res.bodyText());
             }
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        } catch (IOException _) {
             // detail unavailable
         }
 
