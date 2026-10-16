@@ -1,0 +1,50 @@
+= Implemented Work Packages of `pm-mcp-clients`
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Work packages of `pm-mcp-clients`] » Implemented
+
+This directory archives work packages that have been implemented, verified, and accepted into the codebase.
+
+== Implemented Packages
+
+[cols="3,4,3,2",options="header"]
+|===
+|Package |Deliverable |Delivered Artifacts |Serves
+
+|link:operator-checks.adoc[`operator-checks`]
+|Operator checks of `pm-operator`
+|`OperatorGate.java`, `OperatorSecurityException.java`, `OperatorGateTest.java` (enforcing interactive terminal and blocking coding-agent host signals `PM-SEC-3`)
+|Milestone 2
+
+|link:command-tree.adoc[`command-tree`]
+|Command tree of both binaries
+|`pm-operator` Picocli verbs (`status`, `config`, `web`, `projects`, `plan`, `epic`, `system`, etc.), JLine console (`PmConsole.java`), and `pm-relay` `pm-mcp serve --job`
+|Milestone 2
+
+|link:mock-runtime.adoc[`mock-runtime`]
+|Mock runtime `pm-mock-runtime` and its scenario format
+|Module `pm-mock-runtime`, scenario format loader, `StandardScenarios`, in-memory HTTP/SSE server, lifecycle scripts (`start.sh`, `stop.sh`), and `@EnableMockRuntime` JUnit 5 extension
+|Milestone 2; epic clients
+
+|link:message-catalogue.adoc[`message-catalogue`]
+|Message catalogue in `pm-api`, English and German packs, served by the mock runtime
+|`MessageCatalogue.java` in `pm-api`, properties for `common`, `onboarding`, `pairing`, `settings`, `workspace`, `designer` in `.en` and `.de`, and mock runtime routes (`GET /api/v1/messages`)
+|epic clients
+
+|link:cli-design.adoc[`cli-design`]
+|Logical design of the terminal client, accepted by the operator
+|Specification documents, command tree, levels, dialogues, and transcripts in `doc/design/terminal-client/` and `doc/design/shared/`
+|epic clients
+
+|link:web-design.adoc[`web-design`]
+|Visual design of the web app (Claude Design), accepted by the operator
+|Specification documents, entry/pairing, onboarding, settings, and shared views in `doc/design/web-app/` and `doc/design/shared/`
+|epic clients
+
+|link:web-app-foundation.adoc[`web-app-foundation`]
+|Module `pm-web-app`, its design system and test infrastructure
+|Module `pm-web-app` (SvelteKit 3 / Vite 8) with CSS tokens and Vitest; `pm-web-e2e` with Playwright test suite against `pm-mock-runtime`
+|Milestone 11, pulled forward; epic clients
+|===

@@ -107,7 +107,7 @@ Order: projects that need the operator first, then by their latest activity. A p
 [#distinction]
 == Telling Them Apart
 
-A plan and an epic differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (link:../../plans/web-design.adoc[`web-design`], under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
+A plan and an epic differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (link:../../plans/implemented/web-design.adoc[`web-design`], under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
 
 [cols="1,1,1,2",options="header"]
 |===

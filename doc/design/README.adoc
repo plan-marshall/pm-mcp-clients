@@ -27,11 +27,11 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:terminal-client/README.adoc[Terminal Client]
 |`AGREED`
-|The console `pm-operator`: its commands, the levels machine, project and plan, how a state is rendered and answered, pushed questions, a transcript of every state, and its texts in English and German. Work package link:../plans/cli-design.adoc[`cli-design`].
+|The console `pm-operator`: its commands, the levels machine, project and plan, how a state is rendered and answered, pushed questions, a transcript of every state, and its texts in English and German. Work package link:../plans/implemented/cli-design.adoc[`cli-design`].
 
 |link:web-app/README.adoc[Web App]
 |`AGREED`
-|The web app: its principles, its structure and navigation, the entry and pairing pages, the onboarding screens, the machine settings, the harness icons, the process designer; its visual language is still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
+|The web app: its principles, its structure and navigation, the entry and pairing pages, the onboarding screens, the machine settings, the harness icons, the process designer; its visual language is still to be worked out. Work package link:../plans/implemented/web-design.adoc[`web-design`].
 
 |link:web-app/process-designer.adoc[Process Designer]
 |`AGREED`
@@ -75,7 +75,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 
 |link:shared/texts-and-languages.adoc[Texts and Languages]
 |`AGREED`
-|What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys, areas, and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).
+|What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys, areas, and packs of the message catalogue (link:../plans/implemented/message-catalogue.adoc[`message-catalogue`]).
 
 |link:shared/reports.adoc[Reports]
 |`AGREED`
