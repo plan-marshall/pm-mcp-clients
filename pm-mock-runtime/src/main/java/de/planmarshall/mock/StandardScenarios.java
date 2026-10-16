@@ -53,6 +53,11 @@ public final class StandardScenarios {
     public static final String PAIRED_DEVICES = "paired-devices";
 
     /**
+     * Overview of running work across projects, plans, and epics with ended work archive (UC-PLN-4).
+     */
+    public static final String RUNNING_WORK = "running-work";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -60,6 +65,7 @@ public final class StandardScenarios {
             ONBOARDING_HAPPY,
             ONBOARDING_HARNESS_NOT_LOGGED_IN,
             WEB_PAIRING,
-            PAIRED_DEVICES
+            PAIRED_DEVICES,
+            RUNNING_WORK
     );
 }

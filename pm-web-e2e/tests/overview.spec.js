@@ -1,0 +1,147 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Overview View (UC-PLN-4)', () => {
+  test.beforeEach(async ({ page, request }) => {
+    // Switch mock runtime to running-work scenario
+    const switchRes = await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'running-work' },
+    });
+    expect(switchRes.ok()).toBeTruthy();
+
+    // Clear localStorage and pair with valid code
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/#code=KXQB-MRTN');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+
+    // Navigate to Running Work overview
+    const overviewNav = page.getByRole('button', { name: /Running work/i });
+    await expect(overviewNav).toBeVisible();
+    await overviewNav.click();
+
+    // Ensure overview container is mounted
+    await expect(page.locator('.overview')).toBeVisible();
+  });
+
+  test.afterAll(async ({ request }) => {
+    // Reset back to web-pairing scenario for other test suites
+    try {
+      await request.post('http://127.0.0.1:7420/mock/scenario', {
+        data: { scenario: 'web-pairing' },
+      });
+    } catch {
+      // Best-effort cleanup
+    }
+  });
+
+  test('views projects list and selects a project', async ({ page }) => {
+    // Verify projects are rendered in sidebar
+    const projectList = page.locator('.project-list');
+    await expect(projectList).toBeVisible();
+
+    const clientsItem = projectList.getByRole('tab', { name: /pm-mcp-clients/i });
+    const coreItem = projectList.getByRole('tab', { name: /pm-mcp-core/i });
+    const pmItem = projectList.getByRole('tab', { name: /plan-marshall/i });
+
+    await expect(clientsItem).toBeVisible();
+    await expect(coreItem).toBeVisible();
+    await expect(pmItem).toBeVisible();
+
+    // pm-mcp-clients should be selected first by default (has needs-operator items)
+    await expect(clientsItem).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.project-title')).toContainText('pm-mcp-clients');
+
+    // Switch to pm-mcp-core
+    await coreItem.click();
+    await expect(coreItem).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.project-title')).toContainText('pm-mcp-core');
+
+    // Verify pm-mcp-core details
+    await expect(page.getByText('Session log and generations')).toBeVisible();
+  });
+
+  test('toggles between by-plan and by-epic views', async ({ page }) => {
+    // In by-plan view (default)
+    const byPlanBtn = page.getByRole('radio', { name: /by plan/i });
+    const byEpicBtn = page.getByRole('radio', { name: /by epic/i });
+
+    await expect(byPlanBtn).toBeVisible();
+    await expect(byEpicBtn).toBeVisible();
+
+    // Verify plans are shown directly
+    await expect(page.getByText('Console history of answers')).toBeVisible();
+    await expect(page.getByText('Overview resource of the runtime')).toBeVisible();
+
+    // Switch to by-epic view
+    await byEpicBtn.click();
+    await expect(byEpicBtn).toHaveAttribute('aria-checked', 'true');
+
+    // In by-epic view, verify epic card
+    const epicTitle = page.getByText('client work');
+    await expect(epicTitle).toBeVisible();
+    await expect(page.getByText(/2 running · 3 staged/)).toBeVisible();
+
+    // Switch back to by-plan
+    await byPlanBtn.click();
+    await expect(byPlanBtn).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByText('Console history of answers')).toBeVisible();
+  });
+
+  test('views attention markers and off-track indicators', async ({ page }) => {
+    // pm-mcp-clients has 2 needs-operator plans
+    const clientsBadge = page.locator('.project-item--selected .badge--attention');
+    await expect(clientsBadge).toBeVisible();
+    await expect(clientsBadge).toContainText('! 2');
+
+    // Plan card attention marker
+    const decisionBadge = page.locator('.badge--attention').first();
+    await expect(decisionBadge).toBeVisible();
+
+    // Verify off-track badge on plan with repeating signal
+    const offTrackBadge = page.locator('.badge--off-track').first();
+    await expect(offTrackBadge).toBeVisible();
+    await expect(offTrackBadge).toContainText('repeating');
+  });
+
+  test('navigates to ended work, verifies outcome badges and pagination', async ({ page }) => {
+    // Click Ended work link
+    const endedLink = page.getByRole('button', { name: /^Ended work/i });
+    await expect(endedLink).toBeVisible();
+    await endedLink.click();
+
+    // Verify Ended work table is displayed
+    const endedView = page.locator('.ended-view');
+    await expect(endedView).toBeVisible();
+    await expect(endedView.locator('table.data-table')).toBeVisible();
+
+    // Verify outcomes (merged, cancelled)
+    await expect(page.getByText('fix-relay')).toBeVisible();
+    await expect(page.locator('.badge--outcome').first()).toBeVisible();
+
+    // Verify pagination controls
+    const olderBtn = page.getByRole('button', { name: /Older/i });
+    const newerBtn = page.getByRole('button', { name: /Newer/i });
+
+    await expect(olderBtn).toBeVisible();
+    await expect(olderBtn).toBeEnabled();
+    await expect(newerBtn).toBeDisabled();
+
+    // Click Older to load page 2
+    await olderBtn.click();
+    await expect(page.getByText(/page 2 of 3/i)).toBeVisible();
+    await expect(newerBtn).toBeEnabled();
+    await expect(olderBtn).toBeEnabled();
+
+    // Click Newer to return to page 1
+    await newerBtn.click();
+    await expect(page.getByText(/page 1 of 3/i)).toBeVisible();
+
+    // Click Back to return to running work view
+    const backBtn = page.getByRole('button', { name: /Back/i });
+    await expect(backBtn).toBeVisible();
+    await backBtn.click();
+
+    // Verify back on main running work view
+    await expect(page.locator('.plan-card').first()).toBeVisible();
+  });
+});

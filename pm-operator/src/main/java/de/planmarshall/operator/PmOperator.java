@@ -29,6 +29,7 @@ import picocli.CommandLine.Command;
         description = "Operator command line of PM-MCP.",
         subcommands = {
                 StatusCommand.class,
+                PlansCommand.class,
                 WebCommand.class,
                 RuntimeCommand.class,
                 DrainCommand.class,

@@ -228,6 +228,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
+        // 3a. Dynamic project overview routes
+        if (handleProjectOverviewRoutes(request, response)) {
+            return;
+        }
+
         // 4. SSE event stream subscription
         if ("GET".equals(request.method()) && ("/api/v1/events".equals(path) || path.endsWith("/events"))) {
             handleEventStream(response);
@@ -691,6 +696,95 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
             response.json(route.status(), copy);
+            return;
+        }
+        if ("/api/v1/projects".equals(path) && rep instanceof Map<?, ?> map && map.get("projects") instanceof List<?> list) {
+            var sorted = new ArrayList<>(list);
+            sorted.sort((a, b) -> {
+                if (a instanceof Map<?, ?> ma && b instanceof Map<?, ?> mb) {
+                    var countA = JsonTree.integer(JsonTree.asObject(ma), "needs_operator_count");
+                    boolean needA = (countA != null && countA > 0) || Boolean.TRUE.equals(ma.get("setup_needs_operator"));
+                    var countB = JsonTree.integer(JsonTree.asObject(mb), "needs_operator_count");
+                    boolean needB = (countB != null && countB > 0) || Boolean.TRUE.equals(mb.get("setup_needs_operator"));
+                    if (needA != needB) {
+                        return needA ? -1 : 1;
+                    }
+                }
+                return 0;
+            });
+            var copy = new LinkedHashMap<String, Object>();
+            for (var entry : map.entrySet()) {
+                copy.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+            copy.put("projects", sorted);
+            response.json(route.status(), copy);
+            return;
+        }
+        response.json(route.status(), rep);
+    }
+
+    private boolean handleProjectOverviewRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if ("GET".equals(request.method()) && path.startsWith("/api/v1/projects/")) {
+            var route = currentScenario.get().route("GET", path);
+            if (route != null) {
+                if (path.endsWith("/ended") && request.query() != null && request.query().contains("page=")) {
+                    handleEndedPageQuery(route, request.query(), response);
+                    return true;
+                }
+                return false;
+            }
+            if (path.endsWith("/ended")) {
+                var sub = path.substring("/api/v1/projects/".length());
+                var prj = sub.substring(0, sub.length() - "/ended".length());
+                response.json(200, Map.of(
+                        "project_id", prj,
+                        "page", 1,
+                        "total_pages", 1,
+                        "has_newer", false,
+                        "has_older", false,
+                        "items", List.of()
+                ));
+                return true;
+            }
+            var prj = path.substring("/api/v1/projects/".length());
+            if (!prj.contains("/")) {
+                response.json(200, Map.of(
+                        "project_id", prj,
+                        "display_name", prj,
+                        "plans", List.of(),
+                        "epics", List.of(),
+                        "alongside_landings", List.of()
+                ));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void handleEndedPageQuery(RouteDefinition route, String query, MockHttpResponse response) throws IOException {
+        int page = 1;
+        for (var part : query.split("&")) {
+            if (part.startsWith("page=")) {
+                try {
+                    page = Integer.parseInt(part.substring(5));
+                } catch (NumberFormatException _) {
+                    page = 1;
+                }
+            }
+        }
+        var rep = route.representation();
+        if (rep instanceof Map<?, ?> map) {
+            var copy = new LinkedHashMap<String, Object>();
+            for (var entry : map.entrySet()) {
+                copy.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+            var totalNum = JsonTree.number(JsonTree.asObject(map), "total_pages");
+            int total = totalNum != null ? totalNum.intValue() : 1;
+            copy.put("page", page);
+            copy.put("has_newer", page > 1);
+            copy.put("has_older", page < total);
+            response.json(200, copy);
             return;
         }
         response.json(route.status(), rep);

@@ -186,13 +186,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-plan-view.adoc[`cli-plan-view`]
 |A plan's process in the terminal
 |`open`
-|link:process-contract.adoc[`process-contract`]; link:cli-overview.adoc[`cli-overview`]
+|link:process-contract.adoc[`process-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]
 |epic clients
 
 |link:web-plan-view.adoc[`web-plan-view`]
 |A plan's process in the web app
 |`open`
-|link:process-contract.adoc[`process-contract`]; link:web-overview.adoc[`web-overview`]
+|link:process-contract.adoc[`process-contract`]; link:implemented/web-overview.adoc[`web-overview`]
 |epic clients
 
 |link:control-contract.adoc[`control-contract`]
@@ -204,13 +204,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-actions.adoc[`cli-actions`]
 |Actions on plans and epics in the terminal
 |`open`
-|link:control-contract.adoc[`control-contract`]; link:cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]; link:cli-start.adoc[`cli-start`]
+|link:control-contract.adoc[`control-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]; link:cli-start.adoc[`cli-start`]
 |epic clients
 
 |link:web-actions.adoc[`web-actions`]
 |Actions on plans and epics in the web app
 |`open`
-|link:control-contract.adoc[`control-contract`]; link:web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
+|link:control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
 |epic clients
 
 |link:start-contract.adoc[`start-contract`]
@@ -231,22 +231,22 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:web-projects.adoc[`web-projects`]
 |epic clients
 
-|link:overview-contract.adoc[`overview-contract`]
+|link:implemented/overview-contract.adoc[`overview-contract`]
 |Overview of running work: contract and mock runtime
-|`open`
+|`done`
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
-|link:cli-overview.adoc[`cli-overview`]
+|link:implemented/cli-overview.adoc[`cli-overview`]
 |Overview of running work in the terminal
-|`open`
-|link:overview-contract.adoc[`overview-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
+|`done`
+|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
-|link:web-overview.adoc[`web-overview`]
+|link:implemented/web-overview.adoc[`web-overview`]
 |Overview of running work in the web app
-|`open`
-|link:overview-contract.adoc[`overview-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]
+|`done`
+|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
 |link:report-contract.adoc[`report-contract`]
@@ -258,13 +258,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-reports.adoc[`cli-reports`]
 |Reports and the completion report in the terminal
 |`open`
-|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
+|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:web-reports.adoc[`web-reports`]
 |Reports and the completion report in the web app
 |`open`
-|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
+|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:system-contract.adoc[`system-contract`]
@@ -276,13 +276,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-system.adoc[`cli-system`]
 |The system view, the runtime's lifecycle, and the cleanup in the terminal
 |`open`
-|link:system-contract.adoc[`system-contract`]; link:cli-overview.adoc[`cli-overview`] (the full-screen view)
+|link:system-contract.adoc[`system-contract`]; link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view)
 |epic clients
 
 |link:web-system.adoc[`web-system`]
 |The system view, the runtime's lifecycle, and the cleanup in the web app
 |`open`
-|link:system-contract.adoc[`system-contract`]; link:web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-design.adoc[`web-design`]
+|link:system-contract.adoc[`system-contract`]; link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
 |link:designer-contract.adoc[`designer-contract`]

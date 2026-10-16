@@ -19,7 +19,8 @@ export interface RuntimeState {
   isOnboarded: boolean;
   deviceLabel: string;
   machineName: string;
-  currentRoute: 'pair' | 'onboarding' | 'workspace' | 'settings' | 'designer' | 'revoked';
+  currentRoute:
+    'pair' | 'onboarding' | 'workspace' | 'settings' | 'designer' | 'revoked' | 'overview';
   currentState: StateRepresentation | null;
   isRevoked: boolean;
   revokedReason: string;

@@ -11,7 +11,10 @@ test.describe('Onboarding Flow', () => {
     // Navigate to Settings then click Configure on Harnesses aspect
     const settingsBtn = page.getByRole('button', { name: /Settings/i });
     await settingsBtn.click();
-    await page.locator('[data-aspect="harnesses"]').getByRole('button', { name: 'Configure' }).click();
+    await page
+      .locator('[data-aspect="harnesses"]')
+      .getByRole('button', { name: 'Configure' })
+      .click();
   });
 
   test('displays onboarding step bar and steps overview', async ({ page }) => {

@@ -16,7 +16,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,7 +42,8 @@ public final class MessageCatalogue {
             "settings",
             "designer",
             "workspace",
-            "devices"
+            "devices",
+            "overview"
     );
 
     private static final String DEFAULT_LOCALE = "en";
@@ -60,10 +60,28 @@ public final class MessageCatalogue {
      * @return supported locale string
      */
     public static String normalizeLocale(String locale) {
-        if (locale == null || !SUPPORTED_LOCALES.contains(locale.toLowerCase())) {
+        if (locale == null || locale.isBlank()) {
             return DEFAULT_LOCALE;
         }
-        return locale.toLowerCase();
+        String clean = locale.trim().toLowerCase();
+        if (SUPPORTED_LOCALES.contains(clean)) {
+            return clean;
+        }
+        int dash = clean.indexOf('-');
+        if (dash > 0) {
+            String lang = clean.substring(0, dash);
+            if (SUPPORTED_LOCALES.contains(lang)) {
+                return lang;
+            }
+        }
+        int underscore = clean.indexOf('_');
+        if (underscore > 0) {
+            String lang = clean.substring(0, underscore);
+            if (SUPPORTED_LOCALES.contains(lang)) {
+                return lang;
+            }
+        }
+        return DEFAULT_LOCALE;
     }
 
     /**
@@ -122,15 +140,139 @@ public final class MessageCatalogue {
             // Fall back to default locale
             template = getMessages(DEFAULT_LOCALE, "all").getOrDefault(key, key);
         }
-        if (params == null || params.isEmpty()) {
+        if (template.indexOf('{') < 0) {
             return template;
         }
 
-        String result = template;
-        for (Map.Entry<String, ?> entry : params.entrySet()) {
-            result = result.replace("{" + entry.getKey() + "}", Objects.toString(entry.getValue()));
+        return evaluateTemplate(template, params != null ? params : Map.of());
+    }
+
+    private static String evaluateTemplate(String template, Map<String, ?> params) {
+        var sb = new StringBuilder();
+        int i = 0;
+        int len = template.length();
+        while (i < len) {
+            int openIdx = template.indexOf('{', i);
+            if (openIdx < 0) {
+                sb.append(template.substring(i));
+                break;
+            }
+            sb.append(template, i, openIdx);
+            int closeIdx = findMatchingBrace(template, openIdx);
+            if (closeIdx < 0) {
+                sb.append(template.substring(openIdx));
+                break;
+            }
+            String expr = template.substring(openIdx + 1, closeIdx).trim();
+            int firstComma = expr.indexOf(',');
+            if (firstComma < 0) {
+                Object val = params.get(expr);
+                sb.append(val != null ? val : "{" + expr + "}");
+            } else {
+                String varName = expr.substring(0, firstComma).trim();
+                int secondComma = expr.indexOf(',', firstComma + 1);
+                if (secondComma < 0) {
+                    Object val = params.get(varName);
+                    sb.append(val != null ? val : "{" + expr + "}");
+                } else {
+                    String type = expr.substring(firstComma + 1, secondComma).trim().toLowerCase();
+                    String body = expr.substring(secondComma + 1).trim();
+                    Object rawVal = params.get(varName);
+                    if ("select".equals(type)) {
+                        String selector = rawVal != null ? rawVal.toString() : "";
+                        String selected = evaluateSelect(body, selector);
+                        sb.append(evaluateTemplate(selected, params));
+                    } else if ("plural".equals(type)) {
+                        long count = parseCount(rawVal);
+                        String selected = evaluatePlural(body, count);
+                        selected = selected.replace("#", String.valueOf(count));
+                        sb.append(evaluateTemplate(selected, params));
+                    } else {
+                        Object val = params.get(varName);
+                        sb.append(val != null ? val : "{" + expr + "}");
+                    }
+                }
+            }
+            i = closeIdx + 1;
+        }
+        return sb.toString();
+    }
+
+    private static int findMatchingBrace(String text, int start) {
+        int depth = 0;
+        for (int i = start; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static String evaluateSelect(String body, String selector) {
+        Map<String, String> cases = parseIcuCases(body);
+        if (cases.containsKey(selector)) {
+            return cases.get(selector);
+        }
+        return cases.getOrDefault("other", "");
+    }
+
+    private static String evaluatePlural(String body, long count) {
+        Map<String, String> cases = parseIcuCases(body);
+        String exactKey = "=" + count;
+        if (cases.containsKey(exactKey)) {
+            return cases.get(exactKey);
+        }
+        if (count == 1 && cases.containsKey("one")) {
+            return cases.get("one");
+        }
+        return cases.getOrDefault("other", "");
+    }
+
+    private static Map<String, String> parseIcuCases(String body) {
+        var result = new LinkedHashMap<String, String>();
+        int i = 0;
+        int len = body.length();
+        while (i < len) {
+            while (i < len && Character.isWhitespace(body.charAt(i))) {
+                i++;
+            }
+            if (i >= len) {
+                break;
+            }
+            int braceOpen = body.indexOf('{', i);
+            if (braceOpen < 0) {
+                break;
+            }
+            String caseName = body.substring(i, braceOpen).trim();
+            int braceClose = findMatchingBrace(body, braceOpen);
+            if (braceClose < 0) {
+                break;
+            }
+            String caseBody = body.substring(braceOpen + 1, braceClose);
+            result.put(caseName, caseBody);
+            i = braceClose + 1;
         }
         return result;
+    }
+
+    private static long parseCount(Object val) {
+        if (val instanceof Number n) {
+            return n.longValue();
+        }
+        if (val != null) {
+            try {
+                return Long.parseLong(val.toString().trim());
+            } catch (NumberFormatException _) {
+                // fallback to zero
+            }
+        }
+        return 0L;
     }
 
     private static Map<String, String> loadAreaMessages(String locale, String area) {

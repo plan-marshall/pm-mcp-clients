@@ -206,4 +206,43 @@ public class JsonTree {
     public static String string(Map<String, Object> object, String name) {
         return object != null && object.get(name) instanceof String text ? text : null;
     }
+
+    /**
+     * @param object an object, may be {@code null}
+     * @param name   the member name
+     * @return the member as number, or {@code null}
+     */
+    public static Number number(Map<String, Object> object, String name) {
+        if (object == null) {
+            return null;
+        }
+        var val = object.get(name);
+        return switch (val) {
+            case null -> null;
+            case Number n -> n;
+            case JsonNumber jn -> jn.longValue();
+            case String s -> {
+                try {
+                    yield Long.parseLong(s);
+                } catch (NumberFormatException _) {
+                    try {
+                        yield Double.parseDouble(s);
+                    } catch (NumberFormatException _) {
+                        yield null;
+                    }
+                }
+            }
+            default -> null;
+        };
+    }
+
+    /**
+     * @param object an object, may be {@code null}
+     * @param name   the member name
+     * @return the member as integer, or {@code null}
+     */
+    public static Integer integer(Map<String, Object> object, String name) {
+        var num = number(object, name);
+        return num != null ? num.intValue() : null;
+    }
 }
