@@ -31,8 +31,7 @@ export const fallbackMessages: Record<string, string> = {
   'devices.revoke.explain': 'It is signed out at once; its open pages close with the reason.',
   'devices.revoke.this_one':
     'It is the browser you are using: its pages close and show the pairing page; a new code pairs it again.',
-  'devices.revoke.others_title':
-    'Revoke {count} devices other than this one ({label})?',
+  'devices.revoke.others_title': 'Revoke {count} devices other than this one ({label})?',
   'devices.revoke.keep': 'Keep it',
   'devices.revoke.action': 'Revoke it',
   'devices.listener_off.done':
@@ -48,46 +47,68 @@ export const fallbackMessages: Record<string, string> = {
 export const currentLocale = writable<Locale>('en');
 export const messagesStore = writable<Record<string, string>>({});
 
-export function formatString(template: string, params?: Record<string, string | number>): string {
-  if (!params) return template;
-  let result = template;
+function parseSelectBranches(body: string): Record<string, string> {
+  const branches: Record<string, string> = {};
+  let i = 0;
+  while (i < body.length) {
+    while (i < body.length && /\s/.test(body[i])) i++;
+    if (i >= body.length) break;
+
+    const keyStart = i;
+    while (i < body.length && /[a-zA-Z0-9_-]/.test(body[i])) i++;
+    const key = body.slice(keyStart, i);
+
+    while (i < body.length && /\s/.test(body[i])) i++;
+    if (i >= body.length || body[i] !== '{') break;
+    i++;
+
+    let depth = 1;
+    const valStart = i;
+    while (i < body.length && depth > 0) {
+      if (body[i] === '{') depth++;
+      else if (body[i] === '}') depth--;
+      i++;
+    }
+    branches[key] = body.slice(valStart, i - 1);
+  }
+  return branches;
+}
+
+function resolveIcuSelect(result: string, params: Record<string, string | number>): string {
   const selectIdx = result.indexOf(', select,');
-  if (selectIdx !== -1) {
-    const openBrace = result.lastIndexOf('{', selectIdx);
-    if (openBrace !== -1) {
-      const varName = result.slice(openBrace + 1, selectIdx).trim();
-      const val = String(params[varName] ?? '');
-      let depth = 0;
-      let closeBrace = -1;
-      for (let i = openBrace; i < result.length; i++) {
-        if (result[i] === '{') depth++;
-        else if (result[i] === '}') {
-          depth--;
-          if (depth === 0) {
-            closeBrace = i;
-            break;
-          }
-        }
-      }
-      if (closeBrace !== -1) {
-        const body = result.slice(selectIdx + ', select,'.length, closeBrace);
-        const optionRegex = /(\w+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g;
-        let match: RegExpExecArray | null;
-        let chosenText = '';
-        let otherText = '';
-        while ((match = optionRegex.exec(body)) !== null) {
-          if (match[1] === val) {
-            chosenText = match[2];
-          } else if (match[1] === 'other') {
-            otherText = match[2];
-          }
-        }
-        const replacement = chosenText || otherText;
-        result = result.slice(0, openBrace) + replacement + result.slice(closeBrace + 1);
+  if (selectIdx === -1) return result;
+
+  const openBrace = result.lastIndexOf('{', selectIdx);
+  if (openBrace === -1) return result;
+
+  const varName = result.slice(openBrace + 1, selectIdx).trim();
+  const val = String(params[varName] ?? '');
+
+  let depth = 0;
+  let closeBrace = -1;
+  for (let i = openBrace; i < result.length; i++) {
+    if (result[i] === '{') depth++;
+    else if (result[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        closeBrace = i;
+        break;
       }
     }
   }
-  return result.replace(/\{(\w+)\}/g, (match, key) => {
+
+  if (closeBrace === -1) return result;
+
+  const body = result.slice(selectIdx + ', select,'.length, closeBrace);
+  const branches = parseSelectBranches(body);
+  const replacement = branches[val] ?? branches['other'] ?? '';
+  return result.slice(0, openBrace) + replacement + result.slice(closeBrace + 1);
+}
+
+export function formatString(template: string, params?: Record<string, string | number>): string {
+  if (!params) return template;
+  const processed = resolveIcuSelect(template, params);
+  return processed.replace(/\{(\w+)\}/g, (match, key) => {
     if (key in params) {
       return String(params[key]);
     }

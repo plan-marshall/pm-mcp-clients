@@ -26,10 +26,12 @@ import de.planmarshall.api.json.JsonTree;
 public record DeviceRenamedEvent(String deviceId, String label) {
 
     public static final String EVENT_NAME = "device.renamed";
+    private static final String FIELD_DEVICE_ID = "device_id";
+    private static final String FIELD_LABEL = "label";
 
     public DeviceRenamedEvent {
         Objects.requireNonNull(deviceId, "deviceId");
-        Objects.requireNonNull(label, "label");
+        Objects.requireNonNull(label, FIELD_LABEL);
     }
 
     /**
@@ -39,8 +41,8 @@ public record DeviceRenamedEvent(String deviceId, String label) {
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("device_id", deviceId);
-        map.put("label", label);
+        map.put(FIELD_DEVICE_ID, deviceId);
+        map.put(FIELD_LABEL, label);
         return map;
     }
 
@@ -61,11 +63,11 @@ public record DeviceRenamedEvent(String deviceId, String label) {
      */
     public static DeviceRenamedEvent fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var deviceId = JsonTree.string(map, "device_id");
+        var deviceId = JsonTree.string(map, FIELD_DEVICE_ID);
         if (deviceId == null) {
             deviceId = JsonTree.string(map, "deviceId");
         }
-        var label = JsonTree.string(map, "label");
+        var label = JsonTree.string(map, FIELD_LABEL);
         if (deviceId == null || label == null) {
             throw new JsonFormatException("Missing device_id or label in DeviceRenamedEvent");
         }

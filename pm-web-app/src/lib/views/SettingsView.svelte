@@ -170,7 +170,20 @@
     try {
       const d = new Date(rawDate);
       const day = d.getUTCDate();
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       const month = months[d.getUTCMonth()];
       return `paired ${day} ${month} ${fromStr}`;
     } catch {
@@ -199,7 +212,20 @@
         return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
       }
       const day = d.getUTCDate();
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
       const month = months[d.getUTCMonth()];
       const hours = String(d.getUTCHours()).padStart(2, '0');
       const mins = String(d.getUTCMinutes()).padStart(2, '0');
@@ -249,7 +275,11 @@
         </h2>
       </div>
       {#if otherDevicesCount > 0}
-        <Button variant="danger" on:click={() => promptRevoke('others')} data-testid="revoke-others-button">
+        <Button
+          variant="danger"
+          on:click={() => promptRevoke('others')}
+          data-testid="revoke-others-button"
+        >
           {$t('devices.act.revoke_others')}
         </Button>
       {/if}
@@ -295,9 +325,7 @@
                       >
                         Save
                       </Button>
-                      <Button variant="ghost" on:click={() => (renamingId = null)}>
-                        Cancel
-                      </Button>
+                      <Button variant="ghost" on:click={() => (renamingId = null)}>Cancel</Button>
                     </div>
                   {:else}
                     <strong class="device-label">{device.label}</strong>
@@ -359,10 +387,13 @@
       <div class="modal-card">
         {#if pendingRevokeTarget === 'others'}
           <h3 class="modal-title">
-            Revoke all {otherDevicesCount} other paired {otherDevicesCount === 1 ? 'device' : 'devices'}?
+            Revoke all {otherDevicesCount} other paired {otherDevicesCount === 1
+              ? 'device'
+              : 'devices'}?
           </h3>
           <p class="modal-explain">
-            {($runtimeStore.deviceLabel || 'This browser')} stays paired; every other browser is signed out.
+            {$runtimeStore.deviceLabel || 'This browser'} stays paired; every other browser is signed
+            out.
           </p>
           <div class="modal-actions">
             <Button variant="ghost" on:click={cancelRevoke} data-testid="revoke-cancel-button">

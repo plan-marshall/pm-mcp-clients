@@ -197,7 +197,8 @@
               </Button>
               <Button
                 variant="primary"
-                on:click={() => handleLinkClick('/api/v1/operator/onboard/begin', { mode: 'guided' })}
+                on:click={() =>
+                  handleLinkClick('/api/v1/operator/onboard/begin', { mode: 'guided' })}
               >
                 {$t('onboard.mode.guided')}
               </Button>

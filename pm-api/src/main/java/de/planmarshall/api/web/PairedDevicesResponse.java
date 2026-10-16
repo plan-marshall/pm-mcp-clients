@@ -37,10 +37,7 @@ public record PairedDevicesResponse(List<PairedDevice> devices, boolean lanListe
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        var list = new ArrayList<Map<String, Object>>(devices.size());
-        for (var d : devices) {
-            list.add(d.toMap());
-        }
+        var list = devices.stream().map(PairedDevice::toMap).toList();
         map.put("devices", list);
         map.put("lan_listener_on", lanListenerOn);
         return map;

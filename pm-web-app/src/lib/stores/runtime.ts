@@ -99,7 +99,8 @@ export async function initRuntime(): Promise<void> {
 
   apiClient.setOnRevoked((info) => {
     const reasonStr = typeof info === 'string' ? info : info?.reason || 'device_revoked';
-    const revokedObj: RevokedInfo = typeof info === 'object' && info !== null ? info : { reason: reasonStr };
+    const revokedObj: RevokedInfo =
+      typeof info === 'object' && info !== null ? info : { reason: reasonStr };
     runtimeStore.update((s) => ({
       ...s,
       isPaired: false,

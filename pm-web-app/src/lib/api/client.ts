@@ -303,10 +303,15 @@ export class ApiClient {
             const parsed = parseSseChunk(chunk);
             if (!parsed) continue;
 
-            const revoked = handleSseMessage(parsed.eventType, parsed.eventData, onEvent, (reason) => {
-              this.clearAuth();
-              this.onRevokedCallback?.(reason);
-            });
+            const revoked = handleSseMessage(
+              parsed.eventType,
+              parsed.eventData,
+              onEvent,
+              (reason) => {
+                this.clearAuth();
+                this.onRevokedCallback?.(reason);
+              },
+            );
 
             if (revoked) {
               abortAll();

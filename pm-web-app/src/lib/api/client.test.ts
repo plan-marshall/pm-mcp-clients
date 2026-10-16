@@ -118,9 +118,15 @@ describe('ApiClient', () => {
   it('rejects protocol-relative and slash-backslash paths', async () => {
     await expect(client.request('GET', '//attacker.com')).rejects.toThrow('Invalid request path');
     await expect(client.request('GET', '/\\attacker.com')).rejects.toThrow('Invalid request path');
-    await expect(client.request('GET', 'http://attacker.com')).rejects.toThrow('Invalid request path');
-    await expect(client.request('GET', '/\t/attacker.example/path')).rejects.toThrow('Invalid request path');
-    await expect(client.request('GET', '/\n/attacker.example/path')).rejects.toThrow('Invalid request path');
+    await expect(client.request('GET', 'http://attacker.com')).rejects.toThrow(
+      'Invalid request path',
+    );
+    await expect(client.request('GET', '/\t/attacker.example/path')).rejects.toThrow(
+      'Invalid request path',
+    );
+    await expect(client.request('GET', '/\n/attacker.example/path')).rejects.toThrow(
+      'Invalid request path',
+    );
   });
 
   it('fetches message catalogue and available locales via API', async () => {

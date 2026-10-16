@@ -46,6 +46,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_STATE = "state";
     private static final String KEY_SCENARIO = "scenario";
     private static final String KEY_STATUS = "status";
+    private static final String KEY_LOOPBACK = "loopback";
+    private static final String KEY_DEVICE_ID = "device_id";
+    private static final String KEY_LABEL = "label";
+    private static final String KEY_MOCK_DEVICE_1 = "mock-device-1";
+    private static final String PATH_DEVICES = "/api/v1/web/devices";
+    private static final String PATH_DEVICES_SLASH = "/api/v1/web/devices/";
     private static final String METHOD_DELETE = "DELETE";
     private static final String EVENT_STREAM_CLOSED = "stream.closed";
     private static final String KEY_REASON = "reason";
@@ -108,11 +114,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void initDefaultDevices() {
         synchronized (devicesLock) {
             pairedDevices.clear();
-            pairedDevices.add(new PairedDevice("dev-1", "Firefox on mbp-oliver", "loopback",
+            pairedDevices.add(new PairedDevice("dev-1", "Firefox on mbp-oliver", KEY_LOOPBACK,
                     Instant.parse("2026-05-12T10:00:00Z"), Instant.parse("2026-10-16T14:02:00Z")));
             pairedDevices.add(new PairedDevice("dev-2", "Safari on iPad", "network",
                     Instant.parse("2026-05-20T10:00:00Z"), Instant.parse("2026-10-13T10:00:00Z")));
-            pairedDevices.add(new PairedDevice("dev-3", "Chrome on build-box", "loopback",
+            pairedDevices.add(new PairedDevice("dev-3", "Chrome on build-box", KEY_LOOPBACK,
                     Instant.parse("2026-06-02T10:00:00Z"), Instant.parse("2026-09-08T10:00:00Z")));
             lanListenerOn = true;
         }
@@ -389,45 +395,50 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return path.equals(String.valueOf(targetObj));
     }
 
-    private void handlePairing(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        String code = null;
+    private static String extractPairingCode(MockHttpRequest request) {
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
                 if (parsed != null) {
-                    code = JsonTree.string(parsed, "code");
+                    var code = JsonTree.string(parsed, "code");
+                    if (code != null) {
+                        return code;
+                    }
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
             } catch (IOException | RuntimeException _) {
                 // Ignore parse errors from invalid body
             }
         }
-        if (code == null && request.query() != null) {
+        if (request.query() != null) {
             for (var part : request.query().split("&")) {
                 if (part.startsWith("code=")) {
-                    code = part.substring(5);
-                    break;
+                    return part.substring(5);
                 }
             }
         }
+        return null;
+    }
 
+    private void handlePairing(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var code = extractPairingCode(request);
         var expectedCode = currentScenario.get().pairingCode();
         if (code != null && code.replace("-", "").equalsIgnoreCase(expectedCode.replace("-", ""))) {
             var body = Map.of(
                     "device_secret", deviceSecret,
-                    "device_id", "mock-device-1",
-                    "label", "Mock Browser"
+                    KEY_DEVICE_ID, KEY_MOCK_DEVICE_1,
+                    KEY_LABEL, "Mock Browser"
             );
             synchronized (devicesLock) {
                 boolean found = false;
                 for (var d : pairedDevices) {
-                    if ("mock-device-1".equals(d.deviceId())) {
+                    if (KEY_MOCK_DEVICE_1.equals(d.deviceId())) {
                         found = true;
                         break;
                     }
                 }
                 if (!found) {
-                    pairedDevices.add(new PairedDevice("mock-device-1", "Mock Browser", "loopback", Instant.now(), Instant.now()));
+                    pairedDevices.add(new PairedDevice(KEY_MOCK_DEVICE_1, "Mock Browser", KEY_LOOPBACK, Instant.now(), Instant.now()));
                 }
             }
             response.json(200, body);
@@ -436,182 +447,203 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    private void handleCreatePairing(MockHttpResponse response) throws IOException {
+        var code = currentScenario.get().pairingCode();
+        if (code == null || code.isBlank()) {
+            code = "KXQB-MRTN";
+        }
+        var url = "http://127.0.0.1:7420/pair#code=" + code;
+        response.json(201, Map.of("code", code, "url", url, "valid_until", "10m"));
+    }
+
+    private void handleListDevices(MockHttpResponse response) throws IOException {
+        var list = new ArrayList<Map<String, Object>>();
+        synchronized (devicesLock) {
+            for (var dev : pairedDevices) {
+                list.add(dev.toMap());
+            }
+        }
+        response.json(200, list);
+    }
+
+    private void handleRenameDevice(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
+        var sub = path.substring(PATH_DEVICES_SLASH.length());
+        if (sub.endsWith("/rename")) {
+            sub = sub.substring(0, sub.length() - "/rename".length());
+        }
+        var targetId = sub;
+        String newLabel = null;
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null) {
+                    newLabel = JsonTree.string(parsed, KEY_LABEL);
+                }
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IOException | RuntimeException _) {
+                // Ignore parse errors from invalid body
+            }
+        }
+        if (newLabel == null || newLabel.isBlank()) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_label", KEY_MESSAGE, "Device label must not be blank"));
+            return;
+        }
+
+        PairedDevice updated = null;
+        synchronized (devicesLock) {
+            for (int i = 0; i < pairedDevices.size(); i++) {
+                var dev = pairedDevices.get(i);
+                if (dev.deviceId().equals(targetId) || String.valueOf(i + 1).equals(targetId)) {
+                    updated = new PairedDevice(dev.deviceId(), newLabel, dev.pairedFrom(), dev.createdAt(), Instant.now());
+                    pairedDevices.set(i, updated);
+                    break;
+                }
+            }
+        }
+
+        if (updated != null) {
+            broadcastEvent("device.renamed", Map.of(KEY_DEVICE_ID, updated.deviceId(), KEY_LABEL, updated.label()));
+            response.json(200, updated.toMap());
+        } else {
+            response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
+        }
+    }
+
+    private void handleRevokeSingleDevice(MockHttpResponse response, String path, boolean isWeb) throws IOException {
+        var targetId = path.substring(PATH_DEVICES_SLASH.length());
+        PairedDevice removed = null;
+        synchronized (devicesLock) {
+            for (int i = 0; i < pairedDevices.size(); i++) {
+                var dev = pairedDevices.get(i);
+                if (dev.deviceId().equals(targetId) || String.valueOf(i + 1).equals(targetId)) {
+                    removed = pairedDevices.remove(i);
+                    break;
+                }
+            }
+        }
+
+        if (removed != null) {
+            broadcastEvent("device.revoked", Map.of(KEY_DEVICE_ID, removed.deviceId()));
+            broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
+                    KEY_REASON, "device_revoked",
+                    KEY_DETAILS, "Revoked",
+                    "revoked_by", isWeb ? "another device" : "the terminal client",
+                    "revoked_at", "today at 14:10"
+            ));
+            response.json(200, Map.of(KEY_STATUS, "revoked", KEY_DEVICE_ID, removed.deviceId(), KEY_LABEL, removed.label()));
+        } else {
+            response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
+        }
+    }
+
+    private void handleRevokeAllDevices(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        var query = request.query() != null ? request.query().toLowerCase() : "";
+        boolean isOthers = query.contains("others");
+
+        var removedList = new ArrayList<PairedDevice>();
+        PairedDevice kept = null;
+        synchronized (devicesLock) {
+            if (isOthers && isWeb) {
+                if (!pairedDevices.isEmpty()) {
+                    kept = pairedDevices.getFirst();
+                    for (int i = pairedDevices.size() - 1; i >= 1; i--) {
+                        removedList.add(pairedDevices.remove(i));
+                    }
+                }
+            } else {
+                removedList.addAll(pairedDevices);
+                pairedDevices.clear();
+            }
+        }
+
+        for (var dev : removedList) {
+            broadcastEvent("device.revoked", Map.of(KEY_DEVICE_ID, dev.deviceId()));
+            broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
+                    KEY_REASON, "device_revoked",
+                    KEY_DETAILS, "Revoked",
+                    "revoked_by", isWeb ? "another device" : "the terminal client",
+                    "revoked_at", "today at 14:10"
+            ));
+        }
+
+        var resp = new LinkedHashMap<String, Object>();
+        resp.put(KEY_STATUS, "revoked");
+        resp.put("revoked_count", removedList.size());
+        resp.put("remaining_count", pairedDevices.size());
+        if (kept != null) {
+            resp.put("kept_label", kept.label());
+        }
+        response.json(200, resp);
+    }
+
+    private void handleCloseLanListener(MockHttpResponse response) throws IOException {
+        lanListenerOn = false;
+        broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
+                KEY_REASON, "listener_closed",
+                KEY_DETAILS, "The network listener was turned off"
+        ));
+        response.json(200, Map.of("lan", false, KEY_STATUS, "listener_off"));
+    }
+
+    private void handleUpdateWebConfig(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null && parsed.containsKey("lan")) {
+                    lanListenerOn = Boolean.TRUE.equals(parsed.get("lan"));
+                }
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IOException | RuntimeException _) {
+                // Ignore body parsing failures and retain existing listener state
+            }
+        }
+        var resp = new LinkedHashMap<String, Object>();
+        resp.put("enabled", true);
+        resp.put("lan", lanListenerOn);
+        resp.put("port", 7420);
+        resp.put("open", true);
+        response.json(200, resp);
+    }
+
     private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
         var path = request.path();
         var method = request.method();
 
-        // POST /api/v1/web/pairings
         if ("POST".equals(method) && "/api/v1/web/pairings".equals(path)) {
-            var code = currentScenario.get().pairingCode();
-            if (code == null || code.isBlank()) {
-                code = "KXQB-MRTN";
-            }
-            var url = "http://127.0.0.1:7420/pair#code=" + code;
-            response.json(201, Map.of("code", code, "url", url, "valid_until", "10m"));
+            handleCreatePairing(response);
             return true;
         }
 
-        // GET /api/v1/web/devices
-        if ("GET".equals(method) && "/api/v1/web/devices".equals(path)) {
-            var list = new ArrayList<Map<String, Object>>();
-            synchronized (devicesLock) {
-                for (var dev : pairedDevices) {
-                    list.add(dev.toMap());
-                }
-            }
-            response.json(200, list);
+        if ("GET".equals(method) && PATH_DEVICES.equals(path)) {
+            handleListDevices(response);
             return true;
         }
 
-        // PATCH, PUT, POST on /api/v1/web/devices/{id} or /api/v1/web/devices/{id}/rename
-        if (("PATCH".equals(method) || "PUT".equals(method) || "POST".equals(method)) && path.startsWith("/api/v1/web/devices/")) {
-            var sub = path.substring("/api/v1/web/devices/".length());
-            if (sub.endsWith("/rename")) {
-                sub = sub.substring(0, sub.length() - "/rename".length());
-            }
-            var targetId = sub;
-            String newLabel = null;
-            if (request.body().length > 0) {
-                try {
-                    var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-                    if (parsed != null) {
-                        newLabel = JsonTree.string(parsed, "label");
-                    }
-                    // cui-rewrite:disable InvalidExceptionUsageRecipe
-                } catch (IOException | RuntimeException _) {
-                }
-            }
-            if (newLabel == null || newLabel.isBlank()) {
-                response.json(400, Map.of(KEY_ERROR, "invalid_label", KEY_MESSAGE, "Device label must not be blank"));
-                return true;
-            }
-
-            PairedDevice updated = null;
-            synchronized (devicesLock) {
-                for (int i = 0; i < pairedDevices.size(); i++) {
-                    var dev = pairedDevices.get(i);
-                    if (dev.deviceId().equals(targetId) || String.valueOf(i + 1).equals(targetId)) {
-                        updated = new PairedDevice(dev.deviceId(), newLabel, dev.pairedFrom(), dev.createdAt(), Instant.now());
-                        pairedDevices.set(i, updated);
-                        break;
-                    }
-                }
-            }
-
-            if (updated != null) {
-                broadcastEvent("device.renamed", Map.of("device_id", updated.deviceId(), "label", updated.label()));
-                response.json(200, updated.toMap());
-            } else {
-                response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
-            }
+        if (("PATCH".equals(method) || "PUT".equals(method) || "POST".equals(method)) && path.startsWith(PATH_DEVICES_SLASH)) {
+            handleRenameDevice(request, response, path);
             return true;
         }
 
-        // DELETE /api/v1/web/devices/{id}
-        if (METHOD_DELETE.equals(method) && path.startsWith("/api/v1/web/devices/") && !"/api/v1/web/devices".equals(path)) {
-            var targetId = path.substring("/api/v1/web/devices/".length());
-            PairedDevice removed = null;
-            synchronized (devicesLock) {
-                for (int i = 0; i < pairedDevices.size(); i++) {
-                    var dev = pairedDevices.get(i);
-                    if (dev.deviceId().equals(targetId) || String.valueOf(i + 1).equals(targetId)) {
-                        removed = pairedDevices.remove(i);
-                        break;
-                    }
-                }
-            }
-
-            if (removed != null) {
-                broadcastEvent("device.revoked", Map.of("device_id", removed.deviceId()));
-                broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
-                        KEY_REASON, "device_revoked",
-                        KEY_DETAILS, "Revoked",
-                        "revoked_by", isWeb ? "another device" : "the terminal client",
-                        "revoked_at", "today at 14:10"
-                ));
-                response.json(200, Map.of(KEY_STATUS, "revoked", "device_id", removed.deviceId(), "label", removed.label()));
-            } else {
-                response.json(404, Map.of(KEY_ERROR, "device_not_found", KEY_MESSAGE, "Device not found: " + targetId));
-            }
+        if (METHOD_DELETE.equals(method) && path.startsWith(PATH_DEVICES_SLASH) && !PATH_DEVICES.equals(path)) {
+            handleRevokeSingleDevice(response, path, isWeb);
             return true;
         }
 
-        // DELETE /api/v1/web/devices (revoke all or revoke others)
-        if (METHOD_DELETE.equals(method) && "/api/v1/web/devices".equals(path)) {
-            var query = request.query() != null ? request.query().toLowerCase() : "";
-            boolean isOthers = query.contains("others");
-
-            var removedList = new ArrayList<PairedDevice>();
-            PairedDevice kept = null;
-            synchronized (devicesLock) {
-                if (isOthers && isWeb) {
-                    if (!pairedDevices.isEmpty()) {
-                        kept = pairedDevices.getFirst();
-                        for (int i = pairedDevices.size() - 1; i >= 1; i--) {
-                            removedList.add(pairedDevices.remove(i));
-                        }
-                    }
-                } else {
-                    removedList.addAll(pairedDevices);
-                    pairedDevices.clear();
-                }
-            }
-
-            for (var dev : removedList) {
-                broadcastEvent("device.revoked", Map.of("device_id", dev.deviceId()));
-                broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
-                        KEY_REASON, "device_revoked",
-                        KEY_DETAILS, "Revoked",
-                        "revoked_by", isWeb ? "another device" : "the terminal client",
-                        "revoked_at", "today at 14:10"
-                ));
-            }
-
-            var resp = new LinkedHashMap<String, Object>();
-            resp.put(KEY_STATUS, "revoked");
-            resp.put("revoked_count", removedList.size());
-            resp.put("remaining_count", pairedDevices.size());
-            if (kept != null) {
-                resp.put("kept_label", kept.label());
-            }
-            response.json(200, resp);
+        if (METHOD_DELETE.equals(method) && PATH_DEVICES.equals(path)) {
+            handleRevokeAllDevices(request, response, isWeb);
             return true;
         }
 
-        // DELETE /api/v1/web/listeners/lan
         if (METHOD_DELETE.equals(method) && "/api/v1/web/listeners/lan".equals(path)) {
-            lanListenerOn = false;
-            broadcastEvent(EVENT_STREAM_CLOSED, Map.of(
-                    KEY_REASON, "listener_closed",
-                    KEY_DETAILS, "The network listener was turned off"
-            ));
-            response.json(200, Map.of("lan", false, KEY_STATUS, "listener_off"));
+            handleCloseLanListener(response);
             return true;
         }
 
-        // PUT /api/v1/web
         if ("PUT".equals(method) && "/api/v1/web".equals(path)) {
-            if (request.body().length > 0) {
-                try {
-                    var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-                    if (parsed != null && parsed.containsKey("lan")) {
-                        lanListenerOn = Boolean.TRUE.equals(parsed.get("lan"));
-                    }
-                    // cui-rewrite:disable InvalidExceptionUsageRecipe
-                } catch (IOException | RuntimeException _) {
-                    // Ignore body parsing failures and retain existing listener state
-                }
-            }
-            var resp = new LinkedHashMap<String, Object>();
-            resp.put("enabled", true);
-            resp.put("lan", lanListenerOn);
-            resp.put("port", 7420);
-            resp.put("open", true);
-            response.json(200, resp);
+            handleUpdateWebConfig(request, response);
             return true;
         }
 
-        // GET /api/v1/web
         if ("GET".equals(method) && "/api/v1/web".equals(path)) {
             var resp = new LinkedHashMap<String, Object>();
             resp.put("enabled", true);

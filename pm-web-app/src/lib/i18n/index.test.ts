@@ -83,4 +83,32 @@ describe('i18n dynamic message formatting', () => {
     expect(get(currentLocale)).toBe('de');
     expect(loadSpy).toHaveBeenCalledWith('de', 'all');
   });
+
+  it('formats ICU select strings correctly for matched branch and other fallback', () => {
+    const template =
+      '{reason, select, device_expired {It expired after not being used since {time}.} other {It was revoked from {by} {time}.}}';
+
+    expect(
+      formatString(template, {
+        reason: 'device_expired',
+        time: 'yesterday',
+      }),
+    ).toBe('It expired after not being used since yesterday.');
+
+    expect(
+      formatString(template, {
+        reason: 'device_revoked',
+        by: 'terminal',
+        time: '14:10',
+      }),
+    ).toBe('It was revoked from terminal 14:10.');
+
+    expect(
+      formatString(template, {
+        reason: 'unknown_reason',
+        by: 'admin',
+        time: 'now',
+      }),
+    ).toBe('It was revoked from admin now.');
+  });
 });

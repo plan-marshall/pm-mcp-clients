@@ -22,7 +22,7 @@
   <div class="revoked-card">
     <h1 class="revoked-title">{$t('devices.revoked.title')}</h1>
     <hr class="revoked-divider" />
-    
+
     <p class="revoked-reason" data-testid="revoked-reason">
       {$t('devices.revoked.reason', { reason: reasonKey, by, time })}
     </p>

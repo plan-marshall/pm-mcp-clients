@@ -36,10 +36,17 @@ String pairedFrom,
 Instant createdAt,
 Instant lastUsedAt
 ) {
+    private static final String FIELD_DEVICE_ID = "device_id";
+    private static final String FIELD_LABEL = "label";
+    private static final String FIELD_PAIRED_FROM = "paired_from";
+    private static final String FIELD_CREATED_AT = "created_at";
+    private static final String FIELD_LAST_USED_AT = "last_used_at";
+    private static final String DEFAULT_ORIGIN = "loopback";
+
     public PairedDevice {
         Objects.requireNonNull(deviceId, "deviceId");
-        Objects.requireNonNull(label, "label");
-        pairedFrom = pairedFrom == null || pairedFrom.isBlank() ? "loopback" : pairedFrom;
+        Objects.requireNonNull(label, FIELD_LABEL);
+        pairedFrom = pairedFrom == null || pairedFrom.isBlank() ? DEFAULT_ORIGIN : pairedFrom;
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(lastUsedAt, "lastUsedAt");
     }
@@ -51,11 +58,11 @@ Instant lastUsedAt
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("device_id", deviceId);
-        map.put("label", label);
-        map.put("paired_from", pairedFrom);
-        map.put("created_at", createdAt.toString());
-        map.put("last_used_at", lastUsedAt.toString());
+        map.put(FIELD_DEVICE_ID, deviceId);
+        map.put(FIELD_LABEL, label);
+        map.put(FIELD_PAIRED_FROM, pairedFrom);
+        map.put(FIELD_CREATED_AT, createdAt.toString());
+        map.put(FIELD_LAST_USED_AT, lastUsedAt.toString());
         return map;
     }
 
@@ -76,20 +83,20 @@ Instant lastUsedAt
      */
     public static PairedDevice fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var deviceId = JsonTree.string(map, "device_id");
+        var deviceId = JsonTree.string(map, FIELD_DEVICE_ID);
         if (deviceId == null) {
             deviceId = JsonTree.string(map, "deviceId");
         }
-        var label = JsonTree.string(map, "label");
-        var pairedFrom = JsonTree.string(map, "paired_from");
+        var label = JsonTree.string(map, FIELD_LABEL);
+        var pairedFrom = JsonTree.string(map, FIELD_PAIRED_FROM);
         if (pairedFrom == null) {
             pairedFrom = JsonTree.string(map, "pairedFrom");
         }
-        var createdAtStr = JsonTree.string(map, "created_at");
+        var createdAtStr = JsonTree.string(map, FIELD_CREATED_AT);
         if (createdAtStr == null) {
             createdAtStr = JsonTree.string(map, "createdAt");
         }
-        var lastUsedAtStr = JsonTree.string(map, "last_used_at");
+        var lastUsedAtStr = JsonTree.string(map, FIELD_LAST_USED_AT);
         if (lastUsedAtStr == null) {
             lastUsedAtStr = JsonTree.string(map, "lastUsedAt");
         }
@@ -99,7 +106,7 @@ Instant lastUsedAt
         }
         var createdAt = createdAtStr != null ? Instant.parse(createdAtStr) : Instant.now();
         var lastUsedAt = lastUsedAtStr != null ? Instant.parse(lastUsedAtStr) : Instant.now();
-        return new PairedDevice(deviceId, label, pairedFrom != null ? pairedFrom : "loopback", createdAt, lastUsedAt);
+        return new PairedDevice(deviceId, label, pairedFrom != null ? pairedFrom : DEFAULT_ORIGIN, createdAt, lastUsedAt);
     }
 
     /**
@@ -146,10 +153,7 @@ Instant lastUsedAt
      * @return JSON string
      */
     public static String writeList(List<PairedDevice> devices) {
-        var list = new ArrayList<Map<String, Object>>(devices.size());
-        for (var d : devices) {
-            list.add(d.toMap());
-        }
+        var list = devices.stream().map(PairedDevice::toMap).toList();
         return JsonTree.write(list);
     }
 }

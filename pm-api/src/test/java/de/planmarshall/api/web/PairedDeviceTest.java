@@ -110,7 +110,7 @@ class PairedDeviceTest {
     void shouldRoundTripEvents() throws Exception {
         // DeviceRenamedEvent
         var rename = new DeviceRenamedEvent("dev-1", "Work Laptop");
-        assertEquals(DeviceRenamedEvent.EVENT_NAME, "device.renamed");
+        assertEquals("device.renamed", DeviceRenamedEvent.EVENT_NAME);
         var renameJson = rename.toJson();
         var parsedRename = DeviceRenamedEvent.fromJson(renameJson);
         assertEquals("dev-1", parsedRename.deviceId());
@@ -118,14 +118,14 @@ class PairedDeviceTest {
 
         // DeviceRevokedEvent
         var revoke = new DeviceRevokedEvent("dev-2");
-        assertEquals(DeviceRevokedEvent.EVENT_NAME, "device.revoked");
+        assertEquals("device.revoked", DeviceRevokedEvent.EVENT_NAME);
         var revokeJson = revoke.toJson();
         var parsedRevoke = DeviceRevokedEvent.fromJson(revokeJson);
         assertEquals("dev-2", parsedRevoke.deviceId());
 
         // StreamClosedEvent
         var closed = new StreamClosedEvent(StreamClosedEvent.REASON_DEVICE_REVOKED, "Revoked from terminal", "terminal", "14:10");
-        assertEquals(StreamClosedEvent.EVENT_NAME, "stream.closed");
+        assertEquals("stream.closed", StreamClosedEvent.EVENT_NAME);
         var closedJson = closed.toJson();
         var parsedClosed = StreamClosedEvent.fromJson(closedJson);
         assertEquals(StreamClosedEvent.REASON_DEVICE_REVOKED, parsedClosed.reason());
@@ -137,5 +137,37 @@ class PairedDeviceTest {
         var parsedSimple = StreamClosedEvent.fromJson(simpleClosed.toJson());
         assertEquals(StreamClosedEvent.REASON_LISTENER_CLOSED, parsedSimple.reason());
         assertNull(parsedSimple.details());
+    }
+
+    @Test
+    void shouldHandlePairedDeviceListParsingAndErrors() throws Exception {
+        var now = Instant.now();
+        var dev = new PairedDevice("d-1", "Test Dev", null, now, now);
+        assertEquals("loopback", dev.pairedFrom());
+
+        var listJson = PairedDevice.writeList(List.of(dev));
+        var parsedList = PairedDevice.parseList(listJson);
+        assertEquals(1, parsedList.size());
+        assertEquals("d-1", parsedList.getFirst().deviceId());
+
+        // camelCase fallback parsing
+        var camelCaseJson = "{\"deviceId\":\"d-2\",\"label\":\"L2\",\"pairedFrom\":\"network\",\"createdAt\":\""
+                + now + "\",\"lastUsedAt\":\"" + now + "\"}";
+        var parsedCamel = PairedDevice.fromJson(camelCaseJson);
+        assertEquals("d-2", parsedCamel.deviceId());
+        assertEquals("L2", parsedCamel.label());
+        assertEquals("network", parsedCamel.pairedFrom());
+
+        // parse errors
+        assertThrows(JsonFormatException.class, () -> PairedDevice.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> PairedDevice.fromJson("{}"));
+        assertThrows(JsonFormatException.class, () -> PairedDevice.parseList("{}"));
+        assertThrows(JsonFormatException.class, () -> DeviceRenamedEvent.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> DeviceRenamedEvent.fromJson("{\"device_id\":\"1\"}"));
+        assertThrows(JsonFormatException.class, () -> DeviceRevokedEvent.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> DeviceRevokedEvent.fromJson("{}"));
+        assertThrows(JsonFormatException.class, () -> StreamClosedEvent.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> StreamClosedEvent.fromJson("{}"));
+        assertThrows(JsonFormatException.class, () -> PairedDevicesResponse.fromJson("\"not json obj\""));
     }
 }

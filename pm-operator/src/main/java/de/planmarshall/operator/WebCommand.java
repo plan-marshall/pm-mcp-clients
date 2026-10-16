@@ -376,7 +376,7 @@ public final class WebCommand implements Callable<Integer> {
                     processInteractiveChoice(runtime, out, reader, list, line.trim());
                 }
             }
-            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
                 // Ignore interactive terminal read exception
             }
@@ -473,7 +473,12 @@ public final class WebCommand implements Callable<Integer> {
                 var rawLabel = dev.get(LABEL);
                 var labelVal = rawLabel != null ? ConsoleNotice.stripControlSequences(rawLabel.toString()) : "browser";
                 var pairedFrom = dev.get("paired_from");
-                var fromStr = LOOPBACK.equals(pairedFrom) ? LOOPBACK : (pairedFrom != null ? pairedFrom.toString() : "network");
+                var fromStr = "network";
+                if (LOOPBACK.equals(pairedFrom)) {
+                    fromStr = LOOPBACK;
+                } else if (pairedFrom != null) {
+                    fromStr = pairedFrom.toString();
+                }
                 var pairedDate = formatPairedDate(dev.get("created_at"));
                 var lastUsed = formatLastUsed(dev.get("last_used_at"));
 
@@ -541,7 +546,7 @@ public final class WebCommand implements Callable<Integer> {
                 var answer = reader.readLine("Revoke? [Enter]   b) back   ?   › ");
                 return answer == null || (!"b".equalsIgnoreCase(answer.trim()) && !"back".equalsIgnoreCase(answer.trim()));
             }
-            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
                 return true;
             }
@@ -575,7 +580,7 @@ public final class WebCommand implements Callable<Integer> {
         if (!Boolean.TRUE.equals(web.get("enabled"))) {
             return "disabled";
         }
-        return "enabled (" + (Boolean.TRUE.equals(web.get("lan")) ? "lan" : "loopback") + "), port "
+        return "enabled (" + (Boolean.TRUE.equals(web.get("lan")) ? "lan" : LOOPBACK) + "), port "
                 + web.get("port") + ", " + (Boolean.TRUE.equals(web.get("open")) ? "open" : "not open");
     }
 }

@@ -21,6 +21,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -28,6 +29,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -170,9 +173,14 @@ class WebDevicesCommandTest {
         );
     }
 
-    @Test
-    @DisplayName("revokes device 3")
-    void revokesDevice3() throws Exception {
+    @ParameterizedTest
+    @CsvSource({
+            "revoke, dev-3, ✓ Revoked paired device(s)",
+            "revoke, --others, ✓ Revoked paired device(s)",
+            "listener-off, '', ✓ Network listener turned off (loopback remains open)"
+    })
+    @DisplayName("executes single, others revoke and listener-off actions directly")
+    void executesDirectActions(String action, String argument, String expectedOutput) throws Exception {
         seedRuntimeRoutes(true);
 
         var context = createContext("");
@@ -180,50 +188,17 @@ class WebDevicesCommandTest {
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
 
-        int code = cmd.execute("revoke", "dev-3");
+        int code;
+        if (argument != null && !argument.isBlank()) {
+            code = cmd.execute(action, argument);
+        } else {
+            code = cmd.execute(action);
+        }
 
         var output = writer.toString();
         assertAll(
                 () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
-        );
-    }
-
-    @Test
-    @DisplayName("revokes others")
-    void revokesOthers() throws Exception {
-        seedRuntimeRoutes(true);
-
-        var context = createContext("");
-        var writer = new StringWriter();
-        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
-        cmd.setOut(new PrintWriter(writer));
-
-        int code = cmd.execute("revoke", "--others");
-
-        var output = writer.toString();
-        assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
-        );
-    }
-
-    @Test
-    @DisplayName("turns network listener off via listener-off action")
-    void turnsNetworkListenerOff() throws Exception {
-        seedRuntimeRoutes(true);
-
-        var context = createContext("");
-        var writer = new StringWriter();
-        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
-        cmd.setOut(new PrintWriter(writer));
-
-        int code = cmd.execute("listener-off");
-
-        var output = writer.toString();
-        assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("✓ Network listener turned off (loopback remains open)"))
+                () -> assertTrue(output.contains(expectedOutput))
         );
     }
 
@@ -376,5 +351,16 @@ class WebDevicesCommandTest {
                 () -> assertEquals(0, code),
                 () -> assertTrue(output.contains("No paired devices."))
         );
+    }
+
+    @Test
+    @DisplayName("tests WebCommand.describe formatting edge cases")
+    void webCommandFormattingEdgeCases() {
+        assertEquals("-", WebCommand.describe(null));
+        assertEquals("disabled", WebCommand.describe(Map.of("enabled", false)));
+        assertEquals("enabled (loopback), port 7420, open",
+                WebCommand.describe(Map.of("enabled", true, "lan", false, "port", 7420, "open", true)));
+        assertEquals("enabled (lan), port 8080, not open",
+                WebCommand.describe(Map.of("enabled", true, "lan", true, "port", 8080, "open", false)));
     }
 }

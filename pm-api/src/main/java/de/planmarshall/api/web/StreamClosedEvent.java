@@ -38,8 +38,13 @@ String reason,
     public static final String REASON_LISTENER_CLOSED = "listener_closed";
     public static final String REASON_DEVICE_EXPIRED = "device_expired";
 
+    private static final String FIELD_REASON = "reason";
+    private static final String FIELD_DETAILS = "details";
+    private static final String FIELD_REVOKED_BY = "revoked_by";
+    private static final String FIELD_REVOKED_AT = "revoked_at";
+
     public StreamClosedEvent {
-        Objects.requireNonNull(reason, "reason");
+        Objects.requireNonNull(reason, FIELD_REASON);
     }
 
     public StreamClosedEvent(String reason, @Nullable String details) {
@@ -53,15 +58,15 @@ String reason,
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("reason", reason);
+        map.put(FIELD_REASON, reason);
         if (details != null) {
-            map.put("details", details);
+            map.put(FIELD_DETAILS, details);
         }
         if (revokedBy != null) {
-            map.put("revoked_by", revokedBy);
+            map.put(FIELD_REVOKED_BY, revokedBy);
         }
         if (revokedAt != null) {
-            map.put("revoked_at", revokedAt);
+            map.put(FIELD_REVOKED_AT, revokedAt);
         }
         return map;
     }
@@ -83,16 +88,16 @@ String reason,
      */
     public static StreamClosedEvent fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var reason = JsonTree.string(map, "reason");
+        var reason = JsonTree.string(map, FIELD_REASON);
         if (reason == null) {
             throw new JsonFormatException("Missing reason in StreamClosedEvent");
         }
-        var details = JsonTree.string(map, "details");
-        var revokedBy = JsonTree.string(map, "revoked_by");
+        var details = JsonTree.string(map, FIELD_DETAILS);
+        var revokedBy = JsonTree.string(map, FIELD_REVOKED_BY);
         if (revokedBy == null) {
             revokedBy = JsonTree.string(map, "revokedBy");
         }
-        var revokedAt = JsonTree.string(map, "revoked_at");
+        var revokedAt = JsonTree.string(map, FIELD_REVOKED_AT);
         if (revokedAt == null) {
             revokedAt = JsonTree.string(map, "revokedAt");
         }
