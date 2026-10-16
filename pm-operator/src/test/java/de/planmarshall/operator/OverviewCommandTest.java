@@ -197,9 +197,9 @@ class OverviewCommandTest {
             {
               "project_id": "pm-mcp-clients",
               "page": 1,
-              "total_pages": 1,
+              "total_pages": 2,
               "has_newer": false,
-              "has_older": false,
+              "has_older": true,
               "items": [
                 {
                   "item_id": "pln-relay-drops",
@@ -288,8 +288,14 @@ class OverviewCommandTest {
                 response.json(200, DETAIL_CORE_JSON);
             } else if ("/api/v1/projects/plan-marshall".equals(path)) {
                 response.json(200, DETAIL_PLAN_MARSHALL_JSON);
-            } else if ("/api/v1/projects/pm-mcp-clients/ended".equals(path)) {
-                response.json(200, ENDED_CLIENTS_JSON);
+            } else if (path.startsWith("/api/v1/projects/pm-mcp-clients/ended")) {
+                if (path.contains("page=2")) {
+                    response.json(200, "{\"project_id\":\"pm-mcp-clients\",\"page\":2,\"total_pages\":2,\"has_newer\":true,\"has_older\":false,\"items\":[{\"id\":\"pln-page-2\",\"kind\":\"plan\",\"title\":\"Page 2 plan\",\"outcome\":\"merged\",\"ended_at\":\"2026-10-01T10:00:00Z\"}]}");
+                } else {
+                    response.json(200, ENDED_CLIENTS_JSON);
+                }
+            } else if (path.startsWith("/api/v1/projects/pm-mcp-core/ended") || path.startsWith("/api/v1/projects/plan-marshall/ended")) {
+                response.json(200, "{\"project_id\":\"other\",\"page\":1,\"total_pages\":1,\"has_newer\":false,\"has_older\":false,\"items\":[]}");
             } else {
                 response.send(404, null, "{\"error\":\"not_found\"}");
             }
@@ -305,6 +311,7 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
+        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST OUTPUT ===\n" + output + "\n=== TEST ERR ===\n" + err.toString());
         // Runtime header
@@ -359,6 +366,7 @@ class OverviewCommandTest {
 
         var output = out.toString();
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
+        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST GROUP BY EPIC OUTPUT ===\n" + output);
         assertTrue(output.contains("epic  client work"));
         assertTrue(output.contains("2 running · 3 staged"));
@@ -380,6 +388,7 @@ class OverviewCommandTest {
 
         var output = out.toString();
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
+        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST ENDED WORK OUTPUT ===\n" + output);
         assertTrue(output.contains("pm-mcp-clients · ended work"));
         assertTrue(output.contains("plan  Relay drops events on reconnect"));
@@ -390,6 +399,44 @@ class OverviewCommandTest {
         assertTrue(output.contains("reason: the approach is replaced by plan relay-v2"));
         assertTrue(output.contains("epic  client bootstrap"));
         assertTrue(output.contains("completed"));
+        assertTrue(output.contains("Page 2 plan"));
+    }
+
+    @Test
+    @DisplayName("status --ended without project iterates all projects")
+    void shouldRenderAllProjectsEndedWork() throws Exception {
+        setupRunningServer();
+
+        int code = run("status", "--ended");
+        assertEquals(0, code);
+
+        var output = out.toString();
+        assertTrue(output.contains("pm-mcp-clients · ended work"));
+        assertTrue(output.contains("Page 2 plan"));
+        assertFalse(output.contains("pm-mcp-core · ended work"));
+    }
+
+    @Test
+    @DisplayName("status renders '-' placeholder when running_since is missing")
+    void shouldRenderPlaceholderWhenRunningSinceMissing() throws Exception {
+        writeLiveRecord();
+        fixture.writeToken("test-token");
+        fixture.start((request, response) -> {
+            var path = request.target();
+            if ("/api/v1/status".equals(path)) {
+                response.json(200, "{\"status\":\"ready\",\"version\":\"0.9.1\",\"listener\":\"unix\",\"workers_count\":2}");
+            } else if ("/api/v1/projects".equals(path)) {
+                response.json(200, "{\"projects\":[]}");
+            } else {
+                response.send(404, null, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        int code = run("status");
+        assertEquals(0, code);
+
+        var output = out.toString();
+        assertTrue(output.contains("running since -"));
     }
 
     @Test
@@ -415,6 +462,7 @@ class OverviewCommandTest {
         assertEquals(0, code);
 
         var output = out.toString();
+        /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
         /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.err.println("=== TEST GERMAN OUTPUT ===\n" + output);
         assertTrue(output.contains("3 Pläne · 1 Epic"));

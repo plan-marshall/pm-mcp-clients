@@ -21,6 +21,8 @@
   let showEnded = false;
   let endedPage: EndedWorkPage | null = null;
   let currentEndedPage = 1;
+  let detailRequestGeneration = 0;
+  let endedRequestGeneration = 0;
 
   let isLoadingProjects = false;
   let isLoadingDetail = false;
@@ -90,13 +92,27 @@
   }
 
   async function loadProjectDetail(projectId: string) {
+    const requestGeneration = ++detailRequestGeneration;
     isLoadingDetail = true;
     try {
-      detail = await apiClient.getProjectDetail(projectId);
+      const res = await apiClient.getProjectDetail(projectId);
+      if (
+        projectId === selectedProjectId &&
+        requestGeneration === detailRequestGeneration
+      ) {
+        detail = res;
+      }
     } catch (err: unknown) {
-      detail = null;
+      if (
+        projectId === selectedProjectId &&
+        requestGeneration === detailRequestGeneration
+      ) {
+        detail = null;
+      }
     } finally {
-      isLoadingDetail = false;
+      if (requestGeneration === detailRequestGeneration) {
+        isLoadingDetail = false;
+      }
     }
   }
 
@@ -123,6 +139,8 @@
   }
 
   function selectProject(projectId: string) {
+    detailRequestGeneration += 1;
+    endedRequestGeneration += 1;
     selectedProjectId = projectId;
     showEnded = false;
     endedPage = null;
@@ -149,18 +167,33 @@
 
   function closeEndedWork() {
     showEnded = false;
+    endedRequestGeneration += 1;
     endedPage = null;
   }
 
   async function loadEndedWork(projectId: string, page: number) {
+    const requestGeneration = ++endedRequestGeneration;
     isLoadingEnded = true;
     try {
-      endedPage = await apiClient.getEndedWork(projectId, page);
-      currentEndedPage = page;
+      const res = await apiClient.getEndedWork(projectId, page);
+      if (
+        projectId === selectedProjectId &&
+        requestGeneration === endedRequestGeneration
+      ) {
+        endedPage = res;
+        currentEndedPage = page;
+      }
     } catch (err: unknown) {
-      endedPage = null;
+      if (
+        projectId === selectedProjectId &&
+        requestGeneration === endedRequestGeneration
+      ) {
+        endedPage = null;
+      }
     } finally {
-      isLoadingEnded = false;
+      if (requestGeneration === endedRequestGeneration) {
+        isLoadingEnded = false;
+      }
     }
   }
 
@@ -636,7 +669,7 @@
                 {#each detail.alongside_landings as landing}
                   <div class="alongside-row">
                     {#if landing.state === 'failed'}
-                      <span class="badge badge--attention">! landing failed</span>
+                      <span class="badge badge--attention">! {$t('overview.needs.landing_failed')}</span>
                     {/if}
                     <span class="alongside-desc">
                       {#if landing.unit}

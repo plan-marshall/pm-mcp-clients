@@ -166,7 +166,6 @@ public final class PmConsole {
 
         switch (verb) {
             case "help" -> printHelp(out, parts);
-            case "plans" -> PmOperator.execute(context, out, out, "plans");
             case "web" -> handleWebCommand(out, parts);
             default -> {
                 var args = parseArgs(line);

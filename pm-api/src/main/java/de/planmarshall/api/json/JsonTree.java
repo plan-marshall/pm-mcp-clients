@@ -220,7 +220,17 @@ public class JsonTree {
         return switch (val) {
             case null -> null;
             case Number n -> n;
-            case JsonNumber jn -> jn.longValue();
+            case JsonNumber jn -> {
+                try {
+                    yield Long.parseLong(jn.text());
+                } catch (NumberFormatException _) {
+                    try {
+                        yield Double.parseDouble(jn.text());
+                    } catch (NumberFormatException _) {
+                        yield null;
+                    }
+                }
+            }
             case String s -> {
                 try {
                     yield Long.parseLong(s);

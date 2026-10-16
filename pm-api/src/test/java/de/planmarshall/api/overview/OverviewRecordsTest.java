@@ -424,6 +424,7 @@ class OverviewRecordsTest {
         assertThrows(JsonFormatException.class, () -> EndedWorkPage.fromJson("\"invalid\""));
         assertThrows(JsonFormatException.class, () -> EndedWorkItem.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> EndedWorkItem.fromMap(Map.of()));
+        assertThrows(JsonFormatException.class, () -> EndedWorkItem.fromMap(Map.of("id", "item-1")));
         assertThrows(JsonFormatException.class, () -> AlongsideLanding.fromJson("[]"));
 
         assertThrows(JsonFormatException.class, () -> ProjectWorkChangedEvent.fromJson("[]"));

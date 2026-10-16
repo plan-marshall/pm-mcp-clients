@@ -28,10 +28,10 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/uc-pln-4-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-pln-4-plan.md`.
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
-- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/uc-pln-4-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-pln-4-plan.md`.
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
+- [x] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 
 ---
@@ -150,7 +150,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - Schedule 300s timer (`schedule` tool) and await CI, SonarCloud, Sourcery, and CodeRabbit.
 - [x] **7.6 100% Findings Resolution**:
   - Evaluate all automated findings with `persona-code-reviewer` adversarial refutation and resolve 100% of issues.
-- [x] **7.7 Merge Queue & Cleanup**:
+- [ ] **7.7 Merge Queue & Cleanup**:
   - Enqueue PR via `gh pr merge --auto --squash`.
   - Upon merge, synchronize `main`, remove worktree and delete topic branch.
 - [x] **7.8 Roadmap Archival**:

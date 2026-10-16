@@ -329,7 +329,31 @@
             "reason": "no longer needed",
             "ended_at": "2026-10-11T09:00:00Z"
           }
-        ]
+        ],
+        "pages": {
+          "2": [
+            {
+              "id": "arch-overhaul",
+              "kind": "plan",
+              "title": "arch-overhaul",
+              "outcome": "merged",
+              "pull_request_number": 201,
+              "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/201",
+              "ended_at": "2026-10-10T12:00:00Z"
+            }
+          ],
+          "3": [
+            {
+              "id": "initial-prototype",
+              "kind": "plan",
+              "title": "initial-prototype",
+              "outcome": "merged",
+              "pull_request_number": 190,
+              "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/190",
+              "ended_at": "2026-10-01T09:00:00Z"
+            }
+          ]
+        }
       }
     },
     "GET /api/v1/projects/pm-mcp-core/ended": {

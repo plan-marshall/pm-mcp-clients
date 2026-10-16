@@ -128,6 +128,8 @@ class JsonTreeTest {
             map.put("long", 100L);
             map.put("double", 3.14);
             map.put("jsonNum", new JsonNumber("123"));
+            map.put("jsonFloat", new JsonNumber("12.34"));
+            map.put("jsonInvalid", new JsonNumber("bad"));
             map.put("strLong", "999");
             map.put("strDouble", "45.67");
             map.put("strInvalid", "not_a_number");
@@ -142,6 +144,10 @@ class JsonTreeTest {
             assertEquals(3, JsonTree.integer(map, "double"));
             assertEquals(123L, JsonTree.number(map, "jsonNum"));
             assertEquals(123, JsonTree.integer(map, "jsonNum"));
+            assertEquals(12.34, JsonTree.number(map, "jsonFloat"));
+            assertEquals(12, JsonTree.integer(map, "jsonFloat"));
+            assertNull(JsonTree.number(map, "jsonInvalid"));
+            assertNull(JsonTree.integer(map, "jsonInvalid"));
             assertEquals(999L, JsonTree.number(map, "strLong"));
             assertEquals(999, JsonTree.integer(map, "strLong"));
             assertEquals(45.67, JsonTree.number(map, "strDouble"));

@@ -122,7 +122,10 @@ Instant endedAt
 
         var reason = JsonTree.string(map, "reason");
         var endedAtStr = JsonTree.string(map, "ended_at");
-        Instant endedAt = endedAtStr != null ? Instant.parse(endedAtStr) : Instant.now();
+        if (endedAtStr == null) {
+            throw new JsonFormatException("Missing ended_at in EndedWorkItem");
+        }
+        Instant endedAt = Instant.parse(endedAtStr);
 
         return new EndedWorkItem(
                 id,

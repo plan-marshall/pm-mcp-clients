@@ -728,8 +728,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if ("GET".equals(request.method()) && path.startsWith("/api/v1/projects/")) {
             var route = currentScenario.get().route("GET", path);
             if (route != null) {
-                if (path.endsWith("/ended") && request.query() != null && request.query().contains("page=")) {
-                    handleEndedPageQuery(route, request.query(), response);
+                if (path.endsWith("/ended")) {
+                    handleEndedPageQuery(route, request.query() != null ? request.query() : "page=1", response);
                     return true;
                 }
                 return false;
@@ -784,6 +784,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("page", page);
             copy.put("has_newer", page > 1);
             copy.put("has_older", page < total);
+            if (map.get("pages") instanceof Map<?, ?> pagesMap) {
+                var pageItems = pagesMap.get(String.valueOf(page));
+                if (pageItems instanceof List<?> list) {
+                    copy.put("items", list);
+                } else if (page == 1 && map.get("items") instanceof List<?> list) {
+                    copy.put("items", list);
+                } else {
+                    copy.put("items", List.of());
+                }
+            }
+            copy.remove("pages");
             response.json(200, copy);
             return;
         }

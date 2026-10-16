@@ -26,6 +26,7 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ActivePlanSummary;
 import de.planmarshall.api.overview.AlongsideLanding;
+import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
@@ -155,14 +156,9 @@ final class StatusCommand implements Callable<Integer> {
 
         try {
             if (project != null && !".".equals(project)) {
-                var response = context.runtime(false).send(HttpRequest.get("/api/v1/projects/" + project + "/ended"));
-                if (response.status() == 200) {
-                    var page = EndedWorkPage.fromJson(response.bodyText());
-                    renderEndedProject(out, project, page, locale);
-                    out.flush();
-                    return 0;
-                }
-                throw new OperatorRefusedException("status --ended", response);
+                renderEndedPages(out, project, locale, true, true);
+                out.flush();
+                return 0;
             }
 
             var projectsRes = context.runtime(false).send(HttpRequest.get("/api/v1/projects"));
@@ -172,13 +168,7 @@ final class StatusCommand implements Callable<Integer> {
                     out.println(MessageCatalogue.format(locale, "overview.ended.empty", Map.of("project", "all")));
                 } else {
                     for (var p : overview.projects()) {
-                        var res = context.runtime(false).send(HttpRequest.get("/api/v1/projects/" + p.projectId() + "/ended"));
-                        if (res.status() == 200) {
-                            var page = EndedWorkPage.fromJson(res.bodyText());
-                            if (!page.items().isEmpty()) {
-                                renderEndedProject(out, p.projectId(), page, locale);
-                            }
-                        }
+                        renderEndedPages(out, p.projectId(), locale, false, false);
                     }
                 }
                 out.flush();
@@ -190,15 +180,41 @@ final class StatusCommand implements Callable<Integer> {
         }
     }
 
-    private void renderEndedProject(PrintWriter out, String projectId, EndedWorkPage page, String locale) {
+    private void renderEndedPages(PrintWriter out, String projectId, String locale, boolean renderEmpty, boolean failHard) throws IOException {
+        int pageNum = 1;
+        boolean headerPrinted = false;
         var cleanProject = OutputSafety.stripControlSequences(projectId);
-        out.println(MessageCatalogue.format(locale, "operator.status.ended_title", Map.of("project", cleanProject)));
-        if (page.items().isEmpty()) {
-            out.println("  " + MessageCatalogue.format(locale, "overview.ended.empty", Map.of("project", cleanProject)));
-            return;
+
+        while (true) {
+            var res = context.runtime(false).send(HttpRequest.get("/api/v1/projects/" + projectId + "/ended?page=" + pageNum));
+            if (res.status() != 200) {
+                if (failHard) {
+                    throw new OperatorRefusedException("status --ended", res);
+                }
+                break;
+            }
+            var page = EndedWorkPage.fromJson(res.bodyText());
+            if (!page.items().isEmpty()) {
+                if (!headerPrinted) {
+                    out.println(MessageCatalogue.format(locale, "operator.status.ended_title", Map.of("project", cleanProject)));
+                    headerPrinted = true;
+                }
+                renderEndedItems(out, page.items(), locale);
+            }
+            if (!page.hasOlder() || page.items().isEmpty()) {
+                break;
+            }
+            pageNum++;
         }
 
-        for (var item : page.items()) {
+        if (!headerPrinted && renderEmpty) {
+            out.println(MessageCatalogue.format(locale, "operator.status.ended_title", Map.of("project", cleanProject)));
+            out.println("  " + MessageCatalogue.format(locale, "overview.ended.empty", Map.of("project", cleanProject)));
+        }
+    }
+
+    private void renderEndedItems(PrintWriter out, List<EndedWorkItem> items, String locale) {
+        for (var item : items) {
             var kind = "epic".equalsIgnoreCase(item.kind())
                     ? MessageCatalogue.format(locale, "overview.kind.epic", Map.of())
                     : MessageCatalogue.format(locale, "overview.kind.plan", Map.of());
@@ -212,7 +228,7 @@ final class StatusCommand implements Callable<Integer> {
             if (item.pullRequestNumber() != null) {
                 var prText = MessageCatalogue.format(locale, "operator.status.pull_request", Map.of(
                         "number", item.pullRequestNumber(),
-                        "url", Objects.toString(item.pullRequestUrl(), "")
+                        "url", OutputSafety.stripControlSequences(Objects.toString(item.pullRequestUrl(), ""))
                 ));
                 out.printf("        %s%n", prText);
             }
@@ -233,7 +249,7 @@ final class StatusCommand implements Callable<Integer> {
         if (!version.startsWith("pm-mcpd")) {
             version = "pm-mcpd " + version;
         }
-        var runningSince = Objects.toString(status.get("running_since"), "08:14");
+        var runningSince = Objects.toString(status.get("running_since"), "-");
         var workers = status.get("workers_count") != null ? status.get("workers_count") : 0;
         var slots = status.get("build_slots_used") != null ? status.get("build_slots_used") : 0;
         var total = status.get("build_slots_total") != null ? status.get("build_slots_total") : 0;
@@ -332,7 +348,7 @@ final class StatusCommand implements Callable<Integer> {
         }
 
         var title = OutputSafety.stripControlSequences(plan.title());
-        var phase = plan.currentPhase();
+        var phase = OutputSafety.stripControlSequences(plan.currentPhase());
         var rawState = plan.phaseState();
         var stateKey = "waiting_for_you".equals(rawState) ? "waiting" : rawState;
         var state = stateKey != null
@@ -365,7 +381,7 @@ final class StatusCommand implements Callable<Integer> {
         if (plan.pullRequestNumber() != null) {
             var prText = MessageCatalogue.format(locale, "operator.status.pull_request", Map.of(
                     "number", plan.pullRequestNumber(),
-                    "url", Objects.toString(plan.pullRequestUrl(), "")
+                    "url", OutputSafety.stripControlSequences(Objects.toString(plan.pullRequestUrl(), ""))
             ));
             out.printf("%s                       %s%n", baseIndent, prText);
         }
@@ -374,7 +390,7 @@ final class StatusCommand implements Callable<Integer> {
     private void renderProjectByEpic(PrintWriter out, ProjectDetailResponse detail, String locale) {
         for (var epic : detail.epics()) {
             String epicMarker = epic.needsOperatorCount() != null && epic.needsOperatorCount() > 0
-                    ? String.format("! %-8s ", epic.needsOperatorKind() != null ? epic.needsOperatorKind() : "attention")
+                    ? String.format("! %-8s ", epic.needsOperatorKind() != null ? OutputSafety.stripControlSequences(epic.needsOperatorKind()) : "attention")
                     : "           ";
             var epicTitle = OutputSafety.stripControlSequences(epic.title());
             var plansCount = MessageCatalogue.format(locale, "overview.epic.plans", Map.of(

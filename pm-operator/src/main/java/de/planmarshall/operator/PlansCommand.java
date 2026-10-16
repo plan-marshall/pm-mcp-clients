@@ -59,21 +59,23 @@ public final class PlansCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
+        boolean overviewAvailable;
         try {
-            var res = context.runtime(false).send(HttpRequest.get("/api/v1/projects"));
-            if (res.status() == 200) {
-                var statusCmd = new StatusCommand(context);
-                statusCmd.spec = this.spec;
-                statusCmd.json = this.json;
-                statusCmd.project = this.project;
-                statusCmd.by = this.by;
-                statusCmd.byEpic = this.byEpic;
-                statusCmd.ended = this.ended;
-                statusCmd.watch = this.watch;
-                return statusCmd.call();
-            }
+            overviewAvailable = context.runtime(false).send(HttpRequest.get("/api/v1/projects")).status() == 200;
         } catch (IOException _) {
-            // Fall back to listing plans
+            overviewAvailable = false;
+        }
+
+        if (overviewAvailable) {
+            var statusCmd = new StatusCommand(context);
+            statusCmd.spec = this.spec;
+            statusCmd.json = this.json;
+            statusCmd.project = this.project;
+            statusCmd.by = this.by;
+            statusCmd.byEpic = this.byEpic;
+            statusCmd.ended = this.ended;
+            statusCmd.watch = this.watch;
+            return statusCmd.call();
         }
 
         var planCmd = new PlanCommand(context);

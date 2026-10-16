@@ -12,8 +12,10 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.Map;
 
 
@@ -133,6 +135,8 @@ class RunningWorkScenarioTest {
             assertEquals(2, page2.page());
             assertTrue(page2.hasNewer());
             assertTrue(page2.hasOlder());
+            assertEquals(1, page2.items().size());
+            assertEquals("arch-overhaul", page2.items().getFirst().id());
         }
     }
 
@@ -147,6 +151,9 @@ class RunningWorkScenarioTest {
                 assertTrue(exchange.isEventStream());
                 var sse = exchange.events();
 
+                // Small pause to guarantee stream subscription registration
+                Thread.sleep(50);
+
                 // Broadcast a task.off_track event
                 var broadcastBody = JsonTree.write(Map.of(
                         "event", "task.off_track",
@@ -155,7 +162,7 @@ class RunningWorkScenarioTest {
                 var broadcastRes = client.send(HttpRequest.json("POST", "/mock/broadcast", broadcastBody));
                 assertEquals(200, broadcastRes.status());
 
-                var event = sse.next();
+                var event = assertTimeoutPreemptively(Duration.ofSeconds(5), sse::next);
                 assertNotNull(event);
                 assertEquals("task.off_track", event.event());
                 var parsed = JsonTree.asObject(JsonTree.parse(event.data()));
