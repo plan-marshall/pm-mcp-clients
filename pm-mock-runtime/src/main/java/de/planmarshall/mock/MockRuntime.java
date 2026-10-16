@@ -10,7 +10,6 @@
 package de.planmarshall.mock;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -124,6 +123,7 @@ public final class MockRuntime implements AutoCloseable {
      * @return the running mock runtime
      * @throws IOException on startup failure
      */
+    @SuppressWarnings("java:S2095")
     public static MockRuntime start(MockRuntimeConfig config) throws IOException {
         Objects.requireNonNull(config, "config");
 

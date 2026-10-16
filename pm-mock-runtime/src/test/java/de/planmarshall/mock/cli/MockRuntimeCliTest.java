@@ -181,7 +181,7 @@ class MockRuntimeCliTest {
     }
 
     @Test
-    @DisplayName("prints pairing code but omits web app URL when loopback web port is disabled")
+    @DisplayName("omits pairing code and web app URL when loopback web port is disabled")
     void runWithoutWebPort() {
         var currentThread = Thread.currentThread();
         Thread.ofVirtual().start(() -> {
@@ -191,7 +191,7 @@ class MockRuntimeCliTest {
         var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.RUNNING_WORK}, out, err);
         assertEquals(0, exitCode);
         assertTrue(stdout().contains("Mock runtime started successfully"));
-        assertTrue(stdout().contains("Pairing Code:       KXQB-MRTN"));
+        assertFalse(stdout().contains("Pairing Code:"));
         assertFalse(stdout().contains("Web App URL:"));
     }
 }

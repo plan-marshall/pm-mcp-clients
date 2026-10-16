@@ -22,27 +22,44 @@ rm -f "$SCRIPT_DIR/.pm-web-app.pid" 2>/dev/null || true
 
 print_paired_url_if_available() {
     local pairing_code=""
-    local mock_pid_file="$REPO_ROOT/pm-mock-runtime/target/pm-mock-runtime.pid"
-    local mock_log_file="$REPO_ROOT/pm-mock-runtime/target/pm-mock-runtime.log"
-
-    if [ -f "$mock_pid_file" ] && [ -f "$mock_log_file" ]; then
-        local mock_pid
-        mock_pid="$(cat "$mock_pid_file" 2>/dev/null || true)"
-        if [ -n "$mock_pid" ] && kill -0 "$mock_pid" 2>/dev/null; then
-            pairing_code="$(grep -E "Pairing Code:" "$mock_log_file" 2>/dev/null | tail -n1 | awk '{print $NF}' || true)"
+    local web_port=5173
+    local expect_port=false
+    for arg in "$@"; do
+        if [ "$expect_port" = true ]; then
+            web_port="$arg"
+            expect_port=false
+        elif [ "$arg" = "-p" ] || [ "$arg" = "--port" ]; then
+            expect_port=true
+        elif [[ "$arg" == --port=* ]]; then
+            web_port="${arg#--port=}"
         fi
+    done
+
+    # 1. Query live /mock/state first (reflects active scenario even after dynamic switch)
+    local mock_state
+    mock_state="$(curl -s -m 0.5 http://127.0.0.1:7420/mock/state 2>/dev/null || true)"
+    if [ -n "$mock_state" ]; then
+        pairing_code="$(echo "$mock_state" | grep -o '"pairing_code":"[^"]*' | cut -d'"' -f4 || true)"
     fi
 
+    # 2. Fall back to log file only if /mock/state is unavailable
     if [ -z "$pairing_code" ]; then
-        local mock_state
-        mock_state="$(curl -s -m 0.5 http://127.0.0.1:7420/mock/state 2>/dev/null || true)"
-        if [ -n "$mock_state" ]; then
-            pairing_code="$(echo "$mock_state" | grep -o '"pairing_code":"[^"]*' | cut -d'"' -f4 || true)"
+        local mock_pid_file="$REPO_ROOT/pm-mock-runtime/target/pm-mock-runtime.pid"
+        local mock_log_file="$REPO_ROOT/pm-mock-runtime/target/pm-mock-runtime.log"
+
+        if [ -f "$mock_pid_file" ] && [ -f "$mock_log_file" ]; then
+            local mock_pid
+            mock_pid="$(cat "$mock_pid_file" 2>/dev/null || true)"
+            if [ -n "$mock_pid" ] && kill -0 "$mock_pid" 2>/dev/null; then
+                if grep -q "Loopback Web Port:  [0-9]" "$mock_log_file" 2>/dev/null; then
+                    pairing_code="$(grep -E "Pairing Code:" "$mock_log_file" 2>/dev/null | tail -n1 | awk '{print $NF}' || true)"
+                fi
+            fi
         fi
     fi
 
     if [ -n "$pairing_code" ]; then
-        echo "Paired:  http://localhost:5173/pair#code=$pairing_code"
+        echo "Paired:  http://localhost:$web_port/pair#code=$pairing_code"
     fi
 }
 
@@ -52,7 +69,7 @@ if [ -f "$PID_FILE" ]; then
     if [ -n "$EXISTING_PID" ] && kill -0 "$EXISTING_PID" 2>/dev/null; then
         echo "pm-web-app is already running (PID: $EXISTING_PID)."
         echo "Local:   http://localhost:5173"
-        print_paired_url_if_available
+        print_paired_url_if_available "$@"
         echo "Logs:    $LOG_FILE"
         echo "To stop: $SCRIPT_DIR/stop.sh"
         exit 0
@@ -121,7 +138,7 @@ cd "$SCRIPT_DIR"
 if [ "$FOREGROUND" = true ]; then
     echo "Starting pm-web-app in foreground..."
     echo "Local:   http://localhost:5173"
-    print_paired_url_if_available
+    print_paired_url_if_available ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
     echo "$$" > "$PID_FILE"
     trap 'rm -f "$PID_FILE"' EXIT INT TERM
     exec "$NODE_BIN" "$VITE_BIN" ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
@@ -172,7 +189,7 @@ fs.writeFileSync(process.argv[1], String(child.pid));
 
     echo "pm-web-app started successfully (PID: $PID)."
     echo "Local:   http://localhost:5173"
-    print_paired_url_if_available
+    print_paired_url_if_available ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
     echo "Logs:    $LOG_FILE"
     echo "To stop: $SCRIPT_DIR/stop.sh"
 fi

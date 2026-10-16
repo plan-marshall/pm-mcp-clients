@@ -1295,7 +1295,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (this) {
             stateId = this.currentStateId.get();
             scenarioName = this.currentScenario.get().name();
-            pairingCode = this.currentScenario.get().pairingCode();
+            var code = this.currentScenario.get().pairingCode();
+            pairingCode = code != null ? code : "";
             state = currentScenario.get().state(stateId);
         }
         var offered = state != null ? new ArrayList<>(state.links().keySet()) : List.<String>of();
