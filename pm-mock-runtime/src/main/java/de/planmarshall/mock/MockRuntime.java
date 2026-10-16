@@ -329,6 +329,13 @@ public final class MockRuntime implements AutoCloseable {
     }
 
     /**
+     * @return the accepted pairing code for web clients
+     */
+    public String pairingCode() {
+        return engine.currentScenario().pairingCode();
+    }
+
+    /**
      * @return an environment map defining {@code PM_MCP_BASE}
      */
     public Map<String, String> environment() {

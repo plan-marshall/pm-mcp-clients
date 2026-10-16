@@ -70,6 +70,22 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# 4. Auto-detect PM_MCP_BASE from running mock runtime if not explicitly set
+if [ -z "${PM_MCP_BASE:-}" ]; then
+    MOCK_PID_FILE="$REPO_ROOT/pm-mock-runtime/target/pm-mock-runtime.pid"
+    MOCK_LOG_FILE="$REPO_ROOT/pm-mock-runtime/target/pm-mock-runtime.log"
+    if [ -f "$MOCK_PID_FILE" ] && [ -f "$MOCK_LOG_FILE" ]; then
+        MOCK_PID="$(cat "$MOCK_PID_FILE" 2>/dev/null || true)"
+        if [ -n "$MOCK_PID" ] && kill -0 "$MOCK_PID" 2>/dev/null; then
+            DETECTED_BASE="$(grep -E "Base \(PM_MCP_BASE\):" "$MOCK_LOG_FILE" 2>/dev/null | tail -n1 | awk '{print $NF}' || true)"
+            if [ -n "$DETECTED_BASE" ] && [ -d "$DETECTED_BASE" ]; then
+                export PM_MCP_BASE="$DETECTED_BASE"
+                echo "Using running mock runtime (PM_MCP_BASE=$PM_MCP_BASE)"
+            fi
+        fi
+    fi
+fi
+
 CP="$CLASSES_DIR:$REPO_ROOT/pm-api/target/classes:$(cat "$CP_FILE")"
 JAVA_OPTS=(-XX:+IgnoreUnrecognizedVMOptions --enable-native-access=ALL-UNNAMED)
 

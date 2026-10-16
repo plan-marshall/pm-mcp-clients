@@ -166,7 +166,7 @@ class MockRuntimeCliTest {
     }
 
     @Test
-    @DisplayName("starts runtime and exits cleanly when interrupted")
+    @DisplayName("starts runtime and exits cleanly when interrupted, printing pairing code and web URL")
     void runInterrupted() {
         var currentThread = Thread.currentThread();
         Thread.ofVirtual().start(() -> {
@@ -176,5 +176,22 @@ class MockRuntimeCliTest {
         var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.STATUS_ONLY, "-p", "0"}, out, err);
         assertEquals(0, exitCode);
         assertTrue(stdout().contains("Mock runtime started successfully"));
+        assertTrue(stdout().contains("Pairing Code:       MOCKMOCK"));
+        assertTrue(stdout().contains("Web App URL:        http://localhost:5173/pair#code=MOCKMOCK"));
+    }
+
+    @Test
+    @DisplayName("prints pairing code but omits web app URL when loopback web port is disabled")
+    void runWithoutWebPort() {
+        var currentThread = Thread.currentThread();
+        Thread.ofVirtual().start(() -> {
+            LockSupport.parkNanos(100_000_000L);
+            currentThread.interrupt();
+        });
+        var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.RUNNING_WORK}, out, err);
+        assertEquals(0, exitCode);
+        assertTrue(stdout().contains("Mock runtime started successfully"));
+        assertTrue(stdout().contains("Pairing Code:       KXQB-MRTN"));
+        assertFalse(stdout().contains("Web App URL:"));
     }
 }

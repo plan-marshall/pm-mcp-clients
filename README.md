@@ -50,6 +50,8 @@ Mock runtime started successfully:
   Loopback Web Port:  7420 (http://127.0.0.1:7420)
   Scenario:           onboarding-happy
   Runtime Token:      mock-token-abcde-12345
+  Pairing Code:       MOCKMOCK
+  Web App URL:        http://localhost:5173/pair#code=MOCKMOCK
 ```
 
 ---
