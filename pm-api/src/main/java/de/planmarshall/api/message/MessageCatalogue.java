@@ -44,7 +44,8 @@ public final class MessageCatalogue {
             "workspace",
             "devices",
             "overview",
-            "reports"
+            "reports",
+            "system"
     );
 
     private static final String DEFAULT_LOCALE = "en";

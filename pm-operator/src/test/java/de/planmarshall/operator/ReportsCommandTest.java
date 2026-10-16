@@ -19,13 +19,13 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 
+import de.planmarshall.api.testsupport.RuntimeFixture;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
-import de.planmarshall.api.testsupport.RuntimeFixture;
 
 @DisplayName("ReportsCommand")
 class ReportsCommandTest {
@@ -63,10 +63,10 @@ class ReportsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                              [
-                                {"id":"rep-0142","subject":"fix-relay","summary":"Ended: merged (#214)"}
-                              ]
-                              """);
+                                    [
+                                      {"id":"rep-0142","subject":"fix-relay","summary":"Ended: merged (#214)"}
+                                    ]
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -75,10 +75,10 @@ class ReportsCommandTest {
         int code = execute("reports");
         var output = out.toString();
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(output.contains("Reports · 1 unread")),
-                      () -> assertTrue(output.contains("rep-0142")),
-                      () -> assertTrue(output.contains("fix-relay"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("Reports · 1 unread")),
+                            () -> assertTrue(output.contains("rep-0142")),
+                            () -> assertTrue(output.contains("fix-relay"))
         );
     }
 
@@ -129,8 +129,8 @@ class ReportsCommandTest {
 
         int code = execute("reports", "read", "--all");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("✓ 3 reports marked read."))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("✓ 3 reports marked read."))
         );
     }
 
@@ -176,8 +176,8 @@ class ReportsCommandTest {
 
         int code = execute("reports", "open", "rep-0142");
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(out.toString().contains("Report Detail: rep-0142 fix-relay merged"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("Report Detail: rep-0142 fix-relay merged"))
         );
     }
 
@@ -187,8 +187,8 @@ class ReportsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/reports/rep-0142".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                              {"id":"rep-0142","detail":"status"}
-                              """);
+                                    {"id":"rep-0142","detail":"status"}
+                                    """);
             } else if ("/api/v1/reports/rep-0142/read".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
             } else if ("/api/v1/status".equals(request.target())) {
@@ -218,38 +218,38 @@ class ReportsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target())) {
                 response.json(200, """
-                              {
-                                "reports": [
-                                  {
-                                    "id": "rep-0142",
-                                    "from": "pm-mcp-clients > relay-hardening > fix-relay",
-                                    "kind": "plan.ended",
-                                    "subject": "Ended: merged (#214)",
-                                    "body": "3 of 3 deliverables · 2 h 40 min",
-                                    "detail": "plan report fix-relay",
-                                    "created": "today 11:20"
-                                  },
-                                  {
-                                    "id": "rep-0139",
-                                    "from": "pm-mcp-clients > docs-typo",
-                                    "kind": "plan.ended",
-                                    "subject": "Ended: no change",
-                                    "created": "today 09:02",
-                                    "sent": "today 09:40"
-                                  },
-                                  {
-                                    "id": "rep-0131",
-                                    "from": "pm-mcp-core",
-                                    "kind": "project.onboarded",
-                                    "subject": "Onboarded",
-                                    "created": "yesterday 18:40"
-                                  }
-                                ],
-                                "unread_count": 3,
-                                "oldest_unread": "yesterday 18:40",
-                                "older_count": 0
-                              }
-                              """);
+                                    {
+                                      "reports": [
+                                        {
+                                          "id": "rep-0142",
+                                          "from": "pm-mcp-clients > relay-hardening > fix-relay",
+                                          "kind": "plan.ended",
+                                          "subject": "Ended: merged (#214)",
+                                          "body": "3 of 3 deliverables · 2 h 40 min",
+                                          "detail": "plan report fix-relay",
+                                          "created": "today 11:20"
+                                        },
+                                        {
+                                          "id": "rep-0139",
+                                          "from": "pm-mcp-clients > docs-typo",
+                                          "kind": "plan.ended",
+                                          "subject": "Ended: no change",
+                                          "created": "today 09:02",
+                                          "sent": "today 09:40"
+                                        },
+                                        {
+                                          "id": "rep-0131",
+                                          "from": "pm-mcp-core",
+                                          "kind": "project.onboarded",
+                                          "subject": "Onboarded",
+                                          "created": "yesterday 18:40"
+                                        }
+                                      ],
+                                      "unread_count": 3,
+                                      "oldest_unread": "yesterday 18:40",
+                                      "older_count": 0
+                                    }
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -258,19 +258,19 @@ class ReportsCommandTest {
         int code = execute("reports");
         var output = out.toString();
         assertAll(
-                      () -> assertEquals(0, code),
-                      () -> assertTrue(output.contains("Reports · 3 unread")),
-                      () -> assertTrue(output.contains("pm-mcp-clients")),
-                      () -> assertTrue(output.contains("  relay-hardening")),
-                      () -> assertTrue(output.contains("rep-0142")),
-                      () -> assertTrue(output.contains("fix-relay")),
-                      () -> assertTrue(output.contains("Ended: merged (#214)")),
-                      () -> assertTrue(output.contains("reports open rep-0142")),
-                      () -> assertTrue(output.contains("docs-typo")),
-                      () -> assertTrue(output.contains("sent today 09:40")),
-                      () -> assertTrue(output.contains("pm-mcp-core")),
-                      () -> assertTrue(output.contains("rep-0131")),
-                      () -> assertTrue(output.contains("reports read rep-0142 · reports read --all"))
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("Reports · 3 unread")),
+                            () -> assertTrue(output.contains("pm-mcp-clients")),
+                            () -> assertTrue(output.contains("  relay-hardening")),
+                            () -> assertTrue(output.contains("rep-0142")),
+                            () -> assertTrue(output.contains("fix-relay")),
+                            () -> assertTrue(output.contains("Ended: merged (#214)")),
+                            () -> assertTrue(output.contains("reports open rep-0142")),
+                            () -> assertTrue(output.contains("docs-typo")),
+                            () -> assertTrue(output.contains("sent today 09:40")),
+                            () -> assertTrue(output.contains("pm-mcp-core")),
+                            () -> assertTrue(output.contains("rep-0131")),
+                            () -> assertTrue(output.contains("reports read rep-0142 · reports read --all"))
         );
     }
 

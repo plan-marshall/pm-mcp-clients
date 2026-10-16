@@ -47,8 +47,8 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-sys-cleanup /Users/oliver/git/worktrees/pm-mcp-clients-uc-sys main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-sys-cleanup /Users/oliver/git/worktrees/pm-mcp-clients-uc-sys main`).
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for untrusted text sanitization & operator authorization
@@ -79,14 +79,14 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 5. Phased Task Breakdown
 
 ### Phase 1: Traceability & Design Alignment
-- [ ] **1.1 Design Specification Audit**: Review `doc/design/shared/system.adoc`, `cleanup.adoc`, and `doc/plans/system-contract.adoc`:
+- [x] **1.1 Design Specification Audit**: Review `doc/design/shared/system.adoc`, `cleanup.adoc`, and `doc/plans/system-contract.adoc`:
   - Resource routes: `GET /api/v1/system?window={window}&project={project}`, `GET /api/v1/system/release-notes?version={v}`, `POST /api/v1/operator/runtime/stop`, `DELETE /api/v1/operator/runtime/stop`, `POST /api/v1/operator/runtime/upgrade`, `GET /api/v1/system/cleanup`, `POST /api/v1/system/cleanup/{id}/delete`, `POST /api/v1/system/cleanup/{id}/remind`, `GET /api/v1/system/cleanup/kept`.
   - SSE events: `system.metrics`, `runtime.draining`, `runtime.drain_withdrawn`, `runtime.stopping`, `runtime.upgrading`, `cleanup.job_opened`, `cleanup.decided`, `cleanup.done`.
   - Closed enumerations: `SystemWindow` (`HOUR`, `TODAY`, `SEVEN_DAYS`), `RuntimeLifecycleState` (`RUNNING`, `DRAINING`, `UPGRADING`), `CleanupJobState` (`OPEN`, `POSTPONED`, `DELETING`, `DONE`), `StopAction` (`DRAIN`, `NOW`), `PostStopAction` (`EXIT`, `RESTART`).
   - Extract the complete set of keys needed for `messages/system.{en,de}.properties`.
 
 ### Phase 2: `pm-api` Contracts & Message Catalogue
-- [ ] **2.1 System & Runtime Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.system`:
+- [x] **2.1 System & Runtime Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.system`:
   - `SystemSnapshot`: `runtime`, `work`, `workers`, `jobs`, `models`, `cleanupSummary`.
   - `RuntimeMetrics`: `version`, `build`, `startedAt`, `uptimeSeconds`, `heapUsedBytes`, `heapMaxBytes`, `residentMemoryBytes`, `cpuPercent`, `machineStoreBytes`, `diskFreeBytes`, `socketListener`, `loopbackListener`, `networkListener`.
   - `WorkMetrics`: `plansByState`, `epicsByState`, `tasksRunning`, `tasksQueued`, `activeProjectsCount`.
@@ -96,23 +96,23 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - `CleanupJob`: `jobId`, `state`, `dueSince`, `summaryByKind`, `freedBytes`, `projectItems`, `links`.
   - `CleanupProjectItem`: `projectId`, `plansCount`, `epicsCount`, `logsCount`, `readReportsCount`, `totalBytes`.
   - `CleanupDurations`: `plansAfterDays`, `epicsAfterDays`, `logsAfterDays`, `reportsAfterDays`, `unenrolledAfterDays`, `remindAfterDays`.
-- [ ] **2.2 System Events**: Implement SSE event payload records:
+- [x] **2.2 System Events**: Implement SSE event payload records:
   - `SystemMetricsEvent`, `RuntimeDrainingEvent`, `CleanupJobOpenedEvent`, `CleanupDecidedEvent`.
-- [ ] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
-- [ ] **2.4 Message Catalogue Entries**:
+- [x] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
+- [x] **2.4 Message Catalogue Entries**:
   - Populate `pm-api/src/main/resources/messages/system.en.properties` with keys from `system-texts.adoc#texts` and `cleanup-texts.adoc#texts`.
   - Populate `pm-api/src/main/resources/messages/system.de.properties` with German translations.
   - Register `"system"` in `MessageCatalogue.SUPPORTED_AREAS`.
-- [ ] **2.5 Unit Tests**:
+- [x] **2.5 Unit Tests**:
   - `SystemRecordsTest.java`: Round-trip serialization and deserialization of system snapshot, runtime status, and cleanup jobs.
   - `SystemCatalogueTest.java`: Key presence and ICU parameter validation across English and German bundles.
 
 ### Phase 3: `pm-mock-runtime` Scenarios & Handlers
-- [ ] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/system.json`:
+- [x] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/system.json`:
   - Full system snapshot metrics (memory, CPU, disk, listeners, active work, workers).
   - Open cleanup job fixture (`cln-0012`) with multiple projects, ended plans, and freed space calculation.
   - Runtime lifecycle states (running, draining, upgrade check).
-- [ ] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
+- [x] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
   - `GET /api/v1/system`: Returns system metrics snapshot with time window filter.
   - `POST /api/v1/operator/runtime/stop`: Enters draining state or stops runtime.
   - `DELETE /api/v1/operator/runtime/stop`: Withdraws drain state.
@@ -120,13 +120,13 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - `POST /api/v1/system/cleanup/{id}/delete`: Executes cleanup deletion.
   - `POST /api/v1/system/cleanup/{id}/remind`: Postpones cleanup job.
   - `GET /api/v1/events`: Broadcasts `system.metrics` and `runtime.draining`.
-- [ ] **3.3 Scenario Registration**:
+- [x] **3.3 Scenario Registration**:
   - Add `SYSTEM = "system"` constant in `StandardScenarios.java` and register in `ALL`.
-- [ ] **3.4 Scenario Tests**:
+- [x] **3.4 Scenario Tests**:
   - `SystemScenarioTest.java` asserting scenario loading, REST responses, drain controls, and cleanup actions.
 
 ### Phase 4: `pm-operator` Terminal Client Implementation
-- [ ] **4.1 System & Cleanup Commands**:
+- [x] **4.1 System & Cleanup Commands**:
   - Implement `SystemCommand.java`:
     - Renders 6-part system summary: Runtime, Work, Workers, Jobs, Models (tokens), and Cleanup.
     - Supports `--window` (`hour`, `today`, `7d`), `--project <id>`, and `--json`.
@@ -134,47 +134,47 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
     - Handles `pm-operator drain` and `pm-operator drain --withdraw`.
   - Implement `CleanupCommand.java`:
     - Renders cleanup job summary, freed disk space, and interactive confirmation for deleting unkept items.
-- [ ] **4.2 Output Safety**:
+- [x] **4.2 Output Safety**:
   - Sanitize all system labels, worker names, and error messages using `OutputSafety.stripControlSequences`.
-- [ ] **4.3 CLI Unit & Transcript Tests**:
+- [x] **4.3 CLI Unit & Transcript Tests**:
   - `SystemCommandTest.java`: Validate metrics layout, drain command arguments, cleanup actions, and exit codes.
 
 ### Phase 5: `pm-web-app` Client Implementation
-- [ ] **5.1 API Client Extensions**:
+- [x] **5.1 API Client Extensions**:
   - Add `getSystemSnapshot(window?, project?)`, `stopRuntime(when, then)`, `cancelStop()`, `getCleanupJob()`, `executeCleanup(jobId, uncheckIds)`, and `postponeCleanup(jobId)` to `pm-web-app/src/lib/api/client.ts`.
   - Extend SSE event listener to handle `system.metrics` and `runtime.draining`.
-- [ ] **5.2 System View (`SystemView.svelte`)**:
+- [x] **5.2 System View (`SystemView.svelte`)**:
   - System dashboard:
     - Runtime card: version, uptime, memory gauge, CPU gauge, disk space, active listeners.
     - Work & workers card: active plans, queued tasks, worker matrix (role, model, busy/idle).
     - Models usage card: token breakdown by model/role across time window buttons (`Last hour`, `Today`, `7 days`).
     - Cleanup banner with space freed and `[Review...]` button.
     - Lifecycle action buttons: `[Stop...]`, `[Restart...]`, `[Upgrade...]`.
-- [ ] **5.3 Cleanup Review View / Modal (`CleanupView.svelte`)**:
+- [x] **5.3 Cleanup Review View / Modal (`CleanupView.svelte`)**:
   - Displays due cleanup items grouped by project with checkboxes for unchecking kept items.
   - Actions: `[Delete selected]`, `[Remind me later]`, `[Ignore this job]`.
-- [ ] **5.4 Responsive Styling**:
+- [x] **5.4 Responsive Styling**:
   - Responsive metric cards adapting down to mobile width (320px).
-- [ ] **5.5 Vitest Tests**:
+- [x] **5.5 Vitest Tests**:
   - `SystemView.test.ts` and `CleanupView.test.ts` verifying rendering, metric formatting, lifecycle triggers, and cleanup actions.
 
 ### Phase 6: Integration Testing & Verification
-- [ ] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/system.spec.js`:
+- [x] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/system.spec.js`:
   - Test viewing system metrics dashboard.
   - Test toggling metric time windows (`Today` vs `7 days`).
   - Test opening cleanup review modal and executing cleanup.
   - Test runtime drain confirmation.
-- [ ] **6.2 Operator Process IT**:
+- [x] **6.2 Operator Process IT**:
   - Add process test in `PmOperatorProcessIT.java` executing `system` and `cleanup` against running `pm-mock-runtime`.
-- [ ] **6.3 Domain Invariants Verification**:
+- [x] **6.3 Domain Invariants Verification**:
   - Verify against checklist in Section 1 of `doc/meta/implement_use-cases.md`.
 
 ### Phase 7: Completion Report, Pre-Commit, Review Gate & Landing (Runbook Discipline)
-- [ ] **7.1 Final Completion Report**:
+- [x] **7.1 Final Completion Report**:
   - Generate comprehensive completion report in `doc/agy/uc-sys-plan-report.md`.
-- [ ] **7.2 Plan Archival**:
+- [x] **7.2 Plan Archival**:
   - Move `doc/agy/uc-sys-plan.md` to `doc/agy/implemented/uc-sys-plan.md` and record entry in `doc/agy/implemented/README.md`.
-- [ ] **7.3 Pre-Commit Gate**:
+- [x] **7.3 Pre-Commit Gate**:
   - Run `./mvnw verify -Ppre-commit` to validate OpenRewrite formatting, Checkstyle, and full test suite.
 - [ ] **7.4 Commit & PR**:
   - Commit changes with Conventional Commits message (`feat(system): implement UC-SYS-1..3 system view, runtime lifecycle, and cleanup`).
@@ -186,5 +186,5 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 - [ ] **7.7 Merge Queue & Cleanup**:
   - Enqueue PR via `gh pr merge --auto --squash`.
   - Upon merge, synchronize `main`, remove worktree and delete topic branch.
-- [ ] **7.8 Roadmap Archival**:
+- [x] **7.8 Roadmap Archival**:
   - Update `doc/plans/README.adoc` and move completed package documentation (`system-contract.adoc`, `cli-system.adoc`, `web-system.adoc`) to `doc/plans/implemented/`.

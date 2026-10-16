@@ -157,4 +157,104 @@ describe('ApiClient', () => {
     expect(meta.locales).toContain('en');
     expect(messages['web.common.copy']).toBe('Copy');
   });
+
+  it('fetches system snapshot with query parameters', async () => {
+    let capturedUrl = '';
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      capturedUrl = url;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          runtime: { version: '0.9.1' },
+          work: { tasks_running: 4 },
+          workers: [],
+          jobs: {},
+          models: [],
+          cleanup: { plans_count: 12, freed_bytes: 1932735283 },
+          window: 'today',
+          project: 'prj-1',
+        }),
+      });
+    });
+
+    const snapshot = await client.getSystemSnapshot('today', 'prj-1');
+    expect(capturedUrl).toContain('/api/v1/system?window=today&project=prj-1');
+    expect(snapshot.runtime.version).toBe('0.9.1');
+    expect(snapshot.cleanup.freed_bytes).toBe(1932735283);
+  });
+
+  it('handles stopRuntime and withdrawStop lifecycle methods', async () => {
+    let stopBody: unknown = null;
+    let stopMethod = '';
+    globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      stopMethod = init?.method || '';
+      if (init?.body) {
+        stopBody = JSON.parse(init.body as string);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ lifecycle_state: 'draining' }),
+      });
+    });
+
+    const res = await client.stopRuntime('drain');
+    expect(stopMethod).toBe('POST');
+    expect(stopBody).toEqual({ now: false, drain: true });
+    expect(res.lifecycle_state).toBe('draining');
+
+    await client.withdrawStop();
+    expect(stopMethod).toBe('DELETE');
+  });
+
+  it('handles cleanup operations: job, execute, remind, and ignore', async () => {
+    let lastUrl = '';
+    let lastMethod = '';
+    let lastBody: unknown = null;
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      lastUrl = url;
+      lastMethod = init?.method || 'GET';
+      if (init?.body) {
+        lastBody = JSON.parse(init.body as string);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => {
+          if (url.includes('/delete')) {
+            return { status: 'deleted', freed_bytes: 1825361100 };
+          }
+          if (url.endsWith('/system/cleanup/kept') && init?.method === 'PUT') {
+            return { released_count: 2 };
+          }
+          return { job_id: 'cln-0007', summary: { freed_bytes: 1932735283 } };
+        },
+      });
+    });
+
+    const job = await client.getCleanupJob();
+    expect(lastUrl).toContain('/api/v1/system/cleanup');
+    expect(job.job_id).toBe('cln-0007');
+
+    const deleteRes = await client.executeCleanup('cln-0007', ['item-1']);
+    expect(lastUrl).toContain('/api/v1/system/cleanup/cln-0007/delete');
+    expect(lastBody).toEqual({ unchecked_ids: ['item-1'] });
+    expect(deleteRes.freed_bytes).toBe(1825361100);
+
+    await client.remindCleanup('cln-0007');
+    expect(lastUrl).toContain('/api/v1/system/cleanup/cln-0007/remind');
+    expect(lastMethod).toBe('POST');
+
+    await client.ignoreCleanup('cln-0007');
+    expect(lastUrl).toContain('/api/v1/system/cleanup/cln-0007/ignore');
+    expect(lastMethod).toBe('POST');
+
+    const releaseRes = await client.releaseKeptCleanup(['k-1', 'k-2']);
+    expect(lastUrl).toContain('/api/v1/system/cleanup/kept');
+    expect(lastMethod).toBe('PUT');
+    expect(lastBody).toEqual({ item_ids: ['k-1', 'k-2'] });
+    expect(releaseRes.released_count).toBe(2);
+  });
 });

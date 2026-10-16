@@ -39,6 +39,22 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.report.TokenWasteRecord;
+import de.planmarshall.api.system.CleanupDurations;
+import de.planmarshall.api.system.CleanupItemEntry;
+import de.planmarshall.api.system.CleanupJob;
+import de.planmarshall.api.system.CleanupJobState;
+import de.planmarshall.api.system.CleanupKeptItem;
+import de.planmarshall.api.system.CleanupProjectItem;
+import de.planmarshall.api.system.CleanupResidue;
+import de.planmarshall.api.system.CleanupSummary;
+import de.planmarshall.api.system.ModelMetric;
+import de.planmarshall.api.system.RuntimeLifecycleState;
+import de.planmarshall.api.system.RuntimeMetrics;
+import de.planmarshall.api.system.SystemSnapshot;
+import de.planmarshall.api.system.SystemWindow;
+import de.planmarshall.api.system.WorkMetrics;
+import de.planmarshall.api.system.WorkerMetric;
+import de.planmarshall.api.system.WorkerState;
 import de.planmarshall.api.web.PairedDevice;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
@@ -99,6 +115,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Object reportsLock = new Object();
     private final List<ReportItem> mockReports = new ArrayList<>();
     private final Map<String, PlanCompletionReport> completionReports = new ConcurrentHashMap<>();
+    private final Object systemLock = new Object();
+    private volatile RuntimeLifecycleState lifecycleState = RuntimeLifecycleState.RUNNING;
+    private volatile String drainingBy;
+    private volatile boolean canWithdrawStop;
+    private CleanupJob activeCleanupJob;
+    private final List<CleanupKeptItem> keptItems = new ArrayList<>();
+    private CleanupDurations cleanupDurations;
+    private final List<CleanupResidue> cleanupResidues = new ArrayList<>();
     private volatile boolean lanListenerOn = true;
     private volatile boolean closed;
 
@@ -132,6 +156,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.currentScenario.set(scenario);
         initDefaultDevices();
         initDefaultReports();
+        initDefaultSystem();
         transitionTo(scenario.start());
     }
 
@@ -141,6 +166,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     public synchronized void reset() {
         initDefaultDevices();
         initDefaultReports();
+        initDefaultSystem();
         transitionTo(currentScenario.get().start());
     }
 
@@ -267,6 +293,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 3b. Dynamic report routes
         if (handleReportRoutes(request, response, isWeb)) {
+            return;
+        }
+
+        // 3c. Dynamic system and cleanup routes
+        if (handleSystemRoutes(request, response, isWeb)) {
             return;
         }
 
@@ -1091,7 +1122,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
         var rep = route.representation();
-        if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map && map.containsKey("web")) {
+        if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map) {
             var copy = new LinkedHashMap<String, Object>();
             for (var entry : map.entrySet()) {
                 if ("web".equals(entry.getKey()) && entry.getValue() instanceof Map<?, ?> webMap) {
@@ -1104,6 +1135,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 } else {
                     copy.put(String.valueOf(entry.getKey()), entry.getValue());
                 }
+            }
+            copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
+            if (drainingBy != null) {
+                copy.put("draining_by", drainingBy);
+                copy.put("can_withdraw", canWithdrawStop);
             }
             response.json(route.status(), copy);
             return;
@@ -1422,6 +1458,663 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** @return whether LAN listener is active */
     public boolean lanListenerOn() {
         return lanListenerOn;
+    }
+
+    private void initDefaultSystem() {
+        synchronized (systemLock) {
+            lifecycleState = RuntimeLifecycleState.RUNNING;
+            drainingBy = null;
+            canWithdrawStop = false;
+
+            keptItems.clear();
+            keptItems.add(new CleanupKeptItem("token-usage", "plan", "token-usage", "left out of a delete", "13 Oct", "the console"));
+            keptItems.add(new CleanupKeptItem("relay-auth", "epic", "relay-auth", "ignored", "2 Oct", "the web app (iPad)"));
+            keptItems.add(new CleanupKeptItem("reports-pm-mcp-clients", "read_reports", "3 read reports", "ignored", "2 Oct", "the web app (iPad)"));
+            keptItems.add(new CleanupKeptItem("old-sandbox", "unenrolled_project", "old-sandbox", "ignored", "2 Oct", "the web app (iPad)"));
+
+            cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
+            cleanupResidues.clear();
+            cleanupResidues.add(new CleanupResidue("temporary_files", 214, 356515840L, "today 03:00"));
+            cleanupResidues.add(new CleanupResidue("worker_directories", 18, 1288490188L, "today 03:00"));
+            cleanupResidues.add(new CleanupResidue("stale_locks", 3, 0L, "today 03:00"));
+            cleanupResidues.add(new CleanupResidue("old_workspace_rows", 612, 0L, "today 03:00"));
+            cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, "today 03:00"));
+
+            var clientsEntries = List.of(
+                    new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "ended 12 Sep", 88080384L, 6, 0, null),
+                    new CleanupItemEntry("docs-typo", "plan", "docs-typo", "no change", "ended 11 Sep", 2097152L, 1, 0, null),
+                    new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "ended 10 Sep", 12582912L, 0, 0, null),
+                    new CleanupItemEntry("logs-relay-docs", "logs", "logs of relay-docs", null, null, 32505856L, 14, 0, "plan kept until 24 Oct"),
+                    new CleanupItemEntry("reports-clients", "read_reports", "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
+            );
+            var coreEntries = List.of(
+                    new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "ended 9 Sep", 125829120L, 11, 0, null),
+                    new CleanupItemEntry("reports-core", "read_reports", "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
+            );
+            var unenrolledEntries = List.of(
+                    new CleanupItemEntry("legacy-portal", "unenrolled_project", "legacy-portal", "unenrolled 2 Sep · 7 plans, 1 epic", null, 1181116000L, 0, 0, null)
+            );
+
+            var projectItems = List.of(
+                    new CleanupProjectItem(CONST_PM_MCP_CLIENTS, 2, 1, 21, 3, 135266304L, clientsEntries),
+                    new CleanupProjectItem("pm-mcp-core", 10, 1, 19, 2, 681574400L, coreEntries),
+                    new CleanupProjectItem("unenrolled", 0, 0, 0, 0, 1181116000L, unenrolledEntries)
+            );
+
+            var summary = new CleanupSummary(
+                    12, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00"
+            );
+
+            var links = Map.of(
+                    "delete", "/api/v1/system/cleanup/cln-0012/delete",
+                    "remind", "/api/v1/system/cleanup/cln-0012/remind",
+                    "ignore", "/api/v1/system/cleanup/cln-0012/ignore"
+            );
+
+            activeCleanupJob = new CleanupJob(
+                    "cln-0012",
+                    CleanupJobState.OPEN,
+                    "today 03:00",
+                    summary,
+                    projectItems,
+                    links
+            );
+        }
+    }
+
+    private boolean handleSystemRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        var path = request.path();
+        var method = request.method();
+
+        if ("GET".equals(method) && "/api/v1/system".equals(path)) {
+            handleGetSystem(request, response);
+            return true;
+        }
+        if ("GET".equals(method) && "/api/v1/system/release-notes".equals(path)) {
+            handleGetReleaseNotes(request, response);
+            return true;
+        }
+        if ("POST".equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
+            handlePostStopRuntime(request, response, isWeb);
+            return true;
+        }
+        if (METHOD_DELETE.equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
+            handleDeleteStopRuntime(response);
+            return true;
+        }
+        if ("POST".equals(method) && "/api/v1/operator/runtime/upgrade".equals(path)) {
+            handlePostUpgradeRuntime(request, response);
+            return true;
+        }
+        if (METHOD_DELETE.equals(method) && "/api/v1/operator/runtime/upgrade".equals(path)) {
+            handleDeleteUpgradeRuntime(response);
+            return true;
+        }
+        if ("POST".equals(method) && "/api/v1/operator/runtime/upgrade/check".equals(path)) {
+            handleCheckUpgradeRuntime(response);
+            return true;
+        }
+        if ("GET".equals(method) && "/api/v1/system/cleanup".equals(path)) {
+            handleGetCleanup(response);
+            return true;
+        }
+        if ("GET".equals(method) && "/api/v1/system/cleanup/kept".equals(path)) {
+            handleGetKeptCleanup(response);
+            return true;
+        }
+        if ("PUT".equals(method) && "/api/v1/system/cleanup/kept".equals(path)) {
+            handlePutKeptCleanup(request, response);
+            return true;
+        }
+        if (path.startsWith("/api/v1/system/cleanup/") && "POST".equals(method)) {
+            var sub = path.substring("/api/v1/system/cleanup/".length());
+            if (sub.endsWith("/delete")) {
+                var jobId = sub.substring(0, sub.length() - "/delete".length());
+                handleDeleteCleanupJob(request, response, jobId, isWeb);
+                return true;
+            }
+            if (sub.endsWith("/remind")) {
+                var jobId = sub.substring(0, sub.length() - "/remind".length());
+                handleRemindCleanupJob(response, jobId, isWeb);
+                return true;
+            }
+            if (sub.endsWith("/ignore")) {
+                var jobId = sub.substring(0, sub.length() - "/ignore".length());
+                handleIgnoreCleanupJob(response, jobId, isWeb);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void handleGetSystem(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var query = request.query() != null ? request.query() : "";
+        SystemWindow window = SystemWindow.HOUR;
+        String projectFilter = null;
+        for (var part : query.split("&")) {
+            if (part.startsWith("window=")) {
+                window = SystemWindow.fromValue(part.substring("window=".length()));
+            } else if (part.startsWith("project=")) {
+                projectFilter = part.substring("project=".length());
+            }
+        }
+        if (".".equals(projectFilter)) {
+            projectFilter = CONST_PM_MCP_CLIENTS;
+        }
+
+        var runtimeMetrics = new RuntimeMetrics(
+                "0.9.1",
+                "2026-10-02 (a1b2c3d)",
+                "today 08:14",
+                22320L,
+                432013312L,
+                1073741824L,
+                713031680L,
+                4.0,
+                2469606195L,
+                40802189312L,
+                "13:40",
+                true,
+                "127.0.0.1:7420",
+                lanListenerOn ? "192.168.1.20:7421" : "off",
+                2,
+                0,
+                null,
+                "0.10.0",
+                "2026-10-16",
+                "today 08:14",
+                "/api/v1/system/release-notes?version=0.10.0",
+                true,
+                null
+        );
+
+        Map<String, Integer> plansByState;
+        Map<String, Integer> epicsByState;
+        int tasksRunning;
+        int tasksQueued;
+        int activeProjects;
+        if (projectFilter != null && !projectFilter.isBlank()) {
+            plansByState = Map.of("running", 2, "waiting_for_you", 1);
+            epicsByState = Map.of("running", 1);
+            tasksRunning = 2;
+            tasksQueued = 3;
+            activeProjects = 1;
+        } else {
+            plansByState = Map.of("running", 3, "waiting_for_you", 1, "held", 1, "paused", 2);
+            epicsByState = Map.of("running", 1, "waiting_for_you", 1);
+            tasksRunning = 4;
+            tasksQueued = 6;
+            activeProjects = 3;
+        }
+        var workMetrics = new WorkMetrics(plansByState, epicsByState, tasksRunning, tasksQueued, activeProjects, List.of());
+
+        var workers = List.of(
+                new WorkerMetric("planner", "claude", "opus-4.5", WorkerState.BUSY, "fix-relay"),
+                new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, "relay-docs"),
+                new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
+                new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, "token-usage"),
+                new WorkerMetric("reviewer", "claude", "sonnet-4.5", WorkerState.IDLE, null)
+        );
+
+        var jobs = Map.<String, Object>of(
+                "build", Map.of("slots_used", 1, "slots_total", 2, "queued", 1),
+                "test", Map.of("slots_used", 0, "slots_total", 1, "queued", 0),
+                "locks_held", 3
+        );
+
+        List<ModelMetric> models;
+        switch (window) {
+            case TODAY -> models = List.of(
+                    new ModelMetric("claude:opus-4.5", "planner", 164, 7890000L, 7420000L, 470000L, 1, 3, false, 0),
+                    new ModelMetric("claude:sonnet-4.5", "implementer", 430, 13150000L, 11650000L, 1500000L, 0, 2, false, 0),
+                    new ModelMetric("codex:gpt-5", "implementer", 48, 0L, 0L, 0L, 3, 0, true, 48)
+            );
+            case SEVEN_DAYS -> models = List.of(
+                    new ModelMetric("claude:opus-4.5", "planner", 980, 48200000L, 45300000L, 2900000L, 4, 15, false, 0),
+                    new ModelMetric("claude:sonnet-4.5", "implementer", 2840, 86700000L, 76800000L, 9900000L, 2, 8, false, 0),
+                    new ModelMetric("codex:gpt-5", "implementer", 310, 0L, 0L, 0L, 12, 1, true, 310)
+            );
+            default -> models = List.of(
+                    new ModelMetric("claude:opus-4.5", "planner", 42, 2020000L, 1900000L, 120000L, 0, 1, false, 0),
+                    new ModelMetric("claude:sonnet-4.5", "implementer", 118, 3610000L, 3200000L, 410000L, 0, 0, false, 0),
+                    new ModelMetric("codex:gpt-5", "implementer", 12, 0L, 0L, 0L, 1, 0, true, 12)
+            );
+        }
+
+        boolean hasOpenJob;
+        synchronized (systemLock) {
+            hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
+        }
+        var cleanupSummary = new CleanupSummary(
+                hasOpenJob ? 12 : 0,
+                hasOpenJob ? 2 : 0,
+                hasOpenJob ? 40 : 0,
+                hasOpenJob ? 5 : 0,
+                hasOpenJob ? 1 : 0,
+                hasOpenJob ? 1932735283L : 0L,
+                keptItems.size(),
+                "today 03:00",
+                "tomorrow 03:00"
+        );
+
+        var snapshot = new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanupSummary, window, projectFilter);
+        response.json(200, snapshot.toMap());
+    }
+
+    private void handleGetReleaseNotes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String version = "0.10.0";
+        if (request.query() != null) {
+            for (var part : request.query().split("&")) {
+                if (part.startsWith("version=")) {
+                    version = part.substring("version=".length());
+                }
+            }
+        }
+        if ("0.10.0".equals(version) || version.isBlank()) {
+            String notes = """
+                    pm-mcpd 0.10.0 Release Notes
+
+                    Highlights:
+                    - System overview and runtime lifecycle controls (stop, restart, drain, upgrade).
+                    - Automated and interactive cleanup of ended work history.
+                    - Granular token metrics per model and role.
+                    - Improved network listener isolation and paired devices management.
+                    """;
+            response.send(200, "text/plain; charset=utf-8", notes);
+        } else {
+            response.json(404, Map.of(KEY_ERROR, "version_not_found", KEY_MESSAGE, "No release notes available for version: " + version));
+        }
+    }
+
+    private void handlePostStopRuntime(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        String when = "drain";
+        String thenVal = "exit";
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null) {
+                    var w = JsonTree.string(parsed, "when");
+                    if (w != null && !w.isBlank()) {
+                        when = w;
+                    }
+                    var t = JsonTree.string(parsed, "then");
+                    if (t != null && !t.isBlank()) {
+                        thenVal = t;
+                    }
+                }
+            }
+            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (IOException | RuntimeException _) {
+                // Ignore parse errors from body
+            }
+        }
+
+        synchronized (systemLock) {
+            if ("now".equalsIgnoreCase(when)) {
+                lifecycleState = RuntimeLifecycleState.STOPPING;
+                broadcastEvent("runtime.stopping", Map.of(
+                        "lifecycle_state", "stopping",
+                        "then", thenVal
+                ));
+                response.json(200, Map.of(
+                        KEY_STATUS, "stopping",
+                        KEY_STATE, "stopping",
+                        "then", thenVal
+                ));
+            } else {
+                lifecycleState = RuntimeLifecycleState.DRAINING;
+                drainingBy = isWeb ? "the web app" : "the console";
+                canWithdrawStop = true;
+                broadcastEvent("runtime.draining", Map.of(
+                        "lifecycle_state", "draining",
+                        "draining_by", drainingBy,
+                        "remaining_work_count", 4,
+                        "can_withdraw", true
+                ));
+                response.json(200, Map.of(
+                        KEY_STATUS, "draining",
+                        KEY_STATE, "draining",
+                        "draining_by", drainingBy,
+                        "remaining_work_count", 4,
+                        "can_withdraw", true
+                ));
+            }
+        }
+    }
+
+    private void handleDeleteStopRuntime(MockHttpResponse response) throws IOException {
+        synchronized (systemLock) {
+            if (lifecycleState == RuntimeLifecycleState.DRAINING) {
+                lifecycleState = RuntimeLifecycleState.RUNNING;
+                drainingBy = null;
+                canWithdrawStop = false;
+                broadcastEvent("runtime.drain_withdrawn", Map.of(
+                        "lifecycle_state", "running",
+                        KEY_STATUS, "drain_withdrawn"
+                ));
+                response.json(200, Map.of(
+                        KEY_STATUS, "withdrawn",
+                        "lifecycle_state", "running"
+                ));
+            } else {
+                response.json(409, Map.of(
+                        KEY_ERROR, "cannot_withdraw",
+                        KEY_MESSAGE, "Cannot withdraw stop: runtime is not draining"
+                ));
+            }
+        }
+    }
+
+    private void handlePostUpgradeRuntime(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String targetVersion = "0.10.0";
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null) {
+                    var v = JsonTree.string(parsed, "version");
+                    if (v != null && !v.isBlank()) {
+                        targetVersion = v;
+                    }
+                }
+            }
+            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (IOException | RuntimeException _) {
+                // Ignore parse errors from body
+            }
+        }
+        synchronized (systemLock) {
+            lifecycleState = RuntimeLifecycleState.UPGRADING;
+            broadcastEvent("runtime.upgrading", Map.of(
+                    "lifecycle_state", "upgrading",
+                    "version", targetVersion,
+                    "step", "preparing"
+            ));
+            response.json(200, Map.of(
+                    KEY_STATUS, "upgrading",
+                    KEY_STATE, "upgrading",
+                    "version", targetVersion,
+                    "step", "preparing"
+            ));
+        }
+    }
+
+    private void handleDeleteUpgradeRuntime(MockHttpResponse response) throws IOException {
+        synchronized (systemLock) {
+            if (lifecycleState == RuntimeLifecycleState.UPGRADING) {
+                lifecycleState = RuntimeLifecycleState.RUNNING;
+                response.json(200, Map.of(
+                        KEY_STATUS, "withdrawn",
+                        "lifecycle_state", "running"
+                ));
+            } else {
+                response.json(409, Map.of(
+                        KEY_ERROR, "cannot_withdraw",
+                        KEY_MESSAGE, "Cannot withdraw upgrade: runtime is not upgrading"
+                ));
+            }
+        }
+    }
+
+    private void handleCheckUpgradeRuntime(MockHttpResponse response) throws IOException {
+        response.json(200, Map.of(
+                "version", "0.10.0",
+                "available", true,
+                "release_date", "2026-10-16",
+                "release_notes_url", "/api/v1/system/release-notes?version=0.10.0"
+        ));
+    }
+
+    private void handleGetCleanup(MockHttpResponse response) throws IOException {
+        synchronized (systemLock) {
+            if (activeCleanupJob != null && activeCleanupJob.isOpen()) {
+                response.json(200, activeCleanupJob.toMap());
+            } else {
+                var resp = new LinkedHashMap<String, Object>();
+                resp.put("open", false);
+                resp.put("next_check_at", "tomorrow 03:00");
+                resp.put("kept_count", keptItems.size());
+                resp.put("durations", cleanupDurations.toMap());
+                resp.put("residue", cleanupResidues.stream().map(CleanupResidue::toMap).toList());
+                response.json(200, resp);
+            }
+        }
+    }
+
+    private void handleDeleteCleanupJob(MockHttpRequest request, MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
+        synchronized (systemLock) {
+            if (lifecycleState == RuntimeLifecycleState.DRAINING || lifecycleState == RuntimeLifecycleState.STOPPING) {
+                response.json(409, Map.of(
+                        KEY_ERROR, "runtime_stopping",
+                        KEY_MESSAGE, "The runtime is stopping; nothing new starts."
+                ));
+                return;
+            }
+            if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
+                response.json(404, Map.of(KEY_ERROR, "job_not_found", KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                return;
+            }
+            if (activeCleanupJob.state() == CleanupJobState.DONE) {
+                response.json(200, Map.of(
+                        KEY_STATUS, "deleted",
+                        "job_id", jobId,
+                        "decision", "delete",
+                        "freed_bytes", 1825361100L,
+                        "kept_count", keptItems.size()
+                ));
+                return;
+            }
+
+            List<String> unchecked = List.of();
+            if (request.body().length > 0) {
+                try {
+                    var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                    if (parsed != null && parsed.get("unchecked_ids") instanceof List<?> list) {
+                        unchecked = list.stream().map(String::valueOf).toList();
+                    }
+                }
+                /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+                catch (IOException | RuntimeException _) {
+                    // Ignore parse errors from body
+                }
+            }
+
+            for (var un : unchecked) {
+                keptItems.add(new CleanupKeptItem(un, "item", un, "left out of a delete", "today", isWeb ? "the web app" : "the console"));
+            }
+
+            activeCleanupJob = new CleanupJob(
+                    activeCleanupJob.jobId(),
+                    CleanupJobState.DONE,
+                    activeCleanupJob.dueSince(),
+                    activeCleanupJob.summary(),
+                    activeCleanupJob.projectItems(),
+                    activeCleanupJob.links()
+            );
+
+            broadcastEvent("cleanup.decided", Map.of(
+                    "job_id", jobId,
+                    "decision", "delete",
+                    "by", "operator",
+                    "channel", isWeb ? "web" : "cli",
+                    "device", isWeb ? "iPad" : KEY_TERMINAL,
+                    "freed_bytes", 1825361100L
+            ));
+            broadcastEvent("cleanup.done", Map.of(
+                    "job_id", jobId,
+                    "freed_bytes", 1825361100L,
+                    "deleted_plans", 11,
+                    "deleted_epics", 2,
+                    "deleted_logs", 29
+            ));
+
+            response.json(200, Map.of(
+                    KEY_STATUS, "deleted",
+                    "job_id", jobId,
+                    "decision", "delete",
+                    "freed_bytes", 1825361100L,
+                    "kept_count", keptItems.size()
+            ));
+        }
+    }
+
+    private void handleRemindCleanupJob(MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
+        synchronized (systemLock) {
+            if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
+                response.json(404, Map.of(KEY_ERROR, "job_not_found", KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                return;
+            }
+            if (activeCleanupJob.state() == CleanupJobState.POSTPONED) {
+                response.json(200, Map.of(
+                        KEY_STATUS, "postponed",
+                        "job_id", jobId,
+                        "decision", "remind",
+                        "remind_after_days", 3,
+                        "remind_at", "2026-10-19T03:00:00Z"
+                ));
+                return;
+            }
+
+            activeCleanupJob = new CleanupJob(
+                    activeCleanupJob.jobId(),
+                    CleanupJobState.POSTPONED,
+                    activeCleanupJob.dueSince(),
+                    activeCleanupJob.summary(),
+                    activeCleanupJob.projectItems(),
+                    activeCleanupJob.links()
+            );
+
+            broadcastEvent("cleanup.decided", Map.of(
+                    "job_id", jobId,
+                    "decision", "remind",
+                    "by", "operator",
+                    "channel", isWeb ? "web" : "cli",
+                    "remind_after_days", 3
+            ));
+
+            response.json(200, Map.of(
+                    KEY_STATUS, "postponed",
+                    "job_id", jobId,
+                    "decision", "remind",
+                    "remind_after_days", 3,
+                    "remind_at", "2026-10-19T03:00:00Z"
+            ));
+        }
+    }
+
+    private void handleIgnoreCleanupJob(MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
+        synchronized (systemLock) {
+            if (activeCleanupJob == null || !activeCleanupJob.jobId().equals(jobId)) {
+                response.json(404, Map.of(KEY_ERROR, "job_not_found", KEY_MESSAGE, "Cleanup job not found: " + jobId));
+                return;
+            }
+            if (activeCleanupJob.state() == CleanupJobState.DONE) {
+                response.json(200, Map.of(
+                        KEY_STATUS, "done",
+                        "job_id", jobId,
+                        "decision", "ignore",
+                        "kept_count", keptItems.size()
+                ));
+                return;
+            }
+
+            for (var prj : activeCleanupJob.projectItems()) {
+                for (var entry : prj.items()) {
+                    keptItems.add(new CleanupKeptItem(entry.id(), entry.kind(), entry.title(), "ignored", "today", isWeb ? "the web app" : "the console"));
+                }
+            }
+
+            activeCleanupJob = new CleanupJob(
+                    activeCleanupJob.jobId(),
+                    CleanupJobState.DONE,
+                    activeCleanupJob.dueSince(),
+                    activeCleanupJob.summary(),
+                    activeCleanupJob.projectItems(),
+                    activeCleanupJob.links()
+            );
+
+            broadcastEvent("cleanup.decided", Map.of(
+                    "job_id", jobId,
+                    "decision", "ignore",
+                    "by", "operator",
+                    "channel", isWeb ? "web" : "cli"
+            ));
+
+            response.json(200, Map.of(
+                    KEY_STATUS, "done",
+                    "job_id", jobId,
+                    "decision", "ignore",
+                    "kept_count", keptItems.size()
+            ));
+        }
+    }
+
+    private void handleGetKeptCleanup(MockHttpResponse response) throws IOException {
+        var list = new ArrayList<Map<String, Object>>();
+        synchronized (systemLock) {
+            for (var k : keptItems) {
+                list.add(k.toMap());
+            }
+        }
+        response.json(200, list);
+    }
+
+    private void handlePutKeptCleanup(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        List<String> retainedIds = new ArrayList<>();
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null && parsed.get("item_ids") instanceof List<?> list) {
+                    for (var obj : list) {
+                        retainedIds.add(String.valueOf(obj));
+                    }
+                }
+            }
+            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (IOException | RuntimeException _) {
+                // Ignore parse errors from body
+            }
+        }
+        var updatedList = new ArrayList<Map<String, Object>>();
+        synchronized (systemLock) {
+            keptItems.removeIf(item -> !retainedIds.contains(item.id()));
+            for (var k : keptItems) {
+                updatedList.add(k.toMap());
+            }
+        }
+        response.json(200, updatedList);
+    }
+
+    /** @return the current runtime lifecycle state */
+    public RuntimeLifecycleState lifecycleState() {
+        return lifecycleState;
+    }
+
+    /** @return active cleanup job or null */
+    public CleanupJob activeCleanupJob() {
+        synchronized (systemLock) {
+            return activeCleanupJob;
+        }
+    }
+
+    /** @return list of items kept for good */
+    public List<CleanupKeptItem> keptItems() {
+        synchronized (systemLock) {
+            return List.copyOf(keptItems);
+        }
+    }
+
+    /** @return current cleanup durations */
+    public CleanupDurations cleanupDurations() {
+        synchronized (systemLock) {
+            return cleanupDurations;
+        }
+    }
+
+    /** @return current cleanup residue figures */
+    public List<CleanupResidue> cleanupResidues() {
+        synchronized (systemLock) {
+            return List.copyOf(cleanupResidues);
+        }
     }
 
     @Override
