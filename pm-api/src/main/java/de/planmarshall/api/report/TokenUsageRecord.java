@@ -179,28 +179,40 @@ public record TokenUsageRecord(
     }
 
     private static WasteInfo parseWaste(Map<String, Object> map) {
-        var wasteList = new ArrayList<TokenWasteRecord>();
-        var wasteObj = map.get(FIELD_WASTE_RECORDS);
-        if (wasteObj instanceof List<?> wl) {
-            for (var elem : wl) {
-                var m = JsonTree.asObject(elem);
-                if (m != null) wasteList.add(TokenWasteRecord.fromMap(m));
-            }
-        }
+        var wasteList = parseWasteRecords(map.get(FIELD_WASTE_RECORDS));
         long totalWaste = getLong(map.get(FIELD_TOTAL_WASTE_TOKENS));
         int wasteShare = (int) getLong(map.get(FIELD_WASTE_SHARE_PERCENT));
+        return applyLegacyWaste(map.get("waste"), wasteList, totalWaste, wasteShare);
+    }
 
-        if (map.get("waste") instanceof Map<?, ?> wm) {
+    private static List<TokenWasteRecord> parseWasteRecords(Object wasteObj) {
+        if (!(wasteObj instanceof List<?> wl)) {
+            return new ArrayList<>();
+        }
+        var list = new ArrayList<TokenWasteRecord>(wl.size());
+        for (var elem : wl) {
+            var m = JsonTree.asObject(elem);
+            if (m != null) {
+                list.add(TokenWasteRecord.fromMap(m));
+            }
+        }
+        return list;
+    }
+
+    private static WasteInfo applyLegacyWaste(Object wasteObj, List<TokenWasteRecord> wasteList, long totalWaste, int wasteShare) {
+        long effectiveTotal = totalWaste;
+        int effectiveShare = wasteShare;
+        if (wasteObj instanceof Map<?, ?> wm) {
             var wasteMap = JsonTree.asObject(wm);
             if (wasteMap != null) {
-                if (totalWaste == 0L) totalWaste = getLong(wasteMap.get("total"));
-                if (wasteShare == 0) wasteShare = (int) getLong(wasteMap.get("share_percent"));
+                if (effectiveTotal == 0L) effectiveTotal = getLong(wasteMap.get("total"));
+                if (effectiveShare == 0) effectiveShare = (int) getLong(wasteMap.get("share_percent"));
                 if (wasteList.isEmpty()) {
                     populateLegacyWaste(wasteMap, wasteList);
                 }
             }
         }
-        return new WasteInfo(wasteList, totalWaste, wasteShare);
+        return new WasteInfo(wasteList, effectiveTotal, effectiveShare);
     }
 
     private static void populateLegacyWaste(Map<String, Object> wasteMap, List<TokenWasteRecord> wasteList) {

@@ -623,9 +623,9 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf("  %-12s %d of %d tasks measured%n", "coverage", usage.tasksTotal(), usage.tasksTotal());
             }
 
-            printBreakdown(out, "  by phase", usage.byPhase(), "%-10s", false, showComponents);
-            printBreakdown(out, "  by role", usage.byRole(), "%-13s", true, showComponents);
-            printBreakdown(out, "  by model", usage.byModel(), "%-20s", false, showComponents);
+            printBreakdown(out, "  by phase", usage.byPhase(), 10, false, showComponents);
+            printBreakdown(out, "  by role", usage.byRole(), 13, true, showComponents);
+            printBreakdown(out, "  by model", usage.byModel(), 20, false, showComponents);
             printWaste(out, usage);
 
             if (!showComponents) {
@@ -633,7 +633,7 @@ public final class PlanCommand implements Callable<Integer> {
             }
         }
 
-        private static void printBreakdown(PrintWriter out, String header, List<TokenBreakdownItem> items, String nameFmt, boolean isRole, boolean showComponents) {
+        private static void printBreakdown(PrintWriter out, String header, List<TokenBreakdownItem> items, int nameWidth, boolean isRole, boolean showComponents) {
             if (items.isEmpty()) {
                 return;
             }
@@ -641,16 +641,24 @@ public final class PlanCommand implements Callable<Integer> {
             for (var item : items) {
                 var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), "en");
                 var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + NOT_MEASURED) : "";
+                var paddedName = padRight(item.name(), nameWidth);
                 if (isRole) {
                     var pin = formatPin(item);
-                    out.printf("               " + nameFmt + " %-26s %s%s%n", item.name(), pin, val, unmeasuredItem);
+                    out.printf("               %s %-26s %s%s%n", paddedName, pin, val, unmeasuredItem);
                 } else {
-                    out.printf("               " + nameFmt + " %s%s%n", item.name(), val, unmeasuredItem);
+                    out.printf("               %s %s%s%n", paddedName, val, unmeasuredItem);
                 }
                 if (showComponents && item.components() != null) {
                     out.printf(FMT_INDENT, formatComponents(item.components()));
                 }
             }
+        }
+
+        private static String padRight(String s, int width) {
+            if (s.length() >= width) {
+                return s;
+            }
+            return s + " ".repeat(width - s.length());
         }
 
         private static void printWaste(PrintWriter out, TokenUsageRecord usage) {
@@ -671,7 +679,10 @@ public final class PlanCommand implements Callable<Integer> {
             }
         }
 
-        private static String formatComponents(TokenComponentRecord c) {
+        private static String formatComponents(@Nullable TokenComponentRecord c) {
+            if (c == null) {
+                return "";
+            }
             return String.format("input %s · cache read %s · cache write %s · output %s · reasoning %s",
                     TokenFormat.formatTokens(c.input(), false, "en"),
                     TokenFormat.formatTokens(c.cacheRead(), false, "en"),

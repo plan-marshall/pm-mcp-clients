@@ -284,7 +284,7 @@ public record PlanCompletionReport(
         return duration;
     }
 
-    private static List<DeliverableSummary> parseDeliverables(Map<String, Object> map) throws IOException {
+    private static List<DeliverableSummary> parseDeliverables(Map<String, Object> map) {
         var list = new ArrayList<DeliverableSummary>();
         var delivObj = map.get(FIELD_DELIVERABLES);
         if (delivObj instanceof List<?> dl) {
@@ -296,7 +296,7 @@ public record PlanCompletionReport(
         return list;
     }
 
-    private static List<ReplanningRecord> parseReplanning(Map<String, Object> map) throws IOException {
+    private static List<ReplanningRecord> parseReplanning(Map<String, Object> map) {
         var list = new ArrayList<ReplanningRecord>();
         var replanObj = map.get(FIELD_REPLANNING);
         if (replanObj == null) replanObj = map.get("replanning");
@@ -309,7 +309,7 @@ public record PlanCompletionReport(
         return list;
     }
 
-    private static List<DecisionRecord> parseDecisions(Map<String, Object> map) throws IOException {
+    private static List<DecisionRecord> parseDecisions(Map<String, Object> map) {
         var list = new ArrayList<DecisionRecord>();
         var decObj = map.get(FIELD_DECISIONS);
         if (decObj == null) decObj = map.get("decisions");
@@ -322,7 +322,7 @@ public record PlanCompletionReport(
         return list;
     }
 
-    private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) throws IOException {
+    private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) {
         var tuObj = map.get(FIELD_TOKEN_USAGE);
         if (tuObj == null) tuObj = map.get("tokens");
         if (tuObj != null && JsonTree.asObject(tuObj) != null) {

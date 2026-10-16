@@ -845,17 +845,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 "their worker was terminated",
                 fixRelayPhase, fixRelayRole, fixRelayModel, fixRelayWaste, 52000, 13
         );
-        completionReports.put("fix-relay", new PlanCompletionReport(
-                "fix-relay",
-                "fix-relay",
-                new ReportFrom("pm-mcp-clients", "relay-hardening", "fix-relay"),
+        completionReports.put(CONST_FIX_RELAY, new PlanCompletionReport(
+                CONST_FIX_RELAY,
+                CONST_FIX_RELAY,
+                new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
                 "merged",
                 "the pull request #214 was merged into main",
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
                 "—",
                 Instant.parse("2026-10-16T08:40:00Z"),
-                Instant.parse("2026-10-16T11:20:00Z"),
+                Instant.parse(CONST_TIME_11_20),
                 9600,
                 1200,
                 "you",
@@ -865,10 +865,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 fixRelayTokens
         ));
 
-        completionReports.put("docs-typo", new PlanCompletionReport(
-                "docs-typo",
-                "docs-typo",
-                new ReportFrom("pm-mcp-clients", null, "docs-typo"),
+        completionReports.put(CONST_DOCS_TYPO, new PlanCompletionReport(
+                CONST_DOCS_TYPO,
+                CONST_DOCS_TYPO,
+                new ReportFrom(CONST_PM_MCP_CLIENTS, null, CONST_DOCS_TYPO),
                 "no_change",
                 "no changes produced",
                 null,

@@ -354,7 +354,7 @@ class ReportRecordsTest {
     }
 
     @Test
-    void shouldRoundTripTokenComponentRecord() throws Exception {
+    void shouldRoundTripTokenComponentRecord() {
         var comp = new TokenComponentRecord(10000L, 2000L, 300L, 4000L, 500L);
         assertEquals(10000L, comp.input());
         assertEquals(2000L, comp.cacheRead());
@@ -416,17 +416,17 @@ class ReportRecordsTest {
         )
         );
 
-        var record = TokenUsageRecord.fromMap(map);
-        assertEquals(50000L, record.total());
-        assertEquals(45000L, record.input());
-        assertEquals(5000L, record.output());
-        assertTrue(record.floor());
-        assertEquals(8, record.tasksMeasured());
-        assertEquals(10, record.tasksTotal());
-        assertEquals("stalled", record.unmeasuredReason());
-        assertEquals(3, record.wasteRecords().size());
-        assertEquals(3000L, record.totalWasteTokens());
-        assertEquals(6, record.wasteSharePercent());
+        var tokenRecord = TokenUsageRecord.fromMap(map);
+        assertEquals(50000L, tokenRecord.total());
+        assertEquals(45000L, tokenRecord.input());
+        assertEquals(5000L, tokenRecord.output());
+        assertTrue(tokenRecord.floor());
+        assertEquals(8, tokenRecord.tasksMeasured());
+        assertEquals(10, tokenRecord.tasksTotal());
+        assertEquals("stalled", tokenRecord.unmeasuredReason());
+        assertEquals(3, tokenRecord.wasteRecords().size());
+        assertEquals(3000L, tokenRecord.totalWasteTokens());
+        assertEquals(6, tokenRecord.wasteSharePercent());
     }
 
     @Test
