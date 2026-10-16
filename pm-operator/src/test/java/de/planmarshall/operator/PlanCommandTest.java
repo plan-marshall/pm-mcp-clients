@@ -448,5 +448,49 @@ class PlanCommandTest {
                 () -> assertTrue(outputComp.contains("reasoning"))
         );
     }
+
+    @Test
+    @DisplayName("plan report reports running plan with 409 conflict")
+    void planReportRunning() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans/running-plan/completion".equals(request.target())) {
+                response.json(409, """
+                        {"error":"plan_running","state":"running"}
+                        """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "report", "running-plan");
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("running-plan is running"));
+    }
+
+    @Test
+    @DisplayName("plan report reports 404 when plan not found")
+    void planReportNotFound() throws Exception {
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = execute("plan", "report", "non-existent");
+        assertEquals(1, code);
+        assertTrue(out.toString().contains("Plan non-existent not found."));
+    }
+
+    @Test
+    @DisplayName("plan report falls back to raw text for non-JSON 200")
+    void planReportRawText() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans/plain-plan/completion".equals(request.target())) {
+                response.send(200, "text/plain", "Raw completion report text");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "report", "plain-plan");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("Raw completion report text"));
+    }
 }
 

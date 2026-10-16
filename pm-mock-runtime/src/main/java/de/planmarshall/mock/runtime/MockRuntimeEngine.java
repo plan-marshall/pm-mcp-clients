@@ -70,6 +70,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_STREAM_CLOSED = "stream.closed";
     private static final String KEY_REASON = "reason";
     private static final String KEY_DETAILS = "details";
+    private static final String CONST_FIX_RELAY = "fix-relay";
+    private static final String CONST_RELAY_HARDENING = "relay-hardening";
+    private static final String CONST_PM_MCP_CLIENTS = "pm-mcp-clients";
+    private static final String CONST_OUTCOME = "outcome";
+    private static final String CONST_TIME_11_20 = "2026-10-16T11:20:00Z";
+    private static final String CONST_RELAY_TOKEN_STORE = "relay-token-store";
+    private static final String CONST_TIME_11_21 = "2026-10-16T11:21:00Z";
+    private static final String CONST_RELAY_AUTH_V2 = "relay-auth-v2";
+    private static final String CONST_DOCS_TYPO = "docs-typo";
+    private static final String CONST_PM_MCP_CORE = "pm-mcp-core";
+    private static final String PATH_REPORTS_PREFIX = "/api/v1/reports/";
+    private static final String KEY_TERMINAL = "terminal";
+    private static final String KEY_COUNT = "count";
+    private static final String KEY_MARKED_COUNT = "marked_count";
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -707,46 +721,46 @@ public final class MockRuntimeEngine implements AutoCloseable {
             mockReports.clear();
             mockReports.add(new ReportItem(
                     "rep-0142",
-                    new ReportFrom("pm-mcp-clients", "relay-hardening", "fix-relay"),
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
                     ReportKind.PLAN_ENDED,
                     "fix-relay ended: merged (#214)",
-                    Map.of("plan", "fix-relay", "outcome", "merged (#214)"),
+                    Map.of("plan", CONST_FIX_RELAY, CONST_OUTCOME, "merged (#214)"),
                     "3 of 3 deliverables · 2 h 40 min",
-                    Instant.parse("2026-10-16T11:20:00Z"),
-                    Instant.parse("2026-10-16T11:20:00Z"),
+                    Instant.parse(CONST_TIME_11_20),
+                    Instant.parse(CONST_TIME_11_20),
                     null, null, null,
                     "/api/v1/plans/fix-relay/completion"
             ));
             mockReports.add(new ReportItem(
                     "rep-0143",
-                    new ReportFrom("pm-mcp-clients", "relay-hardening", "relay-token-store"),
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_TOKEN_STORE),
                     ReportKind.PLAN_STARTED,
                     "relay-token-store started by relay-hardening (2 of 3 at once)",
-                    Map.of("plan", "relay-token-store", "epic", "relay-hardening", "running", 2, "scope", 3, "by", "epic"),
+                    Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, "running", 2, "scope", 3, "by", "epic"),
                     null,
-                    Instant.parse("2026-10-16T11:21:00Z"),
-                    Instant.parse("2026-10-16T11:21:00Z"),
+                    Instant.parse(CONST_TIME_11_21),
+                    Instant.parse(CONST_TIME_11_21),
                     null, null, null,
                     "/api/v1/plans/relay-token-store"
             ));
             mockReports.add(new ReportItem(
                     "rep-0144",
-                    new ReportFrom("pm-mcp-clients", "relay-hardening", "relay-docs"),
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, "relay-docs"),
                     ReportKind.EPIC_WAITS_OVERLAP,
                     "relay-docs waits: overlap with relay-auth-v2 (2 files)",
-                    Map.of("plan", "relay-docs", "other", "relay-auth-v2", "files", 2),
+                    Map.of("plan", "relay-docs", "other", CONST_RELAY_AUTH_V2, "files", 2),
                     null,
-                    Instant.parse("2026-10-16T11:21:00Z"),
-                    Instant.parse("2026-10-16T11:21:00Z"),
+                    Instant.parse(CONST_TIME_11_21),
+                    Instant.parse(CONST_TIME_11_21),
                     null, null, null,
                     "/api/v1/epics/relay-hardening"
             ));
             mockReports.add(new ReportItem(
                     "rep-0139",
-                    new ReportFrom("pm-mcp-clients", null, "docs-typo"),
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, null, CONST_DOCS_TYPO),
                     ReportKind.PLAN_ENDED,
                     "docs-typo ended: no change",
-                    Map.of("plan", "docs-typo", "outcome", "no change"),
+                    Map.of("plan", CONST_DOCS_TYPO, CONST_OUTCOME, "no change"),
                     null,
                     Instant.parse("2026-10-16T09:02:00Z"),
                     Instant.parse("2026-10-16T09:40:00Z"),
@@ -755,10 +769,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             ));
             mockReports.add(new ReportItem(
                     "rep-0131",
-                    new ReportFrom("pm-mcp-core", null, null),
+                    new ReportFrom(CONST_PM_MCP_CORE, null, null),
                     ReportKind.PROJECT_ONBOARDED,
                     "pm-mcp-core is onboarded",
-                    Map.of("project", "pm-mcp-core"),
+                    Map.of("project", CONST_PM_MCP_CORE),
                     null,
                     Instant.parse("2026-10-15T18:40:00Z"),
                     Instant.parse("2026-10-15T18:40:00Z"),
@@ -767,10 +781,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             ));
             mockReports.add(new ReportItem(
                     "rep-0120",
-                    new ReportFrom("pm-mcp-clients", "relay-hardening", "relay-auth-v2"),
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_AUTH_V2),
                     ReportKind.PLAN_ENDED,
                     "relay-auth-v2 ended: merged (#210)",
-                    Map.of("plan", "relay-auth-v2", "outcome", "merged (#210)"),
+                    Map.of("plan", CONST_RELAY_AUTH_V2, CONST_OUTCOME, "merged (#210)"),
                     null,
                     Instant.parse("2026-10-14T10:00:00Z"),
                     Instant.parse("2026-10-14T10:00:00Z"),
@@ -779,7 +793,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             ));
             mockReports.add(new ReportItem(
                     "rep-0110",
-                    new ReportFrom("pm-mcp-core", null, null),
+                    new ReportFrom(CONST_PM_MCP_CORE, null, null),
                     ReportKind.SOURCE_FLAGGED,
                     "A source of codeberg-issues was flagged: issue #4711",
                     Map.of("item", "codeberg-issues", "source", "issue #4711"),
@@ -888,7 +902,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var path = request.path();
         var method = request.method();
 
-        if ("GET".equals(method) && ("/api/v1/reports".equals(path) || "/api/v1/reports/".equals(path))) {
+        if ("GET".equals(method) && ("/api/v1/reports".equals(path) || PATH_REPORTS_PREFIX.equals(path))) {
             handleListReports(request, response);
             return true;
         }
@@ -896,8 +910,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleMarkReportsRead(request, response, isWeb);
             return true;
         }
-        if (path.startsWith("/api/v1/reports/")) {
-            var sub = path.substring("/api/v1/reports/".length());
+        if (path.startsWith(PATH_REPORTS_PREFIX)) {
+            var sub = path.substring(PATH_REPORTS_PREFIX.length());
             if (sub.endsWith("/read") && "POST".equals(method)) {
                 var reportId = sub.substring(0, sub.length() - "/read".length());
                 handleMarkSingleReportRead(response, reportId, isWeb);
@@ -927,54 +941,45 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         if (".".equals(projectFilter)) {
-            projectFilter = "pm-mcp-clients";
+            projectFilter = CONST_PM_MCP_CLIENTS;
         }
 
         List<ReportItem> allUnread = new ArrayList<>();
         synchronized (reportsLock) {
             for (var rep : mockReports) {
-                if (!rep.isRead()) {
-                    if (projectFilter == null || projectFilter.isBlank() || projectFilter.equals(rep.from().projectId())) {
-                        allUnread.add(rep);
-                    }
+                if (!rep.isRead() && (projectFilter == null || projectFilter.isBlank() || projectFilter.equals(rep.from().projectId()))) {
+                    allUnread.add(rep);
                 }
             }
         }
 
         allUnread.sort((a, b) -> b.createdAt().compareTo(a.createdAt()));
 
-        int pageSize = 5;
-        List<ReportItem> paged;
-        boolean hasOlder;
-        int olderCount;
-
-        if (!older) {
-            if (allUnread.size() > pageSize) {
-                paged = new ArrayList<>(allUnread.subList(0, pageSize));
-                hasOlder = true;
-                olderCount = allUnread.size() - pageSize;
-            } else {
-                paged = new ArrayList<>(allUnread);
-                hasOlder = false;
-                olderCount = 0;
-            }
-        } else {
-            if (allUnread.size() > pageSize) {
-                paged = new ArrayList<>(allUnread.subList(pageSize, allUnread.size()));
-            } else {
-                paged = List.of();
-            }
-            hasOlder = false;
-            olderCount = 0;
-        }
+        var pagedResult = paginateUnread(allUnread, older, 5);
 
         Instant oldestUnread = null;
         if (!allUnread.isEmpty()) {
             oldestUnread = allUnread.getLast().createdAt();
         }
 
-        var page = new ReportsPage(paged, allUnread.size(), oldestUnread, hasOlder, olderCount);
+        var page = new ReportsPage(pagedResult.paged(), allUnread.size(), oldestUnread, pagedResult.hasOlder(), pagedResult.olderCount());
         response.json(200, page.toMap());
+    }
+
+    private record PagedResult(List<ReportItem> paged, boolean hasOlder, int olderCount) {
+    }
+
+    private static PagedResult paginateUnread(List<ReportItem> allUnread, boolean older, int pageSize) {
+        if (!older) {
+            if (allUnread.size() > pageSize) {
+                return new PagedResult(new ArrayList<>(allUnread.subList(0, pageSize)), true, allUnread.size() - pageSize);
+            }
+            return new PagedResult(new ArrayList<>(allUnread), false, 0);
+        }
+        if (allUnread.size() > pageSize) {
+            return new PagedResult(new ArrayList<>(allUnread.subList(pageSize, allUnread.size())), false, 0);
+        }
+        return new PagedResult(List.of(), false, 0);
     }
 
     private void handleGetReport(MockHttpResponse response, String reportId) throws IOException {
@@ -994,6 +999,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    private static ReportItem markAsRead(ReportItem rep, boolean isWeb) {
+        return new ReportItem(
+                rep.id(), rep.from(), rep.kind(), rep.subject(), rep.subjectParams(),
+                rep.body(), rep.createdAt(), rep.sentAt(), Instant.now(),
+                isWeb ? "web" : "cli", isWeb ? "iPad" : KEY_TERMINAL, rep.detailLink()
+        );
+    }
+
+    private void broadcastReportRead(String reportId, boolean isWeb) {
+        broadcastEvent("report.read", Map.of(
+                "report_id", reportId,
+                "read_at", Instant.now().toString(),
+                "channel", isWeb ? "web" : "cli",
+                "device", isWeb ? "iPad" : KEY_TERMINAL
+        ));
+    }
+
     private void handleMarkSingleReportRead(MockHttpResponse response, String reportId, boolean isWeb) throws IOException {
         ReportItem target = null;
         synchronized (reportsLock) {
@@ -1002,12 +1024,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (rep.id().equals(reportId)) {
                     target = rep;
                     if (!rep.isRead()) {
-                        var readItem = new ReportItem(
-                                rep.id(), rep.from(), rep.kind(), rep.subject(), rep.subjectParams(),
-                                rep.body(), rep.createdAt(), rep.sentAt(), Instant.now(),
-                                isWeb ? "web" : "cli", isWeb ? "iPad" : "terminal", rep.detailLink()
-                        );
-                        mockReports.set(i, readItem);
+                        mockReports.set(i, markAsRead(rep, isWeb));
                     }
                     break;
                 }
@@ -1018,16 +1035,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         if (target.isRead()) {
-            response.json(200, Map.of("count", 0, "marked_count", 0, KEY_STATUS, "already_read"));
+            response.json(200, Map.of(KEY_COUNT, 0, KEY_MARKED_COUNT, 0, KEY_STATUS, "already_read"));
             return;
         }
-        broadcastEvent("report.read", Map.of(
-                "report_id", target.id(),
-                "read_at", Instant.now().toString(),
-                "channel", isWeb ? "web" : "cli",
-                "device", isWeb ? "iPad" : "terminal"
-        ));
-        response.json(200, Map.of("count", 1, "marked_count", 1, KEY_STATUS, "ok"));
+        broadcastReportRead(target.id(), isWeb);
+        response.json(200, Map.of(KEY_COUNT, 1, KEY_MARKED_COUNT, 1, KEY_STATUS, "ok"));
     }
 
     private void handleMarkReportsRead(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -1047,34 +1059,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
             for (int i = 0; i < mockReports.size(); i++) {
                 var rep = mockReports.get(i);
                 if (!rep.isRead() && (all || ids.contains(rep.id()))) {
-                    var readItem = new ReportItem(
-                            rep.id(), rep.from(), rep.kind(), rep.subject(), rep.subjectParams(),
-                            rep.body(), rep.createdAt(), rep.sentAt(), Instant.now(),
-                            isWeb ? "web" : "cli", isWeb ? "iPad" : "terminal", rep.detailLink()
-                    );
+                    var readItem = markAsRead(rep, isWeb);
                     mockReports.set(i, readItem);
                     marked.add(readItem);
                 }
             }
         }
         for (var m : marked) {
-            broadcastEvent("report.read", Map.of(
-                    "report_id", m.id(),
-                    "read_at", Instant.now().toString(),
-                    "channel", isWeb ? "web" : "cli",
-                    "device", isWeb ? "iPad" : "terminal"
-            ));
+            broadcastReportRead(m.id(), isWeb);
         }
-        response.json(200, Map.of("count", marked.size(), "marked_count", marked.size(), KEY_STATUS, "ok"));
+        response.json(200, Map.of(KEY_COUNT, marked.size(), KEY_MARKED_COUNT, marked.size(), KEY_STATUS, "ok"));
     }
 
     private void handleGetPlanCompletion(MockHttpResponse response, String planId) throws IOException {
-        if ("relay-token-store".equals(planId) || "running-plan".equals(planId)) {
+        if (CONST_RELAY_TOKEN_STORE.equals(planId) || "running-plan".equals(planId)) {
             response.json(409, Map.of(
                     KEY_ERROR, "plan_running",
                     KEY_MESSAGE, planId + " is running; its completion report follows when it ends",
                     "plan", planId,
-                    "state", "running"
+                    KEY_STATE, "running"
             ));
             return;
         }

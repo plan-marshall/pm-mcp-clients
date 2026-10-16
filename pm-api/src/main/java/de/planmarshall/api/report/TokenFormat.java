@@ -28,6 +28,8 @@ public final class TokenFormat {
     private TokenFormat() {
     }
 
+    private static final String PARAM_VALUE = "value";
+
     /**
      * Formats a token count into a localized string (e.g. {@code "412"}, {@code "4.2 k"}, {@code "830 k"},
      * {@code "1.24 M"}), applying floor rounding and {@code "≥"} prefix when {@code floor} is {@code true}.
@@ -48,21 +50,21 @@ public final class TokenFormat {
             var val = BigDecimal.valueOf(count)
                     .divide(BigDecimal.valueOf(1_000), 1, roundingMode);
             var numStr = formatDecimal(val, 1, normLocale);
-            formattedValue = MessageCatalogue.format(normLocale, "common.tokens.thousands", Map.of("value", numStr));
+            formattedValue = MessageCatalogue.format(normLocale, "common.tokens.thousands", Map.of(PARAM_VALUE, numStr));
         } else if (count < 1_000_000) {
             var val = BigDecimal.valueOf(count)
                     .divide(BigDecimal.valueOf(1_000), 0, roundingMode);
             var numStr = formatDecimal(val, 0, normLocale);
-            formattedValue = MessageCatalogue.format(normLocale, "common.tokens.thousands", Map.of("value", numStr));
+            formattedValue = MessageCatalogue.format(normLocale, "common.tokens.thousands", Map.of(PARAM_VALUE, numStr));
         } else {
             var val = BigDecimal.valueOf(count)
                     .divide(BigDecimal.valueOf(1_000_000), 2, roundingMode);
             var numStr = formatDecimal(val, 2, normLocale);
-            formattedValue = MessageCatalogue.format(normLocale, "common.tokens.millions", Map.of("value", numStr));
+            formattedValue = MessageCatalogue.format(normLocale, "common.tokens.millions", Map.of(PARAM_VALUE, numStr));
         }
 
         if (floor) {
-            return MessageCatalogue.format(normLocale, "common.tokens.at_least", Map.of("value", formattedValue));
+            return MessageCatalogue.format(normLocale, "common.tokens.at_least", Map.of(PARAM_VALUE, formattedValue));
         }
         return formattedValue;
     }

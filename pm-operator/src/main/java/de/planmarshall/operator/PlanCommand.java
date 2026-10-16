@@ -24,7 +24,11 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.report.DecisionRecord;
+import de.planmarshall.api.report.DeliverableSummary;
 import de.planmarshall.api.report.PlanCompletionReport;
+import de.planmarshall.api.report.ReplanningRecord;
+import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
@@ -424,6 +428,11 @@ public final class PlanCommand implements Callable<Integer> {
         @Option(names = "--components", description = "Show raw token components")
         boolean components;
 
+        private static final String FMT_14S = "  %-14s %s%n";
+        private static final String FMT_INDENT = "                 %s%n";
+        private static final String NOT_MEASURED = " not measured";
+        private static final String KEY_STATE = "state";
+
         ReportCommand(OperatorContext context) {
             this.context = context;
         }
@@ -438,16 +447,14 @@ public final class PlanCommand implements Callable<Integer> {
                 var state = "running";
                 try {
                     var parsed = JsonTree.parse(response.body());
-                    if (parsed instanceof Map<?, ?> map && map.get("state") != null) {
-                        state = map.get("state").toString();
+                    if (parsed instanceof Map<?, ?> map && map.get(KEY_STATE) != null) {
+                        state = map.get(KEY_STATE).toString();
                     }
-                }
-                /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                catch (Exception _) {
-                    // ignore
+                } catch (IOException _) {
+                    // Ignore unparseable 409 body
                 }
                 out.println(MessageCatalogue.format("operator.reports.not_ended",
-                        Map.of("plan", planId, "state", state)));
+                        Map.of("plan", planId, KEY_STATE, state)));
                 out.flush();
                 return 1;
             }
@@ -462,9 +469,7 @@ public final class PlanCommand implements Callable<Integer> {
                     try {
                         printCompletionReport(out, bodyText, tokens, components);
                         return 0;
-                    }
-                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                    catch (Exception _) {
+                    } catch (IOException _) {
                         // ignore and fall back to printing bodyText
                     }
                 }
@@ -473,7 +478,6 @@ public final class PlanCommand implements Callable<Integer> {
                 return 0;
             }
             throw new OperatorRefusedException("plan report", response);
-
         }
 
         private void printCompletionReport(PrintWriter out, String body, boolean showTokens, boolean showComponents) throws IOException {
@@ -501,14 +505,31 @@ public final class PlanCommand implements Callable<Integer> {
             }
 
             var outcomeDesc = report.terminalReason() != null ? report.terminalReason() : report.outcome();
-            out.printf("  %-14s %s%n", "outcome", ConsoleNotice.stripControlSequences(outcomeDesc));
+            out.printf(FMT_14S, "outcome", ConsoleNotice.stripControlSequences(outcomeDesc));
             if (report.pullRequestUrl() != null && !report.pullRequestUrl().isBlank()) {
-                out.printf("  %-14s %s%n", "", ConsoleNotice.stripControlSequences(report.pullRequestUrl()));
+                out.printf(FMT_14S, "", ConsoleNotice.stripControlSequences(report.pullRequestUrl()));
             }
 
             var reason = report.reason() != null && !report.reason().isBlank() ? report.reason() : "—";
-            out.printf("  %-14s %s%n", "reason", ConsoleNotice.stripControlSequences(reason));
+            out.printf(FMT_14S, "reason", ConsoleNotice.stripControlSequences(reason));
 
+            var ran = formatRan(report);
+            if (ran != null) {
+                out.printf(FMT_14S, "ran", ran);
+            }
+
+            printDeliverables(out, report.deliverables());
+            printReplanning(out, report.replanningRecords());
+            printDecisions(out, report.decisionRecords());
+
+            var usage = report.tokenUsage();
+            if (usage != null) {
+                printTokensSummary(out, usage, ran, report.planId(), showTokens, showComponents);
+            }
+            out.flush();
+        }
+
+        private static @Nullable String formatRan(PlanCompletionReport report) {
             var ran = report.ran();
             if (ran == null && report.durationSeconds() > 0) {
                 ran = formatDuration(report.durationSeconds());
@@ -524,33 +545,37 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                 }
             }
-            if (ran != null) {
-                out.printf("  %-14s %s%n", "ran", ran);
-            }
+            return ran;
+        }
 
-            if (report.deliverables().isEmpty()) {
-                out.printf("  %-14s %s%n", "deliverables", "no deliverables yet: it ended in refine");
+        private static void printDeliverables(PrintWriter out, List<DeliverableSummary> deliverables) {
+            if (deliverables.isEmpty()) {
+                out.printf(FMT_14S, "deliverables", "no deliverables yet: it ended in refine");
             } else {
-                long doneCount = report.deliverables().stream().filter(d -> "done".equalsIgnoreCase(d.state())).count();
-                out.printf("  %-14s %d of %d done%n", "deliverables", doneCount, report.deliverables().size());
-                for (var deliv : report.deliverables()) {
+                long doneCount = deliverables.stream().filter(d -> "done".equalsIgnoreCase(d.state())).count();
+                out.printf("  %-14s %d of %d done%n", "deliverables", doneCount, deliverables.size());
+                for (var deliv : deliverables) {
                     out.printf("                   %-5s %s%n", deliv.state(), ConsoleNotice.stripControlSequences(deliv.name()));
                 }
             }
+        }
 
-            if (!report.replanningRecords().isEmpty()) {
-                var first = report.replanningRecords().get(0);
+        private static void printReplanning(PrintWriter out, List<ReplanningRecord> replanningRecords) {
+            if (!replanningRecords.isEmpty()) {
+                var first = replanningRecords.get(0);
                 var repSummary = String.format("%d · after %s (%s): %s",
-                        report.replanningRecords().size(),
+                        replanningRecords.size(),
                         ConsoleNotice.stripControlSequences(first.trigger()),
                         first.time() != null ? first.time() : "",
                         ConsoleNotice.stripControlSequences(first.change()));
-                out.printf("  %-14s %s%n", "re-planning", repSummary);
+                out.printf(FMT_14S, "re-planning", repSummary);
             }
+        }
 
-            if (!report.decisionRecords().isEmpty()) {
+        private static void printDecisions(PrintWriter out, List<DecisionRecord> decisionRecords) {
+            if (!decisionRecords.isEmpty()) {
                 var decList = new ArrayList<String>();
-                for (var d : report.decisionRecords()) {
+                for (var d : decisionRecords) {
                     var decText = d.id();
                     if (d.question() != null && !d.question().isBlank()) {
                         decText += " " + ConsoleNotice.stripControlSequences(d.question());
@@ -562,25 +587,31 @@ public final class PlanCommand implements Callable<Integer> {
                     decText += " (" + by + ")";
                     decList.add(decText);
                 }
-                out.printf("  %-14s %d · %s%n", "decisions", report.decisionRecords().size(), String.join(" · ", decList));
+                out.printf("  %-14s %d · %s%n", "decisions", decisionRecords.size(), String.join(" · ", decList));
             }
+        }
 
-            var usage = report.tokenUsage();
-            if (usage != null) {
-                var totalSplit = TokenFormat.formatSplit(usage.total(), usage.input(), usage.output(), usage.floor(), "en");
-                if (showTokens) {
-                    out.printf("tokens         %s · ran %s%n", totalSplit, ran != null ? ran : "");
-                    printTokensDetail(out, usage, report.planId(), showComponents);
-                } else {
-                    out.printf("  %-14s %s · %s%n", "tokens", totalSplit, ran != null ? ran : "");
-                    int unmeasured = usage.tasksTotal() - usage.tasksMeasured();
-                    var covText = String.format("%d workers · %d models · %d of %d tasks not measured",
-                            usage.workersCount(), usage.modelsCount(), unmeasured, usage.tasksTotal());
-                    out.printf("                 %s%n", covText);
-                    out.printf("                 plan report %s --tokens%n", report.planId());
-                }
+        private void printTokensSummary(PrintWriter out, TokenUsageRecord usage, @Nullable String ran, String planId, boolean showTokens, boolean showComponents) {
+            var totalSplit = TokenFormat.formatSplit(usage.total(), usage.input(), usage.output(), usage.floor(), "en");
+            if (showTokens) {
+                out.printf("tokens         %s · ran %s%n", totalSplit, ran != null ? ran : "");
+                printTokensDetail(out, usage, planId, showComponents);
+            } else {
+                out.printf(FMT_14S, "tokens", totalSplit + " · " + (ran != null ? ran : ""));
+                int unmeasured = usage.tasksTotal() - usage.tasksMeasured();
+                var covText = String.format("%d workers · %d models · %d of %d tasks not measured",
+                        usage.workersCount(), usage.modelsCount(), unmeasured, usage.tasksTotal());
+                out.printf(FMT_INDENT, covText);
+                out.printf("                 plan report %s --tokens%n", planId);
             }
-            out.flush();
+        }
+
+        private static String formatPin(TokenBreakdownItem item) {
+            if (item.harnessModel() == null) {
+                return "";
+            }
+            var effort = item.effort() != null ? item.effort() : "medium";
+            return " " + item.harnessModel() + " · " + effort;
         }
 
         private void printTokensDetail(PrintWriter out, TokenUsageRecord usage, String planId, boolean showComponents) {
@@ -592,43 +623,37 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf("  %-12s %d of %d tasks measured%n", "coverage", usage.tasksTotal(), usage.tasksTotal());
             }
 
-            if (!usage.byPhase().isEmpty()) {
-                out.println("  by phase");
-                for (var item : usage.byPhase()) {
-                    var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), "en");
-                    var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + " not measured") : "";
-                    out.printf("               %-10s %s%s%n", item.name(), val, unmeasuredItem);
-                    if (showComponents && item.components() != null) {
-                        out.printf("                 %s%n", formatComponents(item.components()));
-                    }
+            printBreakdown(out, "  by phase", usage.byPhase(), "%-10s", false, showComponents);
+            printBreakdown(out, "  by role", usage.byRole(), "%-13s", true, showComponents);
+            printBreakdown(out, "  by model", usage.byModel(), "%-20s", false, showComponents);
+            printWaste(out, usage);
+
+            if (!showComponents) {
+                out.printf("raw components: plan report %s --tokens --components%n", planId);
+            }
+        }
+
+        private static void printBreakdown(PrintWriter out, String header, List<TokenBreakdownItem> items, String nameFmt, boolean isRole, boolean showComponents) {
+            if (items.isEmpty()) {
+                return;
+            }
+            out.println(header);
+            for (var item : items) {
+                var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), "en");
+                var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + NOT_MEASURED) : "";
+                if (isRole) {
+                    var pin = formatPin(item);
+                    out.printf("               " + nameFmt + " %-26s %s%s%n", item.name(), pin, val, unmeasuredItem);
+                } else {
+                    out.printf("               " + nameFmt + " %s%s%n", item.name(), val, unmeasuredItem);
+                }
+                if (showComponents && item.components() != null) {
+                    out.printf(FMT_INDENT, formatComponents(item.components()));
                 }
             }
+        }
 
-            if (!usage.byRole().isEmpty()) {
-                out.println("  by role");
-                for (var item : usage.byRole()) {
-                    var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), "en");
-                    var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + " not measured") : "";
-                    var pin = item.harnessModel() != null ? (" " + item.harnessModel() + " · " + (item.effort() != null ? item.effort() : "medium")) : "";
-                    out.printf("               %-13s %-26s %s%s%n", item.name(), pin, val, unmeasuredItem);
-                    if (showComponents && item.components() != null) {
-                        out.printf("                 %s%n", formatComponents(item.components()));
-                    }
-                }
-            }
-
-            if (!usage.byModel().isEmpty()) {
-                out.println("  by model");
-                for (var item : usage.byModel()) {
-                    var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), "en");
-                    var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + " not measured") : "";
-                    out.printf("               %-20s %s%s%n", item.name(), val, unmeasuredItem);
-                    if (showComponents && item.components() != null) {
-                        out.printf("                 %s%n", formatComponents(item.components()));
-                    }
-                }
-            }
-
+        private static void printWaste(PrintWriter out, TokenUsageRecord usage) {
             if (usage.totalWasteTokens() > 0 || !usage.wasteRecords().isEmpty()) {
                 var wasteTotal = TokenFormat.formatTokens(usage.totalWasteTokens(), false, "en");
                 out.printf("  %-12s %s tokens (%d %% of measured)%n", "waste", wasteTotal, usage.wasteSharePercent());
@@ -643,11 +668,6 @@ public final class PlanCommand implements Callable<Integer> {
                     var extra = w.causeSummary() != null ? w.causeSummary() : (w.tasksCount() + " tasks");
                     out.printf("               %-18s %-6s %s%n", label, amount, extra);
                 }
-            }
-
-
-            if (!showComponents) {
-                out.printf("raw components: plan report %s --tokens --components%n", planId);
             }
         }
 

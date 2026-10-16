@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -175,8 +176,7 @@ class ReportRecordsTest {
         assertEquals("terminal", parsedRead.device());
     }
 
-    @Test
-    void shouldRoundTripPlanCompletionReportWithFullTokenUsage() throws Exception {
+    private PlanCompletionReport createFullPlanCompletionReport() {
         var start = Instant.parse("2026-10-16T08:40:00Z");
         var end = Instant.parse("2026-10-16T11:20:00Z");
 
@@ -227,7 +227,7 @@ class ReportRecordsTest {
                 breakdownPhase, breakdownRole, breakdownModel, waste, 52000, 13
         );
 
-        var report = new PlanCompletionReport(
+        return new PlanCompletionReport(
                 "fix-relay",
                 "fix-relay",
                 new ReportFrom("pm-mcp-clients", "relay-hardening", "fix-relay"),
@@ -246,7 +246,11 @@ class ReportRecordsTest {
                 decisions,
                 tokenUsage
         );
+    }
 
+    @Test
+    void shouldRoundTripPlanCompletionReportMetadata() throws Exception {
+        var report = createFullPlanCompletionReport();
         var json = report.toJson();
         assertNotNull(json);
 
@@ -261,6 +265,12 @@ class ReportRecordsTest {
         assertEquals("TASK-5 added", parsed.replanningRecords().getFirst().change());
         assertEquals(2, parsed.decisionRecords().size());
         assertEquals("rebase", parsed.decisionRecords().getFirst().answer());
+    }
+
+    @Test
+    void shouldRoundTripTokenUsageInCompletionReport() throws Exception {
+        var report = createFullPlanCompletionReport();
+        var parsed = PlanCompletionReport.fromJson(report.toJson());
 
         assertNotNull(parsed.tokenUsage());
         assertEquals(412000, parsed.tokenUsage().totalTokens());
@@ -341,6 +351,168 @@ class ReportRecordsTest {
                 TokenFormat.formatSplit(412000, 380000, 32000, true, "en"));
         assertEquals("≥ 412 Tsd. (≥ 380 Tsd. rein · ≥ 32 Tsd. raus)",
                 TokenFormat.formatSplit(412000, 380000, 32000, true, "de"));
+    }
+
+    @Test
+    void shouldRoundTripTokenComponentRecord() throws Exception {
+        var comp = new TokenComponentRecord(10000L, 2000L, 300L, 4000L, 500L);
+        assertEquals(10000L, comp.input());
+        assertEquals(2000L, comp.cacheRead());
+        assertEquals(300L, comp.cacheWrite());
+        assertEquals(4000L, comp.output());
+        assertEquals(500L, comp.reasoning());
+
+        var map = comp.toMap();
+        var fromMap = TokenComponentRecord.fromMap(map);
+        assertEquals(comp, fromMap);
+    }
+
+    @Test
+    void shouldRoundTripSupportingRecords() {
+        var deliv = new DeliverableSummary("doc updates", "done");
+        assertEquals("doc updates", deliv.name());
+        assertEquals("done", deliv.state());
+        assertEquals(deliv, DeliverableSummary.fromMap(deliv.toMap()));
+
+        var replan = new ReplanningRecord("scope changed", "14:00", "TASK-3 modified");
+        assertEquals("scope changed", replan.trigger());
+        assertEquals("14:00", replan.time());
+        assertEquals("TASK-3 modified", replan.change());
+        assertEquals(replan, ReplanningRecord.fromMap(replan.toMap()));
+
+        var waste = new TokenWasteRecord("retries", 12000L, 3, 2, "timeout 2");
+        assertEquals("retries", waste.wasteClass());
+        assertEquals(12000L, waste.tokens());
+        assertEquals(3, waste.sharePercent());
+        assertEquals(2, waste.tasksCount());
+        assertEquals("timeout 2", waste.causeSummary());
+        assertEquals(waste, TokenWasteRecord.fromMap(waste.toMap()));
+    }
+
+    @Test
+    void shouldTestTokenUsageRecordFallbacksAndAccessors() {
+        var map = Map.<String, Object>of(
+                "total", 50000L,
+                "input", 45000L,
+                "output", 5000L,
+                "duration", 300L,
+                "floor", true,
+                "coverage", Map.of(
+                        "workers", 2L,
+                        "models", 1L,
+                        "total_tasks", 10L,
+                        "unmeasured", 2L,
+                        "reason", "stalled"
+                ),
+                "waste", Map.of(
+                "total", 3000L,
+                "share_percent", 6L,
+                "no_product_tokens", 1000L,
+                "no_product_tasks", 1L,
+                "retries_tokens", 1500L,
+                "retries_causes", List.of("timeout"),
+                "remediation_tokens", 500L,
+                "remediation_causes", List.of("findings")
+        )
+        );
+
+        var record = TokenUsageRecord.fromMap(map);
+        assertEquals(50000L, record.total());
+        assertEquals(45000L, record.input());
+        assertEquals(5000L, record.output());
+        assertTrue(record.floor());
+        assertEquals(8, record.tasksMeasured());
+        assertEquals(10, record.tasksTotal());
+        assertEquals("stalled", record.unmeasuredReason());
+        assertEquals(3, record.wasteRecords().size());
+        assertEquals(3000L, record.totalWasteTokens());
+        assertEquals(6, record.wasteSharePercent());
+    }
+
+    @Test
+    void shouldTestPlanCompletionReportEdgeCases() throws Exception {
+        var map = Map.<String, Object>of(
+                "plan_id", "test-plan",
+                "from", "project > epic > plan",
+                "pull_request", "#99",
+                "started", "2026-10-16T10:00:00Z",
+                "ended", "10:30",
+                "run_duration_seconds", 1800L,
+                "ran", "30 min"
+        );
+
+        var report = PlanCompletionReport.fromMap(map);
+        assertEquals("test-plan", report.planId());
+        assertEquals("project", report.from().projectId());
+        assertEquals("epic", report.from().epicId());
+        assertEquals("plan", report.from().planId());
+        assertEquals(99, report.pullRequestNumber());
+        assertEquals("10:30", report.ended());
+        assertEquals("30 min", report.ran());
+        assertEquals(1800L, report.durationSeconds());
+
+        // 2-part from path
+        var map2 = Map.<String, Object>of(
+                "plan_id", "test-plan-2",
+                "from", "project > plan2",
+                "pull_request", 101L,
+                "started", "invalid-date",
+                "ended", "invalid-date"
+        );
+        var report2 = PlanCompletionReport.fromMap(map2);
+        assertEquals("plan2", report2.from().planId());
+        assertEquals(101, report2.pullRequestNumber());
+    }
+
+    @Test
+    void shouldTestReportItemEdgeCasesAndFormatting() throws Exception {
+        var now = Instant.now();
+        var item = new ReportItem(
+                "rep-999",
+                new ReportFrom("proj", null, null),
+                ReportKind.PLAN_ENDED,
+                "ended",
+                Map.of(),
+                "body",
+                now.minusSeconds(120),
+                now,
+                null,
+                null,
+                null,
+                "/plans/p1"
+        );
+
+        assertFalse(item.isRead());
+        assertTrue(item.isSentLater());
+        assertEquals("/plans/p1", item.detail());
+        assertNotNull(item.sent());
+
+        // Test string from with plan prefix
+        var map = Map.<String, Object>of(
+                "id", "rep-1",
+                "kind", "plan.ended",
+                "from", "my-proj > my-plan",
+                "summary", "my summary",
+                "created", "today 10:00",
+                "sent", "today 10:05"
+        );
+        var parsed = ReportItem.fromMap(map);
+        assertEquals("my-plan", parsed.from().planId());
+        assertEquals("my summary", parsed.body());
+        assertTrue(parsed.isSentLater());
+
+        // parseList and writeList
+        var listStr = ReportItem.writeList(List.of(parsed));
+        var listParsed = ReportItem.parseList(listStr);
+        assertEquals(1, listParsed.size());
+        assertEquals("rep-1", listParsed.get(0).id());
+
+        // formatTime
+        var yesterday = now.minus(Duration.ofDays(1));
+        var old = now.minus(Duration.ofDays(5));
+        assertNotNull(ReportItem.formatTime(now));
+        assertNotNull(ReportItem.formatTime(yesterday));
+        assertTrue(ReportItem.formatTime(old).contains("d ago"));
     }
 }
 

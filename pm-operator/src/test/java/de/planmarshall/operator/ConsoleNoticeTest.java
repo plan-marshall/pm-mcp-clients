@@ -209,5 +209,36 @@ class ConsoleNoticeTest {
                     () -> assertNull(ConsoleNotice.fromEventMap(Map.of("type", "unknown_ping")))
             );
         }
+
+        @Test
+        @DisplayName("dispatches report notice events")
+        void reportNoticeDispatch() {
+            var multi = Map.<String, Object>of(
+                    "type", "report.sent",
+                    "count", 3,
+                    "project", "pm-mcp-clients"
+            );
+            var single = Map.<String, Object>of(
+                    "type", "report",
+                    "id", "rep-101",
+                    "from", "pm-mcp-clients > relay-hardening > fix-relay",
+                    "subject", "merged (#214)"
+            );
+            var singleSummary = Map.<String, Object>of(
+                    "type", "report",
+                    "plan", "docs-typo",
+                    "summary", "no change"
+            );
+            var fallback = Map.<String, Object>of(
+                    "type", "report"
+            );
+
+            assertAll(
+                    () -> assertEquals("▪ 3 new reports · pm-mcp-clients · reports", ConsoleNotice.fromEventMap(multi)),
+                    () -> assertEquals("▪ fix-relay: merged (#214) · reports open rep-101", ConsoleNotice.fromEventMap(single)),
+                    () -> assertEquals("▪ docs-typo: no change", ConsoleNotice.fromEventMap(singleSummary)),
+                    () -> assertEquals("▪ plan: New report", ConsoleNotice.fromEventMap(fallback))
+            );
+        }
     }
 }

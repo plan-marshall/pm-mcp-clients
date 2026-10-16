@@ -49,7 +49,7 @@ public record TokenBreakdownItem(
     private static final String FIELD_COMPONENTS = "components";
 
     public TokenBreakdownItem {
-        Objects.requireNonNull(label, "label");
+        Objects.requireNonNull(label, FIELD_LABEL);
     }
 
     public String name() {

@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 import org.junit.jupiter.api.DisplayName;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -221,6 +223,33 @@ class ReportsScenarioTest {
             var res3 = client.send(HttpRequest.get("/api/v1/plans/plan-unknown/completion")
                     .withHeader("Authorization", auth));
             assertEquals(404, res3.status());
+        }
+    }
+
+    @Test
+    @DisplayName("filters reports by project=. dot alias and fetches single report")
+    void shouldFilterByDotAliasAndFetchSingleReport() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.REPORTS)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/reports?project=.").withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            var page = ReportsPage.fromJson(res.bodyText());
+            assertTrue(page.items().stream().allMatch(r -> "pm-mcp-clients".equals(r.from().projectId())));
+
+            var singleRes = client.send(HttpRequest.get("/api/v1/reports/rep-0142").withHeader("Authorization", auth));
+            assertEquals(200, singleRes.status());
+            var singleData = JsonTree.asObject(JsonTree.parse(singleRes.body()));
+            assertEquals("rep-0142", JsonTree.string(singleData, "id"));
+
+            // Mark specific reports read
+            var markReq = ReadReportsRequest.of(List.of("rep-0142", "rep-0139")).toJson();
+            var markRes = client.send(HttpRequest.json("POST", "/api/v1/reports/read", markReq)
+                    .withHeader("Authorization", auth));
+            assertEquals(200, markRes.status());
+            var markResp = ReadReportsResponse.fromJson(markRes.bodyText());
+            assertEquals(2, markResp.markedCount());
         }
     }
 }

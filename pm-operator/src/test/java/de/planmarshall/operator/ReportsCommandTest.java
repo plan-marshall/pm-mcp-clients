@@ -182,6 +182,27 @@ class ReportsCommandTest {
     }
 
     @Test
+    @DisplayName("reports open executes command when detail is present in json")
+    void reportsOpenDelegatesToDetail() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/reports/rep-0142".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                        {"id":"rep-0142","detail":"status"}
+                        """);
+            } else if ("/api/v1/reports/rep-0142/read".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ok\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("reports", "open", "rep-0142");
+        assertEquals(0, code);
+    }
+
+    @Test
     @DisplayName("reports open reports not found on 404")
     void reportsOpenNotFound() throws Exception {
         fixture.start((request, response) -> response.send(404, null, ""));

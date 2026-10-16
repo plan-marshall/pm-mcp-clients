@@ -40,9 +40,9 @@ public record ReportReadEvent(
     private static final String FIELD_DEVICE = "device";
 
     public ReportReadEvent {
-        Objects.requireNonNull(reportId, "reportId");
-        Objects.requireNonNull(readAt, "readAt");
-        Objects.requireNonNull(channel, "channel");
+        Objects.requireNonNull(reportId, FIELD_REPORT_ID);
+        Objects.requireNonNull(readAt, FIELD_READ_AT);
+        Objects.requireNonNull(channel, FIELD_CHANNEL);
     }
 
     /**

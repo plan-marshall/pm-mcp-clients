@@ -89,10 +89,10 @@ public record ReportItem(
     private static final String FIELD_DETAIL_LINK = "detail_link";
 
     public ReportItem {
-        Objects.requireNonNull(id, "id");
-        Objects.requireNonNull(from, "from");
-        Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(subject, "subject");
+        Objects.requireNonNull(id, FIELD_ID);
+        Objects.requireNonNull(from, FIELD_FROM);
+        Objects.requireNonNull(kind, FIELD_KIND);
+        Objects.requireNonNull(subject, FIELD_SUBJECT);
         subjectParams = subjectParams != null ? Collections.unmodifiableMap(new LinkedHashMap<>(subjectParams)) : Map.of();
         Objects.requireNonNull(createdAt, "createdAt");
     }
@@ -211,12 +211,37 @@ public record ReportItem(
             kindStr = "plan.ended";
         }
         var kind = ReportKind.fromValue(kindStr);
+        var from = parseFrom(map.get(FIELD_FROM), kindStr);
 
-        var fromObj = map.get(FIELD_FROM);
-        ReportFrom from;
+        var subject = JsonTree.string(map, FIELD_SUBJECT);
+        if (subject == null) subject = "";
+
+        var subjectParams = parseSubjectParams(map);
+
+        var body = JsonTree.string(map, FIELD_BODY);
+        if (body == null) {
+            body = JsonTree.string(map, "summary");
+        }
+
+        var created = parseCreatedAt(map);
+        var sent = parseSentAt(map, created.instant());
+        var readAt = parseReadAt(map);
+
+        var readChannel = JsonTree.string(map, FIELD_READ_CHANNEL);
+        var readDevice = JsonTree.string(map, FIELD_READ_DEVICE);
+        var detailLink = JsonTree.string(map, FIELD_DETAIL_LINK);
+        if (detailLink == null) {
+            detailLink = JsonTree.string(map, "detail");
+        }
+
+        return new ReportItem(id, from, kind, subject, subjectParams, body, created.instant(), sent.instant(), readAt, readChannel, readDevice, detailLink, created.raw(), sent.raw());
+    }
+
+    private static ReportFrom parseFrom(Object fromObj, String kindStr) throws IOException {
         if (fromObj == null) {
-            from = new ReportFrom("", null, null);
-        } else if (fromObj instanceof String path) {
+            return new ReportFrom("", null, null);
+        }
+        if (fromObj instanceof String path) {
             var parts = path.split("[>›]");
             var proj = parts[0].trim();
             String epic = null;
@@ -232,30 +257,31 @@ public record ReportItem(
                     epic = second;
                 }
             }
-            from = new ReportFrom(proj, epic, plan);
-        } else {
-            var fromMap = JsonTree.asObject(fromObj);
-            if (fromMap == null) throw new JsonFormatException("Expected JSON object or string for from in ReportItem");
-            from = ReportFrom.fromMap(fromMap);
+            return new ReportFrom(proj, epic, plan);
         }
+        var fromMap = JsonTree.asObject(fromObj);
+        if (fromMap == null) {
+            throw new JsonFormatException("Expected JSON object or string for from in ReportItem");
+        }
+        return ReportFrom.fromMap(fromMap);
+    }
 
-        var subject = JsonTree.string(map, FIELD_SUBJECT);
-        if (subject == null) subject = "";
-
+    private static Map<String, Object> parseSubjectParams(Map<String, Object> map) {
         var paramsObj = map.get(FIELD_SUBJECT_PARAMS);
-        Map<String, Object> subjectParams = Map.of();
         if (paramsObj instanceof Map<?, ?> pm) {
             var m = new LinkedHashMap<String, Object>();
             for (var entry : pm.entrySet()) {
                 m.put(String.valueOf(entry.getKey()), entry.getValue());
             }
-            subjectParams = m;
+            return m;
         }
+        return Map.of();
+    }
 
-        var body = JsonTree.string(map, FIELD_BODY);
-        if (body == null) {
-            body = JsonTree.string(map, "summary");
-        }
+    private record TimeParseResult(@Nullable Instant instant, @Nullable String raw) {
+    }
+
+    private static TimeParseResult parseCreatedAt(Map<String, Object> map) {
         var createdAtStr = JsonTree.string(map, FIELD_CREATED_AT);
         String rawCreated = null;
         if (createdAtStr == null) {
@@ -275,7 +301,10 @@ public record ReportItem(
         } else {
             createdAt = Instant.now();
         }
+        return new TimeParseResult(createdAt, rawCreated);
+    }
 
+    private static TimeParseResult parseSentAt(Map<String, Object> map, Instant createdAt) {
         var sentAtStr = JsonTree.string(map, FIELD_SENT_AT);
         String rawSent = null;
         if (sentAtStr == null) {
@@ -293,18 +322,19 @@ public record ReportItem(
                 sentAt = createdAt.plusSeconds(120);
             }
         }
+        return new TimeParseResult(sentAt, rawSent);
+    }
 
+    private static @Nullable Instant parseReadAt(Map<String, Object> map) {
         var readAtStr = JsonTree.string(map, FIELD_READ_AT);
-        var readAt = readAtStr != null ? Instant.parse(readAtStr) : null;
-
-        var readChannel = JsonTree.string(map, FIELD_READ_CHANNEL);
-        var readDevice = JsonTree.string(map, FIELD_READ_DEVICE);
-        var detailLink = JsonTree.string(map, FIELD_DETAIL_LINK);
-        if (detailLink == null) {
-            detailLink = JsonTree.string(map, "detail");
+        if (readAtStr != null) {
+            try {
+                return Instant.parse(readAtStr);
+            } catch (DateTimeParseException _) {
+                return null;
+            }
         }
-
-        return new ReportItem(id, from, kind, subject, subjectParams, body, createdAt, sentAt, readAt, readChannel, readDevice, detailLink, rawCreated, rawSent);
+        return null;
     }
 
 

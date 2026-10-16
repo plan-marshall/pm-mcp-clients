@@ -28,7 +28,7 @@ public record ReportSentEvent(ReportItem report) {
     private static final String FIELD_REPORT = "report";
 
     public ReportSentEvent {
-        Objects.requireNonNull(report, "report");
+        Objects.requireNonNull(report, FIELD_REPORT);
     }
 
     /**

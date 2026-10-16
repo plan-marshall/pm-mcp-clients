@@ -87,54 +87,13 @@ public final class ReportsCommand implements Callable<Integer> {
 
         out.printf("Reports · %d unread%n", page.unreadCount());
 
-        var projectGroups = new LinkedHashMap<String, List<ReportItem>>();
-        for (var item : page.items()) {
-            var proj = item.from().isSystem() ? "This machine" : item.from().project();
-            if (proj == null || proj.isBlank()) {
-                proj = "This machine";
-            }
-            projectGroups.computeIfAbsent(proj, _ -> new ArrayList<>()).add(item);
-        }
-
+        var projectGroups = groupReportsByProject(page.items());
         for (var entry : projectGroups.entrySet()) {
-            var projectName = entry.getKey();
-            var projectItems = entry.getValue();
-            out.println(ConsoleNotice.stripControlSequences(projectName));
-
-            var epicGroups = new LinkedHashMap<String, List<ReportItem>>();
-            var planItems = new ArrayList<ReportItem>();
-            var projSelfItems = new ArrayList<ReportItem>();
-
-            for (var item : projectItems) {
-                if (item.from().epic() != null && !item.from().epic().isBlank()) {
-                    epicGroups.computeIfAbsent(item.from().epic(), _ -> new ArrayList<>()).add(item);
-                } else if (item.from().plan() != null && !item.from().plan().isBlank()) {
-                    planItems.add(item);
-                } else {
-                    projSelfItems.add(item);
-                }
-            }
-
-            for (var epicEntry : epicGroups.entrySet()) {
-                out.println("  " + ConsoleNotice.stripControlSequences(epicEntry.getKey()));
-                for (var item : epicEntry.getValue()) {
-                    printReportItem(out, item, "    ");
-                }
-            }
-
-            for (var item : planItems) {
-                printReportItem(out, item, "  ");
-            }
-
-            for (var item : projSelfItems) {
-                printReportItem(out, item, "  ");
-            }
+            printProjectGroup(out, entry.getKey(), entry.getValue());
         }
 
-        if (!page.items().isEmpty()) {
-            var firstId = page.items().get(0).id();
-            out.println(MessageCatalogue.format("operator.reports.read_hint", Map.of("id", firstId)));
-        }
+        var firstId = page.items().get(0).id();
+        out.println(MessageCatalogue.format("operator.reports.read_hint", Map.of("id", firstId)));
 
         if (page.hasOlder() && page.olderCount() > 0) {
             out.println(MessageCatalogue.format("operator.reports.older", Map.of("count", page.olderCount())));
@@ -142,8 +101,50 @@ public final class ReportsCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private static void printReportItem(PrintWriter out, ReportItem item, String indent) {
-        var id = ConsoleNotice.stripControlSequences(item.id());
+    private static Map<String, List<ReportItem>> groupReportsByProject(List<ReportItem> items) {
+        var projectGroups = new LinkedHashMap<String, List<ReportItem>>();
+        for (var item : items) {
+            var proj = item.from().isSystem() ? "This machine" : item.from().project();
+            if (proj == null || proj.isBlank()) {
+                proj = "This machine";
+            }
+            projectGroups.computeIfAbsent(proj, _ -> new ArrayList<>()).add(item);
+        }
+        return projectGroups;
+    }
+
+    private static void printProjectGroup(PrintWriter out, String projectName, List<ReportItem> projectItems) {
+        out.println(ConsoleNotice.stripControlSequences(projectName));
+
+        var epicGroups = new LinkedHashMap<String, List<ReportItem>>();
+        var planItems = new ArrayList<ReportItem>();
+        var projSelfItems = new ArrayList<ReportItem>();
+
+        for (var item : projectItems) {
+            if (item.from().epic() != null && !item.from().epic().isBlank()) {
+                epicGroups.computeIfAbsent(item.from().epic(), _ -> new ArrayList<>()).add(item);
+            } else if (item.from().plan() != null && !item.from().plan().isBlank()) {
+                planItems.add(item);
+            } else {
+                projSelfItems.add(item);
+            }
+        }
+
+        for (var epicEntry : epicGroups.entrySet()) {
+            out.println("  " + ConsoleNotice.stripControlSequences(epicEntry.getKey()));
+            for (var item : epicEntry.getValue()) {
+                printReportItem(out, item, "    ");
+            }
+        }
+        for (var item : planItems) {
+            printReportItem(out, item, "  ");
+        }
+        for (var item : projSelfItems) {
+            printReportItem(out, item, "  ");
+        }
+    }
+
+    private static String resolveTargetName(ReportItem item) {
         var targetName = item.from().plan();
         if (targetName == null || targetName.isBlank()) {
             targetName = item.from().epic();
@@ -151,8 +152,12 @@ public final class ReportsCommand implements Callable<Integer> {
         if (targetName == null || targetName.isBlank()) {
             targetName = "project";
         }
-        targetName = ConsoleNotice.stripControlSequences(targetName);
+        return ConsoleNotice.stripControlSequences(targetName);
+    }
 
+    private static void printReportItem(PrintWriter out, ReportItem item, String indent) {
+        var id = ConsoleNotice.stripControlSequences(item.id());
+        var targetName = resolveTargetName(item);
         var subject = ConsoleNotice.stripControlSequences(item.subject());
         var timeStr = ConsoleNotice.stripControlSequences(
                 item.isSentLater() ? item.created() + " · sent " + item.sent() : item.created());
@@ -163,15 +168,20 @@ public final class ReportsCommand implements Callable<Integer> {
         var detailHint = item.detail() != null && !item.detail().isBlank()
                 ? MessageCatalogue.format("operator.reports.open_hint", Map.of("id", id)) : "";
 
-        if (!body.isEmpty() || !detailHint.isEmpty()) {
-            var secondIndent = indent + "          ";
-            if (!body.isEmpty() && !detailHint.isEmpty()) {
-                out.printf("%s%-48s %s%n", secondIndent, body, detailHint);
-            } else if (!body.isEmpty()) {
-                out.printf("%s%s%n", secondIndent, body);
-            } else {
-                out.printf("%s%48s%s%n", secondIndent, "", detailHint);
-            }
+        printItemBodyAndDetail(out, indent, body, detailHint);
+    }
+
+    private static void printItemBodyAndDetail(PrintWriter out, String indent, String body, String detailHint) {
+        if (body.isEmpty() && detailHint.isEmpty()) {
+            return;
+        }
+        var secondIndent = indent + "          ";
+        if (!body.isEmpty() && !detailHint.isEmpty()) {
+            out.printf("%s%-48s %s%n", secondIndent, body, detailHint);
+        } else if (!body.isEmpty()) {
+            out.printf("%s%s%n", secondIndent, body);
+        } else {
+            out.printf("%s%48s%s%n", secondIndent, "", detailHint);
         }
     }
 
@@ -262,9 +272,7 @@ public final class ReportsCommand implements Callable<Integer> {
                             var args = PmConsole.parseArgs(item.detail());
                             return PmOperator.execute(context, out, spec.commandLine().getErr(), args.toArray(new String[0]));
                         }
-                    }
-                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                    catch (Exception _) {
+                    } catch (IOException _) {
                         // ignore and fall through to text printing
                     }
                 }

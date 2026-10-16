@@ -26,6 +26,7 @@ public final class ConsoleNotice {
     private static final Pattern CONTROL_CHARS = Pattern.compile(
             "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]");
     private static final String SCOPE = "scope";
+    private static final String KEY_PROJECT = "project";
     private static final String PLAN_PREFIX = "◆ Plan ";
     private static final String EPIC_PREFIX = "◆ Epic ";
 
@@ -203,26 +204,13 @@ public final class ConsoleNotice {
      */
     public static @Nullable String formatReportNotice(Map<String, Object> event) {
         if (event.containsKey("count") && event.get("count") instanceof Number num && num.intValue() > 1) {
-            var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault("project", "plan-marshall")));
+            var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault(KEY_PROJECT, "plan-marshall")));
             return "▪ " + num.intValue() + " new reports · " + stripControlSequences(scope) + " · reports";
         }
         var id = String.valueOf(event.getOrDefault("id", ""));
         var subject = (String) event.get("subject");
-        var from = (String) event.get("from");
-        var leaf = "plan";
-        if (from != null && !from.isBlank()) {
-            if (from.contains(">")) {
-                leaf = from.substring(from.lastIndexOf('>') + 1).trim();
-            } else if (from.contains("›")) {
-                leaf = from.substring(from.lastIndexOf('›') + 1).trim();
-            } else {
-                leaf = from.trim();
-            }
-        } else if (event.get("plan") != null) {
-            leaf = String.valueOf(event.get("plan"));
-        } else if (event.get("project") != null) {
-            leaf = String.valueOf(event.get("project"));
-        }
+        var leaf = extractLeaf(event);
+
         if (subject == null || subject.isBlank()) {
             subject = (String) event.get("summary");
         }
@@ -236,6 +224,25 @@ public final class ConsoleNotice {
             sb.append(" · reports open ").append(stripControlSequences(id));
         }
         return sb.toString();
+    }
+
+    private static String extractLeaf(Map<String, Object> event) {
+        var from = (String) event.get("from");
+        if (from != null && !from.isBlank()) {
+            if (from.contains(">")) {
+                return from.substring(from.lastIndexOf('>') + 1).trim();
+            } else if (from.contains("›")) {
+                return from.substring(from.lastIndexOf('›') + 1).trim();
+            }
+            return from.trim();
+        }
+        if (event.get("plan") != null) {
+            return String.valueOf(event.get("plan"));
+        }
+        if (event.get(KEY_PROJECT) != null) {
+            return String.valueOf(event.get(KEY_PROJECT));
+        }
+        return "plan";
     }
 }
 

@@ -115,9 +115,9 @@ public record PlanCompletionReport(
 
     public PlanCompletionReport {
         Objects.requireNonNull(planId, "planId");
-        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(title, FIELD_TITLE);
         Objects.requireNonNull(from, "from");
-        Objects.requireNonNull(outcome, "outcome");
+        Objects.requireNonNull(outcome, FIELD_OUTCOME);
         Objects.requireNonNull(startedAt, "startedAt");
         Objects.requireNonNull(endedAt, "endedAt");
         deliverables = deliverables != null ? Collections.unmodifiableList(new ArrayList<>(deliverables)) : List.of();
@@ -179,8 +179,33 @@ public record PlanCompletionReport(
         var title = JsonTree.string(map, FIELD_TITLE);
         if (title == null) title = planId;
 
-        var fromObj = map.get(FIELD_FROM);
-        ReportFrom from;
+        var from = parseFrom(map.get(FIELD_FROM), planId);
+        var outcome = JsonTree.string(map, FIELD_OUTCOME);
+        if (outcome == null) outcome = "completed";
+
+        var termReason = JsonTree.string(map, FIELD_TERMINAL_REASON);
+        if (termReason == null) termReason = JsonTree.string(map, "outcome_description");
+
+        var prNumber = parsePrNumber(map);
+        var prUrl = JsonTree.string(map, FIELD_PR_URL);
+        var reason = JsonTree.string(map, FIELD_REASON);
+        var startedAt = parseStartedAt(map);
+        var ended = parseEndedAt(map);
+
+        long duration = parseDuration(map);
+        var rawRan = JsonTree.string(map, "ran");
+        long paused = getLong(map.get(FIELD_PAUSED_SECONDS));
+        var pausedBy = JsonTree.string(map, FIELD_PAUSED_BY);
+
+        var deliverables = parseDeliverables(map);
+        var replan = parseReplanning(map);
+        var decisions = parseDecisions(map);
+        var tokenUsage = parseTokenUsage(map);
+
+        return new PlanCompletionReport(planId, title, from, outcome, termReason, prNumber, prUrl, reason, startedAt, ended.instant(), duration, paused, pausedBy, deliverables, replan, decisions, tokenUsage, ended.raw(), rawRan);
+    }
+
+    private static ReportFrom parseFrom(Object fromObj, String planId) throws IOException {
         if (fromObj instanceof String path) {
             var parts = path.split("[>›]");
             var proj = parts[0].trim();
@@ -192,47 +217,45 @@ public record PlanCompletionReport(
             } else if (parts.length == 2) {
                 plan = parts[1].trim();
             }
-            from = new ReportFrom(proj, epic, plan);
+            return new ReportFrom(proj, epic, plan);
         } else if (fromObj != null && JsonTree.asObject(fromObj) != null) {
-            from = ReportFrom.fromMap(JsonTree.asObject(fromObj));
-        } else {
-            from = new ReportFrom("project", null, planId);
+            return ReportFrom.fromMap(JsonTree.asObject(fromObj));
         }
+        return new ReportFrom("project", null, planId);
+    }
 
-        var outcome = JsonTree.string(map, FIELD_OUTCOME);
-        if (outcome == null) outcome = "completed";
-
-        var termReason = JsonTree.string(map, FIELD_TERMINAL_REASON);
-        if (termReason == null) termReason = JsonTree.string(map, "outcome_description");
-
-        Integer prNumber = null;
+    private static @Nullable Integer parsePrNumber(Map<String, Object> map) {
         var prNumObj = map.get(FIELD_PR_NUMBER);
         if (prNumObj == null) prNumObj = map.get("pull_request");
-        if (prNumObj instanceof JsonNumber jn) prNumber = (int) jn.longValue();
-        else if (prNumObj instanceof Number n) prNumber = n.intValue();
-        else if (prNumObj instanceof String s) {
+        if (prNumObj instanceof JsonNumber jn) return (int) jn.longValue();
+        if (prNumObj instanceof Number n) return n.intValue();
+        if (prNumObj instanceof String s) {
             try {
-                prNumber = Integer.parseInt(s.replace("#", "").trim());
+                return Integer.parseInt(s.replace("#", "").trim());
             } catch (NumberFormatException _) {
+                // Ignore unparseable PR numbers gracefully
             }
         }
+        return null;
+    }
 
-        var prUrl = JsonTree.string(map, FIELD_PR_URL);
-        var reason = JsonTree.string(map, FIELD_REASON);
-
+    private static Instant parseStartedAt(Map<String, Object> map) {
         var startedStr = JsonTree.string(map, FIELD_STARTED_AT);
         if (startedStr == null) startedStr = JsonTree.string(map, "started");
-        Instant startedAt;
         if (startedStr != null) {
             try {
-                startedAt = Instant.parse(startedStr);
+                return Instant.parse(startedStr);
             } catch (DateTimeParseException _) {
-                startedAt = Instant.now();
+                return Instant.now();
             }
-        } else {
-            startedAt = Instant.now();
         }
+        return Instant.now();
+    }
 
+    private record ParsedEnded(Instant instant, @Nullable String raw) {
+    }
+
+    private static ParsedEnded parseEndedAt(Map<String, Object> map) {
         var endedStr = JsonTree.string(map, FIELD_ENDED_AT);
         String rawEnded = null;
         if (endedStr == null) {
@@ -252,51 +275,60 @@ public record PlanCompletionReport(
         } else {
             endedAt = Instant.now();
         }
+        return new ParsedEnded(endedAt, rawEnded);
+    }
 
+    private static long parseDuration(Map<String, Object> map) {
         long duration = getLong(map.get(FIELD_DURATION_SECONDS));
         if (duration == 0) duration = getLong(map.get("run_duration_seconds"));
-        var rawRan = JsonTree.string(map, "ran");
+        return duration;
+    }
 
-        long paused = getLong(map.get(FIELD_PAUSED_SECONDS));
-        var pausedBy = JsonTree.string(map, FIELD_PAUSED_BY);
-
-        var deliverables = new ArrayList<DeliverableSummary>();
+    private static List<DeliverableSummary> parseDeliverables(Map<String, Object> map) throws IOException {
+        var list = new ArrayList<DeliverableSummary>();
         var delivObj = map.get(FIELD_DELIVERABLES);
         if (delivObj instanceof List<?> dl) {
             for (var elem : dl) {
                 var m = JsonTree.asObject(elem);
-                if (m != null) deliverables.add(DeliverableSummary.fromMap(m));
+                if (m != null) list.add(DeliverableSummary.fromMap(m));
             }
         }
+        return list;
+    }
 
-        var replan = new ArrayList<ReplanningRecord>();
+    private static List<ReplanningRecord> parseReplanning(Map<String, Object> map) throws IOException {
+        var list = new ArrayList<ReplanningRecord>();
         var replanObj = map.get(FIELD_REPLANNING);
         if (replanObj == null) replanObj = map.get("replanning");
         if (replanObj instanceof List<?> rl) {
             for (var elem : rl) {
                 var m = JsonTree.asObject(elem);
-                if (m != null) replan.add(ReplanningRecord.fromMap(m));
+                if (m != null) list.add(ReplanningRecord.fromMap(m));
             }
         }
+        return list;
+    }
 
-        var decisions = new ArrayList<DecisionRecord>();
+    private static List<DecisionRecord> parseDecisions(Map<String, Object> map) throws IOException {
+        var list = new ArrayList<DecisionRecord>();
         var decObj = map.get(FIELD_DECISIONS);
         if (decObj == null) decObj = map.get("decisions");
         if (decObj instanceof List<?> dcl) {
             for (var elem : dcl) {
                 var m = JsonTree.asObject(elem);
-                if (m != null) decisions.add(DecisionRecord.fromMap(m));
+                if (m != null) list.add(DecisionRecord.fromMap(m));
             }
         }
+        return list;
+    }
 
-        TokenUsageRecord tokenUsage = null;
+    private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) throws IOException {
         var tuObj = map.get(FIELD_TOKEN_USAGE);
         if (tuObj == null) tuObj = map.get("tokens");
         if (tuObj != null && JsonTree.asObject(tuObj) != null) {
-            tokenUsage = TokenUsageRecord.fromMap(JsonTree.asObject(tuObj));
+            return TokenUsageRecord.fromMap(JsonTree.asObject(tuObj));
         }
-
-        return new PlanCompletionReport(planId, title, from, outcome, termReason, prNumber, prUrl, reason, startedAt, endedAt, duration, paused, pausedBy, deliverables, replan, decisions, tokenUsage, rawEnded, rawRan);
+        return null;
     }
 
     /**

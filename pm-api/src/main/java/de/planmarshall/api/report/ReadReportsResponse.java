@@ -31,7 +31,7 @@ public record ReadReportsResponse(int markedCount, String status) {
     private static final String FIELD_STATUS = "status";
 
     public ReadReportsResponse {
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, FIELD_STATUS);
     }
 
     /**

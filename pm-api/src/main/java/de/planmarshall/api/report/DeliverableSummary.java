@@ -27,8 +27,8 @@ public record DeliverableSummary(String name, String state) {
     private static final String FIELD_STATE = "state";
 
     public DeliverableSummary {
-        Objects.requireNonNull(name, "name");
-        Objects.requireNonNull(state, "state");
+        Objects.requireNonNull(name, FIELD_NAME);
+        Objects.requireNonNull(state, FIELD_STATE);
     }
 
     /**

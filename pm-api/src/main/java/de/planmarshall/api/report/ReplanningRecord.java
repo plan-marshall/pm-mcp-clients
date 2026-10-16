@@ -29,9 +29,9 @@ public record ReplanningRecord(String trigger, String time, String change) {
     private static final String FIELD_CHANGE = "change";
 
     public ReplanningRecord {
-        Objects.requireNonNull(trigger, "trigger");
-        Objects.requireNonNull(time, "time");
-        Objects.requireNonNull(change, "change");
+        Objects.requireNonNull(trigger, FIELD_TRIGGER);
+        Objects.requireNonNull(time, FIELD_TIME);
+        Objects.requireNonNull(change, FIELD_CHANGE);
     }
 
     /**

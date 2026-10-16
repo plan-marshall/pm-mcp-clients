@@ -11,6 +11,7 @@ package de.planmarshall.api.report;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -85,7 +86,22 @@ public record ReportsPage(
     public static ReportsPage fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
 
-        List<ReportItem> items = List.of();
+        List<ReportItem> items = parseItems(map);
+        int unreadCount = parseCount(map.get(FIELD_UNREAD_COUNT), items.size());
+
+        var oldestStr = JsonTree.string(map, FIELD_OLDEST_UNREAD_TIME);
+        if (oldestStr == null) {
+            oldestStr = JsonTree.string(map, "oldest_unread");
+        }
+        Instant oldest = parseInstant(oldestStr);
+
+        int olderCount = parseCount(map.get(FIELD_OLDER_COUNT), 0);
+        boolean hasOlder = Boolean.TRUE.equals(map.get(FIELD_HAS_OLDER)) || olderCount > 0;
+
+        return new ReportsPage(items, unreadCount, oldest, hasOlder, olderCount);
+    }
+
+    private static List<ReportItem> parseItems(Map<String, Object> map) throws IOException {
         var itemsObj = map.get(FIELD_ITEMS);
         if (itemsObj == null) {
             itemsObj = map.get("reports");
@@ -98,45 +114,31 @@ public record ReportsPage(
                     parsedItems.add(ReportItem.fromMap(obj));
                 }
             }
-            items = parsedItems;
+            return parsedItems;
         }
+        return List.of();
+    }
 
-        int unreadCount = items.size();
-        var unreadObj = map.get(FIELD_UNREAD_COUNT);
-        if (unreadObj instanceof JsonNumber jn) {
-            unreadCount = (int) jn.longValue();
-        } else if (unreadObj instanceof Number n) {
-            unreadCount = n.intValue();
+    private static int parseCount(@Nullable Object obj, int defaultValue) {
+        if (obj instanceof JsonNumber jn) {
+            return (int) jn.longValue();
+        } else if (obj instanceof Number n) {
+            return n.intValue();
         }
+        return defaultValue;
+    }
 
-        var oldestStr = JsonTree.string(map, FIELD_OLDEST_UNREAD_TIME);
-        if (oldestStr == null) {
-            oldestStr = JsonTree.string(map, "oldest_unread");
+    @Nullable
+    private static Instant parseInstant(@Nullable String str) {
+        if (str == null) {
+            return null;
         }
-        Instant oldest = null;
-        if (oldestStr != null) {
-            try {
-                oldest = Instant.parse(oldestStr);
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
-            }
+        try {
+            return Instant.parse(str);
+        } catch (DateTimeParseException _) {
+            // Ignore non-ISO date string formats like "yesterday 18:40"
+            return null;
         }
-
-        boolean hasOlder = Boolean.TRUE.equals(map.get(FIELD_HAS_OLDER));
-
-        int olderCount = 0;
-        var olderObj = map.get(FIELD_OLDER_COUNT);
-        if (olderObj instanceof JsonNumber jn) {
-            olderCount = (int) jn.longValue();
-        } else if (olderObj instanceof Number n) {
-            olderCount = n.intValue();
-        }
-        if (olderCount > 0) {
-            hasOlder = true;
-        }
-
-        return new ReportsPage(items, unreadCount, oldest, hasOlder, olderCount);
     }
 
     /**

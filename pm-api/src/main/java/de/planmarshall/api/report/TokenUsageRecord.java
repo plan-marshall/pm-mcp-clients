@@ -149,6 +149,21 @@ public record TokenUsageRecord(
         boolean floor = Boolean.TRUE.equals(map.get(FIELD_IS_FLOOR)) || Boolean.TRUE.equals(map.get("floor"));
         var reason = JsonTree.string(map, FIELD_UNMEASURED_REASON);
 
+        var cov = parseCoverage(map, workers, models, tasksTotal, measured, reason);
+
+        var byPhase = parseBreakdownList(map.get(FIELD_BY_PHASE));
+        var byRole = parseBreakdownList(map.get(FIELD_BY_ROLE));
+        var byModel = parseBreakdownList(map.get(FIELD_BY_MODEL));
+
+        var waste = parseWaste(map);
+
+        return new TokenUsageRecord(total, input, output, duration, cov.workers(), cov.models(), cov.measured(), cov.tasksTotal(), floor, cov.reason(), byPhase, byRole, byModel, waste.list(), waste.totalWaste(), waste.wasteShare());
+    }
+
+    private record CoverageInfo(int workers, int models, int tasksTotal, int measured, @Nullable String reason) {
+    }
+
+    private static CoverageInfo parseCoverage(Map<String, Object> map, int workers, int models, int tasksTotal, int measured, @Nullable String reason) {
         if (map.get("coverage") instanceof Map<?, ?> cm) {
             if (workers == 0) workers = (int) getLong(cm.get("workers"));
             if (models == 0) models = (int) getLong(cm.get("models"));
@@ -157,11 +172,13 @@ public record TokenUsageRecord(
             if (measured == 0 && tasksTotal > 0) measured = tasksTotal - unmeasured;
             if (reason == null) reason = JsonTree.string(JsonTree.asObject(cm), "reason");
         }
+        return new CoverageInfo(workers, models, tasksTotal, measured, reason);
+    }
 
-        var byPhase = parseBreakdownList(map.get(FIELD_BY_PHASE));
-        var byRole = parseBreakdownList(map.get(FIELD_BY_ROLE));
-        var byModel = parseBreakdownList(map.get(FIELD_BY_MODEL));
+    private record WasteInfo(List<TokenWasteRecord> list, long totalWaste, int wasteShare) {
+    }
 
+    private static WasteInfo parseWaste(Map<String, Object> map) {
         var wasteList = new ArrayList<TokenWasteRecord>();
         var wasteObj = map.get(FIELD_WASTE_RECORDS);
         if (wasteObj instanceof List<?> wl) {
@@ -179,28 +196,31 @@ public record TokenUsageRecord(
                 if (totalWaste == 0L) totalWaste = getLong(wasteMap.get("total"));
                 if (wasteShare == 0) wasteShare = (int) getLong(wasteMap.get("share_percent"));
                 if (wasteList.isEmpty()) {
-                    long noProductTokens = getLong(wasteMap.get("no_product_tokens"));
-                    int noProductTasks = (int) getLong(wasteMap.get("no_product_tasks"));
-                    if (noProductTokens > 0 || noProductTasks > 0) {
-                        wasteList.add(new TokenWasteRecord("no_product", noProductTokens, 0, noProductTasks, null));
-                    }
-                    long retriesTokens = getLong(wasteMap.get("retries_tokens"));
-                    var retriesCauses = wasteMap.get("retries_causes");
-                    var retriesCausesStr = retriesCauses instanceof List<?> rcl ? String.join(" · ", rcl.stream().map(Object::toString).toList()) : null;
-                    if (retriesTokens > 0) {
-                        wasteList.add(new TokenWasteRecord("retries", retriesTokens, 0, 1, retriesCausesStr));
-                    }
-                    long remediationTokens = getLong(wasteMap.get("remediation_tokens"));
-                    var remediationCauses = wasteMap.get("remediation_causes");
-                    var remediationCausesStr = remediationCauses instanceof List<?> rcl ? String.join(" · ", rcl.stream().map(Object::toString).toList()) : null;
-                    if (remediationTokens > 0) {
-                        wasteList.add(new TokenWasteRecord("remediation", remediationTokens, 0, 1, remediationCausesStr));
-                    }
+                    populateLegacyWaste(wasteMap, wasteList);
                 }
             }
         }
+        return new WasteInfo(wasteList, totalWaste, wasteShare);
+    }
 
-        return new TokenUsageRecord(total, input, output, duration, workers, models, measured, tasksTotal, floor, reason, byPhase, byRole, byModel, wasteList, totalWaste, wasteShare);
+    private static void populateLegacyWaste(Map<String, Object> wasteMap, List<TokenWasteRecord> wasteList) {
+        long noProductTokens = getLong(wasteMap.get("no_product_tokens"));
+        int noProductTasks = (int) getLong(wasteMap.get("no_product_tasks"));
+        if (noProductTokens > 0 || noProductTasks > 0) {
+            wasteList.add(new TokenWasteRecord("no_product", noProductTokens, 0, noProductTasks, null));
+        }
+        long retriesTokens = getLong(wasteMap.get("retries_tokens"));
+        var retriesCauses = wasteMap.get("retries_causes");
+        var retriesCausesStr = retriesCauses instanceof List<?> rcl ? String.join(" · ", rcl.stream().map(Object::toString).toList()) : null;
+        if (retriesTokens > 0) {
+            wasteList.add(new TokenWasteRecord("retries", retriesTokens, 0, 1, retriesCausesStr));
+        }
+        long remediationTokens = getLong(wasteMap.get("remediation_tokens"));
+        var remediationCauses = wasteMap.get("remediation_causes");
+        var remediationCausesStr = remediationCauses instanceof List<?> rcl ? String.join(" · ", rcl.stream().map(Object::toString).toList()) : null;
+        if (remediationTokens > 0) {
+            wasteList.add(new TokenWasteRecord("remediation", remediationTokens, 0, 1, remediationCausesStr));
+        }
     }
 
 

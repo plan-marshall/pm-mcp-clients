@@ -232,9 +232,7 @@ public final class EntryFlow {
                     out.println("▪ " + arrivalLine + " · " + hint);
                 }
             }
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        } catch (IOException _) {
             // best-effort arrival notice
         }
     }
