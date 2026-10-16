@@ -78,7 +78,11 @@ entry:
 
   function validateProcess() {
     isValidated = true;
-    const first = codeText.split('\n').map((l) => l.trim()).find((l) => l.length > 0) ?? '';
+    const first =
+      codeText
+        .split('\n')
+        .map((l) => l.trim())
+        .find((l) => l.length > 0) ?? '';
     if (!/^workflow\s+\S+\s+version\s+\S+\s+format\s+\S+$/.test(first)) {
       validationError = true;
       validationMessage = $t('designer.input.no_header');

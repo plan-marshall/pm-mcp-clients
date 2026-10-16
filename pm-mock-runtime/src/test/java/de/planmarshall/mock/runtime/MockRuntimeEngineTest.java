@@ -394,4 +394,74 @@ class MockRuntimeEngineTest {
         var malformedRes = send("GET", "/api/v1/messages/en/common/extra/segments", Map.of(), new byte[0], false);
         assertEquals(400, malformedRes.status());
     }
+
+    @Test
+    @DisplayName("manages paired devices and web listener routes")
+    void webDevicesRoutes() throws Exception {
+        var auth = Map.of("Authorization", "Bearer test-token");
+
+        // 1. POST /api/v1/web/pairings
+        var pairRes = send("POST", "/api/v1/web/pairings", auth, new byte[0], false);
+        assertEquals(201, pairRes.status());
+        assertNotNull(pairRes.json().get("code"));
+        assertTrue(pairRes.json().get("url").toString().contains("code="));
+
+        // 2. GET /api/v1/web/devices
+        var listRes = send("GET", "/api/v1/web/devices", auth, new byte[0], false);
+        assertEquals(200, listRes.status());
+        assertTrue(listRes.body().contains("Firefox on mbp-oliver"));
+
+        // 3. PATCH /api/v1/web/devices/dev-1 (valid label)
+        var renameBody = "{\"label\":\"Primary Laptop\"}".getBytes(StandardCharsets.UTF_8);
+        var renameRes = send("PATCH", "/api/v1/web/devices/dev-1", auth, renameBody, false);
+        assertEquals(200, renameRes.status());
+        assertEquals("Primary Laptop", renameRes.json().get("label"));
+
+        // 4. PATCH /api/v1/web/devices/1 (by index)
+        var indexRename = "{\"label\":\"Index Laptop\"}".getBytes(StandardCharsets.UTF_8);
+        var indexRes = send("PATCH", "/api/v1/web/devices/1", auth, indexRename, false);
+        assertEquals(200, indexRes.status());
+
+        // 5. PATCH with blank label -> 400
+        var blankBody = "{\"label\":\"\"}".getBytes(StandardCharsets.UTF_8);
+        var blankRes = send("PATCH", "/api/v1/web/devices/dev-1", auth, blankBody, false);
+        assertEquals(400, blankRes.status());
+        assertEquals("invalid_label", blankRes.json().get("error"));
+
+        // 6. PATCH non-existent -> 404
+        var notFoundRes = send("PATCH", "/api/v1/web/devices/non-existent", auth, renameBody, false);
+        assertEquals(404, notFoundRes.status());
+        assertEquals("device_not_found", notFoundRes.json().get("error"));
+
+        // 7. DELETE /api/v1/web/devices/dev-2 (single)
+        var delRes = send("DELETE", "/api/v1/web/devices/dev-2", auth, new byte[0], false);
+        assertEquals(200, delRes.status());
+        assertEquals("revoked", delRes.json().get("status"));
+
+        // 8. DELETE non-existent single -> 404
+        var delNotFound = send("DELETE", "/api/v1/web/devices/non-existent", auth, new byte[0], false);
+        assertEquals(404, delNotFound.status());
+
+        // 9. DELETE /api/v1/web/devices?others (on web)
+        var webAuth = Map.of("Authorization", "Bearer test-secret");
+        var othersRes = send("DELETE", "/api/v1/web/devices?scope=others", webAuth, new byte[0], true);
+        assertEquals(200, othersRes.status());
+        assertEquals("revoked", othersRes.json().get("status"));
+
+        // 10. DELETE /api/v1/web/devices (revoke all)
+        var allRes = send("DELETE", "/api/v1/web/devices", auth, new byte[0], false);
+        assertEquals(200, allRes.status());
+        assertEquals("0", String.valueOf(allRes.json().get("remaining_count")));
+
+        // 11. DELETE /api/v1/web/listeners/lan
+        var lanOff = send("DELETE", "/api/v1/web/listeners/lan", auth, new byte[0], false);
+        assertEquals(200, lanOff.status());
+        assertEquals(Boolean.FALSE, lanOff.json().get("lan"));
+
+        // 12. PUT /api/v1/web (restore lan)
+        var putBody = "{\"lan\":true}".getBytes(StandardCharsets.UTF_8);
+        var putRes = send("PUT", "/api/v1/web", auth, putBody, false);
+        assertEquals(200, putRes.status());
+        assertEquals(Boolean.TRUE, putRes.json().get("lan"));
+    }
 }

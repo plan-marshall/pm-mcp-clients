@@ -5,9 +5,12 @@
   import WorkspaceView from '../lib/views/WorkspaceView.svelte';
   import SettingsView from '../lib/views/SettingsView.svelte';
   import ProcessDesigner from '../lib/views/ProcessDesigner.svelte';
+  import RevokedView from '../lib/views/RevokedView.svelte';
 </script>
 
-{#if !$runtimeStore.isPaired || $runtimeStore.currentRoute === 'pair'}
+{#if $runtimeStore.currentRoute === 'revoked'}
+  <RevokedView />
+{:else if !$runtimeStore.isPaired || $runtimeStore.currentRoute === 'pair'}
   <PairingView />
 {:else if $runtimeStore.currentRoute === 'onboarding'}
   <OnboardingView />

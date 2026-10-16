@@ -184,7 +184,11 @@
             </div>
             <div class="system-row">
               <dt>Machine Name</dt>
-              <dd class="mono">{typeof statusData?.machine === 'string' ? statusData.machine : statusData?.machine?.name || $runtimeStore.machineName}</dd>
+              <dd class="mono">
+                {typeof statusData?.machine === 'string'
+                  ? statusData.machine
+                  : statusData?.machine?.name || $runtimeStore.machineName}
+              </dd>
             </div>
           </dl>
         {/if}

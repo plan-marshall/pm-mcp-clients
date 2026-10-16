@@ -42,7 +42,8 @@ public final class MessageCatalogue {
             "onboarding",
             "settings",
             "designer",
-            "workspace"
+            "workspace",
+            "devices"
     );
 
     private static final String DEFAULT_LOCALE = "en";
