@@ -26,74 +26,74 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |Document |Status |What it covers
 
 |link:terminal-client/README.adoc[Terminal Client]
-|`DRAFT`
+|`AGREED`
 |The console `pm-operator`: its commands, the levels machine, project and plan, how a state is rendered and answered, pushed questions, a transcript of every state, and its texts in English and German. Work package link:../plans/cli-design.adoc[`cli-design`].
 
 |link:web-app/README.adoc[Web App]
-|`DRAFT`
+|`AGREED`
 |The web app: its principles, its structure and navigation, the entry and pairing pages, the onboarding screens, the machine settings, the harness icons, the process designer; its visual language is still to be worked out. Work package link:../plans/web-design.adoc[`web-design`].
 
 |link:web-app/process-designer.adoc[Process Designer]
-|`DRAFT`
+|`AGREED`
 |The web app only (the terminal's `help` points to it): designing a workflow unit the operator may own (the project-owned units, the variants of the plan behaviour axes, recipes; compiled-only units read only), from an uploaded file, a pasted text, or an installed unit; text and structure side by side, the building blocks of the project's catalogue, the unit's frontmatter (name, description, type, entries and exits, author) beside them, validating as the runtime loads it with a composed process as a dry-run, placing on the machine or in the project (a short landing; recipes at both levels) with the difference first, removing; read only with validate at phone width; its texts in the area `designer`.
 
 |link:shared/decisions.adoc[Decisions]
-|`DRAFT`
+|`AGREED`
 |What both clients show of a decision a plan, an epic, a project's setup, or a start's entry asks, for every variant the workflow can produce: what it carries, the order, support instead of probability, where the recommendation stands, decisions in parts, answers in own words with read-back, a chat before answering, a decision of a project's setup, announcing (with the web app's browser notification), a waiver request with waive and decline, and how it ends (answered elsewhere, changed, none fits asked anew, later); its texts in link:shared/decisions-texts.adoc[a part of their own].
 
 |link:shared/plan-overview.adoc[Plan Overview]
-|`DRAFT`
+|`AGREED`
 |What both clients show of the running work across projects: the projects with running work, a project by plan and by epic, what a row shows (the closed lists of states and of what needs the operator), how plans and epics are told apart, a project's ended work with each plan's outcome and each epic's end, opening read-only with a chat about it, live updates, and where the operator left it.
 
 |link:shared/project-explorer.adoc[Project Explorer]
-|`DRAFT`
+|`AGREED`
 |What both clients show of the machine's projects: favourites, recent, the projects being added, all projects by name or most used, a project's row, its actions (add an epic, add a plan, running work, ended work, setup), and releasing and unenrolling a project (what stays: the checkout, `.marshall/`, the machine store with its archive).
 
 |link:shared/project-onboarding.adoc[Project Onboarding]
-|`DRAFT`
+|`AGREED`
 |What both clients show while a project is onboarded, in ten steps: checkout with consent and detection, identity, enrolment (with the build environment), the project's own settings against the machine's, the team's settings with the build map, architecture, landing, roles and descriptions behind their consents of tokens, commit, ready; the setup's own questions, several onboardings at once, and a later run.
 
 |link:shared/plan-view.adoc[Plan View]
-|`DRAFT`
+|`AGREED`
 |What both clients show of one plan's process: its head with the path project › epic › plan, each one step away, and the plan's state, its six phases (a lane a choice of them) and sub-workflows down to the leaves, each with its state (link:shared/plan-view.adoc#states[The State of a Node]), loops, the path to where the plan is, the leaves' jobs and tasks, and an ended plan as it ended, with its completion report one step away.
 
 |link:shared/starting-work.adoc[Starting Work]
-|`DRAFT`
+|`AGREED`
 |What both clients show while a plan or an epic is started: the setup gate, the list of sources (description, documents with copy or move, issues of GitHub, GitLab, or Codeberg, lesson, local changes, pull request) with each source's states (local changes not offered while the project's landing is `landing.files`, with the reason naming that setting), their progress through fetching and screening, a fetch refused for a rate limit, a flagged source, the ready step with title and id, the creation and its re-check, adopting an epic from elsewhere among the sources of an epic's start (with its failure), a chat about the request before it starts, a recipe and its parameters, the decomposition, leaving and continuing without a time limit; its texts in link:shared/starting-work-texts.adoc[a part of their own] and link:shared/starting-work-sources-texts.adoc[the part of the sources].
 
 |link:shared/epic-view.adoc[Epic View]
-|`DRAFT`
+|`AGREED`
 |What both clients show of one epic: its head with the path project › epic, the project one step away, its state, whether it starts its plans by itself, and its actions, its workstreams with their plans, their status and what they wait for (an overlap with a running plan among it), what it does by itself after a plan ended, its sources, landings, findings, watches, and events; an ended epic as it ended.
 
 |link:shared/work-actions.adoc[Actions on Plans and Epics]
-|`DRAFT`
+|`AGREED`
 |What both clients offer to act on a plan or an epic, by its state (running, pausing, paused, waiting for you, held, an epic also landing; ended): pause, start, cancel, abandon a plan, abort it from an integrity pause, how a plan and an epic end, a plan's settings (UC-CTL-5, with its refusals), a setting changed in two clients at once (the one rule for machine, project, and plan settings), its epic told; an epic's next plan with raising the scope, its automatic start on or off, the archive check with what it carries, cancel; the review of an epic's findings or watches with keep as a finding or to the watches, drop, promote (with its redraft), edit, and chat; the chat with the planning role of a plan or an epic, with its read-back of each proposed change and the window in which it may propose a revision, the common files allowed per epic, and the same chat inside a decision, while starting, and about ended work (with its follow-up plan); what holds a plan (exactly stalled, a condition, an integrity pause, a held item, a failed landing) and the acts that resolve each, then released or still held; its texts in link:shared/work-actions-texts.adoc[a part of their own], link:shared/work-actions-review-texts.adoc[the part of reviews and holds], and link:shared/work-actions-chat-texts.adoc[the chat's part].
 
 |link:shared/consents.adoc[Consents]
-|`DRAFT`
+|`AGREED`
 |What both clients show of a consent: the consent state with its fields, the answers yes, yes and don't ask again, and not now, and what not now does; the automatic run's one consent; every kind with where it is asked and whether it is remembered (among them the check of the credential store and of the providers); the remembered consents in the machine settings and withdrawing one after it says where it is asked again; the titles of the kinds.
 
 |link:shared/texts-and-languages.adoc[Texts and Languages]
-|`DRAFT`
+|`AGREED`
 |What both clients share: the two languages, the glossary of words that are never translated, how texts are written, and the keys, areas, and packs of the message catalogue (link:../plans/message-catalogue.adoc[`message-catalogue`]).
 
 |link:shared/reports.adoc[Reports]
-|`DRAFT`
+|`AGREED`
 |What both clients show of the reports to the operator: the closed kinds, what a report shows (from, subject, body, created, sent, detail), the list of unread reports grouped by project, epic, and plan, the count on entering a client with one step to the list, the quiet notice while a client is open, marking one or all shown read, the detail that reads it, read on every device, a subject that has ended or was deleted by the cleanup; its texts in the new area `report`.
 
 |link:shared/completion-report.adoc[Completion Report]
-|`DRAFT`
+|`AGREED`
 |What both clients show of how an ended plan went: outcome and reason, pull request, duration, deliverables, re-planning, decisions, its tokens (total with its split, by phase, role, and model, waste, coverage; never money); reached from the report of its end and from the ended plan view.
 
 |link:shared/system.adoc[System]
-|`DRAFT`
+|`AGREED`
 |What both clients show of the runtime itself: the system view with its identity and health (version, uptime, memory, CPU, disk, listeners), the work (plans and epics by state, tasks, workers, jobs with their slots, locks), and the models (calls, tokens with their split, errors per model or role over a window, never money), live, each figure one step from what it counts; stopping by drain or now with its confirmation, withdrawing a drain, stopped and started again, restarting with the clients reconnecting, checking for a newer version behind its consent, upgrading with its steps and its failures, a client of another release, several clients at once; its texts in link:shared/system-texts.adoc[a part of their own].
 
 |link:shared/cleanup.adoc[Cleanup]
-|`DRAFT`
+|`AGREED`
 |The one place where ended work is deleted, in both clients: the work history (archived plans and epics, logs of ended work, read reports, unenrolled projects) offered as a cleanup job when it is due, with its report `system.cleanup_due`, reached from the reports, the system view, and a released project; the job's summary and details, each item excludable; _Delete_ with its confirmation, _Ask me again in 3 days_, _Ignore_; the items kept for good and their release; the durations of the machine and a project's own; the technical residue the runtime removes by itself, as figures; what deleting leaves; its texts in link:shared/cleanup-texts.adoc[a part of their own].
 
 |link:shared/paired-devices.adoc[Paired Devices]
-|`DRAFT`
+|`AGREED`
 |What both clients show of the browsers paired with the machine: the list with label, when and from where it was paired (`paired_from`: loopback or the network), when last used, and this one; rename, revoke, revoke all others (from the terminal client every device), turn the network listener off with the loopback listener left open; and the page of a revoked device.
 |===

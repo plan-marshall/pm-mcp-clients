@@ -29,13 +29,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:operator-checks.adoc[`operator-checks`]
 |Operator checks of `pm-operator`
-|`open`
+|`done`
 |link:profile-documents.adoc[`profile-documents`]
 |Milestone 2
 
 |link:command-tree.adoc[`command-tree`]
 |Command tree of both binaries
-|`open`
+|`done`
 |link:api-contract.adoc[`api-contract`]; link:operator-checks.adoc[`operator-checks`]
 |Milestone 2
 
@@ -77,13 +77,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:mock-runtime.adoc[`mock-runtime`]
 |Mock runtime `pm-mock-runtime` and its scenario format
-|`open`
+|`done`
 |link:api-contract.adoc[`api-contract`]
 |Milestone 2; epic clients
 
 |link:message-catalogue.adoc[`message-catalogue`]
 |Message catalogue in `pm-api`, English and German packs, served by the mock runtime
-|`open`
+|`done`
 |link:mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
@@ -95,13 +95,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:cli-design.adoc[`cli-design`]
 |Logical design of the terminal client, accepted by the operator
-|`open`
+|`done`
 |nothing
 |epic clients
 
 |link:web-design.adoc[`web-design`]
 |Visual design of the web app (Claude Design), accepted by the operator
-|`open`
+|`done`
 |nothing
 |epic clients
 
@@ -113,7 +113,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 
 |link:web-app-foundation.adoc[`web-app-foundation`]
 |Module `pm-web-app`, its design system and test infrastructure
-|`open`
+|`done`
 |link:web-design.adoc[`web-design`]; link:mock-runtime.adoc[`mock-runtime`]; link:message-catalogue.adoc[`message-catalogue`]
 |Milestone 11, pulled forward; epic clients
 
