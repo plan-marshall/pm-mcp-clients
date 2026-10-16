@@ -66,19 +66,19 @@ public final class OperatorGate {
     public static Optional<String> detectHost(Map<String, String> environment) {
         // Precedence: antigravity -> opencode -> claude -> codex
         if (hasHostSignal("antigravity", environment)
-                || environment.containsKey("GEMINI_CLI") || environment.containsKey("ANTIGRAVITY_AGENT")) {
+                      || environment.containsKey("GEMINI_CLI") || environment.containsKey("ANTIGRAVITY_AGENT")) {
             return Optional.of("antigravity");
         }
 
         if (hasHostSignal("opencode", environment)
-                || environment.containsKey("OPENCODE_CLIENT") || environment.containsKey("OPENCODE")
-                || environment.containsKey("OPENCODE_PID")) {
+                      || environment.containsKey("OPENCODE_CLIENT") || environment.containsKey("OPENCODE")
+                      || environment.containsKey("OPENCODE_PID")) {
             return Optional.of("opencode");
         }
 
         if (hasHostSignal("claude", environment)
-                || environment.containsKey("CLAUDE_CODE") || environment.containsKey("CLAUDE_PROJECT_ROOT")
-                || environment.containsKey("CLAUDECODE") || environment.containsKey("CLAUDE_CODE_SESSION_ID")) {
+                      || environment.containsKey("CLAUDE_CODE") || environment.containsKey("CLAUDE_PROJECT_ROOT")
+                      || environment.containsKey("CLAUDECODE") || environment.containsKey("CLAUDE_CODE_SESSION_ID")) {
             return Optional.of("claude");
         }
 
@@ -100,8 +100,8 @@ public final class OperatorGate {
 
     private static boolean hasHostSignal(String hostName, Map<String, String> environment) {
         return HostDetection.host(hostName)
-                .map(host -> host.primarySignals().stream().anyMatch(signal -> signal.matches(environment))
-                        || host.secondarySignals().stream().anyMatch(signal -> signal.matches(environment)))
-                .orElse(false);
+                      .map(host -> host.primarySignals().stream().anyMatch(signal -> signal.matches(environment))
+                                    || host.secondarySignals().stream().anyMatch(signal -> signal.matches(environment)))
+                      .orElse(false);
     }
 }

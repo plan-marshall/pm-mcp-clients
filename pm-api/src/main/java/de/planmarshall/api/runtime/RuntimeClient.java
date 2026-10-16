@@ -45,7 +45,7 @@ public final class RuntimeClient {
      * @param fixedHeaders  headers sent on every request
      */
     public RuntimeClient(UnixSocketHttpClient http, Authenticator authenticator, RuntimeStarter starter,
-            Map<String, String> fixedHeaders) {
+                         Map<String, String> fixedHeaders) {
         this.http = Objects.requireNonNull(http, "http");
         this.authenticator = Objects.requireNonNull(authenticator, "authenticator");
         this.starter = starter;
@@ -62,7 +62,7 @@ public final class RuntimeClient {
      * @return the client
      */
     public static RuntimeClient local(MachinePaths paths, RuntimeTokenFile tokenFile, RuntimeStarter starter,
-            Map<String, String> fixedHeaders) {
+                                      Map<String, String> fixedHeaders) {
         return new RuntimeClient(new UnixSocketHttpClient(paths.socket()), Authenticator.runtimeToken(tokenFile),
                 starter, fixedHeaders);
     }

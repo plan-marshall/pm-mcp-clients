@@ -43,7 +43,8 @@ public final class MessageCatalogue {
             "designer",
             "workspace",
             "devices",
-            "overview"
+            "overview",
+            "reports"
     );
 
     private static final String DEFAULT_LOCALE = "en";
@@ -122,6 +123,27 @@ public final class MessageCatalogue {
                 "locales", SUPPORTED_LOCALES.stream().sorted().toList(),
                 "areas", SUPPORTED_AREAS
         );
+    }
+
+    /**
+     * Retrieves a message template in the default locale without parameter substitution.
+     *
+     * @param key the message key
+     * @return the message string
+     */
+    public static String get(String key) {
+        return format(DEFAULT_LOCALE, key, Map.of());
+    }
+
+    /**
+     * Formats a message template in the default locale.
+     *
+     * @param key    the message key
+     * @param params parameter map
+     * @return formatted message
+     */
+    public static String format(String key, Map<String, ?> params) {
+        return format(DEFAULT_LOCALE, key, params);
     }
 
     /**

@@ -26,6 +26,19 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.report.DecisionRecord;
+import de.planmarshall.api.report.DeliverableSummary;
+import de.planmarshall.api.report.PlanCompletionReport;
+import de.planmarshall.api.report.ReadReportsRequest;
+import de.planmarshall.api.report.ReplanningRecord;
+import de.planmarshall.api.report.ReportFrom;
+import de.planmarshall.api.report.ReportItem;
+import de.planmarshall.api.report.ReportKind;
+import de.planmarshall.api.report.ReportsPage;
+import de.planmarshall.api.report.TokenBreakdownItem;
+import de.planmarshall.api.report.TokenComponentRecord;
+import de.planmarshall.api.report.TokenUsageRecord;
+import de.planmarshall.api.report.TokenWasteRecord;
 import de.planmarshall.api.web.PairedDevice;
 import de.planmarshall.mock.http.MockEventStream;
 import de.planmarshall.mock.http.MockHttpRequest;
@@ -57,6 +70,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_STREAM_CLOSED = "stream.closed";
     private static final String KEY_REASON = "reason";
     private static final String KEY_DETAILS = "details";
+    private static final String CONST_FIX_RELAY = "fix-relay";
+    private static final String CONST_RELAY_HARDENING = "relay-hardening";
+    private static final String CONST_PM_MCP_CLIENTS = "pm-mcp-clients";
+    private static final String CONST_OUTCOME = "outcome";
+    private static final String CONST_TIME_11_20 = "2026-10-16T11:20:00Z";
+    private static final String CONST_RELAY_TOKEN_STORE = "relay-token-store";
+    private static final String CONST_TIME_11_21 = "2026-10-16T11:21:00Z";
+    private static final String CONST_RELAY_AUTH_V2 = "relay-auth-v2";
+    private static final String CONST_DOCS_TYPO = "docs-typo";
+    private static final String CONST_PM_MCP_CORE = "pm-mcp-core";
+    private static final String PATH_REPORTS_PREFIX = "/api/v1/reports/";
+    private static final String KEY_TERMINAL = "terminal";
+    private static final String KEY_COUNT = "count";
+    private static final String KEY_MARKED_COUNT = "marked_count";
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -69,6 +96,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
+    private final Object reportsLock = new Object();
+    private final List<ReportItem> mockReports = new ArrayList<>();
+    private final Map<String, PlanCompletionReport> completionReports = new ConcurrentHashMap<>();
     private volatile boolean lanListenerOn = true;
     private volatile boolean closed;
 
@@ -101,6 +131,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private synchronized void setScenario(Scenario scenario) {
         this.currentScenario.set(scenario);
         initDefaultDevices();
+        initDefaultReports();
         transitionTo(scenario.start());
     }
 
@@ -109,6 +140,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     public synchronized void reset() {
         initDefaultDevices();
+        initDefaultReports();
         transitionTo(currentScenario.get().start());
     }
 
@@ -230,6 +262,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 3a. Dynamic project overview routes
         if (handleProjectOverviewRoutes(request, response)) {
+            return;
+        }
+
+        // 3b. Dynamic report routes
+        if (handleReportRoutes(request, response, isWeb)) {
             return;
         }
 
@@ -677,6 +714,379 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         return false;
+    }
+
+    private void initDefaultReports() {
+        synchronized (reportsLock) {
+            mockReports.clear();
+            mockReports.add(new ReportItem(
+                    "rep-0142",
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
+                    ReportKind.PLAN_ENDED,
+                    "fix-relay ended: merged (#214)",
+                    Map.of("plan", CONST_FIX_RELAY, CONST_OUTCOME, "merged (#214)"),
+                    "3 of 3 deliverables · 2 h 40 min",
+                    Instant.parse(CONST_TIME_11_20),
+                    Instant.parse(CONST_TIME_11_20),
+                    null, null, null,
+                    "/api/v1/plans/fix-relay/completion"
+            ));
+            mockReports.add(new ReportItem(
+                    "rep-0143",
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_TOKEN_STORE),
+                    ReportKind.PLAN_STARTED,
+                    "relay-token-store started by relay-hardening (2 of 3 at once)",
+                    Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, "running", 2, "scope", 3, "by", "epic"),
+                    null,
+                    Instant.parse(CONST_TIME_11_21),
+                    Instant.parse(CONST_TIME_11_21),
+                    null, null, null,
+                    "/api/v1/plans/relay-token-store"
+            ));
+            mockReports.add(new ReportItem(
+                    "rep-0144",
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, "relay-docs"),
+                    ReportKind.EPIC_WAITS_OVERLAP,
+                    "relay-docs waits: overlap with relay-auth-v2 (2 files)",
+                    Map.of("plan", "relay-docs", "other", CONST_RELAY_AUTH_V2, "files", 2),
+                    null,
+                    Instant.parse(CONST_TIME_11_21),
+                    Instant.parse(CONST_TIME_11_21),
+                    null, null, null,
+                    "/api/v1/epics/relay-hardening"
+            ));
+            mockReports.add(new ReportItem(
+                    "rep-0139",
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, null, CONST_DOCS_TYPO),
+                    ReportKind.PLAN_ENDED,
+                    "docs-typo ended: no change",
+                    Map.of("plan", CONST_DOCS_TYPO, CONST_OUTCOME, "no change"),
+                    null,
+                    Instant.parse("2026-10-16T09:02:00Z"),
+                    Instant.parse("2026-10-16T09:40:00Z"),
+                    null, null, null,
+                    "/api/v1/plans/docs-typo/completion"
+            ));
+            mockReports.add(new ReportItem(
+                    "rep-0131",
+                    new ReportFrom(CONST_PM_MCP_CORE, null, null),
+                    ReportKind.PROJECT_ONBOARDED,
+                    "pm-mcp-core is onboarded",
+                    Map.of("project", CONST_PM_MCP_CORE),
+                    null,
+                    Instant.parse("2026-10-15T18:40:00Z"),
+                    Instant.parse("2026-10-15T18:40:00Z"),
+                    null, null, null,
+                    "/api/v1/projects/pm-mcp-core"
+            ));
+            mockReports.add(new ReportItem(
+                    "rep-0120",
+                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_AUTH_V2),
+                    ReportKind.PLAN_ENDED,
+                    "relay-auth-v2 ended: merged (#210)",
+                    Map.of("plan", CONST_RELAY_AUTH_V2, CONST_OUTCOME, "merged (#210)"),
+                    null,
+                    Instant.parse("2026-10-14T10:00:00Z"),
+                    Instant.parse("2026-10-14T10:00:00Z"),
+                    null, null, null,
+                    "/api/v1/plans/relay-auth-v2/completion"
+            ));
+            mockReports.add(new ReportItem(
+                    "rep-0110",
+                    new ReportFrom(CONST_PM_MCP_CORE, null, null),
+                    ReportKind.SOURCE_FLAGGED,
+                    "A source of codeberg-issues was flagged: issue #4711",
+                    Map.of("item", "codeberg-issues", "source", "issue #4711"),
+                    null,
+                    Instant.parse("2026-10-13T08:00:00Z"),
+                    Instant.parse("2026-10-13T08:00:00Z"),
+                    null, null, null,
+                    "/api/v1/sources/codeberg-issues"
+            ));
+        }
+
+        completionReports.clear();
+        var fixRelayDeliverables = List.of(
+                new DeliverableSummary("cursor write order", "done"),
+                new DeliverableSummary("a test per transport, websocket and SSE", "done"),
+                new DeliverableSummary("fsync of the cursor file", "done")
+        );
+        var fixRelayReplanning = List.of(
+                new ReplanningRecord("the base moved", "09:55", "TASK-5 added")
+        );
+        var fixRelayDecisions = List.of(
+                new DecisionRecord("Q-003", "Rebase onto main", "rebase", "operator", "web", "iPad"),
+                new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null)
+        );
+        var fixRelayComponents = new TokenComponentRecord(310000L, 62000L, 8000L, 29000L, 3000L);
+        var fixRelayPhase = List.of(
+                new TokenBreakdownItem("refine", 38000, 35000, 3000, 0, false, null, null),
+                new TokenBreakdownItem("outline", 96000, 90000, 6000, 0, false, null, null),
+                new TokenBreakdownItem("execute", 241000, 222000, 19000, 3, true, null, fixRelayComponents),
+                new TokenBreakdownItem("finalize", 37000, 33000, 4000, 0, false, null, null)
+        );
+        var fixRelayRole = List.of(
+                new TokenBreakdownItem("planner", 128000, 120000, 8000, 0, false, "claude:opus-5.5 · high", null),
+                new TokenBreakdownItem("implementer", 270000, 247000, 23000, 0, false, "claude:sonnet-5.5 · medium", null),
+                new TokenBreakdownItem("reviewer", 14000, 13000, 1000, 3, true, "codex:gpt-5 · low", null)
+        );
+        var fixRelayModel = List.of(
+                new TokenBreakdownItem("claude:opus-5.5", 128000, 120000, 8000, 0, false, null, null),
+                new TokenBreakdownItem("claude:sonnet-5.5", 270000, 247000, 23000, 0, false, null, null),
+                new TokenBreakdownItem("codex:gpt-5", 14000, 13000, 1000, 3, true, null, null)
+        );
+        var fixRelayWaste = List.of(
+                new TokenWasteRecord("no_product", 18000, 4, 2, "2 tasks"),
+                new TokenWasteRecord("retries", 21000, 5, 2, "retryable 1 · stall 1"),
+                new TokenWasteRecord("remediation", 13000, 4, 1, "returned with findings 1")
+        );
+        var fixRelayTokens = new TokenUsageRecord(
+                412000, 380000, 32000, 9600, 6, 3, 38, 41, true,
+                "their worker was terminated",
+                fixRelayPhase, fixRelayRole, fixRelayModel, fixRelayWaste, 52000, 13
+        );
+        completionReports.put(CONST_FIX_RELAY, new PlanCompletionReport(
+                CONST_FIX_RELAY,
+                CONST_FIX_RELAY,
+                new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
+                "merged",
+                "the pull request #214 was merged into main",
+                214,
+                "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                "—",
+                Instant.parse("2026-10-16T08:40:00Z"),
+                Instant.parse(CONST_TIME_11_20),
+                9600,
+                1200,
+                "you",
+                fixRelayDeliverables,
+                fixRelayReplanning,
+                fixRelayDecisions,
+                fixRelayTokens
+        ));
+
+        completionReports.put(CONST_DOCS_TYPO, new PlanCompletionReport(
+                CONST_DOCS_TYPO,
+                CONST_DOCS_TYPO,
+                new ReportFrom(CONST_PM_MCP_CLIENTS, null, CONST_DOCS_TYPO),
+                "no_change",
+                "no changes produced",
+                null,
+                null,
+                "—",
+                Instant.parse("2026-10-16T08:40:00Z"),
+                Instant.parse("2026-10-16T09:00:00Z"),
+                1200,
+                0,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                null
+        ));
+    }
+
+    /**
+     * Helper to inject and broadcast a new report (for tests or simulations).
+     *
+     * @param item report item
+     */
+    public void addReportAndBroadcast(ReportItem item) {
+        synchronized (reportsLock) {
+            mockReports.add(0, item);
+        }
+        broadcastEvent("report.sent", Map.of("report", item.toMap()));
+    }
+
+    private boolean handleReportRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        var path = request.path();
+        var method = request.method();
+
+        if ("GET".equals(method) && ("/api/v1/reports".equals(path) || PATH_REPORTS_PREFIX.equals(path))) {
+            handleListReports(request, response);
+            return true;
+        }
+        if ("POST".equals(method) && "/api/v1/reports/read".equals(path)) {
+            handleMarkReportsRead(request, response, isWeb);
+            return true;
+        }
+        if (path.startsWith(PATH_REPORTS_PREFIX)) {
+            var sub = path.substring(PATH_REPORTS_PREFIX.length());
+            if (sub.endsWith("/read") && "POST".equals(method)) {
+                var reportId = sub.substring(0, sub.length() - "/read".length());
+                handleMarkSingleReportRead(response, reportId, isWeb);
+                return true;
+            }
+            if ("GET".equals(method) && !sub.contains("/")) {
+                handleGetReport(response, sub);
+                return true;
+            }
+        }
+        if ("GET".equals(method) && path.startsWith("/api/v1/plans/") && path.endsWith("/completion")) {
+            var sub = path.substring("/api/v1/plans/".length());
+            var planId = sub.substring(0, sub.length() - "/completion".length());
+            handleGetPlanCompletion(response, planId);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleListReports(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var query = request.query() != null ? request.query() : "";
+        boolean older = query.contains("older=true");
+        String projectFilter = null;
+        for (var part : query.split("&")) {
+            if (part.startsWith("project=")) {
+                projectFilter = part.substring("project=".length());
+            }
+        }
+        if (".".equals(projectFilter)) {
+            projectFilter = CONST_PM_MCP_CLIENTS;
+        }
+
+        List<ReportItem> allUnread = new ArrayList<>();
+        synchronized (reportsLock) {
+            for (var rep : mockReports) {
+                if (!rep.isRead() && (projectFilter == null || projectFilter.isBlank() || projectFilter.equals(rep.from().projectId()))) {
+                    allUnread.add(rep);
+                }
+            }
+        }
+
+        allUnread.sort((a, b) -> b.createdAt().compareTo(a.createdAt()));
+
+        var pagedResult = paginateUnread(allUnread, older, 5);
+
+        Instant oldestUnread = null;
+        if (!allUnread.isEmpty()) {
+            oldestUnread = allUnread.getLast().createdAt();
+        }
+
+        var page = new ReportsPage(pagedResult.paged(), allUnread.size(), oldestUnread, pagedResult.hasOlder(), pagedResult.olderCount());
+        response.json(200, page.toMap());
+    }
+
+    private record PagedResult(List<ReportItem> paged, boolean hasOlder, int olderCount) {
+    }
+
+    private static PagedResult paginateUnread(List<ReportItem> allUnread, boolean older, int pageSize) {
+        if (!older) {
+            if (allUnread.size() > pageSize) {
+                return new PagedResult(new ArrayList<>(allUnread.subList(0, pageSize)), true, allUnread.size() - pageSize);
+            }
+            return new PagedResult(new ArrayList<>(allUnread), false, 0);
+        }
+        if (allUnread.size() > pageSize) {
+            return new PagedResult(new ArrayList<>(allUnread.subList(pageSize, allUnread.size())), false, 0);
+        }
+        return new PagedResult(List.of(), false, 0);
+    }
+
+    private void handleGetReport(MockHttpResponse response, String reportId) throws IOException {
+        ReportItem target = null;
+        synchronized (reportsLock) {
+            for (var rep : mockReports) {
+                if (rep.id().equals(reportId)) {
+                    target = rep;
+                    break;
+                }
+            }
+        }
+        if (target != null) {
+            response.json(200, target.toMap());
+        } else {
+            response.json(404, Map.of(KEY_ERROR, "report_not_found", KEY_MESSAGE, "Report not found: " + reportId));
+        }
+    }
+
+    private static ReportItem markAsRead(ReportItem rep, boolean isWeb) {
+        return new ReportItem(
+                rep.id(), rep.from(), rep.kind(), rep.subject(), rep.subjectParams(),
+                rep.body(), rep.createdAt(), rep.sentAt(), Instant.now(),
+                isWeb ? "web" : "cli", isWeb ? "iPad" : KEY_TERMINAL, rep.detailLink()
+        );
+    }
+
+    private void broadcastReportRead(String reportId, boolean isWeb) {
+        broadcastEvent("report.read", Map.of(
+                "report_id", reportId,
+                "read_at", Instant.now().toString(),
+                "channel", isWeb ? "web" : "cli",
+                "device", isWeb ? "iPad" : KEY_TERMINAL
+        ));
+    }
+
+    private void handleMarkSingleReportRead(MockHttpResponse response, String reportId, boolean isWeb) throws IOException {
+        ReportItem target = null;
+        synchronized (reportsLock) {
+            for (int i = 0; i < mockReports.size(); i++) {
+                var rep = mockReports.get(i);
+                if (rep.id().equals(reportId)) {
+                    target = rep;
+                    if (!rep.isRead()) {
+                        mockReports.set(i, markAsRead(rep, isWeb));
+                    }
+                    break;
+                }
+            }
+        }
+        if (target == null) {
+            response.json(404, Map.of(KEY_ERROR, "report_not_found", KEY_MESSAGE, "Report not found: " + reportId));
+            return;
+        }
+        if (target.isRead()) {
+            response.json(200, Map.of(KEY_COUNT, 0, KEY_MARKED_COUNT, 0, KEY_STATUS, "already_read"));
+            return;
+        }
+        broadcastReportRead(target.id(), isWeb);
+        response.json(200, Map.of(KEY_COUNT, 1, KEY_MARKED_COUNT, 1, KEY_STATUS, "ok"));
+    }
+
+    private void handleMarkReportsRead(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        boolean all = false;
+        List<String> ids = List.of();
+        if (request.body().length > 0) {
+            try {
+                var req = ReadReportsRequest.fromJson(request.bodyText());
+                all = req.all();
+                ids = req.reportIds();
+            } catch (IOException _) {
+                // Ignore parse errors from malformed body
+            }
+        }
+        var marked = new ArrayList<ReportItem>();
+        synchronized (reportsLock) {
+            for (int i = 0; i < mockReports.size(); i++) {
+                var rep = mockReports.get(i);
+                if (!rep.isRead() && (all || ids.contains(rep.id()))) {
+                    var readItem = markAsRead(rep, isWeb);
+                    mockReports.set(i, readItem);
+                    marked.add(readItem);
+                }
+            }
+        }
+        for (var m : marked) {
+            broadcastReportRead(m.id(), isWeb);
+        }
+        response.json(200, Map.of(KEY_COUNT, marked.size(), KEY_MARKED_COUNT, marked.size(), KEY_STATUS, "ok"));
+    }
+
+    private void handleGetPlanCompletion(MockHttpResponse response, String planId) throws IOException {
+        if (CONST_RELAY_TOKEN_STORE.equals(planId) || "running-plan".equals(planId)) {
+            response.json(409, Map.of(
+                    KEY_ERROR, "plan_running",
+                    KEY_MESSAGE, planId + " is running; its completion report follows when it ends",
+                    "plan", planId,
+                    KEY_STATE, "running"
+            ));
+            return;
+        }
+        var report = completionReports.get(planId);
+        if (report != null) {
+            response.json(200, report.toMap());
+            return;
+        }
+        response.json(404, Map.of(KEY_ERROR, "plan_not_found", KEY_MESSAGE, "Completion report not found for plan: " + planId));
     }
 
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {

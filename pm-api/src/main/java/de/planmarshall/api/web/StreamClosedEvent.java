@@ -27,10 +27,10 @@ import de.planmarshall.api.json.JsonTree;
  * @param revokedAt timestamp of revocation
  */
 public record StreamClosedEvent(
-String reason,
-@Nullable String details,
-@Nullable String revokedBy,
-@Nullable String revokedAt
+        String reason,
+        @Nullable String details,
+        @Nullable String revokedBy,
+        @Nullable String revokedAt
 ) {
 
     public static final String EVENT_NAME = "stream.closed";

@@ -31,14 +31,17 @@ class StandardScenariosTest {
         assertEquals("onboarding-harness-not-logged-in", StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN);
         assertEquals("web-pairing", StandardScenarios.WEB_PAIRING);
         assertEquals("paired-devices", StandardScenarios.PAIRED_DEVICES);
+        assertEquals("running-work", StandardScenarios.RUNNING_WORK);
+        assertEquals("reports", StandardScenarios.REPORTS);
 
-        assertEquals(6, StandardScenarios.ALL.size());
+        assertEquals(7, StandardScenarios.ALL.size());
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.STATUS_ONLY));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.ONBOARDING_HAPPY));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.WEB_PAIRING));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.PAIRED_DEVICES));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.RUNNING_WORK));
+        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.REPORTS));
     }
 
     @Test

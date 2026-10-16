@@ -7,6 +7,7 @@
   import ProcessDesigner from '../lib/views/ProcessDesigner.svelte';
   import RevokedView from '../lib/views/RevokedView.svelte';
   import OverviewView from '../lib/views/OverviewView.svelte';
+  import ReportsView from '../lib/views/ReportsView.svelte';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -15,6 +16,8 @@
   <PairingView />
 {:else if $runtimeStore.currentRoute === 'onboarding'}
   <OnboardingView />
+{:else if $runtimeStore.currentRoute === 'reports'}
+  <ReportsView />
 {:else if $runtimeStore.currentRoute === 'settings'}
   <SettingsView />
 {:else if $runtimeStore.currentRoute === 'designer'}

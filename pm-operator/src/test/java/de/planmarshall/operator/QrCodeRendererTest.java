@@ -37,10 +37,10 @@ class QrCodeRendererTest {
         assertNotNull(output);
         assertFalse(output.isBlank());
         assertAll(
-                () -> assertTrue(output.contains("▄") || output.contains("█") || output.contains("▀"),
-                        "Output should contain Unicode block characters"),
-                () -> assertTrue(output.lines().count() > 10,
-                        "QR code should span multiple terminal lines")
+                      () -> assertTrue(output.contains("▄") || output.contains("█") || output.contains("▀"),
+                                    "Output should contain Unicode block characters"),
+                      () -> assertTrue(output.lines().count() > 10,
+                                    "QR code should span multiple terminal lines")
         );
     }
 
@@ -48,14 +48,14 @@ class QrCodeRendererTest {
     @DisplayName("renders QR code with side lines")
     void rendersWithSideLines() {
         var sideLines = List.of(
-                "http://127.0.0.1:7420/pair#code=TBZC-HQPL",
-                "Code TBZC-HQPL, valid until 14:35"
+                      "http://127.0.0.1:7420/pair#code=TBZC-HQPL",
+                      "Code TBZC-HQPL, valid until 14:35"
         );
         var output = QrCodeRenderer.render("http://127.0.0.1:7420/pair#code=TBZC-HQPL", sideLines);
 
         assertAll(
-                () -> assertTrue(output.contains("http://127.0.0.1:7420/pair#code=TBZC-HQPL")),
-                () -> assertTrue(output.contains("Code TBZC-HQPL, valid until 14:35"))
+                      () -> assertTrue(output.contains("http://127.0.0.1:7420/pair#code=TBZC-HQPL")),
+                      () -> assertTrue(output.contains("Code TBZC-HQPL, valid until 14:35"))
         );
     }
 }

@@ -137,6 +137,130 @@ export interface StateRepresentation {
   [key: string]: unknown;
 }
 
+export interface ReportFrom {
+  project?: string;
+  epic?: string;
+  plan?: string;
+}
+
+export interface ReportItem {
+  id: string;
+  from: ReportFrom;
+  kind: string;
+  subject: string;
+  subject_params?: Record<string, unknown>;
+  body?: string;
+  created_at: string;
+  sent_at?: string;
+  read_at?: string;
+  read_channel?: string;
+  read_device?: string;
+  detail_link?: string;
+  created?: string;
+  sent?: string;
+  summary?: string;
+  detail?: string;
+}
+
+export interface ReportsPage {
+  items: ReportItem[];
+  unread_count: number;
+  oldest_unread_time?: string;
+  has_older: boolean;
+  older_count: number;
+}
+
+export interface DeliverableSummary {
+  name: string;
+  state: string;
+  title?: string;
+}
+
+export interface ReplanningRecord {
+  trigger: string;
+  time: string;
+  change: string;
+}
+
+export interface DecisionRecord {
+  id: string;
+  question?: string;
+  text?: string;
+  answer?: string;
+  by: string;
+  channel?: string;
+  device?: string;
+}
+
+export interface TokenComponentRecord {
+  input: number;
+  cache_read: number;
+  cache_write: number;
+  output: number;
+  reasoning: number;
+}
+
+export interface TokenBreakdownItem {
+  name: string;
+  total: number;
+  input: number;
+  output: number;
+  unmeasured: number;
+  floor: boolean;
+  harness_model?: string;
+  effort?: string;
+  components?: TokenComponentRecord;
+}
+
+export interface TokenWasteRecord {
+  waste_class: string;
+  tokens: number;
+  share_percent: number;
+  tasks_count: number;
+  cause_summary?: string;
+}
+
+export interface TokenUsageRecord {
+  total: number;
+  input: number;
+  output: number;
+  duration_seconds: number;
+  workers_count: number;
+  models_count: number;
+  tasks_measured: number;
+  tasks_total: number;
+  is_floor: boolean;
+  unmeasured_reason?: string;
+  by_phase: TokenBreakdownItem[];
+  by_role: TokenBreakdownItem[];
+  by_model: TokenBreakdownItem[];
+  waste_records: TokenWasteRecord[];
+  total_waste_tokens: number;
+  waste_share_percent: number;
+}
+
+export interface PlanCompletionReport {
+  plan_id: string;
+  title: string;
+  from: ReportFrom;
+  outcome: string;
+  terminal_reason?: string;
+  pull_request_number?: number;
+  pull_request_url?: string;
+  reason?: string;
+  started_at: string;
+  ended_at: string;
+  duration_seconds: number;
+  paused_seconds: number;
+  paused_by?: string;
+  deliverables: DeliverableSummary[];
+  replanning_records: ReplanningRecord[];
+  decision_records: DecisionRecord[];
+  token_usage?: TokenUsageRecord;
+  ended?: string;
+  ran?: string;
+}
+
 const STORAGE_KEY_SECRET = 'pm_device_secret';
 const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
 const STORAGE_KEY_LABEL = 'pm_device_label';
@@ -275,6 +399,59 @@ export class ApiClient {
       if (msg !== 'HTTP 404' && msg !== 'HTTP 405') throw err;
       await this.request('PUT', '/api/v1/web', { lan: false });
     }
+  }
+
+  public async getReports(older = false, project?: string): Promise<ReportsPage> {
+    let path = '/api/v1/reports';
+    const params = new URLSearchParams();
+    if (older) params.set('older', 'true');
+    if (project) params.set('project', project);
+    const qs = params.toString();
+    if (qs) path += `?${qs}`;
+    const data = await this.request<
+      ReportsPage | ReportItem[] | { reports?: ReportItem[]; unread_count?: number }
+    >('GET', path);
+    if (Array.isArray(data)) {
+      return {
+        items: data,
+        unread_count: data.length,
+        has_older: false,
+        older_count: 0,
+      };
+    }
+    const rawObj = data as {
+      reports?: ReportItem[];
+      items?: ReportItem[];
+      unread_count?: number;
+      oldest_unread?: string;
+      oldest_unread_time?: string;
+      has_older?: boolean;
+      older_count?: number;
+    };
+    const items = rawObj.items || rawObj.reports || [];
+    return {
+      items,
+      unread_count: rawObj.unread_count ?? items.length,
+      oldest_unread_time: rawObj.oldest_unread_time || rawObj.oldest_unread,
+      has_older: Boolean(rawObj.has_older || (rawObj.older_count && rawObj.older_count > 0)),
+      older_count: rawObj.older_count || 0,
+    };
+  }
+
+  public async markReportRead(reportId: string): Promise<void> {
+    await this.request('POST', `/api/v1/reports/${encodeURIComponent(reportId)}/read`, {});
+  }
+
+  public async markAllReportsRead(ids?: string[]): Promise<{ marked_count: number }> {
+    const body = ids && ids.length > 0 ? { report_ids: ids } : { all: true };
+    return this.request<{ marked_count: number }>('POST', '/api/v1/reports/read', body);
+  }
+
+  public async getPlanCompletion(planId: string): Promise<PlanCompletionReport> {
+    return this.request<PlanCompletionReport>(
+      'GET',
+      `/api/v1/plans/${encodeURIComponent(planId)}/completion`,
+    );
   }
 
   public async request<T>(method: string, path: string, body?: unknown): Promise<T> {

@@ -27,10 +27,10 @@ import de.planmarshall.api.json.JsonTree;
  * @param offTrack {@code true} if worker is off track, {@code false} if cleared
  */
 public record TaskOffTrackEvent(
-String planId,
-@Nullable String taskId,
-@Nullable String signal,
-boolean offTrack
+        String planId,
+        @Nullable String taskId,
+        @Nullable String signal,
+        boolean offTrack
 ) {
     public static final String EVENT_NAME = "task.off_track";
 

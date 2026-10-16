@@ -62,10 +62,10 @@ class QuestionsCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                        [
-                          {"id":"Q-007","plan":"fix-relay","title":"Resolve rebase conflict"}
-                        ]
-                        """);
+                              [
+                                {"id":"Q-007","plan":"fix-relay","title":"Resolve rebase conflict"}
+                              ]
+                              """);
             } else {
                 response.send(404, null, "");
             }
@@ -74,11 +74,11 @@ class QuestionsCommandTest {
         int code = execute("questions");
         var output = out.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("Open Questions · 1 pending")),
-                () -> assertTrue(output.contains("Q-007")),
-                () -> assertTrue(output.contains("fix-relay")),
-                () -> assertTrue(output.contains("Resolve rebase conflict"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("Open Questions · 1 pending")),
+                      () -> assertTrue(output.contains("Q-007")),
+                      () -> assertTrue(output.contains("fix-relay")),
+                      () -> assertTrue(output.contains("Resolve rebase conflict"))
         );
     }
 
@@ -139,8 +139,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "2");
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
         );
     }
 
@@ -157,8 +157,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "--words", "rebase onto origin/main");
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
         );
     }
 

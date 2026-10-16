@@ -33,15 +33,15 @@ import de.planmarshall.api.json.JsonTree;
  * @param endedAt           timestamp when work ended
  */
 public record EndedWorkItem(
-String id,
-String kind,
-String title,
-@Nullable String outcome,
-@Nullable String terminalReason,
-@Nullable Integer pullRequestNumber,
-@Nullable String pullRequestUrl,
-@Nullable String reason,
-Instant endedAt
+        String id,
+        String kind,
+        String title,
+        @Nullable String outcome,
+        @Nullable String terminalReason,
+        @Nullable Integer pullRequestNumber,
+        @Nullable String pullRequestUrl,
+        @Nullable String reason,
+        Instant endedAt
 ) {
     public EndedWorkItem {
         Objects.requireNonNull(id, "id");

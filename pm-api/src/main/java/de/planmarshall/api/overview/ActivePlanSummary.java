@@ -42,22 +42,22 @@ import de.planmarshall.api.json.JsonTree;
  * @param needsOperatorCount number of items needing operator attention, or {@code null}
  */
 public record ActivePlanSummary(
-String planId,
-String title,
-String currentPhase,
-String phaseState,
-@Nullable String pausingPoint,
-@Nullable Instant phaseEnteredAt,
-@Nullable Instant runningSince,
-int tasksDone,
-int tasksTotal,
-@Nullable String epicId,
-@Nullable String epicTitle,
-@Nullable Integer pullRequestNumber,
-@Nullable String pullRequestUrl,
-@Nullable String offTrackSignal,
-@Nullable String needsOperatorKind,
-@Nullable Integer needsOperatorCount
+        String planId,
+        String title,
+        String currentPhase,
+        String phaseState,
+        @Nullable String pausingPoint,
+        @Nullable Instant phaseEnteredAt,
+        @Nullable Instant runningSince,
+        int tasksDone,
+        int tasksTotal,
+        @Nullable String epicId,
+        @Nullable String epicTitle,
+        @Nullable Integer pullRequestNumber,
+        @Nullable String pullRequestUrl,
+        @Nullable String offTrackSignal,
+        @Nullable String needsOperatorKind,
+        @Nullable Integer needsOperatorCount
 ) {
     public ActivePlanSummary {
         Objects.requireNonNull(planId, "planId");

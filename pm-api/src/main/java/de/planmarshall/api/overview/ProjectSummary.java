@@ -34,14 +34,14 @@ import de.planmarshall.api.json.JsonTree;
  * @param lastActivityAt       timestamp of most recent activity
  */
 public record ProjectSummary(
-String projectId,
-String displayName,
-int activePlansCount,
-int activeEpicsCount,
-int needsOperatorCount,
-@Nullable String needsOperatorSummary,
-boolean setupNeedsOperator,
-@Nullable Instant lastActivityAt
+        String projectId,
+        String displayName,
+        int activePlansCount,
+        int activeEpicsCount,
+        int needsOperatorCount,
+        @Nullable String needsOperatorSummary,
+        boolean setupNeedsOperator,
+        @Nullable Instant lastActivityAt
 ) {
     private static final String FIELD_PROJECT_ID = "project_id";
     private static final String FIELD_DISPLAY_NAME = "display_name";

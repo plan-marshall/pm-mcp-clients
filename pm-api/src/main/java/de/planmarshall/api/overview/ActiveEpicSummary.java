@@ -36,16 +36,16 @@ import de.planmarshall.api.json.JsonTree;
  * @param plans              nested active plans belonging to this epic
  */
 public record ActiveEpicSummary(
-String epicId,
-String title,
-@Nullable Instant runningSince,
-int runningPlansCount,
-int stagedPlansCount,
-int plansDone,
-int plansTotal,
-@Nullable String needsOperatorKind,
-@Nullable Integer needsOperatorCount,
-List<ActivePlanSummary> plans
+        String epicId,
+        String title,
+        @Nullable Instant runningSince,
+        int runningPlansCount,
+        int stagedPlansCount,
+        int plansDone,
+        int plansTotal,
+        @Nullable String needsOperatorKind,
+        @Nullable Integer needsOperatorCount,
+        List<ActivePlanSummary> plans
 ) {
     public ActiveEpicSummary {
         Objects.requireNonNull(epicId, "epicId");

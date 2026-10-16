@@ -31,6 +31,8 @@ import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.runtime.RuntimeRecord;
 
@@ -45,7 +47,7 @@ public final class EntryFlow {
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
 
     private static final List<String> STEP_NAMES = List.of(
-            "Language", "Harnesses", "Models", "Roles", "Credentials", "Providers", "Plans");
+                  "Language", "Harnesses", "Models", "Roles", "Credentials", "Providers", "Plans");
 
     private final OperatorContext context;
 
@@ -112,7 +114,7 @@ public final class EntryFlow {
     }
 
     private EntryResult runUnonboarded(RuntimeClient runtime, Map<String, Object> status,
-            PrintWriter out, LineReader reader, boolean isSsh, int webPort) throws IOException {
+                  PrintWriter out, LineReader reader, boolean isSsh, int webPort) throws IOException {
         int completedStep = getCompletedOnboardStep(status);
         out.println();
         if (completedStep == 0) {
@@ -190,29 +192,48 @@ public final class EntryFlow {
     }
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
-            PrintWriter out, boolean isSsh, int webPort) throws IOException {
+                  PrintWriter out, boolean isSsh, int webPort) throws IOException {
         ensureLoopbackListener(runtime, webPort);
         var badges = extractWaitingBadges(status);
 
+        EntryResult result;
         if (isSsh) {
             out.printf("✓ Web access on %s%d%n", LOOPBACK_URL_PREFIX, webPort);
             var pairing = issuePairingCode(runtime, webPort);
             printSshWaysIn(out, webPort, pairing.code());
-            out.flush();
-            return new EntryResult(status, badges, pairing.code(), pairing.url());
+            result = new EntryResult(status, badges, pairing.code(), pairing.url());
         } else {
             var pairedDevice = findPairedBrowser(runtime);
             if (pairedDevice != null) {
                 out.printf("✓ Web app: %s%d   (paired: %s)%n", LOOPBACK_URL_PREFIX, webPort, pairedDevice);
-                out.flush();
-                return new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort);
+                result = new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort);
             } else {
                 out.printf("✓ Web access on %s%d%n", LOOPBACK_URL_PREFIX, webPort);
                 var pairing = issuePairingCode(runtime, webPort);
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
-                out.flush();
-                return new EntryResult(status, badges, pairing.code(), pairing.url());
+                result = new EntryResult(status, badges, pairing.code(), pairing.url());
             }
+        }
+        printReportsArrivalNotice(runtime, out);
+        out.flush();
+        return result;
+    }
+
+    private void printReportsArrivalNotice(RuntimeClient runtime, PrintWriter out) {
+        try {
+            var response = runtime.send(HttpRequest.get("/api/v1/reports"));
+            if (response.status() == 200) {
+                var page = ReportsPage.fromJson(response.bodyText());
+                if (page.unreadCount() > 0) {
+                    var since = page.oldestUnreadTime() != null ? page.oldestUnreadTime() : "";
+                    var arrivalLine = MessageCatalogue.format("report.arrival.line",
+                                  Map.of("count", page.unreadCount(), "since", since));
+                    var hint = MessageCatalogue.get("operator.reports.arrival_hint");
+                    out.println("▪ " + arrivalLine + " · " + hint);
+                }
+            }
+        } catch (IOException _) {
+            // best-effort arrival notice
         }
     }
 

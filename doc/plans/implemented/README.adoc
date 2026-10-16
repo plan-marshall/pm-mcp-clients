@@ -62,4 +62,19 @@ This directory archives work packages that have been implemented, verified, and 
 |Overview of running work in the web app
 |`OverviewView.svelte` in `pm-web-app` with project attention counters, plan cards, epic grouping, alongside landings, ended work pagination, and Playwright E2E tests
 |epic clients; UC-PLN-4
+
+|link:report-contract.adoc[`report-contract`]
+|Reports to the operator and a plan's completion report: contract and mock runtime
+|`pm-api` report records, message catalogue (`reports.{en,de}.properties`), `TokenFormat.java`, and `pm-mock-runtime` `reports.json` scenario with dynamic handlers
+|epic clients
+
+|link:cli-reports.adoc[`cli-reports`]
+|Reports and the completion report in the terminal
+|`pm-operator` `reports` verb with hierarchical grouping, relative timestamps, `plan report <plan_id>` with `--tokens` and `--components`, console startup line and quiet notice
+|epic clients
+
+|link:web-reports.adoc[`web-reports`]
+|Reports and the completion report in the web app
+|`pm-web-app` `/reports` grouped view, `CompletionReportView.svelte` with deliverables, re-planning, decisions, and tokens breakdown, header badge, and arrival banner
+|epic clients
 |===

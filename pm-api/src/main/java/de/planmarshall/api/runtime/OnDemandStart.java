@@ -89,7 +89,7 @@ public final class OnDemandStart implements RuntimeStarter {
      * @param nanoTime         the monotonic clock
      */
     public OnDemandStart(MachinePaths paths, ExecutableSource daemonExecutable, Liveness liveness, DaemonLauncher launcher,
-            Duration timeout, Sleeper sleeper, LongSupplier nanoTime) {
+                         Duration timeout, Sleeper sleeper, LongSupplier nanoTime) {
         this.paths = Objects.requireNonNull(paths, "paths");
         this.daemonExecutable = Objects.requireNonNull(daemonExecutable, "daemonExecutable");
         this.liveness = Objects.requireNonNull(liveness, "liveness");
@@ -109,7 +109,7 @@ public final class OnDemandStart implements RuntimeStarter {
      * @return the start procedure with the runtime start timeout
      */
     public static OnDemandStart of(MachinePaths paths, ExecutableSource daemonExecutable, Liveness liveness,
-            DaemonLauncher launcher) {
+                                   DaemonLauncher launcher) {
         return new OnDemandStart(paths, daemonExecutable, liveness, launcher, RUNTIME_START_TIMEOUT,
                 nanos -> Thread.sleep(Duration.ofNanos(nanos)), System::nanoTime);
     }

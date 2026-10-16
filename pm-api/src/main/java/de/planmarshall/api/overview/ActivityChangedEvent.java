@@ -26,9 +26,9 @@ import de.planmarshall.api.json.JsonTree;
  * @param point    point of pause ("task", "phase"), or {@code null}
  */
 public record ActivityChangedEvent(
-String planId,
-String activity,
-@Nullable String point
+        String planId,
+        String activity,
+        @Nullable String point
 ) {
     public static final String EVENT_NAME = "activity.changed";
 

@@ -22,10 +22,11 @@ import org.jspecify.annotations.Nullable;
 public final class ConsoleNotice {
 
     private static final Pattern ANSI_PATTERN = Pattern.compile(
-            "\\x1B(?:\\[[0-?]*[ -/]*[@-~]|\\].*?(?:\\x07|\\x1B\\\\))");
+                  "\\x1B(?:\\[[0-?]*[ -/]*[@-~]|\\].*?(?:\\x07|\\x1B\\\\))");
     private static final Pattern CONTROL_CHARS = Pattern.compile(
-            "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]");
+                  "[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]");
     private static final String SCOPE = "scope";
+    private static final String KEY_PROJECT = "project";
     private static final String PLAN_PREFIX = "◆ Plan ";
     private static final String EPIC_PREFIX = "◆ Epic ";
 
@@ -57,10 +58,10 @@ public final class ConsoleNotice {
      * @return multi-line formatted notice
      */
     public static String formatQuestion(String id, String scope, @Nullable String summary, @Nullable String text,
-            @Nullable String recommendation) {
+                  @Nullable String recommendation) {
         var sb = new StringBuilder();
         sb.append("◆ Question ").append(Objects.requireNonNull(id, "id"))
-                .append(" · ").append(Objects.requireNonNull(scope, SCOPE));
+                      .append(" · ").append(Objects.requireNonNull(scope, SCOPE));
         if (summary != null && !summary.isBlank()) {
             sb.append(" · ").append(stripControlSequences(summary));
         }
@@ -86,7 +87,7 @@ public final class ConsoleNotice {
     public static String formatWaiverRequest(String id, String scope, @Nullable String gate) {
         var sb = new StringBuilder();
         sb.append("◆ Waiver request ").append(Objects.requireNonNull(id, "id"))
-                .append(" · ").append(Objects.requireNonNull(scope, SCOPE));
+                      .append(" · ").append(Objects.requireNonNull(scope, SCOPE));
         if (gate != null && !gate.isBlank()) {
             sb.append(" · gate ").append(stripControlSequences(gate));
         }
@@ -138,7 +139,7 @@ public final class ConsoleNotice {
      */
     public static String formatFreshCodeNotice(String code, String validUntil, String url) {
         return "✓ New code: " + code + ", valid until " + validUntil
-                + ". The previous code no longer works.\n  " + url;
+                      + ". The previous code no longer works.\n  " + url;
     }
 
     /**
@@ -151,10 +152,10 @@ public final class ConsoleNotice {
      * @return formatted notice
      */
     public static String formatAnsweredElsewhere(String id, String channel, @Nullable String device,
-            @Nullable String answer) {
+                  @Nullable String answer) {
         var dev = device != null && !device.isBlank() ? " (" + stripControlSequences(device) + ")" : "";
         return "– " + id + " was answered in the " + channel + dev + ": "
-                + stripControlSequences(answer) + ". Nothing was sent from here.";
+                      + stripControlSequences(answer) + ". Nothing was sent from here.";
     }
 
     /**
@@ -170,27 +171,78 @@ public final class ConsoleNotice {
         var type = String.valueOf(event.getOrDefault("type", event.getOrDefault("event", "")));
         return switch (type) {
             case "question", "decision" -> formatQuestion(
-                    String.valueOf(event.getOrDefault("id", "Q-???")),
-                    String.valueOf(event.getOrDefault(SCOPE, "plan")),
-                    (String) event.get("summary"),
-                    (String) event.get("text"),
-                    (String) event.get("recommendation"));
+                          String.valueOf(event.getOrDefault("id", "Q-???")),
+                          String.valueOf(event.getOrDefault(SCOPE, "plan")),
+                          (String) event.get("summary"),
+                          (String) event.get("text"),
+                          (String) event.get("recommendation"));
             case "waiver_request" -> formatWaiverRequest(
-                    String.valueOf(event.getOrDefault("id", "WR-?")),
-                    String.valueOf(event.getOrDefault(SCOPE, "plan")),
-                    (String) event.get("gate"));
+                          String.valueOf(event.getOrDefault("id", "WR-?")),
+                          String.valueOf(event.getOrDefault(SCOPE, "plan")),
+                          (String) event.get("gate"));
             case "paired" -> formatPairedNotice(
-                    String.valueOf(event.getOrDefault("label", "unknown")));
+                          String.valueOf(event.getOrDefault("label", "unknown")));
             case "fresh_code" -> formatFreshCodeNotice(
-                    String.valueOf(event.get("code")),
-                    String.valueOf(event.getOrDefault("valid_until", "")),
-                    String.valueOf(event.getOrDefault("url", "")));
+                          String.valueOf(event.get("code")),
+                          String.valueOf(event.getOrDefault("valid_until", "")),
+                          String.valueOf(event.getOrDefault("url", "")));
             case "operator_wait", "integrity_pause", "stalled", "condition", "held", "landing_failed", "findings", "setup" ->
                 formatHoldNotice(
-                        type,
-                        String.valueOf(event.getOrDefault(SCOPE, "")),
-                        String.valueOf(event.getOrDefault("detail", event.getOrDefault("reason", ""))));
+                              type,
+                              String.valueOf(event.getOrDefault(SCOPE, "")),
+                              String.valueOf(event.getOrDefault("detail", event.getOrDefault("reason", ""))));
+            case "report.sent", "report" -> formatReportNotice(event);
             default -> null;
         };
     }
+
+    /**
+     * Formats a quiet notice for an incoming report pushed over SSE.
+     *
+     * @param event the event map
+     * @return formatted quiet notice string
+     */
+    public static @Nullable String formatReportNotice(Map<String, Object> event) {
+        if (event.containsKey("count") && event.get("count") instanceof Number num && num.intValue() > 1) {
+            var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault(KEY_PROJECT, "plan-marshall")));
+            return "▪ " + num.intValue() + " new reports · " + stripControlSequences(scope) + " · reports";
+        }
+        var id = String.valueOf(event.getOrDefault("id", ""));
+        var subject = (String) event.get("subject");
+        var leaf = extractLeaf(event);
+
+        if (subject == null || subject.isBlank()) {
+            subject = (String) event.get("summary");
+        }
+        if (subject == null || subject.isBlank()) {
+            subject = "New report";
+        }
+
+        var sb = new StringBuilder("▪ ");
+        sb.append(stripControlSequences(leaf)).append(": ").append(stripControlSequences(subject));
+        if (!id.isBlank()) {
+            sb.append(" · reports open ").append(stripControlSequences(id));
+        }
+        return sb.toString();
+    }
+
+    private static String extractLeaf(Map<String, Object> event) {
+        var from = (String) event.get("from");
+        if (from != null && !from.isBlank()) {
+            if (from.contains(">")) {
+                return from.substring(from.lastIndexOf('>') + 1).trim();
+            } else if (from.contains("›")) {
+                return from.substring(from.lastIndexOf('›') + 1).trim();
+            }
+            return from.trim();
+        }
+        if (event.get("plan") != null) {
+            return String.valueOf(event.get("plan"));
+        }
+        if (event.get(KEY_PROJECT) != null) {
+            return String.valueOf(event.get(KEY_PROJECT));
+        }
+        return "plan";
+    }
 }
+

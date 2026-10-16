@@ -28,11 +28,11 @@ import de.planmarshall.api.json.JsonTree;
  * @param needsOperatorCount updated count of items needing operator
  */
 public record ProjectWorkChangedEvent(
-String projectId,
-String changeType,
-int activePlansCount,
-int activeEpicsCount,
-int needsOperatorCount
+        String projectId,
+        String changeType,
+        int activePlansCount,
+        int activeEpicsCount,
+        int needsOperatorCount
 ) {
     public static final String EVENT_CHANGED = "project.changed";
     public static final String EVENT_WORK_STARTED = "project.work_started";

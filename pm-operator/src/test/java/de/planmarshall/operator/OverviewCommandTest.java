@@ -34,200 +34,200 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 class OverviewCommandTest {
 
     private static final String STATUS_JSON = """
-            {
-              "status": "ready",
-              "version": "0.9.1",
-              "listener": "unix",
-              "running_since": "08:14",
-              "workers_count": 2,
-              "build_slots_used": 1,
-              "build_slots_total": 2
-            }
-            """;
+                  {
+                    "status": "ready",
+                    "version": "0.9.1",
+                    "listener": "unix",
+                    "running_since": "08:14",
+                    "workers_count": 2,
+                    "build_slots_used": 1,
+                    "build_slots_total": 2
+                  }
+                  """;
 
     private static final String PROJECTS_JSON = """
-            {
-              "projects": [
-                {
-                  "project_id": "pm-mcp-clients",
-                  "display_name": "pm-mcp-clients",
-                  "active_plans_count": 3,
-                  "active_epics_count": 1,
-                  "needs_operator_count": 2,
-                  "needs_operator_summary": "decision",
-                  "setup_needs_operator": false
-                },
-                {
-                  "project_id": "pm-mcp-core",
-                  "display_name": "pm-mcp-core",
-                  "active_plans_count": 2,
-                  "active_epics_count": 0,
-                  "needs_operator_count": 0,
-                  "needs_operator_summary": null,
-                  "setup_needs_operator": false
-                },
-                {
-                  "project_id": "plan-marshall",
-                  "display_name": "plan-marshall",
-                  "active_plans_count": 0,
-                  "active_epics_count": 1,
-                  "needs_operator_count": 1,
-                  "needs_operator_summary": "setup",
-                  "setup_needs_operator": true
-                }
-              ]
-            }
-            """;
+                  {
+                    "projects": [
+                      {
+                        "project_id": "pm-mcp-clients",
+                        "display_name": "pm-mcp-clients",
+                        "active_plans_count": 3,
+                        "active_epics_count": 1,
+                        "needs_operator_count": 2,
+                        "needs_operator_summary": "decision",
+                        "setup_needs_operator": false
+                      },
+                      {
+                        "project_id": "pm-mcp-core",
+                        "display_name": "pm-mcp-core",
+                        "active_plans_count": 2,
+                        "active_epics_count": 0,
+                        "needs_operator_count": 0,
+                        "needs_operator_summary": null,
+                        "setup_needs_operator": false
+                      },
+                      {
+                        "project_id": "plan-marshall",
+                        "display_name": "plan-marshall",
+                        "active_plans_count": 0,
+                        "active_epics_count": 1,
+                        "needs_operator_count": 1,
+                        "needs_operator_summary": "setup",
+                        "setup_needs_operator": true
+                      }
+                    ]
+                  }
+                  """;
 
     private static final String DETAIL_CLIENTS_JSON = """
-            {
-              "project_id": "pm-mcp-clients",
-              "display_name": "pm-mcp-clients",
-              "plans": [
-                {
-                  "plan_id": "pln-console-history",
-                  "title": "Console history of answers",
-                  "current_phase": "refine",
-                  "phase_state": "waiting",
-                  "needs_operator_kind": "decision",
-                  "needs_operator_count": 1,
-                  "phase_entered_at": "2026-10-16T15:26:00Z",
-                  "tasks_done": 0,
-                  "tasks_total": 0
-                },
-                {
-                  "plan_id": "pln-overview-resource",
-                  "title": "Overview resource of the runtime",
-                  "current_phase": "execute",
-                  "phase_state": "running",
-                  "tasks_done": 7,
-                  "tasks_total": 12,
-                  "epic_id": "epc-client-work",
-                  "epic_title": "client work",
-                  "pull_request_number": 214,
-                  "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214"
-                },
-                {
-                  "plan_id": "pln-message-catalogue",
-                  "title": "Message catalogue",
-                  "current_phase": "outline",
-                  "phase_state": "pausing",
-                  "epic_id": "epc-client-work",
-                  "epic_title": "client work",
-                  "off_track_signal": "repeating"
-                }
-              ],
-              "epics": [
-                {
-                  "epic_id": "epc-client-work",
-                  "title": "client work",
-                  "running_plans_count": 2,
-                  "staged_plans_count": 3,
-                  "plans": [
-                    {
-                      "plan_id": "pln-overview-resource",
-                      "title": "Overview resource of the runtime",
-                      "current_phase": "execute",
-                      "phase_state": "running",
-                      "tasks_done": 7,
-                      "tasks_total": 12
-                    },
-                    {
-                      "plan_id": "pln-message-catalogue",
-                      "title": "Message catalogue",
-                      "current_phase": "outline",
-                      "phase_state": "pausing",
-                      "off_track_signal": "repeating"
-                    }
-                  ]
-                }
-              ],
-              "alongside_landings": [
-                {
-                  "unit": "remediation.ci-failure",
-                  "state": "failed",
-                  "kind": "unit",
-                  "hold_kind": "landing_failed"
-                },
-                {
-                  "state": "running",
-                  "count": 2,
-                  "kind": "removal"
-                }
-              ]
-            }
-            """;
+                  {
+                    "project_id": "pm-mcp-clients",
+                    "display_name": "pm-mcp-clients",
+                    "plans": [
+                      {
+                        "plan_id": "pln-console-history",
+                        "title": "Console history of answers",
+                        "current_phase": "refine",
+                        "phase_state": "waiting",
+                        "needs_operator_kind": "decision",
+                        "needs_operator_count": 1,
+                        "phase_entered_at": "2026-10-16T15:26:00Z",
+                        "tasks_done": 0,
+                        "tasks_total": 0
+                      },
+                      {
+                        "plan_id": "pln-overview-resource",
+                        "title": "Overview resource of the runtime",
+                        "current_phase": "execute",
+                        "phase_state": "running",
+                        "tasks_done": 7,
+                        "tasks_total": 12,
+                        "epic_id": "epc-client-work",
+                        "epic_title": "client work",
+                        "pull_request_number": 214,
+                        "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214"
+                      },
+                      {
+                        "plan_id": "pln-message-catalogue",
+                        "title": "Message catalogue",
+                        "current_phase": "outline",
+                        "phase_state": "pausing",
+                        "epic_id": "epc-client-work",
+                        "epic_title": "client work",
+                        "off_track_signal": "repeating"
+                      }
+                    ],
+                    "epics": [
+                      {
+                        "epic_id": "epc-client-work",
+                        "title": "client work",
+                        "running_plans_count": 2,
+                        "staged_plans_count": 3,
+                        "plans": [
+                          {
+                            "plan_id": "pln-overview-resource",
+                            "title": "Overview resource of the runtime",
+                            "current_phase": "execute",
+                            "phase_state": "running",
+                            "tasks_done": 7,
+                            "tasks_total": 12
+                          },
+                          {
+                            "plan_id": "pln-message-catalogue",
+                            "title": "Message catalogue",
+                            "current_phase": "outline",
+                            "phase_state": "pausing",
+                            "off_track_signal": "repeating"
+                          }
+                        ]
+                      }
+                    ],
+                    "alongside_landings": [
+                      {
+                        "unit": "remediation.ci-failure",
+                        "state": "failed",
+                        "kind": "unit",
+                        "hold_kind": "landing_failed"
+                      },
+                      {
+                        "state": "running",
+                        "count": 2,
+                        "kind": "removal"
+                      }
+                    ]
+                  }
+                  """;
 
     private static final String DETAIL_CORE_JSON = """
-            {
-              "project_id": "pm-mcp-core",
-              "display_name": "pm-mcp-core",
-              "plans": [
-                {
-                  "plan_id": "pln-session-log",
-                  "title": "Session log and generations",
-                  "current_phase": "execute",
-                  "phase_state": "running",
-                  "pull_request_number": 198,
-                  "pull_request_url": "https://github.com/plan-marshall/pm-mcp-core/pull/198"
-                },
-                {
-                  "plan_id": "pln-profile-loader",
-                  "title": "Profile loader",
-                  "current_phase": "finalize",
-                  "phase_state": "paused"
-                }
-              ],
-              "epics": [],
-              "alongside_landings": []
-            }
-            """;
+                  {
+                    "project_id": "pm-mcp-core",
+                    "display_name": "pm-mcp-core",
+                    "plans": [
+                      {
+                        "plan_id": "pln-session-log",
+                        "title": "Session log and generations",
+                        "current_phase": "execute",
+                        "phase_state": "running",
+                        "pull_request_number": 198,
+                        "pull_request_url": "https://github.com/plan-marshall/pm-mcp-core/pull/198"
+                      },
+                      {
+                        "plan_id": "pln-profile-loader",
+                        "title": "Profile loader",
+                        "current_phase": "finalize",
+                        "phase_state": "paused"
+                      }
+                    ],
+                    "epics": [],
+                    "alongside_landings": []
+                  }
+                  """;
 
     private static final String DETAIL_PLAN_MARSHALL_JSON = """
-            {
-              "project_id": "plan-marshall",
-              "display_name": "plan-marshall",
-              "plans": [],
-              "epics": [],
-              "alongside_landings": []
-            }
-            """;
+                  {
+                    "project_id": "plan-marshall",
+                    "display_name": "plan-marshall",
+                    "plans": [],
+                    "epics": [],
+                    "alongside_landings": []
+                  }
+                  """;
 
     private static final String ENDED_CLIENTS_JSON = """
-            {
-              "project_id": "pm-mcp-clients",
-              "page": 1,
-              "total_pages": 2,
-              "has_newer": false,
-              "has_older": true,
-              "items": [
-                {
-                  "item_id": "pln-relay-drops",
-                  "kind": "plan",
-                  "title": "Relay drops events on reconnect",
-                  "outcome": "merged",
-                  "ended_at": "2026-10-14T10:00:00Z",
-                  "pull_request_number": 211,
-                  "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/211"
-                },
-                {
-                  "item_id": "pln-fix-loss",
-                  "kind": "plan",
-                  "title": "Fix the relay's event loss",
-                  "outcome": "cancelled",
-                  "reason": "the approach is replaced by plan relay-v2",
-                  "ended_at": "2026-10-14T09:00:00Z"
-                },
-                {
-                  "item_id": "epc-bootstrap",
-                  "kind": "epic",
-                  "title": "client bootstrap",
-                  "terminal_reason": "completed",
-                  "ended_at": "2026-10-02T10:00:00Z"
-                }
-              ]
-            }
-            """;
+                  {
+                    "project_id": "pm-mcp-clients",
+                    "page": 1,
+                    "total_pages": 2,
+                    "has_newer": false,
+                    "has_older": true,
+                    "items": [
+                      {
+                        "item_id": "pln-relay-drops",
+                        "kind": "plan",
+                        "title": "Relay drops events on reconnect",
+                        "outcome": "merged",
+                        "ended_at": "2026-10-14T10:00:00Z",
+                        "pull_request_number": 211,
+                        "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/211"
+                      },
+                      {
+                        "item_id": "pln-fix-loss",
+                        "kind": "plan",
+                        "title": "Fix the relay's event loss",
+                        "outcome": "cancelled",
+                        "reason": "the approach is replaced by plan relay-v2",
+                        "ended_at": "2026-10-14T09:00:00Z"
+                      },
+                      {
+                        "item_id": "epc-bootstrap",
+                        "kind": "epic",
+                        "title": "client bootstrap",
+                        "terminal_reason": "completed",
+                        "ended_at": "2026-10-02T10:00:00Z"
+                      }
+                    ]
+                  }
+                  """;
 
     private RuntimeFixture fixture;
     private StringWriter out;
@@ -255,13 +255,13 @@ class OverviewCommandTest {
             env.put("LANG", "en_US.UTF-8");
         }
         var context = new OperatorContext(
-                env,
-                fixture.base().getParent(),
-                true,
-                ClientEnvironment.capture(env),
-                null,
-                _ -> {
-                }
+                      env,
+                      fixture.base().getParent(),
+                      true,
+                      ClientEnvironment.capture(env),
+                      null,
+                      _ -> {
+                      }
         );
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
@@ -270,7 +270,7 @@ class OverviewCommandTest {
         var self = ProcessHandle.current();
         Files.createDirectories(fixture.paths().stateDir());
         Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
-                + self.info().startInstant().orElseThrow() + "\"}");
+                      + self.info().startInstant().orElseThrow() + "\"}");
     }
 
     private FakeRuntimeServer setupRunningServer() throws IOException {

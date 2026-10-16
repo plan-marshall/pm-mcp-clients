@@ -71,54 +71,54 @@ class WebDevicesCommandTest {
             var method = request.method();
             if ("/api/v1/status".equals(path)) {
                 response.json(200, """
-                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":%s,"port":7420}}
-                        """.formatted(lanOn));
+                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":%s,"port":7420}}
+                              """.formatted(lanOn));
             } else if ("/api/v1/web/devices".equals(path) && "GET".equals(method)) {
                 response.json(200, """
-                        [
-                          {
-                            "device_id": "dev-1",
-                            "label": "Firefox on mbp-oliver",
-                            "paired_from": "loopback",
-                            "created_at": "2026-05-12T10:00:00Z",
-                            "last_used_at": "2026-10-16T14:02:00Z"
-                          },
-                          {
-                            "device_id": "dev-2",
-                            "label": "Safari on iPad",
-                            "paired_from": "network",
-                            "created_at": "2026-05-20T10:00:00Z",
-                            "last_used_at": "2026-10-13T10:00:00Z"
-                          },
-                          {
-                            "device_id": "dev-3",
-                            "label": "Chrome on build-box",
-                            "paired_from": "loopback",
-                            "created_at": "2026-06-02T10:00:00Z",
-                            "last_used_at": "2026-09-08T10:00:00Z"
-                          }
-                        ]
-                        """);
+                              [
+                                {
+                                  "device_id": "dev-1",
+                                  "label": "Firefox on mbp-oliver",
+                                  "paired_from": "loopback",
+                                  "created_at": "2026-05-12T10:00:00Z",
+                                  "last_used_at": "2026-10-16T14:02:00Z"
+                                },
+                                {
+                                  "device_id": "dev-2",
+                                  "label": "Safari on iPad",
+                                  "paired_from": "network",
+                                  "created_at": "2026-05-20T10:00:00Z",
+                                  "last_used_at": "2026-10-13T10:00:00Z"
+                                },
+                                {
+                                  "device_id": "dev-3",
+                                  "label": "Chrome on build-box",
+                                  "paired_from": "loopback",
+                                  "created_at": "2026-06-02T10:00:00Z",
+                                  "last_used_at": "2026-09-08T10:00:00Z"
+                                }
+                              ]
+                              """);
             } else if (path.startsWith("/api/v1/web/devices/dev-2") && ("PUT".equals(method) || "PATCH".equals(method))) {
                 response.json(200, """
-                        {"device_id":"dev-2","label":"iPad Oliver"}
-                        """);
+                              {"device_id":"dev-2","label":"iPad Oliver"}
+                              """);
             } else if (path.startsWith("/api/v1/web/devices/dev-3") && "DELETE".equals(method)) {
                 response.json(200, """
-                        {"status":"revoked","device_id":"dev-3","label":"Chrome on build-box"}
-                        """);
+                              {"status":"revoked","device_id":"dev-3","label":"Chrome on build-box"}
+                              """);
             } else if (path.startsWith("/api/v1/web/devices/dev-1") && "DELETE".equals(method)) {
                 response.json(200, """
-                        {"status":"revoked","device_id":"dev-1","label":"Firefox on mbp-oliver"}
-                        """);
+                              {"status":"revoked","device_id":"dev-1","label":"Firefox on mbp-oliver"}
+                              """);
             } else if (path.startsWith("/api/v1/web/devices?scope=others") && "DELETE".equals(method)) {
                 response.json(200, """
-                        {"status":"revoked","revoked_count":3}
-                        """);
+                              {"status":"revoked","revoked_count":3}
+                              """);
             } else if ("/api/v1/web".equals(path) && "PUT".equals(method)) {
                 response.json(200, """
-                        {"status":"ok"}
-                        """);
+                              {"status":"ok"}
+                              """);
             } else {
                 response.send(404, null, "Not found: " + path);
             }
@@ -139,18 +139,18 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("Paired devices · The browsers that can act on this machine")),
-                () -> assertTrue(output.contains("Firefox on mbp-oliver")),
-                () -> assertTrue(output.contains("paired 12 May from loopback")),
-                () -> assertTrue(output.contains("last used today 14:02")),
-                () -> assertTrue(output.contains("Safari on iPad")),
-                () -> assertTrue(output.contains("paired 20 May from network")),
-                () -> assertTrue(output.contains("last used 3 d ago")),
-                () -> assertTrue(output.contains("Chrome on build-box")),
-                () -> assertTrue(output.contains("paired 2 Jun from loopback")),
-                () -> assertTrue(output.contains("last used 5 weeks ago")),
-                () -> assertTrue(output.contains("Network listener: on."))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("Paired devices · The browsers that can act on this machine")),
+                      () -> assertTrue(output.contains("Firefox on mbp-oliver")),
+                      () -> assertTrue(output.contains("paired 12 May from loopback")),
+                      () -> assertTrue(output.contains("last used today 14:02")),
+                      () -> assertTrue(output.contains("Safari on iPad")),
+                      () -> assertTrue(output.contains("paired 20 May from network")),
+                      () -> assertTrue(output.contains("last used 3 d ago")),
+                      () -> assertTrue(output.contains("Chrome on build-box")),
+                      () -> assertTrue(output.contains("paired 2 Jun from loopback")),
+                      () -> assertTrue(output.contains("last used 5 weeks ago")),
+                      () -> assertTrue(output.contains("Network listener: on."))
         );
     }
 
@@ -168,16 +168,16 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("✓ Renamed: iPad Oliver"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("✓ Renamed: iPad Oliver"))
         );
     }
 
     @ParameterizedTest
     @CsvSource({
-            "revoke, dev-3, ✓ Revoked paired device(s)",
-            "revoke, --others, ✓ Revoked paired device(s)",
-            "listener-off, '', ✓ Network listener turned off (loopback remains open)"
+                  "revoke, dev-3, ✓ Revoked paired device(s)",
+                  "revoke, --others, ✓ Revoked paired device(s)",
+                  "listener-off, '', ✓ Network listener turned off (loopback remains open)"
     })
     @DisplayName("executes single, others revoke and listener-off actions directly")
     void executesDirectActions(String action, String argument, String expectedOutput) throws Exception {
@@ -197,8 +197,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains(expectedOutput))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains(expectedOutput))
         );
     }
 
@@ -218,10 +218,10 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("Paired devices · The browsers that can act on this machine")),
-                () -> assertTrue(output.contains("2) Safari on iPad")),
-                () -> assertTrue(output.contains("✓ Renamed: iPad Oliver"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("Paired devices · The browsers that can act on this machine")),
+                      () -> assertTrue(output.contains("2) Safari on iPad")),
+                      () -> assertTrue(output.contains("✓ Renamed: iPad Oliver"))
         );
     }
 
@@ -241,9 +241,9 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("3) Chrome on build-box")),
-                () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("3) Chrome on build-box")),
+                      () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
         );
     }
 
@@ -262,8 +262,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
         );
     }
 
@@ -282,8 +282,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("✓ Network listener turned off (loopback remains open)"))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("✓ Network listener turned off (loopback remains open)"))
         );
     }
 
@@ -318,8 +318,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertFalse(output.contains("✓ Revoked paired device(s)"))
+                      () -> assertEquals(0, code),
+                      () -> assertFalse(output.contains("✓ Revoked paired device(s)"))
         );
     }
 
@@ -330,8 +330,8 @@ class WebDevicesCommandTest {
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
-                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
-                        """);
+                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                              """);
             } else if ("/api/v1/web/devices".equals(request.target())) {
                 response.json(200, "[]");
             } else {
@@ -348,8 +348,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(output.contains("No paired devices."))
+                      () -> assertEquals(0, code),
+                      () -> assertTrue(output.contains("No paired devices."))
         );
     }
 
@@ -359,8 +359,8 @@ class WebDevicesCommandTest {
         assertEquals("-", WebCommand.describe(null));
         assertEquals("disabled", WebCommand.describe(Map.of("enabled", false)));
         assertEquals("enabled (loopback), port 7420, open",
-                WebCommand.describe(Map.of("enabled", true, "lan", false, "port", 7420, "open", true)));
+                      WebCommand.describe(Map.of("enabled", true, "lan", false, "port", 7420, "open", true)));
         assertEquals("enabled (lan), port 8080, not open",
-                WebCommand.describe(Map.of("enabled", true, "lan", true, "port", 8080, "open", false)));
+                      WebCommand.describe(Map.of("enabled", true, "lan", true, "port", 8080, "open", false)));
     }
 }

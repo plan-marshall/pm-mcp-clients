@@ -53,9 +53,16 @@ public final class StandardScenarios {
     public static final String PAIRED_DEVICES = "paired-devices";
 
     /**
+         /**
      * Overview of running work across projects, plans, and epics with ended work archive (UC-PLN-4).
      */
     public static final String RUNNING_WORK = "running-work";
+
+    /**
+     * Operator reports scenario demonstrating unread reports list, mark-read actions,
+     * arrival notices, and plan completion reports.
+     */
+    public static final String REPORTS = "reports";
 
     /**
      * Unmodifiable list of all delivered standard scenario names.
@@ -66,6 +73,7 @@ public final class StandardScenarios {
             ONBOARDING_HARNESS_NOT_LOGGED_IN,
             WEB_PAIRING,
             PAIRED_DEVICES,
-            RUNNING_WORK
+            RUNNING_WORK,
+            REPORTS
     );
 }

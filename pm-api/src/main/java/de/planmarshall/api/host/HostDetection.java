@@ -93,8 +93,8 @@ public class HostDetection {
      * @param provisional       {@code true} if any value of the row is provisional
      */
     public record Host(String client, List<Signal> primarySignals, List<Signal> secondarySignals,
-    String sessionIdVariable, List<String> versionProbe, String versionPattern, String modelSource,
-    boolean provisional) {
+                       String sessionIdVariable, List<String> versionProbe, String versionPattern, String modelSource,
+                       boolean provisional) {
 
         /**
          * Copies the lists.

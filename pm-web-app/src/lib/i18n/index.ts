@@ -99,6 +99,17 @@ export const fallbackMessages: Record<string, string> = {
   'overview.ended.newer': 'Newer',
   'overview.ended.older': 'Older',
   'overview.ended.as_it_ended': '{item} has ended ({outcome}, {time}); this is how it ended.',
+  'report.list.title': 'Reports',
+  'report.list.empty': 'Nothing new. Reports you have read are not shown any more.',
+  'report.list.show_older': 'Show {count} older',
+  'report.action.details': 'Show the details',
+  'report.action.mark_read': 'Mark read',
+  'report.action.mark_all_read': 'Mark all shown read',
+  'report.arrival.show': 'Show them',
+  'report.arrival.show_them': 'Show them',
+  'web.frame.nav.reports': 'Reports',
+  'common.actions.back': 'Back',
+  'common.actions.read': 'Mark read',
 };
 
 export const currentLocale = writable<Locale>('en');
