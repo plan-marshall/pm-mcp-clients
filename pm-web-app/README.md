@@ -53,15 +53,13 @@ npm install
 npm run dev
 ```
 
-The development server starts at `http://localhost:5173`.
-Vite is configured to automatically proxy `/api` and `/mock` calls to `http://127.0.0.1:7420`:
+The development server starts at `http://localhost:5173`. When `pm-mock-runtime` is running, `start.sh` automatically prints the direct paired URL beneath the plain local URL:
 ```text
-  VITE v6.1.0  ready in 250 ms
-
-  ➜  Local:   http://localhost:5173/
-  ➜  Network: use --host to expose
-  ➜  press h + enter to show help
+pm-web-app started successfully (PID: 65428).
+Local:   http://localhost:5173
+Paired:  http://localhost:5173/pair#code=KXQB-MRTN
 ```
+Vite is configured to automatically proxy `/api` and `/mock` calls to `http://127.0.0.1:7420`.
 
 ### Step 3: Interactive Testing in the Browser
 1. **Pairing Flow**: Navigate to `http://localhost:5173/pair#code=TEST-CODE` to test browser pairing and device onboarding.

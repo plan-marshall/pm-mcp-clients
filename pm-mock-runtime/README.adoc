@@ -103,6 +103,8 @@ Mock runtime started successfully:
   Scenario:           onboarding-happy
   Initial State:      onboard.mode
   Runtime Token:      mock-token-abcde-12345
+  Pairing Code:       MOCKMOCK
+  Web App URL:        http://localhost:5173/pair#code=MOCKMOCK
 
 Use 'pm-operator' with PM_MCP_BASE=/tmp/pm-mock12345/b to interact.
 ----

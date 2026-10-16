@@ -151,6 +151,7 @@ class MockRuntimeTest {
             runtime.switchScenario(StandardScenarios.STATUS_ONLY);
             assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
             assertEquals("runtime.idle", runtime.currentStateName());
+            assertEquals("MOCKMOCK", runtime.pairingCode());
 
             // Control endpoint: GET /mock/state
             var stateRes = client.send(HttpRequest.get("/mock/state"));
@@ -158,6 +159,7 @@ class MockRuntimeTest {
             var stateJson = JsonTree.asObject(JsonTree.parse(stateRes.body()));
             assertEquals(StandardScenarios.STATUS_ONLY, JsonTree.string(stateJson, "scenario"));
             assertEquals("runtime.idle", JsonTree.string(stateJson, "state"));
+            assertEquals("MOCKMOCK", JsonTree.string(stateJson, "pairing_code"));
 
             // Verify scenario switching control endpoint
             var switchRes = client.send(HttpRequest.json("POST", "/mock/scenario", "{\"scenario\":\"" + StandardScenarios.WEB_PAIRING + "\"}"));
@@ -166,6 +168,7 @@ class MockRuntimeTest {
             assertEquals("switched", JsonTree.string(switchJson, "status"));
             assertEquals(StandardScenarios.WEB_PAIRING, JsonTree.string(switchJson, "scenario"));
             assertEquals("web.pair", runtime.currentStateName());
+            assertEquals("KXQB-MRTN", runtime.pairingCode());
 
             // Verify jump to state control endpoint
             var gotoPost = client.send(HttpRequest.json("POST", "/mock/goto/web.paired", "{}"));
