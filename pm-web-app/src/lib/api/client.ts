@@ -43,6 +43,91 @@ export interface HypermediaLink {
   next?: string;
 }
 
+export interface ProjectSummary {
+  project_id: string;
+  display_name: string;
+  active_plans_count: number;
+  active_epics_count: number;
+  needs_operator_count: number;
+  needs_operator_summary?: string | null;
+  setup_needs_operator: boolean;
+  last_activity_at?: string | null;
+}
+
+export interface ProjectOverviewResponse {
+  projects: ProjectSummary[];
+}
+
+export interface ActivePlanSummary {
+  plan_id: string;
+  title: string;
+  current_phase: string;
+  phase_state: string;
+  pausing_point?: string | null;
+  phase_entered_at?: string | null;
+  running_since?: string | null;
+  tasks_done?: number;
+  tasks_total?: number;
+  epic_id?: string | null;
+  epic_title?: string | null;
+  pull_request_number?: number | null;
+  pull_request_url?: string | null;
+  off_track_signal?: string | null;
+  needs_operator_kind?: string | null;
+  needs_operator_count?: number | null;
+}
+
+export interface ActiveEpicSummary {
+  epic_id: string;
+  title: string;
+  running_since?: string | null;
+  running_plans_count: number;
+  staged_plans_count: number;
+  plans_done?: number;
+  plans_total?: number;
+  needs_operator_kind?: string | null;
+  needs_operator_count?: number | null;
+  plans: ActivePlanSummary[];
+}
+
+export interface AlongsideLanding {
+  unit?: string | null;
+  count?: number | null;
+  state: string;
+  kind: string;
+  hold_kind?: string | null;
+}
+
+export interface ProjectDetailResponse {
+  project_id: string;
+  display_name: string;
+  plans: ActivePlanSummary[];
+  epics: ActiveEpicSummary[];
+  alongside_landings: AlongsideLanding[];
+}
+
+export interface EndedWorkItem {
+  id?: string;
+  item_id?: string;
+  kind: string;
+  title: string;
+  outcome?: string | null;
+  terminal_reason?: string | null;
+  pull_request_number?: number | null;
+  pull_request_url?: string | null;
+  reason?: string | null;
+  ended_at: string;
+}
+
+export interface EndedWorkPage {
+  project_id: string;
+  page: number;
+  total_pages: number;
+  has_newer: boolean;
+  has_older: boolean;
+  items: EndedWorkItem[];
+}
+
 export interface StateRepresentation {
   scope?: string;
   state?: string;
@@ -146,6 +231,24 @@ export class ApiClient {
 
   public async getDevices(): Promise<PairedDevice[]> {
     return this.request<PairedDevice[]>('GET', '/api/v1/web/devices');
+  }
+
+  public async getProjects(): Promise<ProjectOverviewResponse> {
+    return this.request<ProjectOverviewResponse>('GET', '/api/v1/projects');
+  }
+
+  public async getProjectDetail(projectId: string): Promise<ProjectDetailResponse> {
+    return this.request<ProjectDetailResponse>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}`,
+    );
+  }
+
+  public async getEndedWork(projectId: string, page = 1): Promise<EndedWorkPage> {
+    return this.request<EndedWorkPage>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/ended?page=${page}`,
+    );
   }
 
   public async renameDevice(deviceId: string, label: string): Promise<PairedDevice> {

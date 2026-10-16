@@ -47,4 +47,19 @@ This directory archives work packages that have been implemented, verified, and 
 |Module `pm-web-app`, its design system and test infrastructure
 |Module `pm-web-app` (SvelteKit 3 / Vite 8) with CSS tokens and Vitest; `pm-web-e2e` with Playwright test suite against `pm-mock-runtime`
 |Milestone 11, pulled forward; epic clients
+
+|link:overview-contract.adoc[`overview-contract`]
+|Overview of running work: contract and mock runtime
+|`de.planmarshall.api.overview` records and events in `pm-api`; `running-work.json` scenario and dynamic routes in `pm-mock-runtime`
+|epic clients; UC-PLN-4
+
+|link:cli-overview.adoc[`cli-overview`]
+|Overview of running work in the terminal
+|`pm-operator status` and `pm-operator plans` with tree views, attention flags, `--by-epic`, `--ended` pagination, and ANSI control sanitization
+|epic clients; UC-PLN-4
+
+|link:web-overview.adoc[`web-overview`]
+|Overview of running work in the web app
+|`OverviewView.svelte` in `pm-web-app` with project attention counters, plan cards, epic grouping, alongside landings, ended work pagination, and Playwright E2E tests
+|epic clients; UC-PLN-4
 |===

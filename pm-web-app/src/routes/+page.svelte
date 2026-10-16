@@ -6,6 +6,7 @@
   import SettingsView from '../lib/views/SettingsView.svelte';
   import ProcessDesigner from '../lib/views/ProcessDesigner.svelte';
   import RevokedView from '../lib/views/RevokedView.svelte';
+  import OverviewView from '../lib/views/OverviewView.svelte';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -18,6 +19,8 @@
   <SettingsView />
 {:else if $runtimeStore.currentRoute === 'designer'}
   <ProcessDesigner />
-{:else}
+{:else if $runtimeStore.currentRoute === 'workspace'}
   <WorkspaceView />
+{:else}
+  <OverviewView />
 {/if}

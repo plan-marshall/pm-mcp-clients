@@ -119,5 +119,50 @@ class JsonTreeTest {
             assertEquals(new JsonNumber("1"), JsonNumber.of(1));
             assertNotEquals(new JsonNumber("1"), JsonNumber.of(2));
         }
+
+        @Test
+        @DisplayName("number and integer extract values with conversions and fallbacks")
+        void numbersAndIntegers() {
+            var map = new LinkedHashMap<String, Object>();
+            map.put("int", 42);
+            map.put("long", 100L);
+            map.put("double", 3.14);
+            map.put("jsonNum", new JsonNumber("123"));
+            map.put("jsonFloat", new JsonNumber("12.34"));
+            map.put("jsonInvalid", new JsonNumber("bad"));
+            map.put("strLong", "999");
+            map.put("strDouble", "45.67");
+            map.put("strInvalid", "not_a_number");
+            map.put("nullVal", null);
+            map.put("bool", true);
+
+            assertEquals(42, JsonTree.number(map, "int"));
+            assertEquals(42, JsonTree.integer(map, "int"));
+            assertEquals(100L, JsonTree.number(map, "long"));
+            assertEquals(100, JsonTree.integer(map, "long"));
+            assertEquals(3.14, JsonTree.number(map, "double"));
+            assertEquals(3, JsonTree.integer(map, "double"));
+            assertEquals(123L, JsonTree.number(map, "jsonNum"));
+            assertEquals(123, JsonTree.integer(map, "jsonNum"));
+            assertEquals(12.34, JsonTree.number(map, "jsonFloat"));
+            assertEquals(12, JsonTree.integer(map, "jsonFloat"));
+            assertNull(JsonTree.number(map, "jsonInvalid"));
+            assertNull(JsonTree.integer(map, "jsonInvalid"));
+            assertEquals(999L, JsonTree.number(map, "strLong"));
+            assertEquals(999, JsonTree.integer(map, "strLong"));
+            assertEquals(45.67, JsonTree.number(map, "strDouble"));
+            assertEquals(45, JsonTree.integer(map, "strDouble"));
+
+            assertNull(JsonTree.number(map, "strInvalid"));
+            assertNull(JsonTree.integer(map, "strInvalid"));
+            assertNull(JsonTree.number(map, "nullVal"));
+            assertNull(JsonTree.integer(map, "nullVal"));
+            assertNull(JsonTree.number(map, "bool"));
+            assertNull(JsonTree.integer(map, "bool"));
+            assertNull(JsonTree.number(map, "missingKey"));
+            assertNull(JsonTree.integer(map, "missingKey"));
+            assertNull(JsonTree.number(null, "int"));
+            assertNull(JsonTree.integer(null, "int"));
+        }
     }
 }

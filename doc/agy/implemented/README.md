@@ -9,3 +9,4 @@ When an implementation plan in `doc/agy/` (e.g. `doc/agy/<topic>-plan.md`) finis
 | Topic / Plan | Scope & Use Cases | Companion Completion Report | Landed In |
 |---|---|---|---|
 | [`uc-ent-2-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/uc-ent-2-plan.md) | UC-ENT-2 (Manage Paired Devices) | [`uc-ent-2-plan-report.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/uc-ent-2-plan-report.md) | `feat/uc-ent-2-paired-devices` |
+| [`uc-pln-4-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/uc-pln-4-plan.md) | UC-PLN-4 (See What Runs, Across Projects) | [`uc-pln-4-plan-report.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/uc-pln-4-plan-report.md) | `feat/uc-pln-4-running-work` |

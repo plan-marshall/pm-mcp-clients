@@ -21,7 +21,9 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
     await expect(page.locator('.settings-view')).toBeVisible();
   });
 
-  test('displays paired devices table with columns and network listener status', async ({ page }) => {
+  test('displays paired devices table with columns and network listener status', async ({
+    page,
+  }) => {
     await expect(page.getByTestId('paired-devices-section')).toBeVisible();
     await expect(page.locator('.devices-table')).toBeVisible();
 
@@ -72,9 +74,10 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
     // Confirm
     const confirmBtn = page.getByTestId('revoke-confirm-button');
     await confirmBtn.click();
+    await expect(modal).not.toBeVisible();
 
     // Verify device removed
-    await expect(page.getByText('Chrome on build-box')).not.toBeVisible();
+    await expect(page.getByTestId('device-row-dev-3')).not.toBeVisible();
   });
 
   test('revoking this browser redirects to revoked page or pairing', async ({ page }) => {

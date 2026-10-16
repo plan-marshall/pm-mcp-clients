@@ -68,6 +68,13 @@
       {#if $runtimeStore.isPaired}
         <button
           class="header-action-btn"
+          aria-label={$t('overview.running.title')}
+          onclick={() => navigateTo('overview')}
+        >
+          {$t('overview.running.title')}
+        </button>
+        <button
+          class="header-action-btn"
           aria-label={$t('web.frame.nav.explorer')}
           onclick={() => navigateTo('workspace')}
         >
