@@ -53,6 +53,30 @@
     </div>
   {/if}
 
+  {#if $runtimeStore.unreadReportsArrivalNotice}
+    <div class="reports-arrival-banner" role="status">
+      <span>{$runtimeStore.unreadReportsArrivalNotice}</span>
+      <button
+        class="reports-arrival-btn"
+        onclick={() => {
+          navigateTo('reports');
+          runtimeStore.update((s) => ({ ...s, unreadReportsArrivalNotice: null }));
+        }}
+      >
+        {$t('report.arrival.show_them') || 'Show them'}
+      </button>
+      <button
+        class="reports-arrival-close"
+        aria-label="Dismiss notice"
+        onclick={() => {
+          runtimeStore.update((s) => ({ ...s, unreadReportsArrivalNotice: null }));
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  {/if}
+
   <header class="app-header">
     <div class="app-header__brand">
       <span class="app-header__logo" aria-hidden="true">✦</span>
@@ -81,6 +105,18 @@
           {$t('web.frame.nav.explorer')}
         </button>
         <button
+          class="header-action-btn header-action-btn--reports"
+          aria-label="Reports"
+          onclick={() => navigateTo('reports')}
+        >
+          {$t('web.frame.nav.reports') || 'Reports'}
+          {#if $runtimeStore.unreadReportsCount > 0}
+            <span class="reports-badge" aria-label="{$runtimeStore.unreadReportsCount} unread">
+              {$runtimeStore.unreadReportsCount}
+            </span>
+          {/if}
+        </button>
+        <button
           class="header-action-btn"
           aria-label={$t('web.frame.settings')}
           onclick={() => navigateTo('settings')}
@@ -102,6 +138,10 @@
   <main class="app-body">
     {@render children?.()}
   </main>
+
+  <div class="sr-only" aria-live="polite">
+    {$runtimeStore.quietReportNotice || ''}
+  </div>
 {/if}
 
 <style>
@@ -191,6 +231,67 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+  }
+
+  .reports-arrival-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-4);
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .reports-arrival-btn {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    text-decoration: underline;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .reports-arrival-close {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    padding: 0 var(--space-1);
+    margin-left: var(--space-2);
+  }
+
+  .reports-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    color: var(--color-primary-text);
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: var(--space-1);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   @media (max-width: 640px) {

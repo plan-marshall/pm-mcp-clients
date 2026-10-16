@@ -293,11 +293,160 @@ class PlanCommandTest {
                 () -> assertTrue(out.toString().contains("Completion Report: p-001"))
         );
 
-        out = new StringWriter();
         int codeRunning = execute("plan", "report", "p-running");
         assertAll(
                 () -> assertEquals(1, codeRunning),
                 () -> assertTrue(out.toString().contains("p-running is running; its completion report follows when it ends"))
         );
     }
+
+    @Test
+    @DisplayName("plan report renders structured completion report, tokens, and components")
+    void planReportStructured() throws Exception {
+        var jsonReport = """
+                {
+                  "plan": "fix-relay",
+                  "outcome": "merged",
+                  "outcome_description": "merged: the pull request #214 was merged into main",
+                  "pull_request": "214",
+                  "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                  "ended": "today 11:20",
+                  "from": "pm-mcp-clients > relay-hardening > fix-relay",
+                  "reason": "—",
+                  "ran": "2 h 40 min, 08:40 to 11:20 · paused 20 min by you",
+                  "run_duration_seconds": 9600,
+                  "deliverables": [
+                    {"title": "cursor write order", "state": "done"},
+                    {"title": "a test per transport, websocket and SSE", "state": "done"},
+                    {"title": "fsync of the cursor file", "state": "done"}
+                  ],
+                  "replanning": [
+                    {"trigger": "the base moved", "time": "09:55", "change": "TASK-5 added"}
+                  ],
+                  "decisions": [
+                    {"id": "Q-003", "text": "Rebase onto main", "by": "you, the web app"},
+                    {"id": "Q-005", "text": "", "by": "the plan"}
+                  ],
+                  "tokens": {
+                    "total": 412000,
+                    "input": 380000,
+                    "output": 32000,
+                    "floor": true,
+                    "coverage": {
+                      "total_tasks": 41,
+                      "unmeasured": 3,
+                      "reason": "their worker was terminated",
+                      "workers": 6,
+                      "models": 3
+                    },
+                    "by_phase": [
+                      {
+                        "name": "refine",
+                        "total": 38000,
+                        "input": 35000,
+                        "output": 3000,
+                        "floor": false,
+                        "unmeasured": 0,
+                        "components": {
+                          "input": 25000,
+                          "cache_read": 10000,
+                          "cache_write": 0,
+                          "output": 2500,
+                          "reasoning": 500
+                        }
+                      }
+                    ],
+                    "by_role": [
+                      {
+                        "name": "planner",
+                        "harness_model": "claude:opus-5.5",
+                        "effort": "high",
+                        "total": 128000,
+                        "input": 120000,
+                        "output": 8000,
+                        "floor": false,
+                        "unmeasured": 0,
+                        "components": {
+                          "input": 100000,
+                          "cache_read": 20000,
+                          "cache_write": 0,
+                          "output": 7000,
+                          "reasoning": 1000
+                        }
+                      }
+                    ],
+                    "by_model": [
+                      {
+                        "name": "claude:opus-5.5",
+                        "total": 128000,
+                        "input": 120000,
+                        "output": 8000,
+                        "floor": false,
+                        "unmeasured": 0
+                      }
+                    ],
+                    "waste": {
+                      "total": 52000,
+                      "share_percent": 13,
+                      "no_product_tokens": 18000,
+                      "no_product_tasks": 2,
+                      "retries_tokens": 21000,
+                      "retries_causes": ["retryable 1", "stall 1"],
+                      "remediation_tokens": 13000,
+                      "remediation_causes": ["returned with findings 1"]
+                    }
+                  }
+                }
+                """;
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans/fix-relay/completion".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, jsonReport);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. Basic report
+        int code = execute("plan", "report", "fix-relay");
+        var output = out.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(output.contains("fix-relay · completion report · merged · #214 · today 11:20")),
+                () -> assertTrue(output.contains("in pm-mcp-clients › relay-hardening")),
+                () -> assertTrue(output.contains("3 of 3 done")),
+                () -> assertTrue(output.contains("cursor write order")),
+                () -> assertTrue(output.contains("after the base moved (09:55): TASK-5 added")),
+                () -> assertTrue(output.contains("plan report fix-relay --tokens"))
+        );
+
+        // 2. With --tokens
+        out = new StringWriter();
+        int codeTokens = execute("plan", "report", "fix-relay", "--tokens");
+        var outputTokens = out.toString();
+        assertAll(
+                () -> assertEquals(0, codeTokens),
+                () -> assertTrue(outputTokens.contains("by phase")),
+                () -> assertTrue(outputTokens.contains("refine")),
+                () -> assertTrue(outputTokens.contains("by role")),
+                () -> assertTrue(outputTokens.contains("planner")),
+                () -> assertTrue(outputTokens.contains("claude:opus-5.5")),
+                () -> assertTrue(outputTokens.contains("waste")),
+                () -> assertTrue(outputTokens.contains("13 % of measured")),
+                () -> assertTrue(outputTokens.contains("raw components: plan report fix-relay --tokens --components"))
+        );
+
+        // 3. With --tokens --components
+        out = new StringWriter();
+        int codeComp = execute("plan", "report", "fix-relay", "--tokens", "--components");
+        var outputComp = out.toString();
+        assertAll(
+                () -> assertEquals(0, codeComp),
+                () -> assertTrue(outputComp.contains("input")),
+                () -> assertTrue(outputComp.contains("cache read")),
+                () -> assertTrue(outputComp.contains("output")),
+                () -> assertTrue(outputComp.contains("reasoning"))
+        );
+    }
 }
+

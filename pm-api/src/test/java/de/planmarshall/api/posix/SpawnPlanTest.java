@@ -42,7 +42,7 @@ class SpawnPlanTest {
                 "LINUX, 0x0080, 0x0000, 0x008C, 0x441, 336, 80, 128"})
         @DisplayName("flags, open flags and structure sizes")
         void constants(PosixPlatform platform, String setsid, String cloexec, String detached, String append,
-                long attrSize, long actionsSize, long sigsetSize) {
+                       long attrSize, long actionsSize, long sigsetSize) {
             assertEquals(Integer.decode(setsid).shortValue(), platform.setsidFlag());
             assertEquals(Integer.decode(cloexec).shortValue(), platform.cloexecDefaultFlag());
             assertEquals(Integer.decode(detached).shortValue(), platform.detachedSpawnFlags());

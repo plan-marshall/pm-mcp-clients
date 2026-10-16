@@ -30,11 +30,11 @@ import de.planmarshall.api.json.JsonTree;
  * @param lastUsedAt timestamp when device was last active
  */
 public record PairedDevice(
-String deviceId,
-String label,
-String pairedFrom,
-Instant createdAt,
-Instant lastUsedAt
+        String deviceId,
+        String label,
+        String pairedFrom,
+        Instant createdAt,
+        Instant lastUsedAt
 ) {
     private static final String FIELD_DEVICE_ID = "device_id";
     private static final String FIELD_LABEL = "label";

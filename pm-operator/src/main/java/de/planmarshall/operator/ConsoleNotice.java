@@ -190,7 +190,52 @@ public final class ConsoleNotice {
                         type,
                         String.valueOf(event.getOrDefault(SCOPE, "")),
                         String.valueOf(event.getOrDefault("detail", event.getOrDefault("reason", ""))));
+            case "report.sent", "report" -> formatReportNotice(event);
             default -> null;
         };
     }
+
+    /**
+     * Formats a quiet notice for an incoming report pushed over SSE.
+     *
+     * @param event the event map
+     * @return formatted quiet notice string
+     */
+    public static @Nullable String formatReportNotice(Map<String, Object> event) {
+        if (event.containsKey("count") && event.get("count") instanceof Number num && num.intValue() > 1) {
+            var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault("project", "plan-marshall")));
+            return "▪ " + num.intValue() + " new reports · " + stripControlSequences(scope) + " · reports";
+        }
+        var id = String.valueOf(event.getOrDefault("id", ""));
+        var subject = (String) event.get("subject");
+        var from = (String) event.get("from");
+        var leaf = "plan";
+        if (from != null && !from.isBlank()) {
+            if (from.contains(">")) {
+                leaf = from.substring(from.lastIndexOf('>') + 1).trim();
+            } else if (from.contains("›")) {
+                leaf = from.substring(from.lastIndexOf('›') + 1).trim();
+            } else {
+                leaf = from.trim();
+            }
+        } else if (event.get("plan") != null) {
+            leaf = String.valueOf(event.get("plan"));
+        } else if (event.get("project") != null) {
+            leaf = String.valueOf(event.get("project"));
+        }
+        if (subject == null || subject.isBlank()) {
+            subject = (String) event.get("summary");
+        }
+        if (subject == null || subject.isBlank()) {
+            subject = "New report";
+        }
+
+        var sb = new StringBuilder("▪ ");
+        sb.append(stripControlSequences(leaf)).append(": ").append(stripControlSequences(subject));
+        if (!id.isBlank()) {
+            sb.append(" · reports open ").append(stripControlSequences(id));
+        }
+        return sb.toString();
+    }
 }
+

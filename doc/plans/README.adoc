@@ -249,28 +249,28 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
-|link:report-contract.adoc[`report-contract`]
+|link:implemented/report-contract.adoc[`report-contract`]
 |Reports to the operator and a plan's completion report: contract and mock runtime
-|`open`
+|`done`
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
-|link:cli-reports.adoc[`cli-reports`]
+|link:implemented/cli-reports.adoc[`cli-reports`]
 |Reports and the completion report in the terminal
-|`open`
-|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
+|`done`
+|link:implemented/report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
 |epic clients
 
-|link:web-reports.adoc[`web-reports`]
+|link:implemented/web-reports.adoc[`web-reports`]
 |Reports and the completion report in the web app
-|`open`
-|link:report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
+|`done`
+|link:implemented/report-contract.adoc[`report-contract`]; link:system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:system-contract.adoc[`system-contract`]
 |The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:report-contract.adoc[`report-contract`] (the closed kinds of reports)
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/report-contract.adoc[`report-contract`] (the closed kinds of reports)
 |epic clients
 
 |link:cli-system.adoc[`cli-system`]

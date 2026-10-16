@@ -28,7 +28,7 @@ import java.util.TreeMap;
  * @param fileActions    the file actions in order
  */
 public record SpawnPlan(Path executable, List<String> argv, List<String> environment, short flags,
-List<Integer> defaultSignals, List<FileAction> fileActions) {
+                        List<Integer> defaultSignals, List<FileAction> fileActions) {
 
     /** Environment variables never passed to a started runtime. */
     static final List<String> WITHHELD_VARIABLES = List.of("PM_MCP_JOB_TOKEN");
@@ -101,7 +101,7 @@ List<Integer> defaultSignals, List<FileAction> fileActions) {
      * @return the plan
      */
     public static SpawnPlan detachedDaemon(PosixPlatform platform, Path executable, Path log,
-            Map<String, String> environment) {
+                                           Map<String, String> environment) {
         var actions = new ArrayList<FileAction>();
         actions.add(new Open(0, "/dev/null", PosixPlatform.O_RDONLY, 0));
         actions.add(new Open(1, log.toString(), platform.appendFlags(), 0600));

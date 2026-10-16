@@ -20,13 +20,24 @@ export interface RuntimeState {
   deviceLabel: string;
   machineName: string;
   currentRoute:
-    'pair' | 'onboarding' | 'workspace' | 'settings' | 'designer' | 'revoked' | 'overview';
+    | 'pair'
+    | 'onboarding'
+    | 'workspace'
+    | 'settings'
+    | 'designer'
+    | 'revoked'
+    | 'overview'
+    | 'reports';
   currentState: StateRepresentation | null;
   isRevoked: boolean;
   revokedReason: string;
   revokedInfo?: RevokedInfo | null;
   isOffline: boolean;
   activeStep: number;
+  unreadReportsCount: number;
+  unreadReportsArrivalNotice?: string | null;
+  quietReportNotice?: string | null;
+  selectedReportDetailPlanId?: string | null;
 }
 
 const initialState: RuntimeState = {
@@ -42,6 +53,10 @@ const initialState: RuntimeState = {
   revokedInfo: null,
   isOffline: false,
   activeStep: 1,
+  unreadReportsCount: 0,
+  unreadReportsArrivalNotice: null,
+  quietReportNotice: null,
+  selectedReportDetailPlanId: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -167,6 +182,7 @@ export async function initRuntime(): Promise<void> {
     }));
 
     subscribeToEvents();
+    void refreshReportsCount();
   } catch (err: unknown) {
     if ((err as Error)?.message === 'unauthorized') {
       return;
@@ -176,6 +192,27 @@ export async function initRuntime(): Promise<void> {
       isInitialized: true,
       isOffline: true,
     }));
+  }
+}
+
+export async function refreshReportsCount(): Promise<void> {
+  if (!apiClient.isPaired()) return;
+  try {
+    const page = await apiClient.getReports();
+    runtimeStore.update((s) => {
+      let arrivalNotice = s.unreadReportsArrivalNotice;
+      if (page.unread_count > 0 && !arrivalNotice) {
+        const timePart = page.oldest_unread_time ? ` since ${page.oldest_unread_time}` : '';
+        arrivalNotice = `${page.unread_count} unread reports${timePart}`;
+      }
+      return {
+        ...s,
+        unreadReportsCount: page.unread_count,
+        unreadReportsArrivalNotice: arrivalNotice,
+      };
+    });
+  } catch {
+    // Ignore fetch failures
   }
 }
 
@@ -191,6 +228,19 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
         isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
       }));
     }
+  } else if (event === 'report.sent') {
+    const reportData = (data || {}) as { subject?: string; plan?: string };
+    const notice = reportData.subject || 'A new report has arrived';
+    runtimeStore.update((s) => ({
+      ...s,
+      unreadReportsCount: s.unreadReportsCount + 1,
+      quietReportNotice: notice,
+    }));
+  } else if (event === 'report.read') {
+    runtimeStore.update((s) => ({
+      ...s,
+      unreadReportsCount: Math.max(0, s.unreadReportsCount - 1),
+    }));
   }
 }
 
@@ -217,6 +267,7 @@ export async function pairBrowser(code: string): Promise<void> {
   }));
 
   subscribeToEvents();
+  void refreshReportsCount();
 }
 
 export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {

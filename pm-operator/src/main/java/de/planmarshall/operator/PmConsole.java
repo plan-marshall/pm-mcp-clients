@@ -318,7 +318,7 @@ public final class PmConsole {
         return Objects.requireNonNull(reader, "reader").readLine(prompt, '*');
     }
 
-    private static List<String> parseArgs(String line) {
+    static List<String> parseArgs(String line) {
         var args = new ArrayList<String>();
         var sb = new StringBuilder();
         boolean inQuotes = false;

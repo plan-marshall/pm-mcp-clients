@@ -157,7 +157,7 @@ class ReportsCommandTest {
 
         int code = execute("reports", "read", "rep-001", "rep-404");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("Report rep-404 not found."));
+        assertTrue(out.toString().contains("rep-404 is no report of this machine; reports lists the unread ones."));
         assertTrue(out.toString().contains("✓ 1 reports marked read."));
     }
 
@@ -188,7 +188,69 @@ class ReportsCommandTest {
 
         int code = execute("reports", "open", "rep-missing");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Report rep-missing not found."));
+        assertTrue(out.toString().contains("rep-missing is no report of this machine; reports lists the unread ones."));
+    }
+
+    @Test
+    @DisplayName("reports groups hierarchically by project, epic, and plan")
+    void reportsHierarchicalGrouping() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/reports".equals(request.target())) {
+                response.json(200, """
+                        {
+                          "reports": [
+                            {
+                              "id": "rep-0142",
+                              "from": "pm-mcp-clients > relay-hardening > fix-relay",
+                              "kind": "plan.ended",
+                              "subject": "Ended: merged (#214)",
+                              "body": "3 of 3 deliverables · 2 h 40 min",
+                              "detail": "plan report fix-relay",
+                              "created": "today 11:20"
+                            },
+                            {
+                              "id": "rep-0139",
+                              "from": "pm-mcp-clients > docs-typo",
+                              "kind": "plan.ended",
+                              "subject": "Ended: no change",
+                              "created": "today 09:02",
+                              "sent": "today 09:40"
+                            },
+                            {
+                              "id": "rep-0131",
+                              "from": "pm-mcp-core",
+                              "kind": "project.onboarded",
+                              "subject": "Onboarded",
+                              "created": "yesterday 18:40"
+                            }
+                          ],
+                          "unread_count": 3,
+                          "oldest_unread": "yesterday 18:40",
+                          "older_count": 0
+                        }
+                        """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("reports");
+        var output = out.toString();
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(output.contains("Reports · 3 unread")),
+                () -> assertTrue(output.contains("pm-mcp-clients")),
+                () -> assertTrue(output.contains("  relay-hardening")),
+                () -> assertTrue(output.contains("rep-0142")),
+                () -> assertTrue(output.contains("fix-relay")),
+                () -> assertTrue(output.contains("Ended: merged (#214)")),
+                () -> assertTrue(output.contains("reports open rep-0142")),
+                () -> assertTrue(output.contains("docs-typo")),
+                () -> assertTrue(output.contains("sent today 09:40")),
+                () -> assertTrue(output.contains("pm-mcp-core")),
+                () -> assertTrue(output.contains("rep-0131")),
+                () -> assertTrue(output.contains("reports read rep-0142 · reports read --all"))
+        );
     }
 
     @Test
@@ -200,3 +262,4 @@ class ReportsCommandTest {
         assertEquals(PmOperator.EXIT_FAILURE, code);
     }
 }
+

@@ -156,7 +156,7 @@ public final class UnixSocketHttpClient {
     }
 
     private static InputStream body(HttpRequest request, int status, Map<String, List<String>> headers,
-            InputStream in) throws HttpProtocolException {
+                                    InputStream in) throws HttpProtocolException {
         if ("HEAD".equals(request.method()) || status == 204 || status == 304) {
             return BodyInputStreams.empty();
         }

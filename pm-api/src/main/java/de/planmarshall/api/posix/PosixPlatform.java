@@ -65,7 +65,7 @@ public enum PosixPlatform {
     private final boolean closeFromAction;
 
     PosixPlatform(short setsid, short cloexecDefault, long spawnAttrSize, long fileActionsSize, long sigsetSize,
-            ValueLayout modeLayout, int oCreat, int oAppend, boolean closeFromAction) {
+                  ValueLayout modeLayout, int oCreat, int oAppend, boolean closeFromAction) {
         this.setsid = setsid;
         this.cloexecDefault = cloexecDefault;
         this.spawnAttrSize = spawnAttrSize;

@@ -1,0 +1,736 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { t, currentLocale } from '../i18n';
+  import Button from '../components/Button.svelte';
+  import Spinner from '../components/Spinner.svelte';
+  import { apiClient, type PlanCompletionReport } from '../api/client';
+  import { formatTokens, formatSplit } from '../utils/tokenFormat';
+
+  interface Props {
+    planId: string;
+    report?: PlanCompletionReport | null;
+    onClose?: () => void;
+  }
+
+  let { planId, report = null, onClose }: Props = $props();
+
+  let fetchedData = $state<PlanCompletionReport | null>(null);
+  let data = $derived(report ?? fetchedData);
+  let isLoading = $state(false);
+  let errorMessage = $state('');
+  let showRawComponents = $state(false);
+
+  onMount(async () => {
+    if (!report && planId) {
+      await fetchReport();
+    }
+  });
+
+  async function fetchReport() {
+    isLoading = true;
+    errorMessage = '';
+    try {
+      fetchedData = await apiClient.getPlanCompletion(planId);
+    } catch (err: unknown) {
+      errorMessage = (err as Error)?.message || 'Failed to load completion report';
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  function getDeliverableMark(state: string): string {
+    switch (state?.toLowerCase()) {
+      case 'done':
+        return '✓';
+      case 'dropped':
+        return '–';
+      default:
+        return '○';
+    }
+  }
+
+  function formatDecisionBy(d: { by: string; channel?: string; device?: string }): string {
+    if (d.by?.toLowerCase() === 'operator') {
+      const parts = ['you'];
+      if (d.channel) parts.push(d.channel);
+      if (d.device) parts.push(d.device);
+      return parts.join(', ');
+    }
+    return d.by || 'delegated';
+  }
+</script>
+
+<div class="completion-report">
+  <div class="completion-report__nav">
+    {#if onClose}
+      <button class="nav-back-btn" onclick={onClose} aria-label="Back to reports">
+        ← {$t('common.actions.back') || 'Back'}
+      </button>
+    {/if}
+  </div>
+
+  {#if isLoading}
+    <div class="completion-report__loading">
+      <Spinner size="2.5rem" label="Loading completion report…" />
+    </div>
+  {:else if errorMessage}
+    <div class="completion-report__error" role="alert">
+      <p>{errorMessage}</p>
+      <Button variant="secondary" onclick={fetchReport}>Retry</Button>
+    </div>
+  {:else if data}
+    <!-- Path breadcrumb -->
+    {#if data.from}
+      <div class="report-breadcrumb mono">
+        {#if data.from.project}
+          <span class="breadcrumb-item">{data.from.project}</span>
+        {/if}
+        {#if data.from.epic}
+          <span class="breadcrumb-sep">›</span>
+          <span class="breadcrumb-item">{data.from.epic}</span>
+        {/if}
+        <span class="breadcrumb-sep">›</span>
+        <span class="breadcrumb-item font-semibold">{data.plan_id}</span>
+      </div>
+    {/if}
+
+    <!-- Header bar -->
+    <header class="report-header">
+      <div class="report-header__headline">
+        <h1 class="report-title">{data.plan_id}</h1>
+        <span class="report-badge report-badge--{data.outcome.toLowerCase()}">
+          {data.outcome}
+        </span>
+        {#if data.pull_request_number}
+          <a
+            class="pr-link mono"
+            href={data.pull_request_url || `#`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            #{data.pull_request_number}
+          </a>
+        {/if}
+        <span class="ended-time text-muted">
+          {data.ended || data.ended_at}
+        </span>
+      </div>
+    </header>
+
+    <div class="report-content">
+      <!-- Summary section -->
+      <section class="report-section summary-grid">
+        <div class="summary-row">
+          <span class="summary-label">Outcome</span>
+          <div class="summary-value">
+            <span>{data.terminal_reason || data.outcome}</span>
+            {#if data.pull_request_url}
+              <a
+                class="pr-url-link"
+                href={data.pull_request_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {data.pull_request_url}
+              </a>
+            {/if}
+          </div>
+        </div>
+
+        <div class="summary-row">
+          <span class="summary-label">Reason</span>
+          <span class="summary-value">{data.reason || '—'}</span>
+        </div>
+
+        {#if data.ran || data.duration_seconds > 0}
+          <div class="summary-row">
+            <span class="summary-label">Ran</span>
+            <span class="summary-value">{data.ran || `${Math.round(data.duration_seconds / 60)} min`}</span>
+          </div>
+        {/if}
+      </section>
+
+      <!-- Deliverables -->
+      <section class="report-section">
+        <h2 class="section-title">
+          Deliverables
+          {#if data.deliverables && data.deliverables.length > 0}
+            <span class="section-badge">
+              {data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length} of {data.deliverables.length} done
+            </span>
+          {/if}
+        </h2>
+        {#if !data.deliverables || data.deliverables.length === 0}
+          <p class="empty-text">no deliverables yet: it ended in refine</p>
+        {:else}
+          <ul class="deliverables-list">
+            {#each data.deliverables as d}
+              <li class="deliverable-item deliverable-item--{d.state?.toLowerCase()}">
+                <span class="deliverable-mark" aria-hidden="true">{getDeliverableMark(d.state)}</span>
+                <span class="deliverable-state mono">{d.state}</span>
+                <span class="deliverable-title">{d.name || d.title}</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </section>
+
+      <!-- Re-planning -->
+      {#if data.replanning_records && data.replanning_records.length > 0}
+        <section class="report-section">
+          <h2 class="section-title">
+            Re-planning
+            <span class="section-badge">{data.replanning_records.length}</span>
+          </h2>
+          <ul class="replanning-list">
+            {#each data.replanning_records as r}
+              <li class="replanning-item">
+                <span class="replanning-trigger font-medium">{r.trigger}</span>
+                {#if r.time}
+                  <span class="replanning-time text-muted">({r.time})</span>
+                {/if}
+                <span class="replanning-change">: {r.change}</span>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+
+      <!-- Decisions -->
+      {#if data.decision_records && data.decision_records.length > 0}
+        <section class="report-section">
+          <h2 class="section-title">
+            Decisions
+            <span class="section-badge">{data.decision_records.length}</span>
+          </h2>
+          <ul class="decisions-list">
+            {#each data.decision_records as dec}
+              <li class="decision-item">
+                <span class="decision-id mono font-semibold">{dec.id}</span>
+                {#if dec.question || dec.text}
+                  <span class="decision-q">{dec.question || dec.text}</span>
+                {/if}
+                <span class="decision-by text-muted">({formatDecisionBy(dec)})</span>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+
+      <!-- Tokens section -->
+      {#if data.token_usage}
+        {@const usage = data.token_usage}
+        <section class="report-section tokens-section">
+          <div class="tokens-header">
+            <h2 class="section-title">Tokens</h2>
+            <button
+              class="components-toggle-btn"
+              onclick={() => (showRawComponents = !showRawComponents)}
+              aria-expanded={showRawComponents}
+            >
+              {showRawComponents ? 'Hide raw components' : 'Show raw components'}
+            </button>
+          </div>
+
+          <!-- Total & Coverage -->
+          <div class="tokens-total-card">
+            <div class="total-row">
+              <span class="total-label">Total</span>
+              <span class="total-value mono font-semibold">
+                {formatSplit(usage.total, usage.input, usage.output, usage.is_floor, $currentLocale)}
+                {#if data.ran}
+                  <span class="total-ran text-muted">· {data.ran}</span>
+                {/if}
+              </span>
+            </div>
+            <div class="coverage-row text-muted">
+              <span class="coverage-label">Coverage</span>
+              <span>
+                {#if usage.tasks_total > usage.tasks_measured}
+                  {usage.tasks_total - usage.tasks_measured} of {usage.tasks_total} tasks not measured{usage.unmeasured_reason ? `: ${usage.unmeasured_reason}` : ''}
+                {:else}
+                  {usage.tasks_total} of {usage.tasks_total} tasks measured
+                {/if}
+              </span>
+            </div>
+          </div>
+
+          <!-- Breakdown by Phase -->
+          {#if usage.by_phase && usage.by_phase.length > 0}
+            <div class="breakdown-group">
+              <h3 class="breakdown-title">By phase</h3>
+              <table class="breakdown-table">
+                <tbody>
+                  {#each usage.by_phase as item}
+                    <tr>
+                      <td class="col-name mono">{item.name}</td>
+                      <td class="col-value mono">
+                        {formatSplit(item.total, item.input, item.output, item.floor, $currentLocale)}
+                      </td>
+                      <td class="col-extra text-muted">
+                        {#if item.unmeasured > 0}
+                          {item.unmeasured} not measured
+                        {/if}
+                      </td>
+                    </tr>
+                    {#if showRawComponents && item.components}
+                      <tr class="raw-components-row">
+                        <td colspan="3" class="mono text-muted">
+                          input {formatTokens(item.components.input, false, $currentLocale)} ·
+                          cache read {formatTokens(item.components.cache_read, false, $currentLocale)} ·
+                          cache write {formatTokens(item.components.cache_write, false, $currentLocale)} ·
+                          output {formatTokens(item.components.output, false, $currentLocale)} ·
+                          reasoning {formatTokens(item.components.reasoning, false, $currentLocale)}
+                        </td>
+                      </tr>
+                    {/if}
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+
+          <!-- Breakdown by Role -->
+          {#if usage.by_role && usage.by_role.length > 0}
+            <div class="breakdown-group">
+              <h3 class="breakdown-title">By role</h3>
+              <table class="breakdown-table">
+                <tbody>
+                  {#each usage.by_role as item}
+                    <tr>
+                      <td class="col-name mono">{item.name}</td>
+                      <td class="col-pin text-muted mono">
+                        {#if item.harness_model}
+                          {item.harness_model}{item.effort ? ` · ${item.effort}` : ''}
+                        {/if}
+                      </td>
+                      <td class="col-value mono">
+                        {formatSplit(item.total, item.input, item.output, item.floor, $currentLocale)}
+                      </td>
+                      <td class="col-extra text-muted">
+                        {#if item.unmeasured > 0}
+                          {item.unmeasured} not measured
+                        {/if}
+                      </td>
+                    </tr>
+                    {#if showRawComponents && item.components}
+                      <tr class="raw-components-row">
+                        <td colspan="4" class="mono text-muted">
+                          input {formatTokens(item.components.input, false, $currentLocale)} ·
+                          cache read {formatTokens(item.components.cache_read, false, $currentLocale)} ·
+                          cache write {formatTokens(item.components.cache_write, false, $currentLocale)} ·
+                          output {formatTokens(item.components.output, false, $currentLocale)} ·
+                          reasoning {formatTokens(item.components.reasoning, false, $currentLocale)}
+                        </td>
+                      </tr>
+                    {/if}
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+
+          <!-- Breakdown by Model -->
+          {#if usage.by_model && usage.by_model.length > 0}
+            <div class="breakdown-group">
+              <h3 class="breakdown-title">By model</h3>
+              <table class="breakdown-table">
+                <tbody>
+                  {#each usage.by_model as item}
+                    <tr>
+                      <td class="col-name mono">{item.name}</td>
+                      <td class="col-value mono">
+                        {formatSplit(item.total, item.input, item.output, item.floor, $currentLocale)}
+                      </td>
+                      <td class="col-extra text-muted">
+                        {#if item.unmeasured > 0}
+                          {item.unmeasured} not measured
+                        {/if}
+                      </td>
+                    </tr>
+                    {#if showRawComponents && item.components}
+                      <tr class="raw-components-row">
+                        <td colspan="3" class="mono text-muted">
+                          input {formatTokens(item.components.input, false, $currentLocale)} ·
+                          cache read {formatTokens(item.components.cache_read, false, $currentLocale)} ·
+                          cache write {formatTokens(item.components.cache_write, false, $currentLocale)} ·
+                          output {formatTokens(item.components.output, false, $currentLocale)} ·
+                          reasoning {formatTokens(item.components.reasoning, false, $currentLocale)}
+                        </td>
+                      </tr>
+                    {/if}
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {/if}
+
+          <!-- Waste breakdown -->
+          {#if (usage.total_waste_tokens && usage.total_waste_tokens > 0) || (usage.waste_records && usage.waste_records.length > 0)}
+            <div class="breakdown-group waste-group">
+              <div class="waste-header">
+                <span class="breakdown-title">Waste</span>
+                <span class="waste-total mono font-semibold">
+                  {formatTokens(usage.total_waste_tokens, false, $currentLocale)} tokens
+                  {#if usage.waste_share_percent > 0}
+                    <span class="text-muted">({usage.waste_share_percent} % of measured)</span>
+                  {/if}
+                </span>
+              </div>
+              <ul class="waste-list">
+                {#each usage.waste_records as w}
+                  <li class="waste-item">
+                    <span class="waste-class">
+                      {#if w.waste_class === 'no_product'}
+                        produced nothing
+                      {:else}
+                        {w.waste_class}
+                      {/if}
+                    </span>
+                    <span class="waste-tokens mono">{formatTokens(w.tokens, false, $currentLocale)}</span>
+                    <span class="waste-cause text-muted">{w.cause_summary || `${w.tasks_count} tasks`}</span>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+        </section>
+      {/if}
+    </div>
+  {/if}
+</div>
+
+<style>
+  .completion-report {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .nav-back-btn {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    padding: var(--space-2) 0;
+    margin-bottom: var(--space-4);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .nav-back-btn:hover {
+    text-decoration: underline;
+  }
+
+  .completion-report__loading {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-10) 0;
+  }
+
+  .report-breadcrumb {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-2);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .breadcrumb-sep {
+    color: var(--color-border);
+  }
+
+  .report-header {
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--space-4);
+    margin-bottom: var(--space-6);
+  }
+
+  .report-header__headline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .report-title {
+    font-size: var(--text-2xl);
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .report-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .report-badge--merged {
+    background: var(--color-success-subtle);
+    color: var(--color-success);
+    border: 1px solid var(--color-success-border);
+  }
+
+  .report-badge--no_change,
+  .report-badge--completed {
+    background: var(--color-bg-subtle);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+  }
+
+  .pr-link {
+    color: var(--color-primary);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .pr-link:hover {
+    text-decoration: underline;
+  }
+
+  .ended-time {
+    font-size: var(--text-sm);
+  }
+
+  .report-section {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    margin-bottom: var(--space-5);
+  }
+
+  .section-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 var(--space-4) 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .section-badge {
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-text-muted);
+  }
+
+  .summary-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .summary-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: var(--space-4);
+    align-items: baseline;
+  }
+
+  .summary-label {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+
+  .summary-value {
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .pr-url-link {
+    color: var(--color-primary);
+    font-size: var(--text-xs);
+    word-break: break-all;
+  }
+
+  .deliverables-list,
+  .replanning-list,
+  .decisions-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .deliverable-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .deliverable-mark {
+    font-weight: bold;
+    width: 1.25rem;
+    text-align: center;
+  }
+
+  .deliverable-item--done .deliverable-mark {
+    color: var(--color-success);
+  }
+
+  .deliverable-state {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    width: 60px;
+  }
+
+  .replanning-item,
+  .decision-item {
+    font-size: var(--text-sm);
+    line-height: 1.5;
+  }
+
+  .tokens-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-4);
+  }
+
+  .components-toggle-btn {
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+
+  .components-toggle-btn:hover {
+    background: var(--color-bg-subtle);
+  }
+
+  .tokens-total-card {
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin-bottom: var(--space-5);
+  }
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--space-2);
+  }
+
+  .total-label {
+    font-size: var(--text-base);
+    font-weight: 600;
+  }
+
+  .total-value {
+    font-size: var(--text-base);
+  }
+
+  .breakdown-group {
+    margin-top: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: var(--space-3);
+  }
+
+  .breakdown-title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin: 0 0 var(--space-2) 0;
+  }
+
+  .breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-sm);
+  }
+
+  .breakdown-table td {
+    padding: var(--space-1) 0;
+  }
+
+  .col-name {
+    width: 25%;
+  }
+
+  .col-pin {
+    width: 30%;
+    font-size: var(--text-xs);
+  }
+
+  .col-value {
+    width: 30%;
+  }
+
+  .col-extra {
+    width: 15%;
+    text-align: right;
+    font-size: var(--text-xs);
+  }
+
+  .raw-components-row td {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius-sm);
+  }
+
+  .waste-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--space-2);
+  }
+
+  .waste-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .waste-item {
+    display: grid;
+    grid-template-columns: 180px 100px 1fr;
+    font-size: var(--text-sm);
+    align-items: baseline;
+  }
+
+  @media (max-width: 640px) {
+    .summary-row {
+      grid-template-columns: 100px 1fr;
+    }
+
+    .breakdown-table,
+    .breakdown-table tbody,
+    .breakdown-table tr,
+    .breakdown-table td {
+      display: block;
+      width: 100%;
+    }
+
+    .waste-item {
+      grid-template-columns: 1fr;
+      gap: var(--space-1);
+    }
+  }
+</style>

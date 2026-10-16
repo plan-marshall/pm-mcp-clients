@@ -185,4 +185,21 @@ class PmOperatorProcessIT {
             assertTrue(stdout.contains("waiting for you"), "expected localized state in overview; got: " + stdout);
         }
     }
+
+    @Test
+    @DisplayName("reports refuses execution without an interactive terminal (PM-SEC-3)")
+    void reportsRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "reports")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+
+        try (var process = operator(environment(), "reports", "read", "--all")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
 }
