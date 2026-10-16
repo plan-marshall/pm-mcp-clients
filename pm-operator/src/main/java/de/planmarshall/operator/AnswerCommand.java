@@ -94,8 +94,8 @@ public final class AnswerCommand implements Callable<Integer> {
         if (option == null && (words == null || words.isBlank()) && (action == null || action.isBlank())) {
             var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
             var qPath = plan != null
-                                ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid
-                                : "/api/v1/decisions/" + safeQid;
+                                      ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid
+                                      : "/api/v1/decisions/" + safeQid;
             var qResponse = runtime.send(HttpRequest.get(qPath));
             if (qResponse.status() == 404) {
                 out.printf("Question %s not found.%n", questionId);
@@ -124,8 +124,8 @@ public final class AnswerCommand implements Callable<Integer> {
     private void printDecisionDetail(PrintWriter out, DecisionEnvelope envelope) {
         if (envelope.isWaiver()) {
             out.printf("Waiver request %s · %s · gate %s%n",
-                                envelope.id(), envelope.subject(),
-                                envelope.waiverGate() != null ? envelope.waiverGate() : "gate");
+                                      envelope.id(), envelope.subject(),
+                                      envelope.waiverGate() != null ? envelope.waiverGate() : "gate");
             if (envelope.waiverReason() != null) {
                 out.printf("  %s%n", OutputSafety.stripControlSequences(envelope.waiverReason()));
             }
@@ -135,9 +135,9 @@ public final class AnswerCommand implements Callable<Integer> {
             var blocksMsg = MessageCatalogue.hasKey(blocksKey) ? MessageCatalogue.get(blocksKey) : "blocks the plan";
             var revMsg = MessageCatalogue.hasKey(revKey) ? MessageCatalogue.get(revKey) : "can be undone";
             out.printf("Question %s · %s · %s · %s · %s%n",
-                                envelope.id(), envelope.subject(),
-                                envelope.askingPhase() != null ? envelope.askingPhase() : "",
-                                blocksMsg, revMsg);
+                                      envelope.id(), envelope.subject(),
+                                      envelope.askingPhase() != null ? envelope.askingPhase() : "",
+                                      blocksMsg, revMsg);
             var titleOrDesc = envelope.description() != null ? envelope.description() : envelope.title();
             if (titleOrDesc != null && !titleOrDesc.isBlank()) {
                 out.printf("  %s%n", OutputSafety.stripControlSequences(titleOrDesc));
@@ -163,9 +163,9 @@ public final class AnswerCommand implements Callable<Integer> {
 
         if ("later".equalsIgnoreCase(effectiveAction)) {
             out.printf(MessageCatalogue.format("operator.decision.later_done", Map.of(
-                                "id", questionId,
-                                "scope", "plan",
-                                "project", "pm-mcp-clients"
+                                      "id", questionId,
+                                      "scope", "plan",
+                                      "project", "pm-mcp-clients"
             )) + "%n");
             out.flush();
             return 0;
@@ -199,8 +199,8 @@ public final class AnswerCommand implements Callable<Integer> {
         if (note != null) payload.put("note", note);
 
         var answerPath = plan != null
-                            ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid + "/answer"
-                            : "/api/v1/decisions/" + safeQid + "/answer";
+                                  ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid + "/answer"
+                                  : "/api/v1/decisions/" + safeQid + "/answer";
 
         var response = runtime.send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
         if (response.status() == 404) {
@@ -247,8 +247,8 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private int runInteractiveWaiver(RuntimeClient runtime, PrintWriter out, LineReader reader, DecisionEnvelope envelope) throws IOException {
         out.printf("Waiver request %s · %s · gate %s%n",
-                            envelope.id(), envelope.subject(),
-                            envelope.waiverGate() != null ? envelope.waiverGate() : "gate");
+                                  envelope.id(), envelope.subject(),
+                                  envelope.waiverGate() != null ? envelope.waiverGate() : "gate");
         if (envelope.waiverReason() != null) {
             out.printf("  %s%n", OutputSafety.stripControlSequences(envelope.waiverReason()));
         }
@@ -284,7 +284,7 @@ public final class AnswerCommand implements Callable<Integer> {
             }
 
             if ("y".equalsIgnoreCase(choice) || "d".equalsIgnoreCase(choice)
-                                || "waive".equalsIgnoreCase(choice) || "decline".equalsIgnoreCase(choice)) {
+                                      || "waive".equalsIgnoreCase(choice) || "decline".equalsIgnoreCase(choice)) {
                 String reqReason = "";
                 while (reqReason.isBlank()) {
                     var line = readLineSafe(reader, "Reason (required): › ");
@@ -311,8 +311,8 @@ public final class AnswerCommand implements Callable<Integer> {
                         out.println(MessageCatalogue.format("operator.decision.declined", Map.of("id", envelope.id())));
                     } else {
                         out.println(MessageCatalogue.format("operator.decision.waived", Map.of(
-                                            "gate", envelope.waiverGate() != null ? envelope.waiverGate() : "gate",
-                                            "plan", extractPlanNoun(envelope)
+                                                  "gate", envelope.waiverGate() != null ? envelope.waiverGate() : "gate",
+                                                  "plan", extractPlanNoun(envelope)
                         )));
                     }
                     out.flush();
@@ -330,9 +330,9 @@ public final class AnswerCommand implements Callable<Integer> {
         var blocksKey = "decision.blocks." + envelope.blocks().toLowerCase();
         var revKey = "decision.reversibility." + envelope.reversibility().value();
         out.printf("Question %s · %s · %s · %s · %s%n",
-                            envelope.id(), envelope.subject(),
-                            envelope.askingPhase() != null ? envelope.askingPhase() : "",
-                            MessageCatalogue.get(blocksKey), MessageCatalogue.get(revKey));
+                                  envelope.id(), envelope.subject(),
+                                  envelope.askingPhase() != null ? envelope.askingPhase() : "",
+                                  MessageCatalogue.get(blocksKey), MessageCatalogue.get(revKey));
         out.printf("  %s%n", OutputSafety.stripControlSequences(envelope.description() != null ? envelope.description() : envelope.title()));
         if (envelope.evidence() != null && !envelope.evidence().isEmpty()) {
             out.println("  ? shows the evidence: the conflict, both versions of the method");
@@ -349,8 +349,8 @@ public final class AnswerCommand implements Callable<Integer> {
                     var qs = opt.quorumSupport();
                     var bandStr = qs.band().value().replace('_', ' ');
                     supportStr = String.format("%d of %d votes · %d model%s   %s",
-                                        qs.votesCount(), qs.totalVotes(), qs.modelsCount(),
-                                        qs.modelsCount() > 1 ? "s" : "", bandStr);
+                                              qs.votesCount(), qs.totalVotes(), qs.modelsCount(),
+                                              qs.modelsCount() > 1 ? "s" : "", bandStr);
                 } else if (isRec) {
                     supportStr = "recommended by " + part.recommendingRole();
                 }
@@ -374,15 +374,15 @@ public final class AnswerCommand implements Callable<Integer> {
         var recKey = part != null ? part.recommendation() : null;
         var isReversible = envelope.reversibility() == Reversibility.REVERSIBLE;
         var recommendedOpt = recKey != null && part != null
-                            ? part.options().stream().filter(o -> recKey.equals(o.key())).findFirst().orElse(null)
-                            : null;
+                                  ? part.options().stream().filter(o -> recKey.equals(o.key())).findFirst().orElse(null)
+                                  : null;
 
         while (true) {
             String prompt;
             if (recommendedOpt != null && isReversible) {
                 prompt = String.format("%s? [Enter]   other: 1-3   w) in my own words   %s   h) chat   x) none fits   l) later   ?   › ",
-                                    recommendedOpt.label(),
-                                    currentNote != null ? "m) " + MessageCatalogue.get("operator.decision.note_set") : "m) add a note");
+                                          recommendedOpt.label(),
+                                          currentNote != null ? "m) " + MessageCatalogue.get("operator.decision.note_set") : "m) add a note");
             } else {
                 prompt = "Choose: 1-3   w) in my own words   h) chat   x) none fits   l) later   ?   › ";
             }
@@ -399,9 +399,9 @@ public final class AnswerCommand implements Callable<Integer> {
 
             if ("l".equalsIgnoreCase(choice) || "later".equalsIgnoreCase(choice)) {
                 out.printf(MessageCatalogue.format("operator.decision.later_done", Map.of(
-                                    "id", envelope.id(),
-                                    "scope", extractScopeNoun(envelope),
-                                    "project", extractProjectNoun(envelope)
+                                          "id", envelope.id(),
+                                          "scope", extractScopeNoun(envelope),
+                                          "project", extractProjectNoun(envelope)
                 )) + "%n");
                 out.flush();
                 return 0;
@@ -517,8 +517,8 @@ public final class AnswerCommand implements Callable<Integer> {
         if (ansRes.status() == 200 || ansRes.status() == 202 || ansRes.status() == 204) {
             var noteSuffix = noteText != null && !noteText.isBlank() ? " " + MessageCatalogue.get("operator.decision.with_note") : "";
             var goesOn = MessageCatalogue.format("operator.decision.goes_on", Map.of(
-                                "scope", extractScopeNoun(envelope),
-                                "project", extractProjectNoun(envelope)
+                                      "scope", extractScopeNoun(envelope),
+                                      "project", extractProjectNoun(envelope)
             ));
             out.printf("✓ %s answered: %s%s. %s%n", envelope.id(), label, noteSuffix, goesOn);
             out.flush();

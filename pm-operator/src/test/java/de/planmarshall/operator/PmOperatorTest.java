@@ -45,7 +45,7 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 class PmOperatorTest {
 
     static final String STATUS = "{\"version\":\"0.1\",\"pid\":42,\"listener\":\"unix\",\"socket_path\":\"/s\","
-                        + "\"started_at\":\"2026-10-05T10:00:00Z\",\"web\":{\"enabled\":true,\"lan\":false,\"port\":7420,\"open\":true}}";
+                              + "\"started_at\":\"2026-10-05T10:00:00Z\",\"web\":{\"enabled\":true,\"lan\":false,\"port\":7420,\"open\":true}}";
 
     private RuntimeFixture fixture;
     private StringWriter out;
@@ -71,17 +71,17 @@ class PmOperatorTest {
 
     private int run(String... args) {
         var context = new OperatorContext(
-                            fixture.environment(),
-                            fixture.base().getParent(),
-                            true,
-                            ClientEnvironment.capture(fixture.environment()),
-                            null,
-                            uri -> {
-                                if (simulateBrowserError) {
-                                    throw new IOException("simulated browser failure");
-                                }
-                                openedUris.add(uri);
-                            }
+                                  fixture.environment(),
+                                  fixture.base().getParent(),
+                                  true,
+                                  ClientEnvironment.capture(fixture.environment()),
+                                  null,
+                                  uri -> {
+                                      if (simulateBrowserError) {
+                                          throw new IOException("simulated browser failure");
+                                      }
+                                      openedUris.add(uri);
+                                  }
         );
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
@@ -91,7 +91,7 @@ class PmOperatorTest {
         var self = ProcessHandle.current();
         Files.createDirectories(fixture.paths().stateDir());
         Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
-                            + self.info().startInstant().orElseThrow() + "\"}");
+                                  + self.info().startInstant().orElseThrow() + "\"}");
     }
 
     private FakeRuntimeServer runtime(FakeRuntimeServer.Handler handler) throws IOException {
@@ -123,10 +123,10 @@ class PmOperatorTest {
 
         var inStream = new ByteArrayInputStream("exit\n".getBytes(StandardCharsets.UTF_8));
         var context = new OperatorContext(
-                            fixture.environment(), fixture.base().getParent(), true,
-                            ClientEnvironment.capture(fixture.environment()),
-                            () -> new DumbTerminal(inStream, new ByteArrayOutputStream()),
-                            openedUris::add
+                                  fixture.environment(), fixture.base().getParent(), true,
+                                  ClientEnvironment.capture(fixture.environment()),
+                                  () -> new DumbTerminal(inStream, new ByteArrayOutputStream()),
+                                  openedUris::add
         );
 
         int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err));
@@ -211,7 +211,7 @@ class PmOperatorTest {
         @DisplayName("enable sends PUT /api/v1/web with lan and port and prints the listener")
         void enable() throws Exception {
             var server = runtime((request, response) -> response.json(200,
-                                "{\"enabled\":true,\"lan\":true,\"port\":8443,\"open\":true}"));
+                                      "{\"enabled\":true,\"lan\":true,\"port\":8443,\"open\":true}"));
 
             assertEquals(0, run("web", "enable", "--lan", "--port", "8443"));
 
@@ -227,12 +227,12 @@ class PmOperatorTest {
         @DisplayName("disable sends enabled false with the default port")
         void disable() throws Exception {
             var server = runtime((request, response) -> response.json(200,
-                                "{\"enabled\":false,\"lan\":false,\"port\":7420,\"open\":false}"));
+                                      "{\"enabled\":false,\"lan\":false,\"port\":7420,\"open\":false}"));
 
             assertEquals(0, run("web", "disable"));
 
             assertEquals("{\"enabled\":false,\"lan\":false,\"port\":7420}",
-                                server.awaitRequest(Duration.ofSeconds(1)).bodyText());
+                                      server.awaitRequest(Duration.ofSeconds(1)).bodyText());
             assertEquals("web       disabled", out.toString().strip());
         }
 
@@ -250,7 +250,7 @@ class PmOperatorTest {
         void describe() {
             assertEquals("-", WebCommand.describe(null));
             assertEquals("enabled (loopback), port 1, not open", WebCommand.describe(Map.of("enabled", true,
-                                "port", 1)));
+                                      "port", 1)));
         }
 
         @Test
@@ -258,7 +258,7 @@ class PmOperatorTest {
         void insecureTokenFile() throws Exception {
             runtime((request, response) -> response.json(200, "{\"enabled\":true}"));
             Files.setPosixFilePermissions(fixture.paths().runtimeToken(),
-                                PosixFilePermissions.fromString("rw-r--r--"));
+                                      PosixFilePermissions.fromString("rw-r--r--"));
 
             assertEquals(PmOperator.EXIT_FAILURE, run("web", "enable"));
             assertTrue(err.toString().contains("has mode 0644, expected 0600"));
@@ -369,11 +369,11 @@ class PmOperatorTest {
             runtime((request, response) -> {
                 if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
                     response.json(200, """
-                                        [
-                                          {"label":"Work Laptop","paired_from":"127.0.0.1"},
-                                          {"label":"Mobile","paired_from":"192.168.1.100"}
-                                        ]
-                                        """);
+                                              [
+                                                {"label":"Work Laptop","paired_from":"127.0.0.1"},
+                                                {"label":"Mobile","paired_from":"192.168.1.100"}
+                                              ]
+                                              """);
                 } else {
                     response.send(404, null, "");
                 }

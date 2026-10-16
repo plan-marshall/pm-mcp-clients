@@ -31,9 +31,9 @@ import picocli.CommandLine.Spec;
  * {@code pm-operator recipe}: run project recipes.
  */
 @Command(name = "recipe", description = "Recipe operations.",
-                    subcommands = {
-                                        RecipeCommand.RunCommand.class
-                    })
+                          subcommands = {
+                                                    RecipeCommand.RunCommand.class
+                          })
 @OperatorVerb
 public final class RecipeCommand implements Callable<Integer> {
 
@@ -96,7 +96,7 @@ public final class RecipeCommand implements Callable<Integer> {
 
             var proj = project != null && !".".equals(project) ? project : "default";
             var path = "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(proj)
-                                + "/recipes/" + OperatorUrlUtil.encodePathSegment(recipeKey) + "/run";
+                                      + "/recipes/" + OperatorUrlUtil.encodePathSegment(recipeKey) + "/run";
 
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 201) {

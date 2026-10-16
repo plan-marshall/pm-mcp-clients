@@ -69,9 +69,9 @@ class ConfigCommandTest {
 
         int code = execute("config");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("Machine Settings:")),
-                            () -> assertTrue(out.toString().contains("language.interface"))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("Machine Settings:")),
+                                  () -> assertTrue(out.toString().contains("language.interface"))
         );
     }
 
@@ -88,8 +88,8 @@ class ConfigCommandTest {
 
         int code = execute("config", "show", "web.port");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("\"web.port\""))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("\"web.port\""))
         );
     }
 
@@ -106,8 +106,8 @@ class ConfigCommandTest {
 
         int code = execute("config", "set", "custom.timeout", "60");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Config custom.timeout set to 60"))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("✓ Config custom.timeout set to 60"))
         );
     }
 
@@ -116,17 +116,17 @@ class ConfigCommandTest {
     void configSetRefusesAspectOwned() {
         int code = execute("config", "set", "language.interface", "de");
         assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertTrue(err.toString().contains("409 aspect_owned")),
-                            () -> assertTrue(err.toString().contains("pm-operator config language"))
+                                  () -> assertEquals(1, code),
+                                  () -> assertTrue(err.toString().contains("409 aspect_owned")),
+                                  () -> assertTrue(err.toString().contains("pm-operator config language"))
         );
 
         err.getBuffer().setLength(0);
         int code2 = execute("config", "set", "plan_defaults.method", "test-first");
         assertAll(
-                            () -> assertEquals(1, code2),
-                            () -> assertTrue(err.toString().contains("409 aspect_owned")),
-                            () -> assertTrue(err.toString().contains("pm-operator config plan-defaults"))
+                                  () -> assertEquals(1, code2),
+                                  () -> assertTrue(err.toString().contains("409 aspect_owned")),
+                                  () -> assertTrue(err.toString().contains("pm-operator config plan-defaults"))
         );
     }
 
@@ -143,8 +143,8 @@ class ConfigCommandTest {
 
         int code = execute("config", "unset", "custom.flag");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Config custom.flag unset"))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("✓ Config custom.flag unset"))
         );
     }
 
@@ -153,8 +153,8 @@ class ConfigCommandTest {
     void configHarnessesNoInputNeedsConsent() {
         int code = execute("config", "harnesses", "--add", "codex", "--no-input");
         assertAll(
-                            () -> assertEquals(3, code),
-                            () -> assertTrue(out.toString().contains("Needs a choice: --consent scan_harnesses"))
+                                  () -> assertEquals(3, code),
+                                  () -> assertTrue(out.toString().contains("Needs a choice: --consent scan_harnesses"))
         );
     }
 
@@ -170,7 +170,7 @@ class ConfigCommandTest {
         });
 
         int code = execute("config", "harnesses", "--add", "codex", "--remove", "cursor",
-                            "--default", "codex", "--no-icons", "--consent", "scan_harnesses");
+                                  "--default", "codex", "--no-icons", "--consent", "scan_harnesses");
         assertEquals(0, code);
         assertTrue(out.toString().contains("✓ Harnesses updated"));
     }
@@ -219,7 +219,7 @@ class ConfigCommandTest {
         });
 
         int code = execute("config", "roles", "--defaults", "--set", "architect=anthropic:claude-3-5-sonnet:high",
-                            "--reset", "auditor", "--reset-all");
+                                  "--reset", "auditor", "--reset-all");
         assertEquals(0, code);
         assertTrue(out.toString().contains("✓ Roles updated"));
     }
@@ -317,14 +317,14 @@ class ConfigCommandTest {
         });
 
         int code = execute("config", "plan-defaults", "--landing", "pull-request", "--method", "test-first",
-                            "--asking", "key-points", "--posture", "standard", "--yes");
+                                  "--asking", "key-points", "--posture", "standard", "--yes");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("Plans · How should plans run on this machine?")),
-                            () -> assertTrue(out.toString().contains("✓ Landing   pull-request")),
-                            () -> assertTrue(out.toString().contains("✓ Method    test-first")),
-                            () -> assertTrue(out.toString().contains("✓ Asking    key-points")),
-                            () -> assertTrue(out.toString().contains("✓ Plan defaults recorded"))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("Plans · How should plans run on this machine?")),
+                                  () -> assertTrue(out.toString().contains("✓ Landing   pull-request")),
+                                  () -> assertTrue(out.toString().contains("✓ Method    test-first")),
+                                  () -> assertTrue(out.toString().contains("✓ Asking    key-points")),
+                                  () -> assertTrue(out.toString().contains("✓ Plan defaults recorded"))
         );
     }
 }

@@ -67,12 +67,12 @@ class EntryFlowTest {
         @DisplayName("isMachineOnboarded recognizes onboarded flags across shapes")
         void recognizesOnboarded() {
             assertAll(
-                                () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("onboarded", true))),
-                                () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("machine", Map.of("onboarded", true)))),
-                                () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("onboard", Map.of("state", "onboard.completed")))),
-                                () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("onboard", Map.of("completed", true)))),
-                                () -> assertFalse(EntryFlow.isMachineOnboarded(Map.of())),
-                                () -> assertFalse(EntryFlow.isMachineOnboarded(Map.of("onboarded", false)))
+                                      () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("onboarded", true))),
+                                      () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("machine", Map.of("onboarded", true)))),
+                                      () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("onboard", Map.of("state", "onboard.completed")))),
+                                      () -> assertTrue(EntryFlow.isMachineOnboarded(Map.of("onboard", Map.of("completed", true)))),
+                                      () -> assertFalse(EntryFlow.isMachineOnboarded(Map.of())),
+                                      () -> assertFalse(EntryFlow.isMachineOnboarded(Map.of("onboarded", false)))
             );
         }
 
@@ -80,9 +80,9 @@ class EntryFlowTest {
         @DisplayName("getCompletedOnboardStep extracts step numbers correctly")
         void extractsCompletedSteps() {
             assertAll(
-                                () -> assertEquals(3, EntryFlow.getCompletedOnboardStep(Map.of("onboard", Map.of("step", 3)))),
-                                () -> assertEquals(5, EntryFlow.getCompletedOnboardStep(Map.of("onboard", Map.of("completed_steps", 5)))),
-                                () -> assertEquals(0, EntryFlow.getCompletedOnboardStep(Map.of()))
+                                      () -> assertEquals(3, EntryFlow.getCompletedOnboardStep(Map.of("onboard", Map.of("step", 3)))),
+                                      () -> assertEquals(5, EntryFlow.getCompletedOnboardStep(Map.of("onboard", Map.of("completed_steps", 5)))),
+                                      () -> assertEquals(0, EntryFlow.getCompletedOnboardStep(Map.of()))
             );
         }
 
@@ -90,14 +90,14 @@ class EntryFlowTest {
         @DisplayName("getStepName returns normative names for steps 1 to 7")
         void stepNames() {
             assertAll(
-                                () -> assertEquals("Language", EntryFlow.getStepName(1)),
-                                () -> assertEquals("Harnesses", EntryFlow.getStepName(2)),
-                                () -> assertEquals("Models", EntryFlow.getStepName(3)),
-                                () -> assertEquals("Roles", EntryFlow.getStepName(4)),
-                                () -> assertEquals("Credentials", EntryFlow.getStepName(5)),
-                                () -> assertEquals("Providers", EntryFlow.getStepName(6)),
-                                () -> assertEquals("Plans", EntryFlow.getStepName(7)),
-                                () -> assertEquals("Step 8", EntryFlow.getStepName(8))
+                                      () -> assertEquals("Language", EntryFlow.getStepName(1)),
+                                      () -> assertEquals("Harnesses", EntryFlow.getStepName(2)),
+                                      () -> assertEquals("Models", EntryFlow.getStepName(3)),
+                                      () -> assertEquals("Roles", EntryFlow.getStepName(4)),
+                                      () -> assertEquals("Credentials", EntryFlow.getStepName(5)),
+                                      () -> assertEquals("Providers", EntryFlow.getStepName(6)),
+                                      () -> assertEquals("Plans", EntryFlow.getStepName(7)),
+                                      () -> assertEquals("Step 8", EntryFlow.getStepName(8))
             );
         }
 
@@ -105,9 +105,9 @@ class EntryFlowTest {
         @DisplayName("getWebPort extracts port or defaults to 7420")
         void webPortResolution() {
             assertAll(
-                                () -> assertEquals(7420, EntryFlow.getWebPort(Map.of())),
-                                () -> assertEquals(7420, EntryFlow.getWebPort(Map.of("web", Map.of()))),
-                                () -> assertEquals(8080, EntryFlow.getWebPort(Map.of("web", Map.of("port", 8080))))
+                                      () -> assertEquals(7420, EntryFlow.getWebPort(Map.of())),
+                                      () -> assertEquals(7420, EntryFlow.getWebPort(Map.of("web", Map.of()))),
+                                      () -> assertEquals(8080, EntryFlow.getWebPort(Map.of("web", Map.of("port", 8080))))
             );
         }
 
@@ -115,15 +115,15 @@ class EntryFlowTest {
         @DisplayName("extractWaitingBadges formats badges from needs_operator map")
         void extractsBadges() {
             var status = Map.<String, Object>of(
-                                "needs_operator", Map.of(
-                                "decision", 2,
-                                "waiver_request", 1
+                                      "needs_operator", Map.of(
+                                      "decision", 2,
+                                      "waiver_request", 1
             )
             );
             var badges = EntryFlow.extractWaitingBadges(status);
             assertAll(
-                                () -> assertTrue(badges.contains("2 questions")),
-                                () -> assertTrue(badges.contains("1 waiver request"))
+                                      () -> assertTrue(badges.contains("2 questions")),
+                                      () -> assertTrue(badges.contains("1 waiver request"))
             );
         }
     }
@@ -138,12 +138,12 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
-                                        """);
+                                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                              """);
                 } else if ("/api/v1/web/devices".equals(request.target())) {
                     response.json(200, """
-                                        [{"device_id":"d1","label":"Firefox on mbp-oliver","paired_from":"loopback","paired_by":"open"}]
-                                        """);
+                                              [{"device_id":"d1","label":"Firefox on mbp-oliver","paired_from":"loopback","paired_by":"open"}]
+                                              """);
                 } else {
                     response.send(404, null, "");
                 }
@@ -159,9 +159,9 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("✓ Runtime running")),
-                                () -> assertTrue(text.contains("✓ Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)")),
-                                () -> assertEquals("http://127.0.0.1:7420", result.activeUrl())
+                                      () -> assertTrue(text.contains("✓ Runtime running")),
+                                      () -> assertTrue(text.contains("✓ Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)")),
+                                      () -> assertEquals("http://127.0.0.1:7420", result.activeUrl())
             );
         }
 
@@ -172,8 +172,8 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":false,"port":7420}}
-                                        """);
+                                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":false,"port":7420}}
+                                              """);
                 } else if ("/api/v1/web".equals(request.target()) && "PUT".equals(request.method())) {
                     response.json(200, "{\"enabled\":true,\"port\":7420}");
                 } else if ("/api/v1/web/devices".equals(request.target())) {
@@ -186,7 +186,7 @@ class EntryFlowTest {
             });
 
             var context = new OperatorContext(fixture.environment(), tempDir, true,
-                                ClientEnvironment.capture(fixture.environment()), null, openedUri::set);
+                                      ClientEnvironment.capture(fixture.environment()), null, openedUri::set);
 
             var writer = new StringWriter();
             var out = new PrintWriter(writer);
@@ -196,11 +196,11 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("✓ Browser opened with a pairing code, valid for 10 minutes")),
-                                () -> assertTrue(text.contains("URL    http://127.0.0.1:7420/pair#code=KXQB-MRTN")),
-                                () -> assertTrue(text.contains("Code   KXQB-MRTN")),
-                                () -> assertEquals(URI.create("http://127.0.0.1:7420/pair#code=KXQB-MRTN"), openedUri.get()),
-                                () -> assertEquals("KXQB-MRTN", result.activeCode())
+                                      () -> assertTrue(text.contains("✓ Browser opened with a pairing code, valid for 10 minutes")),
+                                      () -> assertTrue(text.contains("URL    http://127.0.0.1:7420/pair#code=KXQB-MRTN")),
+                                      () -> assertTrue(text.contains("Code   KXQB-MRTN")),
+                                      () -> assertEquals(URI.create("http://127.0.0.1:7420/pair#code=KXQB-MRTN"), openedUri.get()),
+                                      () -> assertEquals("KXQB-MRTN", result.activeCode())
             );
         }
 
@@ -210,8 +210,8 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
-                                        """);
+                                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                              """);
                 } else if ("/api/v1/web/devices".equals(request.target())) {
                     response.json(200, "[]");
                 } else if ("/api/v1/web/pairings".equals(request.target())) {
@@ -222,10 +222,10 @@ class EntryFlowTest {
             });
 
             var context = new OperatorContext(fixture.environment(), tempDir, true,
-                                ClientEnvironment.capture(fixture.environment()), null,
-                                _ -> {
-                                    throw new IOException("Display not found");
-                                });
+                                      ClientEnvironment.capture(fixture.environment()), null,
+                                      _ -> {
+                                          throw new IOException("Display not found");
+                                      });
 
             var writer = new StringWriter();
             var out = new PrintWriter(writer);
@@ -235,9 +235,9 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("– No browser opened: Display not found")),
-                                () -> assertTrue(text.contains("Ways in, from your own computer")),
-                                () -> assertTrue(text.contains("ssh -L 7420:127.0.0.1:7420"))
+                                      () -> assertTrue(text.contains("– No browser opened: Display not found")),
+                                      () -> assertTrue(text.contains("Ways in, from your own computer")),
+                                      () -> assertTrue(text.contains("ssh -L 7420:127.0.0.1:7420"))
             );
         }
 
@@ -250,8 +250,8 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
-                                        """);
+                                              {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                              """);
                 } else if ("/api/v1/web/pairings".equals(request.target())) {
                     response.json(201, "{\"code\":\"SSH-CODE1\",\"url\":\"http://127.0.0.1:7420/pair#code=SSH-CODE1\"}");
                 } else {
@@ -268,10 +268,10 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("– SSH session: no browser opened here")),
-                                () -> assertTrue(text.contains("ssh -L 7420:127.0.0.1:7420")),
-                                () -> assertTrue(text.contains("Code SSH-CODE1")),
-                                () -> assertEquals("SSH-CODE1", result.activeCode())
+                                      () -> assertTrue(text.contains("– SSH session: no browser opened here")),
+                                      () -> assertTrue(text.contains("ssh -L 7420:127.0.0.1:7420")),
+                                      () -> assertTrue(text.contains("Code SSH-CODE1")),
+                                      () -> assertEquals("SSH-CODE1", result.activeCode())
             );
         }
 
@@ -281,8 +281,8 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
-                                        """);
+                                              {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                              """);
                 } else if ("/api/v1/web/pairings".equals(request.target())) {
                     response.json(201, "{\"code\":\"ONB-CODE1\",\"url\":\"http://127.0.0.1:7420/pair#code=ONB-CODE1\"}");
                 } else if ("/api/v1/web".equals(request.target())) {
@@ -294,7 +294,7 @@ class EntryFlowTest {
 
             var openedUri = new AtomicReference<URI>();
             var context = new OperatorContext(fixture.environment(), tempDir, true,
-                                ClientEnvironment.capture(fixture.environment()), null, openedUri::set);
+                                      ClientEnvironment.capture(fixture.environment()), null, openedUri::set);
 
             var writer = new StringWriter();
             var out = new PrintWriter(writer);
@@ -304,10 +304,10 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("Seven steps.")),
-                                () -> assertTrue(text.contains("The web app opens at the setup of this machine.")),
-                                () -> assertEquals(List.of("setup 0/7"), result.initialBadges()),
-                                () -> assertEquals("ONB-CODE1", result.activeCode())
+                                      () -> assertTrue(text.contains("Seven steps.")),
+                                      () -> assertTrue(text.contains("The web app opens at the setup of this machine.")),
+                                      () -> assertEquals(List.of("setup 0/7"), result.initialBadges()),
+                                      () -> assertEquals("ONB-CODE1", result.activeCode())
             );
         }
 
@@ -317,8 +317,8 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
-                                        """);
+                                              {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                              """);
                 } else {
                     response.send(404, null, "");
                 }
@@ -333,9 +333,9 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("Set up this machine for plan-marshall")),
-                                () -> assertTrue(text.contains("Left the setup before step 1. Nothing was sent. Enter continues the setup.")),
-                                () -> assertEquals(List.of("setup 0/7"), result.initialBadges())
+                                      () -> assertTrue(text.contains("Set up this machine for plan-marshall")),
+                                      () -> assertTrue(text.contains("Left the setup before step 1. Nothing was sent. Enter continues the setup.")),
+                                      () -> assertEquals(List.of("setup 0/7"), result.initialBadges())
             );
         }
 
@@ -345,8 +345,8 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":2},"web":{"enabled":true,"port":7420}}
-                                        """);
+                                              {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":2},"web":{"enabled":true,"port":7420}}
+                                              """);
                 } else {
                     response.send(404, null, "");
                 }
@@ -362,9 +362,9 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("This machine is set up up to step 2 of 7; it")),
-                                () -> assertTrue(text.contains("stopped at [3/7] Models.")),
-                                () -> assertEquals(List.of("setup 2/7"), result.initialBadges())
+                                      () -> assertTrue(text.contains("This machine is set up up to step 2 of 7; it")),
+                                      () -> assertTrue(text.contains("stopped at [3/7] Models.")),
+                                      () -> assertEquals(List.of("setup 2/7"), result.initialBadges())
             );
         }
     }

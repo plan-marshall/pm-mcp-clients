@@ -44,7 +44,7 @@ public final class DrainCommand implements Callable<Integer> {
         try {
             var body = JsonTree.write(Map.of("drain", true));
             var response = context.runtime(false).send(
-                                HttpRequest.json("POST", "/api/v1/runtime/stop", body));
+                                      HttpRequest.json("POST", "/api/v1/runtime/stop", body));
             if (response.status() == 200 || response.status() == 202) {
                 out.println("runtime   draining");
             } else {

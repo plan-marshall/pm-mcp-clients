@@ -47,7 +47,7 @@ public final class EntryFlow {
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
 
     private static final List<String> STEP_NAMES = List.of(
-                        "Language", "Harnesses", "Models", "Roles", "Credentials", "Providers", "Plans");
+                              "Language", "Harnesses", "Models", "Roles", "Credentials", "Providers", "Plans");
 
     private final OperatorContext context;
 
@@ -114,7 +114,7 @@ public final class EntryFlow {
     }
 
     private EntryResult runUnonboarded(RuntimeClient runtime, Map<String, Object> status,
-                        PrintWriter out, LineReader reader, boolean isSsh, int webPort) throws IOException {
+                              PrintWriter out, LineReader reader, boolean isSsh, int webPort) throws IOException {
         int completedStep = getCompletedOnboardStep(status);
         out.println();
         if (completedStep == 0) {
@@ -192,7 +192,7 @@ public final class EntryFlow {
     }
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
-                        PrintWriter out, boolean isSsh, int webPort) throws IOException {
+                              PrintWriter out, boolean isSsh, int webPort) throws IOException {
         ensureLoopbackListener(runtime, webPort);
         var badges = extractWaitingBadges(status);
 
@@ -227,7 +227,7 @@ public final class EntryFlow {
                 if (page.unreadCount() > 0) {
                     var since = page.oldestUnreadTime() != null ? page.oldestUnreadTime() : "";
                     var arrivalLine = MessageCatalogue.format("report.arrival.line",
-                                        Map.of("count", page.unreadCount(), "since", since));
+                                              Map.of("count", page.unreadCount(), "since", since));
                     var hint = MessageCatalogue.get("operator.reports.arrival_hint");
                     out.println("▪ " + arrivalLine + " · " + hint);
                 }

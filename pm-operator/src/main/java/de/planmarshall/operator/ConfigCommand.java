@@ -31,20 +31,20 @@ import picocli.CommandLine.Spec;
  * 08-transcripts-later.adoc#t-settings).
  */
 @Command(name = "config", description = "Manages machine and project configuration.",
-                    subcommands = {
-                                        ConfigCommand.ShowCommand.class,
-                                        ConfigCommand.SetCommand.class,
-                                        ConfigCommand.UnsetCommand.class,
-                                        ConfigCommand.LanguageCommand.class,
-                                        ConfigCommand.HarnessesCommand.class,
-                                        ConfigCommand.ModelsCommand.class,
-                                        ConfigCommand.RolesCommand.class,
-                                        ConfigCommand.CredentialsCommand.class,
-                                        ConfigCommand.ProvidersCommand.class,
-                                        ConfigCommand.PlanDefaultsCommand.class,
-                                        ConfigCommand.ConsentsCommand.class,
-                                        ConfigCommand.DocumentsCommand.class
-                    })
+                          subcommands = {
+                                                    ConfigCommand.ShowCommand.class,
+                                                    ConfigCommand.SetCommand.class,
+                                                    ConfigCommand.UnsetCommand.class,
+                                                    ConfigCommand.LanguageCommand.class,
+                                                    ConfigCommand.HarnessesCommand.class,
+                                                    ConfigCommand.ModelsCommand.class,
+                                                    ConfigCommand.RolesCommand.class,
+                                                    ConfigCommand.CredentialsCommand.class,
+                                                    ConfigCommand.ProvidersCommand.class,
+                                                    ConfigCommand.PlanDefaultsCommand.class,
+                                                    ConfigCommand.ConsentsCommand.class,
+                                                    ConfigCommand.DocumentsCommand.class
+                          })
 @OperatorVerb
 public final class ConfigCommand implements Callable<Integer> {
 
@@ -52,8 +52,8 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String ROLES = "roles";
 
     static final List<String> ASPECT_OWNED_KEYS = List.of(
-                        "language.", "credentials.store", "providers.", "plan_defaults.",
-                        "sources.documents_mode", "roles.", ROLES
+                              "language.", "credentials.store", "providers.", "plan_defaults.",
+                              "sources.documents_mode", "roles.", ROLES
     );
 
     private final OperatorContext context;
@@ -186,7 +186,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 var aspect = getOwningAspect(key);
                 var err = spec.commandLine().getErr();
                 err.println("config set refused: 409 aspect_owned (" + key + " is owned by '" + aspect
-                                    + "'; change it via 'pm-operator config " + aspect + "')");
+                                          + "'; change it via 'pm-operator config " + aspect + "')");
                 err.flush();
                 return 1;
             }

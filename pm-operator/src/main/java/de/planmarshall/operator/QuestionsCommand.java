@@ -57,7 +57,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         var response = context.runtime(true).send(HttpRequest.get(path));
         if (response.status() == 404) {
             response = context.runtime(true).send(
-                                HttpRequest.get(OperatorUrlUtil.appendScope("/api/v1/questions", project, plan)));
+                                      HttpRequest.get(OperatorUrlUtil.appendScope("/api/v1/questions", project, plan)));
         }
         if (response.status() == 200) {
             printQuestions(out, response.body());
@@ -70,7 +70,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         var parsed = JsonTree.parse(body);
         if (parsed instanceof List<?> list && !list.isEmpty()) {
             boolean allWaivers = list.stream().allMatch(item -> item instanceof Map<?, ?> m
-                                && (Boolean.TRUE.equals(m.get("is_waiver")) || String.valueOf(m.get("id")).startsWith("WR-")));
+                                      && (Boolean.TRUE.equals(m.get("is_waiver")) || String.valueOf(m.get("id")).startsWith("WR-")));
 
             if (allWaivers) {
                 out.printf("Waiver Requests · %d pending%n", list.size());
@@ -100,8 +100,8 @@ public final class QuestionsCommand implements Callable<Integer> {
             var scope = scopeObj != null ? OutputSafety.stripControlSequences(scopeObj.toString()) : "";
 
             var isWaiver = Boolean.TRUE.equals(q.get("is_waiver"))
-                                || id.startsWith("WR-")
-                                || "waiver".equalsIgnoreCase(String.valueOf(q.get("kind")));
+                                      || id.startsWith("WR-")
+                                      || "waiver".equalsIgnoreCase(String.valueOf(q.get("kind")));
             var titleObj = q.get("title");
             if (titleObj == null) {
                 titleObj = q.get("question");

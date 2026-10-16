@@ -71,8 +71,8 @@ class AbortCommandTest {
 
         int code = execute("abort", "plan", "p-001", "--reason", "Emergency stop");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ p-001 cancelled and archived"))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("✓ p-001 cancelled and archived"))
         );
     }
 
@@ -91,8 +91,8 @@ class AbortCommandTest {
 
         int code = execute("abort", "plan", "p-002", "--reason", "Not continuing");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ p-002 abandoned and archived"))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("✓ p-002 abandoned and archived"))
         );
     }
 
@@ -109,8 +109,8 @@ class AbortCommandTest {
 
         int code = execute("abort", "epic", "ep-001", "--reason", "Epic superseded");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ ep-001 cancelled"))
+                                  () -> assertEquals(0, code),
+                                  () -> assertTrue(out.toString().contains("✓ ep-001 cancelled"))
         );
     }
 

@@ -136,7 +136,7 @@ public final class OperatorStateDirectory {
             var perms = posixView.readAttributes().permissions();
             if (!perms.equals(RuntimeTokenFile.DIRECTORY_MODE)) {
                 throw new InsecureOperatorFileException(path,
-                                    "has mode " + octal(perms) + ", expected 0700");
+                                          "has mode " + octal(perms) + ", expected 0700");
             }
         }
     }
@@ -159,7 +159,7 @@ public final class OperatorStateDirectory {
             var perms = posixView.readAttributes().permissions();
             if (!perms.equals(RuntimeTokenFile.FILE_MODE)) {
                 throw new InsecureOperatorFileException(path,
-                                    "has mode " + octal(perms) + ", expected 0600");
+                                          "has mode " + octal(perms) + ", expected 0600");
             }
         }
     }
