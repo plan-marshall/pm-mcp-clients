@@ -763,6 +763,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleEndedPageQuery(RouteDefinition route, String query, MockHttpResponse response) throws IOException {
+        if (route.status() < 200 || route.status() >= 300) {
+            response.json(route.status(), route.representation());
+            return;
+        }
         int page = 1;
         for (var part : query.split("&")) {
             if (part.startsWith("page=")) {
