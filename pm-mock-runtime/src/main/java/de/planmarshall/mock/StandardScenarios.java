@@ -108,6 +108,12 @@ public final class StandardScenarios {
     public static final String START = "start";
 
     /**
+     * Git plan sources: adopting a pull request in the adopt lane and capturing the checkout's
+     * local changes in the land lane (UC-STA-7, UC-STA-9).
+     */
+    public static final String GIT_SOURCES = "git_sources";
+
+    /**
      * The process designer: installed units at every level, the catalogue of building blocks,
      * validation findings, placing, and removing (UC-PLN-3).
      */
@@ -132,6 +138,7 @@ public final class StandardScenarios {
             PLAN_VIEW,
             CONTROL,
             START,
+            GIT_SOURCES,
             DESIGNER
     );
 }
