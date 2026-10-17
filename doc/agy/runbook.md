@@ -53,14 +53,14 @@ Instead, the agent loads and adopts the following specialized personas as cognit
 
 ---
 
-## 2. General Development Process (The 7-Step Discipline)
+## 2. General Development Process (The 8-Step Discipline)
 
 Every feature, refactoring, or bug fix must follow this sequential lifecycle:
 
 ```
 [1. Worktree Creation] -> [2. Incremental Build & Impl] -> [3. Report & Plan Archival]
                                                                      |
-[7. Sync & Cleanup]    <- [6. Review Window & Bots]    <- [5. Push & Open PR] <- [4. Pre-Commit Verification]
+[8. Post-Landing Verify] <- [7. Sync & Cleanup] <- [6. Review Window] <- [5. Push & PR] <- [4. Pre-Commit Verification]
 ```
 
 ### Step 1: Isolated Git Worktree Lifecycle
@@ -212,6 +212,25 @@ The repository's `main` branch is protected by GitHub Rulesets and uses GitHub's
    git worktree remove /Users/oliver/git/worktrees/<worktree-name>
    git branch -D <branch-type>/<topic-name>
    ```
+
+### Step 8: Post-Landing Verification & Report Archival
+
+Once changes have landed on `main` and the repository workspace is synchronized:
+
+1. **Conduct 4-Point Verification Analysis (No Redundant Re-Testing)**:
+   Do not re-execute Maven reactor builds or tests (functional compilation, tests, and static checks were already proven by CI and pre-commit). Instead, rigorously compare and evaluate:
+   - **Process Adherence**: Verify the entire runbook lifecycle was executed (worktree isolation, cognitive persona adoption, pre-commit checks, review bot resolution or authorized skip, merge queue landing).
+   - **Requirements Completeness & Correctness**: Verify implemented capabilities against source use cases, specifications, event catalogues, and API contracts.
+   - **Related Collateral & Documentation**: Ensure ADRs, design docs, README indexes, bilingual message catalogues, mock scenarios, and client views were updated.
+   - **Runbook / Rules Continuous Improvement**: Identify friction points, ambiguities, or improvements to fold into this runbook or future plan templates.
+
+2. **Move Verified Report to `verified/`**:
+   Move the companion completion report from `doc/agy/<topic>-plan-report.md` into `doc/agy/verified/`:
+   ```bash
+   mv doc/agy/<topic>-plan-report.md doc/agy/verified/
+   ```
+   Update [`doc/agy/verified/README.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/verified/README.md) and [`doc/agy/implemented/README.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/README.md) to record the verified landing.
+
 
 ---
 
