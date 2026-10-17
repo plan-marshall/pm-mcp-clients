@@ -37,7 +37,7 @@ public record SourceInput(
 
     public SourceInput {
         Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(location, "location");
+        Objects.requireNonNull(location, FIELD_LOCATION);
     }
 
     /**

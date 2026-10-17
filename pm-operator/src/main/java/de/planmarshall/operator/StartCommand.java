@@ -48,6 +48,8 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class StartCommand implements Callable<Integer> {
 
+    private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
+
     @Spec
     CommandSpec spec = CommandSpec.create();
 
@@ -112,7 +114,7 @@ public final class StartCommand implements Callable<Integer> {
 
             var request = new StartPlanRequest(projectId, prompt, recipe, parameters, documents, issue,
                                 title);
-            var response = post(context, "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId)
+            var response = post(context, PATH_PROJECTS_PREFIX + OperatorUrlUtil.encodePathSegment(projectId)
                                 + "/plans/start", request.toJson());
             return printResult(out, "start plan", response);
         }
@@ -163,7 +165,7 @@ public final class StartCommand implements Callable<Integer> {
             var auto = noAuto ? Boolean.FALSE : autoStart;
 
             var request = new StartEpicRequest(projectId, prompt, auto, title);
-            var response = post(context, "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId)
+            var response = post(context, PATH_PROJECTS_PREFIX + OperatorUrlUtil.encodePathSegment(projectId)
                                 + "/epics/start", request.toJson());
             return printResult(out, "start epic", response);
         }
@@ -210,7 +212,7 @@ public final class StartCommand implements Callable<Integer> {
 
             var request = new StartPlanRequest(projectId, null, recipeKey, parameters, List.of(), null,
                                 title);
-            var response = post(context, "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId)
+            var response = post(context, PATH_PROJECTS_PREFIX + OperatorUrlUtil.encodePathSegment(projectId)
                                 + "/plans/start", request.toJson());
             return printResult(out, "start recipe", response);
         }

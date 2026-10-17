@@ -54,7 +54,7 @@ public record PlanStartResult(
     public PlanStartResult {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(title, FIELD_TITLE);
         state = state == null || state.isBlank() ? STATE_STARTED : state;
     }
 

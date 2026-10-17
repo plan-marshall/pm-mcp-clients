@@ -204,6 +204,7 @@ class StartScenarioTest {
             try {
                 return RecipeRef.fromMap(JsonTree.asObject(item));
             }
+            /*Note: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             catch (Exception e) {
                 throw new IllegalStateException(e);

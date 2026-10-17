@@ -10,7 +10,6 @@
 package de.planmarshall.api.start;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -140,12 +139,6 @@ public record StartPlanRequest(
         if (raw == null) {
             return List.of();
         }
-        var result = new ArrayList<String>(raw.size());
-        for (var item : raw) {
-            if (item != null) {
-                result.add(String.valueOf(item));
-            }
-        }
-        return result;
+        return raw.stream().filter(Objects::nonNull).map(String::valueOf).toList();
     }
 }
