@@ -22,6 +22,7 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.ActivityEntryKind;
 import de.planmarshall.api.process.EpicProcess;
 import de.planmarshall.api.process.NodeState;
@@ -159,7 +160,14 @@ class PlanViewScenarioTest {
             try (var exchange = client.open(HttpRequest.get("/api/v1/plans/fix-relay/tasks/TASK-003/activity/events")
                          .withHeader("Authorization", auth))) {
                 assertTrue(exchange.isEventStream());
-                assertNotNull(exchange.events());
+                var sse = exchange.events();
+                assertNotNull(sse);
+                var event = sse.next();
+                assertNotNull(event);
+                assertEquals("task.activity", event.event());
+                var eventData = JsonTree.asObject(JsonTree.parse(event.data()));
+                assertEquals("assistant_text", JsonTree.string(eventData, "kind"));
+                assertTrue(JsonTree.string(eventData, "text").contains("Analyzing"));
             }
         }
     }
@@ -176,6 +184,12 @@ class PlanViewScenarioTest {
             assertEquals(200, res.status());
             var tree = ProcessTree.fromJson(new String(res.body()));
             assertEquals("dynamic-custom-plan", tree.planId());
+
+            var actRes = client.send(HttpRequest.get("/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, actRes.status());
+            var act = TaskActivity.fromJson(new String(actRes.body()));
+            assertEquals("TASK-042", act.taskId());
 
             var epicRes = client.send(HttpRequest.get("/api/v1/epics/dynamic-custom-epic/process")
                     .withHeader("Authorization", auth));

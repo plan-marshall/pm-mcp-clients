@@ -179,7 +179,21 @@ class PlanViewCommandTest {
                             () -> assertTrue(output.contains("▶ running   phase execute")),
                             () -> assertTrue(output.contains("○ planned   phase finalize")),
                             // Sub-nodes
-                            () -> assertTrue(output.contains("envelope-ready"))
+                            () -> assertTrue(output.contains("envelope-ready")),
+                            // Leaf tasks beneath node
+                            () -> assertTrue(output.contains("TASK-001 (implement)")),
+                            () -> assertTrue(output.contains("TASK-003 (implement)"))
+        );
+    }
+
+    @Test
+    @DisplayName("formats durations correctly for sub-minute, minute, and multi-hour intervals")
+    void shouldFormatPlanDurationsCorrectly() {
+        assertAll(
+                            () -> assertEquals("0 s", PlanCommand.formatPlanDuration(0)),
+                            () -> assertEquals("45 s", PlanCommand.formatPlanDuration(45)),
+                            () -> assertEquals("2 min", PlanCommand.formatPlanDuration(120)),
+                            () -> assertEquals("1 h 1 min", PlanCommand.formatPlanDuration(3660))
         );
     }
 

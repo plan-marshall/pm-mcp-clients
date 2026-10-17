@@ -330,14 +330,52 @@ public final class PlanCommand implements Callable<Integer> {
             out.printf("%s%s %s %s%n", indent, glyph, stateCol, titleCol);
         }
 
+        if ((level + 1) <= maxDepth && !node.leafTasks().isEmpty()) {
+            var taskIndent = "  ".repeat(level + 1);
+            for (var task : node.leafTasks()) {
+                var taskGlyph = getTaskGlyph(task.status());
+                var taskStateCol = String.format("%-9s", task.status());
+                var taskDesc = OutputSafety.stripControlSequences(task.taskId() + " (" + task.role() + ")");
+                var taskInfoParts = new ArrayList<String>();
+                if (task.durationSeconds() > 0) {
+                    taskInfoParts.add(formatPlanDuration(task.durationSeconds()));
+                }
+                if (task.offTrack() != null) {
+                    taskInfoParts.add("off-track: " + OutputSafety.stripControlSequences(task.offTrack().signal()));
+                }
+                var taskInfo = String.join(" · ", taskInfoParts);
+                if (!taskInfo.isEmpty()) {
+                    out.printf("%s%s %s %-30s %s%n", taskIndent, taskGlyph, taskStateCol, taskDesc, taskInfo);
+                } else {
+                    out.printf("%s%s %s %s%n", taskIndent, taskGlyph, taskStateCol, taskDesc);
+                }
+            }
+        }
+
         if (level < maxDepth && !node.subNodes().isEmpty()) {
             renderNodes(out, node.subNodes(), level + 1, maxDepth);
         }
     }
 
+    private static String getTaskGlyph(@Nullable String status) {
+        if (status == null) {
+            return "○";
+        }
+        return switch (status.toLowerCase()) {
+            case "done", "submitted" -> "✓";
+            case "running" -> "▶";
+            case "waiting", "waiting_for_you" -> "!";
+            case "failed" -> "✗";
+            default -> "○";
+        };
+    }
+
     static String formatPlanDuration(long seconds) {
         if (seconds <= 0) {
-            return "0 min";
+            return "0 s";
+        }
+        if (seconds < 60) {
+            return seconds + " s";
         }
         long hours = seconds / 3600;
         long mins = (seconds % 3600) / 60;

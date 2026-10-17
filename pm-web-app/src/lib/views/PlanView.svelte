@@ -95,6 +95,11 @@
           const runningTask = findRunningTask(res.nodes);
           if (runningTask) {
             selectedTaskId = runningTask.task_id;
+          } else {
+            const firstTask = findFirstTask(res.nodes);
+            if (firstTask) {
+              selectedTaskId = firstTask.task_id;
+            }
           }
         }
       }
@@ -110,10 +115,22 @@
       if (node.leaf_tasks && node.leaf_tasks.length > 0) {
         const running = node.leaf_tasks.find((t) => t.status === 'running');
         if (running) return running;
-        return node.leaf_tasks[0];
       }
       if (node.sub_nodes && node.sub_nodes.length > 0) {
         const found = findRunningTask(node.sub_nodes);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function findFirstTask(nodes: ProcessNode[]): LeafTask | null {
+    for (const node of nodes) {
+      if (node.leaf_tasks && node.leaf_tasks.length > 0) {
+        return node.leaf_tasks[0];
+      }
+      if (node.sub_nodes && node.sub_nodes.length > 0) {
+        const found = findFirstTask(node.sub_nodes);
         if (found) return found;
       }
     }

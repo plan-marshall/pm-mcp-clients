@@ -269,4 +269,64 @@ describe('PlanView component', () => {
     const stateAfterBack = get(runtimeStore);
     expect(stateAfterBack.currentRoute).toBe('overview');
   });
+
+  it('selects running task over earlier completed task on initial load', async () => {
+    runtimeStore.update((s) => ({ ...s, selectedTaskId: null }));
+
+    const planWithMultipleTasks: ProcessTree = {
+      ...mockPlan,
+      nodes: [
+        {
+          node_id: 'phase-1',
+          title: 'phase-1',
+          kind: 'phase',
+          state: 'done',
+          run_count: 1,
+          current_run: 1,
+          duration_seconds: 60,
+          sub_nodes: [],
+          leaf_tasks: [
+            {
+              task_id: 'TASK-001',
+              role: 'setup',
+              harness: 'claude',
+              model: 'sonnet',
+              attempt: 1,
+              status: 'done',
+              duration_seconds: 60,
+              tokens_so_far: 1000,
+            },
+          ],
+        },
+        {
+          node_id: 'phase-2',
+          title: 'phase-2',
+          kind: 'phase',
+          state: 'running',
+          run_count: 1,
+          current_run: 1,
+          duration_seconds: 120,
+          sub_nodes: [],
+          leaf_tasks: [
+            {
+              task_id: 'TASK-002',
+              role: 'implement',
+              harness: 'claude',
+              model: 'sonnet',
+              attempt: 1,
+              status: 'running',
+              duration_seconds: 120,
+              tokens_so_far: 5000,
+            },
+          ],
+        },
+      ],
+    };
+
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithMultipleTasks);
+    render(PlanView);
+
+    await screen.findByTestId('plan-title');
+    expect(apiClient.getTaskActivity).toHaveBeenCalledWith('fix-relay', 'TASK-002');
+  });
 });

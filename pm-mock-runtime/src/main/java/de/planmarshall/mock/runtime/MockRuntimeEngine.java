@@ -1363,6 +1363,33 @@ public final class MockRuntimeEngine implements AutoCloseable {
         activeStreams.remove(stream);
     }
 
+    private void handleTaskActivityEventStream(MockHttpResponse response) throws IOException {
+        var stream = response.events(200);
+        activeStreams.add(stream);
+        try {
+            stream.sendComment("connected to mock runtime");
+            stream.sendJson("task.activity", Map.of(
+                    "kind", "assistant_text",
+                    "text", "Analyzing module dependencies...",
+                    "tokens", 450,
+                    "timestamp", Instant.now().toString()
+            ));
+        } catch (IOException _) {
+            activeStreams.remove(stream);
+            return;
+        }
+
+        while (!closed && !stream.isClosed()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        activeStreams.remove(stream);
+    }
+
     private void handleControlRequest(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         if ("/mock/state".equals(path) && "GET".equals(request.method())) {
@@ -3125,15 +3152,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 2. Dynamic plan task activity events SSE stream
         if (isPlanActivityEvents) {
-            handleEventStream(response);
+            handleTaskActivityEventStream(response);
             return true;
         }
 
         // 3. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity
         if (isPlanActivity) {
             var parts = path.split("/");
-            if (parts.length >= 7 && "tasks".equals(parts[4])) {
-                var taskId = parts[5];
+            if (parts.length >= 7 && "tasks".equals(parts[5])) {
+                var taskId = parts[6];
                 var defaultRoute = currentScenario.get().route("GET", "/api/v1/plans/fix-relay/tasks/TASK-003/activity");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
                     var copy = new LinkedHashMap<String, Object>();
