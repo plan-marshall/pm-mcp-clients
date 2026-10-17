@@ -37,6 +37,7 @@ export interface RuntimeState {
     | 'projects'
     | 'plan'
     | 'epic'
+    | 'decomposition'
     | 'machine-settings';
   currentState: StateRepresentation | null;
   onboarding?: OnboardingState | null;
@@ -60,6 +61,7 @@ export interface RuntimeState {
   projectEventNotice?: string | null;
   selectedPlanId?: string | null;
   selectedEpicId?: string | null;
+  selectedProjectId?: string | null;
   selectedTaskId?: string | null;
 }
 
@@ -90,6 +92,7 @@ const initialState: RuntimeState = {
   projectEventNotice: null,
   selectedPlanId: null,
   selectedEpicId: null,
+  selectedProjectId: null,
   selectedTaskId: null,
 };
 
@@ -483,5 +486,14 @@ export function openEpicView(epicId: string): void {
     ...s,
     currentRoute: 'epic',
     selectedEpicId: epicId,
+  }));
+}
+
+export function openEpicDecomposition(epicId: string, projectId: string): void {
+  runtimeStore.update((s) => ({
+    ...s,
+    currentRoute: 'decomposition',
+    selectedEpicId: epicId,
+    selectedProjectId: projectId,
   }));
 }

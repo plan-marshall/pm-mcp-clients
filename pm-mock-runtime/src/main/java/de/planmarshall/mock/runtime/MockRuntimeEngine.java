@@ -59,6 +59,16 @@ import de.planmarshall.api.decision.QuorumBand;
 import de.planmarshall.api.decision.QuorumSupport;
 import de.planmarshall.api.decision.QuorumVote;
 import de.planmarshall.api.decision.Reversibility;
+import de.planmarshall.api.decomposition.CheckSeverity;
+import de.planmarshall.api.decomposition.DecompositionCheckFinding;
+import de.planmarshall.api.decomposition.DecompositionCommitResult;
+import de.planmarshall.api.decomposition.DecompositionInstructRequest;
+import de.planmarshall.api.decomposition.DecompositionState;
+import de.planmarshall.api.decomposition.DecompositionValidator;
+import de.planmarshall.api.decomposition.EpicDecomposition;
+import de.planmarshall.api.decomposition.InstructAction;
+import de.planmarshall.api.decomposition.StagedPlanRecord;
+import de.planmarshall.api.decomposition.WorkstreamRecord;
 import de.planmarshall.api.designer.WorkflowUnit;
 import de.planmarshall.api.designer.WorkflowValidationRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -241,6 +251,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_PLAN_STARTED = "plan.started";
     private static final String EVENT_EPIC_STARTED = "epic.started";
     private static final String EVENT_INTAKE_CREATED = "intake.created";
+    private static final String SEGMENT_EPICS = "/epics/";
+    private static final String PATH_DECOMPOSITION = "/decomposition";
+    private static final String SUFFIX_DECOMPOSITION_CHECK = "/decomposition/check";
+    private static final String SUFFIX_DECOMPOSITION_INSTRUCT = "/decomposition/instruct";
+    private static final String SUFFIX_DECOMPOSITION_COMMIT = "/decomposition/commit";
+    private static final String EVENT_DECOMPOSITION_UPDATED = "epic.decomposition_updated";
+    private static final String EVENT_EPIC_LAUNCHABLE = "epic.launchable";
+    private static final String ERR_EPIC_NOT_FOUND = "epic_not_found";
+    private static final String ERR_CHECKS_FAIL = "checks_fail";
+    private static final String ERR_PLAN_NOT_FOUND = "plan_not_found";
+    private static final String CONST_EPIC_RELAY_HARDENING = "relay-hardening";
+    private static final String CONST_EPIC_STORAGE_MIGRATION = "storage-migration";
+    private static final String CONST_PLAN_RELAY_AUTH_V2 = "relay-auth-v2";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
@@ -372,6 +395,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, Integer> controlSettingsRevisions = new LinkedHashMap<>();
     private final Map<String, Map<String, PlanSettingsValue>> controlSettings = new LinkedHashMap<>();
 
+    private final Object decompositionLock = new Object();
+    private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
+
     /**
      * @param registry     the scenario registry
      * @param scenario     the initial scenario
@@ -408,6 +434,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultControl();
         initDefaultOnboarding();
         initDefaultStart();
+        initDefaultDecomposition();
         initDefaultLessonSource();
         designer.init(scenario);
         transitionTo(scenario.start());
@@ -425,6 +452,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultControl();
         initDefaultOnboarding();
         initDefaultStart();
+        initDefaultDecomposition();
         initDefaultLessonSource();
         designer.init(currentScenario.get());
         transitionTo(currentScenario.get().start());
@@ -581,6 +609,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleDecisionRoutes(request, response, isWeb)
                 || handleSystemRoutes(request, response, isWeb)
                 || handleProcessRoutes(request, response)
+                || handleDecompositionRoutes(request, response)
                 || handleGitSourceRoutes(request, response)
                 || handleStartRoutes(request, response)
                 || handleLessonSourceRoutes(request, response)
@@ -1660,6 +1689,311 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return new LessonSeed(lessonId, title, summary, recordedAt, citingPlanId, symbolsCited, evidence,
                     premiseUnavailable, premiseCause, claimedBy, true);
         }
+    }
+
+    private void initDefaultDecomposition() {
+        synchronized (decompositionLock) {
+            decompositions.clear();
+            decompositions.put(CONST_EPIC_RELAY_HARDENING, relayHardeningCut());
+            decompositions.put(CONST_EPIC_STORAGE_MIGRATION, storageMigrationCut());
+        }
+    }
+
+    private static EpicDecomposition relayHardeningCut() {
+        var reconnectBackoff = new StagedPlanRecord("relay-reconnect-backoff", "relay-reconnect-backoff",
+                "reconnect the relay with backoff", List.of("pm-relay/src/reconnect"), List.of(),
+                StagedPlanRecord.STATUS_STAGED);
+        var cursorOrder = new StagedPlanRecord("relay-cursor-order", "relay-cursor-order",
+                "order the cursors across the nodes",
+                List.of("pm-relay/src/cursor", "pm-api/src/cursor"), List.of("relay-reconnect-backoff"),
+                StagedPlanRecord.STATUS_STAGED);
+        var authV2 = new StagedPlanRecord(CONST_PLAN_RELAY_AUTH_V2, CONST_PLAN_RELAY_AUTH_V2,
+                "a token exchange the relay renews by itself", List.of("pm-api/src/cursor"), List.of(),
+                StagedPlanRecord.STATUS_STAGED);
+        var tokenRotation = new StagedPlanRecord("relay-token-rotation", "relay-token-rotation",
+                "rotate the relay token", List.of("pm-relay/src/token"), List.of(CONST_PLAN_RELAY_AUTH_V2),
+                StagedPlanRecord.STATUS_STAGED);
+        return new EpicDecomposition(CONST_EPIC_RELAY_HARDENING, DecompositionState.DRAFT, 3,
+                List.of(new WorkstreamRecord("WS-1", "Reconnect", "the reconnect work", 1,
+                                List.of(reconnectBackoff, cursorOrder)),
+                        new WorkstreamRecord("WS-2", "Authentication", "the token work", 2,
+                                List.of(authV2, tokenRotation))),
+                List.of());
+    }
+
+    private static EpicDecomposition storageMigrationCut() {
+        var schema = new StagedPlanRecord("storage-schema", "storage-schema", "the new schema",
+                List.of("pm-api/src/store"), List.of("storage-migrate"), StagedPlanRecord.STATUS_STAGED);
+        var migrate = new StagedPlanRecord("storage-migrate", "storage-migrate", "migrate the store",
+                List.of("pm-relay/src/store"), List.of("storage-schema"), StagedPlanRecord.STATUS_STAGED);
+        return new EpicDecomposition(CONST_EPIC_STORAGE_MIGRATION, DecompositionState.DRAFT, 1,
+                List.of(new WorkstreamRecord("WS-1", "Storage", "the store work", 1, List.of(schema, migrate))),
+                List.of());
+    }
+
+    private boolean handleDecompositionRoutes(MockHttpRequest request, MockHttpResponse response)
+            throws IOException {
+        var path = request.path();
+        if (!path.startsWith(PREFIX_PROJECTS)) {
+            return false;
+        }
+        var action = "";
+        var base = path;
+        for (var candidate : List.of(SUFFIX_DECOMPOSITION_CHECK, SUFFIX_DECOMPOSITION_INSTRUCT,
+                SUFFIX_DECOMPOSITION_COMMIT)) {
+            if (path.endsWith(candidate)) {
+                action = candidate.substring(PATH_DECOMPOSITION.length() + 1);
+                base = path.substring(0, path.length() - candidate.length());
+                break;
+            }
+        }
+        if (action.isEmpty()) {
+            if (!path.endsWith(PATH_DECOMPOSITION)) {
+                return false;
+            }
+            base = path.substring(0, path.length() - PATH_DECOMPOSITION.length());
+        }
+        var rest = base.substring(PREFIX_PROJECTS.length());
+        var marker = rest.indexOf(SEGMENT_EPICS);
+        if (marker < 0) {
+            return false;
+        }
+        var projectId = rest.substring(0, marker);
+        var epicId = rest.substring(marker + SEGMENT_EPICS.length());
+        if (projectId.isBlank() || epicId.isBlank()) {
+            response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND, KEY_MESSAGE, "No epic in the request"));
+            return true;
+        }
+        if (!Set.of(CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CORE).contains(projectId)) {
+            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "Unknown project: " + projectId));
+            return true;
+        }
+        switch (action) {
+            case "" -> {
+                if (!"GET".equals(request.method())) {
+                    return false;
+                }
+                handleGetDecomposition(response, projectId, epicId);
+            }
+            case "check" -> {
+                if (!"POST".equals(request.method())) {
+                    return false;
+                }
+                handleCheckDecomposition(response, projectId, epicId);
+            }
+            case "instruct" -> {
+                if (!"POST".equals(request.method())) {
+                    return false;
+                }
+                handleInstructDecomposition(request, response, projectId, epicId);
+            }
+            case "commit" -> {
+                if (!"POST".equals(request.method())) {
+                    return false;
+                }
+                handleCommitDecomposition(response, projectId, epicId);
+            }
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void handleGetDecomposition(MockHttpResponse response, String projectId, String epicId)
+            throws IOException {
+        synchronized (decompositionLock) {
+            var decomposition = decompositions.get(epicId);
+            if (decomposition == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                return;
+            }
+            // The cut is served with the findings of its current shape, so both clients show the
+            // conflicts before the operator agrees; the check endpoint persists them.
+            var withFindings = new EpicDecomposition(epicId, decomposition.status(), decomposition.revision(),
+                    decomposition.workstreams(), DecompositionValidator.validate(decomposition.workstreams()));
+            response.json(200, withFindings.toMap());
+        }
+    }
+
+    private void handleCheckDecomposition(MockHttpResponse response, String projectId, String epicId)
+            throws IOException {
+        synchronized (decompositionLock) {
+            var current = decompositions.get(epicId);
+            if (current == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                return;
+            }
+            var findings = DecompositionValidator.validate(current.workstreams());
+            var status = findings.isEmpty() ? DecompositionState.REVIEW : DecompositionState.CHECK;
+            var updated = new EpicDecomposition(epicId, status, current.revision(), current.workstreams(),
+                    findings);
+            decompositions.put(epicId, updated);
+            broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
+                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "status", status.wireValue()));
+            response.json(200, updated.toMap());
+        }
+    }
+
+    private void handleInstructDecomposition(MockHttpRequest request, MockHttpResponse response, String projectId,
+                                             String epicId) throws IOException {
+        var bodyMap = readBodyObject(request);
+        DecompositionInstructRequest instruct;
+        try {
+            instruct = DecompositionInstructRequest.fromMap(bodyMap);
+        }
+        catch (IOException | IllegalArgumentException _) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+                    "The instruction could not be read"));
+            return;
+        }
+        synchronized (decompositionLock) {
+            var current = decompositions.get(epicId);
+            if (current == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                return;
+            }
+            EpicDecomposition updated;
+            if (instruct.action() == InstructAction.ADD) {
+                updated = applyAdd(current, instruct);
+            } else {
+                var targetId = instruct.planId() != null ? instruct.planId() : firstOpenPlanId(current);
+                if (targetId == null || current.plan(targetId) == null) {
+                    response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
+                            KEY_MESSAGE, "No plan to change: " + instruct.planId()));
+                    return;
+                }
+                updated = applyRewrite(current, targetId, instruct.instruction());
+            }
+            decompositions.put(epicId, updated);
+            broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
+                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "status", updated.status().wireValue()));
+            response.json(200, updated.toMap());
+        }
+    }
+
+    private static EpicDecomposition applyRewrite(EpicDecomposition current, String planId, String instruction) {
+        var workstreams = new ArrayList<WorkstreamRecord>();
+        for (var workstream : current.workstreams()) {
+            var plans = new ArrayList<StagedPlanRecord>();
+            for (var plan : workstream.stagedPlans()) {
+                plans.add(plan.planId().equals(planId) ? rewritePlan(plan, instruction) : plan);
+            }
+            workstreams.add(new WorkstreamRecord(workstream.id(), workstream.name(), workstream.description(),
+                    workstream.order(), plans));
+        }
+        return new EpicDecomposition(current.epicId(), DecompositionState.READ_BACK, current.revision(),
+                workstreams, current.findings());
+    }
+
+    private static EpicDecomposition applyAdd(EpicDecomposition current, DecompositionInstructRequest instruct) {
+        var workstreams = new ArrayList<WorkstreamRecord>(current.workstreams());
+        if (workstreams.isEmpty()) {
+            workstreams.add(new WorkstreamRecord("WS-1", "New work", null, 1, List.of()));
+        }
+        var lastIndex = workstreams.size() - 1;
+        var last = workstreams.get(lastIndex);
+        var planId = uniqueAddedPlanId(current, instruct.instruction());
+        var newPlan = new StagedPlanRecord(planId, planId, instruct.instruction(),
+                surfaceHint(instruct.instruction(), planId), List.of(), StagedPlanRecord.STATUS_NEW);
+        var plans = new ArrayList<>(last.stagedPlans());
+        plans.add(newPlan);
+        workstreams.set(lastIndex, new WorkstreamRecord(last.id(), last.name(), last.description(),
+                last.order(), plans));
+        return new EpicDecomposition(current.epicId(), DecompositionState.READ_BACK, current.revision(),
+                workstreams, current.findings());
+    }
+
+    private static StagedPlanRecord rewritePlan(StagedPlanRecord plan, String instruction) {
+        var surface = surfaceHint(instruction, plan.planId());
+        var resulting = surface.isEmpty() ? plan.expectedSurface() : surface;
+        return new StagedPlanRecord(plan.planId(), plan.title(), instruction, resulting, plan.dependencies(),
+                StagedPlanRecord.STATUS_CHANGED);
+    }
+
+    private static List<String> surfaceHint(String instruction, String planId) {
+        if (instruction == null) {
+            return List.of();
+        }
+        String chosen = null;
+        var lastIndex = -1;
+        for (var module : List.of("pm-api", "pm-relay", "pm-mcp-clients", "pm-mcp-core")) {
+            var index = instruction.lastIndexOf(module);
+            if (index > lastIndex) {
+                lastIndex = index;
+                chosen = module;
+            }
+        }
+        return chosen == null ? List.of() : List.of(chosen + "/src/" + planId);
+    }
+
+    private static String uniqueAddedPlanId(EpicDecomposition current, String instruction) {
+        var base = instruction != null && instruction.contains("docs") ? "relay-docs" : "relay-plan";
+        var candidate = base;
+        var suffix = 1;
+        while (current.plan(candidate) != null) {
+            suffix++;
+            candidate = base + "-" + suffix;
+        }
+        return candidate;
+    }
+
+    private static String firstOpenPlanId(EpicDecomposition current) {
+        for (var workstream : current.workstreams()) {
+            for (var plan : workstream.stagedPlans()) {
+                if (!plan.isDropped() && !plan.isLocked()) {
+                    return plan.planId();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void handleCommitDecomposition(MockHttpResponse response, String projectId, String epicId)
+            throws IOException {
+        synchronized (decompositionLock) {
+            var current = decompositions.get(epicId);
+            if (current == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                return;
+            }
+            var findings = DecompositionValidator.validate(current.workstreams());
+            if (findings.stream().anyMatch(finding -> finding.severity() == CheckSeverity.ERROR)) {
+                response.json(409, Map.of(KEY_ERROR, ERR_CHECKS_FAIL, KEY_PROJECT_ID, projectId,
+                        "epic_id", epicId, FIELD_FINDINGS,
+                        findings.stream().map(DecompositionCheckFinding::toMap).toList()));
+                return;
+            }
+            var revision = current.revision() + 1;
+            var committed = new EpicDecomposition(epicId, DecompositionState.COMMIT, revision,
+                    current.workstreams(), findings);
+            decompositions.put(epicId, committed);
+            var launchable = committed.stagedPlanCount();
+            broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
+                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "status",
+                    DecompositionState.COMMIT.wireValue()));
+            broadcastEvent(EVENT_EPIC_LAUNCHABLE, Map.of(KEY_EVENT, EVENT_EPIC_LAUNCHABLE,
+                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "plans", launchablePlanIds(committed),
+                    "count", launchable));
+            response.json(200, new DecompositionCommitResult(DecompositionCommitResult.STATUS_COMMITTED,
+                    revision, launchable).toMap());
+        }
+    }
+
+    private static List<String> launchablePlanIds(EpicDecomposition decomposition) {
+        var ids = new ArrayList<String>();
+        for (var workstream : decomposition.workstreams()) {
+            for (var plan : workstream.stagedPlans()) {
+                if (plan.dependencies().isEmpty()) {
+                    ids.add(plan.planId());
+                }
+            }
+        }
+        return ids;
     }
 
     private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {

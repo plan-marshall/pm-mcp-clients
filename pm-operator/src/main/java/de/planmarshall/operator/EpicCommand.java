@@ -38,7 +38,9 @@ import picocli.CommandLine.Spec;
                                         EpicCommand.AddCommand.class,
                                         EpicCommand.NextCommand.class,
                                         EpicCommand.AutoCommand.class,
-                                        EpicCommand.DecomposeCommand.class,
+                                        DecomposeCommand.class,
+                                        ReviewCommand.class,
+                                        InstructCommand.class,
                                         EpicCommand.ArchiveCommand.class,
                                         EpicCommand.FindingsCommand.class,
                                         EpicCommand.WatchesCommand.class,
@@ -317,43 +319,6 @@ public final class EpicCommand implements Callable<Integer> {
                 return 0;
             }
             throw new OperatorRefusedException("epic auto", response);
-        }
-    }
-
-    @Command(name = "decompose", description = "Decomposes the epic again with review.")
-    @OperatorVerb
-    static final class DecomposeCommand implements Callable<Integer> {
-        @Spec
-        CommandSpec spec = CommandSpec.create();
-        private final OperatorContext context;
-
-        @Parameters(index = "0", description = "Epic ID")
-        String epicId = "";
-
-        @Option(names = "--instruction", description = "Decomposition instruction")
-        @Nullable
-        String instruction;
-
-        DecomposeCommand(OperatorContext context) {
-            this.context = context;
-        }
-
-        @Override
-        public Integer call() throws IOException {
-            context.gate().verify();
-            var out = spec.commandLine().getOut();
-            var payload = new LinkedHashMap<String, Object>();
-            if (instruction != null) payload.put("instruction", instruction);
-
-            var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/decompose";
-            var response = context.runtime(true).send(
-                                HttpRequest.json("POST", path, JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 202) {
-                out.printf("✓ %s decomposing%n", epicId);
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("epic decompose", response);
         }
     }
 

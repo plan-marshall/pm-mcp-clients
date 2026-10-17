@@ -120,6 +120,12 @@ public final class StandardScenarios {
     public static final String GIT_SOURCES = "git_sources";
 
     /**
+     * Epic decomposition: the workstreams and staged plans, the surface and dependency checks, the
+     * operator's instruction with read-back, and the commit (UC-STA-6).
+     */
+    public static final String DECOMPOSITION = "decomposition";
+
+    /**
      * The process designer: installed units at every level, the catalogue of building blocks,
      * validation findings, placing, and removing (UC-PLN-3).
      */
@@ -146,6 +152,7 @@ public final class StandardScenarios {
             START,
             LESSON_SOURCE,
             GIT_SOURCES,
+            DECOMPOSITION,
             DESIGNER
     );
 }

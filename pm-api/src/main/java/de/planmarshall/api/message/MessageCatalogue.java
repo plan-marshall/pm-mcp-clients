@@ -55,6 +55,7 @@ public final class MessageCatalogue {
             "start",
             "lesson_source",
             "git_sources",
+            "decomposition",
             "operator"
     );
 
