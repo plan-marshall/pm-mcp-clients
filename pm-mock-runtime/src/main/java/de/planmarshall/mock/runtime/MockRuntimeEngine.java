@@ -126,6 +126,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_TERMINAL = "terminal";
     private static final String KEY_COUNT = "count";
     private static final String KEY_MARKED_COUNT = "marked_count";
+    private static final String CONST_PLAN_MARSHALL = "plan-marshall";
+    private static final String STEP_IDENTITY = "Identity";
+    private static final String SUFFIX_ABANDON = "/abandon";
+    private static final String ERR_PROJECT_NOT_FOUND = "project_not_found";
+    private static final String EVENT_PROJECT_CHANGED = "project.changed";
+    private static final String KEY_PROJECT_ID = "project_id";
+    private static final String KEY_EVENT = "event";
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -323,7 +330,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 3a. Dynamic project explorer and onboarding routes (UC-PRJ-1..3)
-        if (handleProjectExplorerRoutes(request, response, isWeb)) {
+        if (handleProjectExplorerRoutes(request, response)) {
             return;
         }
 
@@ -1574,13 +1581,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             favouriteProjectIds.clear();
             beingAddedProjects.clear();
 
-            favouriteProjectIds.add("pm-mcp-clients");
-            favouriteProjectIds.add("pm-mcp-core");
+            favouriteProjectIds.add(CONST_PM_MCP_CLIENTS);
+            favouriteProjectIds.add(CONST_PM_MCP_CORE);
 
             enrolledProjects.add(new EnrolledProject(
-                    "pm-mcp-clients",
-                    "plan-marshall/pm-mcp-clients",
-                    "https://github.com/plan-marshall/pm-mcp-clients",
+                    CONST_PM_MCP_CLIENTS,
+                    "plan-marshall/" + CONST_PM_MCP_CLIENTS,
+                    "https://github.com/plan-marshall/" + CONST_PM_MCP_CLIENTS,
                     ProjectReadiness.READY,
                     "decision",
                     2,
@@ -1591,9 +1598,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     false
             ));
             enrolledProjects.add(new EnrolledProject(
-                    "pm-mcp-core",
-                    "plan-marshall/pm-mcp-core",
-                    "https://github.com/plan-marshall/pm-mcp-core",
+                    CONST_PM_MCP_CORE,
+                    "plan-marshall/" + CONST_PM_MCP_CORE,
+                    "https://github.com/plan-marshall/" + CONST_PM_MCP_CORE,
                     ProjectReadiness.READY,
                     null,
                     0,
@@ -1604,9 +1611,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     false
             ));
             enrolledProjects.add(new EnrolledProject(
-                    "plan-marshall",
-                    "plan-marshall",
-                    "https://github.com/plan-marshall/plan-marshall",
+                    CONST_PLAN_MARSHALL,
+                    CONST_PLAN_MARSHALL,
+                    "https://github.com/plan-marshall/" + CONST_PLAN_MARSHALL,
                     ProjectReadiness.SETUP_NEEDS,
                     "credential sonar",
                     1,
@@ -1658,130 +1665,133 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             beingAddedProjects.add(new BeingAddedProject(
                     "~/git/cui-parent",
-                    "Identity",
+                    STEP_IDENTITY,
                     2,
                     10,
                     "/api/v1/entries/ent-cui/continue",
-                    "/api/v1/entries/ent-cui/abandon"
+                    "/api/v1/entries/ent-cui" + SUFFIX_ABANDON
             ));
         }
     }
 
-    private boolean handleProjectExplorerRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+    private boolean handleProjectExplorerRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         var method = request.method();
 
-        if ("GET".equals(method)) {
-            if ("/api/v1/projects".equals(path) || "/api/v1/explorer".equals(path)) {
-                if ("/api/v1/explorer".equals(path)
-                        || (request.query() != null && request.query().contains("all"))
-                        || StandardScenarios.PROJECTS.equals(currentScenario.get().name())) {
-                    handleGetProjectsExplorer(request, response);
-                    return true;
-                }
-            }
-            if (StandardScenarios.PROJECTS.equals(currentScenario.get().name())
-                    && path.startsWith("/api/v1/projects/")
-                    && !path.endsWith("/ended")
-                    && !path.endsWith("/events")) {
-                var prjId = path.substring("/api/v1/projects/".length());
-                if (!prjId.contains("/")) {
-                    handleGetSingleProject(response, prjId);
-                    return true;
-                }
-            }
-            if ("/api/v1/project-onboardings".equals(path)) {
-                handleListProjectOnboardings(response);
+        return switch (method) {
+            case "GET" -> handleProjectExplorerGet(request, response, path);
+            case "PUT" -> handleProjectExplorerPut(request, response, path);
+            case "POST" -> handleProjectExplorerPost(request, response, path);
+            case METHOD_DELETE -> handleProjectExplorerDelete(response, path);
+            default -> false;
+        };
+    }
+
+    private boolean handleProjectExplorerGet(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
+        if ("/api/v1/explorer".equals(path)
+                || ("/api/v1/projects".equals(path)
+                && ((request.query() != null && request.query().contains("all"))
+                || StandardScenarios.PROJECTS.equals(currentScenario.get().name())))) {
+            handleGetProjectsExplorer(response);
+            return true;
+        }
+        if (StandardScenarios.PROJECTS.equals(currentScenario.get().name())
+                && path.startsWith("/api/v1/projects/")
+                && !path.endsWith("/ended")
+                && !path.endsWith("/events")) {
+            var prjId = path.substring("/api/v1/projects/".length());
+            if (!prjId.contains("/")) {
+                handleGetSingleProject(response, prjId);
                 return true;
             }
-        } else if ("PUT".equals(method)) {
-            if ("/api/v1/explorer/favourites".equals(path)) {
-                handleUpdateFavourites(request, response);
-                return true;
-            }
-            if (path.startsWith("/api/v1/projects/") && path.endsWith("/favourite")) {
-                var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/favourite".length());
-                handleToggleProjectFavourite(request, response, prjId);
-                return true;
-            }
-        } else if ("POST".equals(method)) {
-            if ("/api/v1/project-onboardings".equals(path) || "/api/v1/projects".equals(path)) {
-                handleStartProjectOnboarding(request, response);
-                return true;
-            }
-            if (path.startsWith("/api/v1/projects/") && path.endsWith("/release")) {
-                var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/release".length());
-                handleReleaseProject(request, response, prjId);
-                return true;
-            }
-            if (path.startsWith("/api/v1/projects/") && path.endsWith("/unenrol")) {
-                var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/unenrol".length());
-                handleUnenrolProject(response, prjId);
-                return true;
-            }
-            if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
-                var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
-                handleSetupProject(request, response, prjId);
-                return true;
-            }
-        } else if (METHOD_DELETE.equals(method)) {
-            if (path.startsWith("/api/v1/project-onboardings/")) {
-                var onbId = path.substring("/api/v1/project-onboardings/".length());
-                handleAbandonProjectOnboarding(response, onbId);
-                return true;
-            }
-            if (path.startsWith("/api/v1/entries/") && path.endsWith("/abandon")) {
-                var entId = path.substring("/api/v1/entries/".length(), path.length() - "/abandon".length());
-                handleAbandonProjectOnboarding(response, entId);
-                return true;
-            }
+        }
+        if ("/api/v1/project-onboardings".equals(path)) {
+            handleListProjectOnboardings(response);
+            return true;
         }
         return false;
     }
 
-    private void handleGetProjectsExplorer(MockHttpRequest request, MockHttpResponse response) throws IOException {
+    private boolean handleProjectExplorerPut(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
+        if ("/api/v1/explorer/favourites".equals(path)) {
+            handleUpdateFavourites(request, response);
+            return true;
+        }
+        if (path.startsWith("/api/v1/projects/") && path.endsWith("/favourite")) {
+            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/favourite".length());
+            handleToggleProjectFavourite(request, response, prjId);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleProjectExplorerPost(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
+        if ("/api/v1/project-onboardings".equals(path) || "/api/v1/projects".equals(path)) {
+            handleStartProjectOnboarding(request, response);
+            return true;
+        }
+        if (path.startsWith("/api/v1/projects/") && path.endsWith("/release")) {
+            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/release".length());
+            handleReleaseProject(request, response, prjId);
+            return true;
+        }
+        if (path.startsWith("/api/v1/projects/") && path.endsWith("/unenrol")) {
+            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/unenrol".length());
+            handleUnenrolProject(response, prjId);
+            return true;
+        }
+        if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
+            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
+            handleSetupProject(response, prjId);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleProjectExplorerDelete(MockHttpResponse response, String path) throws IOException {
+        if (path.startsWith("/api/v1/project-onboardings/")) {
+            var onbId = path.substring("/api/v1/project-onboardings/".length());
+            handleAbandonProjectOnboarding(response, onbId);
+            return true;
+        }
+        if (path.startsWith("/api/v1/entries/") && path.endsWith(SUFFIX_ABANDON)) {
+            var entId = path.substring("/api/v1/entries/".length(), path.length() - SUFFIX_ABANDON.length());
+            handleAbandonProjectOnboarding(response, entId);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleGetProjectsExplorer(MockHttpResponse response) throws IOException {
         synchronized (projectsLock) {
-            var favs = new ArrayList<EnrolledProject>();
-            for (var favId : favouriteProjectIds) {
-                for (var p : enrolledProjects) {
-                    if (p.projectId().equals(favId)) {
-                        favs.add(p);
-                        break;
-                    }
-                }
-            }
+            var favs = favouriteProjectIds.stream()
+                    .flatMap(favId -> enrolledProjects.stream().filter(p -> p.projectId().equals(favId)))
+                    .toList();
 
-            var recents = new ArrayList<EnrolledProject>();
             var cutoff = Instant.parse("2026-09-17T00:00:00Z");
-            for (var p : enrolledProjects) {
-                if (!p.isFavourite() && !p.isReleased() && p.lastActive() != null && p.lastActive().isAfter(cutoff)) {
-                    recents.add(p);
-                }
-            }
-            recents.sort((a, b) -> {
-                if (a.lastActive() == null) return 1;
-                if (b.lastActive() == null) return -1;
-                return b.lastActive().compareTo(a.lastActive());
-            });
-            if (recents.size() > 5) {
-                recents = new ArrayList<>(recents.subList(0, 5));
-            }
+            var recents = enrolledProjects.stream()
+                    .filter(p -> !p.isFavourite() && !p.isReleased() && p.lastActive() != null && p.lastActive().isAfter(cutoff))
+                    .sorted((a, b) -> b.lastActive().compareTo(a.lastActive()))
+                    .limit(5)
+                    .toList();
 
-            var all = new ArrayList<>(enrolledProjects);
-            all.sort((a, b) -> a.displayName().compareToIgnoreCase(b.displayName()));
+            var all = enrolledProjects.stream()
+                    .sorted((a, b) -> a.displayName().compareToIgnoreCase(b.displayName()))
+                    .toList();
 
             var being = new ArrayList<>(beingAddedProjects);
 
             var explorer = new ProjectExplorer(favs, recents, all, being);
             var map = new LinkedHashMap<String, Object>(explorer.toMap());
-            var projectsList = new ArrayList<Map<String, Object>>();
-            for (var p : all) {
-                projectsList.add(p.toMap());
-            }
+            var projectsList = all.stream().map(EnrolledProject::toMap).toList();
             map.put("projects", projectsList);
 
             response.json(200, map);
         }
+    }
+
+    private static void sendProjectNotFound(MockHttpResponse response, String projectId) throws IOException {
+        response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "Project " + projectId + " not found"));
     }
 
     private void handleGetSingleProject(MockHttpResponse response, String projectId) throws IOException {
@@ -1796,64 +1806,56 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     return;
                 }
             }
-            response.json(404, Map.of(KEY_ERROR, "project_not_found", KEY_MESSAGE, "Project " + projectId + " not found"));
+            sendProjectNotFound(response, projectId);
         }
     }
 
     private void handleListProjectOnboardings(MockHttpResponse response) throws IOException {
         synchronized (projectsLock) {
-            var list = new ArrayList<Map<String, Object>>();
-            for (var b : beingAddedProjects) {
-                list.add(b.toMap());
-            }
+            var list = beingAddedProjects.stream().map(BeingAddedProject::toMap).toList();
             response.json(200, Map.of("onboardings", list));
         }
     }
 
     private void handleUpdateFavourites(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        var body = request.body();
-        var ids = new ArrayList<String>();
-        if (body.length > 0) {
-            try {
-                var req = FavouritesUpdateRequest.fromJson(new String(body, StandardCharsets.UTF_8));
-                ids.addAll(req.projectIds());
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
-                var parsed = JsonTree.asObject(JsonTree.parse(body));
-                if (parsed != null) {
-                    var array = JsonTree.asArray(parsed.get("project_ids"));
-                    if (array != null) {
-                        for (var item : array) {
-                            if (item instanceof String s) ids.add(s);
-                        }
-                    }
-                }
-            }
-        }
+        var ids = parseFavouriteIds(request.body());
         synchronized (projectsLock) {
             favouriteProjectIds.clear();
             favouriteProjectIds.addAll(ids);
 
-            var updatedList = new ArrayList<EnrolledProject>();
-            for (var p : enrolledProjects) {
-                boolean fav = favouriteProjectIds.contains(p.projectId());
-                if (p.isFavourite() != fav) {
-                    updatedList.add(new EnrolledProject(
+            var updatedList = enrolledProjects.stream()
+                    .map(p -> new EnrolledProject(
                             p.projectId(), p.displayName(), p.remoteUrl(), p.readiness(),
                             p.setupNeedsSummary(), p.needsOperatorCount(), p.activePlansCount(),
-                            p.activeEpicsCount(), p.lastActive(), fav, p.isReleased()
-                    ));
-                } else {
-                    updatedList.add(p);
-                }
-            }
+                            p.activeEpicsCount(), p.lastActive(), favouriteProjectIds.contains(p.projectId()), p.isReleased()
+                    ))
+                    .toList();
             enrolledProjects.clear();
             enrolledProjects.addAll(updatedList);
 
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of("event", "project.changed", "favourites", favouriteProjectIds));
-            response.json(200, Map.of("status", "ok", "project_ids", favouriteProjectIds));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "favourites", favouriteProjectIds));
+            response.json(200, Map.of(KEY_STATUS, "ok", "project_ids", favouriteProjectIds));
         }
+    }
+
+    private static List<String> parseFavouriteIds(byte[] body) {
+        if (body.length == 0) {
+            return List.of();
+        }
+        try {
+            var req = FavouritesUpdateRequest.fromJson(new String(body, StandardCharsets.UTF_8));
+            return req.projectIds();
+        } catch (IOException _) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(body));
+                if (parsed != null && parsed.get("project_ids") instanceof List<?> list) {
+                    return list.stream().filter(String.class::isInstance).map(String.class::cast).toList();
+                }
+            } catch (IOException _) {
+                // ignore malformed payload
+            }
+        }
+        return List.of();
     }
 
     private void handleToggleProjectFavourite(MockHttpRequest request, MockHttpResponse response, String projectId) throws IOException {
@@ -1864,9 +1866,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (parsed != null && parsed.containsKey("favourite")) {
                     fav = Boolean.TRUE.equals(parsed.get("favourite"));
                 }
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            } catch (IOException _) {
+                // ignore malformed payload
             }
         }
         synchronized (projectsLock) {
@@ -1890,14 +1891,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
             if (!found) {
-                response.json(404, Map.of(KEY_ERROR, "project_not_found", KEY_MESSAGE, "Project " + projectId + " not found"));
+                sendProjectNotFound(response, projectId);
                 return;
             }
             enrolledProjects.clear();
             enrolledProjects.addAll(updatedList);
 
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of("event", "project.changed", "project_id", projectId, "is_favourite", fav));
-            response.json(200, Map.of("project_id", projectId, "is_favourite", fav));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, "is_favourite", fav));
+            response.json(200, Map.of(KEY_PROJECT_ID, projectId, "is_favourite", fav));
         }
     }
 
@@ -1910,9 +1911,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     if (parsed.get("path") instanceof String p) path = p;
                     else if (parsed.get("checkout_path") instanceof String cp) path = cp;
                 }
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            } catch (IOException _) {
+                // ignore malformed payload
             }
         }
         String id = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
@@ -1921,19 +1921,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (projectsLock) {
             var beingAdded = new BeingAddedProject(
                     path,
-                    "Identity",
+                    STEP_IDENTITY,
                     2,
                     10,
                     "/api/v1/entries/ent-" + id + "/continue",
-                    "/api/v1/entries/ent-" + id + "/abandon"
+                    "/api/v1/entries/ent-" + id + SUFFIX_ABANDON
             );
             beingAddedProjects.add(beingAdded);
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of("event", "project.changed", "being_added", path));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "being_added", path));
             response.json(201, Map.of(
-                    "status", "started",
+                    KEY_STATUS, "started",
                     "onboarding_id", "onb-" + id,
                     "checkout_path", path,
-                    "current_step", "Identity",
+                    "current_step", STEP_IDENTITY,
                     "step_number", 2,
                     "total_steps", 10
             ));
@@ -1950,7 +1950,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
             if (target == null) {
-                response.json(404, Map.of(KEY_ERROR, "project_not_found", KEY_MESSAGE, "Project " + projectId + " not found"));
+                sendProjectNotFound(response, projectId);
                 return;
             }
 
@@ -1960,12 +1960,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (request.body().length > 0) {
                 try {
                     var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-                    if (parsed != null && parsed.get("reason") instanceof String r) {
+                    if (parsed != null && parsed.get(KEY_REASON) instanceof String r) {
                         reason = r;
                     }
-                }
-                /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                catch (Exception _) {
+                } catch (IOException _) {
+                    // ignore malformed payload
                 }
             }
 
@@ -1994,9 +1993,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.clear();
             enrolledProjects.addAll(updatedList);
 
-            var result = new ProjectReleaseResult(projectId, plans, epics, 0, Instant.now(), null, ReleaseWaitStatus.NONE);
+            var result = new ProjectReleaseResult(projectId, plans, epics, 0, Instant.now(), reason, ReleaseWaitStatus.NONE);
             broadcastEvent(ProjectReleasedEvent.EVENT_NAME, result.toMap());
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of("event", "project.changed", "project_id", projectId, "readiness", "released"));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, "readiness", "released"));
             response.json(200, result.toMap());
         }
     }
@@ -2011,7 +2010,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
             if (target == null) {
-                response.json(404, Map.of(KEY_ERROR, "project_not_found", KEY_MESSAGE, "Project " + projectId + " not found"));
+                sendProjectNotFound(response, projectId);
                 return;
             }
             if (target.activePlansCount() > 0 || target.activeEpicsCount() > 0) {
@@ -2025,21 +2024,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             enrolledProjects.removeIf(p -> p.projectId().equals(projectId));
             favouriteProjectIds.remove(projectId);
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of("event", "project.changed", "project_id", projectId, "status", "unenrolled"));
-            response.json(200, Map.of("status", "unenrolled", "project_id", projectId));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, KEY_STATUS, "unenrolled"));
+            response.json(200, Map.of(KEY_STATUS, "unenrolled", KEY_PROJECT_ID, projectId));
         }
     }
 
     private void handleAbandonProjectOnboarding(MockHttpResponse response, String id) throws IOException {
         synchronized (projectsLock) {
             beingAddedProjects.removeIf(b -> b.checkoutPath().contains(id) || (b.abandonLink() != null && b.abandonLink().contains(id)));
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of("event", "project.changed", "abandoned", id));
-            response.json(200, Map.of("status", "abandoned", "id", id));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "abandoned", id));
+            response.json(200, Map.of(KEY_STATUS, "abandoned", "id", id));
         }
     }
 
-    private void handleSetupProject(MockHttpRequest request, MockHttpResponse response, String projectId) throws IOException {
-        response.json(200, Map.of("status", "setup_started", "project_id", projectId));
+    private void handleSetupProject(MockHttpResponse response, String projectId) throws IOException {
+        response.json(200, Map.of(KEY_STATUS, "setup_started", KEY_PROJECT_ID, projectId));
     }
 
     private boolean handleSystemRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
