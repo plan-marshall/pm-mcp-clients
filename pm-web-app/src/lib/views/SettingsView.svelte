@@ -251,9 +251,18 @@
 <div class="settings-view" data-testid="settings-view">
   <div class="settings-view__header">
     <h1 class="settings-view__title">{$t('web.settings.title')}</h1>
-    <Button variant="secondary" on:click={() => navigateTo('workspace')}>
-      {$t('web.common.back')}
-    </Button>
+    <div class="settings-view__actions">
+      <Button
+        variant="secondary"
+        on:click={() => navigateTo('machine-settings')}
+        data-testid="machine-settings-button"
+      >
+        {$t('web.settings.page.title')}
+      </Button>
+      <Button variant="secondary" on:click={() => navigateTo('workspace')}>
+        {$t('web.common.back')}
+      </Button>
+    </div>
   </div>
 
   <section class="settings-section">
@@ -476,6 +485,12 @@
     font-size: var(--text-2xl);
     font-weight: 700;
     color: var(--color-text-primary);
+  }
+
+  .settings-view__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .settings-section {

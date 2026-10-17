@@ -62,6 +62,15 @@ import de.planmarshall.api.designer.WorkflowUnit;
 import de.planmarshall.api.designer.WorkflowValidationRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.ConsentKind;
+import de.planmarshall.api.onboarding.DocumentsMode;
+import de.planmarshall.api.onboarding.MachineOnboardingState;
+import de.planmarshall.api.onboarding.MachineSettingsChangedEvent;
+import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
+import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
+import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
+import de.planmarshall.api.onboarding.PlanDefaults;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
@@ -184,6 +193,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_LAN_FINGERPRINT = "4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07";
     private static final String CONST_LOOPBACK_URL = "http://127.0.0.1:7420";
     private static final int DEFAULT_LAN_PORT = 7421;
+    private static final String KEY_LANDING = "landing";
+    private static final String KEY_METHOD = "method";
+    private static final String KEY_ASKING = "asking";
+    private static final String KEY_POSTURE = "posture";
+    private static final String KEY_DOCUMENTS_MODE = "documents_mode";
+    private static final String KEY_CLEANUP_DURATIONS = "cleanup_durations";
+    private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
+    private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
+    private static final String KEY_EPICS_AFTER_DAYS = "epics_after_days";
+    private static final String KEY_LOGS_AFTER_DAYS = "logs_after_days";
+    private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
+    private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
+    private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
+    private static final String CONSENT_PREFIX = "consent:";
+    private static final String CONST_CLAUDE = "claude";
+    private static final String CONST_SONNET = "sonnet-4.5";
+    private static final List<String> CLEANUP_DAY_KEYS = List.of(KEY_PLANS_AFTER_DAYS,
+            KEY_EPICS_AFTER_DAYS, KEY_LOGS_AFTER_DAYS, KEY_REPORTS_AFTER_DAYS, KEY_UNENROLLED_AFTER_DAYS);
     private static final String PREFIX_PROJECTS = "/api/v1/projects/";
     private static final String PATH_RECIPES = "/api/v1/recipes";
     private static final String PATH_INTAKE_DRAFT = "/api/v1/intake/draft";
@@ -268,6 +295,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile int lanListenerPort = DEFAULT_LAN_PORT;
     private volatile boolean closed;
 
+    private final Object onboardingLock = new Object();
+    private int machineSettingsRevision = 1;
+    private String machineDocumentsMode = "ask";
+    private Map<String, Object> machinePlanDefaults = new LinkedHashMap<>();
+    private Map<String, Object> machineCleanupDurations = new LinkedHashMap<>();
+    private final List<Map<String, Object>> machineRememberedConsents = new ArrayList<>();
+    private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
+    private volatile boolean onboardingAuto;
+
     private final Object controlLock = new Object();
     private final Map<String, String> controlPlanStates = new LinkedHashMap<>();
     private final Map<String, String> controlPlanPausePoints = new LinkedHashMap<>();
@@ -315,6 +351,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        initDefaultOnboarding();
         initDefaultStart();
         designer.init(scenario);
         transitionTo(scenario.start());
@@ -330,6 +367,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        initDefaultOnboarding();
         initDefaultStart();
         designer.init(currentScenario.get());
         transitionTo(currentScenario.get().start());
@@ -476,34 +514,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
             throws IOException {
-        if (handleDeviceRoutes(request, response, isWeb)) {
-            return true;
-        }
-        if (handleDesignerRoutes(request, response, isWeb)) {
-            return true;
-        }
-        if (handleProjectExplorerRoutes(request, response)) {
-            return true;
-        }
-        if (handleProjectOverviewRoutes(request, response)) {
-            return true;
-        }
-        if (handleReportRoutes(request, response, isWeb)) {
-            return true;
-        }
-        if (handleDecisionRoutes(request, response, isWeb)) {
-            return true;
-        }
-        if (handleSystemRoutes(request, response, isWeb)) {
-            return true;
-        }
-        if (handleProcessRoutes(request, response)) {
-            return true;
-        }
-        if (handleStartRoutes(request, response)) {
-            return true;
-        }
-        return handleControlRoutes(request, response);
+        return handleDeviceRoutes(request, response, isWeb)
+                || handleOnboardingRoutes(request, response)
+                || handleMachineSettingsRoutes(request, response)
+                || handleDesignerRoutes(request, response, isWeb)
+                || handleProjectExplorerRoutes(request, response)
+                || handleProjectOverviewRoutes(request, response)
+                || handleReportRoutes(request, response, isWeb)
+                || handleDecisionRoutes(request, response, isWeb)
+                || handleSystemRoutes(request, response, isWeb)
+                || handleProcessRoutes(request, response)
+                || handleStartRoutes(request, response)
+                || handleControlRoutes(request, response);
     }
 
     private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -1282,11 +1304,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var values = new LinkedHashMap<String, PlanSettingsValue>();
             values.put("landing", new PlanSettingsValue("landing", "landing.pull-request", "project",
                     List.of("landing.pull-request", "landing.main", "landing.files")));
-            values.put("method", new PlanSettingsValue("method", "method.test-first", "machine",
+            values.put(KEY_METHOD, new PlanSettingsValue(KEY_METHOD, "method.test-first", "machine",
                     List.of("method.test-first", "method.tests-after")));
-            values.put("asking", new PlanSettingsValue("asking", "ask.key-points", "plan",
+            values.put(KEY_ASKING, new PlanSettingsValue(KEY_ASKING, "ask.key-points", "plan",
                     List.of("ask.every-phase", "ask.key-points", "ask.questions-only")));
-            values.put("posture", new PlanSettingsValue("posture", CONST_STANDARD, "plan", List.of()));
+            values.put(KEY_POSTURE, new PlanSettingsValue(KEY_POSTURE, CONST_STANDARD, "plan", List.of()));
             values.put("base", new PlanSettingsValue("base", "main", "plan", List.of()));
             values.put("role.implement", new PlanSettingsValue("role.implement",
                     "Claude Code - sonnet-5.5", "plan", List.of()));
@@ -2650,6 +2672,303 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
     }
 
+    private void initDefaultOnboarding() {
+        synchronized (onboardingLock) {
+            machineSettingsRevision = 4;
+            machineDocumentsMode = DocumentsMode.ASK.wireValue();
+            onboardingAuto = false;
+            machinePlanDefaults = new LinkedHashMap<>();
+            machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
+            machinePlanDefaults.put(KEY_METHOD, PlanDefaults.METHOD_TEST_FIRST);
+            machinePlanDefaults.put(KEY_ASKING, PlanDefaults.ASK_KEY_POINTS);
+            machineCleanupDurations = new LinkedHashMap<>();
+            machineCleanupDurations.put(KEY_PLANS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_EPICS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_LOGS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_REPORTS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_UNENROLLED_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_REMIND_AFTER_DAYS, 3);
+            machineRememberedConsents.clear();
+            machineRememberedConsents.add(rememberedConsent(ConsentKind.SCAN_HARNESSES.wireValue(),
+                    KEY_TERMINAL, "2026-10-12T09:00:00Z"));
+            machineRememberedConsents.add(rememberedConsent(ConsentKind.PROBE_HARNESS_LOGIN.wireValue(),
+                    "Firefox", "2026-10-12T09:12:00Z"));
+            machineCredentials.clear();
+            machineCredentials.add(credential("github", "GitHub", "fine-grained", 9, false));
+            machineCredentials.add(credential("sonar", "SonarCloud", "user token", null, false));
+        }
+    }
+
+    private static Map<String, Object> rememberedConsent(String kind, String channel, String grantedAt) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("kind", kind);
+        map.put(KEY_STATUS, "remembered");
+        map.put("remember", true);
+        map.put("granted_at", grantedAt);
+        map.put("channel", channel);
+        return map;
+    }
+
+    private static Map<String, Object> credential(String key, String provider, String kind,
+                                                  @Nullable Integer expiresInDays, boolean expired) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("key", key);
+        map.put("provider", provider);
+        map.put("kind", kind);
+        if (expiresInDays != null) {
+            map.put("expires_in_days", expiresInDays);
+        }
+        map.put("expired", expired);
+        return map;
+    }
+
+    private boolean handleOnboardingRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        var method = request.method();
+        if ("/api/v1/onboarding/state".equals(path) && "GET".equals(method)) {
+            handleOnboardingState(response);
+            return true;
+        }
+        if ("/api/v1/onboarding/step".equals(path) && "POST".equals(method)) {
+            handleOnboardingStep(request, response);
+            return true;
+        }
+        if ("/api/v1/onboarding/auto".equals(path) && "POST".equals(method)) {
+            handleOnboardingAuto(response);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleOnboardingState(MockHttpResponse response) throws IOException {
+        StateDefinition state;
+        String stateId;
+        synchronized (this) {
+            stateId = currentStateId.get();
+            state = currentScenario.get().state(stateId);
+        }
+        response.json(200, mergeRepresentation(state, stateId));
+    }
+
+    private Map<String, Object> mergeRepresentation(@Nullable StateDefinition state, @Nullable String stateId) {
+        var body = new LinkedHashMap<String, Object>();
+        if (state != null && state.representation() instanceof Map<?, ?> rep) {
+            for (var entry : rep.entrySet()) {
+                body.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+        if (state != null && !state.links().isEmpty()) {
+            var links = new LinkedHashMap<String, Object>();
+            for (var entry : state.links().entrySet()) {
+                var link = entry.getValue();
+                var target = new LinkedHashMap<String, Object>();
+                target.put("href", link.href() != null ? link.href() : "/api/v1/onboarding/step");
+                target.put(KEY_METHOD, link.method());
+                target.put("next", link.next());
+                links.put(entry.getKey(), target);
+            }
+            body.put("links", links);
+        }
+        body.put(KEY_STATE, stateId);
+        body.put("completed_steps", completedStepsFor(stateId));
+        body.put("auto", onboardingAuto);
+        return body;
+    }
+
+    private static int completedStepsFor(@Nullable String stateId) {
+        if (stateId == null) {
+            return 0;
+        }
+        if ("onboard.completed".equals(stateId) || stateId.startsWith("settings.")) {
+            return 7;
+        }
+        var aspect = MachineOnboardingState.aspectOf(stateId);
+        return aspect != null ? aspect.step() - 1 : 0;
+    }
+
+    private void handleOnboardingStep(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var body = readBodyMap(request);
+        var linkName = JsonTree.string(body, "link");
+        StateDefinition state;
+        String previousState;
+        synchronized (this) {
+            previousState = currentStateId.get();
+            state = currentScenario.get().state(previousState);
+        }
+        if (state == null || state.links().isEmpty()) {
+            response.json(409, Map.of(KEY_ERROR, "no_step", KEY_STATE,
+                    previousState != null ? previousState : ""));
+            return;
+        }
+        var chosen = chooseLink(state, linkName);
+        var link = chosen.getValue();
+        if (link.status() >= 400) {
+            response.json(link.status(), Map.of(KEY_ERROR,
+                    link.error() != null ? link.error() : "rejected", KEY_STATE, previousState));
+            return;
+        }
+        String newState;
+        synchronized (this) {
+            transitionTo(link.next());
+            newState = currentStateId.get();
+            state = currentScenario.get().state(newState);
+        }
+        var previousAspect = MachineOnboardingState.aspectOf(previousState);
+        var newAspect = MachineOnboardingState.aspectOf(newState);
+        if (previousAspect != null && newAspect != previousAspect) {
+            broadcastEvent(OnboardingStepCompletedEvent.EVENT_NAME, new OnboardingStepCompletedEvent(
+                    previousAspect, newState, completedStepsFor(newState)).toMap());
+        }
+        response.json(link.status(), mergeRepresentation(state, newState));
+    }
+
+    private static Map.Entry<String, LinkDefinition> chooseLink(StateDefinition state, @Nullable String linkName) {
+        if (linkName != null) {
+            for (var entry : state.links().entrySet()) {
+                if (entry.getKey().equals(linkName)) {
+                    return entry;
+                }
+            }
+        }
+        return state.links().entrySet().iterator().next();
+    }
+
+    private void handleOnboardingAuto(MockHttpResponse response) throws IOException {
+        onboardingAuto = true;
+        synchronized (this) {
+            if (currentScenario.get().states().containsKey("auto.consent")) {
+                goToState("auto.consent");
+            }
+        }
+        handleOnboardingState(response);
+    }
+
+    private boolean handleMachineSettingsRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (!"/api/v1/machine/settings".equals(request.path())) {
+            return false;
+        }
+        if ("GET".equals(request.method())) {
+            response.json(200, buildMachineSettings());
+            return true;
+        }
+        if ("PUT".equals(request.method()) || "POST".equals(request.method())) {
+            handleUpdateMachineSettings(request, response);
+            return true;
+        }
+        return false;
+    }
+
+    private Map<String, Object> buildMachineSettings() {
+        synchronized (onboardingLock) {
+            var body = new LinkedHashMap<String, Object>();
+            body.put("revision", machineSettingsRevision);
+            body.put("aspects", List.of(
+                    aspectSummary(OnboardingAspect.LANGUAGE, "Deutsch, models English", "de"),
+                    aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
+                    aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
+                    aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
+                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", "os"),
+                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", "github"),
+                    aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
+                            String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
+            body.put("language_interface", "de");
+            body.put("language_model", "en");
+            body.put(KEY_DOCUMENTS_MODE, machineDocumentsMode);
+            body.put(KEY_CLEANUP_DURATIONS, machineCleanupDurations);
+            body.put(KEY_PLAN_DEFAULTS, machinePlanDefaults);
+            body.put("consents", machineRememberedConsents);
+            body.put("credentials", machineCredentials);
+            return body;
+        }
+    }
+
+    private static Map<String, Object> aspectSummary(OnboardingAspect aspect, String summary, String current) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("aspect", aspect.wireValue());
+        map.put("step", aspect.step());
+        map.put("summary", summary);
+        map.put("current", current);
+        return map;
+    }
+
+    private void handleUpdateMachineSettings(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var update = MachineSettingsUpdateRequest.fromMap(readBodyMap(request));
+        synchronized (onboardingLock) {
+            if (update.revision() != machineSettingsRevision) {
+                response.json(409, MachineSettingsUpdateResult.conflict(
+                        machineSettingsRevision, currentMachineValue(update.key())).toMap());
+                return;
+            }
+            applyMachineSetting(update.key(), update.value());
+            machineSettingsRevision++;
+            broadcastEvent(MachineSettingsChangedEvent.EVENT_NAME, new MachineSettingsChangedEvent(
+                    update.key(), update.value(), machineSettingsRevision, "web").toMap());
+            response.json(200, MachineSettingsUpdateResult.applied(machineSettingsRevision).toMap());
+        }
+    }
+
+    private void applyMachineSetting(String key, @Nullable String value) {
+        if (KEY_DOCUMENTS_MODE.equals(key) && value != null) {
+            applyDocumentsMode(value);
+        } else if (KEY_CLEANUP_DURATIONS.equals(key) && value != null) {
+            applyCleanupDurations(value);
+        } else if (KEY_PLAN_DEFAULTS.equals(key) && value != null) {
+            applyPlanDefaults(value);
+        } else if (key.startsWith(CONSENT_PREFIX)) {
+            applyConsentWithdrawal(key);
+        }
+    }
+
+    private void applyDocumentsMode(String value) {
+        if (DocumentsMode.COPY.wireValue().equals(value) || DocumentsMode.MOVE.wireValue().equals(value)
+                || DocumentsMode.ASK.wireValue().equals(value)) {
+            machineDocumentsMode = value;
+        }
+    }
+
+    private void applyCleanupDurations(String value) {
+        try {
+            int days = Integer.parseInt(value.trim());
+            for (var field : CLEANUP_DAY_KEYS) {
+                machineCleanupDurations.put(field, days);
+            }
+        } catch (NumberFormatException _) {
+            // keep the current durations when the value is not a number
+        }
+    }
+
+    private void applyPlanDefaults(String value) {
+        if (value.startsWith("landing.")) {
+            machinePlanDefaults.put(KEY_LANDING, value);
+        } else if (value.startsWith("method.")) {
+            machinePlanDefaults.put(KEY_METHOD, value);
+        } else if (value.startsWith("ask.")) {
+            machinePlanDefaults.put(KEY_ASKING, value);
+        } else if (value.startsWith("posture.")) {
+            machinePlanDefaults.put(KEY_POSTURE, value.substring("posture.".length()));
+        }
+    }
+
+    private void applyConsentWithdrawal(String key) {
+        var kind = ConsentKind.fromWire(key.substring(CONSENT_PREFIX.length()));
+        if (kind != null) {
+            machineRememberedConsents.removeIf(c -> kind.wireValue().equals(c.get("kind")));
+        }
+    }
+
+    private String currentMachineValue(String key) {
+        if (KEY_DOCUMENTS_MODE.equals(key)) {
+            return machineDocumentsMode;
+        }
+        if (KEY_PLAN_DEFAULTS.equals(key)) {
+            return String.valueOf(machinePlanDefaults.get(KEY_LANDING));
+        }
+        if (KEY_CLEANUP_DURATIONS.equals(key)) {
+            return String.valueOf(machineCleanupDurations.get(KEY_PLANS_AFTER_DAYS));
+        }
+        return "";
+    }
+
     /** @return the current scenario */
     public Scenario currentScenario() {
         return currentScenario.get();
@@ -3337,11 +3656,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var workMetrics = new WorkMetrics(plansByState, epicsByState, tasksRunning, tasksQueued, activeProjects, List.of());
 
         var workers = List.of(
-                new WorkerMetric("planner", "claude", "opus-4.5", WorkerState.BUSY, "fix-relay"),
-                new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, "relay-docs"),
+                new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, "fix-relay"),
+                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "relay-docs"),
                 new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
-                new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, "token-usage"),
-                new WorkerMetric("reviewer", "claude", "sonnet-4.5", WorkerState.IDLE, null)
+                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "token-usage"),
+                new WorkerMetric("reviewer", CONST_CLAUDE, CONST_SONNET, WorkerState.IDLE, null)
         );
 
         var jobs = Map.<String, Object>of(

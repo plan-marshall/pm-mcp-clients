@@ -4,6 +4,7 @@
   import OnboardingView from '../lib/views/OnboardingView.svelte';
   import WorkspaceView from '../lib/views/WorkspaceView.svelte';
   import SettingsView from '../lib/views/SettingsView.svelte';
+  import MachineSettingsView from '../lib/views/MachineSettingsView.svelte';
   import ProcessDesigner from '../lib/views/ProcessDesigner.svelte';
   import RevokedView from '../lib/views/RevokedView.svelte';
   import OverviewView from '../lib/views/OverviewView.svelte';
@@ -32,6 +33,8 @@
   <DecisionView />
 {:else if $runtimeStore.currentRoute === 'settings'}
   <SettingsView />
+{:else if $runtimeStore.currentRoute === 'machine-settings'}
+  <MachineSettingsView />
 {:else if $runtimeStore.currentRoute === 'system'}
   <SystemView />
 {:else if $runtimeStore.currentRoute === 'cleanup'}
