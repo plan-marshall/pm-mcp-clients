@@ -24,6 +24,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 
 import org.jspecify.annotations.Nullable;
@@ -52,6 +53,8 @@ import de.planmarshall.api.decision.QuorumBand;
 import de.planmarshall.api.decision.QuorumSupport;
 import de.planmarshall.api.decision.QuorumVote;
 import de.planmarshall.api.decision.Reversibility;
+import de.planmarshall.api.designer.WorkflowUnit;
+import de.planmarshall.api.designer.WorkflowValidationRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.BeingAddedProject;
@@ -169,6 +172,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_LAN_FINGERPRINT = "4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07";
     private static final String CONST_LOOPBACK_URL = "http://127.0.0.1:7420";
     private static final int DEFAULT_LAN_PORT = 7421;
+    private static final String PATH_WORKFLOWS = "/api/v1/workflows";
+    private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
+    private static final String SEGMENT_WORKFLOWS = "/workflows";
+    private static final String SEGMENT_CATALOGUE = "/catalogue";
+    private static final String SEGMENT_VALIDATE = "/validate";
+    private static final String EVENT_UNIT_PLACED = "unit.placed";
+    private static final String EVENT_UNIT_LANDED = "unit.landed";
+    private static final String EVENT_UNIT_REMOVED = "unit.removed";
+    private static final String ERR_UNIT_NAME_INVALID = "unit_name_invalid";
+    private static final String ERR_UNIT_NOT_DESIGNABLE = "unit_not_designable";
+    private static final String ERR_NO_PROJECT_TO_COMPOSE = "no_project_to_compose";
+    private static final String ERR_CONFLICT = "conflict";
+    private static final String ERR_UNIT_INVALID = "unit_invalid";
+    private static final String ERR_BAD_REQUEST = "bad_request";
+    private static final String FIELD_UNIT = "unit";
+    private static final String FIELD_TEXT = "text";
+    private static final String FIELD_TARGET = "target";
+    private static final String FIELD_FINDINGS = "findings";
+    private static final String FIELD_CATALOGUE_DIGEST = "catalogue_digest";
+    private static final String FIELD_DIGEST = "digest";
+    private static final String FIELD_AUTHOR = "author";
+    private static final String FIELD_RELEASE = "release";
+    private static final String FIELD_UNIT_KIND = "unit_kind";
+    private static final Pattern UNIT_NAME = Pattern.compile("^[a-z][a-z0-9_.-]*$");
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -179,6 +206,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
+    private final DesignerRegistry designer = new DesignerRegistry();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
     private final Object reportsLock = new Object();
@@ -249,6 +277,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        designer.init(scenario);
         transitionTo(scenario.start());
     }
 
@@ -262,6 +291,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        designer.init(currentScenario.get());
         transitionTo(currentScenario.get().start());
     }
 
@@ -377,43 +407,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        // 3. Dynamic device and web routes
-        if (handleDeviceRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3a. Dynamic project explorer and onboarding routes (UC-PRJ-1..3)
-        if (handleProjectExplorerRoutes(request, response)) {
-            return;
-        }
-
-        // 3b. Dynamic project overview routes
-        if (handleProjectOverviewRoutes(request, response)) {
-            return;
-        }
-
-        // 3b. Dynamic report routes
-        if (handleReportRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3c. Dynamic decision routes
-        if (handleDecisionRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3c. Dynamic system and cleanup routes
-        if (handleSystemRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3d. Dynamic process and task activity routes (UC-PLN-1, UC-PLN-5)
-        if (handleProcessRoutes(request, response)) {
-            return;
-        }
-
-        // 3e. Dynamic plan and epic control routes (UC-CTL-1..5)
-        if (handleControlRoutes(request, response)) {
+        // 3. Dynamic routes of the domain areas
+        if (handleDynamicRoutes(request, response, isWeb)) {
             return;
         }
 
@@ -437,6 +432,35 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 7. No match: answer mock_no_route
         handleNoRoute(request, response);
+    }
+
+    private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        if (handleDeviceRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleDesignerRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleProjectExplorerRoutes(request, response)) {
+            return true;
+        }
+        if (handleProjectOverviewRoutes(request, response)) {
+            return true;
+        }
+        if (handleReportRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleDecisionRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleSystemRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleProcessRoutes(request, response)) {
+            return true;
+        }
+        return handleControlRoutes(request, response);
     }
 
     private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -991,6 +1015,182 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return false;
     }
 
+    private boolean handleDesignerRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        var path = request.path();
+        String projectId = null;
+        String sub;
+        if (path.startsWith(PATH_WORKFLOWS)) {
+            sub = path.substring(PATH_WORKFLOWS.length());
+        } else if (path.startsWith(PATH_PROJECTS_PREFIX)) {
+            var rest = path.substring(PATH_PROJECTS_PREFIX.length());
+            var marker = rest.indexOf(SEGMENT_WORKFLOWS);
+            if (marker <= 0) {
+                return false;
+            }
+            projectId = rest.substring(0, marker);
+            if (projectId.isEmpty() || projectId.contains("/")) {
+                return false;
+            }
+            sub = rest.substring(marker + SEGMENT_WORKFLOWS.length());
+        } else {
+            return false;
+        }
+        return dispatchDesignerSub(request, response, sub, projectId, isWeb);
+    }
+
+    private boolean dispatchDesignerSub(MockHttpRequest request, MockHttpResponse response, String sub,
+                                        String projectId, boolean isWeb) throws IOException {
+        var method = request.method();
+        if (sub.isEmpty()) {
+            return serveDesignerUnits(response, method, projectId);
+        }
+        if (SEGMENT_CATALOGUE.equals(sub)) {
+            return serveDesignerCatalogue(response, method, projectId);
+        }
+        if (SEGMENT_VALIDATE.equals(sub)) {
+            if (!"POST".equals(method)) {
+                return false;
+            }
+            handleDesignerValidate(request, response);
+            return true;
+        }
+        if (!sub.startsWith("/")) {
+            return false;
+        }
+        return dispatchDesignerUnit(request, response, sub.substring(1), projectId, method, isWeb);
+    }
+
+    private boolean serveDesignerUnits(MockHttpResponse response, String method, String projectId)
+            throws IOException {
+        if (!"GET".equals(method)) {
+            return false;
+        }
+        var units = projectId == null ? designer.machineUnits() : designer.projectUnits(projectId);
+        response.json(200, units.stream().map(WorkflowUnit::toMap).toList());
+        return true;
+    }
+
+    private boolean serveDesignerCatalogue(MockHttpResponse response, String method, String projectId)
+            throws IOException {
+        if (!"GET".equals(method)) {
+            return false;
+        }
+        var catalogue = projectId == null ? designer.machineCatalogue() : designer.projectCatalogue(projectId);
+        response.json(200, catalogue.toMap());
+        return true;
+    }
+
+    private boolean dispatchDesignerUnit(MockHttpRequest request, MockHttpResponse response, String unit,
+                                         String projectId, String method, boolean isWeb) throws IOException {
+        if (unit.isEmpty() || unit.contains("/")) {
+            response.json(400, unitNameInvalid(unit));
+            return true;
+        }
+        var target = projectId == null ? DesignerRegistry.MACHINE : projectId;
+        if ("PUT".equals(method)) {
+            handleDesignerPlace(request, response, unit, target, isWeb);
+            return true;
+        }
+        if (METHOD_DELETE.equals(method)) {
+            handleDesignerRemove(response, unit, target);
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isValidUnitName(String unit) {
+        return unit != null && UNIT_NAME.matcher(unit).matches() && !unit.contains("..");
+    }
+
+    private static Map<String, Object> unitNameInvalid(String unit) {
+        return Map.of(KEY_ERROR, ERR_UNIT_NAME_INVALID, KEY_MESSAGE,
+                "The name is not a unit name in the canonical grammar", FIELD_UNIT, unit == null ? "" : unit);
+    }
+
+    private void handleDesignerValidate(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        WorkflowValidationRequest validationRequest;
+        try {
+            validationRequest = WorkflowValidationRequest.fromMap(readBodyMap(request));
+        } catch (IOException _) {
+            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
+            return;
+        }
+        response.json(200, designer.validate(validationRequest).toMap());
+    }
+
+    private void handleDesignerPlace(MockHttpRequest request, MockHttpResponse response, String unit,
+                                     String target, boolean isWeb) throws IOException {
+        if (!isValidUnitName(unit)) {
+            response.json(400, unitNameInvalid(unit));
+            return;
+        }
+        var body = readBodyMap(request);
+        var text = JsonTree.string(body, FIELD_TEXT);
+        if (text == null) {
+            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
+            return;
+        }
+        var existing = designer.findUnit(target, unit);
+        if (existing != null && WorkflowUnit.GROUP_COMPILED_ONLY.equals(existing.group())) {
+            response.json(409, Map.of(KEY_ERROR, ERR_UNIT_NOT_DESIGNABLE, KEY_MESSAGE,
+                    unit + " is compiled only and can never be replaced"));
+            return;
+        }
+        if (DesignerRegistry.MACHINE.equals(target) && designer.enrolledProjects().isEmpty()) {
+            response.json(409, Map.of(KEY_ERROR, ERR_NO_PROJECT_TO_COMPOSE, KEY_MESSAGE,
+                    "No project is enrolled: a unit for this machine is placed once a project exists"));
+            return;
+        }
+        var bodyDigest = JsonTree.string(body, FIELD_DIGEST);
+        if (bodyDigest != null && existing != null && !existing.levels().isEmpty()) {
+            var currentDigest = existing.levels().getFirst().digest();
+            if (currentDigest != null && !currentDigest.isBlank() && !currentDigest.equals(bodyDigest)) {
+                response.json(409, Map.of(KEY_ERROR, ERR_CONFLICT, KEY_MESSAGE,
+                        unit + " changed since the comparison", "current", existing.toMap()));
+                return;
+            }
+        }
+        var project = DesignerRegistry.MACHINE.equals(target) ? null : target;
+        var result = designer.validate(new WorkflowValidationRequest(text,
+                JsonTree.string(body, FIELD_UNIT_KIND), unit, project, bodyDigest));
+        if (!result.valid()) {
+            var resultMap = result.toMap();
+            var payload = new LinkedHashMap<String, Object>();
+            payload.put(KEY_ERROR, ERR_UNIT_INVALID);
+            payload.put(KEY_MESSAGE, "the unit does not validate against its target");
+            payload.put(FIELD_FINDINGS, resultMap.get(FIELD_FINDINGS));
+            payload.put("stages", resultMap.get("stages"));
+            response.json(409, payload);
+            return;
+        }
+        var placed = designer.place(unit, target, text, JsonTree.string(body, FIELD_AUTHOR),
+                JsonTree.string(body, FIELD_RELEASE));
+        broadcastEvent(EVENT_UNIT_PLACED, Map.of(FIELD_UNIT, unit, FIELD_TARGET, target,
+                FIELD_CATALOGUE_DIGEST, placed.catalogueDigest()));
+        broadcastEvent(EVENT_UNIT_LANDED, Map.of(FIELD_UNIT, unit, FIELD_TARGET, target,
+                KEY_STATUS, placed.status(), FIELD_CATALOGUE_DIGEST, placed.catalogueDigest(),
+                "by_web", isWeb));
+        response.json(200, placed.toMap());
+    }
+
+    private void handleDesignerRemove(MockHttpResponse response, String unit, String target) throws IOException {
+        if (!isValidUnitName(unit)) {
+            response.json(400, unitNameInvalid(unit));
+            return;
+        }
+        var existing = designer.findUnit(target, unit);
+        if (existing != null && WorkflowUnit.GROUP_COMPILED_ONLY.equals(existing.group())) {
+            response.json(409, Map.of(KEY_ERROR, ERR_UNIT_NOT_DESIGNABLE, KEY_MESSAGE,
+                    unit + " is compiled only and can never be removed"));
+            return;
+        }
+        var removed = designer.remove(unit, target);
+        broadcastEvent(EVENT_UNIT_REMOVED, Map.of(FIELD_UNIT, unit, FIELD_TARGET, target,
+                FIELD_CATALOGUE_DIGEST, removed.catalogueDigest()));
+        response.json(200, removed.toMap());
+    }
+
     private void initDefaultControl() {
         synchronized (controlLock) {
             controlPlanStates.clear();
@@ -1113,7 +1313,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             actions.add(ActionAvailability.enabled("auto"));
             actions.add(ActionAvailability.enabled("common_files"));
             actions.add(ActionAvailability.enabled("decompose"));
-            actions.add(ActionAvailability.enabled("findings"));
+            actions.add(ActionAvailability.enabled(FIELD_FINDINGS));
             actions.add(ActionAvailability.enabled("watches"));
             actions.add(ActionAvailability.enabled("chat"));
             if ("landing".equals(state)) {
@@ -1963,7 +2163,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var sub = path.substring("/api/v1/messages/".length());
         var parts = sub.split("/");
         if (parts.length > 2) {
-            response.json(400, Map.of(KEY_ERROR, "bad_request", KEY_MESSAGE, "Unexpected path segments"));
+            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "Unexpected path segments"));
             return;
         }
         var locale = parts[0];
@@ -3422,7 +3622,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "WR-3", 1, "session-log asks for a waiver", null, "plan session-log",
                     DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
                     "the classes are generated by the annotation processor",
-                    Map.of("coverage", "76%", "target", "80%"),
+                    Map.of("coverage", "76%", FIELD_TARGET, "80%"),
                     List.of(), Instant.parse("2026-10-16T14:02:00Z"),
                     true, "coverage:pm-api", "76 %: 3 classes without a test",
                     "the classes are generated by the annotation processor"

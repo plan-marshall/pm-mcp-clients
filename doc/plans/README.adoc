@@ -285,16 +285,16 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/system-contract.adoc[`system-contract`]; link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
-|link:designer-contract.adoc[`designer-contract`]
+|link:implemented/designer-contract.adoc[`designer-contract`]
 |Designing a process: contract and mock runtime
-|`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:process-contract.adoc[`process-contract`] (the composed process)
+|`done`
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/process-contract.adoc[`process-contract`] (the composed process)
 |epic clients
 
-|link:web-designer.adoc[`web-designer`]
+|link:implemented/web-designer.adoc[`web-designer`]
 |The process designer in the web app (the web app only)
-|`open`
-|link:designer-contract.adoc[`designer-contract`]; link:web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:implemented/web-projects.adoc[`web-projects`] (a project's setup); link:implemented/web-design.adoc[`web-design`]
+|`done`
+|link:implemented/designer-contract.adoc[`designer-contract`]; link:implemented/web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:implemented/web-projects.adoc[`web-projects`] (a project's setup); link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
 |===

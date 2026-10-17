@@ -718,8 +718,128 @@ export interface CleanupJob {
   durations: CleanupDurations;
 }
 
-const STORAGE_KEY_SECRET = 'pm_device_secret';
-const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
+export type BlockKind =
+  | 'keyword'
+  | 'primitive'
+  | 'guard'
+  | 'link_relation'
+  | 'condition'
+  | 'sub_workflow'
+  | 'role'
+  | 'parameter';
+
+export interface BuildingBlock {
+  kind: BlockKind;
+  name: string;
+  summary: string;
+  template: string;
+  parameters: string[];
+  constraints: string[];
+  outcomes: string[];
+  used_in: string[];
+  compiled_only: boolean;
+}
+
+export interface WorkflowUnitLevel {
+  level: string;
+  text: string;
+  revision: number;
+  digest: string;
+}
+
+export interface WorkflowFrontmatter {
+  display_name: string;
+  description: string;
+  type: string;
+  entries: string[];
+  exits: string[];
+  author: string;
+  release: string;
+  signed: boolean;
+}
+
+export interface WorkflowUnit {
+  name: string;
+  group: string;
+  level_in_force: string;
+  frontmatter?: WorkflowFrontmatter | null;
+  levels: WorkflowUnitLevel[];
+}
+
+export interface WorkflowCatalogue {
+  scope: string;
+  runtime_version: string;
+  digest: string;
+  blocks: BuildingBlock[];
+}
+
+export interface WorkflowFinding {
+  stage: string;
+  rule: string;
+  line: number;
+  column: number;
+  severity: string;
+  message: string;
+  project?: string | null;
+}
+
+export interface WorkflowStage {
+  name: string;
+  status: string;
+}
+
+export interface WorkflowStructureState {
+  id: string;
+  kind: string;
+  outcomes: string[];
+  calls: string[];
+}
+
+export interface WorkflowStructure {
+  display_name: string;
+  entries: string[];
+  exits: string[];
+  states: WorkflowStructureState[];
+}
+
+export interface WorkflowValidationResult {
+  valid: boolean;
+  stages: WorkflowStage[];
+  findings: WorkflowFinding[];
+  structure?: WorkflowStructure | null;
+  composed?: ProcessTree | null;
+}
+
+export interface UnitPlacingResult {
+  unit: string;
+  target: string;
+  status: string;
+  steps: string[];
+  catalogue_digest?: string;
+  author?: string;
+  release?: string;
+  digest?: string;
+  reason?: string;
+}
+
+export interface ValidateWorkflowPayload {
+  text: string;
+  unit_name?: string | null;
+  unit_kind?: string | null;
+  project?: string | null;
+  digest?: string | null;
+}
+
+export interface PlaceWorkflowPayload {
+  text: string;
+  unit_name?: string | null;
+  unit_kind?: string | null;
+  author?: string | null;
+  release?: string | null;
+  digest?: string | null;
+}
+
+const STORAGE_KEY_SECRET = 'pm_device_secret';const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
 const STORAGE_KEY_LABEL = 'pm_device_label';
 
 export class ApiClient {
@@ -882,6 +1002,41 @@ export class ApiClient {
       'GET',
       `/api/v1/projects/${encodeURIComponent(projectId)}/ended?page=${page}`,
     );
+  }
+
+  private workflowBase(projectId?: string | null): string {
+    return projectId
+      ? `/api/v1/projects/${encodeURIComponent(projectId)}/workflows`
+      : '/api/v1/workflows';
+  }
+
+  public async getWorkflows(projectId?: string | null): Promise<WorkflowUnit[]> {
+    return this.request<WorkflowUnit[]>('GET', this.workflowBase(projectId));
+  }
+
+  public async getWorkflowCatalogue(projectId?: string | null): Promise<WorkflowCatalogue> {
+    return this.request<WorkflowCatalogue>('GET', `${this.workflowBase(projectId)}/catalogue`);
+  }
+
+  public async validateWorkflow(payload: ValidateWorkflowPayload): Promise<WorkflowValidationResult> {
+    return this.request<WorkflowValidationResult>('POST', '/api/v1/workflows/validate', payload);
+  }
+
+  public async placeWorkflowUnit(
+    projectId: string | null,
+    unitId: string,
+    payload: PlaceWorkflowPayload,
+  ): Promise<UnitPlacingResult> {
+    const path = `${this.workflowBase(projectId)}/${encodeURIComponent(unitId)}`;
+    return this.request<UnitPlacingResult>('PUT', path, payload);
+  }
+
+  public async removeWorkflowUnit(
+    projectId: string | null,
+    unitId: string,
+  ): Promise<UnitPlacingResult> {
+    const path = `${this.workflowBase(projectId)}/${encodeURIComponent(unitId)}`;
+    return this.request<UnitPlacingResult>('DELETE', path);
   }
 
   public async renameDevice(deviceId: string, label: string): Promise<PairedDevice> {
