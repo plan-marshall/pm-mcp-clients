@@ -30,16 +30,12 @@ public record OnboardingStepCompletedEvent(
         String state,
         int completedSteps
 ) {
-    public OnboardingStepCompletedEvent {
-        Objects.requireNonNull(aspect, "aspect");
-        state = state != null && !state.isBlank() ? state : "onboard.completed";
-    }
+    /** The SSE event name this event is broadcast under. */
+    public static final String EVENT_NAME = "onboarding.step_completed";
 
-    /**
-     * @return the SSE event name
-     */
-    public static String eventName() {
-        return "onboarding.step_completed";
+    public OnboardingStepCompletedEvent {
+        Objects.requireNonNull(aspect, "aspect is required");
+        state = state != null && !state.isBlank() ? state : "onboard.completed";
     }
 
     /**

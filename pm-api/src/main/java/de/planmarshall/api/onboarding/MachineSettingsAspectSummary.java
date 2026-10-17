@@ -32,7 +32,7 @@ public record MachineSettingsAspectSummary(
         @Nullable String current
 ) {
     public MachineSettingsAspectSummary {
-        Objects.requireNonNull(aspect, "aspect");
+        Objects.requireNonNull(aspect, "aspect is required");
         summary = summary != null ? summary : aspect.wireValue();
     }
 

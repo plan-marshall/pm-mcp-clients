@@ -32,17 +32,13 @@ public record MachineSettingsChangedEvent(
         int revision,
         @Nullable String channel
 ) {
+    /** The SSE event name this event is broadcast under. */
+    public static final String EVENT_NAME = "machine.settings_changed";
+
     public MachineSettingsChangedEvent {
         if (key == null) {
             throw new IllegalArgumentException("key");
         }
-    }
-
-    /**
-     * @return the SSE event name
-     */
-    public static String eventName() {
-        return "machine.settings_changed";
     }
 
     /**

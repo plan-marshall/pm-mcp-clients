@@ -38,6 +38,7 @@ import picocli.CommandLine.Spec;
  */
 @Command(name = "onboard", description = "Runs the machine onboarding, guided or automatic.")
 @OperatorVerb
+@SuppressWarnings("java:S1075")
 public final class OnboardCommand implements Callable<Integer> {
 
     static final String STATE_PATH = "/api/v1/onboarding/state";

@@ -41,7 +41,7 @@ public record ConsentRecord(
 ) {
     public ConsentRecord {
         Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, "status is required");
     }
 
     /**

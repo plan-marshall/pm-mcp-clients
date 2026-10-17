@@ -81,7 +81,7 @@ public record MachineSettingsUpdateResult(
      * @return parsed result
      * @throws IOException on format failure
      */
-    public static MachineSettingsUpdateResult fromMap(Map<String, Object> map) throws IOException {
+    public static MachineSettingsUpdateResult fromMap(Map<String, Object> map) {
         var revision = JsonTree.integer(map, "revision");
         return new MachineSettingsUpdateResult(
                 Boolean.TRUE.equals(JsonTree.bool(map, "applied")),

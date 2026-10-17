@@ -82,12 +82,12 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips through JSON with its channel and script count")
         void shouldRoundTrip() throws Exception {
-            var record = new ConsentRecord(ConsentKind.RUN_CHECKOUT_SCRIPTS, ConsentStatus.REMEMBERED,
+            var consent = new ConsentRecord(ConsentKind.RUN_CHECKOUT_SCRIPTS, ConsentStatus.REMEMBERED,
                     true, "2026-10-12T09:00:00Z", "Firefox", "pm-mcp-clients", 3);
 
-            var parsed = ConsentRecord.fromJson(record.toJson());
+            var parsed = ConsentRecord.fromJson(consent.toJson());
 
-            assertEquals(record, parsed);
+            assertEquals(consent, parsed);
             assertEquals("common.consent.kind.run_checkout_scripts", parsed.titleKey());
         }
 
@@ -107,13 +107,13 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips a partial report with its missing figures and default mark")
         void shouldRoundTripPartial() throws Exception {
-            var record = new HarnessScanResult("opencode", "OpenCode", "/opt/homebrew/bin/opencode",
+            var harness = new HarnessScanResult("opencode", "OpenCode", "/opt/homebrew/bin/opencode",
                     "1.9.0", true, true, true, TokenUsageCoverage.PARTIAL,
                     List.of("cache write"), true);
 
-            var parsed = HarnessScanResult.fromJson(record.toJson());
+            var parsed = HarnessScanResult.fromJson(harness.toJson());
 
-            assertEquals(record, parsed);
+            assertEquals(harness, parsed);
             assertTrue(parsed.isDefault());
             assertEquals(List.of("cache write"), parsed.missingFigures());
         }
@@ -196,7 +196,7 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips the whole machine settings record")
         void shouldRoundTrip() throws Exception {
-            var record = new MachineSettingsRecord(
+            var settings = new MachineSettingsRecord(
                     7,
                     List.of(new MachineSettingsAspectSummary(OnboardingAspect.LANGUAGE, "Deutsch, models English", "de")),
                     "de", "en", DocumentsMode.ASK,
@@ -205,9 +205,9 @@ class OnboardingRecordsTest {
                             "2026-10-12T09:00:00Z", "terminal", null, null)),
                     List.of(new MachineCredentialStatus("github", "GitHub", "fine-grained", 9, false, null)));
 
-            var parsed = MachineSettingsRecord.fromJson(record.toJson());
+            var parsed = MachineSettingsRecord.fromJson(settings.toJson());
 
-            assertEquals(record, parsed);
+            assertEquals(settings, parsed);
             assertEquals(1, parsed.aspects().size());
             assertTrue(parsed.credentials().getFirst().expiresSoon());
         }
@@ -287,11 +287,11 @@ class OnboardingRecordsTest {
         @DisplayName("round-trip the step-completed and settings-changed events with their names")
         void shouldRoundTripEvents() throws Exception {
             var step = new OnboardingStepCompletedEvent(OnboardingAspect.MODELS, "roles.review", 3);
-            assertEquals("onboarding.step_completed", OnboardingStepCompletedEvent.eventName());
+            assertEquals("onboarding.step_completed", OnboardingStepCompletedEvent.EVENT_NAME);
             assertEquals(step, OnboardingStepCompletedEvent.fromJson(step.toJson()));
 
             var settings = new MachineSettingsChangedEvent("documents_mode", "copy", 8, "terminal");
-            assertEquals("machine.settings_changed", MachineSettingsChangedEvent.eventName());
+            assertEquals("machine.settings_changed", MachineSettingsChangedEvent.EVENT_NAME);
             assertEquals(settings, MachineSettingsChangedEvent.fromJson(settings.toJson()));
         }
     }

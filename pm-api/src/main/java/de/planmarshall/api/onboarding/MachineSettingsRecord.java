@@ -97,48 +97,42 @@ public record MachineSettingsRecord(
     public static MachineSettingsRecord fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var revision = JsonTree.integer(map, "revision");
-        var aspects = new ArrayList<MachineSettingsAspectSummary>();
-        var aspectList = JsonTree.asArray(map.get("aspects"));
-        if (aspectList != null) {
-            for (var element : aspectList) {
-                var obj = JsonTree.asObject(element);
-                if (obj != null) {
-                    aspects.add(MachineSettingsAspectSummary.fromMap(obj));
-                }
-            }
-        }
-        var consents = new ArrayList<ConsentRecord>();
-        var consentList = JsonTree.asArray(map.get("consents"));
-        if (consentList != null) {
-            for (var element : consentList) {
-                var obj = JsonTree.asObject(element);
-                if (obj != null) {
-                    consents.add(ConsentRecord.fromMap(obj));
-                }
-            }
-        }
-        var credentials = new ArrayList<MachineCredentialStatus>();
-        var credentialList = JsonTree.asArray(map.get("credentials"));
-        if (credentialList != null) {
-            for (var element : credentialList) {
-                var obj = JsonTree.asObject(element);
-                if (obj != null) {
-                    credentials.add(MachineCredentialStatus.fromMap(obj));
-                }
-            }
-        }
+        var aspects = readList(map, "aspects", MachineSettingsAspectSummary::fromMap);
+        var consents = readList(map, "consents", ConsentRecord::fromMap);
+        var credentials = readList(map, "credentials", MachineCredentialStatus::fromMap);
+        var cleanupObj = JsonTree.object(map, "cleanup_durations");
+        var planObj = JsonTree.object(map, "plan_defaults");
         return new MachineSettingsRecord(
                 revision != null ? revision : 0,
                 aspects,
                 JsonTree.string(map, "language_interface"),
                 JsonTree.string(map, "language_model"),
                 DocumentsMode.fromWire(JsonTree.string(map, "documents_mode")),
-                JsonTree.object(map, "cleanup_durations") != null
-                        ? CleanupDurations.fromMap(JsonTree.object(map, "cleanup_durations")) : null,
-                JsonTree.object(map, "plan_defaults") != null
-                        ? PlanDefaults.fromMap(JsonTree.object(map, "plan_defaults")) : null,
+                cleanupObj != null ? CleanupDurations.fromMap(cleanupObj) : null,
+                planObj != null ? PlanDefaults.fromMap(planObj) : null,
                 consents,
                 credentials);
+    }
+
+    private static <T> List<T> readList(Map<String, Object> map, String name, MapReader<T> reader)
+            throws IOException {
+        var result = new ArrayList<T>();
+        var list = JsonTree.asArray(map.get(name));
+        if (list != null) {
+            for (var element : list) {
+                var obj = JsonTree.asObject(element);
+                if (obj != null) {
+                    result.add(reader.read(obj));
+                }
+            }
+        }
+        return result;
+    }
+
+    /** Reads one element of a JSON array into a record that may fail to parse. */
+    @FunctionalInterface
+    private interface MapReader<T> {
+        T read(Map<String, Object> map) throws IOException;
     }
 
     /**

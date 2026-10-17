@@ -61,9 +61,9 @@ public record PlanDefaults(
     public static final String ASK_QUESTIONS_ONLY = "ask.questions-only";
 
     public PlanDefaults {
-        Objects.requireNonNull(landing, "landing");
-        Objects.requireNonNull(method, "method");
-        Objects.requireNonNull(asking, "asking");
+        Objects.requireNonNull(landing, "landing is required");
+        Objects.requireNonNull(method, "method is required");
+        Objects.requireNonNull(asking, "asking is required");
     }
 
     /**
@@ -107,7 +107,7 @@ public record PlanDefaults(
      * @return parsed record
      * @throws IOException on format failure
      */
-    public static PlanDefaults fromMap(Map<String, Object> map) throws IOException {
+    public static PlanDefaults fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var landing = orDefault(JsonTree.string(map, "landing"), LANDING_PULL_REQUEST);
         var method = orDefault(JsonTree.string(map, "method"), METHOD_TEST_FIRST);

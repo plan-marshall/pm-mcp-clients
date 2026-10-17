@@ -106,7 +106,7 @@ public record MachineOnboardingState(
      * @return parsed state
      * @throws IOException on format failure
      */
-    public static MachineOnboardingState fromMap(Map<String, Object> map) throws IOException {
+    public static MachineOnboardingState fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var state = JsonTree.string(map, "state");
         var completed = new ArrayList<OnboardingAspect>();

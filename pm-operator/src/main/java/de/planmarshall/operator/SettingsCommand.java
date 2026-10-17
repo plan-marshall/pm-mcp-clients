@@ -39,6 +39,7 @@ import picocli.CommandLine.Spec;
 @Command(name = "settings", description = "Inspects and changes the machine's settings.",
                     subcommands = {SettingsCommand.MachineCommand.class})
 @OperatorVerb
+@SuppressWarnings("java:S1075")
 public final class SettingsCommand implements Callable<Integer> {
 
     private final OperatorContext context;
@@ -52,6 +53,7 @@ public final class SettingsCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
+        context.gate().verify();
         spec.commandLine().usage(spec.commandLine().getOut());
         return 0;
     }
@@ -96,9 +98,7 @@ public final class SettingsCommand implements Callable<Integer> {
             if (withdraw != null && !withdraw.isBlank()) {
                 var kind = ConsentKind.fromWire(withdraw);
                 if (kind == null) {
-                    out.println(MessageCatalogue.format("operator.onboard.refused",
-                                        Map.of("reason", "unknown consent kind")));
-                    out.flush();
+                    refuse(out, "unknown consent kind");
                     return 1;
                 }
                 revision = apply(out, MachineSettingsUpdateRequest.withdrawConsent(kind, revision), revision);
@@ -107,9 +107,7 @@ public final class SettingsCommand implements Callable<Integer> {
                 for (var pair : set) {
                     var eq = pair.indexOf('=');
                     if (eq <= 0) {
-                        out.println(MessageCatalogue.format("operator.onboard.refused",
-                                            Map.of("reason", "expected key=value")));
-                        out.flush();
+                        refuse(out, "expected key=value");
                         return 1;
                     }
                     var request = new MachineSettingsUpdateRequest(pair.substring(0, eq),
@@ -121,20 +119,21 @@ public final class SettingsCommand implements Callable<Integer> {
             return 0;
         }
 
+        private static void refuse(PrintWriter out, String reason) {
+            out.println(MessageCatalogue.format("operator.onboard.refused", Map.of("reason", reason)));
+            out.flush();
+        }
+
         private @Nullable MachineSettingsRecord readSettings(PrintWriter out) throws IOException {
             var response = context.runtime(true).send(HttpRequest.get(MACHINE_PATH));
             if (response.status() != 200) {
-                out.println(MessageCatalogue.format("operator.onboard.refused",
-                                    Map.of("reason", "HTTP " + response.status())));
-                out.flush();
+                refuse(out, "HTTP " + response.status());
                 return null;
             }
             try {
                 return MachineSettingsRecord.fromJson(response.bodyText());
             } catch (IOException _) {
-                out.println(MessageCatalogue.format("operator.onboard.refused",
-                                    Map.of("reason", "malformed settings")));
-                out.flush();
+                refuse(out, "malformed settings");
                 return null;
             }
         }
@@ -184,9 +183,7 @@ public final class SettingsCommand implements Callable<Integer> {
                 }
                 return revision;
             }
-            out.println(MessageCatalogue.format("operator.onboard.refused",
-                                Map.of("reason", "HTTP " + response.status())));
-            out.flush();
+            refuse(out, "HTTP " + response.status());
             return revision;
         }
     }

@@ -55,12 +55,14 @@ import de.planmarshall.api.decision.Reversibility;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.ConsentKind;
+import de.planmarshall.api.onboarding.DocumentsMode;
 import de.planmarshall.api.onboarding.MachineOnboardingState;
 import de.planmarshall.api.onboarding.MachineSettingsChangedEvent;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
+import de.planmarshall.api.onboarding.PlanDefaults;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
@@ -176,6 +178,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_LAN_FINGERPRINT = "4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07";
     private static final String CONST_LOOPBACK_URL = "http://127.0.0.1:7420";
     private static final int DEFAULT_LAN_PORT = 7421;
+    private static final String KEY_LANDING = "landing";
+    private static final String KEY_METHOD = "method";
+    private static final String KEY_ASKING = "asking";
+    private static final String KEY_POSTURE = "posture";
+    private static final String KEY_DOCUMENTS_MODE = "documents_mode";
+    private static final String KEY_CLEANUP_DURATIONS = "cleanup_durations";
+    private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
+    private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
+    private static final String KEY_EPICS_AFTER_DAYS = "epics_after_days";
+    private static final String KEY_LOGS_AFTER_DAYS = "logs_after_days";
+    private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
+    private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
+    private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
+    private static final String CONSENT_PREFIX = "consent:";
+    private static final String CONST_CLAUDE = "claude";
+    private static final List<String> CLEANUP_DAY_KEYS = List.of(KEY_PLANS_AFTER_DAYS,
+            KEY_EPICS_AFTER_DAYS, KEY_LOGS_AFTER_DAYS, KEY_REPORTS_AFTER_DAYS, KEY_UNENROLLED_AFTER_DAYS);
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -395,51 +414,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        // 3. Dynamic device and web routes
-        if (handleDeviceRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3-ONB. Dynamic machine onboarding and settings routes (UC-ONB-1..10)
-        if (handleOnboardingRoutes(request, response)) {
-            return;
-        }
-        if (handleMachineSettingsRoutes(request, response)) {
-            return;
-        }
-
-        // 3a. Dynamic project explorer and onboarding routes (UC-PRJ-1..3)
-        if (handleProjectExplorerRoutes(request, response)) {
-            return;
-        }
-
-        // 3b. Dynamic project overview routes
-        if (handleProjectOverviewRoutes(request, response)) {
-            return;
-        }
-
-        // 3b. Dynamic report routes
-        if (handleReportRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3c. Dynamic decision routes
-        if (handleDecisionRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3c. Dynamic system and cleanup routes
-        if (handleSystemRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3d. Dynamic process and task activity routes (UC-PLN-1, UC-PLN-5)
-        if (handleProcessRoutes(request, response)) {
-            return;
-        }
-
-        // 3e. Dynamic plan and epic control routes (UC-CTL-1..5)
-        if (handleControlRoutes(request, response)) {
+        // 3. Dynamic routes, in the order their paths are disjoint
+        if (handleDynamicRoutes(request, response, isWeb)) {
             return;
         }
 
@@ -463,6 +439,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 7. No match: answer mock_no_route
         handleNoRoute(request, response);
+    }
+
+    private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        return handleDeviceRoutes(request, response, isWeb)
+                || handleOnboardingRoutes(request, response)
+                || handleMachineSettingsRoutes(request, response)
+                || handleProjectExplorerRoutes(request, response)
+                || handleProjectOverviewRoutes(request, response)
+                || handleReportRoutes(request, response, isWeb)
+                || handleDecisionRoutes(request, response, isWeb)
+                || handleSystemRoutes(request, response, isWeb)
+                || handleProcessRoutes(request, response)
+                || handleControlRoutes(request, response);
     }
 
     private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -2181,22 +2171,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void initDefaultOnboarding() {
         synchronized (onboardingLock) {
             machineSettingsRevision = 4;
-            machineDocumentsMode = "ask";
+            machineDocumentsMode = DocumentsMode.ASK.wireValue();
             onboardingAuto = false;
             machinePlanDefaults = new LinkedHashMap<>();
-            machinePlanDefaults.put("landing", "landing.pull-request");
-            machinePlanDefaults.put("method", "method.test-first");
-            machinePlanDefaults.put("asking", "ask.key-points");
+            machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
+            machinePlanDefaults.put(KEY_METHOD, PlanDefaults.METHOD_TEST_FIRST);
+            machinePlanDefaults.put(KEY_ASKING, PlanDefaults.ASK_KEY_POINTS);
             machineCleanupDurations = new LinkedHashMap<>();
-            machineCleanupDurations.put("plans_after_days", 30);
-            machineCleanupDurations.put("epics_after_days", 30);
-            machineCleanupDurations.put("logs_after_days", 30);
-            machineCleanupDurations.put("reports_after_days", 30);
-            machineCleanupDurations.put("unenrolled_after_days", 30);
-            machineCleanupDurations.put("remind_after_days", 3);
+            machineCleanupDurations.put(KEY_PLANS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_EPICS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_LOGS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_REPORTS_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_UNENROLLED_AFTER_DAYS, 30);
+            machineCleanupDurations.put(KEY_REMIND_AFTER_DAYS, 3);
             machineRememberedConsents.clear();
-            machineRememberedConsents.add(rememberedConsent("scan_harnesses", "terminal", "2026-10-12T09:00:00Z"));
-            machineRememberedConsents.add(rememberedConsent("probe_harness_login", "Firefox", "2026-10-12T09:12:00Z"));
+            machineRememberedConsents.add(rememberedConsent(ConsentKind.SCAN_HARNESSES.wireValue(),
+                    KEY_TERMINAL, "2026-10-12T09:00:00Z"));
+            machineRememberedConsents.add(rememberedConsent(ConsentKind.PROBE_HARNESS_LOGIN.wireValue(),
+                    "Firefox", "2026-10-12T09:12:00Z"));
             machineCredentials.clear();
             machineCredentials.add(credential("github", "GitHub", "fine-grained", 9, false));
             machineCredentials.add(credential("sonar", "SonarCloud", "user token", null, false));
@@ -2206,7 +2198,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static Map<String, Object> rememberedConsent(String kind, String channel, String grantedAt) {
         var map = new LinkedHashMap<String, Object>();
         map.put("kind", kind);
-        map.put("status", "remembered");
+        map.put(KEY_STATUS, "remembered");
         map.put("remember", true);
         map.put("granted_at", grantedAt);
         map.put("channel", channel);
@@ -2320,7 +2312,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var previousAspect = MachineOnboardingState.aspectOf(previousState);
         var newAspect = MachineOnboardingState.aspectOf(newState);
         if (previousAspect != null && newAspect != previousAspect) {
-            broadcastEvent(OnboardingStepCompletedEvent.eventName(), new OnboardingStepCompletedEvent(
+            broadcastEvent(OnboardingStepCompletedEvent.EVENT_NAME, new OnboardingStepCompletedEvent(
                     previousAspect, newState, completedStepsFor(newState)).toMap());
         }
         response.json(link.status(), mergeRepresentation(state, newState));
@@ -2368,18 +2360,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
             body.put("revision", machineSettingsRevision);
             body.put("aspects", List.of(
                     aspectSummary(OnboardingAspect.LANGUAGE, "Deutsch, models English", "de"),
-                    aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", "claude"),
+                    aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
                     aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
                     aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
                     aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", "os"),
                     aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", "github"),
                     aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
-                            String.valueOf(machinePlanDefaults.get("landing")))));
+                            String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
             body.put("language_interface", "de");
             body.put("language_model", "en");
-            body.put("documents_mode", machineDocumentsMode);
-            body.put("cleanup_durations", machineCleanupDurations);
-            body.put("plan_defaults", machinePlanDefaults);
+            body.put(KEY_DOCUMENTS_MODE, machineDocumentsMode);
+            body.put(KEY_CLEANUP_DURATIONS, machineCleanupDurations);
+            body.put(KEY_PLAN_DEFAULTS, machinePlanDefaults);
             body.put("consents", machineRememberedConsents);
             body.put("credentials", machineCredentials);
             return body;
@@ -2405,54 +2397,70 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             applyMachineSetting(update.key(), update.value());
             machineSettingsRevision++;
-            broadcastEvent(MachineSettingsChangedEvent.eventName(), new MachineSettingsChangedEvent(
+            broadcastEvent(MachineSettingsChangedEvent.EVENT_NAME, new MachineSettingsChangedEvent(
                     update.key(), update.value(), machineSettingsRevision, "web").toMap());
             response.json(200, MachineSettingsUpdateResult.applied(machineSettingsRevision).toMap());
         }
     }
 
     private void applyMachineSetting(String key, @Nullable String value) {
-        if ("documents_mode".equals(key) && value != null) {
-            if ("copy".equals(value) || "move".equals(value) || "ask".equals(value)) {
-                machineDocumentsMode = value;
+        if (KEY_DOCUMENTS_MODE.equals(key) && value != null) {
+            applyDocumentsMode(value);
+        } else if (KEY_CLEANUP_DURATIONS.equals(key) && value != null) {
+            applyCleanupDurations(value);
+        } else if (KEY_PLAN_DEFAULTS.equals(key) && value != null) {
+            applyPlanDefaults(value);
+        } else if (key.startsWith(CONSENT_PREFIX)) {
+            applyConsentWithdrawal(key);
+        }
+    }
+
+    private void applyDocumentsMode(String value) {
+        if (DocumentsMode.COPY.wireValue().equals(value) || DocumentsMode.MOVE.wireValue().equals(value)
+                || DocumentsMode.ASK.wireValue().equals(value)) {
+            machineDocumentsMode = value;
+        }
+    }
+
+    private void applyCleanupDurations(String value) {
+        try {
+            int days = Integer.parseInt(value.trim());
+            for (var field : CLEANUP_DAY_KEYS) {
+                machineCleanupDurations.put(field, days);
             }
-        } else if ("cleanup_durations".equals(key) && value != null) {
-            try {
-                int days = Integer.parseInt(value.trim());
-                for (var field : List.of("plans_after_days", "epics_after_days", "logs_after_days",
-                        "reports_after_days", "unenrolled_after_days")) {
-                    machineCleanupDurations.put(field, days);
-                }
-            } catch (NumberFormatException _) {
-                // keep the current durations when the value is not a number
-            }
-        } else if ("plan_defaults".equals(key) && value != null) {
-            if (value.startsWith("landing.")) {
-                machinePlanDefaults.put("landing", value);
-            } else if (value.startsWith("method.")) {
-                machinePlanDefaults.put("method", value);
-            } else if (value.startsWith("ask.")) {
-                machinePlanDefaults.put("asking", value);
-            } else if (value.startsWith("posture.")) {
-                machinePlanDefaults.put("posture", value.substring("posture.".length()));
-            }
-        } else if (key.startsWith("consent:")) {
-            var kind = ConsentKind.fromWire(key.substring("consent:".length()));
-            if (kind != null) {
-                machineRememberedConsents.removeIf(c -> kind.wireValue().equals(c.get("kind")));
-            }
+        } catch (NumberFormatException _) {
+            // keep the current durations when the value is not a number
+        }
+    }
+
+    private void applyPlanDefaults(String value) {
+        if (value.startsWith("landing.")) {
+            machinePlanDefaults.put(KEY_LANDING, value);
+        } else if (value.startsWith("method.")) {
+            machinePlanDefaults.put(KEY_METHOD, value);
+        } else if (value.startsWith("ask.")) {
+            machinePlanDefaults.put(KEY_ASKING, value);
+        } else if (value.startsWith("posture.")) {
+            machinePlanDefaults.put(KEY_POSTURE, value.substring("posture.".length()));
+        }
+    }
+
+    private void applyConsentWithdrawal(String key) {
+        var kind = ConsentKind.fromWire(key.substring(CONSENT_PREFIX.length()));
+        if (kind != null) {
+            machineRememberedConsents.removeIf(c -> kind.wireValue().equals(c.get("kind")));
         }
     }
 
     private String currentMachineValue(String key) {
-        if ("documents_mode".equals(key)) {
+        if (KEY_DOCUMENTS_MODE.equals(key)) {
             return machineDocumentsMode;
         }
-        if ("plan_defaults".equals(key)) {
-            return String.valueOf(machinePlanDefaults.get("landing"));
+        if (KEY_PLAN_DEFAULTS.equals(key)) {
+            return String.valueOf(machinePlanDefaults.get(KEY_LANDING));
         }
-        if ("cleanup_durations".equals(key)) {
-            return String.valueOf(machineCleanupDurations.get("plans_after_days"));
+        if (KEY_CLEANUP_DURATIONS.equals(key)) {
+            return String.valueOf(machineCleanupDurations.get(KEY_PLANS_AFTER_DAYS));
         }
         return "";
     }
@@ -3144,11 +3152,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var workMetrics = new WorkMetrics(plansByState, epicsByState, tasksRunning, tasksQueued, activeProjects, List.of());
 
         var workers = List.of(
-                new WorkerMetric("planner", "claude", "opus-4.5", WorkerState.BUSY, "fix-relay"),
-                new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, "relay-docs"),
+                new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, "fix-relay"),
+                new WorkerMetric("implementer", CONST_CLAUDE, "sonnet-4.5", WorkerState.BUSY, "relay-docs"),
                 new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
-                new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, "token-usage"),
-                new WorkerMetric("reviewer", "claude", "sonnet-4.5", WorkerState.IDLE, null)
+                new WorkerMetric("implementer", CONST_CLAUDE, "sonnet-4.5", WorkerState.BUSY, "token-usage"),
+                new WorkerMetric("reviewer", CONST_CLAUDE, "sonnet-4.5", WorkerState.IDLE, null)
         );
 
         var jobs = Map.<String, Object>of(

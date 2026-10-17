@@ -442,13 +442,13 @@ class OnboardCommandTest {
     @Test
     @DisplayName("round-trips the machine settings contract through its own record")
     void contractRoundTrip() throws Exception {
-        var record = new MachineSettingsRecord(3,
+        var settings = new MachineSettingsRecord(3,
                             List.of(new MachineSettingsAspectSummary(OnboardingAspect.PLANS, "Pull Request", "landing.pull-request")),
                             "en", "same", DocumentsMode.ASK, CleanupDurations.defaults(), PlanDefaults.shipped(),
                             List.of(new ConsentRecord(ConsentKind.SCAN_HARNESSES, ConsentStatus.REMEMBERED, true,
                                                 null, "terminal", null, null)),
                             List.of());
-        var parsed = MachineSettingsRecord.fromJson(record.toJson());
+        var parsed = MachineSettingsRecord.fromJson(settings.toJson());
         assertEquals(3, parsed.revision());
         assertFalse(parsed.aspects().isEmpty());
     }

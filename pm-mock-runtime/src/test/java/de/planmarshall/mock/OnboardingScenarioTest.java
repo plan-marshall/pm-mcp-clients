@@ -71,7 +71,7 @@ class OnboardingScenarioTest {
 
                     var event = sse.next();
                     assertNotNull(event);
-                    assertEquals(OnboardingStepCompletedEvent.eventName(), event.event());
+                    assertEquals(OnboardingStepCompletedEvent.EVENT_NAME, event.event());
                     var data = JsonTree.asObject(JsonTree.parse(event.data()));
                     assertEquals(OnboardingAspect.LANGUAGE.wireValue(), JsonTree.string(data, "aspect"));
                     assertEquals("harness.consent", JsonTree.string(data, "state"));
