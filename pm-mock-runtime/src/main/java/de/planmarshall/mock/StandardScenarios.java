@@ -102,6 +102,12 @@ public final class StandardScenarios {
     public static final String START = "start";
 
     /**
+     * The process designer: installed units at every level, the catalogue of building blocks,
+     * validation findings, placing, and removing (UC-PLN-3).
+     */
+    public static final String DESIGNER = "designer";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -118,6 +124,7 @@ public final class StandardScenarios {
             PROJECTS,
             PLAN_VIEW,
             CONTROL,
-            START
+            START,
+            DESIGNER
     );
 }

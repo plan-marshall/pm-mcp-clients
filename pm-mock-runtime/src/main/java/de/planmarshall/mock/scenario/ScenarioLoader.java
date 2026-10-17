@@ -158,6 +158,9 @@ public class ScenarioLoader {
 
         var states = parseStates(statesMap, identifier);
 
+        // 8. designer fixtures (UC-PLN-3), optional
+        var designer = parseDesigner(root.get("designer"), identifier);
+
         // Validate that start state exists
         if (!states.containsKey(start)) {
             throw new ScenarioValidationException(identifier, null, "start",
@@ -166,7 +169,18 @@ public class ScenarioLoader {
 
         validateTransitions(states, identifier);
 
-        return new Scenario(formatVersion, name, description, start, pairingCode, routes, states);
+        return new Scenario(formatVersion, name, description, start, pairingCode, routes, states, designer);
+    }
+
+    private static Map<String, Object> parseDesigner(Object designerObj, String scenario) {
+        if (designerObj == null) {
+            return Map.of();
+        }
+        var map = JsonTree.asObject(designerObj);
+        if (map == null) {
+            throw new ScenarioValidationException(scenario, null, "designer", "designer fixtures must be an object");
+        }
+        return map;
     }
 
     private static void validateTransitions(Map<String, StateDefinition> states, String identifier) {
