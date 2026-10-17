@@ -21,6 +21,9 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.control.HoldResolutionResult;
+import de.planmarshall.api.control.PlanSettingsRecord;
+import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -59,6 +62,8 @@ import picocli.CommandLine.Spec;
                                         PlanCommand.WatchesCommand.class,
                                         PlanCommand.CancelCommand.class,
                                         PlanCommand.AbandonCommand.class,
+                                        PlanCommand.ResolveCommand.class,
+                                        PlanCommand.SettingsCommand.class,
                                         PlanCommand.ChatCommand.class,
                                         PlanCommand.ReportCommand.class
                     })
@@ -1009,6 +1014,214 @@ public final class PlanCommand implements Callable<Integer> {
                 return hours + " h " + mins + " min";
             }
             return mins + " min";
+        }
+    }
+
+    @Command(name = "resolve", description = "Resolves what holds a plan (UC-CTL-4).")
+    @OperatorVerb
+    static final class ResolveCommand implements Callable<Integer> {
+        @Spec
+        CommandSpec spec = CommandSpec.create();
+        private final OperatorContext context;
+
+        @Parameters(index = "0", description = "Plan ID")
+        String planId = "";
+
+        @Parameters(index = "1", description = "Hold ID")
+        String holdId = "";
+
+        @Option(names = "--act", required = true, description = "The act that resolves the hold")
+        String act = "";
+
+        @Option(names = "--reason", description = "Reason for an act that cannot be undone")
+        @Nullable
+        String reason;
+
+        ResolveCommand(OperatorContext context) {
+            this.context = context;
+        }
+
+        @Override
+        public Integer call() throws IOException {
+            context.gate().verify();
+            var out = spec.commandLine().getOut();
+            var payload = new LinkedHashMap<String, Object>();
+            payload.put("act", act);
+            if (reason != null && !reason.isBlank()) {
+                payload.put("reason", reason);
+            }
+            var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId)
+                                + "/holds/" + OperatorUrlUtil.encodePathSegment(holdId) + "/resolve";
+            var response = context.runtime(true).send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
+            if (response.status() == 200) {
+                try {
+                    var result = HoldResolutionResult.fromJson(response.bodyText());
+                    if (result.released()) {
+                        out.println(MessageCatalogue.format("control.hold.released",
+                                            Map.of("subject", result.subject())));
+                    } else {
+                        out.println(MessageCatalogue.format("control.hold.still_held",
+                                            Map.of("cause", result.cause() != null ? result.cause() : "")));
+                    }
+                    out.flush();
+                    return 0;
+                } catch (IOException _) {
+                    out.println(response.bodyText());
+                    out.flush();
+                    return 0;
+                }
+            }
+            throw new OperatorRefusedException("plan resolve", response);
+        }
+    }
+
+    @Command(name = "settings", description = "Shows or changes a plan's own settings values (UC-CTL-5).")
+    @OperatorVerb
+    static final class SettingsCommand implements Callable<Integer> {
+        @Spec
+        CommandSpec spec = CommandSpec.create();
+        private final OperatorContext context;
+
+        @Parameters(index = "0", description = "Plan ID")
+        String planId = "";
+
+        @Option(names = "--set", description = "Set aspect=value in the plan's overrides")
+        @Nullable
+        String set;
+
+        @Option(names = "--remove", description = "Remove the plan's own value of an aspect")
+        @Nullable
+        String remove;
+
+        @Option(names = "--yes", description = "Apply again although another client changed the value first")
+        boolean yes;
+
+        @Option(names = "--no-input", description = "Stop instead of asking on a conflict")
+        boolean noInput;
+
+        SettingsCommand(OperatorContext context) {
+            this.context = context;
+        }
+
+        @Override
+        public Integer call() throws IOException {
+            context.gate().verify();
+            var out = spec.commandLine().getOut();
+            var settings = loadSettings();
+            if (settings == null) {
+                out.printf("Plan %s not found.%n", planId);
+                out.flush();
+                return 1;
+            }
+
+            if (set == null && remove == null) {
+                printSettings(out, settings);
+                return 0;
+            }
+
+            String aspect;
+            String value;
+            if (remove != null) {
+                aspect = remove;
+                value = null;
+            } else {
+                var eq = set.indexOf('=');
+                if (eq < 0) {
+                    out.println("Give the value as --set aspect=value.");
+                    out.flush();
+                    return 1;
+                }
+                aspect = set.substring(0, eq).trim();
+                value = set.substring(eq + 1).trim();
+            }
+            return apply(out, settings, aspect, value);
+        }
+
+        private @Nullable PlanSettingsRecord loadSettings() throws IOException {
+            var response = context.runtime(true).send(
+                                HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
+            if (response.status() == 200) {
+                return PlanSettingsRecord.fromJson(response.bodyText());
+            }
+            return null;
+        }
+
+        private int apply(PrintWriter out, PlanSettingsRecord settings, String aspect, @Nullable String value)
+                            throws IOException {
+            var result = put(settings.revision(), aspect, value);
+            if (result.applied()) {
+                out.println(MessageCatalogue.format("control.settings.applies",
+                                    Map.of("plan", planId, "version", result.revision())));
+                out.flush();
+                return 0;
+            }
+            if (result.conflict()) {
+                var current = result.currentValue() != null ? result.currentValue() : "";
+                if (yes) {
+                    var again = put(result.revision(), aspect, value);
+                    if (again.applied()) {
+                        out.println(MessageCatalogue.format("control.settings.applies",
+                                            Map.of("plan", planId, "version", again.revision())));
+                        out.flush();
+                        return 0;
+                    }
+                    return refused(out, aspect, value);
+                }
+                out.println(MessageCatalogue.format("common.conflict.changed", Map.of("value", current)));
+                if (noInput) {
+                    out.println(MessageCatalogue.format("common.conflict.no_input", Map.of("value", current)));
+                    out.flush();
+                    return 3;
+                }
+                out.flush();
+                return 1;
+            }
+            return refused(out, aspect, value);
+        }
+
+        private PlanSettingsUpdateResult put(int revision, String aspect, @Nullable String value) throws IOException {
+            var payload = new LinkedHashMap<String, Object>();
+            payload.put("aspect", aspect);
+            if (value != null) {
+                payload.put("value", value);
+            } else {
+                payload.put("remove", true);
+            }
+            payload.put("revision", revision);
+            var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings";
+            var response = context.runtime(true).send(HttpRequest.json("PUT", endpoint, JsonTree.write(payload)));
+            if (response.status() == 200 || response.status() == 409) {
+                return PlanSettingsUpdateResult.fromJson(response.bodyText());
+            }
+            return PlanSettingsUpdateResult.tooLate(planId);
+        }
+
+        private int refused(PrintWriter out, String aspect, @Nullable String value) throws IOException {
+            var response = context.runtime(true).send(
+                                HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
+            var reason = "the value does not fit";
+            if (response.status() == 200) {
+                var current = PlanSettingsRecord.fromJson(response.bodyText());
+                var entry = current.value(aspect);
+                if (entry != null && !entry.choices().isEmpty()) {
+                    reason = "it is not one of " + String.join(", ", entry.choices());
+                }
+            }
+            out.println(MessageCatalogue.format("control.settings.refused",
+                                Map.of("value", value != null ? value : aspect, "reason", reason)));
+            out.flush();
+            return 1;
+        }
+
+        private void printSettings(PrintWriter out, PlanSettingsRecord settings) {
+            out.println(MessageCatalogue.format("control.settings.title", Map.of("plan", planId)));
+            for (var entry : settings.values()) {
+                out.printf("  %-18s %-28s %s%n",
+                                    entry.aspect(),
+                                    entry.value() != null ? OutputSafety.stripControlSequences(entry.value()) : "\u2014",
+                                    MessageCatalogue.format("control.settings.origin", Map.of("origin", entry.origin())));
+            }
+            out.flush();
         }
     }
 }

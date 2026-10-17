@@ -38,6 +38,7 @@ class StandardScenariosTest {
         assertEquals("system", StandardScenarios.SYSTEM);
         assertEquals("projects", StandardScenarios.PROJECTS);
         assertEquals("plan-view", StandardScenarios.PLAN_VIEW);
+        assertEquals("control", StandardScenarios.CONTROL);
 
         // ALL lists exactly the scenario constants declared here. Reading them by reflection keeps
         // the test correct when a scenario is added, so it does not break on a sibling change.

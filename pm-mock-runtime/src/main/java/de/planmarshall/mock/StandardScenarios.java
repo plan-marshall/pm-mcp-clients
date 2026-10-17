@@ -91,6 +91,11 @@ public final class StandardScenarios {
     public static final String PLAN_VIEW = "plan-view";
 
     /**
+     * Plan and epic actions, holds, and a plan's settings (UC-CTL-1..5).
+     */
+    public static final String CONTROL = "control";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -105,6 +110,7 @@ public final class StandardScenarios {
             DECISIONS,
             SYSTEM,
             PROJECTS,
-            PLAN_VIEW
+            PLAN_VIEW,
+            CONTROL
     );
 }

@@ -28,6 +28,18 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.control.ActionAvailability;
+import de.planmarshall.api.control.HoldChangedEvent;
+import de.planmarshall.api.control.HoldRecord;
+import de.planmarshall.api.control.HoldResolutionRequest;
+import de.planmarshall.api.control.HoldResolutionResult;
+import de.planmarshall.api.control.PlanActionRequest;
+import de.planmarshall.api.control.PlanControlEvent;
+import de.planmarshall.api.control.PlanSettingsRecord;
+import de.planmarshall.api.control.PlanSettingsUpdateRequest;
+import de.planmarshall.api.control.PlanSettingsUpdateResult;
+import de.planmarshall.api.control.PlanSettingsValue;
+import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.decision.AnswerType;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
@@ -190,6 +202,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile int lanListenerPort = DEFAULT_LAN_PORT;
     private volatile boolean closed;
 
+    private final Object controlLock = new Object();
+    private final Map<String, String> controlPlanStates = new LinkedHashMap<>();
+    private final Map<String, String> controlPlanPausePoints = new LinkedHashMap<>();
+    private final Map<String, String> controlPlanEpics = new LinkedHashMap<>();
+    private final Map<String, String> controlEpicStates = new LinkedHashMap<>();
+    private final Map<String, Boolean> controlEpicAuto = new LinkedHashMap<>();
+    private final Map<String, Integer> controlEpicScope = new LinkedHashMap<>();
+    private final Map<String, Integer> controlEpicRunning = new LinkedHashMap<>();
+    private final Map<String, Integer> controlEpicOverlap = new LinkedHashMap<>();
+    private final Map<String, HoldRecord> controlHolds = new LinkedHashMap<>();
+    private final Map<String, Integer> controlSettingsRevisions = new LinkedHashMap<>();
+    private final Map<String, Map<String, PlanSettingsValue>> controlSettings = new LinkedHashMap<>();
+
     /**
      * @param registry     the scenario registry
      * @param scenario     the initial scenario
@@ -223,6 +248,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultDecisions();
         initDefaultSystem();
         initDefaultProjects();
+        initDefaultControl();
         transitionTo(scenario.start());
     }
 
@@ -235,6 +261,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultDecisions();
         initDefaultSystem();
         initDefaultProjects();
+        initDefaultControl();
         transitionTo(currentScenario.get().start());
     }
 
@@ -382,6 +409,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 3d. Dynamic process and task activity routes (UC-PLN-1, UC-PLN-5)
         if (handleProcessRoutes(request, response)) {
+            return;
+        }
+
+        // 3e. Dynamic plan and epic control routes (UC-CTL-1..5)
+        if (handleControlRoutes(request, response)) {
             return;
         }
 
@@ -957,6 +989,459 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         return false;
+    }
+
+    private void initDefaultControl() {
+        synchronized (controlLock) {
+            controlPlanStates.clear();
+            controlPlanPausePoints.clear();
+            controlPlanEpics.clear();
+            controlEpicStates.clear();
+            controlEpicAuto.clear();
+            controlEpicScope.clear();
+            controlEpicRunning.clear();
+            controlEpicOverlap.clear();
+            controlHolds.clear();
+            controlSettingsRevisions.clear();
+            controlSettings.clear();
+
+            controlPlanStates.put(CONST_FIX_RELAY, "running");
+            controlPlanEpics.put(CONST_FIX_RELAY, CONST_RELAY_HARDENING);
+            controlPlanStates.put("relay-cursor-order", "held");
+            controlPlanEpics.put("relay-cursor-order", CONST_RELAY_HARDENING);
+            controlPlanStates.put(CONST_RELAY_AUTH_V2, "waiting");
+            controlPlanEpics.put(CONST_RELAY_AUTH_V2, CONST_RELAY_HARDENING);
+            controlPlanStates.put("relay-docs", "held");
+            controlPlanEpics.put("relay-docs", CONST_RELAY_HARDENING);
+            controlPlanStates.put("relay-metrics", "paused");
+            controlPlanEpics.put("relay-metrics", CONST_RELAY_HARDENING);
+            controlPlanStates.put(CONST_DOCS_TYPO, "ended");
+
+            controlEpicStates.put(CONST_RELAY_HARDENING, "running");
+            controlEpicAuto.put(CONST_RELAY_HARDENING, true);
+            controlEpicScope.put(CONST_RELAY_HARDENING, 3);
+            controlEpicRunning.put(CONST_RELAY_HARDENING, 3);
+            controlEpicOverlap.put(CONST_RELAY_HARDENING, 0);
+            controlEpicStates.put("relay-docs-epic", "landing");
+
+            controlHolds.put(holdKey("relay-cursor-order", "H-0001"), new HoldRecord(
+                    "H-0001", "relay-cursor-order", "plan", "integrity_pause",
+                    "the plan's store file references.json changed outside the runtime",
+                    0, null, "references.json", 4812L, "3f9a6b2cc21e", 5034L, "b70d41aa9a44",
+                    List.of("retry", "accept", "abort"), null));
+            controlHolds.put(holdKey("relay-docs", "H-0002"), new HoldRecord(
+                    "H-0002", "relay-docs", "plan", "held",
+                    "waits: overlap with relay-auth-v2 (2 files)",
+                    1, Instant.parse(CONST_TIME_10_14), null, null, null, null, null,
+                    List.of("retry", "end_plan"), null));
+
+            controlSettingsRevisions.put(CONST_FIX_RELAY, 7);
+            var values = new LinkedHashMap<String, PlanSettingsValue>();
+            values.put("landing", new PlanSettingsValue("landing", "landing.pull-request", "project",
+                    List.of("landing.pull-request", "landing.main", "landing.files")));
+            values.put("method", new PlanSettingsValue("method", "method.test-first", "machine",
+                    List.of("method.test-first", "method.tests-after")));
+            values.put("asking", new PlanSettingsValue("asking", "ask.key-points", "plan",
+                    List.of("ask.every-phase", "ask.key-points", "ask.questions-only")));
+            values.put("posture", new PlanSettingsValue("posture", "standard", "plan", List.of()));
+            values.put("base", new PlanSettingsValue("base", "main", "plan", List.of()));
+            values.put("role.implement", new PlanSettingsValue("role.implement",
+                    "Claude Code - sonnet-5.5", "plan", List.of()));
+            values.put("role.review", new PlanSettingsValue("role.review",
+                    "Codex - gpt-5.3", "project", List.of()));
+            values.put("integration.git", new PlanSettingsValue("integration.git", "native", "project", List.of()));
+            values.put("provider.issues", new PlanSettingsValue("provider.issues", "GitHub", "project", List.of()));
+            controlSettings.put(CONST_FIX_RELAY, values);
+        }
+    }
+
+    private static String holdKey(String subjectId, String holdId) {
+        return subjectId + ":" + holdId;
+    }
+
+    private static String controlSubjectId(String path, String prefix, String suffix) {
+        var sub = path.substring(prefix.length());
+        if (suffix != null && sub.endsWith(suffix)) {
+            sub = sub.substring(0, sub.length() - suffix.length());
+        }
+        return sub;
+    }
+
+    private WorkActions buildPlanActions(String planId) {
+        var state = controlPlanStates.getOrDefault(planId, "running");
+        var epicId = controlPlanEpics.get(planId);
+        var actions = new ArrayList<ActionAvailability>();
+        switch (state) {
+            case "pausing" -> {
+                actions.add(ActionAvailability.enabled("start"));
+                actions.add(ActionAvailability.enabled("cancel"));
+                addChatAndSettings(planId, actions);
+            }
+            case "paused" -> {
+                actions.add(ActionAvailability.enabled("start"));
+                actions.add(ActionAvailability.enabled("abandon"));
+                addChatAndSettings(planId, actions);
+            }
+            case "ended" -> actions.add(ActionAvailability.enabled("chat"));
+            default -> {
+                actions.add(ActionAvailability.enabled("pause"));
+                actions.add(ActionAvailability.enabled("cancel"));
+                addChatAndSettings(planId, actions);
+            }
+        }
+        var hold = holdFor(planId);
+        return new WorkActions(planId, "plan", state, controlPlanPausePoints.get(planId),
+                hold != null ? hold.kind() : null, epicId, actions);
+    }
+
+    private void addChatAndSettings(String planId, List<ActionAvailability> actions) {
+        if ("relay-metrics".equals(planId)) {
+            actions.add(ActionAvailability.disabled("chat", "no configuration of replan qualifies yet"));
+        } else {
+            actions.add(ActionAvailability.enabled("chat"));
+        }
+        actions.add(ActionAvailability.enabled("settings"));
+    }
+
+    private WorkActions buildEpicActions(String epicId) {
+        var state = controlEpicStates.getOrDefault(epicId, "running");
+        var actions = new ArrayList<ActionAvailability>();
+        if ("ended".equals(state)) {
+            actions.add(ActionAvailability.enabled("chat"));
+        } else {
+            actions.add(ActionAvailability.enabled("next"));
+            actions.add(ActionAvailability.enabled("auto"));
+            actions.add(ActionAvailability.enabled("common_files"));
+            actions.add(ActionAvailability.enabled("decompose"));
+            actions.add(ActionAvailability.enabled("findings"));
+            actions.add(ActionAvailability.enabled("watches"));
+            actions.add(ActionAvailability.enabled("chat"));
+            if ("landing".equals(state)) {
+                actions.add(ActionAvailability.disabled("archive", "the ledger is landing"));
+            } else {
+                actions.add(ActionAvailability.enabled("archive"));
+            }
+            actions.add(ActionAvailability.enabled("cancel"));
+        }
+        return new WorkActions(epicId, "epic", state, null, null, null, actions);
+    }
+
+    private boolean handleControlRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        var method = request.method();
+        var isPlan = path.startsWith("/api/v1/plans/");
+        var isEpic = path.startsWith("/api/v1/epics/");
+        if (!isPlan && !isEpic) {
+            return false;
+        }
+
+        if ("GET".equals(method) && path.endsWith("/actions")) {
+            if (isPlan) {
+                handleGetPlanActions(response, controlSubjectId(path, "/api/v1/plans/", "/actions"));
+            } else {
+                handleGetEpicActions(response, controlSubjectId(path, "/api/v1/epics/", "/actions"));
+            }
+            return true;
+        }
+
+        if ("POST".equals(method) && path.contains("/actions/")) {
+            var prefix = isPlan ? "/api/v1/plans/" : "/api/v1/epics/";
+            var sub = path.substring(prefix.length());
+            var marker = sub.indexOf("/actions/");
+            if (marker < 0) {
+                return false;
+            }
+            var subjectId = sub.substring(0, marker);
+            var action = sub.substring(marker + "/actions/".length());
+            if (action.contains("/")) {
+                return false;
+            }
+            if (isPlan) {
+                handlePlanAction(request, response, subjectId, action);
+            } else {
+                handleEpicAction(request, response, subjectId, action);
+            }
+            return true;
+        }
+
+        if (isPlan && "GET".equals(method) && path.endsWith("/holds")) {
+            handleListHolds(response, controlSubjectId(path, "/api/v1/plans/", "/holds"));
+            return true;
+        }
+
+        if (isPlan && "POST".equals(method) && path.contains("/holds/") && path.endsWith("/resolve")) {
+            var sub = path.substring("/api/v1/plans/".length());
+            var marker = sub.indexOf("/holds/");
+            var subjectId = sub.substring(0, marker);
+            var holdId = sub.substring(marker + "/holds/".length(), sub.length() - "/resolve".length());
+            handleResolveHold(request, response, subjectId, holdId);
+            return true;
+        }
+
+        if (isPlan && path.endsWith("/settings")) {
+            var planId = controlSubjectId(path, "/api/v1/plans/", "/settings");
+            if ("GET".equals(method)) {
+                handleGetPlanSettings(response, planId);
+                return true;
+            }
+            if ("PUT".equals(method)) {
+                handleUpdatePlanSettings(request, response, planId);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Map<String, Object> readBodyMap(MockHttpRequest request) {
+        if (request.body() == null || request.body().length == 0) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+            return parsed != null ? parsed : new LinkedHashMap<>();
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (IOException | RuntimeException _) {
+            return new LinkedHashMap<>();
+        }
+    }
+
+    private @Nullable HoldRecord holdFor(String planId) {
+        for (var hold : controlHolds.values()) {
+            if (hold.subjectId().equals(planId)) {
+                return hold;
+            }
+        }
+        return null;
+    }
+
+    private void removeHolds(String planId) {
+        controlHolds.values().removeIf(hold -> hold.subjectId().equals(planId));
+    }
+
+    private void handleGetPlanActions(MockHttpResponse response, String planId) throws IOException {
+        synchronized (controlLock) {
+            response.json(200, buildPlanActions(planId).toMap());
+        }
+    }
+
+    private void handleGetEpicActions(MockHttpResponse response, String epicId) throws IOException {
+        synchronized (controlLock) {
+            response.json(200, buildEpicActions(epicId).toMap());
+        }
+    }
+
+    private void handlePlanAction(MockHttpRequest request, MockHttpResponse response, String planId, String action)
+            throws IOException {
+        var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
+        synchronized (controlLock) {
+            if (!controlPlanStates.containsKey(planId)) {
+                response.json(404, Map.of(KEY_ERROR, "plan_not_found", KEY_MESSAGE, "Plan not found: " + planId));
+                return;
+            }
+            var availability = buildPlanActions(planId).action(action);
+            if (availability == null) {
+                response.json(409, Map.of(KEY_ERROR, "action_not_allowed", KEY_MESSAGE,
+                        planId + " is " + controlPlanStates.get(planId)));
+                return;
+            }
+            if (!availability.available()) {
+                response.json(409, Map.of(KEY_ERROR, "action_disabled",
+                        KEY_REASON, availability.reason() != null ? availability.reason() : ""));
+                return;
+            }
+            switch (action) {
+                case "pause" -> {
+                    var point = actionRequest.point() != null ? actionRequest.point() : "task";
+                    controlPlanStates.put(planId, "pausing");
+                    controlPlanPausePoints.put(planId, point);
+                    broadcastEvent(PlanControlEvent.EVENT_PAUSED, new PlanControlEvent(
+                            PlanControlEvent.EVENT_PAUSED, planId, "pausing", point, null).toMap());
+                }
+                case "start" -> {
+                    controlPlanStates.put(planId, "running");
+                    controlPlanPausePoints.remove(planId);
+                    broadcastEvent(PlanControlEvent.EVENT_RESUMED, new PlanControlEvent(
+                            PlanControlEvent.EVENT_RESUMED, planId, "running", null, null).toMap());
+                }
+                case "cancel", "abandon" -> {
+                    controlPlanStates.put(planId, "ended");
+                    controlPlanPausePoints.remove(planId);
+                    removeHolds(planId);
+                    broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
+                            PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
+                            actionRequest.reason() != null ? actionRequest.reason() : "Cancelled by operator").toMap());
+                }
+                default -> {
+                    // chat and settings open a dialogue; the state is unchanged
+                }
+            }
+            var resp = new LinkedHashMap<String, Object>();
+            resp.put(KEY_STATUS, "ok");
+            resp.putAll(buildPlanActions(planId).toMap());
+            response.json(200, resp);
+        }
+    }
+
+    private void handleEpicAction(MockHttpRequest request, MockHttpResponse response, String epicId, String action)
+            throws IOException {
+        var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
+        synchronized (controlLock) {
+            if (!controlEpicStates.containsKey(epicId)) {
+                response.json(404, Map.of(KEY_ERROR, "epic_not_found", KEY_MESSAGE, "Epic not found: " + epicId));
+                return;
+            }
+            var availability = buildEpicActions(epicId).action(action);
+            if (availability == null) {
+                response.json(409, Map.of(KEY_ERROR, "action_not_allowed", KEY_MESSAGE,
+                        epicId + " is " + controlEpicStates.get(epicId)));
+                return;
+            }
+            if (!availability.available()) {
+                response.json(409, Map.of(KEY_ERROR, "action_disabled",
+                        KEY_REASON, availability.reason() != null ? availability.reason() : ""));
+                return;
+            }
+            switch (action) {
+                case "auto" -> {
+                    var enabled = actionRequest.extra().get("enabled");
+                    if (enabled instanceof Boolean flag) {
+                        controlEpicAuto.put(epicId, flag);
+                    } else {
+                        var mode = actionRequest.extra().get("mode");
+                        if (mode != null) {
+                            controlEpicAuto.put(epicId, "on".equalsIgnoreCase(String.valueOf(mode)));
+                        }
+                    }
+                }
+                case "common_files" -> {
+                    var value = actionRequest.extra().get("count");
+                    if (value instanceof Number number) {
+                        controlEpicOverlap.put(epicId, number.intValue());
+                    }
+                }
+                case "cancel" -> controlEpicStates.put(epicId, "ended");
+                default -> {
+                    // next, decompose, findings, watches, archive, chat: the epic rests between its events
+                }
+            }
+            var resp = new LinkedHashMap<String, Object>();
+            resp.put(KEY_STATUS, "ok");
+            resp.put("auto_enabled", controlEpicAuto.getOrDefault(epicId, true));
+            resp.put("overlap_max_files", controlEpicOverlap.getOrDefault(epicId, 0));
+            resp.putAll(buildEpicActions(epicId).toMap());
+            response.json(200, resp);
+        }
+    }
+
+    private void handleListHolds(MockHttpResponse response, String planId) throws IOException {
+        var list = new ArrayList<Map<String, Object>>();
+        synchronized (controlLock) {
+            for (var hold : controlHolds.values()) {
+                if (hold.subjectId().equals(planId)) {
+                    list.add(hold.toMap());
+                }
+            }
+        }
+        response.json(200, list);
+    }
+
+    private void handleResolveHold(MockHttpRequest request, MockHttpResponse response, String planId, String holdId)
+            throws IOException {
+        var resolution = HoldResolutionRequest.fromMap(readBodyMap(request));
+        synchronized (controlLock) {
+            var hold = controlHolds.get(holdKey(planId, holdId));
+            if (hold == null) {
+                response.json(404, Map.of(KEY_ERROR, "hold_not_found", KEY_MESSAGE, "Hold not found: " + holdId));
+                return;
+            }
+            if (!hold.offers(resolution.act())) {
+                response.json(409, Map.of(KEY_ERROR, "act_not_allowed", KEY_MESSAGE,
+                        "Hold " + holdId + " does not offer act " + resolution.act()));
+                return;
+            }
+            var act = resolution.act();
+            var ending = "abort".equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
+            var released = "accept".equals(act) || "retry".equals(act) || "grant".equals(act)
+                    || "add_credential".equals(act) || "raise_budget".equals(act)
+                    || "give_up_removal".equals(act) || "recycle".equals(act);
+            if ("integrity_pause".equals(hold.kind()) && "retry".equals(act)) {
+                released = false;
+            }
+            HoldResolutionResult result;
+            if (ending) {
+                controlHolds.remove(holdKey(planId, holdId));
+                controlPlanStates.put(planId, "ended");
+                controlPlanPausePoints.remove(planId);
+                broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
+                        hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
+                broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
+                        PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
+                        resolution.reason() != null ? resolution.reason()
+                                : ("abort".equals(act) ? "Integrity pause aborted" : "Ended by operator")).toMap());
+                result = new HoldResolutionResult(holdId, true, null, planId);
+            } else if (released) {
+                controlHolds.remove(holdKey(planId, holdId));
+                if ("held".equals(controlPlanStates.get(planId))) {
+                    controlPlanStates.put(planId, "running");
+                }
+                broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
+                        hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
+                result = new HoldResolutionResult(holdId, true, null, planId);
+            } else {
+                var updated = new HoldRecord(hold.holdId(), hold.subjectId(), hold.subjectKind(), hold.kind(),
+                        hold.cause(), hold.attempts() + 1, Instant.now(), hold.filePath(), hold.recordedSize(),
+                        hold.recordedDigest(), hold.currentSize(), hold.currentDigest(), hold.acts(),
+                        hold.pullRequestUrl());
+                controlHolds.put(holdKey(planId, holdId), updated);
+                broadcastEvent(HoldChangedEvent.EVENT_CHANGED, new HoldChangedEvent(HoldChangedEvent.EVENT_CHANGED,
+                        updated.holdId(), updated.subjectId(), updated.subjectKind(), updated.kind(),
+                        updated.cause()).toMap());
+                result = new HoldResolutionResult(holdId, false, updated.cause(), planId);
+            }
+            response.json(200, result.toMap());
+        }
+    }
+
+    private void handleGetPlanSettings(MockHttpResponse response, String planId) throws IOException {
+        synchronized (controlLock) {
+            var values = controlSettings.get(planId);
+            var revision = controlSettingsRevisions.getOrDefault(planId, 1);
+            var list = values != null ? new ArrayList<>(values.values()) : new ArrayList<PlanSettingsValue>();
+            response.json(200, new PlanSettingsRecord(planId, revision, list).toMap());
+        }
+    }
+
+    private void handleUpdatePlanSettings(MockHttpRequest request, MockHttpResponse response, String planId)
+            throws IOException {
+        var update = PlanSettingsUpdateRequest.fromMap(readBodyMap(request));
+        synchronized (controlLock) {
+            var revision = controlSettingsRevisions.getOrDefault(planId, 1);
+            if (update.revision() != revision) {
+                response.json(409, PlanSettingsUpdateResult.conflict(revision, currentValue(planId, update.aspect())).toMap());
+                return;
+            }
+            if ("landing".equals(update.aspect()) && "landing.main".equals(update.value())) {
+                response.json(400, Map.of(KEY_ERROR, "refused",
+                        KEY_REASON, "the base branch of pm-mcp-clients is protected",
+                        "value", update.value()));
+                return;
+            }
+            var values = controlSettings.computeIfAbsent(planId, _ -> new LinkedHashMap<>());
+            var newRevision = revision + 1;
+            values.put(update.aspect(), new PlanSettingsValue(update.aspect(), update.value(), "plan", List.of()));
+            controlSettingsRevisions.put(planId, newRevision);
+            response.json(200, PlanSettingsUpdateResult.applied(newRevision).toMap());
+        }
+    }
+
+    private String currentValue(String planId, String aspect) {
+        var values = controlSettings.get(planId);
+        if (values != null && values.get(aspect) != null && values.get(aspect).value() != null) {
+            return values.get(aspect).value();
+        }
+        return "";
     }
 
     private void initDefaultReports() {

@@ -50,7 +50,8 @@ public final class MessageCatalogue {
             "system",
             "projects",
             "plan_view",
-            "epic_view"
+            "epic_view",
+            "control"
     );
 
     private static final String DEFAULT_LOCALE = "en";
