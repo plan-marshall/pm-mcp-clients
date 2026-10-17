@@ -3,6 +3,7 @@
   import { apiClient, type PlanStartResult, type RecipeRef, type SourceInput } from '../api/client';
   import RecipeSelector from './RecipeSelector.svelte';
   import SourceIntakePanel from './SourceIntakePanel.svelte';
+  import { openLessonSource } from '../stores/lessonSource';
 
   export let open = false;
   export let projectId = '';
@@ -76,6 +77,11 @@
     reset();
     onClose();
   }
+
+  function startFromLesson(): void {
+    openLessonSource(projectId);
+    close();
+  }
 </script>
 
 {#if open}
@@ -129,6 +135,17 @@
             bind:issue
             onChange={(s) => (sources = s)}
           />
+        {/if}
+
+        {#if !isEpic && mode === 'sources'}
+          <button
+            type="button"
+            class="start-modal__lesson"
+            data-testid="start-from-lesson"
+            on:click={startFromLesson}
+          >
+            {$t('lesson_source.start_from_lesson')}
+          </button>
         {/if}
 
         <label class="start-modal__field">
@@ -221,6 +238,13 @@
 
   .start-modal__error {
     color: var(--color-danger, #b3261e);
+  }
+
+  .start-modal__lesson {
+    min-height: 44px;
+    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    cursor: pointer;
+    align-self: flex-start;
   }
 
   @media (max-width: 480px) {

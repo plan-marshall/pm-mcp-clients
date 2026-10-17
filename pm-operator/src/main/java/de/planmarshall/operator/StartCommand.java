@@ -98,6 +98,13 @@ public final class StartCommand implements Callable<Integer> {
         @Nullable
         String title;
 
+        @Option(names = "--lesson", description = "An unclaimed lesson the plan starts from (UC-STA-8)")
+        @Nullable
+        String lesson;
+
+        @Option(names = "--use-anyway", description = "Use the lesson even though its premise is broken")
+        boolean useAnyway;
+
         @Option(names = "--param", description = "A recipe parameter key=value")
         Map<String, String> parameters = new LinkedHashMap<>();
 
@@ -112,6 +119,11 @@ public final class StartCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var projectId = resolveProject(project, projectOption);
+
+            if (lesson != null && !lesson.isBlank()
+                                && !LessonSourceCommand.adoptForPlan(context, out, projectId, lesson, useAnyway)) {
+                return 0;
+            }
 
             var request = new StartPlanRequest(projectId, prompt, recipe, parameters, documents, issue,
                                 title);

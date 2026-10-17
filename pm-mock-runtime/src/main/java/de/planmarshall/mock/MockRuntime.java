@@ -53,15 +53,15 @@ public final class MockRuntime implements AutoCloseable {
     private final MockHttpServer tcpServer;
 
     private record RuntimeContext(
-            Path base,
-            Path cleanupDir,
-            MachinePaths paths,
-            String token,
-            String deviceSecret,
-            boolean cleanupOnClose,
-            MockRuntimeEngine engine,
-            MockHttpServer unixServer,
-            MockHttpServer tcpServer) {
+    Path base,
+    Path cleanupDir,
+    MachinePaths paths,
+    String token,
+    String deviceSecret,
+    boolean cleanupOnClose,
+    MockRuntimeEngine engine,
+    MockHttpServer unixServer,
+    MockHttpServer tcpServer) {
     }
 
     private MockRuntime(RuntimeContext ctx) {

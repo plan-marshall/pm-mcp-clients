@@ -16,7 +16,9 @@
   import PlanView from '../lib/views/PlanView.svelte';
   import EpicView from '../lib/views/EpicView.svelte';
   import StartWorkModal from '../lib/components/StartWorkModal.svelte';
+  import LessonSourceModal from '../lib/components/LessonSourceModal.svelte';
   import { startModalStore, closeStartWork } from '../lib/stores/start';
+  import { lessonSourceModalStore, closeLessonSource } from '../lib/stores/lessonSource';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -56,5 +58,12 @@
   projectId={$startModalStore.projectId}
   kind={$startModalStore.kind}
   onClose={closeStartWork}
+  onStarted={() => {}}
+/>
+
+<LessonSourceModal
+  open={$lessonSourceModalStore.open}
+  projectId={$lessonSourceModalStore.projectId}
+  onClose={closeLessonSource}
   onStarted={() => {}}
 />

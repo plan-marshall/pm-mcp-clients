@@ -202,7 +202,7 @@ final class DesignerRegistry {
     }
 
     private static WorkflowValidationResult rejected(String stage, List<WorkflowFinding> findings,
-                                                     WorkflowValidationResult.Structure structure) {
+            WorkflowValidationResult.Structure structure) {
         return new WorkflowValidationResult(false, stages(STAGE_NAMES.indexOf(stage)), findings,
                 structure, null);
     }
@@ -223,7 +223,7 @@ final class DesignerRegistry {
      * @return the placing result
      */
     synchronized UnitPlacingResult place(String name, String target, String text, String author,
-                                         String release) {
+            String release) {
         var isMachine = MACHINE.equals(target);
         var existing = findUnit(target, name);
         var group = existing != null ? existing.group() : WorkflowUnit.GROUP_PROJECT_OWNED;
@@ -370,7 +370,7 @@ final class DesignerRegistry {
     }
 
     private static WorkflowValidationResult.StructureState structureState(List<String> lines,
-                                                                          List<Integer> stateIndices, int ordinal) {
+            List<Integer> stateIndices, int ordinal) {
         var start = stateIndices.get(ordinal);
         var end = ordinal + 1 < stateIndices.size() ? stateIndices.get(ordinal + 1) : lines.size();
         var body = lines.subList(start + 1, end);
@@ -478,14 +478,14 @@ final class DesignerRegistry {
     }
 
     private record FrontmatterBlock(
-            boolean present,
-            String displayName,
-            String description,
-            String type,
-            String author,
-            String release,
-            List<String> entries,
-            List<String> exits) {
+    boolean present,
+    String displayName,
+    String description,
+    String type,
+    String author,
+    String release,
+    List<String> entries,
+    List<String> exits) {
 
         static final FrontmatterBlock ABSENT =
                 new FrontmatterBlock(false, "", "", "", "", "", List.of(), List.of());

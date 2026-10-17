@@ -438,4 +438,21 @@ class PmOperatorProcessIT {
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
         }
     }
+
+    @Test
+    @DisplayName("lesson refuses execution without an interactive terminal (PM-SEC-3)")
+    void lessonRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "lesson", "check", "les-0007", "--project", "pm-mcp-clients")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+
+        try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--lesson", "les-0007")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
 }

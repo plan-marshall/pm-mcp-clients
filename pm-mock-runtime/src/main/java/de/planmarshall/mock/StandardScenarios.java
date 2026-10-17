@@ -108,6 +108,12 @@ public final class StandardScenarios {
     public static final String START = "start";
 
     /**
+     * Starting a plan from a lesson: the unclaimed lessons of a project, a holding and a broken
+     * premise, the three-way failure recovery, and the retirement of a lesson (UC-STA-8).
+     */
+    public static final String LESSON_SOURCE = "lesson_source";
+
+    /**
      * The process designer: installed units at every level, the catalogue of building blocks,
      * validation findings, placing, and removing (UC-PLN-3).
      */
@@ -132,6 +138,7 @@ public final class StandardScenarios {
             PLAN_VIEW,
             CONTROL,
             START,
+            LESSON_SOURCE,
             DESIGNER
     );
 }
