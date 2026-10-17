@@ -421,4 +421,21 @@ class PmOperatorProcessIT {
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
         }
     }
+
+    @Test
+    @DisplayName("start refuses execution without an interactive terminal (PM-SEC-3)")
+    void startRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--prompt", "x")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+
+        try (var process = operator(environment(), "start", "epic", "pm-mcp-clients", "--prompt", "x")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
 }

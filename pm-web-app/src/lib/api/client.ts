@@ -911,6 +911,66 @@ const STORAGE_KEY_SECRET = 'pm_device_secret';
 const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
 const STORAGE_KEY_LABEL = 'pm_device_label';
 
+export interface StartPlanRequest {
+  project_id: string;
+  objective?: string;
+  recipe_id?: string;
+  parameters?: Record<string, string>;
+  documents?: string[];
+  issue?: string;
+  title?: string;
+}
+
+export interface StartEpicRequest {
+  project_id: string;
+  objective?: string;
+  auto_start?: boolean;
+  title?: string;
+}
+
+export interface PlanStartResult {
+  id: string;
+  kind: string;
+  title: string;
+  state: string;
+  follow_href?: string;
+  project_id?: string;
+  recipe_id?: string;
+  auto_start?: boolean;
+}
+
+export interface RecipeParameter {
+  name: string;
+  value?: string;
+  options: string[];
+  proposed: boolean;
+  available: boolean;
+  reason?: string;
+}
+
+export interface RecipeRef {
+  key: string;
+  name: string;
+  description: string;
+  origin: string;
+  takes_request: boolean;
+  parameters: RecipeParameter[];
+}
+
+export interface SourceInput {
+  kind: string;
+  location: string;
+  title?: string;
+}
+
+export interface IntakeDraft {
+  id: string;
+  project_id: string;
+  prompt?: string;
+  sources: SourceInput[];
+  created_at: string;
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
@@ -1033,6 +1093,36 @@ export class ApiClient {
 
   public async withdrawConsent(kind: string, revision: number): Promise<MachineSettingsUpdateResult> {
     return this.updateMachineSetting(`consent:${kind}`, null, revision);
+  }
+
+  public async getRecipes(projectId?: string): Promise<RecipeRef[]> {
+    const query = projectId ? `?project=${encodeURIComponent(projectId)}` : '';
+    const res = await this.request<{ recipes: RecipeRef[] }>('GET', `/api/v1/recipes${query}`);
+    return res.recipes ?? [];
+  }
+
+  public async startPlan(request: StartPlanRequest): Promise<PlanStartResult> {
+    return this.request<PlanStartResult>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(request.project_id)}/plans/start`,
+      request,
+    );
+  }
+
+  public async startEpic(request: StartEpicRequest): Promise<PlanStartResult> {
+    return this.request<PlanStartResult>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(request.project_id)}/epics/start`,
+      request,
+    );
+  }
+
+  public async draftIntake(request: {
+    project_id: string;
+    prompt?: string;
+    sources?: SourceInput[];
+  }): Promise<IntakeDraft> {
+    return this.request<IntakeDraft>('POST', '/api/v1/intake/draft', request);
   }
 
   public async getConnectionStatus(): Promise<ConnectionStatus> {
