@@ -291,10 +291,14 @@ public final class PmConsole {
                 if (notice != null) {
                     reader.printAbove(notice);
                 }
+                var name = event.event() != null ? event.event() : "";
                 var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-                if ("paired".equals(type)) {
-                    var label = String.valueOf(eventMap.getOrDefault("label", "local"));
-                    reader.printAbove("✓ Paired: " + label);
+                if ("device.paired".equals(name) || "paired".equals(type)) {
+                    var label = JsonTree.string(eventMap, "label");
+                    reader.printAbove("✓ Paired: " + (label != null ? label : "local"));
+                    if ("device.paired".equals(name)) {
+                        issueFreshCodeAbove(reader);
+                    }
                 } else if ("fresh_code".equals(type)) {
                     activePairingCode = (String) eventMap.get("code");
                     activePairingUrl = (String) eventMap.get("url");
@@ -304,6 +308,27 @@ public final class PmConsole {
         /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (Exception _) {
             // invalid json in event stream
+        }
+    }
+
+    /**
+     * Asks for a fresh pairing code after a redemption and reports it above the prompt, so the
+     * first device to pair never uses the code up for the other ways in
+     * (03-web-server.adoc#fresh-code).
+     *
+     * @param reader the line reader the notice is printed above
+     */
+    private void issueFreshCodeAbove(LineReader reader) {
+        try {
+            var pairing = new EntryFlow(context).issuePairingCode(context.runtime(true), webPort);
+            activePairingCode = pairing.code();
+            activePairingUrl = pairing.url();
+            var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
+            reader.printAbove("✓ New code: " + pairing.code() + ", valid until " + validUntil
+                                + ". The previous code no longer works.");
+            reader.printAbove("  " + pairing.url());
+        } catch (IOException e) {
+            reader.printAbove("✗ Failed to issue a fresh pairing code: " + e.getMessage());
         }
     }
 

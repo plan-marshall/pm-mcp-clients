@@ -10,6 +10,7 @@ Companion verified completion reports are maintained under [`doc/agy/verified/`]
 
 | Topic / Plan | Scope & Use Cases | Companion Verified Completion Report | Landed In |
 |---|---|---|---|
+| [`uc-ent-1-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/uc-ent-1-plan.md) | UC-ENT-1 (Enter and Connect) & UC-ONB-8 (loopback-only credentials) | [`uc-ent-1-plan-report.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/uc-ent-1-plan-report.md) | `feat/uc-ent-1-connect` (pending) |
 | [`uc-ent-2-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/uc-ent-2-plan.md) | UC-ENT-2 (Manage Paired Devices) | [`uc-ent-2-plan-report.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/verified/uc-ent-2-plan-report.md) | `feat/uc-ent-2-paired-devices` |
 | [`uc-pln-4-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/uc-pln-4-plan.md) | UC-PLN-4 (See What Runs, Across Projects) | [`uc-pln-4-plan-report.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/verified/uc-pln-4-plan-report.md) | `feat/uc-pln-4-running-work` |
 | [`uc-pln-6-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/uc-pln-6-plan.md) | UC-PLN-6 (Catch Up on What Happened - Reports & Completion Reports) | [`uc-pln-6-plan-report.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/verified/uc-pln-6-plan-report.md) | `feat/uc-pln-6-reports` |

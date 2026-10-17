@@ -1,0 +1,58 @@
+{
+  "format_version": 1,
+  "name": "entry",
+  "description": "The entry: a machine not onboarded yet, the browser pairing on loopback, the network listener with its certificate fingerprint, and the fresh code after a redemption (UC-ENT-1, UC-ONB-8)",
+  "start": "entry.pair",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "machine": "mock-machine",
+        "onboarded": false,
+        "onboard": {
+          "state": "onboard.mode",
+          "step": 0,
+          "completed_steps": 0
+        },
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    }
+  },
+  "states": {
+    "entry.pair": {
+      "representation": {
+        "scope": "workspace",
+        "state": "entry.pair",
+        "summary": "Pair this browser"
+      },
+      "links": {
+        "pair": {
+          "next": "entry.paired",
+          "href": "/api/v1/pair"
+        }
+      }
+    },
+    "entry.paired": {
+      "representation": {
+        "scope": "workspace",
+        "state": "entry.paired",
+        "summary": "Browser paired; a fresh code follows"
+      },
+      "links": {}
+    },
+    "entry.lan-open": {
+      "representation": {
+        "scope": "workspace",
+        "state": "entry.lan-open",
+        "summary": "Network listener open with its fingerprint"
+      },
+      "links": {}
+    }
+  }
+}

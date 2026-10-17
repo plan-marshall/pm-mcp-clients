@@ -48,15 +48,15 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-ent-1-connect /Users/oliver/git/worktrees/pm-mcp-clients-uc-ent-1 main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for pairing token security and loopback-only validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/uc-ent-1-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-ent-1-plan.md`.
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
+- [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/uc-ent-1-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-ent-1-plan.md`.
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
 - [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/uc-ent-1-plan-report.md`.

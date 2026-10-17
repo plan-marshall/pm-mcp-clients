@@ -12,6 +12,16 @@ export interface PairedDevice {
   last_used_at: string;
 }
 
+export interface ConnectionStatus {
+  loopback_url?: string;
+  loopback_open: boolean;
+  lan_enabled: boolean;
+  lan_url?: string;
+  lan_fingerprint?: string;
+  paired_devices_count: number;
+  onboarded: boolean;
+}
+
 export interface RevokedEventData {
   reason?: string;
   revoked_by?: string;
@@ -741,6 +751,16 @@ export class ApiClient {
 
   public async getDevices(): Promise<PairedDevice[]> {
     return this.request<PairedDevice[]>('GET', '/api/v1/web/devices');
+  }
+
+  public async getConnectionStatus(): Promise<ConnectionStatus> {
+    return this.request<ConnectionStatus>('GET', '/api/v1/status/connection');
+  }
+
+  public async setCredential(credentialKey: string, secret: string): Promise<void> {
+    await this.request('PUT', `/api/v1/credentials/${encodeURIComponent(credentialKey)}`, {
+      secret,
+    });
   }
 
   public async getProjects(): Promise<ProjectOverviewResponse> {

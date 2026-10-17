@@ -2,6 +2,8 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import LanListenerModal from '../components/LanListenerModal.svelte';
+  import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
   import { runtimeStore, navigateTo } from '../stores/runtime';
 
@@ -13,6 +15,7 @@
   let renamingId: string | null = null;
   let renameValue = '';
   let lanListenerOn = true;
+  let lanModalOpen = false;
 
   // Revocation modal state
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
@@ -377,18 +380,36 @@
       <span class="listener-status" data-testid="listener-status">
         Network listener: <strong>{lanListenerOn ? 'on' : 'off'}</strong>.
       </span>
-      {#if lanListenerOn}
-        <Button variant="secondary" on:click={turnListenerOff} data-testid="listener-off-button">
-          {$t('devices.act.listener_off')}
+      <div class="listener-actions">
+        <Button
+          variant="ghost"
+          on:click={() => (lanModalOpen = true)}
+          data-testid="lan-details-button"
+        >
+          {$t('entry.lan.title')}
         </Button>
-      {/if}
+        {#if lanListenerOn}
+          <Button variant="secondary" on:click={turnListenerOff} data-testid="listener-off-button">
+            {$t('devices.act.listener_off')}
+          </Button>
+        {/if}
+      </div>
     </div>
     {#if listenerNotice}
       <p class="notice-text" data-testid="listener-notice">{listenerNotice}</p>
     {/if}
   </section>
 
+  <section class="settings-section" data-testid="credentials-section">
+    <h2 class="settings-section__title">{$t('onboard.step.credentials')}</h2>
+    <CredentialEntry credentialKey="github" label="GitHub" />
+  </section>
+
   <!-- Revocation Confirmation Modal -->
+  {#if lanModalOpen}
+    <LanListenerModal onClose={() => (lanModalOpen = false)} onChanged={loadData} />
+  {/if}
+
   {#if pendingRevokeTarget}
     <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="revoke-modal">
       <div class="modal-card">
@@ -580,6 +601,12 @@
   .listener-status {
     font-size: var(--text-sm);
     color: var(--color-text-primary);
+  }
+
+  .listener-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .notice-text {

@@ -151,4 +151,24 @@ describe('SettingsView component', () => {
       expect(screen.queryByTestId('listener-off-button')).not.toBeInTheDocument();
     });
   });
+
+  it('opens the network access modal and shows the credential entry section', async () => {
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: true,
+      lan_fingerprint: '4F:1A:9C',
+      paired_devices_count: 2,
+      onboarded: true,
+    });
+
+    render(SettingsView);
+
+    await waitFor(() => expect(screen.getByTestId('lan-details-button')).toBeInTheDocument());
+    expect(screen.getByTestId('credential-entry')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('lan-details-button'));
+
+    await waitFor(() => expect(screen.getByTestId('lan-listener-modal')).toBeInTheDocument());
+    expect(screen.getByTestId('lan-fingerprint')).toHaveTextContent('4F:1A:9C');
+  });
 });

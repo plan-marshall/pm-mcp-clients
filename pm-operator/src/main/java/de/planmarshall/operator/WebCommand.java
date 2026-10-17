@@ -96,7 +96,11 @@ public final class WebCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            return put(context, spec, true, lan, port);
+            int code = put(context, spec, true, lan, port);
+            if (lan) {
+                printLanDetails(context, spec, port);
+            }
+            return code;
         }
     }
 
@@ -567,6 +571,45 @@ public final class WebCommand implements Callable<Integer> {
         out.println("web       " + describe(JsonTree.asObject(JsonTree.parse(response.body()))));
         out.flush();
         return 0;
+    }
+
+    /**
+     * Reports the LAN listener's URL and certificate fingerprint after it was opened, so the
+     * operator can compare the fingerprint with the browser's certificate details
+     * (03-web-server.adoc#web-listener).
+     *
+     * @param context      the operator context
+     * @param spec         the command spec, for its output
+     * @param loopbackPort the loopback port that stays open beside the LAN listener
+     */
+    static void printLanDetails(OperatorContext context, CommandSpec spec, int loopbackPort) {
+        var out = spec.commandLine().getOut();
+        var locale = context.clientEnvironment().locale();
+        try {
+            var response = context.runtime(true).send(HttpRequest.get("/api/v1/status/connection"));
+            if (response.status() != 200) {
+                return;
+            }
+            var json = JsonTree.asObject(JsonTree.parse(response.body()));
+            if (json == null) {
+                return;
+            }
+            var lanUrl = JsonTree.string(json, "lan_url");
+            if (lanUrl == null) {
+                return;
+            }
+            out.println("  " + MessageCatalogue.format(locale, "entry.listener.lan_open", Map.of(
+                                "url", lanUrl,
+                                "loopback", "http://127.0.0.1:" + loopbackPort)));
+            var fingerprint = JsonTree.string(json, "lan_fingerprint");
+            if (fingerprint != null) {
+                out.println("  " + MessageCatalogue.format(locale, "entry.listener.fingerprint", Map.of())
+                                    + "  " + fingerprint);
+            }
+            out.flush();
+        } catch (IOException _) {
+            // best-effort fingerprint report
+        }
     }
 
     /**
