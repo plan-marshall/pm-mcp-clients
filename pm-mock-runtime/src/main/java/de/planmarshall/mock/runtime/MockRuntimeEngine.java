@@ -1256,7 +1256,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var prj = path.substring("/api/v1/projects/".length());
             if (!prj.contains("/")) {
                 response.json(200, Map.of(
-                        "project_id", prj,
+                        KEY_PROJECT_ID, prj,
                         "display_name", prj,
                         "plans", List.of(),
                         "epics", List.of(),
