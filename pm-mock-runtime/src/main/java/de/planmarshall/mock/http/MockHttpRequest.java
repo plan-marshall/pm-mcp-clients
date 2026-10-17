@@ -26,11 +26,11 @@ import java.util.Objects;
  * @param receivedNanos timestamp of receipt in nanoseconds
  */
 public record MockHttpRequest(
-        String method,
-        String target,
-        Map<String, String> headers,
-        byte[] body,
-        long receivedNanos) {
+String method,
+String target,
+Map<String, String> headers,
+byte[] body,
+long receivedNanos) {
 
     /**
      * Compact constructor normalizing fields.

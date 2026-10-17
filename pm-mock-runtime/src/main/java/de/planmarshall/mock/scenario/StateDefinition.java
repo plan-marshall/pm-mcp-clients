@@ -22,10 +22,10 @@ import java.util.Objects;
  * @param auto           optional automatic transition without a request
  */
 public record StateDefinition(
-        Object representation,
-        Map<String, LinkDefinition> links,
-        List<EventDefinition> events,
-        AutoTransitionDefinition auto) {
+Object representation,
+Map<String, LinkDefinition> links,
+List<EventDefinition> events,
+AutoTransitionDefinition auto) {
 
     /**
      * Compact constructor copying collections and ensuring non-null defaults.

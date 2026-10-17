@@ -98,8 +98,32 @@ public final class StartCommand implements Callable<Integer> {
         @Nullable
         String title;
 
+        @Option(names = "--lesson", description = "An unclaimed lesson the plan starts from (UC-STA-8)")
+        @Nullable
+        String lesson;
+
+        @Option(names = "--use-anyway", description = "Use the lesson even though its premise is broken")
+        boolean useAnyway;
+
         @Option(names = "--param", description = "A recipe parameter key=value")
         Map<String, String> parameters = new LinkedHashMap<>();
+
+        @Option(names = "--adopt-pr", description = "Adopt the pull request named by this number or URL")
+        @Nullable
+        String adoptPr;
+
+        @Option(names = "--local-changes", description = "Capture the checkout's local changes")
+        boolean localChanges;
+
+        @Option(names = {"-y", "--yes"}, description = "Answer the confirmation of a git source with yes")
+        boolean yes;
+
+        @Option(names = "--no-input", description = "Do not prompt; fail if a choice is needed")
+        boolean noInput;
+
+        @Option(names = "--accept-screening", description = "Adopt a flagged or unscreened pull request with this reason")
+        @Nullable
+        String acceptScreening;
 
         private final OperatorContext context;
 
@@ -112,6 +136,18 @@ public final class StartCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var projectId = resolveProject(project, projectOption);
+
+            if (lesson != null && !lesson.isBlank()
+                                && !LessonSourceCommand.adoptForPlan(context, out, projectId, lesson, useAnyway)) {
+                return 0;
+            }
+            if (adoptPr != null && !adoptPr.isBlank()) {
+                return GitSourceCommand.adoptPr(context, out, projectId, adoptPr, yes, noInput,
+                                    acceptScreening);
+            }
+            if (localChanges) {
+                return GitSourceCommand.captureLocalChanges(context, out, projectId, yes, noInput);
+            }
 
             var request = new StartPlanRequest(projectId, prompt, recipe, parameters, documents, issue,
                                 title);

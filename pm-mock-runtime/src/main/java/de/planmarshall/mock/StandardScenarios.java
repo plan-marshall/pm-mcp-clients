@@ -108,6 +108,18 @@ public final class StandardScenarios {
     public static final String START = "start";
 
     /**
+     * Starting a plan from a lesson: the unclaimed lessons of a project, a holding and a broken
+     * premise, the three-way failure recovery, and the retirement of a lesson (UC-STA-8).
+     */
+    public static final String LESSON_SOURCE = "lesson_source";
+
+    /**
+     * Git plan sources: adopting a pull request in the adopt lane and capturing the checkout's
+     * local changes in the land lane (UC-STA-7, UC-STA-9).
+     */
+    public static final String GIT_SOURCES = "git_sources";
+
+    /**
      * Epic decomposition: the workstreams and staged plans, the surface and dependency checks, the
      * operator's instruction with read-back, and the commit (UC-STA-6).
      */
@@ -138,6 +150,8 @@ public final class StandardScenarios {
             PLAN_VIEW,
             CONTROL,
             START,
+            LESSON_SOURCE,
+            GIT_SOURCES,
             DECOMPOSITION,
             DESIGNER
     );

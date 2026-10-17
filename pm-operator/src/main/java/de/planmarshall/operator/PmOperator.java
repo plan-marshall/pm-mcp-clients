@@ -44,6 +44,8 @@ import picocli.CommandLine.Command;
                                         AbortCommand.class,
                                         RecipeCommand.class,
                                         StartCommand.class,
+                                        LessonSourceCommand.class,
+                                        GitSourceCommand.class,
                                         QuestionsCommand.class,
                                         AnswerCommand.class,
                                         ReportsCommand.class,

@@ -1015,6 +1015,102 @@ export interface DecompositionCommitResult {
   launchable_plan_count: number;
 }
 
+export interface UnclaimedLessonSummary {
+  lesson_id: string;
+  title: string;
+  summary: string;
+  recorded_at: string;
+  citing_plan_id?: string;
+  symbols_cited: string[];
+}
+
+export interface LessonPremiseEvidence {
+  kind: string;
+  name: string;
+  expected_path?: string;
+  last_verified_commit?: string;
+}
+
+export interface LessonPremiseCheckResult {
+  lesson_id: string;
+  status: string;
+  evidence: LessonPremiseEvidence[];
+  cause?: string;
+}
+
+export interface LessonClaimResult {
+  lesson_id: string;
+  status: string;
+  plan_id?: string;
+}
+
+export interface LessonRetirementNotice {
+  lesson_id: string;
+  retired: boolean;
+  reason?: string;
+}
+
+export interface ChangedFile {
+  path: string;
+  additions: number;
+  deletions: number;
+  untrusted: boolean;
+  operator_authored: boolean;
+}
+
+export interface RateLimitStatus {
+  limit: number;
+  remaining: number;
+  reset_at?: string;
+  limited: boolean;
+}
+
+export type ScreeningOutcome = 'clean' | 'flagged' | 'unscreened';
+
+export interface PullRequestObservation {
+  url: string;
+  number: number;
+  title: string;
+  author: string;
+  branch: string;
+  state: string;
+  writable: boolean;
+  changed_files: ChangedFile[];
+  screening: ScreeningOutcome;
+  rate_limit: RateLimitStatus;
+}
+
+export interface PrAdoptRequest {
+  project_id: string;
+  pr_url: string;
+  screening_bypass_reason?: string;
+}
+
+export interface PrAdoptResult {
+  plan_id: string;
+  lane: string;
+  branch: string;
+  status: string;
+}
+
+export interface LocalChangesPreview {
+  status: string;
+  preview_id?: string;
+  branch?: string;
+  changed_files: ChangedFile[];
+  landing?: string;
+  landing_commits: boolean;
+  eligible: boolean;
+  reason?: string;
+}
+
+export interface LocalChangesCaptureResult {
+  plan_id: string;
+  lane: string;
+  snapshot_commit: string;
+  status: string;
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
@@ -1128,14 +1224,21 @@ export class ApiClient {
     value: string | null,
     revision: number,
   ): Promise<MachineSettingsUpdateResult> {
-    return this.requestWithConflict<MachineSettingsUpdateResult>('PUT', '/api/v1/machine/settings', {
-      key,
-      value,
-      revision,
-    });
+    return this.requestWithConflict<MachineSettingsUpdateResult>(
+      'PUT',
+      '/api/v1/machine/settings',
+      {
+        key,
+        value,
+        revision,
+      },
+    );
   }
 
-  public async withdrawConsent(kind: string, revision: number): Promise<MachineSettingsUpdateResult> {
+  public async withdrawConsent(
+    kind: string,
+    revision: number,
+  ): Promise<MachineSettingsUpdateResult> {
     return this.updateMachineSetting(`consent:${kind}`, null, revision);
   }
 
@@ -1185,6 +1288,32 @@ export class ApiClient {
     );
   }
 
+  private lessonBase(projectId: string, lessonId: string): string {
+    return (
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/lessons/` +
+      encodeURIComponent(lessonId)
+    );
+  }
+
+  public async getUnclaimedLessons(projectId: string): Promise<UnclaimedLessonSummary[]> {
+    const res = await this.request<{ lessons: UnclaimedLessonSummary[] }>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/lessons`,
+    );
+    return res.lessons ?? [];
+  }
+
+  public async checkLessonPremise(
+    projectId: string,
+    lessonId: string,
+  ): Promise<LessonPremiseCheckResult> {
+    return this.request<LessonPremiseCheckResult>(
+      'POST',
+      `${this.lessonBase(projectId, lessonId)}/premise-check`,
+      {},
+    );
+  }
+
   public async instructDecomposition(
     projectId: string,
     epicId: string,
@@ -1197,6 +1326,51 @@ export class ApiClient {
     );
   }
 
+  public async claimLesson(
+    projectId: string,
+    lessonId: string,
+    useAnyway: boolean,
+  ): Promise<LessonClaimResult> {
+    return this.request<LessonClaimResult>(
+      'POST',
+      `${this.lessonBase(projectId, lessonId)}/claim`,
+      {
+        use_anyway: useAnyway,
+      },
+    );
+  }
+
+  public async retireLesson(
+    projectId: string,
+    lessonId: string,
+    reason?: string,
+  ): Promise<LessonRetirementNotice> {
+    return this.request<LessonRetirementNotice>(
+      'POST',
+      `${this.lessonBase(projectId, lessonId)}/retire`,
+      reason ? { reason } : {},
+    );
+  }
+
+  public async observePullRequest(
+    projectId: string,
+    reference: string,
+  ): Promise<PullRequestObservation> {
+    return this.request<PullRequestObservation>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/pr/observe`,
+      { pr_url: reference },
+    );
+  }
+
+  public async adoptPullRequest(request: PrAdoptRequest): Promise<PrAdoptResult> {
+    return this.request<PrAdoptResult>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(request.project_id)}/sources/pr/adopt`,
+      request,
+    );
+  }
+
   public async commitDecomposition(
     projectId: string,
     epicId: string,
@@ -1205,6 +1379,24 @@ export class ApiClient {
       'POST',
       `${this.decompositionPath(projectId, epicId)}/commit`,
       {},
+    );
+  }
+
+  public async previewLocalChanges(projectId: string): Promise<LocalChangesPreview> {
+    return this.request<LocalChangesPreview>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/local-changes/preview`,
+    );
+  }
+
+  public async captureLocalChanges(
+    projectId: string,
+    previewId?: string,
+  ): Promise<LocalChangesCaptureResult> {
+    return this.request<LocalChangesCaptureResult>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/local-changes/capture`,
+      { project_id: projectId, preview_id: previewId, confirmed: true },
     );
   }
 
@@ -1226,10 +1418,16 @@ export class ApiClient {
     return this.request<ProjectExplorer>('GET', '/api/v1/projects?all=true');
   }
 
-  public async updateFavourites(projectIds: string[]): Promise<{ status: string; project_ids: string[] }> {
-    return this.request<{ status: string; project_ids: string[] }>('PUT', '/api/v1/explorer/favourites', {
-      project_ids: projectIds,
-    });
+  public async updateFavourites(
+    projectIds: string[],
+  ): Promise<{ status: string; project_ids: string[] }> {
+    return this.request<{ status: string; project_ids: string[] }>(
+      'PUT',
+      '/api/v1/explorer/favourites',
+      {
+        project_ids: projectIds,
+      },
+    );
   }
 
   public async toggleFavourite(projectId: string, favourite: boolean): Promise<void> {
@@ -1244,13 +1442,21 @@ export class ApiClient {
     });
   }
 
-  public async releaseProject(projectId: string, reason?: string, force = false): Promise<ProjectReleaseResult> {
-    return this.request<ProjectReleaseResult>('POST', `/api/v1/projects/${encodeURIComponent(projectId)}/release`, {
-      project_id: projectId,
-      confirm_release: true,
-      force,
-      reason,
-    });
+  public async releaseProject(
+    projectId: string,
+    reason?: string,
+    force = false,
+  ): Promise<ProjectReleaseResult> {
+    return this.request<ProjectReleaseResult>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/release`,
+      {
+        project_id: projectId,
+        confirm_release: true,
+        force,
+        reason,
+      },
+    );
   }
 
   public async unenrolProject(projectId: string): Promise<void> {
@@ -1292,7 +1498,9 @@ export class ApiClient {
     return this.request<WorkflowCatalogue>('GET', `${this.workflowBase(projectId)}/catalogue`);
   }
 
-  public async validateWorkflow(payload: ValidateWorkflowPayload): Promise<WorkflowValidationResult> {
+  public async validateWorkflow(
+    payload: ValidateWorkflowPayload,
+  ): Promise<WorkflowValidationResult> {
     return this.request<WorkflowValidationResult>('POST', '/api/v1/workflows/validate', payload);
   }
 

@@ -1,0 +1,76 @@
+{
+  "format_version": 1,
+  "name": "git_sources",
+  "description": "Git plan sources: observing and adopting a pull request in the adopt lane, and previewing, refusing, and capturing the checkout's local changes in the land lane (UC-STA-7, UC-STA-9)",
+  "start": "git_sources.intake",
+  "pairing_code": "GTSR-CMTR",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/projects": {
+      "representation": {
+        "projects": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "pm-mcp-clients",
+            "readiness": "ready",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:36:00Z"
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "pm-mcp-core",
+            "readiness": "ready",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-15T09:00:00Z"
+          },
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "readiness": "setup_needs",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 1,
+            "setup_needs_operator": true,
+            "setup_need": "credential sonar",
+            "last_activity_at": "2026-10-14T12:00:00Z"
+          }
+        ]
+      }
+    }
+  },
+  "states": {
+    "git_sources.intake": {
+      "representation": {
+        "scope": "workspace",
+        "state": "git_sources.intake",
+        "state_kind": "start",
+        "summary": "Starting work · Git sources",
+        "kind": "plan",
+        "project_id": "pm-mcp-clients",
+        "title": "Start a plan from a git source"
+      },
+      "links": {}
+    }
+  }
+}

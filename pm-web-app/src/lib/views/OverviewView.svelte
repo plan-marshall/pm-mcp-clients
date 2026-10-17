@@ -14,6 +14,7 @@
   } from '../api/client';
   import { openPlanView, openEpicView } from '../stores/runtime';
   import { openStartWork } from '../stores/start';
+  import { openGitSource } from '../stores/gitSource';
 
   let projects: ProjectSummary[] = [];
   let selectedProjectId: string | null = null;
@@ -495,6 +496,9 @@
             </Button>
             <Button variant="secondary" on:click={() => openStartWork(selectedProjectId!, 'epic')}>
               {$t('start.ready.start_epic')}
+            </Button>
+            <Button variant="secondary" on:click={() => openGitSource(selectedProjectId!)}>
+              {$t('git_sources.mode.adopt_pr')}
             </Button>
           </div>
         </div>
