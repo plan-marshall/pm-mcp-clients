@@ -193,6 +193,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CONST_CLAUDE = "claude";
+    private static final String CONST_SONNET = "sonnet-4.5";
     private static final List<String> CLEANUP_DAY_KEYS = List.of(KEY_PLANS_AFTER_DAYS,
             KEY_EPICS_AFTER_DAYS, KEY_LOGS_AFTER_DAYS, KEY_REPORTS_AFTER_DAYS, KEY_UNENROLLED_AFTER_DAYS);
 
@@ -1055,11 +1056,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var values = new LinkedHashMap<String, PlanSettingsValue>();
             values.put("landing", new PlanSettingsValue("landing", "landing.pull-request", "project",
                     List.of("landing.pull-request", "landing.main", "landing.files")));
-            values.put("method", new PlanSettingsValue("method", "method.test-first", "machine",
+            values.put(KEY_METHOD, new PlanSettingsValue(KEY_METHOD, "method.test-first", "machine",
                     List.of("method.test-first", "method.tests-after")));
-            values.put("asking", new PlanSettingsValue("asking", "ask.key-points", "plan",
+            values.put(KEY_ASKING, new PlanSettingsValue(KEY_ASKING, "ask.key-points", "plan",
                     List.of("ask.every-phase", "ask.key-points", "ask.questions-only")));
-            values.put("posture", new PlanSettingsValue("posture", "standard", "plan", List.of()));
+            values.put(KEY_POSTURE, new PlanSettingsValue(KEY_POSTURE, "standard", "plan", List.of()));
             values.put("base", new PlanSettingsValue("base", "main", "plan", List.of()));
             values.put("role.implement", new PlanSettingsValue("role.implement",
                     "Claude Code - sonnet-5.5", "plan", List.of()));
@@ -3153,10 +3154,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         var workers = List.of(
                 new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, "fix-relay"),
-                new WorkerMetric("implementer", CONST_CLAUDE, "sonnet-4.5", WorkerState.BUSY, "relay-docs"),
+                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "relay-docs"),
                 new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
-                new WorkerMetric("implementer", CONST_CLAUDE, "sonnet-4.5", WorkerState.BUSY, "token-usage"),
-                new WorkerMetric("reviewer", CONST_CLAUDE, "sonnet-4.5", WorkerState.IDLE, null)
+                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "token-usage"),
+                new WorkerMetric("reviewer", CONST_CLAUDE, CONST_SONNET, WorkerState.IDLE, null)
         );
 
         var jobs = Map.<String, Object>of(
