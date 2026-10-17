@@ -211,6 +211,22 @@ class OnboardingRecordsTest {
             assertEquals(1, parsed.aspects().size());
             assertTrue(parsed.credentials().getFirst().expiresSoon());
         }
+
+        @Test
+        @DisplayName("defaults an empty settings record and an empty set of plan defaults")
+        void shouldDefaultAnEmptyRecord() throws Exception {
+            var settings = MachineSettingsRecord.fromJson("{}");
+            assertEquals(0, settings.revision());
+            assertEquals(DocumentsMode.ASK, settings.documentsMode());
+            assertTrue(settings.aspects().isEmpty());
+            assertTrue(settings.consents().isEmpty());
+            assertTrue(settings.credentials().isEmpty());
+
+            var defaults = PlanDefaults.fromJson("{}");
+            assertEquals(PlanDefaults.LANDING_PULL_REQUEST, defaults.landing());
+            assertEquals(PlanDefaults.METHOD_TEST_FIRST, defaults.method());
+            assertEquals(PlanDefaults.ASK_KEY_POINTS, defaults.asking());
+        }
     }
 
     @Nested
@@ -286,5 +302,25 @@ class OnboardingRecordsTest {
     void aspectsHaveDistinctWireValues(OnboardingAspect aspect) {
         assertEquals(aspect, OnboardingAspect.fromWire(aspect.wireValue()));
         assertEquals(7, Set.of(OnboardingAspect.values()).size());
+    }
+
+    @Test
+    @DisplayName("exposes the closed-list accessors of consent, documents, and token coverage")
+    void shouldExposeClosedListAccessors() {
+        assertEquals("stays", ConsentKind.NoBehavior.STAYS.wireValue());
+        assertEquals(ConsentKind.NoBehavior.BACK_TO_MODE, ConsentKind.AUTO_RUN.noBehavior());
+        assertEquals(ConsentStatus.GRANTED, ConsentStatus.fromWire("granted"));
+        assertNull(ConsentStatus.fromWire("nope"));
+        assertNull(ConsentStatus.fromWire(null));
+
+        assertEquals("copy", DocumentsMode.COPY.wireValue());
+        assertEquals(DocumentsMode.MOVE, DocumentsMode.fromWire("move"));
+        assertNull(DocumentsMode.fromWire("nope"));
+        assertNull(DocumentsMode.fromWire(""));
+
+        assertEquals(TokenUsageCoverage.COMPLETE, TokenUsageCoverage.fromWire("complete"));
+        assertNull(TokenUsageCoverage.fromWire(null));
+        assertNull(ConsentKind.fromWire(""));
+        assertEquals("onboard.step.plans", OnboardingAspect.PLANS.stepNameKey());
     }
 }

@@ -193,6 +193,105 @@ class OnboardingScenarioTest {
                 assertFalse(reread.toJson().contains("scan_harnesses"));
             }
         }
+
+        @Test
+        @DisplayName("applies plan defaults, cleanup durations, rejects an unknown mode, and is idempotent on an unknown consent")
+        void shouldApplyTheSettingsKeys() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"plan_defaults\",\"value\":\"landing.main\",\"revision\":4}"));
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"plan_defaults\",\"value\":\"method.tests-after\",\"revision\":5}"));
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"plan_defaults\",\"value\":\"ask.every-phase\",\"revision\":6}"));
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"cleanup_durations\",\"value\":\"7\",\"revision\":7}"));
+                // An unknown documents mode is accepted but changes nothing
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"documents_mode\",\"value\":\"nope\",\"revision\":8}"));
+                // An unknown consent kind changes nothing
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"consent:not_a_kind\",\"value\":\"x\",\"revision\":9}"));
+
+                var settings = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
+                        StandardCharsets.UTF_8));
+                assertEquals(10, settings.revision());
+                assertTrue(settings.toJson().contains("landing.main"));
+                assertTrue(settings.toJson().contains("tests-after"));
+                assertEquals("ask", settings.documentsMode().wireValue());
+                assertEquals(2, settings.consents().size());
+            }
+        }
+
+        @Test
+        @DisplayName("records the optional posture of a later run")
+        void shouldRecordPosture() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"plan_defaults\",\"value\":\"posture.full\",\"revision\":4}"));
+
+                var settings = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
+                        StandardCharsets.UTF_8));
+                assertEquals("full", settings.planDefaults().posture());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("State view and stepping")
+    class StateView {
+
+        @Test
+        @DisplayName("steps to the first link when no name is given and reports completed steps through the settings")
+        void shouldStepByDefaultAndReportSettingsSteps() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                // No link name: some offered link is followed (the map order is unspecified)
+                var res = client.send(HttpRequest.json("POST", "/api/v1/onboarding/step", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, res.status());
+                var map = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
+                var chosen = JsonTree.string(map, "state");
+                assertTrue("auto.consent".equals(chosen) || "language.choose".equals(chosen),
+                        "unexpected state: " + chosen);
+
+                // The settings states count as the seven completed steps
+                runtime.goToState("settings.choose");
+                var state = client.send(HttpRequest.get("/api/v1/onboarding/state").withHeader("Authorization", auth));
+                var stateMap = JsonTree.asObject(JsonTree.parse(new String(state.body(), StandardCharsets.UTF_8)));
+                assertEquals(7, JsonTree.integer(stateMap, "completed_steps"));
+            }
+        }
+
+        @Test
+        @DisplayName("an automatic start on a scenario without an automatic run stays where it is")
+        void shouldStayWithoutAutoRun() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var res = client.send(HttpRequest.json("POST", "/api/v1/onboarding/auto", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, res.status());
+                var map = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
+                assertEquals(Boolean.TRUE, JsonTree.bool(map, "auto"));
+            }
+        }
+    }
+
+    private static int put(UnixSocketHttpClient client, String auth, String body) throws Exception {
+        return client.send(HttpRequest.json("PUT", "/api/v1/machine/settings", body)
+                .withHeader("Authorization", auth)).status();
     }
 
     private static Map<String, Object> step(UnixSocketHttpClient client, Map<String, String> auth, String link)

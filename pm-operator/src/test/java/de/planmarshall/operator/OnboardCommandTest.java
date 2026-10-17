@@ -330,6 +330,113 @@ class OnboardCommandTest {
                                 () -> assertEquals(0, code),
                                 () -> assertTrue(output.contains("Consent withdrawn")));
         }
+
+        @Test
+        @DisplayName("reports a conflict and stops when --yes is not given")
+        void conflictWithoutYes() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            final int[] putCount = {0};
+            fixture.start((request, response) -> {
+                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
+                                    && "GET".equals(request.method())) {
+                    response.json(200, OVERVIEW);
+                } else if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
+                                    && "PUT".equals(request.method())) {
+                    putCount[0]++;
+                    response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":9,\"current_value\":\"copy\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var writer = new StringWriter();
+            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
+            cmd.setOut(new PrintWriter(writer));
+
+            int code = cmd.execute("--set", "documents_mode=move");
+
+            var output = writer.toString();
+            assertAll(
+                                () -> assertEquals(0, code),
+                                () -> assertEquals(1, putCount[0]),
+                                () -> assertTrue(output.contains("Changed meanwhile")),
+                                () -> assertFalse(output.contains("Saved.")));
+        }
+
+        @Test
+        @DisplayName("refuses an unknown consent kind and a malformed pair")
+        void refusesBadInput() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> {
+                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())) {
+                    response.json(200, OVERVIEW);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var unknownWriter = new StringWriter();
+            var unknownCmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
+            unknownCmd.setOut(new PrintWriter(unknownWriter));
+            var unknownCode = unknownCmd.execute("--withdraw", "not_a_kind");
+
+            var malformedWriter = new StringWriter();
+            var malformedCmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
+            malformedCmd.setOut(new PrintWriter(malformedWriter));
+            var malformedCode = malformedCmd.execute("--set", "noequals");
+
+            assertAll(
+                                () -> assertEquals(1, unknownCode),
+                                () -> assertTrue(unknownWriter.toString().contains("Refused")),
+                                () -> assertEquals(1, malformedCode),
+                                () -> assertTrue(malformedWriter.toString().contains("Refused")));
+        }
+
+        @Test
+        @DisplayName("refuses when the settings cannot be read")
+        void refusesUnreadableSettings() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> response.send(500, null, ""));
+
+            var writer = new StringWriter();
+            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
+            cmd.setOut(new PrintWriter(writer));
+
+            int code = cmd.execute();
+
+            assertAll(
+                                () -> assertEquals(1, code),
+                                () -> assertTrue(writer.toString().contains("Refused")));
+        }
+    }
+
+    @Test
+    @DisplayName("settings without a subcommand prints its usage")
+    void settingsUsage() throws Exception {
+        var out = new StringWriter();
+        var err = new StringWriter();
+        int code = PmOperator.execute(createContext(""), new PrintWriter(out), new PrintWriter(err), "settings");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("settings")));
+    }
+
+    @Test
+    @DisplayName("onboard reports a refused step")
+    void reportsRefusedStep() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new OnboardCommand(createContext("")));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("--step", "yes");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(writer.toString().contains("Refused")));
     }
 
     @Test
