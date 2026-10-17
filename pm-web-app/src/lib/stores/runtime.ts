@@ -1,9 +1,12 @@
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import {
   apiClient,
   type StatusResponse,
   type StateRepresentation,
   type HypermediaLink,
+  type OnboardingState,
+  type MachineSettingsRecord,
+  type MachineSettingsUpdateResult,
 } from '../api/client';
 
 export interface RevokedInfo {
@@ -33,8 +36,11 @@ export interface RuntimeState {
     | 'cleanup'
     | 'projects'
     | 'plan'
-    | 'epic';
+    | 'epic'
+    | 'machine-settings';
   currentState: StateRepresentation | null;
+  onboarding?: OnboardingState | null;
+  machineSettings?: MachineSettingsRecord | null;
   isRevoked: boolean;
   revokedReason: string;
   revokedInfo?: RevokedInfo | null;
@@ -335,6 +341,10 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
       ...s,
       projectEventNotice: `${event}_${Date.now()}`,
     }));
+  } else if (event === 'onboarding.step_completed') {
+    void loadOnboardingState();
+  } else if (event === 'machine.settings_changed') {
+    void loadMachineSettings();
   }
 }
 
@@ -383,6 +393,80 @@ export function navigateTo(route: RuntimeState['currentRoute']): void {
     ...s,
     currentRoute: route,
   }));
+}
+
+function applyOnboardingState(state: OnboardingState): void {
+  const activeStep = deriveStepFromState(state.state);
+  runtimeStore.update((s) => ({
+    ...s,
+    onboarding: state,
+    currentState: state as unknown as StateRepresentation,
+    activeStep,
+    isOnboarded: state.state === 'onboard.completed' ? true : s.isOnboarded,
+  }));
+}
+
+export async function loadOnboardingState(): Promise<OnboardingState | null> {
+  if (!apiClient.isPaired()) return null;
+  try {
+    const state = await apiClient.getOnboardingState();
+    applyOnboardingState(state);
+    return state;
+  } catch {
+    return null;
+  }
+}
+
+export async function stepOnboarding(link: string): Promise<void> {
+  try {
+    applyOnboardingState(await apiClient.stepOnboarding(link));
+  } catch {
+    // A refused step leaves the state as it is.
+  }
+}
+
+export async function startOnboardingAuto(): Promise<void> {
+  try {
+    applyOnboardingState(await apiClient.startOnboardingAuto());
+  } catch {
+    // A refused automatic run leaves the state as it is.
+  }
+}
+
+export async function loadMachineSettings(): Promise<MachineSettingsRecord | null> {
+  if (!apiClient.isPaired()) return null;
+  try {
+    const settings = await apiClient.getMachineSettings();
+    runtimeStore.update((s) => ({ ...s, machineSettings: settings }));
+    return settings;
+  } catch {
+    return null;
+  }
+}
+
+export async function updateMachineSetting(
+  key: string,
+  value: string | null,
+): Promise<MachineSettingsUpdateResult | null> {
+  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+  try {
+    const result = await apiClient.updateMachineSetting(key, value, revision);
+    await loadMachineSettings();
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+export async function withdrawConsent(kind: string): Promise<MachineSettingsUpdateResult | null> {
+  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+  try {
+    const result = await apiClient.withdrawConsent(kind, revision);
+    await loadMachineSettings();
+    return result;
+  } catch {
+    return null;
+  }
 }
 
 export function openPlanView(planId: string, taskId?: string | null): void {

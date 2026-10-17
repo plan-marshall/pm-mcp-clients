@@ -718,6 +718,74 @@ export interface CleanupJob {
   durations: CleanupDurations;
 }
 
+export interface MachineSettingsUpdateResult {
+  applied: boolean;
+  conflict: boolean;
+  revision: number;
+  current_value?: string;
+}
+
+export interface OnboardingLink {
+  href: string;
+  method?: string;
+  next?: string;
+}
+
+export interface OnboardingState {
+  scope?: string;
+  state?: string;
+  summary?: string;
+  completed_steps?: number;
+  auto?: boolean;
+  links?: Record<string, OnboardingLink>;
+  [key: string]: unknown;
+}
+
+export interface MachineSettingsAspectSummary {
+  aspect: string;
+  step: number;
+  summary: string;
+  current?: string;
+}
+
+export interface ConsentRecord {
+  kind: string;
+  status: string;
+  remember: boolean;
+  granted_at?: string;
+  channel?: string;
+  project?: string;
+  script_count?: number;
+}
+
+export interface MachineCredentialStatus {
+  key: string;
+  provider: string;
+  kind: string;
+  expires_in_days?: number;
+  expired: boolean;
+  held_plan?: string;
+}
+
+export interface PlanDefaults {
+  landing: string;
+  method: string;
+  asking: string;
+  posture?: string;
+}
+
+export interface MachineSettingsRecord {
+  revision: number;
+  aspects: MachineSettingsAspectSummary[];
+  language_interface: string;
+  language_model: string;
+  documents_mode: string;
+  cleanup_durations: Record<string, number>;
+  plan_defaults: PlanDefaults;
+  consents: ConsentRecord[];
+  credentials: MachineCredentialStatus[];
+}
+
 const STORAGE_KEY_SECRET = 'pm_device_secret';
 const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
 const STORAGE_KEY_LABEL = 'pm_device_label';
@@ -812,6 +880,38 @@ export class ApiClient {
 
   public async getDevices(): Promise<PairedDevice[]> {
     return this.request<PairedDevice[]>('GET', '/api/v1/web/devices');
+  }
+
+  public async getOnboardingState(): Promise<OnboardingState> {
+    return this.request<OnboardingState>('GET', '/api/v1/onboarding/state');
+  }
+
+  public async stepOnboarding(link: string): Promise<OnboardingState> {
+    return this.request<OnboardingState>('POST', '/api/v1/onboarding/step', { link });
+  }
+
+  public async startOnboardingAuto(): Promise<OnboardingState> {
+    return this.request<OnboardingState>('POST', '/api/v1/onboarding/auto', {});
+  }
+
+  public async getMachineSettings(): Promise<MachineSettingsRecord> {
+    return this.request<MachineSettingsRecord>('GET', '/api/v1/machine/settings');
+  }
+
+  public async updateMachineSetting(
+    key: string,
+    value: string | null,
+    revision: number,
+  ): Promise<MachineSettingsUpdateResult> {
+    return this.requestWithConflict<MachineSettingsUpdateResult>('PUT', '/api/v1/machine/settings', {
+      key,
+      value,
+      revision,
+    });
+  }
+
+  public async withdrawConsent(kind: string, revision: number): Promise<MachineSettingsUpdateResult> {
+    return this.updateMachineSetting(`consent:${kind}`, null, revision);
   }
 
   public async getConnectionStatus(): Promise<ConnectionStatus> {

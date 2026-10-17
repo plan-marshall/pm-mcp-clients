@@ -41,6 +41,12 @@ public final class StandardScenarios {
     public static final String ONBOARDING_HARNESS_NOT_LOGGED_IN = "onboarding-harness-not-logged-in";
 
     /**
+     * The full machine onboarding and the machine's settings: every aspect with its consents,
+     * checks, the automatic run, and the revision-guarded settings (UC-ONB-1..10).
+     */
+    public static final String ONBOARDING = "onboarding";
+
+    /**
      * Browser pairing flow demonstrating pairing code exchange and subsequent authenticated web
      * client requests.
      */
@@ -102,6 +108,7 @@ public final class StandardScenarios {
             STATUS_ONLY,
             ONBOARDING_HAPPY,
             ONBOARDING_HARNESS_NOT_LOGGED_IN,
+            ONBOARDING,
             WEB_PAIRING,
             ENTRY,
             PAIRED_DEVICES,

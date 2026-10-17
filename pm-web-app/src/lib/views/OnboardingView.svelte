@@ -1,15 +1,29 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import StepBar from '../components/StepBar.svelte';
   import ConsentBox from '../components/ConsentBox.svelte';
-  import { runtimeStore, executeLink, navigateTo } from '../stores/runtime';
+  import {
+    runtimeStore,
+    executeLink,
+    navigateTo,
+    loadOnboardingState,
+    stepOnboarding,
+    startOnboardingAuto,
+  } from '../stores/runtime';
   import type { HypermediaLink } from '../api/client';
 
   let isSubmitting = false;
 
-  $: currentState = $runtimeStore.currentState;
+  onMount(() => {
+    // Pull the state the runtime reports; a machine that is not paired keeps the local one.
+    void loadOnboardingState();
+  });
+
+  $: onboardingState = $runtimeStore.onboarding;
+  $: currentState = onboardingState ?? $runtimeStore.currentState;
   $: stateId = currentState?.state || 'onboard.mode';
   $: activeStep = $runtimeStore.activeStep;
   $: isCompleted = stateId === 'onboard.completed';
@@ -23,30 +37,48 @@
   // Extract offered links from state representation
   $: offeredLinks = getLinks(currentState);
 
-  function getLinks(
-    state: typeof currentState,
-  ): Array<{ id: string; link: HypermediaLink; isPrimary: boolean }> {
+  interface OfferedLink {
+    id: string;
+    link: HypermediaLink;
+    isPrimary: boolean;
+  }
+
+  function getLinks(state: typeof currentState): OfferedLink[] {
     if (!state) return [];
-    const rawLinks = state.links || state._links;
+    const rawLinks = onboardingState?.links ?? state.links ?? state._links;
     if (!rawLinks || typeof rawLinks !== 'object') return [];
 
     return Object.entries(rawLinks).map(([id, val], index, arr) => {
       let link: HypermediaLink = typeof val === 'string' ? { href: val } : { ...val };
-      if (!link.href.startsWith('/') || link.href.startsWith('//')) {
-        link = { ...link, href: `/${link.href.replace(/^[/.]+/, '')}` };
+      if (!link.href || !link.href.startsWith('/') || link.href.startsWith('//')) {
+        link = { ...link, href: `/${(link.href ?? '').replace(/^[/.]+/, '')}` };
       }
       const isPrimary = index === arr.length - 1;
       return { id, link, isPrimary };
     });
   }
 
-  async function handleLinkClick(link: HypermediaLink | string, body?: unknown) {
+  async function handleLinkClick(id: string, link: HypermediaLink, body?: unknown) {
     if (isSubmitting) return;
     isSubmitting = true;
     try {
-      await executeLink(link, body);
+      if (onboardingState) {
+        await stepOnboarding(id);
+      } else {
+        await executeLink(link, body);
+      }
     } catch {
       // Error handled
+    } finally {
+      isSubmitting = false;
+    }
+  }
+
+  async function handleAuto() {
+    if (isSubmitting) return;
+    isSubmitting = true;
+    try {
+      await startOnboardingAuto();
     } finally {
       isSubmitting = false;
     }
@@ -62,7 +94,7 @@
       );
     }
     if (target) {
-      handleLinkClick(target.link, { remember });
+      void handleLinkClick(target.id, target.link, { remember });
     }
   }
 
@@ -71,7 +103,7 @@
       (l) => l.id === 'deny' || l.id === 'decline' || l.id === 'no' || !l.isPrimary,
     );
     if (target) {
-      handleLinkClick(target.link, { remember: false });
+      void handleLinkClick(target.id, target.link, { remember: false });
     }
   }
 </script>
@@ -91,6 +123,9 @@
             </p>
           </div>
           <div class="state-card__actions state-card__actions--center">
+            <Button variant="secondary" on:click={() => navigateTo('machine-settings')}>
+              {$t('onboard.completed.machine_settings')}
+            </Button>
             <Button variant="primary" on:click={() => navigateTo('workspace')}>
               {$t('web.frame.nav.explorer')}
             </Button>
@@ -134,7 +169,7 @@
                 <Button
                   variant="secondary"
                   loading={isSubmitting}
-                  on:click={() => handleLinkClick(link)}
+                  on:click={() => handleLinkClick(id, link)}
                 >
                   {$t(`onboard.${id}`) || id}
                 </Button>
@@ -177,7 +212,7 @@
                 <Button
                   variant={isPrimary ? 'primary' : 'secondary'}
                   loading={isSubmitting}
-                  on:click={() => handleLinkClick(link)}
+                  on:click={() => handleLinkClick(id, link)}
                 >
                   {#if id === 'auto'}
                     {$t('onboard.mode.auto')}
@@ -189,16 +224,13 @@
                 </Button>
               {/each}
             {:else}
-              <Button
-                variant="secondary"
-                on:click={() => handleLinkClick('/api/v1/operator/onboard/auto', { mode: 'auto' })}
-              >
+              <Button variant="secondary" loading={isSubmitting} on:click={handleAuto}>
                 {$t('onboard.mode.auto')}
               </Button>
               <Button
                 variant="primary"
-                on:click={() =>
-                  handleLinkClick('/api/v1/operator/onboard/begin', { mode: 'guided' })}
+                loading={isSubmitting}
+                on:click={() => handleLinkClick('begin', { href: '/api/v1/onboarding/language' })}
               >
                 {$t('onboard.mode.guided')}
               </Button>
@@ -224,7 +256,7 @@
               <Button
                 variant={isPrimary ? 'primary' : 'secondary'}
                 loading={isSubmitting}
-                on:click={() => handleLinkClick(link)}
+                on:click={() => handleLinkClick(id, link)}
               >
                 {$t(`onboard.${id}`) || id}
               </Button>

@@ -54,6 +54,13 @@ import de.planmarshall.api.decision.QuorumVote;
 import de.planmarshall.api.decision.Reversibility;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.ConsentKind;
+import de.planmarshall.api.onboarding.MachineOnboardingState;
+import de.planmarshall.api.onboarding.MachineSettingsChangedEvent;
+import de.planmarshall.api.onboarding.MachineSettingsUpdateRequest;
+import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
+import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
@@ -202,6 +209,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile int lanListenerPort = DEFAULT_LAN_PORT;
     private volatile boolean closed;
 
+    private final Object onboardingLock = new Object();
+    private int machineSettingsRevision = 1;
+    private String machineDocumentsMode = "ask";
+    private Map<String, Object> machinePlanDefaults = new LinkedHashMap<>();
+    private Map<String, Object> machineCleanupDurations = new LinkedHashMap<>();
+    private final List<Map<String, Object>> machineRememberedConsents = new ArrayList<>();
+    private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
+    private volatile boolean onboardingAuto;
+
     private final Object controlLock = new Object();
     private final Map<String, String> controlPlanStates = new LinkedHashMap<>();
     private final Map<String, String> controlPlanPausePoints = new LinkedHashMap<>();
@@ -249,6 +265,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        initDefaultOnboarding();
         transitionTo(scenario.start());
     }
 
@@ -262,6 +279,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        initDefaultOnboarding();
         transitionTo(currentScenario.get().start());
     }
 
@@ -379,6 +397,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 3. Dynamic device and web routes
         if (handleDeviceRoutes(request, response, isWeb)) {
+            return;
+        }
+
+        // 3-ONB. Dynamic machine onboarding and settings routes (UC-ONB-1..10)
+        if (handleOnboardingRoutes(request, response)) {
+            return;
+        }
+        if (handleMachineSettingsRoutes(request, response)) {
             return;
         }
 
@@ -2150,6 +2176,285 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         broadcastEvent(event, data);
         response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
+    }
+
+    private void initDefaultOnboarding() {
+        synchronized (onboardingLock) {
+            machineSettingsRevision = 4;
+            machineDocumentsMode = "ask";
+            onboardingAuto = false;
+            machinePlanDefaults = new LinkedHashMap<>();
+            machinePlanDefaults.put("landing", "landing.pull-request");
+            machinePlanDefaults.put("method", "method.test-first");
+            machinePlanDefaults.put("asking", "ask.key-points");
+            machineCleanupDurations = new LinkedHashMap<>();
+            machineCleanupDurations.put("plans_after_days", 30);
+            machineCleanupDurations.put("epics_after_days", 30);
+            machineCleanupDurations.put("logs_after_days", 30);
+            machineCleanupDurations.put("reports_after_days", 30);
+            machineCleanupDurations.put("unenrolled_after_days", 30);
+            machineCleanupDurations.put("remind_after_days", 3);
+            machineRememberedConsents.clear();
+            machineRememberedConsents.add(rememberedConsent("scan_harnesses", "terminal", "2026-10-12T09:00:00Z"));
+            machineRememberedConsents.add(rememberedConsent("probe_harness_login", "Firefox", "2026-10-12T09:12:00Z"));
+            machineCredentials.clear();
+            machineCredentials.add(credential("github", "GitHub", "fine-grained", 9, false));
+            machineCredentials.add(credential("sonar", "SonarCloud", "user token", null, false));
+        }
+    }
+
+    private static Map<String, Object> rememberedConsent(String kind, String channel, String grantedAt) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("kind", kind);
+        map.put("status", "remembered");
+        map.put("remember", true);
+        map.put("granted_at", grantedAt);
+        map.put("channel", channel);
+        return map;
+    }
+
+    private static Map<String, Object> credential(String key, String provider, String kind,
+                                                  @Nullable Integer expiresInDays, boolean expired) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("key", key);
+        map.put("provider", provider);
+        map.put("kind", kind);
+        if (expiresInDays != null) {
+            map.put("expires_in_days", expiresInDays);
+        }
+        map.put("expired", expired);
+        return map;
+    }
+
+    private boolean handleOnboardingRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        var method = request.method();
+        if ("/api/v1/onboarding/state".equals(path) && "GET".equals(method)) {
+            handleOnboardingState(response);
+            return true;
+        }
+        if ("/api/v1/onboarding/step".equals(path) && "POST".equals(method)) {
+            handleOnboardingStep(request, response);
+            return true;
+        }
+        if ("/api/v1/onboarding/auto".equals(path) && "POST".equals(method)) {
+            handleOnboardingAuto(response);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleOnboardingState(MockHttpResponse response) throws IOException {
+        StateDefinition state;
+        String stateId;
+        synchronized (this) {
+            stateId = currentStateId.get();
+            state = currentScenario.get().state(stateId);
+        }
+        response.json(200, mergeRepresentation(state, stateId));
+    }
+
+    private Map<String, Object> mergeRepresentation(@Nullable StateDefinition state, @Nullable String stateId) {
+        var body = new LinkedHashMap<String, Object>();
+        if (state != null && state.representation() instanceof Map<?, ?> rep) {
+            for (var entry : rep.entrySet()) {
+                body.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+        if (state != null && !state.links().isEmpty()) {
+            var links = new LinkedHashMap<String, Object>();
+            for (var entry : state.links().entrySet()) {
+                var link = entry.getValue();
+                var target = new LinkedHashMap<String, Object>();
+                target.put("href", link.href() != null ? link.href() : "/api/v1/onboarding/step");
+                target.put("method", link.method());
+                target.put("next", link.next());
+                links.put(entry.getKey(), target);
+            }
+            body.put("links", links);
+        }
+        body.put(KEY_STATE, stateId);
+        body.put("completed_steps", completedStepsFor(stateId));
+        body.put("auto", onboardingAuto);
+        return body;
+    }
+
+    private static int completedStepsFor(@Nullable String stateId) {
+        if (stateId == null) {
+            return 0;
+        }
+        if ("onboard.completed".equals(stateId) || stateId.startsWith("settings.")) {
+            return 7;
+        }
+        var aspect = MachineOnboardingState.aspectOf(stateId);
+        return aspect != null ? aspect.step() - 1 : 0;
+    }
+
+    private void handleOnboardingStep(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var body = readBodyMap(request);
+        var linkName = JsonTree.string(body, "link");
+        StateDefinition state;
+        String previousState;
+        synchronized (this) {
+            previousState = currentStateId.get();
+            state = currentScenario.get().state(previousState);
+        }
+        if (state == null || state.links().isEmpty()) {
+            response.json(409, Map.of(KEY_ERROR, "no_step", KEY_STATE,
+                    previousState != null ? previousState : ""));
+            return;
+        }
+        var chosen = chooseLink(state, linkName);
+        var link = chosen.getValue();
+        if (link.status() >= 400) {
+            response.json(link.status(), Map.of(KEY_ERROR,
+                    link.error() != null ? link.error() : "rejected", KEY_STATE, previousState));
+            return;
+        }
+        String newState;
+        synchronized (this) {
+            transitionTo(link.next());
+            newState = currentStateId.get();
+            state = currentScenario.get().state(newState);
+        }
+        var previousAspect = MachineOnboardingState.aspectOf(previousState);
+        var newAspect = MachineOnboardingState.aspectOf(newState);
+        if (previousAspect != null && newAspect != previousAspect) {
+            broadcastEvent(OnboardingStepCompletedEvent.eventName(), new OnboardingStepCompletedEvent(
+                    previousAspect, newState, completedStepsFor(newState)).toMap());
+        }
+        response.json(link.status(), mergeRepresentation(state, newState));
+    }
+
+    private static Map.Entry<String, LinkDefinition> chooseLink(StateDefinition state, @Nullable String linkName) {
+        if (linkName != null) {
+            for (var entry : state.links().entrySet()) {
+                if (entry.getKey().equals(linkName)) {
+                    return entry;
+                }
+            }
+        }
+        return state.links().entrySet().iterator().next();
+    }
+
+    private void handleOnboardingAuto(MockHttpResponse response) throws IOException {
+        onboardingAuto = true;
+        synchronized (this) {
+            if (currentScenario.get().states().containsKey("auto.consent")) {
+                goToState("auto.consent");
+            }
+        }
+        handleOnboardingState(response);
+    }
+
+    private boolean handleMachineSettingsRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (!"/api/v1/machine/settings".equals(request.path())) {
+            return false;
+        }
+        if ("GET".equals(request.method())) {
+            response.json(200, buildMachineSettings());
+            return true;
+        }
+        if ("PUT".equals(request.method()) || "POST".equals(request.method())) {
+            handleUpdateMachineSettings(request, response);
+            return true;
+        }
+        return false;
+    }
+
+    private Map<String, Object> buildMachineSettings() {
+        synchronized (onboardingLock) {
+            var body = new LinkedHashMap<String, Object>();
+            body.put("revision", machineSettingsRevision);
+            body.put("aspects", List.of(
+                    aspectSummary(OnboardingAspect.LANGUAGE, "Deutsch, models English", "de"),
+                    aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", "claude"),
+                    aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
+                    aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
+                    aspectSummary(OnboardingAspect.CREDENTIALS, "macOS Keychain", "os"),
+                    aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", "github"),
+                    aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
+                            String.valueOf(machinePlanDefaults.get("landing")))));
+            body.put("language_interface", "de");
+            body.put("language_model", "en");
+            body.put("documents_mode", machineDocumentsMode);
+            body.put("cleanup_durations", machineCleanupDurations);
+            body.put("plan_defaults", machinePlanDefaults);
+            body.put("consents", machineRememberedConsents);
+            body.put("credentials", machineCredentials);
+            return body;
+        }
+    }
+
+    private static Map<String, Object> aspectSummary(OnboardingAspect aspect, String summary, String current) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("aspect", aspect.wireValue());
+        map.put("step", aspect.step());
+        map.put("summary", summary);
+        map.put("current", current);
+        return map;
+    }
+
+    private void handleUpdateMachineSettings(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var update = MachineSettingsUpdateRequest.fromMap(readBodyMap(request));
+        synchronized (onboardingLock) {
+            if (update.revision() != machineSettingsRevision) {
+                response.json(409, MachineSettingsUpdateResult.conflict(
+                        machineSettingsRevision, currentMachineValue(update.key())).toMap());
+                return;
+            }
+            applyMachineSetting(update.key(), update.value());
+            machineSettingsRevision++;
+            broadcastEvent(MachineSettingsChangedEvent.eventName(), new MachineSettingsChangedEvent(
+                    update.key(), update.value(), machineSettingsRevision, "web").toMap());
+            response.json(200, MachineSettingsUpdateResult.applied(machineSettingsRevision).toMap());
+        }
+    }
+
+    private void applyMachineSetting(String key, @Nullable String value) {
+        if ("documents_mode".equals(key) && value != null) {
+            if ("copy".equals(value) || "move".equals(value) || "ask".equals(value)) {
+                machineDocumentsMode = value;
+            }
+        } else if ("cleanup_durations".equals(key) && value != null) {
+            try {
+                int days = Integer.parseInt(value.trim());
+                for (var field : List.of("plans_after_days", "epics_after_days", "logs_after_days",
+                        "reports_after_days", "unenrolled_after_days")) {
+                    machineCleanupDurations.put(field, days);
+                }
+            } catch (NumberFormatException _) {
+                // keep the current durations when the value is not a number
+            }
+        } else if ("plan_defaults".equals(key) && value != null) {
+            if (value.startsWith("landing.")) {
+                machinePlanDefaults.put("landing", value);
+            } else if (value.startsWith("method.")) {
+                machinePlanDefaults.put("method", value);
+            } else if (value.startsWith("ask.")) {
+                machinePlanDefaults.put("asking", value);
+            } else if (value.startsWith("posture.")) {
+                machinePlanDefaults.put("posture", value.substring("posture.".length()));
+            }
+        } else if (key.startsWith("consent:")) {
+            var kind = ConsentKind.fromWire(key.substring("consent:".length()));
+            if (kind != null) {
+                machineRememberedConsents.removeIf(c -> kind.wireValue().equals(c.get("kind")));
+            }
+        }
+    }
+
+    private String currentMachineValue(String key) {
+        if ("documents_mode".equals(key)) {
+            return machineDocumentsMode;
+        }
+        if ("plan_defaults".equals(key)) {
+            return String.valueOf(machinePlanDefaults.get("landing"));
+        }
+        if ("cleanup_durations".equals(key)) {
+            return String.valueOf(machineCleanupDurations.get("plans_after_days"));
+        }
+        return "";
     }
 
     /** @return the current scenario */
