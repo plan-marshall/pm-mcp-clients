@@ -10,7 +10,6 @@
 package de.planmarshall.api.source.git;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -132,16 +131,7 @@ public record PullRequestObservation(
         if (url == null) {
             throw new JsonFormatException("Missing required field for PullRequestObservation: url");
         }
-        var changedFiles = new ArrayList<ChangedFile>();
-        var raw = JsonTree.asArray(map.get(FIELD_CHANGED_FILES));
-        if (raw != null) {
-            for (var item : raw) {
-                var obj = JsonTree.asObject(item);
-                if (obj != null) {
-                    changedFiles.add(ChangedFile.fromMap(obj));
-                }
-            }
-        }
+        var changedFiles = ChangedFile.listFrom(map, FIELD_CHANGED_FILES);
         var number = JsonTree.integer(map, FIELD_NUMBER);
         var screeningValue = JsonTree.string(map, FIELD_SCREENING);
         var rateLimitMap = JsonTree.object(map, FIELD_RATE_LIMIT);

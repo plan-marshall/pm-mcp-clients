@@ -21,6 +21,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.source.git.LocalChangesCaptureRequest;
 import de.planmarshall.api.source.git.LocalChangesCaptureResult;
 import de.planmarshall.api.source.git.LocalChangesPreview;
@@ -62,6 +63,10 @@ public final class GitSourceCommand implements Callable<Integer> {
     private static final String SUFFIX_PR_ADOPT = "/sources/pr/adopt";
     private static final String SUFFIX_LOCAL_PREVIEW = "/sources/local-changes/preview";
     private static final String SUFFIX_LOCAL_CAPTURE = "/sources/local-changes/capture";
+    private static final String KEY_PR_URL = "pr_url";
+    private static final String PR_ACCEPT_FLAGGED = "git_sources.pr.flagged.accept";
+    private static final String PR_ACCEPT_UNSCREENED = "git_sources.pr.unscreened.accept";
+    private static final String CONFIRM_REQUIRED = "git_sources.confirm.required";
     private static final String REASON_RATE_LIMITED = "rate_limited";
     private static final String REASON_NOT_OPEN = "not_open";
     private static final String REASON_HEAD_NOT_WRITABLE = "head_not_writable";
@@ -69,15 +74,20 @@ public final class GitSourceCommand implements Callable<Integer> {
     private static final String REASON_UNSCREENED = "unscreened";
     private static final String REASON_CONFIRMATION_REQUIRED = "confirmation_required";
     private static final String REASON_LANDING_FILES = "landing_files";
+    private static final String REASON_PREVIEW_STALE = "preview_stale";
+    private static final String REASON_NO_LOCAL_CHANGES = "no_local_changes";
     private static final String ACCEPTED_BY_OPERATOR = "accepted by the operator";
+
+    /** The outcome of a confirmation gate. */
+    private enum Acceptance {
+        ACCEPTED, DECLINED, NEEDS_INPUT
+    }
 
     @Spec
     CommandSpec spec = CommandSpec.create();
 
-    private final OperatorContext context;
-
     GitSourceCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(context, "context");
     }
 
     @Override
@@ -183,58 +193,29 @@ public final class GitSourceCommand implements Callable<Integer> {
                         boolean yes, boolean noInput, @Nullable String acceptScreening) throws IOException {
         var runtime = context.runtime(true);
         var base = PATH_PROJECTS_PREFIX + OperatorUrlUtil.encodePathSegment(projectId);
-        var observeResponse = runtime.send(HttpRequest.json("POST", base + SUFFIX_PR_OBSERVE,
-                            JsonTree.write(Map.of("pr_url", reference))));
-        if (observeResponse.status() != 200) {
-            throw new OperatorRefusedException("observe pull request", observeResponse);
-        }
-        var observation = PullRequestObservation.fromJson(observeResponse.bodyText());
+        var observation = observe(runtime, base, reference);
         printObservation(out, observation);
-        if (!observation.open()) {
-            out.println("✗ " + MessageCatalogue.get("git_sources.pr.not_open"));
-            out.flush();
-            return 1;
-        }
-        if (!observation.writable()) {
-            out.println("✗ " + MessageCatalogue.get("git_sources.pr.head_not_writable"));
-            out.flush();
-            return 1;
-        }
-        if (observation.rateLimit().limited()) {
-            out.println("✗ " + MessageCatalogue.get("git_sources.refused.rate_limited"));
+        var unadoptable = unadoptableReason(observation);
+        if (unadoptable != null) {
+            out.println("✗ " + MessageCatalogue.get(unadoptable));
             out.flush();
             return 1;
         }
 
         var bypass = acceptScreening;
         if (observation.screening().needsAcceptance() && (bypass == null || bypass.isBlank())) {
-            var promptKey = observation.screening() == ScreeningOutcome.FLAGGED
-                                ? "git_sources.pr.flagged.accept" : "git_sources.pr.unscreened.accept";
-            if (noInput) {
-                out.println("✗ " + MessageCatalogue.get(promptKey));
-                out.println("  " + MessageCatalogue.get("git_sources.confirm.required"));
-                out.flush();
-                return EXIT_NEEDS_INPUT;
-            }
-            if (!yes && !confirm(context, MessageCatalogue.get(promptKey))) {
+            var acceptance = askAcceptance(context, out, observation, yes, noInput);
+            if (acceptance == Acceptance.DECLINED) {
                 out.println(MessageCatalogue.get("git_sources.local.declined"));
                 out.flush();
                 return 0;
             }
+            if (acceptance == Acceptance.NEEDS_INPUT) {
+                return EXIT_NEEDS_INPUT;
+            }
             bypass = ACCEPTED_BY_OPERATOR;
         }
-
-        var adoptResponse = runtime.send(HttpRequest.json("POST", base + SUFFIX_PR_ADOPT,
-                            new PrAdoptRequest(projectId, reference, bypass).toJson()));
-        if (adoptResponse.status() == 200 || adoptResponse.status() == 201) {
-            var result = PrAdoptResult.fromJson(adoptResponse.bodyText());
-            out.println("✓ " + MessageCatalogue.format("git_sources.pr.adopted",
-                                Map.of("name", OutputSafety.stripControlSequences(result.planId()))));
-            out.println("    " + laneLine("git_sources.lane.adopt"));
-            out.flush();
-            return 0;
-        }
-        return refusal(out, "adopt pull request", adoptResponse);
+        return sendAdopt(runtime, out, base, projectId, reference, bypass);
     }
 
     /**
@@ -252,38 +233,110 @@ public final class GitSourceCommand implements Callable<Integer> {
                         boolean noInput) throws IOException {
         var runtime = context.runtime(true);
         var base = PATH_PROJECTS_PREFIX + OperatorUrlUtil.encodePathSegment(projectId);
-        var previewResponse = runtime.send(HttpRequest.get(base + SUFFIX_LOCAL_PREVIEW));
-        if (previewResponse.status() != 200) {
-            throw new OperatorRefusedException("preview local changes", previewResponse);
-        }
-        var preview = LocalChangesPreview.fromJson(previewResponse.bodyText());
+        var preview = previewLocalChanges(runtime, base);
         printPreview(out, preview);
         if (!preview.eligible()) {
-            out.println("✗ " + MessageCatalogue.format("git_sources.local.ineligible",
-                                Map.of("landing", preview.landing() != null ? preview.landing() : "?")));
+            var landing = preview.landing() != null ? preview.landing() : "?";
+            out.println("✗ " + MessageCatalogue.format("git_sources.local.ineligible", Map.of("landing", landing)));
             out.println("  " + MessageCatalogue.get("git_sources.local.pm_wf_25"));
             out.flush();
             return 1;
         }
 
-        if (!yes) {
-            if (noInput) {
-                out.println(MessageCatalogue.get("git_sources.local.confirm"));
-                out.println("  " + MessageCatalogue.get("git_sources.confirm.required"));
-                out.flush();
-                return EXIT_NEEDS_INPUT;
-            }
-            if (!confirm(context, MessageCatalogue.get("git_sources.local.confirm"))) {
-                out.println(MessageCatalogue.get("git_sources.local.declined"));
-                out.flush();
-                return 0;
-            }
+        var confirmation = confirmCapture(out, context, yes, noInput);
+        if (confirmation == Acceptance.DECLINED) {
+            out.println(MessageCatalogue.get("git_sources.local.declined"));
+            out.flush();
+            return 0;
         }
+        if (confirmation == Acceptance.NEEDS_INPUT) {
+            return EXIT_NEEDS_INPUT;
+        }
+        return sendCapture(runtime, out, base, projectId, preview.previewId());
+    }
 
-        var captureResponse = runtime.send(HttpRequest.json("POST", base + SUFFIX_LOCAL_CAPTURE,
-                            new LocalChangesCaptureRequest(projectId, true).toJson()));
-        if (captureResponse.status() == 200 || captureResponse.status() == 201) {
-            var result = LocalChangesCaptureResult.fromJson(captureResponse.bodyText());
+    private static PullRequestObservation observe(RuntimeClient runtime, String base, String reference)
+                        throws IOException {
+        var response = runtime.send(HttpRequest.json("POST", base + SUFFIX_PR_OBSERVE,
+                            JsonTree.write(Map.of(KEY_PR_URL, reference))));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("observe pull request", response);
+        }
+        return PullRequestObservation.fromJson(response.bodyText());
+    }
+
+    private static @Nullable String unadoptableReason(PullRequestObservation observation) {
+        if (!observation.open()) {
+            return "git_sources.pr.not_open";
+        }
+        if (!observation.writable()) {
+            return "git_sources.pr.head_not_writable";
+        }
+        if (observation.rateLimit().limited()) {
+            return "git_sources.refused.rate_limited";
+        }
+        return null;
+    }
+
+    private static Acceptance askAcceptance(OperatorContext context, PrintWriter out,
+                        PullRequestObservation observation, boolean yes, boolean noInput) throws IOException {
+        var promptKey = observation.screening() == ScreeningOutcome.FLAGGED ? PR_ACCEPT_FLAGGED
+                            : PR_ACCEPT_UNSCREENED;
+        if (noInput) {
+            out.println("✗ " + MessageCatalogue.get(promptKey));
+            out.println("  " + MessageCatalogue.get(CONFIRM_REQUIRED));
+            out.flush();
+            return Acceptance.NEEDS_INPUT;
+        }
+        return yes || confirm(context, MessageCatalogue.get(promptKey)) ? Acceptance.ACCEPTED
+                            : Acceptance.DECLINED;
+    }
+
+    private static int sendAdopt(RuntimeClient runtime, PrintWriter out, String base, String projectId,
+                        String reference, @Nullable String bypass) throws IOException {
+        var response = runtime.send(HttpRequest.json("POST", base + SUFFIX_PR_ADOPT,
+                            new PrAdoptRequest(projectId, reference, bypass).toJson()));
+        if (response.status() == 200 || response.status() == 201) {
+            var result = PrAdoptResult.fromJson(response.bodyText());
+            out.println("✓ " + MessageCatalogue.format("git_sources.pr.adopted",
+                                Map.of("name", OutputSafety.stripControlSequences(result.planId()))));
+            out.println("    " + laneLine("git_sources.lane.adopt"));
+            out.flush();
+            return 0;
+        }
+        return refusal(out, "adopt pull request", response);
+    }
+
+    private static LocalChangesPreview previewLocalChanges(RuntimeClient runtime, String base)
+                        throws IOException {
+        var response = runtime.send(HttpRequest.get(base + SUFFIX_LOCAL_PREVIEW));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("preview local changes", response);
+        }
+        return LocalChangesPreview.fromJson(response.bodyText());
+    }
+
+    private static Acceptance confirmCapture(PrintWriter out, OperatorContext context, boolean yes,
+                        boolean noInput) throws IOException {
+        if (yes) {
+            return Acceptance.ACCEPTED;
+        }
+        if (noInput) {
+            out.println(MessageCatalogue.get("git_sources.local.confirm"));
+            out.println("  " + MessageCatalogue.get(CONFIRM_REQUIRED));
+            out.flush();
+            return Acceptance.NEEDS_INPUT;
+        }
+        return confirm(context, MessageCatalogue.get("git_sources.local.confirm")) ? Acceptance.ACCEPTED
+                            : Acceptance.DECLINED;
+    }
+
+    private static int sendCapture(RuntimeClient runtime, PrintWriter out, String base, String projectId,
+                        @Nullable String previewId) throws IOException {
+        var response = runtime.send(HttpRequest.json("POST", base + SUFFIX_LOCAL_CAPTURE,
+                            new LocalChangesCaptureRequest(projectId, previewId, true).toJson()));
+        if (response.status() == 200 || response.status() == 201) {
+            var result = LocalChangesCaptureResult.fromJson(response.bodyText());
             out.println("✓ " + MessageCatalogue.format("git_sources.local.captured",
                                 Map.of("name", OutputSafety.stripControlSequences(result.planId()))));
             out.println("    " + MessageCatalogue.format("git_sources.local.snapshot",
@@ -292,7 +345,7 @@ public final class GitSourceCommand implements Callable<Integer> {
             out.flush();
             return 0;
         }
-        return refusal(out, "capture local changes", captureResponse);
+        return refusal(out, "capture local changes", response);
     }
 
     private static void printObservation(PrintWriter out, PullRequestObservation observation) {
@@ -343,8 +396,10 @@ public final class GitSourceCommand implements Callable<Integer> {
             case REASON_HEAD_NOT_WRITABLE -> MessageCatalogue.get("git_sources.pr.head_not_writable");
             case REASON_SCREENING_FLAGGED -> MessageCatalogue.get("git_sources.refused.flagged");
             case REASON_UNSCREENED -> MessageCatalogue.get("git_sources.refused.unscreened");
-            case REASON_CONFIRMATION_REQUIRED -> MessageCatalogue.get("git_sources.confirm.required");
+            case REASON_CONFIRMATION_REQUIRED -> MessageCatalogue.get(CONFIRM_REQUIRED);
             case REASON_LANDING_FILES -> MessageCatalogue.get("git_sources.local.pm_wf_25");
+            case REASON_PREVIEW_STALE -> MessageCatalogue.get("git_sources.refused.preview_stale");
+            case REASON_NO_LOCAL_CHANGES -> MessageCatalogue.get("git_sources.refused.no_local_changes");
             default -> reason;
         };
     }
@@ -353,8 +408,11 @@ public final class GitSourceCommand implements Callable<Integer> {
         try (var terminal = context.createTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var line = reader.readLine(prompt + " \u203a ");
-            return line != null && (line.isBlank() || line.trim().toLowerCase().startsWith("y")
-                                || line.trim().toLowerCase().startsWith("j"));
+            if (line == null) {
+                return false;
+            }
+            var answer = line.trim().toLowerCase();
+            return answer.startsWith("y") || answer.startsWith("j");
         }
     }
 }

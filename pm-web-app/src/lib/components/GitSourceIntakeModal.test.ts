@@ -33,6 +33,7 @@ describe('GitSourceIntakeModal component', () => {
 
   const preview: LocalChangesPreview = {
     status: 'previewed',
+    preview_id: 'preview-1',
     branch: 'main',
     changed_files: [
       {
@@ -128,6 +129,7 @@ describe('GitSourceIntakeModal component', () => {
 
     await fireEvent.click(capture);
     await waitFor(() => expect(onCompleted).toHaveBeenCalledWith('capture-local-changes'));
+    expect(apiClient.captureLocalChanges).toHaveBeenCalledWith('pm-mcp-clients', 'preview-1');
     expect(screen.getByTestId('git-source-snapshot')).toHaveTextContent('a1b2c3d4e5f6');
   });
 

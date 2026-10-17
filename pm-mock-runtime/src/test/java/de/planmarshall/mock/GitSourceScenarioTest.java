@@ -142,6 +142,20 @@ class GitSourceScenarioTest {
                 assertEquals("project_not_ready", reason(res.bodyText()));
             }
         }
+
+        @Test
+        @DisplayName("refuses a reference that names no pull request number")
+        void shouldRefuseInvalidReference() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var res = client.send(HttpRequest.json("POST",
+                        "/api/v1/projects/pm-mcp-clients/sources/pr/observe",
+                        JsonTree.write(Map.of("pr_url", "codeberg-provider"))).withHeader(AUTH, auth));
+                assertEquals(400, res.status());
+            }
+        }
     }
 
     @Nested
@@ -167,7 +181,8 @@ class GitSourceScenarioTest {
 
                     var res = client.send(HttpRequest.json("POST",
                             "/api/v1/projects/pm-mcp-clients/sources/local-changes/capture",
-                            "{\"project_id\":\"pm-mcp-clients\",\"confirmed\":true}")
+                            JsonTree.write(Map.of("project_id", "pm-mcp-clients",
+                                    "preview_id", preview.previewId(), "confirmed", true)))
                             .withHeader(AUTH, auth));
                     assertEquals(201, res.status());
 
@@ -196,6 +211,50 @@ class GitSourceScenarioTest {
                         .withHeader(AUTH, auth));
                 assertEquals(409, res.status());
                 assertEquals("confirmation_required", reason(res.bodyText()));
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a capture whose preview no longer matches")
+        void shouldRefuseStalePreview() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                preview(client, auth, "pm-mcp-clients");
+                var res = client.send(HttpRequest.json("POST",
+                        "/api/v1/projects/pm-mcp-clients/sources/local-changes/capture",
+                        JsonTree.write(Map.of("project_id", "pm-mcp-clients", "preview_id", "preview-stale",
+                                "confirmed", true))).withHeader(AUTH, auth));
+                assertEquals(409, res.status());
+                assertEquals("preview_stale", reason(res.bodyText()));
+            }
+        }
+
+        @Test
+        @DisplayName("consumes the captured changes so a second capture refuses")
+        void shouldConsumeCapturedChanges() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var preview = preview(client, auth, "pm-mcp-clients");
+                var first = client.send(HttpRequest.json("POST",
+                        "/api/v1/projects/pm-mcp-clients/sources/local-changes/capture",
+                        JsonTree.write(Map.of("project_id", "pm-mcp-clients",
+                                "preview_id", preview.previewId(), "confirmed", true))).withHeader(AUTH, auth));
+                assertEquals(201, first.status());
+
+                var after = preview(client, auth, "pm-mcp-clients");
+                assertFalse(after.eligible());
+                assertEquals("no_local_changes", after.reason());
+
+                var second = client.send(HttpRequest.json("POST",
+                        "/api/v1/projects/pm-mcp-clients/sources/local-changes/capture",
+                        JsonTree.write(Map.of("project_id", "pm-mcp-clients",
+                                "preview_id", preview.previewId(), "confirmed", true))).withHeader(AUTH, auth));
+                assertEquals(409, second.status());
+                assertEquals("no_local_changes", reason(second.bodyText()));
             }
         }
 

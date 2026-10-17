@@ -87,7 +87,7 @@ The implementation respects the repository invariants: strict dependency boundar
 |---|---|---|
 | `pm-api` | `GitSourceRecordsTest` | 20 tests, 0 failures |
 | `pm-api` | `GitSourceCatalogueTest` | 4 tests, 0 failures |
-| `pm-mock-runtime` | `GitSourceScenarioTest` | 8 tests, 0 failures |
+| `pm-mock-runtime` | `GitSourceScenarioTest` | 11 tests, 0 failures |
 | `pm-operator` | `GitSourceCommandTest` | 11 tests, 0 failures |
 | `pm-operator` (process) | `PmOperatorProcessIT` (incl. the `git-source` refusals) | green under `verify` |
 | `pm-web-app` | full Vitest suite | 147 tests, 0 failures (30 files) |
@@ -104,6 +104,7 @@ The implementation respects the repository invariants: strict dependency boundar
 - **Both clients, one state** — an observation and a capture are broadcast on the SSE stream (`source.pr_observed`, `source.local_changes_captured`) and the terminal and browser drive the same endpoints. ✅
 - **Untrusted PR content** — every changed file of an external pull request is marked untrusted unless the operator authored it, and flagged/unscreened text needs an explicit acceptance before adoption (PM-SEC-3). ✅
 - **`PM-WF-25` landing axis** — local changes are refused where the landing does not commit (`landing.files`), in the runtime, the CLI, the web panel, and the E2E suite. ✅
+- **Preview-bound capture** — the capture request carries the preview's identity, the runtime refuses a capture whose identity no longer matches (`preview_stale`), and captured changes are consumed so a second capture refuses (`no_local_changes`). ✅
 - **`pm-operator` security** — the verbs run behind `OperatorGate`; ids and paths are stripped of control sequences via `OutputSafety`. ✅
 - **Responsive web layout** — the modal and panels collapse to full-screen below 480px with 44px touch targets. ✅
 
@@ -122,7 +123,7 @@ pm-operator ...... SUCCESS
 pm-mock-runtime .. SUCCESS
 pm-web-app ....... SUCCESS
 pm-web-e2e ....... SUCCESS
-BUILD SUCCESS   (07:33 min)
+BUILD SUCCESS   (04:24 min)
 ```
 
 `git status` was clean of build artifacts and reformatted sources after the build; the OpenRewrite/Checkstyle/Enforcer/Javadoc gates all passed with zero regressions.

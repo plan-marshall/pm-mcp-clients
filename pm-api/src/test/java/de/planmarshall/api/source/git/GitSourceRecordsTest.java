@@ -11,6 +11,7 @@ package de.planmarshall.api.source.git;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Git source record contracts")
 class GitSourceRecordsTest {
@@ -141,7 +143,7 @@ class GitSourceRecordsTest {
 
     @Test
     @DisplayName("PullRequestObservation defaults the state to open and the screening to clean")
-    void pullRequestObservationDefaults() throws Exception {
+    void pullRequestObservationDefaults() {
         var observation = new PullRequestObservation(
                 "https://codeberg.org/forgejo/forgejo/pulls/7001", 7001, null, null, null, null, false,
                 null, null, null);
@@ -149,7 +151,9 @@ class GitSourceRecordsTest {
         assertEquals(PullRequestObservation.STATE_OPEN, observation.state());
         assertEquals(ScreeningOutcome.CLEAN, observation.screening());
         assertTrue(observation.changedFiles().isEmpty());
-        assertFalse(observation.toMap().containsKey("reset_at"));
+        var rateLimit = JsonTree.object(observation.toMap(), "rate_limit");
+        assertNotNull(rateLimit);
+        assertFalse(rateLimit.containsKey("reset_at"));
     }
 
     @Test
@@ -175,14 +179,15 @@ class GitSourceRecordsTest {
     }
 
     @Test
-    @DisplayName("LocalChangesPreview round-trips and sums its line counts")
+    @DisplayName("LocalChangesPreview round-trips with its preview id and sums its line counts")
     void localChangesPreviewRoundTrips() throws Exception {
-        var preview = new LocalChangesPreview(LocalChangesPreview.STATUS_PREVIEWED, "main", changedFiles(),
-                "pr", true, true, null);
+        var preview = new LocalChangesPreview(LocalChangesPreview.STATUS_PREVIEWED, "preview-1", "main",
+                changedFiles(), "pr", true, true, null);
 
         var roundTrip = LocalChangesPreview.fromJson(preview.toJson());
 
         assertEquals(preview, roundTrip);
+        assertEquals("preview-1", roundTrip.previewId());
         assertEquals(16, roundTrip.totalAdditions());
         assertEquals(4, roundTrip.totalDeletions());
     }
@@ -190,8 +195,8 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("LocalChangesPreview carries the PM-WF-25 refusal when the landing does not commit")
     void localChangesPreviewRefusal() throws Exception {
-        var preview = new LocalChangesPreview(null, "main", changedFiles(), "landing.files", false, false,
-                "landing.files");
+        var preview = new LocalChangesPreview(null, null, "main", changedFiles(), "landing.files", false,
+                false, "landing.files");
 
         assertTrue(preview.toMap().containsKey("reason"));
         assertEquals("landing.files", LocalChangesPreview.fromJson(preview.toJson()).reason());
@@ -199,14 +204,18 @@ class GitSourceRecordsTest {
     }
 
     @Test
-    @DisplayName("LocalChangesCaptureRequest round-trips with its confirmation flag")
+    @DisplayName("LocalChangesCaptureRequest round-trips with its preview id and confirmation flag")
     void localChangesCaptureRequestRoundTrips() throws Exception {
-        var unconfirmed = new LocalChangesCaptureRequest("pm-mcp-clients", false);
+        var unconfirmed = new LocalChangesCaptureRequest("pm-mcp-clients", "preview-1", false);
         assertEquals(unconfirmed, LocalChangesCaptureRequest.fromJson(unconfirmed.toJson()));
 
-        var confirmed = new LocalChangesCaptureRequest("pm-mcp-clients", true);
+        var confirmed = new LocalChangesCaptureRequest("pm-mcp-clients", "preview-1", true);
         assertEquals(Boolean.TRUE, confirmed.toMap().get("confirmed"));
         assertEquals(confirmed, LocalChangesCaptureRequest.fromJson(confirmed.toJson()));
+
+        var withoutPreview = new LocalChangesCaptureRequest("pm-mcp-clients", null, true);
+        assertFalse(withoutPreview.toMap().containsKey("preview_id"));
+        assertEquals(withoutPreview, LocalChangesCaptureRequest.fromJson(withoutPreview.toJson()));
     }
 
     @Test
@@ -251,7 +260,7 @@ class GitSourceRecordsTest {
         }
 
         @Test
-        @DisplayName("refuses a malformed reset instant and an unknown lane")
+        @DisplayName("refuses a malformed reset instant, an unknown lane, and malformed changed files")
         void refusesMalformedValues() {
             assertThrows(JsonFormatException.class,
                     () -> RateLimitStatus.fromJson("{\"reset_at\":\"not-a-time\"}"));
@@ -261,7 +270,12 @@ class GitSourceRecordsTest {
                     () -> LocalChangesCaptureResult.fromJson(
                             "{\"plan_id\":\"p\",\"snapshot_commit\":\"s\",\"lane\":\"bogus\"}"));
             assertThrows(IllegalArgumentException.class,
-                    () -> PullRequestObservation.fromJson("{\"url\":\"u\",\"screening\":\"bogus\"}"));
+                    () -> PullRequestObservation.fromJson(
+                            "{\"url\":\"u\",\"changed_files\":[],\"screening\":\"bogus\"}"));
+            assertThrows(JsonFormatException.class, () -> PullRequestObservation.fromJson(
+                    "{\"url\":\"u\",\"changed_files\":[1,2]}"));
+            assertThrows(JsonFormatException.class, () -> LocalChangesPreview.fromJson(
+                    "{\"changed_files\":[{\"path\":\"a\"},\"b\"]}"));
         }
 
         @Test
@@ -272,16 +286,17 @@ class GitSourceRecordsTest {
             assertThrows(NullPointerException.class,
                     () -> new PullRequestObservation(null, 0, null, null, null, null, false, null, null, null));
             assertThrows(NullPointerException.class, () -> new PrAdoptRequest("p", null, null));
-            assertThrows(NullPointerException.class, () -> new LocalChangesCaptureRequest(null, true));
+            assertThrows(NullPointerException.class, () -> new LocalChangesCaptureRequest(null, null, true));
             assertThrows(NullPointerException.class,
                     () -> new LocalChangesCaptureResult("p", SourceLane.LAND, null, null));
         }
 
         @Test
-        @DisplayName("keeps an empty map's changed files empty rather than null")
-        void defaultsTheChangedFiles() throws Exception {
-            assertTrue(LocalChangesPreview.fromMap(Map.of()).changedFiles().isEmpty());
-            assertTrue(PullRequestObservation.fromMap(Map.of("url", "u")).changedFiles().isEmpty());
+        @DisplayName("refuses a missing changed-files array rather than defaulting it")
+        void refusesMissingChangedFiles() {
+            assertThrows(JsonFormatException.class, () -> LocalChangesPreview.fromMap(Map.of()));
+            assertThrows(JsonFormatException.class,
+                    () -> PullRequestObservation.fromMap(Map.of("url", "u")));
         }
     }
 }

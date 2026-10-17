@@ -81,11 +81,11 @@ class GitSourceCommandTest {
     }
 
     private static String eligiblePreview() {
-        return new LocalChangesPreview(null, "main", files(), "pr", true, true, null).toJson();
+        return new LocalChangesPreview(null, "preview-1", "main", files(), "pr", true, true, null).toJson();
     }
 
     private static String ineligiblePreview() {
-        return new LocalChangesPreview(null, "main", files(), "landing.files", false, false,
+        return new LocalChangesPreview(null, null, "main", files(), "landing.files", false, false,
                             "landing.files").toJson();
     }
 
@@ -187,6 +187,7 @@ class GitSourceCommandTest {
         assertEquals("GET", preview.method());
         var capture = server.awaitRequest(Duration.ofSeconds(1));
         assertTrue(capture.bodyText().contains("\"confirmed\":true"), capture.bodyText());
+        assertTrue(capture.bodyText().contains("\"preview_id\":\"preview-1\""), capture.bodyText());
     }
 
     @Test

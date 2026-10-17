@@ -29,7 +29,7 @@
     busy = true;
     error = '';
     try {
-      const result = await apiClient.captureLocalChanges(projectId);
+      const result = await apiClient.captureLocalChanges(projectId, preview?.preview_id);
       onCaptured(result);
     } catch (e) {
       error = e instanceof Error ? e.message : 'error';

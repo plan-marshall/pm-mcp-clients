@@ -10,7 +10,9 @@
 package de.planmarshall.api.source.git;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -111,5 +113,29 @@ public record ChangedFile(
             throw new JsonFormatException("Expected JSON object for ChangedFile");
         }
         return fromMap(obj);
+    }
+
+    /**
+     * Reads a required changed-files array, rejecting a missing array and non-object entries.
+     *
+     * @param object the enclosing object
+     * @param field  the field name
+     * @return the parsed files, possibly empty
+     * @throws IOException if the array is missing or an entry is malformed
+     */
+    static List<ChangedFile> listFrom(Map<String, Object> object, String field) throws IOException {
+        var raw = JsonTree.asArray(object.get(field));
+        if (raw == null) {
+            throw new JsonFormatException("Missing required array for changed files: " + field);
+        }
+        var files = new ArrayList<ChangedFile>();
+        for (var item : raw) {
+            var entry = JsonTree.asObject(item);
+            if (entry == null) {
+                throw new JsonFormatException("Malformed changed file entry for " + field);
+            }
+            files.add(fromMap(entry));
+        }
+        return files;
     }
 }

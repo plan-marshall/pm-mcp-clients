@@ -585,6 +585,7 @@ export const fallbackMessages: Record<string, string> = {
   'git_sources.lane.land': 'land',
   'git_sources.lane': '{lane} lane',
   'git_sources.error': 'The git source intake failed: {cause}',
+  'git_sources.refused.preview_stale': 'the checkout changed since the preview; preview it again',
   'git_sources.actions.confirm': 'Confirm',
   'git_sources.actions.cancel': 'Cancel',
 };

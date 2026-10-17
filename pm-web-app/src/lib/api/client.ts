@@ -1016,6 +1016,7 @@ export interface PrAdoptResult {
 
 export interface LocalChangesPreview {
   status: string;
+  preview_id?: string;
   branch?: string;
   changed_files: ChangedFile[];
   landing?: string;
@@ -1211,11 +1212,14 @@ export class ApiClient {
     );
   }
 
-  public async captureLocalChanges(projectId: string): Promise<LocalChangesCaptureResult> {
+  public async captureLocalChanges(
+    projectId: string,
+    previewId?: string,
+  ): Promise<LocalChangesCaptureResult> {
     return this.request<LocalChangesCaptureResult>(
       'POST',
       `/api/v1/projects/${encodeURIComponent(projectId)}/sources/local-changes/capture`,
-      { project_id: projectId, confirmed: true },
+      { project_id: projectId, preview_id: previewId, confirmed: true },
     );
   }
 
