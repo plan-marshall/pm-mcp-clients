@@ -319,4 +319,56 @@ describe('ApiClient', () => {
     expect(lastBody).toEqual({ item_ids: ['k-1', 'k-2'] });
     expect(releaseRes.released_count).toBe(2);
   });
+
+  it('handles the process-designer workflow methods', async () => {
+    let lastUrl = '';
+    let lastMethod = '';
+    let lastBody: unknown = null;
+
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      lastUrl = url;
+      lastMethod = init?.method || 'GET';
+      if (init?.body) {
+        lastBody = JSON.parse(init.body as string);
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => {
+          if (url.endsWith('/catalogue')) {
+            return { scope: 'pm-mcp-clients', runtime_version: '0.9.0', digest: 'sha256:cat', blocks: [] };
+          }
+          if (url.includes('/workflows/validate')) {
+            return { valid: true, stages: [], findings: [] };
+          }
+          if (url.includes('/workflows/')) {
+            return { unit: 'phase-6-finalize', target: 'pm-mcp-clients', status: 'landed', steps: ['written'] };
+          }
+          return [{ name: 'phase-6-finalize', group: 'project_owned', level_in_force: 'project', levels: [] }];
+        },
+      });
+    });
+
+    const units = await client.getWorkflows('pm-mcp-clients');
+    expect(lastUrl).toContain('/api/v1/projects/pm-mcp-clients/workflows');
+    expect(units[0].name).toBe('phase-6-finalize');
+
+    await client.getWorkflowCatalogue('pm-mcp-clients');
+    expect(lastUrl).toContain('/api/v1/projects/pm-mcp-clients/workflows/catalogue');
+
+    const validation = await client.validateWorkflow({ text: 'x', unit_name: 'phase-6-finalize' });
+    expect(lastUrl).toContain('/api/v1/workflows/validate');
+    expect(lastMethod).toBe('POST');
+    expect(validation.valid).toBe(true);
+
+    const placed = await client.placeWorkflowUnit('pm-mcp-clients', 'phase-6-finalize', { text: 'x' });
+    expect(lastUrl).toContain('/api/v1/projects/pm-mcp-clients/workflows/phase-6-finalize');
+    expect(lastMethod).toBe('PUT');
+    expect(lastBody).toEqual({ text: 'x' });
+    expect(placed.status).toBe('landed');
+
+    await client.removeWorkflowUnit(null, 'phase-6-finalize');
+    expect(lastUrl).toContain('/api/v1/workflows/phase-6-finalize');
+    expect(lastMethod).toBe('DELETE');
+  });
 });
