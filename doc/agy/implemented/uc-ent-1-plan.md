@@ -57,9 +57,9 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 - [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
 - [x] 4. Final completion report written (`doc/agy/uc-ent-1-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-ent-1-plan.md`.
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
-- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/uc-ent-1-plan-report.md`.
+- [x] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/uc-ent-1-plan-report.md`.
 
 ---
 
