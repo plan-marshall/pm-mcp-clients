@@ -159,22 +159,22 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
 |epic clients
 
-|link:project-contract.adoc[`project-contract`]
+|link:implemented/project-contract.adoc[`project-contract`]
 |Projects: contract and mock runtime
-|`open`
+|`done`
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
-|link:cli-projects.adoc[`cli-projects`]
+|link:implemented/cli-projects.adoc[`cli-projects`]
 |Projects in the terminal
-|`open`
-|link:project-contract.adoc[`project-contract`]; link:cli-onboarding.adoc[`cli-onboarding`]
+|`done`
+|link:implemented/project-contract.adoc[`project-contract`]; link:cli-onboarding.adoc[`cli-onboarding`]
 |epic clients
 
-|link:web-projects.adoc[`web-projects`]
+|link:implemented/web-projects.adoc[`web-projects`]
 |Projects in the web app
-|`open`
-|link:project-contract.adoc[`project-contract`]; link:web-onboarding.adoc[`web-onboarding`]
+|`done`
+|link:implemented/project-contract.adoc[`project-contract`]; link:web-onboarding.adoc[`web-onboarding`]
 |epic clients
 
 |link:process-contract.adoc[`process-contract`]
@@ -222,13 +222,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-start.adoc[`cli-start`]
 |Starting work in the terminal
 |`open`
-|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:cli-projects.adoc[`cli-projects`]
+|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
 |epic clients
 
 |link:web-start.adoc[`web-start`]
 |Starting work in the web app
 |`open`
-|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:web-projects.adoc[`web-projects`]
+|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]
 |epic clients
 
 |link:implemented/overview-contract.adoc[`overview-contract`]
@@ -294,7 +294,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:web-designer.adoc[`web-designer`]
 |The process designer in the web app (the web app only)
 |`open`
-|link:designer-contract.adoc[`designer-contract`]; link:web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:web-projects.adoc[`web-projects`] (a project's setup); link:implemented/web-design.adoc[`web-design`]
+|link:designer-contract.adoc[`designer-contract`]; link:web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:implemented/web-projects.adoc[`web-projects`] (a project's setup); link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
 |===

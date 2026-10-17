@@ -34,8 +34,9 @@ class StandardScenariosTest {
         assertEquals("running-work", StandardScenarios.RUNNING_WORK);
         assertEquals("decisions", StandardScenarios.DECISIONS);
         assertEquals("system", StandardScenarios.SYSTEM);
+        assertEquals("projects", StandardScenarios.PROJECTS);
 
-        assertEquals(9, StandardScenarios.ALL.size());
+        assertEquals(10, StandardScenarios.ALL.size());
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.STATUS_ONLY));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.ONBOARDING_HAPPY));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN));
@@ -45,6 +46,7 @@ class StandardScenariosTest {
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.REPORTS));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.DECISIONS));
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.SYSTEM));
+        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.PROJECTS));
     }
 
     @Test

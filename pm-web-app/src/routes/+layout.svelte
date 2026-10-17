@@ -154,6 +154,14 @@
         </button>
         <button
           class="header-action-btn"
+          aria-label={$t('project.explorer.title') || 'Projects'}
+          onclick={() => navigateTo('projects')}
+          data-testid="nav-projects-btn"
+        >
+          {$t('project.explorer.title') || 'Projects'}
+        </button>
+        <button
+          class="header-action-btn"
           aria-label={$t('web.frame.nav.explorer')}
           onclick={() => navigateTo('workspace')}
         >

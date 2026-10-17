@@ -30,7 +30,8 @@ export interface RuntimeState {
     | 'reports'
     | 'decisions'
     | 'system'
-    | 'cleanup';
+    | 'cleanup'
+    | 'projects';
   currentState: StateRepresentation | null;
   isRevoked: boolean;
   revokedReason: string;
@@ -48,6 +49,7 @@ export interface RuntimeState {
   openDecisionsCount: number;
   newDecisionArrivalNotice?: string | null;
   quietDecisionNotice?: string | null;
+  projectEventNotice?: string | null;
 }
 
 const initialState: RuntimeState = {
@@ -74,6 +76,7 @@ const initialState: RuntimeState = {
   openDecisionsCount: 0,
   newDecisionArrivalNotice: null,
   quietDecisionNotice: null,
+  projectEventNotice: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -313,6 +316,11 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
       isDraining: false,
       isStopped: true,
       stoppedInfo: stoppedData,
+    }));
+  } else if (event === 'project.changed' || event === 'project.released' || event === 'project.enrolled') {
+    runtimeStore.update((s) => ({
+      ...s,
+      projectEventNotice: `${event}_${Date.now()}`,
     }));
   }
 }

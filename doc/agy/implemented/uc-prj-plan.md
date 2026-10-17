@@ -48,7 +48,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-prj-projects /Users/oliver/git/worktrees/pm-mcp-clients-uc-prj main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for path validation & project authorization checks
@@ -79,14 +79,14 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 5. Phased Task Breakdown
 
 ### Phase 1: Traceability & Design Alignment
-- [ ] **1.1 Design Specification Audit**: Review `doc/design/shared/project-explorer.adoc`, `project-onboarding.adoc`, and `doc/plans/project-contract.adoc`:
+- [x] **1.1 Design Specification Audit**: Review `doc/design/shared/project-explorer.adoc`, `project-onboarding.adoc`, and `doc/plans/project-contract.adoc`:
   - Resource routes: `GET /api/v1/projects?all=true`, `PUT /api/v1/explorer/favourites`, `POST /api/v1/project-onboardings`, `GET /api/v1/projects/{id}/explorer`, `POST /api/v1/projects/{id}/release`, `POST /api/v1/projects/{id}/unenrol`.
   - SSE events: `project.changed`, `project.enrolled`, `project.released`, `entry.moved`.
   - Closed enumerations: `ProjectReadiness` (`READY`, `SETUP_NEEDS`, `RELEASED`), `ProjectOnboardingState` (`CHECKOUT`, `CONSENT`, `DETECT`, `PROBE`, `IDENTITY`, `ENROLMENT`), `ReleaseWaitStatus`.
   - Extract the complete set of keys needed for `messages/projects.{en,de}.properties`.
 
 ### Phase 2: `pm-api` Contracts & Message Catalogue
-- [ ] **2.1 Project Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.project`:
+- [x] **2.1 Project Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.project`:
   - `EnrolledProject`: `projectId`, `displayName`, `remoteUrl`, `readiness`, `setupNeedsSummary`, `needsOperatorCount`, `activePlansCount`, `activeEpicsCount`, `lastActive`, `isFavourite`, `isReleased`.
   - `ProjectExplorer`: `favourites`, `recent`, `allProjects`, `beingAdded`.
   - `BeingAddedProject`: `checkoutPath`, `currentStep`, `stepNumber`, `totalSteps`, `continueLink`, `abandonLink`.
@@ -94,81 +94,81 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - `ProjectOnboarding`: `onboardingId`, `checkoutPath`, `state`, `detectedDomains`, `discoveredModules`, `credentialsNeeded`.
   - `ProjectReleaseRequest`: `projectId`, `confirmRelease`, `force`.
   - `ProjectReleaseResult`: `projectId`, `plansEndedCount`, `epicsEndedCount`, `entriesDeletedCount`, `releasedAt`.
-- [ ] **2.2 Project Events**: Implement SSE event payload records:
+- [x] **2.2 Project Events**: Implement SSE event payload records:
   - `ProjectChangedEvent`, `ProjectEnrolledEvent`, `ProjectReleasedEvent`.
-- [ ] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
-- [ ] **2.4 Message Catalogue Entries**:
+- [x] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
+- [x] **2.4 Message Catalogue Entries**:
   - Populate `pm-api/src/main/resources/messages/projects.en.properties` with keys from `project-explorer.adoc#texts`.
   - Populate `pm-api/src/main/resources/messages/projects.de.properties` with German translations.
   - Register `"projects"` in `MessageCatalogue.SUPPORTED_AREAS`.
-- [ ] **2.5 Unit Tests**:
+- [x] **2.5 Unit Tests**:
   - `ProjectRecordsTest.java`: Round-trip serialization and deserialization of explorer models, onboarding state, and release responses.
   - `ProjectsCatalogueTest.java`: Key presence and ICU parameter validation across English and German bundles.
 
 ### Phase 3: `pm-mock-runtime` Scenarios & Handlers
-- [ ] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/projects.json`:
+- [x] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/projects.json`:
   - Enrolled projects: favourites (`★ pm-mcp-clients`, `★ pm-mcp-core`), recent (`plan-marshall`, `cui-http`), and released projects.
   - Being-added project fixture (`~/git/cui-parent`, step 2 of 10: Identity).
   - Setup-needs project fixture (`plan-marshall`, setup needs: credential sonar).
   - Release confirmation fixtures with active plans and epics.
-- [ ] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
+- [x] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
   - `GET /api/v1/projects?all=true`: Returns full explorer list.
   - `PUT /api/v1/explorer/favourites`: Updates favourites ordering.
   - `POST /api/v1/project-onboardings`: Creates new project onboarding entry.
   - `POST /api/v1/projects/{id}/release`: Performs project release and broadcasts `project.released`.
   - `POST /api/v1/projects/{id}/unenrol`: Unenrols project if no work is active.
-- [ ] **3.3 Scenario Registration**:
+- [x] **3.3 Scenario Registration**:
   - Add `PROJECTS = "projects"` constant in `StandardScenarios.java` and register in `ALL`.
-- [ ] **3.4 Scenario Tests**:
+- [x] **3.4 Scenario Tests**:
   - `ProjectsScenarioTest.java` asserting scenario loading, REST responses, favourites reordering, and release execution.
 
 ### Phase 4: `pm-operator` Terminal Client Implementation
-- [ ] **4.1 Projects Command Implementation**:
+- [x] **4.1 Projects Command Implementation**:
   - Implement `ProjectCommand.java`:
     - `pm-operator projects`: Renders 4-part explorer view: Favourites (★), Recent, Being added, and All projects with name filter (`--filter <name>`).
     - `pm-operator project <id>`: Shows project details, readiness, active work links, and setup status.
     - `pm-operator project release <id>`: Two-step confirmation dialogue listing what will end before executing release.
     - `pm-operator project unenrol <id>`: Unenrolment with safety check (`PM-SEC-3`).
-- [ ] **4.2 Output Safety**:
+- [x] **4.2 Output Safety**:
   - Sanitize all project display names, checkout paths, remotes, and setup messages using `OutputSafety.stripControlSequences`.
-- [ ] **4.3 CLI Unit & Transcript Tests**:
+- [x] **4.3 CLI Unit & Transcript Tests**:
   - `ProjectCommandTest.java`: Validate explorer table formatting, filter arguments, release confirmation, and exit codes.
 
 ### Phase 5: `pm-web-app` Client Implementation
-- [ ] **5.1 API Client Extensions**:
+- [x] **5.1 API Client Extensions**:
   - Add `getProjectExplorer()`, `updateFavourites(projectIds)`, `startProjectOnboarding(path)`, `releaseProject(id)`, `unenrolProject(id)` to `pm-web-app/src/lib/api/client.ts`.
   - Extend SSE event listener to handle `project.changed` and `project.released`.
-- [ ] **5.2 Project Explorer View (`ProjectExplorerView.svelte`)**:
+- [x] **5.2 Project Explorer View (`ProjectExplorerView.svelte`)**:
   - Layout matching `doc/design/shared/project-explorer.adoc`:
     - Favourites section with drag-to-reorder or star toggle.
     - Recent section with relative duration badges.
     - "Being added" cards with `[Continue]` and `[Abandon]` action buttons.
     - Filterable "All projects" list with sorting by name or most used.
     - `[+ Add a project]` button opening onboarding flow.
-- [ ] **5.3 Release Confirmation Modal**:
+- [x] **5.3 Release Confirmation Modal**:
   - Detailed impact modal showing plans, epics, and entries that will end, requiring explicit confirmation.
-- [ ] **5.4 Responsive Styling**:
+- [x] **5.4 Responsive Styling**:
   - Responsive project cards adapting down to mobile width (320px).
-- [ ] **5.5 Vitest Tests**:
+- [x] **5.5 Vitest Tests**:
   - `ProjectExplorerView.test.ts` verifying rendering, filtering, favourite toggling, onboarding launch, and release modal.
 
 ### Phase 6: Integration Testing & Verification
-- [ ] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/projects.spec.js`:
+- [x] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/projects.spec.js`:
   - Test viewing projects explorer.
   - Test filtering projects by name.
   - Test marking/unmarking a project as favourite.
   - Test releasing a project and verifying released status badge.
-- [ ] **6.2 Operator Process IT**:
+- [x] **6.2 Operator Process IT**:
   - Add process test in `PmOperatorProcessIT.java` executing `projects` and `project release` against running `pm-mock-runtime`.
-- [ ] **6.3 Domain Invariants Verification**:
+- [x] **6.3 Domain Invariants Verification**:
   - Verify against checklist in Section 1 of `doc/meta/implement_use-cases.md`.
 
 ### Phase 7: Completion Report, Pre-Commit, Review Gate & Landing (Runbook Discipline)
-- [ ] **7.1 Final Completion Report**:
+- [x] **7.1 Final Completion Report**:
   - Generate comprehensive completion report in `doc/agy/uc-prj-plan-report.md`.
-- [ ] **7.2 Plan Archival**:
+- [x] **7.2 Plan Archival**:
   - Move `doc/agy/uc-prj-plan.md` to `doc/agy/implemented/uc-prj-plan.md` and record entry in `doc/agy/implemented/README.md`.
-- [ ] **7.3 Pre-Commit Gate**:
+- [x] **7.3 Pre-Commit Gate**:
   - Run `./mvnw verify -Ppre-commit` to validate OpenRewrite formatting, Checkstyle, and full test suite.
 - [ ] **7.4 Commit & PR**:
   - Commit changes with Conventional Commits message (`feat(projects): implement UC-PRJ-1..3 project explorer, onboarding, and release`).
@@ -180,5 +180,5 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 - [ ] **7.7 Merge Queue & Cleanup**:
   - Enqueue PR via `gh pr merge --auto --squash`.
   - Upon merge, synchronize `main`, remove worktree and delete topic branch.
-- [ ] **7.8 Roadmap Archival**:
+- [x] **7.8 Roadmap Archival**:
   - Update `doc/plans/README.adoc` and move completed package documentation (`project-contract.adoc`, `cli-projects.adoc`, `web-projects.adoc`) to `doc/plans/implemented/`.
