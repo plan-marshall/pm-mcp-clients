@@ -299,4 +299,176 @@ class DesignerScenarioTest {
         assertEquals(Set.of("keyword", "primitive", "guard", "link_relation", "condition",
                 "sub_workflow", "role", "parameter"), new TreeSet<>(BlockKind.wireValues()));
     }
+
+    @Test
+    @DisplayName("places and removes a unit at the machine level, in force at once")
+    void shouldPlaceAndRemoveOnTheMachine() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.DESIGNER)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var body = JsonTree.write(Map.of("text", MACHINE_UNIT, "unit_name", "landing.custom"));
+            var placed = client.send(HttpRequest.json("PUT", "/api/v1/workflows/landing.custom", body)
+                    .withHeader("Authorization", auth));
+            assertEquals(200, placed.status());
+            var result = UnitPlacingResult.fromJson(new String(placed.body()));
+            assertEquals("machine", result.target());
+            assertEquals("sha256:machine-r2", result.catalogueDigest());
+
+            var removed = client.send(new HttpRequest("DELETE", "/api/v1/workflows/landing.custom",
+                    Map.of("Authorization", auth), null));
+            assertEquals(200, removed.status());
+            var machine = client.send(HttpRequest.get("/api/v1/workflows").withHeader("Authorization", auth));
+            assertEquals(3, WorkflowUnit.parseList(new String(machine.body())).size());
+        }
+    }
+
+    @Test
+    @DisplayName("refuses placing a compiled-only unit and a unit that changed meanwhile")
+    void shouldRefuseCompiledOnlyAndConflictingPlacings() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.DESIGNER)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var compiledOnly = client.send(HttpRequest.json("PUT", "/api/v1/workflows/epic",
+                    JsonTree.write(Map.of("text", MACHINE_UNIT))).withHeader("Authorization", auth));
+            assertEquals(409, compiledOnly.status());
+            assertEquals("unit_not_designable",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(compiledOnly.body())), "error"));
+
+            var conflict = client.send(HttpRequest.json("PUT",
+                    "/api/v1/projects/pm-mcp-clients/workflows/phase-6-finalize",
+                    JsonTree.write(Map.of("text", VALID_UNIT, "digest", "sha256:stale")))
+                    .withHeader("Authorization", auth));
+            assertEquals(409, conflict.status());
+            assertEquals("conflict",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(conflict.body())), "error"));
+        }
+    }
+
+    @Test
+    @DisplayName("reports an author and a compiled-invariant finding")
+    void shouldReportAuthorAndInvariantFindings() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.DESIGNER)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var author = JsonTree.write(Map.of("text",
+                    "workflow landing.custom version 1 format 1\n---\nname: X\nauthor: plan-marshall\n---\nstate s\n"));
+            var authorRes = client.send(HttpRequest.json("POST", "/api/v1/workflows/validate", author)
+                    .withHeader("Authorization", auth));
+            var authorResult = WorkflowValidationResult.fromJson(new String(authorRes.body()));
+            assertFalse(authorResult.valid());
+            assertEquals("frontmatter.author", authorResult.findings().getFirst().rule());
+            assertEquals(4, authorResult.findings().getFirst().line());
+
+            var invariant = JsonTree.write(Map.of("text",
+                    "workflow phase-6-finalize version 5 format 1\n---\nname: F\nauthor: Oliver Wolff\n---\nstate finalize.review\n  done -> merged\n"));
+            var invariantRes = client.send(HttpRequest.json("POST", "/api/v1/workflows/validate", invariant)
+                    .withHeader("Authorization", auth));
+            var invariantResult = WorkflowValidationResult.fromJson(new String(invariantRes.body()));
+            assertFalse(invariantResult.valid());
+            assertEquals("INV-FIN-1", invariantResult.findings().getFirst().rule());
+            assertEquals(WorkflowValidationResult.Stage.STATUS_FAILED, invariantResult.stages().get(2).status());
+        }
+    }
+
+    @Test
+    @DisplayName("rejects malformed validation, placing, and removal requests")
+    void shouldRejectMalformedRequests() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.DESIGNER)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var empty = client.send(new HttpRequest("POST", "/api/v1/workflows/validate",
+                    Map.of("Authorization", auth), new byte[0]));
+            assertEquals(400, empty.status());
+
+            var noText = client.send(HttpRequest.json("PUT", "/api/v1/workflows/landing.custom", "{}")
+                    .withHeader("Authorization", auth));
+            assertEquals(400, noText.status());
+
+            var emptyName = client.send(new HttpRequest("DELETE", "/api/v1/workflows/",
+                    Map.of("Authorization", auth), null));
+            assertEquals(400, emptyName.status());
+        }
+    }
+
+    @Test
+    @DisplayName("validates against the machine target and serves an unknown project's scope")
+    void shouldValidateAgainstTheMachineAndServeUnknownProject() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.DESIGNER)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var body = JsonTree.write(Map.of("text", MACHINE_UNIT, "unit_name", "landing.custom"));
+            var res = client.send(HttpRequest.json("POST", "/api/v1/workflows/validate", body)
+                    .withHeader("Authorization", auth));
+            var result = WorkflowValidationResult.fromJson(new String(res.body()));
+            assertTrue(result.valid());
+            assertNotNull(result.composed());
+            assertEquals("machine", result.composed().project().projectId());
+
+            var unknown = client.send(HttpRequest.get("/api/v1/projects/unknown/workflows/catalogue")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, unknown.status());
+            var catalogue = WorkflowCatalogue.fromJson(new String(unknown.body()));
+            assertEquals("unknown", catalogue.scope());
+            assertTrue(catalogue.blocks().isEmpty());
+        }
+    }
+
+    @Test
+    @DisplayName("replaces an existing unit when the digest matches and parses its frontmatter")
+    void shouldReplaceAnExistingUnit() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.DESIGNER)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var body = JsonTree.write(Map.of(
+                    "text", VALID_UNIT,
+                    "unit_name", "phase-6-finalize",
+                    "unit_kind", "subworkflow",
+                    "author", "Oliver Wolff",
+                    "release", "0.9.0",
+                    "digest", "sha256:pf6-p4"));
+            var res = client.send(HttpRequest.json("PUT",
+                    "/api/v1/projects/pm-mcp-clients/workflows/phase-6-finalize", body)
+                    .withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+
+            var list = client.send(HttpRequest.get("/api/v1/projects/pm-mcp-clients/workflows")
+                    .withHeader("Authorization", auth));
+            var units = WorkflowUnit.parseList(new String(list.body()));
+            assertEquals(2, units.size());
+            var finalize = units.stream().filter(u -> "phase-6-finalize".equals(u.name()))
+                    .findFirst().orElseThrow();
+            assertEquals("sha256:placed-phase-6-finalize", finalize.levels().getFirst().digest());
+            assertEquals("Finalize", finalize.frontmatter().displayName());
+        }
+    }
+
+    @Test
+    @DisplayName("refuses an invalid removal name and ignores non-designer methods")
+    void shouldIgnoreNonDesignerMethods() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.DESIGNER)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var badRemoval = client.send(new HttpRequest("DELETE", "/api/v1/workflows/Bad-Name",
+                    Map.of("Authorization", auth), null));
+            assertEquals(400, badRemoval.status());
+
+            assertEquals(404, client.send(new HttpRequest("PUT", "/api/v1/workflows",
+                    Map.of("Authorization", auth), "{}".getBytes())).status());
+            assertEquals(404, client.send(new HttpRequest("DELETE", "/api/v1/workflows/catalogue",
+                    Map.of("Authorization", auth), null)).status());
+            assertEquals(404, client.send(new HttpRequest("GET", "/api/v1/workflows/validate",
+                    Map.of("Authorization", auth), null)).status());
+            assertEquals(404, client.send(new HttpRequest("PATCH", "/api/v1/workflows/landing.custom",
+                    Map.of("Authorization", auth), "{}".getBytes())).status());
+            assertEquals(404, client.send(new HttpRequest("GET", "/api/v1/projects/a/b/workflows",
+                    Map.of("Authorization", auth), null)).status());
+        }
+    }
 }

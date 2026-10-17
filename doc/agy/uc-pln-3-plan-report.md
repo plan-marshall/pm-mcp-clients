@@ -40,7 +40,7 @@ Key achievements:
 - `messages/designer.en.properties` & `messages/designer.de.properties`: the full 91-key bilingual catalogue from the design.
 - `messages/operator.en.properties` & `messages/operator.de.properties`: the terminal's single `operator.help.designer` help line.
 - `MessageCatalogue.java`: registered the new `operator` area in `SUPPORTED_AREAS`.
-- **Tests**: `designer/DesignerRecordsTest.java` (8 tests — every record rounds-trip, the closed enum, and error paths) and `message/DesignerCatalogueTest.java` (5 tests — en/de key parity, the full required-key set, operator help line, and ICU select/plural formatting).
+- **Tests**: `designer/DesignerRecordsTest.java` (12 tests — every record rounds-trip, the codecs' list forms and malformed inputs, the closed enum, defaults, and error paths) and `message/DesignerCatalogueTest.java` (5 tests — en/de key parity, the full required-key set, operator help line, and ICU select/plural formatting).
 
 ### 2.2 `pm-mock-runtime` — Scenario, Registry & Dynamic Endpoints
 
@@ -50,7 +50,7 @@ Key achievements:
 - `runtime/DesignerRegistry.java`: holds the designer state, resolves digests, validates (parse → static rules → compiled invariants → composition), and applies placing/removing.
 - `runtime/MockRuntimeEngine.java`: `handleDesignerRoutes` dispatch for the endpoints, strict unit-name validation, compiled-only refusal, digest-conflict handling, re-validation before placing, and the `unit.placed`/`unit.landed`/`unit.removed` SSE broadcasts; initialised in `setScenario` and `reset`.
 - `StandardScenarios.java`: `DESIGNER = "designer"` registered in `ALL`.
-- **Tests**: `DesignerScenarioTest.java` (9 tests — unit scopes, catalogue kinds, valid/invalid validation, static-rule findings, placing/removing with events, invalid names, compiled-only refusal, re-validation refusal) and the updated `StandardScenariosTest.java`.
+- **Tests**: `DesignerScenarioTest.java` (16 tests — unit scopes, catalogue kinds, valid/invalid validation, static-rule and invariant findings, machine- and project-level placing/removing with events, unit replacement, invalid names, compiled-only refusal, re-validation refusal, and malformed requests) and the updated `StandardScenariosTest.java`.
 
 ### 2.3 `pm-operator` — CLI Isolation Verification
 
@@ -74,8 +74,8 @@ Key achievements:
 
 | Module / Scope | Key new tests | Total tests | Result |
 |---|---|---|---|
-| `pm-api` | `DesignerRecordsTest` (8), `DesignerCatalogueTest` (5) | 279 | 100% (0 failures/errors) |
-| `pm-mock-runtime` | `DesignerScenarioTest` (9), `StandardScenariosTest` (2) | 161 | 100% (0 failures/errors) |
+| `pm-api` | `DesignerRecordsTest` (12), `DesignerCatalogueTest` (5) | 283 | 100% (0 failures/errors) |
+| `pm-mock-runtime` | `DesignerScenarioTest` (16), `StandardScenariosTest` (2) | 168 | 100% (0 failures/errors) |
 | `pm-operator` | *(unchanged — CLI isolation)* | 350 | 100% (0 failures/errors) |
 | `pm-web-app` | `ProcessDesigner.test.ts` (5), `BlockPalette.test.ts` (4), `client.test.ts` (+1) | 125 | 100% (25 files) |
 | `pm-web-e2e` | `designer.spec.js` (6 scenarios, linted; Playwright gated by `-Pe2e`) | — | ESLint clean |
@@ -93,6 +93,7 @@ The pre-commit review and the PR review gate are evaluated through `plan-marshal
 - *Surplus helper*: `DesignerJson` was kept (it removes byte-for-byte duplicated tree coercion across seven codecs) rather than inlined; wrapped `UncheckedIOException` conversions in `DesignerRegistry` are the fail-fast boundary for malformed fixtures.
 - *Load-bearing validation*: the mock validator's stages are deliberately ordered and short-circuit (a failed parse yields a `null` structure and `not run` later stages) so the client's stage band is exercised truthfully.
 - *UI honesty*: the palette renders only catalogue blocks (no client-side list), and `Place…` is enabled only for a valid result of the current text (disabled while `outdated`).
+- *Sonar new-code coverage*: the first PR analysis surfaced a 79.1% new-code coverage reading, just below the 80% gate. Rather than lower a threshold, boundary tests were added for the record codecs (list forms, malformed input, defaults) and the mock designer branches (machine-level placing/removing, unit replacement, digest conflict, invariant and author findings, malformed requests), lifting the new files to ~94–100% line coverage with no production change.
 
 Bot findings (SonarCloud, CodeRabbit, Sourcery, cuioss-review-bot) are resolved to 100% in the review window per `doc/agy/runbook.md` §6; the resolution commits and thread replies accompany this PR.
 

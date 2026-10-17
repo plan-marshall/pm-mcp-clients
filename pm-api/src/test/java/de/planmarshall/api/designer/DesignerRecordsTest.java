@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -187,6 +188,55 @@ class DesignerRecordsTest {
         assertEquals(1, parsedInvalid.findings().size());
         assertNull(parsedInvalid.composed());
         assertEquals("Rule 6", parsedInvalid.findings().getFirst().rule());
+    }
+
+    @Test
+    void shouldRoundTripUnitAndBlockLists() throws Exception {
+        var units = List.of(
+                new WorkflowUnit("landing.x", WorkflowUnit.GROUP_AXIS_VARIANT, WorkflowUnit.LEVEL_MACHINE,
+                        null, List.of()));
+        assertEquals(units, WorkflowUnit.parseList(WorkflowUnit.writeList(units)));
+
+        var blocks = List.of(new BuildingBlock(BlockKind.ROLE, "implementer", "s", "t",
+                List.of(), List.of(), List.of(), List.of(), false));
+        assertEquals(blocks, BuildingBlock.parseList(BuildingBlock.writeList(blocks)));
+    }
+
+    @Test
+    void shouldRejectMalformedDocuments() {
+        assertThrows(JsonFormatException.class, () -> WorkflowUnit.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> WorkflowUnit.fromJson("{}"));
+        assertThrows(JsonFormatException.class, () -> WorkflowUnit.parseList("{}"));
+        assertThrows(JsonFormatException.class, () -> BuildingBlock.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> BuildingBlock.parseList("{}"));
+        assertThrows(JsonFormatException.class, () -> WorkflowCatalogue.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> WorkflowValidationResult.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> UnitPlacingResult.fromJson("{}"));
+        assertThrows(JsonFormatException.class, () -> WorkflowFinding.fromJson("[]"));
+        assertThrows(JsonFormatException.class, () -> WorkflowFinding.parseList("{}"));
+    }
+
+    @Test
+    void shouldApplyCodecDefaultsAndAlternativeNames() throws Exception {
+        var json = "{\"name\":\"u\",\"group\":null,\"level_in_force\":null,"
+                + "\"frontmatter\":{\"displayName\":\"D\",\"entries\":[\"start\",null]},"
+                + "\"levels\":[{\"level\":\"machine\"}]}";
+        var unit = WorkflowUnit.fromJson(json);
+
+        assertEquals("D", unit.frontmatter().displayName());
+        assertEquals(List.of("start"), unit.frontmatter().entries());
+        assertEquals(1, unit.levels().getFirst().revision());
+        assertEquals(WorkflowUnit.LEVEL_DEFAULT, unit.levelInForce());
+
+        assertThrows(JsonFormatException.class, () -> WorkflowUnit.fromJson("{\"name\":\"u\",\"levels\":[{}]}"));
+    }
+
+    @Test
+    void shouldRejectStructureAndStageErrors() throws Exception {
+        assertThrows(JsonFormatException.class, () -> WorkflowValidationResult.fromJson("{\"stages\":[{}]}"));
+        var map = new LinkedHashMap<String, Object>();
+        map.put("structure", Map.of("states", List.of(Map.of())));
+        assertThrows(JsonFormatException.class, () -> WorkflowValidationResult.fromMap(map));
     }
 
     @Test
