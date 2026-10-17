@@ -96,6 +96,12 @@ public final class StandardScenarios {
     public static final String CONTROL = "control";
 
     /**
+     * Starting work: a plan from sources, an epic's start, a recipe with its parameters, and the
+     * draft intake (UC-STA-1..5).
+     */
+    public static final String START = "start";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -111,6 +117,7 @@ public final class StandardScenarios {
             SYSTEM,
             PROJECTS,
             PLAN_VIEW,
-            CONTROL
+            CONTROL,
+            START
     );
 }

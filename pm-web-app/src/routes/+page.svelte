@@ -14,6 +14,8 @@
   import ProjectExplorerView from '../lib/views/ProjectExplorerView.svelte';
   import PlanView from '../lib/views/PlanView.svelte';
   import EpicView from '../lib/views/EpicView.svelte';
+  import StartWorkModal from '../lib/components/StartWorkModal.svelte';
+  import { startModalStore, closeStartWork } from '../lib/stores/start';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -45,3 +47,11 @@
 {:else}
   <OverviewView />
 {/if}
+
+<StartWorkModal
+  open={$startModalStore.open}
+  projectId={$startModalStore.projectId}
+  kind={$startModalStore.kind}
+  onClose={closeStartWork}
+  onStarted={() => {}}
+/>
