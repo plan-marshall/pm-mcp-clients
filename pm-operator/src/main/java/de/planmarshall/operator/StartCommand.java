@@ -46,6 +46,7 @@ import picocli.CommandLine.Spec;
                                         StartCommand.RecipeCommand.class
                     })
 @OperatorVerb
+@SuppressWarnings("java:S1075")
 public final class StartCommand implements Callable<Integer> {
 
     private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";

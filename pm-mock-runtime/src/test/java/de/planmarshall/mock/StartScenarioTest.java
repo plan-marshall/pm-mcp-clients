@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Map;
 
@@ -203,11 +205,8 @@ class StartScenarioTest {
         return arr.stream().map(item -> {
             try {
                 return RecipeRef.fromMap(JsonTree.asObject(item));
-            }
-            /*Note: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception e) {
-                throw new IllegalStateException(e);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
         }).toList();
     }

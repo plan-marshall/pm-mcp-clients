@@ -195,6 +195,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_RECIPES = "recipes";
     private static final String PATH_PLANS_PREFIX = "/api/v1/plans/";
     private static final String PATH_EPICS_PREFIX = "/api/v1/epics/";
+    private static final String SEGMENT_DECISIONS = "/decisions/";
+    private static final String SUFFIX_PROCESS = "/process";
     private static final String CONST_DOMAIN = "domain";
     private static final String CONST_STANDARD = "standard";
     private static final String CONST_COVERAGE = "coverage";
@@ -451,7 +453,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 3e. Dynamic plan, epic, and starting-work routes (UC-CTL-1..5, UC-STA-1..5)
-        if (handleControlRoutes(request, response) || handleStartRoutes(request, response)) {
+        if (handleWorkRoutes(request, response)) {
             return;
         }
 
@@ -1101,6 +1103,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    private boolean handleWorkRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        return handleControlRoutes(request, response) || handleStartRoutes(request, response);
+    }
+
     private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         if ("GET".equals(request.method()) && PATH_RECIPES.equals(path)) {
@@ -1181,11 +1187,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         StartPlanRequest parsed;
         try {
             parsed = StartPlanRequest.fromMap(bodyMap);
-            /*Note: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         }
-        /*Note: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (RuntimeException | IOException _) {
+        catch (IOException | IllegalArgumentException _) {
             response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "The start request could not be read"));
             return;
         }
@@ -1213,11 +1216,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         StartEpicRequest parsed;
         try {
             parsed = StartEpicRequest.fromMap(bodyMap);
-            /*Note: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         }
-        /*Note: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (RuntimeException | IOException _) {
+        catch (IOException | IllegalArgumentException _) {
             response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "The epic request could not be read"));
             return;
         }
@@ -1500,7 +1500,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
             return parsed != null ? parsed : new LinkedHashMap<>();
         }
-        /*Note: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException _) {
             return new LinkedHashMap<>();
@@ -3233,7 +3232,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
             }
-            /*Note: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             catch (IOException | RuntimeException _) {
                 // Ignore parse errors from body
@@ -3308,7 +3306,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
             }
-            /*Note: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             catch (IOException | RuntimeException _) {
                 // Ignore parse errors from body
@@ -3404,7 +3401,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         unchecked = list.stream().map(String::valueOf).toList();
                     }
                 }
-                /*Note: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
                 /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
                 catch (IOException | RuntimeException _) {
                     // Ignore parse errors from body
@@ -3562,7 +3558,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
             }
-            /*Note: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
             catch (IOException | RuntimeException _) {
                 // Ignore parse errors from body
@@ -3802,8 +3797,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 decisionId = sub.substring(0, slash);
                 action = "answer";
             }
-        } else if (path.startsWith(PATH_PLANS_PREFIX) && path.contains("/decisions/")) {
-            var sub = path.substring(path.indexOf("/decisions/") + "/decisions/".length());
+        } else if (path.startsWith(PATH_PLANS_PREFIX) && path.contains(SEGMENT_DECISIONS)) {
+            var sub = path.substring(path.indexOf(SEGMENT_DECISIONS) + SEGMENT_DECISIONS.length());
             int slash = sub.indexOf('/');
             if (slash < 0) {
                 decisionId = sub;
@@ -3990,7 +3985,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (words == null) words = JsonTree.string(map, "own_words");
             }
         }
-        /*Note: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (Exception _) {
             // Ignore
@@ -4073,8 +4067,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         var isPlanActivityEvents = path.startsWith(PATH_PLANS_PREFIX) && path.endsWith("/activity/events");
         var isPlanActivity = path.startsWith(PATH_PLANS_PREFIX) && path.contains("/tasks/") && path.endsWith("/activity");
-        var isPlanProcess = path.startsWith(PATH_PLANS_PREFIX) && path.endsWith("/process");
-        var isEpicProcess = path.startsWith(PATH_EPICS_PREFIX) && path.endsWith("/process");
+        var isPlanProcess = path.startsWith(PATH_PLANS_PREFIX) && path.endsWith(SUFFIX_PROCESS);
+        var isEpicProcess = path.startsWith(PATH_EPICS_PREFIX) && path.endsWith(SUFFIX_PROCESS);
 
         if (!isPlanActivityEvents && !isPlanActivity && !isPlanProcess && !isEpicProcess) {
             return false;
@@ -4112,7 +4106,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // 4. Dynamic plan process route: /api/v1/plans/{planId}/process
         if (isPlanProcess) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
-            var planId = sub.substring(0, sub.length() - "/process".length());
+            var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!planId.contains("/")) {
                 var defaultRoute = currentScenario.get().route("GET", "/api/v1/plans/fix-relay/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
@@ -4129,7 +4123,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // 5. Dynamic epic process route: /api/v1/epics/{epicId}/process
         if (isEpicProcess) {
             var sub = path.substring(PATH_EPICS_PREFIX.length());
-            var epicId = sub.substring(0, sub.length() - "/process".length());
+            var epicId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!epicId.contains("/")) {
                 var defaultRoute = currentScenario.get().route("GET", "/api/v1/epics/relay-hardening/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
