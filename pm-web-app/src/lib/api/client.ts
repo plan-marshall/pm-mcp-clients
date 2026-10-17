@@ -786,8 +786,6 @@ export interface MachineSettingsRecord {
   credentials: MachineCredentialStatus[];
 }
 
-const STORAGE_KEY_SECRET = 'pm_device_secret';
-const STORAGE_KEY_DEVICE_ID = 'pm_device_id';
 export type BlockKind =
   | 'keyword'
   | 'primitive'
