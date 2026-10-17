@@ -394,11 +394,10 @@ final class DecompositionSupport {
     }
 
     private static @Nullable String firstPlanId(EpicDecomposition cut) {
-        for (var workstream : cut.workstreams()) {
-            for (var plan : workstream.stagedPlans()) {
-                return plan.planId();
-            }
+        if (cut.workstreams().isEmpty()) {
+            return null;
         }
-        return null;
+        var plans = cut.workstreams().getFirst().stagedPlans();
+        return plans.isEmpty() ? null : plans.getFirst().planId();
     }
 }
