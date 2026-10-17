@@ -1,0 +1,184 @@
+{
+  "format_version": 1,
+  "name": "projects",
+  "description": "Project Explorer, Onboarding, and Release operations (UC-PRJ-1..3)",
+  "start": "projects.explorer",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "listener": "unix",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "running_since": "08:14",
+        "workers_count": 2,
+        "build_slots_used": 1,
+        "build_slots_total": 2,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/projects": {
+      "representation": {
+        "favourites": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "plan-marshall/pm-mcp-clients",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-clients",
+            "readiness": "ready",
+            "needs_operator_count": 2,
+            "setup_needs_summary": "decision",
+            "active_plans_count": 3,
+            "active_epics_count": 1,
+            "last_active": "2026-10-17T10:04:00Z",
+            "is_favourite": true,
+            "is_released": false
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "plan-marshall/pm-mcp-core",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-core",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 2,
+            "active_epics_count": 0,
+            "last_active": "2026-10-17T09:57:00Z",
+            "is_favourite": true,
+            "is_released": false
+          }
+        ],
+        "recent": [
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "remote_url": "https://github.com/plan-marshall/plan-marshall",
+            "readiness": "setup_needs",
+            "setup_needs_summary": "credential sonar",
+            "needs_operator_count": 1,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-16T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "cui-http",
+            "display_name": "de.cuioss:cui-http",
+            "remote_url": "https://github.com/cuioss/cui-http",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-14T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          }
+        ],
+        "all_projects": [
+          {
+            "project_id": "API-Sheriff",
+            "display_name": "API-Sheriff",
+            "remote_url": "https://github.com/plan-marshall/api-sheriff",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-09-12T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "cui-http",
+            "display_name": "de.cuioss:cui-http",
+            "remote_url": "https://github.com/cuioss/cui-http",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-14T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "legacy-portal",
+            "display_name": "legacy-portal",
+            "remote_url": "https://github.com/plan-marshall/legacy-portal",
+            "readiness": "released",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-08-17T10:00:00Z",
+            "is_favourite": false,
+            "is_released": true
+          },
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "remote_url": "https://github.com/plan-marshall/plan-marshall",
+            "readiness": "setup_needs",
+            "setup_needs_summary": "credential sonar",
+            "needs_operator_count": 1,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-16T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "plan-marshall/pm-mcp-clients",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-clients",
+            "readiness": "ready",
+            "needs_operator_count": 2,
+            "setup_needs_summary": "decision",
+            "active_plans_count": 3,
+            "active_epics_count": 1,
+            "last_active": "2026-10-17T10:04:00Z",
+            "is_favourite": true,
+            "is_released": false
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "plan-marshall/pm-mcp-core",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-core",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 2,
+            "active_epics_count": 0,
+            "last_active": "2026-10-17T09:57:00Z",
+            "is_favourite": true,
+            "is_released": false
+          }
+        ],
+        "being_added": [
+          {
+            "checkout_path": "~/git/cui-parent",
+            "current_step": "Identity",
+            "step_number": 2,
+            "total_steps": 10,
+            "continue_link": "/api/v1/entries/ent-cui/continue",
+            "abandon_link": "/api/v1/entries/ent-cui/abandon"
+          }
+        ]
+      }
+    }
+  },
+  "states": {
+    "projects.explorer": {
+      "representation": {
+        "scope": "workspace",
+        "state": "projects.explorer",
+        "summary": "Project Explorer"
+      },
+      "links": {}
+    }
+  }
+}

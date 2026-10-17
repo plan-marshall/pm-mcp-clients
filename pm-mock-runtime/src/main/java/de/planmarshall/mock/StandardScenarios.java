@@ -75,6 +75,11 @@ public final class StandardScenarios {
     public static final String SYSTEM = "system";
 
     /**
+     * Project Explorer, Onboarding, and Release operations (UC-PRJ-1..3).
+     */
+    public static final String PROJECTS = "projects";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -86,6 +91,7 @@ public final class StandardScenarios {
             RUNNING_WORK,
             REPORTS,
             DECISIONS,
-            SYSTEM
+            SYSTEM,
+            PROJECTS
     );
 }

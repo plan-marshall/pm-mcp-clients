@@ -11,6 +11,7 @@
   import DecisionView from '../lib/views/DecisionView.svelte';
   import SystemView from '../lib/views/SystemView.svelte';
   import CleanupView from '../lib/views/CleanupView.svelte';
+  import ProjectExplorerView from '../lib/views/ProjectExplorerView.svelte';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -19,6 +20,8 @@
   <PairingView />
 {:else if $runtimeStore.currentRoute === 'onboarding'}
   <OnboardingView />
+{:else if $runtimeStore.currentRoute === 'projects'}
+  <ProjectExplorerView />
 {:else if $runtimeStore.currentRoute === 'reports'}
   <ReportsView />
 {:else if $runtimeStore.currentRoute === 'decisions'}

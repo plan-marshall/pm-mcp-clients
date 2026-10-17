@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -17,6 +18,8 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.project.EnrolledProject;
+import de.planmarshall.api.project.ProjectReleaseRequest;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -40,18 +43,74 @@ import picocli.CommandLine.Spec;
 public final class ProjectCommand implements Callable<Integer> {
 
     private static final String PROJECTS_API = "/api/v1/projects/";
+    private static final String FMT_PROJECT_NOT_FOUND = "Project %s not found.%n";
+
+    private final OperatorContext context;
 
     @Spec
     CommandSpec spec = CommandSpec.create();
 
+    @Parameters(index = "0", arity = "0..1", description = "Project ID to inspect")
+    @Nullable
+    String projectId;
+
     ProjectCommand(OperatorContext context) {
-        Objects.requireNonNull(context, "context");
+        this.context = Objects.requireNonNull(context, "context");
     }
 
     @Override
-    public Integer call() {
-        spec.commandLine().usage(spec.commandLine().getOut());
-        return 0;
+    public Integer call() throws IOException {
+        if (projectId == null || projectId.isBlank()) {
+            spec.commandLine().usage(spec.commandLine().getOut());
+            return 0;
+        }
+
+        context.gate().verify();
+        var safeId = OperatorUrlUtil.encodePathSegment(projectId);
+        var response = context.runtime(true).send(HttpRequest.get(PROJECTS_API + safeId));
+        var out = spec.commandLine().getOut();
+
+        if (response.status() == 404) {
+            out.printf(FMT_PROJECT_NOT_FOUND, OutputSafety.stripControlSequences(projectId));
+            out.flush();
+            return 1;
+        }
+
+        if (response.status() == 200) {
+            var project = EnrolledProject.fromJson(response.bodyText());
+            renderProjectDetail(out, project);
+            return 0;
+        }
+
+        throw new OperatorRefusedException("project " + OutputSafety.stripControlSequences(projectId), response);
+    }
+
+    private static void renderProjectDetail(PrintWriter out, EnrolledProject project) {
+        var name = OutputSafety.stripControlSequences(project.displayName());
+        var pId = OutputSafety.stripControlSequences(project.projectId());
+        var remote = project.remoteUrl() != null ? OutputSafety.stripControlSequences(project.remoteUrl()) : "";
+        var readiness = switch (project.readiness()) {
+            case READY -> "ready";
+            case RELEASED -> "released";
+            case SETUP_NEEDS -> "setup needs: " + OutputSafety.stripControlSequences(
+                                project.setupNeedsSummary() != null ? project.setupNeedsSummary() : "setup");
+        };
+
+        out.println("Project:   " + name + " (" + pId + ")");
+        if (!remote.isBlank()) {
+            out.println("Remote:    " + remote);
+        }
+        out.println("Readiness: " + readiness);
+        if (project.needsOperatorCount() > 0) {
+            out.println("Operator:  needs you: " + project.needsOperatorCount());
+        }
+        out.println("Work:      " + project.activePlansCount() + " plans · " + project.activeEpicsCount() + " epics");
+        if (project.lastActive() != null) {
+            out.println("Last seen: " + ProjectsCommand.formatRelativeTime(project.lastActive()));
+        }
+        out.println("Favourite: " + (project.isFavourite() ? "yes (★)" : "no"));
+        out.println("Released:  " + (project.isReleased() ? "yes" : "no"));
+        out.flush();
     }
 
     @Command(name = "add", description = "Onboards a project from the specified or current directory.")
@@ -75,13 +134,14 @@ public final class ProjectCommand implements Callable<Integer> {
             body.put("path", path);
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/projects", JsonTree.write(body)));
             var out = spec.commandLine().getOut();
+            var safePath = OutputSafety.stripControlSequences(path);
             if (response.status() == 200 || response.status() == 201) {
-                out.println("✓ Project onboarding started for " + path);
+                out.println("✓ Project onboarding started for " + safePath);
                 out.flush();
                 return 0;
             }
             var err = spec.commandLine().getErr();
-            err.printf("Failed to onboard project at %s: HTTP %d%n", path, response.status());
+            err.printf("Failed to onboard project at %s: HTTP %d%n", safePath, response.status());
             err.flush();
             return 1;
         }
@@ -108,18 +168,21 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/setup";
+            var safeId = OperatorUrlUtil.encodePathSegment(projectId);
+            var sanitizedId = OutputSafety.stripControlSequences(projectId);
+            var path = PROJECTS_API + safeId + "/setup";
             var body = new LinkedHashMap<String, Object>();
             if (step != null) body.put("step", step);
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200) {
-                out.println("✓ Project setup for " + projectId + " (step " + (step != null ? step : "current") + ")");
+                var stepStr = step != null ? OutputSafety.stripControlSequences(step) : "current";
+                out.println("✓ Project setup for " + sanitizedId + " (step " + stepStr + ")");
                 out.flush();
                 return 0;
             }
             var err = spec.commandLine().getErr();
-            err.printf("Failed to setup project %s: HTTP %d%n", projectId, response.status());
+            err.printf("Failed to setup project %s: HTTP %d%n", sanitizedId, response.status());
             err.flush();
             return 1;
         }
@@ -145,13 +208,15 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
+            var safeId = OperatorUrlUtil.encodePathSegment(projectId);
+            var sanitizedId = OutputSafety.stripControlSequences(projectId);
             var body = new LinkedHashMap<String, Object>();
             body.put("favourite", !off);
-            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/favourite";
+            var path = PROJECTS_API + safeId + "/favourite";
             var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
-                out.printf("✓ Project %s favourite: %s%n", projectId, off ? "off" : "on (★)");
+                out.printf("✓ Project %s favourite: %s%n", sanitizedId, off ? "off" : "on (★)");
                 out.flush();
                 return 0;
             }
@@ -173,6 +238,15 @@ public final class ProjectCommand implements Callable<Integer> {
         @Nullable
         String reason;
 
+        @Option(names = {"-y", "--yes"}, description = "Confirm release without interactive prompt")
+        boolean yes;
+
+        @Option(names = "--force", description = "Force release even if short landings are pending")
+        boolean force;
+
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
+
         ReleaseCommand(OperatorContext context) {
             this.context = context;
         }
@@ -180,20 +254,45 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var body = new LinkedHashMap<String, Object>();
-            if (reason != null) body.put("reason", reason);
-            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/release";
-            var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
+            var err = spec.commandLine().getErr();
+            var safeId = OperatorUrlUtil.encodePathSegment(projectId);
+            var sanitizedId = OutputSafety.stripControlSequences(projectId);
+
+            if (reason == null || reason.isBlank()) {
+                if (noInput) {
+                    err.println("Release reason required (--reason)");
+                    err.flush();
+                    return 3;
+                }
+                reason = "Released by operator";
+            }
+
+            if (!yes && noInput) {
+                err.println("Release confirmation required (--yes)");
+                err.flush();
+                return 3;
+            }
+
+            var req = new ProjectReleaseRequest(projectId, true, force, reason);
+            var path = PROJECTS_API + safeId + "/release";
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, req.toJson()));
             if (response.status() == 200 || response.status() == 204) {
-                out.printf("✓ Project %s released%n", projectId);
+                out.printf("✓ %s released%n", sanitizedId);
                 out.flush();
                 return 0;
             }
-            var err = spec.commandLine().getErr();
-            err.printf("Failed to release project %s: HTTP %d%n", projectId, response.status());
-            err.flush();
-            return 1;
+            if (response.status() == 404) {
+                err.printf(FMT_PROJECT_NOT_FOUND, sanitizedId);
+                err.flush();
+                return 1;
+            }
+            if (response.status() == 409) {
+                err.printf("✗ %s was not released: release landing pending. Nothing was ended.%n", sanitizedId);
+                err.flush();
+                return 1;
+            }
+            throw new OperatorRefusedException("release project " + sanitizedId, response);
         }
     }
 
@@ -207,6 +306,12 @@ public final class ProjectCommand implements Callable<Integer> {
         @Parameters(index = "0", description = "Project ID")
         String projectId = "";
 
+        @Option(names = {"-y", "--yes"}, description = "Confirm unenrolment without interactive prompt")
+        boolean yes;
+
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
+
         UnenrolCommand(OperatorContext context) {
             this.context = context;
         }
@@ -214,18 +319,35 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var path = PROJECTS_API + OperatorUrlUtil.encodePathSegment(projectId) + "/unenrol";
-            var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             var out = spec.commandLine().getOut();
+            var err = spec.commandLine().getErr();
+            var safeId = OperatorUrlUtil.encodePathSegment(projectId);
+            var sanitizedId = OutputSafety.stripControlSequences(projectId);
+
+            if (!yes && noInput) {
+                err.println("Unenrol confirmation required (--yes)");
+                err.flush();
+                return 3;
+            }
+
+            var path = PROJECTS_API + safeId + "/unenrol";
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             if (response.status() == 200 || response.status() == 204) {
-                out.printf("✓ Project %s unenrolled%n", projectId);
+                out.printf("✓ %s unenrolled%n", sanitizedId);
                 out.flush();
                 return 0;
             }
-            var err = spec.commandLine().getErr();
-            err.printf("Failed to unenrol project %s: HTTP %d%n", projectId, response.status());
-            err.flush();
-            return 1;
+            if (response.status() == 404) {
+                err.printf(FMT_PROJECT_NOT_FOUND, sanitizedId);
+                err.flush();
+                return 1;
+            }
+            if (response.status() == 409) {
+                err.printf("✗ %s still runs work; unenrolling is refused while it does.%n", sanitizedId);
+                err.flush();
+                return 1;
+            }
+            throw new OperatorRefusedException("unenrol project " + sanitizedId, response);
         }
     }
 }

@@ -348,4 +348,26 @@ class PmOperatorProcessIT {
             assertTrue(stdout.contains("Kept for good"), "expected kept footer; got: " + stdout);
         }
     }
+
+    @Test
+    @DisplayName("projects refuses execution without an interactive terminal (PM-SEC-3)")
+    void projectsRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "projects")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
+
+    @Test
+    @DisplayName("project release refuses execution without an interactive terminal (PM-SEC-3)")
+    void projectReleaseRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "project", "release", "my-service", "--reason", "archived", "--yes")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
 }

@@ -58,6 +58,53 @@ export interface ProjectOverviewResponse {
   projects: ProjectSummary[];
 }
 
+export type ProjectReadiness = 'ready' | 'setup_needs' | 'released';
+
+export interface EnrolledProject {
+  project_id: string;
+  display_name: string;
+  remote_url?: string | null;
+  readiness: ProjectReadiness;
+  setup_needs_summary?: string | null;
+  needs_operator_count: number;
+  active_plans_count: number;
+  active_epics_count: number;
+  last_active?: string | null;
+  is_favourite: boolean;
+  is_released: boolean;
+}
+
+export interface BeingAddedProject {
+  checkout_path: string;
+  current_step: string;
+  step_number: number;
+  total_steps: number;
+  continue_link?: string | null;
+  abandon_link?: string | null;
+}
+
+export interface ProjectExplorer {
+  favourites: EnrolledProject[];
+  recent: EnrolledProject[];
+  all_projects: EnrolledProject[];
+  being_added: BeingAddedProject[];
+}
+
+export interface ProjectReleaseRequest {
+  project_id: string;
+  confirm_release: boolean;
+  force?: boolean;
+  reason?: string | null;
+}
+
+export interface ProjectReleaseResult {
+  project_id: string;
+  plans_ended_count: number;
+  epics_ended_count: number;
+  entries_deleted_count: number;
+  released_at?: string | null;
+}
+
 export interface ActivePlanSummary {
   plan_id: string;
   title: string;
@@ -570,6 +617,48 @@ export class ApiClient {
 
   public async getProjects(): Promise<ProjectOverviewResponse> {
     return this.request<ProjectOverviewResponse>('GET', '/api/v1/projects');
+  }
+
+  public async getProjectExplorer(): Promise<ProjectExplorer> {
+    return this.request<ProjectExplorer>('GET', '/api/v1/projects?all=true');
+  }
+
+  public async updateFavourites(projectIds: string[]): Promise<{ status: string; project_ids: string[] }> {
+    return this.request<{ status: string; project_ids: string[] }>('PUT', '/api/v1/explorer/favourites', {
+      project_ids: projectIds,
+    });
+  }
+
+  public async toggleFavourite(projectId: string, favourite: boolean): Promise<void> {
+    await this.request('PUT', `/api/v1/projects/${encodeURIComponent(projectId)}/favourite`, {
+      favourite,
+    });
+  }
+
+  public async startProjectOnboarding(path: string): Promise<{ ok: boolean }> {
+    return this.request<{ ok: boolean }>('POST', '/api/v1/project-onboardings', {
+      path,
+    });
+  }
+
+  public async releaseProject(projectId: string, reason?: string, force = false): Promise<ProjectReleaseResult> {
+    return this.request<ProjectReleaseResult>('POST', `/api/v1/projects/${encodeURIComponent(projectId)}/release`, {
+      project_id: projectId,
+      confirm_release: true,
+      force,
+      reason,
+    });
+  }
+
+  public async unenrolProject(projectId: string): Promise<void> {
+    await this.request('POST', `/api/v1/projects/${encodeURIComponent(projectId)}/unenrol`, {});
+  }
+
+  public async abandonOnboarding(abandonPathOrId: string): Promise<void> {
+    const target = abandonPathOrId.startsWith('/')
+      ? abandonPathOrId
+      : `/api/v1/project-onboardings/${encodeURIComponent(abandonPathOrId)}`;
+    await this.request('DELETE', target);
   }
 
   public async getProjectDetail(projectId: string): Promise<ProjectDetailResponse> {
