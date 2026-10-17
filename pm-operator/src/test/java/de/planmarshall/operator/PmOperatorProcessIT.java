@@ -455,4 +455,22 @@ class PmOperatorProcessIT {
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
         }
     }
+
+    @Test
+    @DisplayName("git-source and start plan --adopt-pr refuse execution without an interactive terminal (PM-SEC-3)")
+    void gitSourceRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "git-source", "adopt-pr", "4711", "--project",
+                                 "pm-mcp-clients")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+
+        try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--local-changes")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
 }

@@ -1006,6 +1006,67 @@ export interface LessonRetirementNotice {
   reason?: string;
 }
 
+export interface ChangedFile {
+  path: string;
+  additions: number;
+  deletions: number;
+  untrusted: boolean;
+  operator_authored: boolean;
+}
+
+export interface RateLimitStatus {
+  limit: number;
+  remaining: number;
+  reset_at?: string;
+  limited: boolean;
+}
+
+export type ScreeningOutcome = 'clean' | 'flagged' | 'unscreened';
+
+export interface PullRequestObservation {
+  url: string;
+  number: number;
+  title: string;
+  author: string;
+  branch: string;
+  state: string;
+  writable: boolean;
+  changed_files: ChangedFile[];
+  screening: ScreeningOutcome;
+  rate_limit: RateLimitStatus;
+}
+
+export interface PrAdoptRequest {
+  project_id: string;
+  pr_url: string;
+  screening_bypass_reason?: string;
+}
+
+export interface PrAdoptResult {
+  plan_id: string;
+  lane: string;
+  branch: string;
+  status: string;
+}
+
+export interface LocalChangesPreview {
+  status: string;
+  preview_id?: string;
+  branch?: string;
+  changed_files: ChangedFile[];
+  landing?: string;
+  landing_commits: boolean;
+  eligible: boolean;
+  reason?: string;
+}
+
+export interface LocalChangesCaptureResult {
+  plan_id: string;
+  lane: string;
+  snapshot_commit: string;
+  status: string;
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
@@ -1216,6 +1277,43 @@ export class ApiClient {
       'POST',
       `${this.lessonBase(projectId, lessonId)}/retire`,
       reason ? { reason } : {},
+    );
+  }
+
+  public async observePullRequest(
+    projectId: string,
+    reference: string,
+  ): Promise<PullRequestObservation> {
+    return this.request<PullRequestObservation>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/pr/observe`,
+      { pr_url: reference },
+    );
+  }
+
+  public async adoptPullRequest(request: PrAdoptRequest): Promise<PrAdoptResult> {
+    return this.request<PrAdoptResult>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(request.project_id)}/sources/pr/adopt`,
+      request,
+    );
+  }
+
+  public async previewLocalChanges(projectId: string): Promise<LocalChangesPreview> {
+    return this.request<LocalChangesPreview>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/local-changes/preview`,
+    );
+  }
+
+  public async captureLocalChanges(
+    projectId: string,
+    previewId?: string,
+  ): Promise<LocalChangesCaptureResult> {
+    return this.request<LocalChangesCaptureResult>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/sources/local-changes/capture`,
+      { project_id: projectId, preview_id: previewId, confirmed: true },
     );
   }
 

@@ -54,6 +54,7 @@ public final class MessageCatalogue {
             "control",
             "start",
             "lesson_source",
+            "git_sources",
             "operator"
     );
 
