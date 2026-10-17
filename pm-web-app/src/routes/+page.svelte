@@ -16,7 +16,9 @@
   import PlanView from '../lib/views/PlanView.svelte';
   import EpicView from '../lib/views/EpicView.svelte';
   import StartWorkModal from '../lib/components/StartWorkModal.svelte';
+  import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
   import { startModalStore, closeStartWork } from '../lib/stores/start';
+  import { gitSourceModalStore, closeGitSource } from '../lib/stores/gitSource';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -57,4 +59,11 @@
   kind={$startModalStore.kind}
   onClose={closeStartWork}
   onStarted={() => {}}
+/>
+
+<GitSourceIntakeModal
+  open={$gitSourceModalStore.open}
+  projectId={$gitSourceModalStore.projectId}
+  onClose={closeGitSource}
+  onCompleted={() => {}}
 />

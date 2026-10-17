@@ -93,6 +93,16 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.report.TokenWasteRecord;
+import de.planmarshall.api.source.git.ChangedFile;
+import de.planmarshall.api.source.git.LocalChangesCaptureRequest;
+import de.planmarshall.api.source.git.LocalChangesCaptureResult;
+import de.planmarshall.api.source.git.LocalChangesPreview;
+import de.planmarshall.api.source.git.PrAdoptRequest;
+import de.planmarshall.api.source.git.PrAdoptResult;
+import de.planmarshall.api.source.git.PullRequestObservation;
+import de.planmarshall.api.source.git.RateLimitStatus;
+import de.planmarshall.api.source.git.ScreeningOutcome;
+import de.planmarshall.api.source.git.SourceLane;
 import de.planmarshall.api.start.IntakeDraft;
 import de.planmarshall.api.start.PlanStartResult;
 import de.planmarshall.api.start.RecipeParameter;
@@ -216,12 +226,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_INTAKE_DRAFT = "/api/v1/intake/draft";
     private static final String SUFFIX_PLANS_START = "/plans/start";
     private static final String SUFFIX_EPICS_START = "/epics/start";
+    private static final String SUFFIX_PR_OBSERVE = "/sources/pr/observe";
+    private static final String SUFFIX_PR_ADOPT = "/sources/pr/adopt";
+    private static final String SUFFIX_LOCAL_PREVIEW = "/sources/local-changes/preview";
+    private static final String SUFFIX_LOCAL_CAPTURE = "/sources/local-changes/capture";
     private static final String EVENT_PLAN_STARTED = "plan.started";
     private static final String EVENT_EPIC_STARTED = "epic.started";
     private static final String EVENT_INTAKE_CREATED = "intake.created";
+    private static final String EVENT_PR_OBSERVED = "source.pr_observed";
+    private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
     private static final String ERR_START_REFUSED = "start_refused";
     private static final String ERR_INVALID_REQUEST = "invalid_request";
+    private static final String ERR_CONFIRMATION_REQUIRED = "confirmation_required";
+    private static final String ERR_RATE_LIMITED = "rate_limited";
+    private static final String ERR_NOT_OPEN = "not_open";
+    private static final String ERR_HEAD_NOT_WRITABLE = "head_not_writable";
+    private static final String ERR_SCREENING_FLAGGED = "screening_flagged";
+    private static final String ERR_UNSCREENED = "unscreened";
+    private static final String ERR_LANDING_FILES = "landing_files";
+    private static final String KEY_PR_REFERENCE = "pr_url";
+    private static final String CONST_LANDING_PR = "pr";
+    private static final String CONST_LANDING_FILES = "landing.files";
+    private static final Pattern PR_NUMBER = Pattern.compile("(\\d+)(?!.*\\d)");
     private static final String KEY_RECIPES = "recipes";
     private static final String PATH_PLANS_PREFIX = "/api/v1/plans/";
     private static final String PATH_EPICS_PREFIX = "/api/v1/epics/";
@@ -291,6 +318,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
     private int intakeDraftCounter;
+    private int gitSourceCounter;
     private volatile boolean lanListenerOn = true;
     private volatile int lanListenerPort = DEFAULT_LAN_PORT;
     private volatile boolean closed;
@@ -524,6 +552,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleDecisionRoutes(request, response, isWeb)
                 || handleSystemRoutes(request, response, isWeb)
                 || handleProcessRoutes(request, response)
+                || handleGitSourceRoutes(request, response)
                 || handleStartRoutes(request, response)
                 || handleControlRoutes(request, response);
     }
@@ -1325,6 +1354,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             startedPlanIds.clear();
             startedEpicIds.clear();
             intakeDraftCounter = 0;
+            gitSourceCounter = 0;
         }
     }
 
@@ -1468,6 +1498,196 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 readSources(bodyMap), Instant.now());
         broadcastEvent(EVENT_INTAKE_CREATED, Map.of("draft_id", id, KEY_PROJECT_ID, projectId));
         response.json(201, draft.toMap());
+    }
+
+    private boolean handleGitSourceRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        var method = request.method();
+        if (!path.startsWith(PREFIX_PROJECTS)) {
+            return false;
+        }
+        if ("POST".equals(method) && path.endsWith(SUFFIX_PR_OBSERVE)) {
+            handlePrObserve(request, response, projectIdOf(path, SUFFIX_PR_OBSERVE));
+            return true;
+        }
+        if ("POST".equals(method) && path.endsWith(SUFFIX_PR_ADOPT)) {
+            handlePrAdopt(request, response, projectIdOf(path, SUFFIX_PR_ADOPT));
+            return true;
+        }
+        if ("GET".equals(method) && path.endsWith(SUFFIX_LOCAL_PREVIEW)) {
+            handleLocalChangesPreview(response, projectIdOf(path, SUFFIX_LOCAL_PREVIEW));
+            return true;
+        }
+        if ("POST".equals(method) && path.endsWith(SUFFIX_LOCAL_CAPTURE)) {
+            handleLocalChangesCapture(request, response, projectIdOf(path, SUFFIX_LOCAL_CAPTURE));
+            return true;
+        }
+        return false;
+    }
+
+    private void handlePrObserve(MockHttpRequest request, MockHttpResponse response, String projectId)
+            throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var bodyMap = readBodyObject(request);
+        var observation = observationFor(parsePrNumber(JsonTree.string(bodyMap, KEY_PR_REFERENCE)));
+        broadcastEvent(EVENT_PR_OBSERVED, observation.toMap());
+        response.json(200, observation.toMap());
+    }
+
+    private void handlePrAdopt(MockHttpRequest request, MockHttpResponse response, String projectId)
+            throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var bodyMap = readBodyObject(request);
+        bodyMap.putIfAbsent(KEY_PROJECT_ID, projectId);
+        PrAdoptRequest parsed;
+        try {
+            parsed = PrAdoptRequest.fromMap(bodyMap);
+        }
+        catch (IOException | IllegalArgumentException _) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+                    "The adopt request could not be read"));
+            return;
+        }
+        var observation = observationFor(parsePrNumber(parsed.prUrl()));
+        var refusal = adoptRefusal(observation, parsed.screeningBypassReason());
+        if (refusal != null) {
+            response.json(409, Map.of(KEY_ERROR, ERR_START_REFUSED, KEY_REASON, refusal, KEY_PROJECT_ID, projectId));
+            return;
+        }
+        var planId = uniquePlanId(slug("adopt-pr-" + observation.number()));
+        var body = new LinkedHashMap<String, Object>(new PrAdoptResult(planId, SourceLane.ADOPT,
+                observation.branch(), null).toMap());
+        body.put(KEY_PROJECT_ID, projectId);
+        body.put(KEY_PR_REFERENCE, observation.url());
+        body.put("screening", observation.screening().wireValue());
+        broadcastEvent(EVENT_PLAN_STARTED, Map.of("plan_id", planId, KEY_PROJECT_ID, projectId,
+                "lane", SourceLane.ADOPT.wireValue()));
+        response.json(201, body);
+    }
+
+    private void handleLocalChangesPreview(MockHttpResponse response, String projectId) throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var landing = landingFor(projectId);
+        var commits = CONST_LANDING_PR.equals(landing);
+        var preview = commits
+                ? new LocalChangesPreview(null, "main", localChangedFiles(), landing, true, true, null)
+                : new LocalChangesPreview(null, "main", localChangedFiles(), landing, false, false, landing);
+        response.json(200, preview.toMap());
+    }
+
+    private void handleLocalChangesCapture(MockHttpRequest request, MockHttpResponse response, String projectId)
+            throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var bodyMap = readBodyObject(request);
+        bodyMap.putIfAbsent(KEY_PROJECT_ID, projectId);
+        LocalChangesCaptureRequest parsed;
+        try {
+            parsed = LocalChangesCaptureRequest.fromMap(bodyMap);
+        }
+        catch (IOException | IllegalArgumentException _) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+                    "The capture request could not be read"));
+            return;
+        }
+        if (!parsed.confirmed()) {
+            response.json(409, Map.of(KEY_ERROR, ERR_START_REFUSED, KEY_REASON, ERR_CONFIRMATION_REQUIRED,
+                    KEY_PROJECT_ID, projectId));
+            return;
+        }
+        if (!CONST_LANDING_PR.equals(landingFor(projectId))) {
+            response.json(409, Map.of(KEY_ERROR, ERR_START_REFUSED, KEY_REASON, ERR_LANDING_FILES,
+                    KEY_PROJECT_ID, projectId));
+            return;
+        }
+        String sha;
+        synchronized (startLock) {
+            gitSourceCounter++;
+            sha = String.format("%040x", gitSourceCounter);
+        }
+        var planId = uniquePlanId(slug("capture-local-changes-" + projectId));
+        var body = new LinkedHashMap<String, Object>(new LocalChangesCaptureResult(planId, SourceLane.LAND,
+                sha, null).toMap());
+        body.put(KEY_PROJECT_ID, projectId);
+        broadcastEvent(EVENT_LOCAL_CAPTURED, Map.of("plan_id", planId, "snapshot_commit", sha,
+                KEY_PROJECT_ID, projectId, "lane", SourceLane.LAND.wireValue()));
+        response.json(201, body);
+    }
+
+    private static String landingFor(String projectId) {
+        return CONST_PM_MCP_CORE.equals(projectId) ? CONST_LANDING_FILES : CONST_LANDING_PR;
+    }
+
+    private static int parsePrNumber(@Nullable String reference) {
+        if (reference == null || reference.isBlank()) {
+            return 0;
+        }
+        var matcher = PR_NUMBER.matcher(reference.trim());
+        var number = 0;
+        while (matcher.find()) {
+            number = Integer.parseInt(matcher.group(1));
+        }
+        return number;
+    }
+
+    private static @Nullable String adoptRefusal(PullRequestObservation observation, @Nullable String bypassReason) {
+        if (observation.rateLimit().limited()) {
+            return ERR_RATE_LIMITED;
+        }
+        if (!observation.open()) {
+            return ERR_NOT_OPEN;
+        }
+        if (!observation.writable()) {
+            return ERR_HEAD_NOT_WRITABLE;
+        }
+        if (observation.screening().needsAcceptance() && (bypassReason == null || bypassReason.isBlank())) {
+            return observation.screening() == ScreeningOutcome.FLAGGED ? ERR_SCREENING_FLAGGED : ERR_UNSCREENED;
+        }
+        return null;
+    }
+
+    private static PullRequestObservation observationFor(int number) {
+        return switch (number) {
+            case 7001 -> pullRequest(number, "Update the relay handshake", "relay-handshake",
+                    PullRequestObservation.STATE_CLOSED, true, ScreeningOutcome.CLEAN, RateLimitStatus.unlimited());
+            case 7002 -> pullRequest(number, "Rotate the web certificate", "cert-rotation",
+                    PullRequestObservation.STATE_OPEN, true, ScreeningOutcome.CLEAN,
+                    new RateLimitStatus(60, 0, Instant.parse("2026-10-17T15:00:00Z"), true));
+            case 7003 -> pullRequest(number, "Tighten the unix socket", "socket-permissions",
+                    PullRequestObservation.STATE_OPEN, false, ScreeningOutcome.CLEAN, RateLimitStatus.unlimited());
+            case 6677 -> pullRequest(number, "Document the Forgejo setup", "forgejo-docs",
+                    PullRequestObservation.STATE_OPEN, true, ScreeningOutcome.FLAGGED, RateLimitStatus.unlimited());
+            default -> pullRequest(number, "Add a Codeberg provider for issues", "codeberg-provider",
+                    PullRequestObservation.STATE_OPEN, true, ScreeningOutcome.CLEAN, RateLimitStatus.unlimited());
+        };
+    }
+
+    private static PullRequestObservation pullRequest(int number, String title, String branch, String state,
+                                                      boolean writable, ScreeningOutcome screening, RateLimitStatus rateLimit) {
+        return new PullRequestObservation(
+                "https://codeberg.org/plan-marshall/pm-mcp-clients/pulls/" + number, number, title, "octocat",
+                branch, state, writable, pullRequestChangedFiles(), screening, rateLimit);
+    }
+
+    private static List<ChangedFile> pullRequestChangedFiles() {
+        return List.of(
+                new ChangedFile("doc/concepts/forgejo.adoc", 12, 3, true, false),
+                new ChangedFile("pm-api/src/main/java/de/planmarshall/api/start/StartPlanRequest.java", 4, 1,
+                        false, true));
+    }
+
+    private static List<ChangedFile> localChangedFiles() {
+        return List.of(
+                new ChangedFile("pm-operator/src/main/java/de/planmarshall/operator/GitSourceCommand.java", 88, 0,
+                        false, true),
+                new ChangedFile("doc/agy/runbook.md", 5, 2, false, true));
     }
 
     private static List<SourceInput> readSources(Map<String, Object> bodyMap) throws IOException {
