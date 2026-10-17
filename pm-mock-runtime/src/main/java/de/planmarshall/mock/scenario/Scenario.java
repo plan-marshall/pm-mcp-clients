@@ -25,14 +25,14 @@ import java.util.Objects;
  * @param designer      the process-designer fixtures of this scenario (UC-PLN-3), or an empty map
  */
 public record Scenario(
-        int formatVersion,
-        String name,
-        String description,
-        String start,
-        String pairingCode,
-        Map<String, RouteDefinition> routes,
-        Map<String, StateDefinition> states,
-        Map<String, Object> designer) {
+int formatVersion,
+String name,
+String description,
+String start,
+String pairingCode,
+Map<String, RouteDefinition> routes,
+Map<String, StateDefinition> states,
+Map<String, Object> designer) {
 
     /** The supported format version. */
     public static final int SUPPORTED_FORMAT_VERSION = 1;

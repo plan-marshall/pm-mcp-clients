@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -103,6 +104,13 @@ import de.planmarshall.api.source.git.PullRequestObservation;
 import de.planmarshall.api.source.git.RateLimitStatus;
 import de.planmarshall.api.source.git.ScreeningOutcome;
 import de.planmarshall.api.source.git.SourceLane;
+import de.planmarshall.api.source.lesson.LessonClaimRequest;
+import de.planmarshall.api.source.lesson.LessonClaimResult;
+import de.planmarshall.api.source.lesson.LessonPremiseCheckResult;
+import de.planmarshall.api.source.lesson.LessonPremiseEvidence;
+import de.planmarshall.api.source.lesson.LessonRetirementNotice;
+import de.planmarshall.api.source.lesson.PremiseEvidenceKind;
+import de.planmarshall.api.source.lesson.UnclaimedLessonSummary;
 import de.planmarshall.api.start.IntakeDraft;
 import de.planmarshall.api.start.PlanStartResult;
 import de.planmarshall.api.start.RecipeParameter;
@@ -255,6 +263,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_LANDING_FILES = "landing.files";
     private static final Pattern DIGITS = Pattern.compile("(\\d+)");
     private static final String KEY_RECIPES = "recipes";
+    private static final String SEGMENT_LESSON_SOURCES = "/sources/lessons";
+    private static final String KEY_LESSONS = "lessons";
+    private static final String KEY_LESSON_ID = "lesson_id";
+    private static final String EVENT_LESSON_CLAIMED = "source.lesson_claimed";
+    private static final String EVENT_LESSON_RETIRED = "source.lesson_retired";
+    private static final String ERR_LESSON_NOT_FOUND = "lesson_not_found";
+    private static final String ERR_LESSON_CLAIM_REFUSED = "lesson_claim_refused";
+    private static final String REASON_LESSON_CLAIMED_ELSEWHERE = "lesson_claimed_elsewhere";
+    private static final String REASON_LESSON_RETIRED = "lesson_retired";
+    private static final String REASON_LESSON_PREMISE_BROKEN = "lesson_premise_broken";
     private static final String PATH_PLANS_PREFIX = "/api/v1/plans/";
     private static final String PATH_EPICS_PREFIX = "/api/v1/epics/";
     private static final String SEGMENT_DECISIONS = "/decisions/";
@@ -323,6 +341,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
     private int intakeDraftCounter;
+    private final Object lessonSourceLock = new Object();
+    private final Map<String, List<LessonSeed>> lessonSourceSeeds = new LinkedHashMap<>();
     private int gitSourceCounter;
     private final Map<String, String> localChangePreviews = new ConcurrentHashMap<>();
     private final Set<String> capturedProjects = ConcurrentHashMap.newKeySet();
@@ -388,6 +408,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultControl();
         initDefaultOnboarding();
         initDefaultStart();
+        initDefaultLessonSource();
         designer.init(scenario);
         transitionTo(scenario.start());
     }
@@ -404,6 +425,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultControl();
         initDefaultOnboarding();
         initDefaultStart();
+        initDefaultLessonSource();
         designer.init(currentScenario.get());
         transitionTo(currentScenario.get().start());
     }
@@ -561,6 +583,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleProcessRoutes(request, response)
                 || handleGitSourceRoutes(request, response)
                 || handleStartRoutes(request, response)
+                || handleLessonSourceRoutes(request, response)
                 || handleControlRoutes(request, response);
     }
 
@@ -1141,7 +1164,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean dispatchDesignerSub(MockHttpRequest request, MockHttpResponse response, String sub,
-                                        String projectId, boolean isWeb) throws IOException {
+            String projectId, boolean isWeb) throws IOException {
         var method = request.method();
         if (sub.isEmpty()) {
             return serveDesignerUnits(response, method, projectId);
@@ -1183,7 +1206,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean dispatchDesignerUnit(MockHttpRequest request, MockHttpResponse response, String unit,
-                                         String projectId, String method, boolean isWeb) throws IOException {
+            String projectId, String method, boolean isWeb) throws IOException {
         if (unit.isEmpty() || unit.contains("/")) {
             response.json(400, unitNameInvalid(unit));
             return true;
@@ -1221,7 +1244,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleDesignerPlace(MockHttpRequest request, MockHttpResponse response, String unit,
-                                     String target, boolean isWeb) throws IOException {
+            String target, boolean isWeb) throws IOException {
         if (!isValidUnitName(unit)) {
             response.json(400, unitNameInvalid(unit));
             return;
@@ -1364,6 +1387,278 @@ public final class MockRuntimeEngine implements AutoCloseable {
             gitSourceCounter = 0;
             localChangePreviews.clear();
             capturedProjects.clear();
+        }
+    }
+
+    private void initDefaultLessonSource() {
+        synchronized (lessonSourceLock) {
+            lessonSourceSeeds.clear();
+            lessonSourceSeeds.put(CONST_PM_MCP_CLIENTS, new ArrayList<>(List.of(
+                    new LessonSeed("les-0007", "Retire lessons when a plan lands",
+                            "A landed plan retires the lessons it claimed; any other ending releases them.",
+                            Instant.parse("2026-10-14T15:36:00Z"), CONST_FIX_RELAY,
+                            List.of("src/main/java/de/planmarshall/Lesson.java",
+                                    "de.planmarshall.store.LessonStore#retire"),
+                            List.of(), false, null, null, false),
+                    new LessonSeed("les-0009", "Keep the lesson store append-only",
+                            "The lesson store is append-only; a retirement is a record, never a rewrite.",
+                            Instant.parse("2026-10-13T09:12:00Z"), CONST_RELAY_AUTH_V2,
+                            List.of("src/main/java/de/planmarshall/store/LessonStore.java",
+                                    "src/main/java/de/planmarshall/store/OldStore.java"),
+                            List.of(new LessonPremiseEvidence(PremiseEvidenceKind.FILE,
+                                            "src/main/java/de/planmarshall/store/OldStore.java",
+                                            "src/main/java/de/planmarshall/store/OldStore.java", "a1b2c3d"),
+                                    new LessonPremiseEvidence(PremiseEvidenceKind.SYMBOL,
+                                            "de.planmarshall.store.OldStore#rewrite", null, "a1b2c3d")),
+                            false, null, null, false),
+                    new LessonSeed("les-0011", "Wire the cache with an ETag",
+                            "Every cached read carries an ETag so a stale entry is recognized.",
+                            Instant.parse("2026-10-10T11:00:00Z"), "cache-rewrite",
+                            List.of("src/main/java/de/planmarshall/http/Cache.java"),
+                            List.of(), false, null, "cache-rewrite", false),
+                    new LessonSeed("les-0012", "Drop the legacy portal",
+                            "The legacy portal was removed with the release.",
+                            Instant.parse("2026-10-08T08:00:00Z"), CONST_RELAY_AUTH_V2,
+                            List.of(), List.of(), false, null, null, true)
+            )));
+            lessonSourceSeeds.put(CONST_PM_MCP_CORE, new ArrayList<>(List.of(
+                    new LessonSeed("les-0021", "Seed the store with its digest",
+                            "A store is seeded with the digest of the records it holds.",
+                            Instant.parse("2026-10-12T10:00:00Z"), CONST_PM_MCP_CORE,
+                            List.of("src/main/java/de/planmarshall/store/Seeded.java"),
+                            List.of(), false, null, null, false)
+            )));
+        }
+    }
+
+    private boolean handleLessonSourceRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if (!path.startsWith(PREFIX_PROJECTS)) {
+            return false;
+        }
+        var rest = path.substring(PREFIX_PROJECTS.length());
+        var marker = rest.indexOf(SEGMENT_LESSON_SOURCES);
+        if (marker <= 0) {
+            return false;
+        }
+        var projectId = rest.substring(0, marker);
+        if (projectId.isEmpty() || projectId.contains("/")) {
+            return false;
+        }
+        var sub = rest.substring(marker + SEGMENT_LESSON_SOURCES.length());
+        if (sub.isEmpty()) {
+            if (!"GET".equals(request.method())) {
+                return false;
+            }
+            handleListUnclaimedLessons(response, projectId);
+            return true;
+        }
+        if (!sub.startsWith("/")) {
+            return false;
+        }
+        var tail = sub.substring(1);
+        var slash = tail.lastIndexOf('/');
+        if (slash <= 0 || slash == tail.length() - 1) {
+            return false;
+        }
+        if (!"POST".equals(request.method())) {
+            return false;
+        }
+        var lessonId = tail.substring(0, slash);
+        var action = tail.substring(slash + 1);
+        return switch (action) {
+            case "premise-check" -> {
+                handlePremiseCheck(response, projectId, lessonId);
+                yield true;
+            }
+            case "claim" -> {
+                handleClaimLesson(request, response, projectId, lessonId);
+                yield true;
+            }
+            case "retire" -> {
+                handleRetireLesson(request, response, projectId, lessonId);
+                yield true;
+            }
+            default -> false;
+        };
+    }
+
+    private void handleListUnclaimedLessons(MockHttpResponse response, String projectId) throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var lessons = new ArrayList<UnclaimedLessonSummary>();
+        synchronized (lessonSourceLock) {
+            var seeds = lessonSourceSeeds.getOrDefault(projectId, List.of());
+            for (var seed : seeds) {
+                if (seed.unclaimed()) {
+                    lessons.add(seed.toSummary());
+                }
+            }
+        }
+        lessons.sort(Comparator.comparing(UnclaimedLessonSummary::recordedAt).reversed());
+        response.json(200, Map.of(KEY_LESSONS, lessons.stream().map(UnclaimedLessonSummary::toMap).toList()));
+    }
+
+    private void handlePremiseCheck(MockHttpResponse response, String projectId, String lessonId)
+            throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var seed = findLesson(projectId, lessonId);
+        if (seed == null) {
+            response.json(404, Map.of(KEY_ERROR, ERR_LESSON_NOT_FOUND, KEY_LESSON_ID, lessonId,
+                    KEY_MESSAGE, "No lesson carries that id in " + projectId));
+            return;
+        }
+        var result = new LessonPremiseCheckResult(lessonId, premiseStatus(seed), seed.evidence(),
+                seed.premiseCause());
+        response.json(200, result.toMap());
+    }
+
+    private void handleClaimLesson(MockHttpRequest request, MockHttpResponse response, String projectId,
+            String lessonId) throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var bodyMap = readBodyObject(request);
+        LessonClaimRequest claim;
+        try {
+            claim = LessonClaimRequest.fromMap(bodyMap.isEmpty()
+                    ? Map.of(KEY_PROJECT_ID, projectId, KEY_LESSON_ID, lessonId)
+                    : withDefaults(bodyMap, projectId, lessonId));
+        } catch (IOException | IllegalArgumentException _) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST,
+                    KEY_MESSAGE, "The claim request could not be read"));
+            return;
+        }
+        synchronized (lessonSourceLock) {
+            var seeds = lessonSourceSeeds.get(projectId);
+            var index = indexOfLesson(seeds, lessonId);
+            if (index < 0) {
+                response.json(404, Map.of(KEY_ERROR, ERR_LESSON_NOT_FOUND, KEY_LESSON_ID, lessonId,
+                        KEY_MESSAGE, "No lesson carries that id in " + projectId));
+                return;
+            }
+            var seed = seeds.get(index);
+            if (seed.retired()) {
+                refuseClaim(response, lessonId, REASON_LESSON_RETIRED);
+                return;
+            }
+            if (seed.claimedBy() != null) {
+                refuseClaim(response, lessonId, REASON_LESSON_CLAIMED_ELSEWHERE);
+                return;
+            }
+            if (!LessonPremiseCheckResult.STATUS_HOLDS.equals(premiseStatus(seed)) && !claim.isUseAnyway()) {
+                refuseClaim(response, lessonId, REASON_LESSON_PREMISE_BROKEN);
+                return;
+            }
+            var planId = JsonTree.string(bodyMap, "plan_id");
+            if (planId == null || planId.isBlank()) {
+                planId = "lesson-" + lessonId;
+            }
+            seeds.set(index, seed.claimedBy(planId));
+            broadcastEvent(EVENT_LESSON_CLAIMED, Map.of(KEY_LESSON_ID, lessonId, "plan_id", planId,
+                    KEY_PROJECT_ID, projectId));
+            response.json(200, new LessonClaimResult(lessonId, LessonClaimResult.STATUS_CLAIMED, planId).toMap());
+        }
+    }
+
+    private void handleRetireLesson(MockHttpRequest request, MockHttpResponse response, String projectId,
+            String lessonId) throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var bodyMap = readBodyObject(request);
+        synchronized (lessonSourceLock) {
+            var seeds = lessonSourceSeeds.get(projectId);
+            var index = indexOfLesson(seeds, lessonId);
+            if (index < 0) {
+                response.json(404, Map.of(KEY_ERROR, ERR_LESSON_NOT_FOUND, KEY_LESSON_ID, lessonId,
+                        KEY_MESSAGE, "No lesson carries that id in " + projectId));
+                return;
+            }
+            var seed = seeds.get(index);
+            if (!seed.retired()) {
+                seeds.set(index, seed.retiredNow());
+                broadcastEvent(EVENT_LESSON_RETIRED, Map.of(KEY_LESSON_ID, lessonId, "retired", true,
+                        KEY_PROJECT_ID, projectId));
+            }
+        }
+        var reason = JsonTree.string(bodyMap, KEY_REASON);
+        response.json(200, new LessonRetirementNotice(lessonId, true, reason).toMap());
+    }
+
+    private void refuseClaim(MockHttpResponse response, String lessonId, String reason) throws IOException {
+        response.json(409, Map.of(KEY_ERROR, ERR_LESSON_CLAIM_REFUSED, KEY_REASON, reason,
+                KEY_LESSON_ID, lessonId));
+    }
+
+    private static Map<String, Object> withDefaults(Map<String, Object> bodyMap, String projectId,
+            String lessonId) {
+        bodyMap.putIfAbsent(KEY_PROJECT_ID, projectId);
+        bodyMap.putIfAbsent(KEY_LESSON_ID, lessonId);
+        return bodyMap;
+    }
+
+    private LessonSeed findLesson(String projectId, String lessonId) {
+        synchronized (lessonSourceLock) {
+            var seeds = lessonSourceSeeds.get(projectId);
+            var index = indexOfLesson(seeds, lessonId);
+            return index < 0 ? null : seeds.get(index);
+        }
+    }
+
+    private static int indexOfLesson(List<LessonSeed> seeds, String lessonId) {
+        if (seeds == null) {
+            return -1;
+        }
+        for (var i = 0; i < seeds.size(); i++) {
+            if (seeds.get(i).lessonId().equals(lessonId)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static String premiseStatus(LessonSeed seed) {
+        if (seed.premiseUnavailable()) {
+            return LessonPremiseCheckResult.STATUS_UNAVAILABLE;
+        }
+        return seed.evidence().isEmpty() ? LessonPremiseCheckResult.STATUS_HOLDS
+                : LessonPremiseCheckResult.STATUS_BROKEN;
+    }
+
+    private record LessonSeed(
+    String lessonId,
+    String title,
+    String summary,
+    Instant recordedAt,
+    String citingPlanId,
+    List<String> symbolsCited,
+    List<LessonPremiseEvidence> evidence,
+    boolean premiseUnavailable,
+    String premiseCause,
+    String claimedBy,
+    boolean retired
+    ) {
+
+        boolean unclaimed() {
+            return claimedBy == null && !retired;
+        }
+
+        UnclaimedLessonSummary toSummary() {
+            return new UnclaimedLessonSummary(lessonId, title, summary, recordedAt, citingPlanId, symbolsCited);
+        }
+
+        LessonSeed claimedBy(String planId) {
+            return new LessonSeed(lessonId, title, summary, recordedAt, citingPlanId, symbolsCited, evidence,
+                    premiseUnavailable, premiseCause, planId, retired);
+        }
+
+        LessonSeed retiredNow() {
+            return new LessonSeed(lessonId, title, summary, recordedAt, citingPlanId, symbolsCited, evidence,
+                    premiseUnavailable, premiseCause, claimedBy, true);
         }
     }
 
@@ -1750,7 +2045,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private static PullRequestObservation pullRequest(int number, String title, String branch, String state,
-                                                      boolean writable, ScreeningOutcome screening, RateLimitStatus rateLimit) {
+            boolean writable, ScreeningOutcome screening, RateLimitStatus rateLimit) {
         return new PullRequestObservation(
                 "https://codeberg.org/plan-marshall/pm-mcp-clients/pulls/" + number, number, title, "octocat",
                 branch, state, writable, pullRequestChangedFiles(), screening, rateLimit);
@@ -1794,7 +2089,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private static String deriveTitle(@Nullable String title, @Nullable String objective, @Nullable String issue,
-                                      List<String> documents) {
+            List<String> documents) {
         if (title != null && !title.isBlank()) {
             return title.trim();
         }
@@ -3010,7 +3305,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private static Map<String, Object> credential(String key, String provider, String kind,
-                                                  @Nullable Integer expiresInDays, boolean expired) {
+            @Nullable Integer expiresInDays, boolean expired) {
         var map = new LinkedHashMap<String, Object>();
         map.put("key", key);
         map.put("provider", provider);

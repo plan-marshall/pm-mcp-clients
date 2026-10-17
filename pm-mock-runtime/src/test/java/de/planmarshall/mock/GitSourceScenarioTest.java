@@ -282,7 +282,7 @@ class GitSourceScenarioTest {
     }
 
     private static PullRequestObservation observe(UnixSocketHttpClient client, String auth, String project,
-                                                  String reference) throws Exception {
+            String reference) throws Exception {
         var res = client.send(HttpRequest.json("POST",
                 "/api/v1/projects/" + project + "/sources/pr/observe",
                 JsonTree.write(Map.of("pr_url", reference))).withHeader(AUTH, auth));

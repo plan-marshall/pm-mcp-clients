@@ -53,6 +53,7 @@ public final class MessageCatalogue {
             "epic_view",
             "control",
             "start",
+            "lesson_source",
             "git_sources",
             "operator"
     );

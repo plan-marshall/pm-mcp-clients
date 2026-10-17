@@ -334,9 +334,11 @@ export const fallbackMessages: Record<string, string> = {
   'project.action.enrol_again': 'Enrol again',
   'project.release.title': 'Release {project}?',
   'project.release.what_ends': 'What ends',
-  'project.release.ends': '{plans} plans, each ended as released and archived; {epics} epics, released with their plans and archived',
+  'project.release.ends':
+    '{plans} plans, each ended as released and archived; {epics} epics, released with their plans and archived',
   'project.release.what_stays': 'What stays',
-  'project.release.stays': "the repository: branches, worktrees, pull requests, and .marshall/ with the epics' ledgers, as they are",
+  'project.release.stays':
+    "the repository: branches, worktrees, pull requests, and .marshall/ with the epics' ledgers, as they are",
   'project.release.reason': 'Reason',
   'project.release.keep': 'Keep it',
   'project.release.action_release': 'Release the project',
@@ -473,7 +475,8 @@ export const fallbackMessages: Record<string, string> = {
   'control.pause.keep_running': 'Keep it running',
   'control.end.title': '{action, select, cancel {Cancel} abandon {Abandon} other {Abort}} {plan}?',
   'control.end.label.reason': 'Reason',
-  'control.end.keep': '{action, select, cancel {Keep it running} abandon {Keep it paused} other {Keep it held}}',
+  'control.end.keep':
+    '{action, select, cancel {Keep it running} abandon {Keep it paused} other {Keep it held}}',
   'control.end.action':
     '{action, select, cancel {Cancel the plan} abandon {Abandon the plan} other {Abort the plan}}',
   'control.settings.title': 'Settings \u00b7 {plan}',
@@ -481,7 +484,8 @@ export const fallbackMessages: Record<string, string> = {
     '{group, select, plan_defaults {Plan defaults} roles {Roles} integrations {Integrations} other {Providers}}',
   'control.settings.origin':
     '{origin, select, plan {from the plan} project {from the project} team {from the team} machine {from the machine} derived {derived} other {shipped default}}',
-  'control.settings.use_inherited': "Use the {level, select, project {project's} other {machine's}} value",
+  'control.settings.use_inherited':
+    "Use the {level, select, project {project's} other {machine's}} value",
   'control.settings.applies':
     "Applies where {plan} next reads it; the plan's version becomes {version}.",
   'control.settings.refused': '{value} is refused: {reason}',
@@ -522,7 +526,8 @@ export const fallbackMessages: Record<string, string> = {
   'control.hold.still_held': 'Still held: {cause}',
   'control.hold.cleared': '{cause} cleared by itself',
   // Starting work (UC-STA-1..5)
-  'start.modal.title': '{kind, select, plan {Start a plan in {project}} other {Start an epic in {project}}}',
+  'start.modal.title':
+    '{kind, select, plan {Start a plan in {project}} other {Start an epic in {project}}}',
   'start.mode.sources': 'A plan from sources',
   'start.mode.recipe': 'A recipe',
   'start.field.prompt': 'What is the work?',
@@ -545,6 +550,32 @@ export const fallbackMessages: Record<string, string> = {
   'start.started.title': '{name} has started',
   'start.started.follow': 'Follow it',
   'start.started.back': 'Back to the project',
+  // Lesson sources (UC-STA-8)
+  'lesson_source.modal.title': 'Start from a lesson in {project}',
+  'lesson_source.picker.title': 'Unclaimed lessons',
+  'lesson_source.picker.empty': 'No unclaimed lesson in {project}.',
+  'lesson_source.picker.select': 'Use this lesson',
+  'lesson_source.picker.checking': 'Checking the premise …',
+  'lesson_source.list.recorded': 'recorded {date}',
+  'lesson_source.list.recorded_by': 'recorded {date} by {plan}',
+  'lesson_source.list.cites':
+    'cites {count, plural, one {# file or symbol} other {# files or symbols}}',
+  'lesson_source.evidence.file': 'file',
+  'lesson_source.evidence.symbol': 'symbol',
+  'lesson_source.claimed': '{lesson} is claimed by {plan}',
+  'lesson_source.unchanged': 'Nothing changed; {lesson} stays unclaimed.',
+  'lesson_source.error': 'The lesson could not be used: {cause}',
+  'lesson_source.action.close': 'Back to the project',
+  'lesson_source.action.cancel': 'Cancel',
+  'lesson_source.start_from_lesson': 'Start from a lesson',
+  'lesson_source.premise.title': "The lesson's premise no longer holds",
+  'lesson_source.premise.explain':
+    'The lesson cites files and symbols that no longer exist in the repository.',
+  'lesson_source.premise.evidence_title': 'Missing',
+  'lesson_source.premise.use_anyway': 'Use it anyway',
+  'lesson_source.premise.retire': 'Retire it',
+  'lesson_source.premise.cancel': 'Choose another',
+
   // Git plan sources (UC-STA-7, UC-STA-9)
   'git_sources.title': 'Git sources in {project}',
   'git_sources.mode.adopt_pr': 'Adopt a pull request',
