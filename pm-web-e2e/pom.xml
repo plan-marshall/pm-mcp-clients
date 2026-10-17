@@ -51,7 +51,9 @@
                         </goals>
                         <phase>initialize</phase>
                         <configuration>
-                            <arguments>install</arguments>
+                            <!-- 'ci', not 'install': the build must install exactly the committed
+                                 package-lock.json. See pm-web-app/pom.xml for the rationale. -->
+                            <arguments>ci</arguments>
                         </configuration>
                     </execution>
                     <execution>
