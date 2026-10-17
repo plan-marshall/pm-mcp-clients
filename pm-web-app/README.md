@@ -16,7 +16,7 @@
 
 ## Prerequisites
 
-- **Node.js**: Version 22.x or later (`node --version`).
+- **Node.js**: Version 22.17 or later (`node --version`). This is the SvelteKit 3 floor; 22.0–22.16 are rejected.
 - **npm**: Version 10.x or later (`npm --version`).
 - **Java 25 & Maven**: For running `pm-mock-runtime` during development.
 
