@@ -1305,7 +1305,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             switch (action) {
                 case "auto" -> {
-                    var enabled = actionRequest.extra().get("enabled");
+                    var enabled = actionRequest.extra().get(FIELD_ENABLED);
                     if (enabled instanceof Boolean flag) {
                         controlEpicAuto.put(epicId, flag);
                     } else {
