@@ -1,0 +1,280 @@
+{
+  "format_version": 1,
+  "name": "designer",
+  "description": "Process designer: installed units at every level, the catalogue of building blocks, validation findings, placing, and removing (UC-PLN-3)",
+  "start": "designer.ready",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "machine": "mbp-oliver",
+        "onboarded": true,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    }
+  },
+  "states": {
+    "designer.ready": {
+      "representation": {
+        "scope": "designer",
+        "state": "designer.ready",
+        "summary": "The process designer is ready",
+        "links": {
+          "workflows": {
+            "method": "GET",
+            "href": "/api/v1/workflows"
+          }
+        }
+      }
+    }
+  },
+  "designer": {
+    "runtime_version": "0.9.0",
+    "projects": ["pm-mcp-clients"],
+    "machine_units": [
+      {
+        "name": "landing.pull-request",
+        "group": "axis_variant",
+        "level_in_force": "machine",
+        "frontmatter": {
+          "display_name": "Landing Pull Request",
+          "description": "Lands the plan as a pull request.",
+          "type": "subworkflow",
+          "entries": ["start"],
+          "exits": ["merged", "no_change"],
+          "author": "Oliver Wolff",
+          "release": "0.9.0",
+          "signed": false
+        },
+        "levels": [
+          {
+            "level": "machine",
+            "revision": 3,
+            "digest": "sha256:lp-m3",
+            "text": "workflow landing.pull-request version 3 format 1\n---\nname: Landing Pull Request\ndescription: Lands the plan as a pull request.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\n---\nstate landing.open\n  call git.commit_and_push\n  done -> merged\n"
+          }
+        ]
+      },
+      {
+        "name": "git.commit_and_push",
+        "group": "recipe",
+        "level_in_force": "machine",
+        "frontmatter": {
+          "display_name": "Commit and Push",
+          "description": "Commits the changes of the plan's worktree and pushes its branch.",
+          "type": "subworkflow",
+          "entries": ["commit"],
+          "exits": ["done", "stepped_out"],
+          "author": "Oliver Wolff",
+          "release": "0.9.0",
+          "signed": false
+        },
+        "levels": [
+          {
+            "level": "machine",
+            "revision": 1,
+            "digest": "sha256:gcp-m1",
+            "text": "workflow git.commit_and_push version 1 format 1\n---\nname: Commit and Push\ndescription: Commits the changes and pushes the branch.\ntype: recipe\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry commit\nexit done\n---\nstate commit.push\n  done -> done\n"
+          }
+        ]
+      },
+      {
+        "name": "epic",
+        "group": "compiled_only",
+        "level_in_force": "default",
+        "levels": [
+          {
+            "level": "default",
+            "revision": 1,
+            "digest": "sha256:epic-d1",
+            "text": "workflow epic version 1 format 1\n"
+          }
+        ]
+      }
+    ],
+    "project_units": {
+      "pm-mcp-clients": [
+        {
+          "name": "phase-6-finalize",
+          "group": "project_owned",
+          "level_in_force": "project",
+          "frontmatter": {
+            "display_name": "Finalize",
+            "description": "Settles and reviews the plan's change, lands it.",
+            "type": "subworkflow",
+            "entries": ["start", "adopt"],
+            "exits": ["merged", "no_change"],
+            "author": "Oliver Wolff",
+            "release": "0.9.0",
+            "signed": false
+          },
+          "levels": [
+            {
+              "level": "project",
+              "revision": 4,
+              "digest": "sha256:pf6-p4",
+              "text": "workflow phase-6-finalize version 5 format 1\n---\nname: Finalize\ndescription: Settles and reviews the plan's change, lands it.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\nexit merged\n---\nstate finalize.review\n  done -> finalize.archive-plan\nstate finalize.archive-plan\n  call git.commit_and_push\n  done -> merged\n"
+            },
+            {
+              "level": "machine",
+              "revision": 2,
+              "digest": "sha256:pf6-m2",
+              "text": "workflow phase-6-finalize version 3 format 1\n---\nname: Finalize\ndescription: Settles the plan's change.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\nexit merged\n---\nstate finalize.review\n  done -> merged\n"
+            },
+            {
+              "level": "default",
+              "revision": 1,
+              "digest": "sha256:pf6-d1",
+              "text": "workflow phase-6-finalize version 1 format 1\n"
+            }
+          ]
+        },
+        {
+          "name": "remediation.ci-failure",
+          "group": "project_owned",
+          "level_in_force": "project",
+          "frontmatter": {
+            "display_name": "CI Failure",
+            "description": "Returns a plan to execute after a CI failure.",
+            "type": "subworkflow",
+            "entries": ["start"],
+            "exits": ["returned"],
+            "author": "Oliver Wolff",
+            "release": "0.9.0",
+            "signed": false
+          },
+          "levels": [
+            {
+              "level": "project",
+              "revision": 1,
+              "digest": "sha256:rcf-p1",
+              "text": "workflow remediation.ci-failure version 1 format 1\n---\nname: CI Failure\ndescription: Returns a plan to execute after a CI failure.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\nexit returned\n---\nstate remediation.fix\n  done -> returned\n"
+            }
+          ]
+        }
+      ]
+    },
+    "machine_blocks": [
+      {
+        "kind": "keyword",
+        "name": "state",
+        "summary": "A state of the unit, with its outcomes and transitions.",
+        "template": "state <name>\n  done -> <next>",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": [],
+        "used_in": ["any unit body"],
+        "compiled_only": false
+      },
+      {
+        "kind": "primitive",
+        "name": "git.stage-and-commit",
+        "summary": "Stages and commits the worktree's changes.",
+        "template": "auto git.stage-and-commit",
+        "parameters": ["message_mode enum[auto_deliverable|step_or_fallback]"],
+        "constraints": [],
+        "outcomes": ["done (success)", "failed"],
+        "used_in": ["the auto clause of a state"],
+        "compiled_only": false
+      },
+      {
+        "kind": "guard",
+        "name": "depends_on_config",
+        "summary": "Holds the plan until a configuration key is present.",
+        "template": "guard depends_on_config key=<key>",
+        "parameters": ["key string"],
+        "constraints": ["the configuration key"],
+        "outcomes": ["satisfied", "missing"],
+        "used_in": ["the guard clause of a state"],
+        "compiled_only": false
+      },
+      {
+        "kind": "link_relation",
+        "name": "opens",
+        "summary": "Opens the linked resource.",
+        "template": "link opens <target>",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": [],
+        "used_in": ["the link clause of a state"],
+        "compiled_only": false
+      },
+      {
+        "kind": "condition",
+        "name": "in_worktree",
+        "summary": "True while the plan has a worktree.",
+        "template": "condition in_worktree",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": ["true", "false"],
+        "used_in": ["the condition clause of a state"],
+        "compiled_only": false
+      },
+      {
+        "kind": "sub_workflow",
+        "name": "git.commit_and_push",
+        "summary": "Commits the changes of the plan's worktree and pushes its branch.",
+        "template": "call git.commit_and_push entry commit\n  done -> <next>\n  stepped_out -> <next>",
+        "parameters": ["message_mode enum", "push_mode enum"],
+        "constraints": ["a push remote"],
+        "outcomes": ["done (success)", "stepped_out"],
+        "used_in": ["the call clause of a state, in any unit kind"],
+        "compiled_only": false
+      },
+      {
+        "kind": "role",
+        "name": "implementer",
+        "summary": "The role that builds the plan's deliverables.",
+        "template": "role implementer",
+        "parameters": [],
+        "constraints": ["a qualified model"],
+        "outcomes": [],
+        "used_in": ["a task state and a consult"],
+        "compiled_only": false
+      },
+      {
+        "kind": "parameter",
+        "name": "message_mode",
+        "summary": "How the commit message is derived.",
+        "template": "declare message_mode enum[auto_deliverable|step_or_fallback]",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": [],
+        "used_in": ["the declare clause of a unit"],
+        "compiled_only": false
+      }
+    ],
+    "project_blocks": {
+      "pm-mcp-clients": [
+        {
+          "kind": "sub_workflow",
+          "name": "phase-6-finalize",
+          "summary": "Settles and reviews the plan's change, lands it.",
+          "template": "call phase-6-finalize entry start\n  merged -> <next>\n  no_change -> <next>",
+          "parameters": [],
+          "constraints": [],
+          "outcomes": ["merged", "no_change"],
+          "used_in": ["the call clause of a state"],
+          "compiled_only": false
+        },
+        {
+          "kind": "role",
+          "name": "reviewer",
+          "summary": "The role that reviews the plan's change.",
+          "template": "role reviewer",
+          "parameters": [],
+          "constraints": ["a qualified model"],
+          "outcomes": [],
+          "used_in": ["a task state and a consult"],
+          "compiled_only": false
+        }
+      ]
+    }
+  }
+}
