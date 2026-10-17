@@ -52,7 +52,12 @@
                         </goals>
                         <phase>initialize</phase>
                         <configuration>
-                            <arguments>install</arguments>
+                            <!-- 'ci', not 'install': the build must install exactly the committed
+                                 package-lock.json. 'install' may rewrite the lockfile and resolve
+                                 beyond it, which hides a lockfile that no longer satisfies the
+                                 platform - the failure mode behind rolldown's "Cannot find native
+                                 binding" on the Linux runner. 'ci' fails at install time instead. -->
+                            <arguments>ci</arguments>
                         </configuration>
                     </execution>
                     <execution>
