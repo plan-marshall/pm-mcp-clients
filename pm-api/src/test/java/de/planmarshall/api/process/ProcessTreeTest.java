@@ -391,4 +391,105 @@ class ProcessTreeTest {
         assertEquals(ActivityEntryKind.TOOL_CALL, ActivityEntryKind.fromValue("tool"));
         assertEquals(ActivityEntryKind.FILES_CHANGED, ActivityEntryKind.fromValue("file_changed"));
     }
+
+    @Test
+    @DisplayName("should serialize and deserialize LeafJob round-trip")
+    void shouldRoundTripLeafJob() throws Exception {
+        var job1 = new LeafJob("build", "running", "success", 120L, true);
+        assertEquals("build", job1.kind());
+        assertEquals("running", job1.status());
+        assertEquals("success", job1.outcome());
+        assertEquals(120L, job1.durationSeconds());
+        assertTrue(job1.waitsSlot());
+
+        var map = job1.toMap();
+        assertEquals("build", map.get("kind"));
+        assertEquals("running", map.get("status"));
+        assertEquals("success", map.get("outcome"));
+        assertEquals(120L, map.get("duration_seconds"));
+        assertEquals(true, map.get("waits_slot"));
+
+        var json = job1.toJson();
+        assertNotNull(json);
+
+        var restored = LeafJob.fromJson(json);
+        assertEquals(job1, restored);
+
+        // Test defaults
+        var jobDefault = new LeafJob(null, null, null, 0L, false);
+        assertEquals("job", jobDefault.kind());
+        assertEquals("done", jobDefault.status());
+        assertFalse(jobDefault.waitsSlot());
+        assertFalse(jobDefault.toMap().containsKey("waits_slot"));
+        assertFalse(jobDefault.toMap().containsKey("outcome"));
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize ActivityEntry across all kinds")
+    void shouldRoundTripActivityEntry() throws Exception {
+        var entry1 = new ActivityEntry("10:00:00", "tool", "read", "src/Main.java", false, null, "1 KiB", List.of(), List.of());
+        var map1 = entry1.toMap();
+        assertEquals("tool", map1.get("kind"));
+        assertEquals("read", map1.get("tool_name"));
+        assertEquals("src/Main.java", map1.get("tool_target"));
+        var restored1 = ActivityEntry.fromMap(map1);
+        assertEquals(entry1, restored1);
+
+        var entry2 = new ActivityEntry("10:01:00", "file_changed", null, null, false, "Changed files", null, List.of("A.java", "B.java"), List.of("Q1"));
+        var json2 = entry2.toJson();
+        var restored2 = ActivityEntry.fromJson(json2);
+        assertEquals(entry2, restored2);
+
+        // Test defaults
+        var entryDefault = new ActivityEntry("10:02:00", "text", null, null, false, null, null, null, null);
+        assertEquals("text", entryDefault.kind());
+        assertTrue(entryDefault.files().isEmpty());
+        assertTrue(entryDefault.questions().isEmpty());
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize ProcessTokens with edge cases")
+    void shouldRoundTripProcessTokens() throws Exception {
+        var tokensNone = new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false);
+        var mapNone = tokensNone.toMap();
+        assertEquals(true, mapNone.get("none_yet"));
+        var restoredNone = ProcessTokens.fromMap(mapNone);
+        assertEquals(tokensNone, restoredNone);
+
+        var tokensNotMeasured = new ProcessTokens(0L, 0L, 0L, false, 5, 0, false, true);
+        var jsonNotMeasured = tokensNotMeasured.toJson();
+        var restoredNotMeasured = ProcessTokens.fromJson(jsonNotMeasured);
+        assertEquals(tokensNotMeasured, restoredNotMeasured);
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize ProcessNode with LeafJob")
+    void shouldRoundTripProcessNodeWithLeafJob() throws Exception {
+        var job = new LeafJob("compile", "waits_slot", null, 45L, true);
+        var node = new ProcessNode("build-step", "Build Step", "job", "running", 1, 1, 45L, null, List.of(), List.of(), job, "a build slot", Map.of("abort", "/api/v1/plans/p/abort"));
+
+        var map = node.toMap();
+        assertNotNull(map.get("leaf_job"));
+        assertEquals("a build slot", map.get("waits_for"));
+
+        var json = node.toJson();
+        var restored = ProcessNode.fromJson(json);
+        assertEquals(node, restored);
+        assertNotNull(restored.leafJob());
+        assertEquals("compile", restored.leafJob().kind());
+        assertTrue(restored.leafJob().waitsSlot());
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize ProcessProjectRef and ProcessEpicRef")
+    void shouldRoundTripProjectAndEpicRefs() throws Exception {
+        var proj = new ProcessProjectRef("my-proj", "My Project", "/api/v1/projects/my-proj");
+        assertEquals(proj, ProcessProjectRef.fromJson(proj.toJson()));
+
+        var epic = new ProcessEpicRef("my-epic", "My Epic", "/api/v1/epics/my-epic/process");
+        assertEquals(epic, ProcessEpicRef.fromJson(epic.toJson()));
+
+        var offTrack = new OffTrackInfo("stalled", "restart", 3, 3);
+        assertEquals(offTrack, OffTrackInfo.fromJson(offTrack.toJson()));
+    }
 }

@@ -423,4 +423,142 @@ class PlanViewCommandTest {
                             () -> assertTrue(output.contains("remediation.ci-failure · done"))
         );
     }
+
+    @Test
+    @DisplayName("renders process tree with leafJob, depth options, and tokens variations")
+    void shouldRenderLeafJobAndDepthOptions() throws Exception {
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/plans/build-plan/process") && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "plan_id": "build-plan",
+                                      "title": "Build Plan",
+                                      "project": {
+                                        "project_id": "pm-mcp-clients"
+                                      },
+                                      "current_phase": "execute",
+                                      "phase_state": "running",
+                                      "duration_seconds": 90,
+                                      "nodes": [
+                                        {
+                                          "node_id": "phase-build",
+                                          "title": "Build Phase",
+                                          "kind": "phase",
+                                          "state": "running",
+                                          "duration_seconds": 90,
+                                          "sub_nodes": [],
+                                          "leaf_tasks": [],
+                                          "leaf_job": {
+                                            "kind": "compile",
+                                            "status": "running",
+                                            "outcome": "success",
+                                            "duration_seconds": 45,
+                                            "waits_slot": true
+                                          }
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/plans/non-existent/process".equals(request.target())) {
+                response.send(404, null, "{\"error\": \"not_found\"}");
+            } else if ("/api/v1/plans".equals(request.target())) {
+                response.json(200, """
+                                    [
+                                      {
+                                        "id": "build-plan",
+                                        "phase": "execute",
+                                        "status": "running"
+                                      }
+                                    ]
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code1 = execute("plan", "build-plan", "--depth", "1");
+        var output1 = out.toString();
+        assertEquals(0, code1);
+        assertTrue(output1.contains("Build Phase"));
+
+        out.getBuffer().setLength(0);
+        int code2 = execute("plan", "build-plan", "--all");
+        var output2 = out.toString();
+        assertEquals(0, code2);
+        assertTrue(output2.contains("job (compile)"));
+        assertTrue(output2.contains("waits slot"));
+
+        out.getBuffer().setLength(0);
+        int code3 = execute("plan", "non-existent");
+        var output3 = out.toString();
+        assertEquals(1, code3);
+        assertTrue(output3.contains("Plan non-existent not found."));
+
+        out.getBuffer().setLength(0);
+        int code4 = execute("plan");
+        var output4 = out.toString();
+        assertEquals(0, code4);
+        assertTrue(output4.contains("Running Plans:"));
+        assertTrue(output4.contains("build-plan"));
+    }
+
+    @Test
+    @DisplayName("renders rich task activity entries including questions, files changed, and links")
+    void shouldRenderRichTaskActivity() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans/fix-relay/tasks/TASK-RICH/activity".equals(request.target())) {
+                response.json(200, """
+                                    {
+                                      "task_id": "TASK-RICH",
+                                      "role": "audit",
+                                      "harness": "opencode",
+                                      "model": "deepseek",
+                                      "attempt": 2,
+                                      "duration_seconds": 120,
+                                      "tokens_so_far": 8500,
+                                      "entries": [
+                                        {
+                                          "timestamp": "12:00:01",
+                                          "kind": "tool",
+                                          "tool_name": "pytest",
+                                          "tool_target": "tests/",
+                                          "tool_failed": true,
+                                          "size": "12 KiB"
+                                        },
+                                        {
+                                          "timestamp": "12:00:05",
+                                          "kind": "file_changed",
+                                          "files": ["pom.xml", "README.md"]
+                                        },
+                                        {
+                                          "timestamp": "12:00:10",
+                                          "kind": "questions_asked",
+                                          "content": "Should we rebase?"
+                                        },
+                                        {
+                                          "timestamp": "12:00:15",
+                                          "kind": "link",
+                                          "tool_target": "https://example.com/log"
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "fix-relay", "--task", "TASK-RICH");
+        var output = out.toString();
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("TASK-RICH")),
+                            () -> assertTrue(output.contains("pytest tests/")),
+                            () -> assertTrue(output.contains("failed · 12 KiB")),
+                            () -> assertTrue(output.contains("changed    pom.xml, README.md")),
+                            () -> assertTrue(output.contains("asked      Should we rebase?")),
+                            () -> assertTrue(output.contains("link       https://example.com/log"))
+        );
+    }
 }

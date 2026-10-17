@@ -62,4 +62,8 @@ public record ProcessEpicRef(
         var link = JsonTree.string(map, "link");
         return new ProcessEpicRef(epicId, title != null ? title : epicId, link);
     }
+
+    public static ProcessEpicRef fromJson(String json) throws IOException {
+        return fromMap(JsonTree.asObject(JsonTree.parse(json)));
+    }
 }

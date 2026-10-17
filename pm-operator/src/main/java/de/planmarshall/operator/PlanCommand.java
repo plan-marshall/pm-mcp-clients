@@ -352,6 +352,30 @@ public final class PlanCommand implements Callable<Integer> {
             }
         }
 
+        if ((level + 1) <= maxDepth && node.leafJob() != null) {
+            var job = node.leafJob();
+            var jobIndent = "  ".repeat(level + 1);
+            var jobGlyph = getTaskGlyph(job.status());
+            var jobStateCol = String.format("%-9s", job.status());
+            var jobDesc = OutputSafety.stripControlSequences("job (" + job.kind() + ")");
+            var jobInfoParts = new ArrayList<String>();
+            if (job.durationSeconds() > 0) {
+                jobInfoParts.add(formatPlanDuration(job.durationSeconds()));
+            }
+            if (job.waitsSlot()) {
+                jobInfoParts.add("waits slot");
+            }
+            if (job.outcome() != null && !job.outcome().isBlank()) {
+                jobInfoParts.add(job.outcome());
+            }
+            var jobInfo = String.join(" · ", jobInfoParts);
+            if (!jobInfo.isEmpty()) {
+                out.printf("%s%s %s %-30s %s%n", jobIndent, jobGlyph, jobStateCol, jobDesc, jobInfo);
+            } else {
+                out.printf("%s%s %s %s%n", jobIndent, jobGlyph, jobStateCol, jobDesc);
+            }
+        }
+
         if (level < maxDepth && !node.subNodes().isEmpty()) {
             renderNodes(out, node.subNodes(), level + 1, maxDepth);
         }

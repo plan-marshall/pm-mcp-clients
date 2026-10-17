@@ -62,4 +62,8 @@ public record ProcessProjectRef(
         var link = JsonTree.string(map, "link");
         return new ProcessProjectRef(projectId, displayName != null ? displayName : projectId, link);
     }
+
+    public static ProcessProjectRef fromJson(String json) throws IOException {
+        return fromMap(JsonTree.asObject(JsonTree.parse(json)));
+    }
 }
