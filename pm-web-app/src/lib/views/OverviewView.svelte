@@ -13,6 +13,7 @@
     type EndedWorkPage,
   } from '../api/client';
   import { openPlanView, openEpicView } from '../stores/runtime';
+  import { openStartWork } from '../stores/start';
 
   let projects: ProjectSummary[] = [];
   let selectedProjectId: string | null = null;
@@ -484,6 +485,16 @@
 
             <Button variant="secondary" on:click={openEndedWork}>
               {$t('overview.ended.open')}
+            </Button>
+
+            <Button
+              variant="primary"
+              on:click={() => openStartWork(selectedProjectId!, 'plan')}
+            >
+              {$t('start.ready.start_plan')}
+            </Button>
+            <Button variant="secondary" on:click={() => openStartWork(selectedProjectId!, 'epic')}>
+              {$t('start.ready.start_epic')}
             </Button>
           </div>
         </div>

@@ -41,6 +41,7 @@ import picocli.CommandLine.Command;
                                         EpicCommand.class,
                                         AbortCommand.class,
                                         RecipeCommand.class,
+                                        StartCommand.class,
                                         QuestionsCommand.class,
                                         AnswerCommand.class,
                                         ReportsCommand.class,

@@ -12,9 +12,13 @@ package de.planmarshall.mock.runtime;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -76,6 +80,13 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.report.TokenWasteRecord;
+import de.planmarshall.api.start.IntakeDraft;
+import de.planmarshall.api.start.PlanStartResult;
+import de.planmarshall.api.start.RecipeParameter;
+import de.planmarshall.api.start.RecipeRef;
+import de.planmarshall.api.start.SourceInput;
+import de.planmarshall.api.start.StartEpicRequest;
+import de.planmarshall.api.start.StartPlanRequest;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.system.CleanupItemEntry;
 import de.planmarshall.api.system.CleanupJob;
@@ -169,6 +180,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_LAN_FINGERPRINT = "4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07";
     private static final String CONST_LOOPBACK_URL = "http://127.0.0.1:7420";
     private static final int DEFAULT_LAN_PORT = 7421;
+    private static final String PREFIX_PROJECTS = "/api/v1/projects/";
+    private static final String PATH_RECIPES = "/api/v1/recipes";
+    private static final String PATH_INTAKE_DRAFT = "/api/v1/intake/draft";
+    private static final String SUFFIX_PLANS_START = "/plans/start";
+    private static final String SUFFIX_EPICS_START = "/epics/start";
+    private static final String EVENT_PLAN_STARTED = "plan.started";
+    private static final String EVENT_EPIC_STARTED = "epic.started";
+    private static final String EVENT_INTAKE_CREATED = "intake.created";
+    private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
+    private static final String ERR_START_REFUSED = "start_refused";
+    private static final String KEY_RECIPES = "recipes";
+    private static final DateTimeFormatter RECIPE_ID_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -198,6 +221,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
     private final List<BeingAddedProject> beingAddedProjects = new ArrayList<>();
+    private final Object startLock = new Object();
+    private final Set<String> startedPlanIds = new LinkedHashSet<>();
+    private final Set<String> startedEpicIds = new LinkedHashSet<>();
+    private int intakeDraftCounter;
     private volatile boolean lanListenerOn = true;
     private volatile int lanListenerPort = DEFAULT_LAN_PORT;
     private volatile boolean closed;
@@ -249,6 +276,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        initDefaultStart();
         transitionTo(scenario.start());
     }
 
@@ -262,6 +290,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultSystem();
         initDefaultProjects();
         initDefaultControl();
+        initDefaultStart();
         transitionTo(currentScenario.get().start());
     }
 
@@ -414,6 +443,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 3e. Dynamic plan and epic control routes (UC-CTL-1..5)
         if (handleControlRoutes(request, response)) {
+            return;
+        }
+
+        // 3f. Dynamic starting-work routes (UC-STA-1..5)
+        if (handleStartRoutes(request, response)) {
             return;
         }
 
@@ -1053,6 +1087,265 @@ public final class MockRuntimeEngine implements AutoCloseable {
             values.put("provider.issues", new PlanSettingsValue("provider.issues", "GitHub", "project", List.of()));
             controlSettings.put(CONST_FIX_RELAY, values);
         }
+    }
+
+    private void initDefaultStart() {
+        synchronized (startLock) {
+            startedPlanIds.clear();
+            startedEpicIds.clear();
+            intakeDraftCounter = 0;
+        }
+    }
+
+    private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if ("GET".equals(request.method()) && PATH_RECIPES.equals(path)) {
+            handleListRecipes(response);
+            return true;
+        }
+        if ("POST".equals(request.method()) && PATH_INTAKE_DRAFT.equals(path)) {
+            handleIntakeDraft(request, response);
+            return true;
+        }
+        if ("POST".equals(request.method()) && path.startsWith(PREFIX_PROJECTS)) {
+            if (path.endsWith(SUFFIX_PLANS_START)) {
+                handleStartPlan(request, response, projectIdOf(path, SUFFIX_PLANS_START));
+                return true;
+            }
+            if (path.endsWith(SUFFIX_EPICS_START)) {
+                handleStartEpic(request, response, projectIdOf(path, SUFFIX_EPICS_START));
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String projectIdOf(String path, String suffix) {
+        return path.substring(PREFIX_PROJECTS.length(), path.length() - suffix.length());
+    }
+
+    private boolean gateAllows(String projectId, MockHttpResponse response) throws IOException {
+        if (projectId == null || projectId.isBlank()) {
+            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "No project id in the request"));
+            return false;
+        }
+        if ("plan-marshall".equals(projectId)) {
+            response.json(409, Map.of(KEY_ERROR, ERR_START_REFUSED, KEY_REASON, ERR_PROJECT_NOT_READY,
+                    KEY_PROJECT_ID, projectId, "need", "credential sonar"));
+            return false;
+        }
+        if (!Set.of(CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CORE).contains(projectId)) {
+            response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_FOUND, KEY_MESSAGE, "Unknown project: " + projectId));
+            return false;
+        }
+        return true;
+    }
+
+    private void handleListRecipes(MockHttpResponse response) throws IOException {
+        response.json(200, Map.of(KEY_RECIPES, defaultRecipes().stream().map(RecipeRef::toMap).toList()));
+    }
+
+    private static List<RecipeRef> defaultRecipes() {
+        return List.of(
+                new RecipeRef("agentfile-hygiene", "agentfile-hygiene",
+                        "classify and clean the agent files against the rubric", "domain", false, List.of()),
+                new RecipeRef("code-review", "code-review",
+                        "a structural and quality review of the current footprint", "domain", false,
+                        List.of(new RecipeParameter("depth", "standard",
+                                List.of("quick", "standard", "deep"), true, true, null))),
+                new RecipeRef("lesson-cleanup", "lesson-cleanup",
+                        "turn one lesson into a slim, deterministic plan", "domain", false, List.of()),
+                new RecipeRef("coverage", "coverage", "raise the test coverage of modules", "domain", false,
+                        List.of(
+                                new RecipeParameter("modules", "all 9",
+                                        List.of("all 9", "pm-api", "pm-operator"), true, true, null),
+                                new RecipeParameter("thoroughness", "standard",
+                                        List.of("quick", "standard", "thorough"), true, true, null))),
+                new RecipeRef("audit", "audit", "audit the code against a request", "project", true,
+                        List.of(new RecipeParameter("modules", "all 9", List.of("all 9"), true, true, null))),
+                new RecipeRef("no-modules", "no-modules", "a recipe whose parameter has no option", "project",
+                        false, List.of(new RecipeParameter("modules", null, List.of(), false, false,
+                                "none the recipe can work on"))));
+    }
+
+    private void handleStartPlan(MockHttpRequest request, MockHttpResponse response, String projectId) throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var bodyMap = readBodyObject(request);
+        bodyMap.putIfAbsent(KEY_PROJECT_ID, projectId);
+        StartPlanRequest parsed;
+        try {
+            parsed = StartPlanRequest.fromMap(bodyMap);
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (RuntimeException | IOException _) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_request", KEY_MESSAGE, "The start request could not be read"));
+            return;
+        }
+        var title = deriveTitle(parsed.title(), parsed.objective(), parsed.issue(), parsed.documents());
+        var idSource = parsed.recipeId() != null
+                ? "recipe-" + parsed.recipeId() + "-" + LocalDateTime.now().format(RECIPE_ID_TIMESTAMP)
+                : title;
+        var id = uniquePlanId(slug(idSource));
+        var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_PLAN,
+                title, PlanStartResult.STATE_STARTED, "/api/v1/plans/" + id).toMap());
+        body.put(KEY_PROJECT_ID, projectId);
+        if (parsed.recipeId() != null) {
+            body.put("recipe_id", parsed.recipeId());
+        }
+        broadcastEvent(EVENT_PLAN_STARTED, Map.of("plan_id", id, KEY_LABEL, title, KEY_PROJECT_ID, projectId));
+        response.json(201, body);
+    }
+
+    private void handleStartEpic(MockHttpRequest request, MockHttpResponse response, String projectId) throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        var bodyMap = readBodyObject(request);
+        bodyMap.putIfAbsent(KEY_PROJECT_ID, projectId);
+        StartEpicRequest parsed;
+        try {
+            parsed = StartEpicRequest.fromMap(bodyMap);
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (RuntimeException | IOException _) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_request", KEY_MESSAGE, "The epic request could not be read"));
+            return;
+        }
+        var title = deriveTitle(parsed.title(), parsed.objective(), null, List.of());
+        var id = uniqueEpicId(slug(title));
+        var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_EPIC,
+                title, PlanStartResult.STATE_STARTED, "/api/v1/epics/" + id).toMap());
+        body.put(KEY_PROJECT_ID, projectId);
+        body.put("auto_start", parsed.autoStart() != null ? parsed.autoStart() : Boolean.TRUE);
+        broadcastEvent(EVENT_EPIC_STARTED, Map.of("epic_id", id, KEY_LABEL, title, KEY_PROJECT_ID, projectId));
+        response.json(201, body);
+    }
+
+    private void handleIntakeDraft(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var bodyMap = readBodyObject(request);
+        var projectId = JsonTree.string(bodyMap, KEY_PROJECT_ID);
+        if (projectId == null || projectId.isBlank()) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_request", KEY_MESSAGE, "project_id is required"));
+            return;
+        }
+        String id;
+        synchronized (startLock) {
+            intakeDraftCounter++;
+            id = "draft-" + intakeDraftCounter;
+        }
+        var draft = new IntakeDraft(id, projectId, JsonTree.string(bodyMap, "prompt"),
+                readSources(bodyMap), Instant.now());
+        broadcastEvent(EVENT_INTAKE_CREATED, Map.of("draft_id", id, KEY_PROJECT_ID, projectId));
+        response.json(201, draft.toMap());
+    }
+
+    private static List<SourceInput> readSources(Map<String, Object> bodyMap) throws IOException {
+        var raw = JsonTree.asArray(bodyMap.get("sources"));
+        if (raw == null) {
+            return List.of();
+        }
+        var sources = new ArrayList<SourceInput>();
+        for (var item : raw) {
+            var obj = JsonTree.asObject(item);
+            if (obj != null) {
+                sources.add(SourceInput.fromMap(obj));
+            }
+        }
+        return sources;
+    }
+
+    private static Map<String, Object> readBodyObject(MockHttpRequest request) throws IOException {
+        if (request.body().length == 0) {
+            return new LinkedHashMap<>();
+        }
+        var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+        return parsed != null ? new LinkedHashMap<>(parsed) : new LinkedHashMap<>();
+    }
+
+    private static String deriveTitle(@Nullable String title, @Nullable String objective, @Nullable String issue,
+                                      List<String> documents) {
+        if (title != null && !title.isBlank()) {
+            return title.trim();
+        }
+        if (objective != null && !objective.isBlank()) {
+            return firstLine(objective);
+        }
+        if (issue != null && !issue.isBlank()) {
+            return "issue-" + lastSegment(issue);
+        }
+        if (!documents.isEmpty() && !documents.getFirst().isBlank()) {
+            return fileName(documents.getFirst());
+        }
+        return "New work";
+    }
+
+    private static String firstLine(String text) {
+        var trimmed = text.strip();
+        int newline = trimmed.indexOf('\n');
+        var line = newline >= 0 ? trimmed.substring(0, newline).strip() : trimmed;
+        return line.isBlank() ? "New work" : line;
+    }
+
+    private static String lastSegment(String reference) {
+        var clean = reference.strip();
+        int slash = clean.lastIndexOf('/');
+        return slash >= 0 ? clean.substring(slash + 1) : clean.replace("#", "");
+    }
+
+    private static String fileName(String path) {
+        var clean = path.strip();
+        while (clean.endsWith("/")) {
+            clean = clean.substring(0, clean.length() - 1);
+        }
+        int slash = clean.lastIndexOf('/');
+        return slash >= 0 ? clean.substring(slash + 1) : clean;
+    }
+
+    private String uniquePlanId(String base) {
+        synchronized (startLock) {
+            var candidate = base;
+            int suffix = 1;
+            while (startedPlanIds.contains(candidate)) {
+                suffix++;
+                candidate = base + "-" + suffix;
+            }
+            startedPlanIds.add(candidate);
+            return candidate;
+        }
+    }
+
+    private String uniqueEpicId(String base) {
+        synchronized (startLock) {
+            var candidate = base;
+            int suffix = 1;
+            while (startedEpicIds.contains(candidate)) {
+                suffix++;
+                candidate = base + "-" + suffix;
+            }
+            startedEpicIds.add(candidate);
+            return candidate;
+        }
+    }
+
+    private static String slug(String text) {
+        var sb = new StringBuilder();
+        boolean pendingDash = false;
+        for (char c : text.toLowerCase(Locale.ROOT).toCharArray()) {
+            if (Character.isLetterOrDigit(c)) {
+                if (pendingDash && sb.length() > 0) {
+                    sb.append('-');
+                }
+                sb.append(c);
+                pendingDash = false;
+            } else {
+                pendingDash = true;
+            }
+        }
+        return sb.length() == 0 ? "started-work" : sb.toString();
     }
 
     private static String holdKey(String subjectId, String holdId) {

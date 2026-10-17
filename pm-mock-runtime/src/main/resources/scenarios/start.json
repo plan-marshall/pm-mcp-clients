@@ -1,0 +1,137 @@
+{
+  "format_version": 1,
+  "name": "start",
+  "description": "Starting work: a plan from a description, documents, and an issue, an epic's start with its decomposition, a recipe with its parameters, and the draft intake (UC-STA-1 to UC-STA-5)",
+  "start": "start.sources",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/projects": {
+      "representation": {
+        "projects": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "pm-mcp-clients",
+            "readiness": "ready",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:36:00Z"
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "pm-mcp-core",
+            "readiness": "ready",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-15T09:00:00Z"
+          },
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "readiness": "setup_needs",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 1,
+            "setup_needs_operator": true,
+            "setup_need": "credential sonar",
+            "last_activity_at": "2026-10-14T12:00:00Z"
+          }
+        ]
+      }
+    }
+  },
+  "states": {
+    "start.sources": {
+      "representation": {
+        "scope": "workspace",
+        "state": "start.sources",
+        "state_kind": "start",
+        "summary": "Starting a plan · The sources so far",
+        "kind": "plan",
+        "project_id": "pm-mcp-clients",
+        "title": "Start a plan in pm-mcp-clients",
+        "sources": [],
+        "can_continue": false
+      },
+      "links": {
+        "continue": {
+          "method": "POST",
+          "next": "start.ready",
+          "href": "/api/v1/projects/pm-mcp-clients/plans/start"
+        }
+      }
+    },
+    "start.epic-sources": {
+      "representation": {
+        "scope": "workspace",
+        "state": "start.epic-sources",
+        "state_kind": "start",
+        "summary": "Starting an epic · The sources so far",
+        "kind": "epic",
+        "project_id": "pm-mcp-clients",
+        "title": "Start an epic in pm-mcp-clients",
+        "sources": [],
+        "can_continue": false
+      },
+      "links": {
+        "continue": {
+          "method": "POST",
+          "next": "start.epic-ready",
+          "href": "/api/v1/projects/pm-mcp-clients/epics/start"
+        }
+      }
+    },
+    "start.ready": {
+      "representation": {
+        "scope": "workspace",
+        "state": "start.ready",
+        "state_kind": "start",
+        "summary": "Starting a plan · Ready",
+        "kind": "plan",
+        "project_id": "pm-mcp-clients"
+      },
+      "links": {}
+    },
+    "start.epic-ready": {
+      "representation": {
+        "scope": "workspace",
+        "state": "start.epic-ready",
+        "state_kind": "start",
+        "summary": "Starting an epic · Ready",
+        "kind": "epic",
+        "project_id": "pm-mcp-clients"
+      },
+      "links": {}
+    },
+    "start.recipe": {
+      "representation": {
+        "scope": "workspace",
+        "state": "start.recipe",
+        "state_kind": "start",
+        "summary": "Starting a plan · Which recipe?",
+        "kind": "plan",
+        "project_id": "pm-mcp-clients"
+      },
+      "links": {}
+    }
+  }
+}
