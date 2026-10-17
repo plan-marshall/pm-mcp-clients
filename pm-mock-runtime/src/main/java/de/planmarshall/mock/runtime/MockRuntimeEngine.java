@@ -247,7 +247,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_LANDING_FILES = "landing_files";
     private static final String KEY_PR_REFERENCE = "pr_url";
     private static final String KEY_PLAN_ID = "plan_id";
-    private static final String KEY_PREVIEW_ID = "preview_id";
     private static final String KEY_SNAPSHOT_COMMIT = "snapshot_commit";
     private static final String KEY_LANE = "lane";
     private static final String ERR_PREVIEW_STALE = "preview_stale";
