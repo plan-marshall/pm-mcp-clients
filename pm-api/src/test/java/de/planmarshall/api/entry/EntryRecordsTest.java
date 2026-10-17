@@ -24,6 +24,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import de.planmarshall.api.json.JsonFormatException;
+
 @DisplayName("Entry record contracts")
 class EntryRecordsTest {
 
@@ -112,7 +114,7 @@ class EntryRecordsTest {
     void devicePairedEventRoundTrips() throws Exception {
         var event = new DevicePairedEvent("dev-1", "Firefox on mbp-oliver", "loopback");
 
-        assertEquals(DevicePairedEvent.EVENT_NAME, "device.paired");
+        assertEquals("device.paired", DevicePairedEvent.EVENT_NAME);
         assertEquals(event, DevicePairedEvent.fromJson(event.toJson()));
     }
 
@@ -121,10 +123,48 @@ class EntryRecordsTest {
     void listenerChangedEventRoundTrips() throws Exception {
         var event = new ListenerChangedEvent(ListenerKind.LAN, true, "https://mbp-oliver.local:7421", "4F:1A:9C");
 
-        assertEquals(ListenerChangedEvent.EVENT_NAME, "listener.changed");
+        assertEquals("listener.changed", ListenerChangedEvent.EVENT_NAME);
         var roundTrip = ListenerChangedEvent.fromJson(event.toJson());
         assertEquals(event, roundTrip);
         assertEquals("lan", roundTrip.toMap().get("listener"));
         assertTrue(roundTrip.enabled());
+    }
+
+    @Nested
+    @DisplayName("Negative parsing")
+    class NegativeParsing {
+
+        @Test
+        @DisplayName("refuses a JSON value that is no object")
+        void refusesNonObjectJson() {
+            assertThrows(JsonFormatException.class, () -> PairingToken.fromJson("[]"));
+            assertThrows(JsonFormatException.class, () -> PairingRedemptionRequest.fromJson("[]"));
+            assertThrows(JsonFormatException.class, () -> PairingRedemptionResponse.fromJson("[]"));
+            assertThrows(JsonFormatException.class, () -> LanListenerConfig.fromJson("[]"));
+            assertThrows(JsonFormatException.class, () -> ConnectionStatus.fromJson("[]"));
+            assertThrows(JsonFormatException.class, () -> DevicePairedEvent.fromJson("[]"));
+            assertThrows(JsonFormatException.class, () -> ListenerChangedEvent.fromJson("[]"));
+        }
+
+        @Test
+        @DisplayName("refuses an object without the required fields")
+        void refusesMissingFields() {
+            assertThrows(JsonFormatException.class, () -> PairingToken.fromJson("{}"));
+            assertThrows(JsonFormatException.class, () -> PairingRedemptionRequest.fromJson("{}"));
+            assertThrows(JsonFormatException.class, () -> PairingRedemptionResponse.fromJson("{}"));
+            assertThrows(JsonFormatException.class, () -> LanListenerConfig.fromJson("{}"));
+            assertThrows(JsonFormatException.class, () -> DevicePairedEvent.fromJson("{}"));
+            assertThrows(JsonFormatException.class, () -> ListenerChangedEvent.fromJson("{}"));
+        }
+
+        @Test
+        @DisplayName("defaults the optional connection fields")
+        void defaultsOptionalConnectionFields() throws Exception {
+            var status = ConnectionStatus.fromJson("{}");
+
+            assertEquals(0, status.pairedDevicesCount());
+            assertFalse(status.loopbackOpen());
+            assertFalse(status.lanEnabled());
+        }
     }
 }

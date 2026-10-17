@@ -287,27 +287,40 @@ public final class PmConsole {
             if (parsed instanceof Map<?, ?> map) {
                 @SuppressWarnings("unchecked")
                 var eventMap = (Map<String, Object>) map;
-                var notice = ConsoleNotice.fromEventMap(eventMap);
-                if (notice != null) {
-                    reader.printAbove(notice);
-                }
-                var name = event.event() != null ? event.event() : "";
-                var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-                if ("device.paired".equals(name) || "paired".equals(type)) {
-                    var label = JsonTree.string(eventMap, "label");
-                    reader.printAbove("✓ Paired: " + (label != null ? label : "local"));
-                    if ("device.paired".equals(name)) {
-                        issueFreshCodeAbove(reader);
-                    }
-                } else if ("fresh_code".equals(type)) {
-                    activePairingCode = (String) eventMap.get("code");
-                    activePairingUrl = (String) eventMap.get("url");
-                }
+                applyConsoleEvent(event.event(), eventMap, reader);
             }
         }
         /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (Exception _) {
             // invalid json in event stream
+        }
+    }
+
+    /**
+     * Applies one parsed console event: the arrival notices, and the pairing events the entry
+     * follows ({@code device.paired} with a fresh code, the legacy {@code paired}/{@code fresh_code}
+     * notices).
+     *
+     * @param eventName the SSE event name, or {@code null}
+     * @param eventMap  the parsed event payload
+     * @param reader    the line reader the notices are printed above
+     */
+    void applyConsoleEvent(@Nullable String eventName, Map<String, Object> eventMap, LineReader reader) {
+        var notice = ConsoleNotice.fromEventMap(eventMap);
+        if (notice != null) {
+            reader.printAbove(notice);
+        }
+        var name = eventName != null ? eventName : "";
+        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        if ("device.paired".equals(name) || "paired".equals(type)) {
+            var label = JsonTree.string(eventMap, "label");
+            reader.printAbove("✓ Paired: " + (label != null ? label : "local"));
+            if ("device.paired".equals(name)) {
+                issueFreshCodeAbove(reader);
+            }
+        } else if ("fresh_code".equals(type)) {
+            activePairingCode = (String) eventMap.get("code");
+            activePairingUrl = (String) eventMap.get("url");
         }
     }
 

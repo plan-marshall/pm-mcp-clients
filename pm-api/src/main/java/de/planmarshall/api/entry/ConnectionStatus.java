@@ -82,9 +82,8 @@ public record ConnectionStatus(
      *
      * @param map the input map
      * @return the connection status
-     * @throws IOException on a malformed count
      */
-    public static ConnectionStatus fromMap(Map<String, Object> map) throws IOException {
+    public static ConnectionStatus fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var count = JsonTree.integer(map, FIELD_PAIRED_DEVICES);
         return new ConnectionStatus(

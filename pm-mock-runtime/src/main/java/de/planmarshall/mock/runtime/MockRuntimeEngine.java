@@ -863,10 +863,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (Boolean.TRUE.equals(map.get(FIELD_ONBOARDED))) {
             return true;
         }
-        if (map.get("onboard") instanceof Map<?, ?> onboard) {
-            if ("onboard.completed".equals(onboard.get("state")) || Boolean.TRUE.equals(onboard.get("completed"))) {
-                return true;
-            }
+        if (map.get("onboard") instanceof Map<?, ?> onboard
+                && ("onboard.completed".equals(onboard.get(KEY_STATE))
+                || Boolean.TRUE.equals(onboard.get("completed")))) {
+            return true;
         }
         return map.get("machine") instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get(FIELD_ONBOARDED));
     }
@@ -893,7 +893,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if ("/api/v1/web".equals(path)) {
             var resp = new LinkedHashMap<String, Object>();
-            resp.put("enabled", true);
+            resp.put(FIELD_ENABLED, true);
             resp.put("lan", lanListenerOn);
             resp.put("port", 7420);
             resp.put("open", true);
@@ -952,7 +952,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleRevokeAllDevices(request, response, isWeb);
             return true;
         }
-        if ("/api/v1/web/listeners/lan".equals(path)) {
+        if (PATH_LAN_LISTENER.equals(path)) {
             handleCloseLanListener(response);
             return true;
         }

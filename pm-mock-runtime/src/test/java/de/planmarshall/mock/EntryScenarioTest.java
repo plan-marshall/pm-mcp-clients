@@ -12,6 +12,7 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -180,6 +181,55 @@ class EntryScenarioTest {
                 assertEquals("stream.closed", closed.event());
                 assertEquals("listener_closed", JsonTree.string(JsonTree.asObject(JsonTree.parse(closed.data())), "reason"));
             }
+        }
+    }
+
+    @Test
+    @DisplayName("stores a credential over the local socket")
+    void shouldStoreCredentialLocally() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ENTRY)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.json("PUT", "/api/v1/credentials/github", "{\"secret\":\"s\"}")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            assertEquals("github",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(res.body())), "credential_key"));
+        }
+    }
+
+    @Test
+    @DisplayName("reports the network listener closed in the connection status")
+    void shouldReportLanClosed() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ENTRY)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            client.send(new HttpRequest("DELETE", "/api/v1/web/listeners/lan", Map.of("Authorization", auth), null));
+
+            var res = client.send(HttpRequest.get("/api/v1/status/connection").withHeader("Authorization", auth));
+            var status = ConnectionStatus.fromJson(new String(res.body(), StandardCharsets.UTF_8));
+            assertFalse(status.lanEnabled());
+            assertNull(status.lanFingerprint());
+        }
+    }
+
+    @Test
+    @DisplayName("turns the network listener on again through PUT /api/v1/web")
+    void shouldTurnLanOnThroughWebConfig() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.ENTRY)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            client.send(new HttpRequest("DELETE", "/api/v1/web/listeners/lan", Map.of("Authorization", auth), null));
+            var res = client.send(HttpRequest.json("PUT", "/api/v1/web", "{\"lan\":true}")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+
+            var statusRes = client.send(HttpRequest.get("/api/v1/status/connection").withHeader("Authorization", auth));
+            var status = ConnectionStatus.fromJson(new String(statusRes.body(), StandardCharsets.UTF_8));
+            assertTrue(status.lanEnabled());
         }
     }
 

@@ -600,7 +600,7 @@ public final class WebCommand implements Callable<Integer> {
             }
             out.println("  " + MessageCatalogue.format(locale, "entry.listener.lan_open", Map.of(
                                 "url", lanUrl,
-                                "loopback", "http://127.0.0.1:" + loopbackPort)));
+                                LOOPBACK, "http://127.0.0.1:" + loopbackPort)));
             var fingerprint = JsonTree.string(json, "lan_fingerprint");
             if (fingerprint != null) {
                 out.println("  " + MessageCatalogue.format(locale, "entry.listener.fingerprint", Map.of())
