@@ -398,8 +398,7 @@ final class DesignerRegistry {
             return FrontmatterBlock.ABSENT;
         }
         var close = lines.subList(open + 1, lines.size()).indexOf(FRONTMATTER_FENCE);
-        var block = close < 0 ? lines.subList(open + 1, lines.size())
-                : lines.subList(open + 1, open + 1 + close);
+        var block = lines.subList(open + 1, close < 0 ? lines.size() : open + 1 + close);
         return new FrontmatterBlock(true,
                 firstValue(block, "name:"),
                 firstValue(block, "description:"),
