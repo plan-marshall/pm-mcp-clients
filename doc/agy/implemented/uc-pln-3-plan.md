@@ -59,7 +59,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
 - [x] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/uc-pln-3-plan-report.md` by orchestrator session.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/uc-pln-3-plan-report.md` by orchestrator session.
 
 ---
 
