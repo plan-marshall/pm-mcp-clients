@@ -312,6 +312,67 @@ export interface StateRepresentation {
   [key: string]: unknown;
 }
 
+export interface ActionAvailability {
+  action: string;
+  available: boolean;
+  reason?: string | null;
+}
+
+export interface WorkActions {
+  subject_id: string;
+  subject_kind: string;
+  state: string;
+  pausing_point?: string | null;
+  hold_kind?: string | null;
+  epic_id?: string | null;
+  actions: ActionAvailability[];
+}
+
+export interface HoldRecord {
+  hold_id: string;
+  subject_id: string;
+  subject_kind: string;
+  kind: string;
+  cause: string;
+  attempts: number;
+  last_tried_at?: string | null;
+  file_path?: string | null;
+  recorded_size?: number | null;
+  recorded_digest?: string | null;
+  current_size?: number | null;
+  current_digest?: string | null;
+  acts: string[];
+  pull_request_url?: string | null;
+}
+
+export interface HoldResolutionResult {
+  hold_id: string;
+  released: boolean;
+  cause?: string | null;
+  subject: string;
+}
+
+export interface PlanSettingsValue {
+  aspect: string;
+  value?: string | null;
+  origin: string;
+  choices?: string[];
+}
+
+export interface PlanSettingsRecord {
+  plan_id: string;
+  revision: number;
+  values: PlanSettingsValue[];
+}
+
+export interface PlanSettingsUpdateResult {
+  applied: boolean;
+  conflict: boolean;
+  revision: number;
+  current_value?: string | null;
+  state?: string | null;
+}
+
 export interface ReportFrom {
   project?: string;
   epic?: string;
@@ -1093,6 +1154,94 @@ export class ApiClient {
 
   public async getEpicProcess(epicId: string): Promise<EpicProcess> {
     return this.request<EpicProcess>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}/process`);
+  }
+
+  public async getPlanActions(planId: string): Promise<WorkActions> {
+    return this.request<WorkActions>('GET', `/api/v1/plans/${encodeURIComponent(planId)}/actions`);
+  }
+
+  public async applyPlanAction(
+    planId: string,
+    action: string,
+    body?: Record<string, unknown>,
+  ): Promise<WorkActions> {
+    return this.request<WorkActions>(
+      'POST',
+      `/api/v1/plans/${encodeURIComponent(planId)}/actions/${encodeURIComponent(action)}`,
+      body ?? {},
+    );
+  }
+
+  public async getEpicActions(epicId: string): Promise<WorkActions> {
+    return this.request<WorkActions>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}/actions`);
+  }
+
+  public async applyEpicAction(
+    epicId: string,
+    action: string,
+    body?: Record<string, unknown>,
+  ): Promise<WorkActions> {
+    return this.request<WorkActions>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/actions/${encodeURIComponent(action)}`,
+      body ?? {},
+    );
+  }
+
+  public async getPlanHolds(planId: string): Promise<HoldRecord[]> {
+    return this.request<HoldRecord[]>('GET', `/api/v1/plans/${encodeURIComponent(planId)}/holds`);
+  }
+
+  public async resolveHold(
+    planId: string,
+    holdId: string,
+    act: string,
+    reason?: string,
+  ): Promise<HoldResolutionResult> {
+    return this.request<HoldResolutionResult>(
+      'POST',
+      `/api/v1/plans/${encodeURIComponent(planId)}/holds/${encodeURIComponent(holdId)}/resolve`,
+      reason ? { act, reason } : { act },
+    );
+  }
+
+  public async getPlanSettings(planId: string): Promise<PlanSettingsRecord> {
+    return this.request<PlanSettingsRecord>(
+      'GET',
+      `/api/v1/plans/${encodeURIComponent(planId)}/settings`,
+    );
+  }
+
+  public async updatePlanSettings(
+    planId: string,
+    aspect: string,
+    value: string | null,
+    revision: number,
+  ): Promise<PlanSettingsUpdateResult> {
+    const path = `/api/v1/plans/${encodeURIComponent(planId)}/settings`;
+    return this.requestWithConflict<PlanSettingsUpdateResult>('PUT', path, {
+      aspect,
+      value,
+      revision,
+    });
+  }
+
+  private async requestWithConflict<T>(method: string, path: string, body: unknown): Promise<T> {
+    const secret = this.getSecret();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (secret) {
+      headers['Authorization'] = `Bearer ${secret}`;
+    }
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers,
+      body: JSON.stringify(body),
+    });
+    if (res.status === 409 || res.ok) {
+      return (await res.json()) as T;
+    }
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
   }
 
   public subscribeTaskActivity(
