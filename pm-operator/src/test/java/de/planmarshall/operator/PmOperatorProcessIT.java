@@ -400,31 +400,26 @@ class PmOperatorProcessIT {
     }
 
     @Test
-    @DisplayName("epic decompose against runtime reports the workstreams (UC-STA-6)")
-    void epicDecomposeAgainstRuntime() throws Exception {
+    @DisplayName("epic decompose refuses execution without an interactive terminal (PM-SEC-3)")
+    void epicDecomposeRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> {
-            if ("/api/v1/projects/pm-mcp-clients/epics/relay-hardening/decomposition".equals(request.target())
-                                && "GET".equals(request.method())) {
-                response.json(200, """
-                                    {"epic_id":"relay-hardening","status":"review","revision":3,
-                                     "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
-                                       "staged_plans":[{"plan_id":"relay-cursor-order","title":"relay-cursor-order",
-                                         "expected_surface":["pm-relay/src/cursor"],"dependencies":[],
-                                         "status":"staged"}]}],
-                                     "findings":[]}
-                                    """);
-            } else {
-                response.json(404, "{\"error\":\"not_found\"}");
-            }
-        });
-
         try (var process = operator(environment(), "epic", "decompose", "relay-hardening")) {
-            assertEquals(0, process.awaitExit(WAIT), process.stderr());
-            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
-            assertTrue(stdout.contains("relay-hardening \u00b7 decomposition"), "got: " + stdout);
-            assertTrue(stdout.contains("Reconnect"), "got: " + stdout);
-            assertTrue(stdout.contains("relay-cursor-order"), "got: " + stdout);
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+
+        try (var process = operator(environment(), "epic", "review", "relay-hardening", "--agree")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+
+        try (var process = operator(environment(), "epic", "instruct", "relay-hardening", "--plan", "relay-auth-v2",
+                            "--instruction", "change it")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
         }
     }
 
