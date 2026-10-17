@@ -971,6 +971,50 @@ export interface IntakeDraft {
   created_at: string;
 }
 
+export interface StagedPlanRecord {
+  plan_id: string;
+  title: string;
+  objective?: string | null;
+  expected_surface: string[];
+  dependencies: string[];
+  status: string;
+}
+
+export interface WorkstreamRecord {
+  id: string;
+  name: string;
+  description?: string | null;
+  order: number;
+  staged_plans: StagedPlanRecord[];
+}
+
+export interface DecompositionCheckFinding {
+  severity: 'info' | 'warning' | 'error';
+  rule: string;
+  affected_plans: string[];
+  message: string;
+}
+
+export interface EpicDecomposition {
+  epic_id: string;
+  status: string;
+  revision: number;
+  workstreams: WorkstreamRecord[];
+  findings: DecompositionCheckFinding[];
+}
+
+export interface DecompositionInstructRequest {
+  plan_id?: string | null;
+  instruction: string;
+  action: 'edit' | 'add' | 'rewrite';
+}
+
+export interface DecompositionCommitResult {
+  status: string;
+  ledger_revision: number;
+  launchable_plan_count: number;
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
@@ -1123,6 +1167,45 @@ export class ApiClient {
     sources?: SourceInput[];
   }): Promise<IntakeDraft> {
     return this.request<IntakeDraft>('POST', '/api/v1/intake/draft', request);
+  }
+
+  private decompositionPath(projectId: string, epicId: string): string {
+    return `/api/v1/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/decomposition`;
+  }
+
+  public async getDecomposition(projectId: string, epicId: string): Promise<EpicDecomposition> {
+    return this.request<EpicDecomposition>('GET', this.decompositionPath(projectId, epicId));
+  }
+
+  public async checkDecomposition(projectId: string, epicId: string): Promise<EpicDecomposition> {
+    return this.request<EpicDecomposition>(
+      'POST',
+      `${this.decompositionPath(projectId, epicId)}/check`,
+      {},
+    );
+  }
+
+  public async instructDecomposition(
+    projectId: string,
+    epicId: string,
+    request: DecompositionInstructRequest,
+  ): Promise<EpicDecomposition> {
+    return this.request<EpicDecomposition>(
+      'POST',
+      `${this.decompositionPath(projectId, epicId)}/instruct`,
+      request,
+    );
+  }
+
+  public async commitDecomposition(
+    projectId: string,
+    epicId: string,
+  ): Promise<DecompositionCommitResult> {
+    return this.request<DecompositionCommitResult>(
+      'POST',
+      `${this.decompositionPath(projectId, epicId)}/commit`,
+      {},
+    );
   }
 
   public async getConnectionStatus(): Promise<ConnectionStatus> {

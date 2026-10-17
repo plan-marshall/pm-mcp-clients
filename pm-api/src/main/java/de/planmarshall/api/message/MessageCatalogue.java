@@ -53,6 +53,7 @@ public final class MessageCatalogue {
             "epic_view",
             "control",
             "start",
+            "decomposition",
             "operator"
     );
 

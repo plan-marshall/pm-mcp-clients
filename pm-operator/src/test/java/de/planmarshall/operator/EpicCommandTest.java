@@ -173,19 +173,31 @@ class EpicCommandTest {
     }
 
     @Test
-    @DisplayName("epic decompose triggers decomposition")
+    @DisplayName("epic decompose prints the decomposition tree")
     void epicDecompose() throws Exception {
         fixture.start((request, response) -> {
-            if ("/api/v1/epics/ep-001/decompose".equals(request.target()) && "POST".equals(request.method())) {
-                response.send(202, null, "");
+            if ("/api/v1/projects/pm-mcp-clients/epics/ep-001/decomposition".equals(request.target())
+                                && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {"epic_id":"ep-001","status":"review","revision":1,
+                                     "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
+                                       "staged_plans":[{"plan_id":"relay-cursor-order","title":"relay-cursor-order",
+                                         "expected_surface":["pm-relay"],"dependencies":[],"status":"staged"}]}],
+                                     "findings":[]}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("epic", "decompose", "ep-001", "--instruction", "re-split tasks");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ ep-001 decomposing"));
+        int code = execute("epic", "decompose", "ep-001");
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("decomposition")),
+                            () -> assertTrue(output.contains("Reconnect")),
+                            () -> assertTrue(output.contains("relay-cursor-order"))
+        );
     }
 
     @Test

@@ -15,6 +15,7 @@
   import ProjectExplorerView from '../lib/views/ProjectExplorerView.svelte';
   import PlanView from '../lib/views/PlanView.svelte';
   import EpicView from '../lib/views/EpicView.svelte';
+  import EpicDecompositionView from '../lib/views/EpicDecompositionView.svelte';
   import StartWorkModal from '../lib/components/StartWorkModal.svelte';
   import { startModalStore, closeStartWork } from '../lib/stores/start';
 </script>
@@ -47,6 +48,8 @@
   <PlanView />
 {:else if $runtimeStore.currentRoute === 'epic'}
   <EpicView />
+{:else if $runtimeStore.currentRoute === 'decomposition'}
+  <EpicDecompositionView />
 {:else}
   <OverviewView />
 {/if}
