@@ -149,3 +149,14 @@ OpenRewrite, the license-header check, Checkstyle, the Enforcer rules (`clients-
 | `pm-web-app` | implementer | Typed client methods and three Svelte 5 components. |
 | Verification | integration-tester | `./mvnw verify -Ppre-commit` and the Playwright contract suite. |
 | Review gate | code-reviewer | Adversarial pass over the diff before the PR. |
+
+---
+
+## 7. Review Gate & Landing Evidence (PR #72)
+
+- **PR**: [#72](https://github.com/plan-marshall/pm-mcp-clients/pull/72) — `feat/uc-ctl-control` → `main`, labelled `skip-bot-review` (authorized fast-path).
+- **CI**: `build (25)`, `build (26)`, `build / sonar-build`, `build / quarkus-alignment`, `integration-tests / test`, `dependency-review` — all **pass**. `mergeStateStatus = CLEAN`.
+- **SonarCloud Quality Gate**: **passed** — 0 security hotspots, 0 accepted issues, 0 new dependency risks, **81.7% coverage on new code**, **0.0% duplication on new code**.
+- **AI review bots**: Sourcery and CodeRabbit skipped by the `skip-bot-review` label (as authorized); no inline review comments were raised.
+- **Adversarial refutation of the 45 Sonar "new issues"** (persona-code-reviewer lens): 37 are `java:S1192` (duplicated JSON field-name and route-path string literals) and the rest are minor complexity/inline smells. They are **style preferences, not defects** — the same literal-repetition style is pervasive in the pre-existing `MockRuntimeEngine` and record codecs, the Quality Gate is green, and behaviour is unaffected. They are therefore accepted rather than churned, consistent with the "defect vs. preference" lens.
+
