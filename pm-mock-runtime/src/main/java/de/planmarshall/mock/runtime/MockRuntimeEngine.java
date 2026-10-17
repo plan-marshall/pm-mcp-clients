@@ -2467,7 +2467,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var link = entry.getValue();
                 var target = new LinkedHashMap<String, Object>();
                 target.put("href", link.href() != null ? link.href() : "/api/v1/onboarding/step");
-                target.put("method", link.method());
+                target.put(KEY_METHOD, link.method());
                 target.put("next", link.next());
                 links.put(entry.getKey(), target);
             }
