@@ -13,7 +13,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 | **Use Cases** | [`plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3`](file:///Users/oliver/git/plan-marshall-documentation/doc/use-cases/03-plans.adoc) (Design a Plan's Process — Web App Only) |
 | **Specifications** | [`04-ast-node-model.adoc#process-designer`](file:///Users/oliver/git/pm-mcp-core/doc/specification/workflow-dsl/04-ast-node-model.adoc), [`01-grammar.adoc#unit-frontmatter`](file:///Users/oliver/git/pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc), [`#dsl-reserved-keywords`](file:///Users/oliver/git/pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc), [`05-primitives.adoc#primitive-spi-contract`](file:///Users/oliver/git/pm-mcp-core/doc/specification/workflow-dsl/05-primitives.adoc), [`04-ast-node-model.adoc#static-verification-rules`](file:///Users/oliver/git/pm-mcp-core/doc/specification/workflow-dsl/04-ast-node-model.adoc), [`#project-owned-units`](file:///Users/oliver/git/pm-mcp-core/doc/specification/workflow-dsl/04-ast-node-model.adoc), [`09-plan-instance.adoc#composition-rules`](file:///Users/oliver/git/pm-mcp-core/doc/specification/workflow-dsl/09-plan-instance.adoc), [`03-web-server.adoc#web-proxy`](file:///Users/oliver/git/plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc) |
 | **Local Client Design** | Web: [`doc/design/web-app/process-designer.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/design/web-app/process-designer.adoc), [`process-designer-texts.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/design/web-app/process-designer-texts.adoc) |
-| **Roadmap Packages** | [`doc/plans/designer-contract.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/plans/designer-contract.adoc), [`doc/plans/web-designer.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/plans/web-designer.adoc) |
+| **Roadmap Packages** | [`doc/plans/implemented/designer-contract.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/plans/implemented/designer-contract.adoc), [`doc/plans/implemented/web-designer.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/plans/implemented/web-designer.adoc) |
 | **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](file:///Users/oliver/git/pm-mcp-clients/doc/meta/implement_use-cases.md) |
 | **Operational SOP** | [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md) |
 
@@ -48,17 +48,17 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-pln-3-designer /Users/oliver/git/worktrees/pm-mcp-clients-uc-pln-3 main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for unit name validation, path traversal prevention, and device-secret auth
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/uc-pln-3-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-pln-3-plan.md`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
-- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/uc-pln-3-plan-report.md`) and initial plan moved to `doc/agy/implemented/uc-pln-3-plan.md`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
+- [x] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/uc-pln-3-plan-report.md` by orchestrator session.
 
 ---
