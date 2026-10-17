@@ -52,6 +52,7 @@ public final class MessageCatalogue {
             "plan_view",
             "epic_view",
             "control",
+            "start",
             "operator"
     );
 

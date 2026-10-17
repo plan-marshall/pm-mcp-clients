@@ -96,6 +96,12 @@ public final class StandardScenarios {
     public static final String CONTROL = "control";
 
     /**
+     * Starting work: a plan from sources, an epic's start, a recipe with its parameters, and the
+     * draft intake (UC-STA-1..5).
+     */
+    public static final String START = "start";
+
+    /**
      * The process designer: installed units at every level, the catalogue of building blocks,
      * validation findings, placing, and removing (UC-PLN-3).
      */
@@ -118,6 +124,7 @@ public final class StandardScenarios {
             PROJECTS,
             PLAN_VIEW,
             CONTROL,
+            START,
             DESIGNER
     );
 }
