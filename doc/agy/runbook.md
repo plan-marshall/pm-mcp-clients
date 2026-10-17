@@ -113,6 +113,12 @@ Before running the final pre-commit verification and opening the PR:
    ```
    Update [`doc/agy/implemented/README.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/README.md) to record the implemented plan and link to its completion report.
 
+   > [!IMPORTANT]
+   > **Plan Session Boundary**:
+   > The executing plan session must ONLY author the completion report at `doc/agy/<topic>-plan-report.md` and move the completed plan to `doc/agy/implemented/<topic>-plan.md`.
+   > **DO NOT** move the completion report into `doc/agy/verified/` during plan execution!
+   > Moving the completion report to `doc/agy/verified/` is strictly the responsibility of the orchestrator session in **Step 8** after changes land on `main` and pass post-landing verification analysis.
+
 3. **Roadmap Archival (`doc/plans/`)**:
    If the plan completes an active work package in `doc/plans/`, mark it as `done` in `doc/plans/README.adoc` and move the package file to `doc/plans/implemented/`.
 
@@ -213,7 +219,10 @@ The repository's `main` branch is protected by GitHub Rulesets and uses GitHub's
    git branch -D <branch-type>/<topic-name>
    ```
 
-### Step 8: Post-Landing Verification & Report Archival
+### Step 8: Post-Landing Verification & Report Archival (Orchestrator Responsibility)
+
+> [!NOTE]
+> This step is executed exclusively by the orchestrator / coordinating session on `main` after a plan's PR has landed, never by the executing plan sessions.
 
 Once changes have landed on `main` and the repository workspace is synchronized:
 
