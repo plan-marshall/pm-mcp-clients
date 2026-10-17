@@ -741,7 +741,7 @@ export interface BuildingBlock {
 }
 
 export interface WorkflowUnitLevel {
-  level: 'project' | 'machine' | 'default' | string;
+  level: string;
   text: string;
   revision: number;
   digest: string;
@@ -785,7 +785,7 @@ export interface WorkflowFinding {
 
 export interface WorkflowStage {
   name: string;
-  status: 'passed' | 'failed' | 'not_run' | string;
+  status: string;
 }
 
 export interface WorkflowStructureState {

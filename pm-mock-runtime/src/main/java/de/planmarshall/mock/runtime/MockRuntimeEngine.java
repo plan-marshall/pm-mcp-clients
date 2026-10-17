@@ -185,6 +185,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_NO_PROJECT_TO_COMPOSE = "no_project_to_compose";
     private static final String ERR_CONFLICT = "conflict";
     private static final String ERR_UNIT_INVALID = "unit_invalid";
+    private static final String ERR_BAD_REQUEST = "bad_request";
     private static final String FIELD_UNIT = "unit";
     private static final String FIELD_TEXT = "text";
     private static final String FIELD_TARGET = "target";
@@ -406,48 +407,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        // 3. Dynamic device and web routes
-        if (handleDeviceRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3a. Dynamic process-designer routes (UC-PLN-3)
-        if (handleDesignerRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3a. Dynamic project explorer and onboarding routes (UC-PRJ-1..3)
-        if (handleProjectExplorerRoutes(request, response)) {
-            return;
-        }
-
-        // 3b. Dynamic project overview routes
-        if (handleProjectOverviewRoutes(request, response)) {
-            return;
-        }
-
-        // 3b. Dynamic report routes
-        if (handleReportRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3c. Dynamic decision routes
-        if (handleDecisionRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3c. Dynamic system and cleanup routes
-        if (handleSystemRoutes(request, response, isWeb)) {
-            return;
-        }
-
-        // 3d. Dynamic process and task activity routes (UC-PLN-1, UC-PLN-5)
-        if (handleProcessRoutes(request, response)) {
-            return;
-        }
-
-        // 3e. Dynamic plan and epic control routes (UC-CTL-1..5)
-        if (handleControlRoutes(request, response)) {
+        // 3. Dynamic routes of the domain areas
+        if (handleDynamicRoutes(request, response, isWeb)) {
             return;
         }
 
@@ -471,6 +432,35 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 7. No match: answer mock_no_route
         handleNoRoute(request, response);
+    }
+
+    private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        if (handleDeviceRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleDesignerRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleProjectExplorerRoutes(request, response)) {
+            return true;
+        }
+        if (handleProjectOverviewRoutes(request, response)) {
+            return true;
+        }
+        if (handleReportRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleDecisionRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleSystemRoutes(request, response, isWeb)) {
+            return true;
+        }
+        if (handleProcessRoutes(request, response)) {
+            return true;
+        }
+        return handleControlRoutes(request, response);
     }
 
     private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -1046,27 +1036,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } else {
             return false;
         }
+        return dispatchDesignerSub(request, response, sub, projectId, isWeb);
+    }
 
+    private boolean dispatchDesignerSub(MockHttpRequest request, MockHttpResponse response, String sub,
+                                        String projectId, boolean isWeb) throws IOException {
         var method = request.method();
         if (sub.isEmpty()) {
-            if (!"GET".equals(method)) {
-                return false;
-            }
-            var units = projectId == null ? designer.machineUnits() : designer.projectUnits(projectId);
-            var list = new ArrayList<Map<String, Object>>(units.size());
-            for (var unit : units) {
-                list.add(unit.toMap());
-            }
-            response.json(200, list);
-            return true;
+            return serveDesignerUnits(response, method, projectId);
         }
         if (SEGMENT_CATALOGUE.equals(sub)) {
-            if (!"GET".equals(method)) {
-                return false;
-            }
-            var catalogue = projectId == null ? designer.machineCatalogue() : designer.projectCatalogue(projectId);
-            response.json(200, catalogue.toMap());
-            return true;
+            return serveDesignerCatalogue(response, method, projectId);
         }
         if (SEGMENT_VALIDATE.equals(sub)) {
             if (!"POST".equals(method)) {
@@ -1075,22 +1055,46 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleDesignerValidate(request, response);
             return true;
         }
-        if (sub.startsWith("/")) {
-            var unit = sub.substring(1);
-            if (unit.isEmpty() || unit.contains("/")) {
-                response.json(400, unitNameInvalid(unit));
-                return true;
-            }
-            var target = projectId == null ? DesignerRegistry.MACHINE : projectId;
-            if ("PUT".equals(method)) {
-                handleDesignerPlace(request, response, unit, target, isWeb);
-                return true;
-            }
-            if (METHOD_DELETE.equals(method)) {
-                handleDesignerRemove(response, unit, target);
-                return true;
-            }
+        if (!sub.startsWith("/")) {
             return false;
+        }
+        return dispatchDesignerUnit(request, response, sub.substring(1), projectId, method, isWeb);
+    }
+
+    private boolean serveDesignerUnits(MockHttpResponse response, String method, String projectId)
+            throws IOException {
+        if (!"GET".equals(method)) {
+            return false;
+        }
+        var units = projectId == null ? designer.machineUnits() : designer.projectUnits(projectId);
+        response.json(200, units.stream().map(WorkflowUnit::toMap).toList());
+        return true;
+    }
+
+    private boolean serveDesignerCatalogue(MockHttpResponse response, String method, String projectId)
+            throws IOException {
+        if (!"GET".equals(method)) {
+            return false;
+        }
+        var catalogue = projectId == null ? designer.machineCatalogue() : designer.projectCatalogue(projectId);
+        response.json(200, catalogue.toMap());
+        return true;
+    }
+
+    private boolean dispatchDesignerUnit(MockHttpRequest request, MockHttpResponse response, String unit,
+                                         String projectId, String method, boolean isWeb) throws IOException {
+        if (unit.isEmpty() || unit.contains("/")) {
+            response.json(400, unitNameInvalid(unit));
+            return true;
+        }
+        var target = projectId == null ? DesignerRegistry.MACHINE : projectId;
+        if ("PUT".equals(method)) {
+            handleDesignerPlace(request, response, unit, target, isWeb);
+            return true;
+        }
+        if (METHOD_DELETE.equals(method)) {
+            handleDesignerRemove(response, unit, target);
+            return true;
         }
         return false;
     }
@@ -1109,7 +1113,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         try {
             validationRequest = WorkflowValidationRequest.fromMap(readBodyMap(request));
         } catch (IOException _) {
-            response.json(400, Map.of(KEY_ERROR, "bad_request", KEY_MESSAGE, "the text is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
             return;
         }
         response.json(200, designer.validate(validationRequest).toMap());
@@ -1124,7 +1128,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var body = readBodyMap(request);
         var text = JsonTree.string(body, FIELD_TEXT);
         if (text == null) {
-            response.json(400, Map.of(KEY_ERROR, "bad_request", KEY_MESSAGE, "the text is required"));
+            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "the text is required"));
             return;
         }
         var existing = designer.findUnit(target, unit);
@@ -1309,7 +1313,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             actions.add(ActionAvailability.enabled("auto"));
             actions.add(ActionAvailability.enabled("common_files"));
             actions.add(ActionAvailability.enabled("decompose"));
-            actions.add(ActionAvailability.enabled("findings"));
+            actions.add(ActionAvailability.enabled(FIELD_FINDINGS));
             actions.add(ActionAvailability.enabled("watches"));
             actions.add(ActionAvailability.enabled("chat"));
             if ("landing".equals(state)) {
@@ -2159,7 +2163,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var sub = path.substring("/api/v1/messages/".length());
         var parts = sub.split("/");
         if (parts.length > 2) {
-            response.json(400, Map.of(KEY_ERROR, "bad_request", KEY_MESSAGE, "Unexpected path segments"));
+            response.json(400, Map.of(KEY_ERROR, ERR_BAD_REQUEST, KEY_MESSAGE, "Unexpected path segments"));
             return;
         }
         var locale = parts[0];
@@ -3618,7 +3622,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "WR-3", 1, "session-log asks for a waiver", null, "plan session-log",
                     DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
                     "the classes are generated by the annotation processor",
-                    Map.of("coverage", "76%", "target", "80%"),
+                    Map.of("coverage", "76%", FIELD_TARGET, "80%"),
                     List.of(), Instant.parse("2026-10-16T14:02:00Z"),
                     true, "coverage:pm-api", "76 %: 3 classes without a test",
                     "the classes are generated by the annotation processor"

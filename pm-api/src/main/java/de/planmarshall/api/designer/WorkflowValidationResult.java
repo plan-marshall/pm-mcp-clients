@@ -126,10 +126,7 @@ public record WorkflowValidationResult(
             map.put("display_name", displayName);
             map.put("entries", entries);
             map.put("exits", exits);
-            var stateList = new ArrayList<Map<String, Object>>(states.size());
-            for (var state : states) {
-                stateList.add(state.toMap());
-            }
+            var stateList = states.stream().map(StructureState::toMap).toList();
             map.put("states", stateList);
             return map;
         }
@@ -139,7 +136,7 @@ public record WorkflowValidationResult(
                 throw new JsonFormatException("Structure requires an object");
             }
             var states = new ArrayList<StructureState>();
-            for (var stateMap : DesignerJson.objectList(map, "states")) {
+            for (var stateMap : DesignerJson.objectList(map, "states")) { // NOSONAR: the nested codec declares a checked IOException a stream cannot carry
                 states.add(StructureState.fromMap(stateMap));
             }
             return new Structure(
@@ -202,10 +199,7 @@ public record WorkflowValidationResult(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put(FIELD_VALID, valid);
-        var stageList = new ArrayList<Map<String, Object>>(stages.size());
-        for (var stage : stages) {
-            stageList.add(stage.toMap());
-        }
+        var stageList = stages.stream().map(Stage::toMap).toList();
         map.put(FIELD_STAGES, stageList);
         map.put(FIELD_FINDINGS, findings.stream().map(WorkflowFinding::toMap).toList());
         if (structure != null) {
@@ -234,11 +228,11 @@ public record WorkflowValidationResult(
     public static WorkflowValidationResult fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var stages = new ArrayList<Stage>();
-        for (var stageMap : DesignerJson.objectList(map, FIELD_STAGES)) {
+        for (var stageMap : DesignerJson.objectList(map, FIELD_STAGES)) { // NOSONAR: the nested codec declares a checked IOException a stream cannot carry
             stages.add(Stage.fromMap(stageMap));
         }
         var findings = new ArrayList<WorkflowFinding>();
-        for (var findingMap : DesignerJson.objectList(map, FIELD_FINDINGS)) {
+        for (var findingMap : DesignerJson.objectList(map, FIELD_FINDINGS)) { // NOSONAR: the nested codec declares a checked IOException a stream cannot carry
             findings.add(WorkflowFinding.fromMap(findingMap));
         }
         var structureMap = JsonTree.asObject(map.get(FIELD_STRUCTURE));

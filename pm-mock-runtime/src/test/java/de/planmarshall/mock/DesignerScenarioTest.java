@@ -219,7 +219,7 @@ class DesignerScenarioTest {
                 var placed = client.send(HttpRequest.json("PUT",
                         "/api/v1/projects/pm-mcp-clients/workflows/landing.custom", body)
                         .withHeader("Authorization", auth));
-                assertEquals(200, placed.status());
+                assertEquals(200, placed.status(), new String(placed.body()));
                 var result = UnitPlacingResult.fromJson(new String(placed.body()));
                 assertEquals(UnitPlacingResult.STATUS_LANDED, result.status());
                 assertEquals(3, result.steps().size());
@@ -435,7 +435,7 @@ class DesignerScenarioTest {
             var res = client.send(HttpRequest.json("PUT",
                     "/api/v1/projects/pm-mcp-clients/workflows/phase-6-finalize", body)
                     .withHeader("Authorization", auth));
-            assertEquals(200, res.status());
+            assertEquals(200, res.status(), new String(res.body()));
 
             var list = client.send(HttpRequest.get("/api/v1/projects/pm-mcp-clients/workflows")
                     .withHeader("Authorization", auth));

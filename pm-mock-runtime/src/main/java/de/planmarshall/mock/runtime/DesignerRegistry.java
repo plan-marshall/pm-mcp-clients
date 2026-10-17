@@ -12,12 +12,16 @@ package de.planmarshall.mock.runtime;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import de.planmarshall.api.designer.BuildingBlock;
 import de.planmarshall.api.designer.UnitPlacingResult;
@@ -43,6 +47,12 @@ final class DesignerRegistry {
     /** The machine target and catalogue scope. */
     static final String MACHINE = "machine";
 
+    private static final String DEFAULT_VERSION = "0.0.0";
+    private static final String KEYWORD_ENTRY = "entry";
+    private static final String KEYWORD_EXIT = "exit";
+    private static final String PREFIX_STATE = "state ";
+    private static final String PREFIX_CALL = "call ";
+    private static final String FRONTMATTER_FENCE = "---";
     private static final Pattern HEADER =
             Pattern.compile("^workflow\\s+\\S+\\s+version\\s+\\S+\\s+format\\s+\\S+$");
     private static final List<String> STAGE_NAMES =
@@ -59,7 +69,7 @@ final class DesignerRegistry {
     private final Map<String, Integer> revisions = new LinkedHashMap<>();
     private final Set<String> enrolledProjects = new LinkedHashSet<>();
 
-    private String runtimeVersion = "0.0.0";
+    private String runtimeVersion = DEFAULT_VERSION;
 
     /**
      * Resets and seeds this registry from the scenario's designer fixtures.
@@ -67,56 +77,59 @@ final class DesignerRegistry {
      * @param scenario the active scenario
      */
     synchronized void init(Scenario scenario) {
+        clear();
+        var fixtures = scenario != null ? scenario.designer() : Map.<String, Object>of();
+        if (fixtures.isEmpty()) {
+            return;
+        }
+        runtimeVersion = string(fixtures, "runtime_version", DEFAULT_VERSION);
+        machineUnits.addAll(parseUnits(objectList(fixtures, "machine_units")));
+        putProjectUnits(JsonTree.asObject(fixtures.get("project_units")));
+        machineBlocks.addAll(parseBlocks(objectList(fixtures, "machine_blocks")));
+        putProjectBlocks(JsonTree.asObject(fixtures.get("project_blocks")));
+        addProjects(fixtures.get("projects"));
+        revisions.put(MACHINE, 1);
+        projectUnits.keySet().forEach(project -> revisions.put(project, 1));
+    }
+
+    private void clear() {
         machineUnits.clear();
         projectUnits.clear();
         machineBlocks.clear();
         projectBlocks.clear();
         revisions.clear();
         enrolledProjects.clear();
-        runtimeVersion = "0.0.0";
+        runtimeVersion = DEFAULT_VERSION;
+    }
 
-        var fixtures = scenario != null ? scenario.designer() : Map.<String, Object>of();
-        if (fixtures.isEmpty()) {
+    private void putProjectUnits(Map<String, Object> map) {
+        if (map == null) {
             return;
         }
-        runtimeVersion = string(fixtures, "runtime_version", "0.0.0");
-        for (var unit : objectList(fixtures, "machine_units")) {
-            machineUnits.add(toUnit(unit));
+        map.forEach((project, value) -> projectUnits.put(project, parseUnits(objectList(value))));
+    }
+
+    private void putProjectBlocks(Map<String, Object> map) {
+        if (map == null) {
+            return;
         }
-        var projectUnitMap = JsonTree.asObject(fixtures.get("project_units"));
-        if (projectUnitMap != null) {
-            for (var entry : projectUnitMap.entrySet()) {
-                var parsed = new ArrayList<WorkflowUnit>();
-                for (var unit : objectList(entry.getValue())) {
-                    parsed.add(toUnit(unit));
-                }
-                projectUnits.put(entry.getKey(), parsed);
-            }
+        map.forEach((project, value) -> projectBlocks.put(project, parseBlocks(objectList(value))));
+    }
+
+    private void addProjects(Object value) {
+        if (value instanceof List<?> projects) {
+            projects.stream().filter(Objects::nonNull).map(String::valueOf).forEach(enrolledProjects::add);
         }
-        for (var block : objectList(fixtures, "machine_blocks")) {
-            machineBlocks.add(toBlock(block));
-        }
-        var projectBlockMap = JsonTree.asObject(fixtures.get("project_blocks"));
-        if (projectBlockMap != null) {
-            for (var entry : projectBlockMap.entrySet()) {
-                var parsed = new ArrayList<BuildingBlock>();
-                for (var block : objectList(entry.getValue())) {
-                    parsed.add(toBlock(block));
-                }
-                projectBlocks.put(entry.getKey(), parsed);
-            }
-        }
-        if (fixtures.get("projects") instanceof List<?> projects) {
-            for (var project : projects) {
-                if (project != null) {
-                    enrolledProjects.add(String.valueOf(project));
-                }
-            }
-        }
-        revisions.put(MACHINE, 1);
-        for (var project : projectUnits.keySet()) {
-            revisions.put(project, 1);
-        }
+    }
+
+    private static List<WorkflowUnit> parseUnits(List<Map<String, Object>> maps) {
+        return maps.stream().map(DesignerRegistry::toUnit)
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private static List<BuildingBlock> parseBlocks(List<Map<String, Object>> maps) {
+        return maps.stream().map(DesignerRegistry::toBlock)
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     synchronized List<WorkflowUnit> machineUnits() {
@@ -149,12 +162,7 @@ final class DesignerRegistry {
         if (list == null) {
             return null;
         }
-        for (var unit : list) {
-            if (unit.name().equals(name)) {
-                return unit;
-            }
-        }
-        return null;
+        return list.stream().filter(unit -> unit.name().equals(name)).findFirst().orElse(null);
     }
 
     /**
@@ -164,39 +172,28 @@ final class DesignerRegistry {
      * @return the validation result
      */
     synchronized WorkflowValidationResult validate(WorkflowValidationRequest request) {
-        var text = request.text();
-        var lines = text.split("\n", -1);
-
-        var header = "";
-        var headerLine = 1;
-        for (int i = 0; i < lines.length; i++) {
-            var stripped = lines[i].strip();
-            if (!stripped.isEmpty()) {
-                header = stripped;
-                headerLine = i + 1;
-                break;
-            }
-        }
+        var lines = strippedLines(request.text());
+        var headerIndex = firstNonBlank(lines);
+        var header = lines.get(headerIndex);
         if (!HEADER.matcher(header).matches()) {
-            var finding = new WorkflowFinding(WorkflowFinding.STAGE_PARSE, "Rule 1", headerLine, 1,
+            return rejected(WorkflowFinding.STAGE_PARSE, List.of(new WorkflowFinding(
+                    WorkflowFinding.STAGE_PARSE, "Rule 1", headerIndex + 1, 1,
                     WorkflowFinding.SEVERITY_ERROR,
-                    "the first line must be: workflow <name> version <n> format <n>", request.project());
-            return new WorkflowValidationResult(false, stages(0), List.of(finding), null, null);
+                    "the first line must be: workflow <name> version <n> format <n>",
+                    request.project())), null);
         }
 
         var name = nameFrom(header, request.unitName());
-        var structure = parseStructure(text);
+        var structure = parseStructure(request.text());
 
-        var ruleFindings = staticRules(text, request.project());
+        var ruleFindings = staticRules(request.text(), request.project());
         if (!ruleFindings.isEmpty()) {
-            return new WorkflowValidationResult(false, stages(1), ruleFindings, structure, null);
+            return rejected(WorkflowFinding.STAGE_RULES, ruleFindings, structure);
         }
-
-        var invariantFindings = compiledInvariants(name, text, request.project());
+        var invariantFindings = compiledInvariants(name, request.text(), request.project());
         if (!invariantFindings.isEmpty()) {
-            return new WorkflowValidationResult(false, stages(2), invariantFindings, structure, null);
+            return rejected(WorkflowFinding.STAGE_INVARIANTS, invariantFindings, structure);
         }
-
         if (request.project() == null && enrolledProjects.isEmpty()) {
             return new WorkflowValidationResult(true, stagesNoComposition(), List.of(), structure, null);
         }
@@ -204,13 +201,24 @@ final class DesignerRegistry {
                 compose(request.project()));
     }
 
+    private static WorkflowValidationResult rejected(String stage, List<WorkflowFinding> findings,
+                                                     WorkflowValidationResult.Structure structure) {
+        return new WorkflowValidationResult(false, stages(STAGE_NAMES.indexOf(stage)), findings,
+                structure, null);
+    }
+
+    private static int firstNonBlank(List<String> lines) {
+        return IntStream.range(0, lines.size()).filter(index -> !lines.get(index).isEmpty())
+                .findFirst().orElse(0);
+    }
+
     /**
      * Places a unit at the machine level or in a project.
      *
-     * @param name   the unit's id
-     * @param target {@code machine} or the project's id
-     * @param text   the unit's text
-     * @param author the operator's name
+     * @param name    the unit's id
+     * @param target  {@code machine} or the project's id
+     * @param text    the unit's text
+     * @param author  the operator's name
      * @param release the runtime's release
      * @return the placing result
      */
@@ -224,11 +232,11 @@ final class DesignerRegistry {
                 List.of(new WorkflowUnit.UnitLevel(level, text, 1, "sha256:placed-" + name)));
         var list = isMachine ? machineUnits : projectUnits.computeIfAbsent(target, _ -> new ArrayList<>());
         replaceOrAdd(list, unit);
+        bump(target);
         var steps = isMachine
                 ? List.of(UnitPlacingResult.STEP_WRITTEN)
                 : List.of(UnitPlacingResult.STEP_WRITTEN, UnitPlacingResult.STEP_COMMITTED,
                 UnitPlacingResult.STEP_LANDED);
-        bump(target);
         return new UnitPlacingResult(name, target, UnitPlacingResult.STATUS_LANDED, steps, digest(target),
                 author, release, "sha256:placed-" + name, null);
     }
@@ -246,11 +254,11 @@ final class DesignerRegistry {
         if (list != null) {
             list.removeIf(unit -> unit.name().equals(name));
         }
+        bump(target);
         var steps = isMachine
                 ? List.of(UnitPlacingResult.STEP_WRITTEN)
                 : List.of(UnitPlacingResult.STEP_WRITTEN, UnitPlacingResult.STEP_COMMITTED,
                 UnitPlacingResult.STEP_LANDED);
-        bump(target);
         return new UnitPlacingResult(name, target, UnitPlacingResult.STATUS_LANDED, steps, digest(target),
                 null, null, null, null);
     }
@@ -270,29 +278,25 @@ final class DesignerRegistry {
     }
 
     private static List<WorkflowValidationResult.Stage> stages(int failedIndex) {
-        var stages = new ArrayList<WorkflowValidationResult.Stage>();
-        for (int i = 0; i < STAGE_NAMES.size(); i++) {
-            String status;
-            if (i < failedIndex) {
-                status = WorkflowValidationResult.Stage.STATUS_PASSED;
-            } else if (i == failedIndex) {
-                status = WorkflowValidationResult.Stage.STATUS_FAILED;
-            } else {
-                status = WorkflowValidationResult.Stage.STATUS_NOT_RUN;
-            }
-            stages.add(new WorkflowValidationResult.Stage(STAGE_NAMES.get(i), status));
+        return IntStream.range(0, STAGE_NAMES.size())
+                .mapToObj(index -> new WorkflowValidationResult.Stage(STAGE_NAMES.get(index),
+                        stageStatus(index, failedIndex)))
+                .toList();
+    }
+
+    private static String stageStatus(int index, int failedIndex) {
+        if (index < failedIndex) {
+            return WorkflowValidationResult.Stage.STATUS_PASSED;
         }
-        return stages;
+        return index == failedIndex
+                ? WorkflowValidationResult.Stage.STATUS_FAILED
+                : WorkflowValidationResult.Stage.STATUS_NOT_RUN;
     }
 
     private static List<WorkflowValidationResult.Stage> stagesNoComposition() {
-        var stages = new ArrayList<WorkflowValidationResult.Stage>();
-        for (int i = 0; i < STAGE_NAMES.size() - 1; i++) {
-            stages.add(new WorkflowValidationResult.Stage(STAGE_NAMES.get(i),
-                    WorkflowValidationResult.Stage.STATUS_PASSED));
-        }
-        stages.add(new WorkflowValidationResult.Stage(WorkflowFinding.STAGE_COMPOSITION,
-                WorkflowValidationResult.Stage.STATUS_NOT_RUN));
+        var stages = new ArrayList<>(stages(STAGE_NAMES.size()));
+        stages.set(STAGE_NAMES.size() - 1, new WorkflowValidationResult.Stage(
+                WorkflowFinding.STAGE_COMPOSITION, WorkflowValidationResult.Stage.STATUS_NOT_RUN));
         return stages;
     }
 
@@ -305,161 +309,120 @@ final class DesignerRegistry {
     }
 
     private static List<WorkflowFinding> staticRules(String text, String project) {
+        var lines = strippedLines(text);
         var findings = new ArrayList<WorkflowFinding>();
-        var lines = text.split("\n", -1);
-
-        var hasFrontmatter = false;
-        for (var line : lines) {
-            if ("---".equals(line.strip())) {
-                hasFrontmatter = true;
-                break;
-            }
-        }
-        if (!hasFrontmatter) {
+        if (lines.stream().noneMatch(FRONTMATTER_FENCE::equals)) {
             findings.add(new WorkflowFinding(WorkflowFinding.STAGE_RULES, "frontmatter.missing", 1, 1,
                     WorkflowFinding.SEVERITY_ERROR, "this unit has no frontmatter", project));
         }
-        for (int i = 0; i < lines.length; i++) {
-            var stripped = lines[i].strip();
-            if (stripped.startsWith("author:") && stripped.toLowerCase().contains("plan-marshall")) {
-                findings.add(new WorkflowFinding(WorkflowFinding.STAGE_RULES, "frontmatter.author", i + 1,
-                        1, WorkflowFinding.SEVERITY_ERROR,
-                        "the author is still plan-marshall; name yourself", project));
-            }
-            if ("goto".equals(stripped) || stripped.startsWith("goto ")) {
-                findings.add(new WorkflowFinding(WorkflowFinding.STAGE_RULES, "Rule 6", i + 1, 1,
-                        WorkflowFinding.SEVERITY_ERROR, "'goto' is not a keyword of the language",
-                        project));
-            }
+        findings.addAll(ruleFindings(lines, project));
+        return findings;
+    }
+
+    private static List<WorkflowFinding> ruleFindings(List<String> lines, String project) {
+        return IntStream.range(0, lines.size())
+                .mapToObj(index -> lineFindings(lines.get(index), index + 1, project))
+                .flatMap(List::stream)
+                .toList();
+    }
+
+    private static List<WorkflowFinding> lineFindings(String stripped, int line, String project) {
+        var findings = new ArrayList<WorkflowFinding>();
+        if (stripped.startsWith("author:") && stripped.toLowerCase().contains("plan-marshall")) {
+            findings.add(new WorkflowFinding(WorkflowFinding.STAGE_RULES, "frontmatter.author", line, 1,
+                    WorkflowFinding.SEVERITY_ERROR, "the author is still plan-marshall; name yourself",
+                    project));
+        }
+        if ("goto".equals(stripped) || stripped.startsWith("goto ")) {
+            findings.add(new WorkflowFinding(WorkflowFinding.STAGE_RULES, "Rule 6", line, 1,
+                    WorkflowFinding.SEVERITY_ERROR, "'goto' is not a keyword of the language", project));
         }
         return findings;
     }
 
     private static List<WorkflowFinding> compiledInvariants(String name, String text, String project) {
-        var findings = new ArrayList<WorkflowFinding>();
         if ("phase-6-finalize".equals(name) && !text.contains("finalize.archive-plan")) {
-            findings.add(new WorkflowFinding(WorkflowFinding.STAGE_INVARIANTS, "INV-FIN-1",
+            return List.of(new WorkflowFinding(WorkflowFinding.STAGE_INVARIANTS, "INV-FIN-1",
                     lineOf(text, "state finalize.review"), 3, WorkflowFinding.SEVERITY_ERROR,
                     "a mandatory finalize step is missing", project));
         }
-        return findings;
+        return List.of();
     }
 
     private static int lineOf(String text, String needle) {
-        var lines = text.split("\n", -1);
-        for (int i = 0; i < lines.length; i++) {
-            if (lines[i].contains(needle)) {
-                return i + 1;
-            }
-        }
-        return 1;
+        var lines = strippedLines(text);
+        return IntStream.range(0, lines.size()).filter(index -> lines.get(index).contains(needle))
+                .findFirst().orElse(0) + 1;
     }
 
     private static WorkflowValidationResult.Structure parseStructure(String text) {
-        var lines = text.split("\n", -1);
-        var entries = new ArrayList<String>();
-        var exits = new ArrayList<String>();
-        var states = new ArrayList<WorkflowValidationResult.StructureState>();
-        var displayName = "";
-        String currentState = null;
-        var outcomes = new ArrayList<String>();
-        var calls = new ArrayList<String>();
+        var frontmatter = parseFrontmatterBlock(text);
+        var lines = strippedLines(text);
+        var stateIndices = IntStream.range(0, lines.size())
+                .filter(index -> lines.get(index).startsWith(PREFIX_STATE))
+                .boxed()
+                .toList();
+        var states = IntStream.range(0, stateIndices.size())
+                .mapToObj(ordinal -> structureState(lines, stateIndices, ordinal))
+                .toList();
+        return new WorkflowValidationResult.Structure(frontmatter.displayName(), frontmatter.entries(),
+                frontmatter.exits(), states);
+    }
 
-        var inFrontmatter = false;
-        var frontmatterSeen = false;
-        for (var raw : lines) {
-            var line = raw.strip();
-            if ("---".equals(line)) {
-                if (!frontmatterSeen) {
-                    inFrontmatter = true;
-                    frontmatterSeen = true;
-                } else {
-                    inFrontmatter = false;
-                }
-                continue;
-            }
-            if (inFrontmatter) {
-                if (line.startsWith("name:")) {
-                    displayName = valueOf(line);
-                } else if (line.startsWith("entry")) {
-                    entries.add(entryExitValue(line));
-                } else if (line.startsWith("exit")) {
-                    exits.add(entryExitValue(line));
-                }
-                continue;
-            }
-            if (line.startsWith("state ")) {
-                if (currentState != null) {
-                    states.add(new WorkflowValidationResult.StructureState(currentState, "state",
-                            outcomes, calls));
-                }
-                var rest = line.substring("state ".length()).strip();
-                currentState = rest.split("\\s+")[0];
-                outcomes = new ArrayList<>();
-                calls = new ArrayList<>();
-            } else if (line.startsWith("call ") && currentState != null) {
-                calls.add(line.substring("call ".length()).strip());
-            } else if (line.contains("->") && currentState != null) {
-                outcomes.add(line);
-            }
-        }
-        if (currentState != null) {
-            states.add(new WorkflowValidationResult.StructureState(currentState, "state", outcomes, calls));
-        }
-        return new WorkflowValidationResult.Structure(displayName, entries, exits, states);
+    private static WorkflowValidationResult.StructureState structureState(List<String> lines,
+                                                                          List<Integer> stateIndices, int ordinal) {
+        var start = stateIndices.get(ordinal);
+        var end = ordinal + 1 < stateIndices.size() ? stateIndices.get(ordinal + 1) : lines.size();
+        var body = lines.subList(start + 1, end);
+        var id = lines.get(start).substring(PREFIX_STATE.length()).strip().split("\\s+")[0];
+        var outcomes = body.stream().filter(line -> line.contains("->")).toList();
+        var calls = body.stream().filter(line -> line.startsWith(PREFIX_CALL))
+                .map(line -> line.substring(PREFIX_CALL.length()).strip()).toList();
+        return new WorkflowValidationResult.StructureState(id, "state", outcomes, calls);
     }
 
     private static WorkflowUnit.Frontmatter parseFrontmatter(String text) {
-        var lines = text.split("\n", -1);
-        var inFrontmatter = false;
-        var seen = false;
-        var displayName = "";
-        var description = "";
-        var author = "";
-        var type = "";
-        var release = "";
-        var entries = new ArrayList<String>();
-        var exits = new ArrayList<String>();
-        for (var raw : lines) {
-            var line = raw.strip();
-            if ("---".equals(line)) {
-                if (!seen) {
-                    inFrontmatter = true;
-                    seen = true;
-                } else {
-                    break;
-                }
-                continue;
-            }
-            if (!inFrontmatter) {
-                continue;
-            }
-            if (line.startsWith("name:")) {
-                displayName = valueOf(line);
-            } else if (line.startsWith("description:")) {
-                description = valueOf(line);
-            } else if (line.startsWith("author:")) {
-                author = valueOf(line);
-            } else if (line.startsWith("type:")) {
-                type = valueOf(line);
-            } else if (line.startsWith("release:")) {
-                release = valueOf(line);
-            } else if (line.startsWith("entry")) {
-                entries.add(entryExitValue(line));
-            } else if (line.startsWith("exit")) {
-                exits.add(entryExitValue(line));
-            }
-        }
-        if (!seen) {
+        var frontmatter = parseFrontmatterBlock(text);
+        if (!frontmatter.present()) {
             return null;
         }
-        return new WorkflowUnit.Frontmatter(displayName, description, type, entries, exits, author,
-                release, false);
+        return new WorkflowUnit.Frontmatter(frontmatter.displayName(), frontmatter.description(),
+                frontmatter.type(), frontmatter.entries(), frontmatter.exits(), frontmatter.author(),
+                frontmatter.release(), false);
+    }
+
+    private static FrontmatterBlock parseFrontmatterBlock(String text) {
+        var lines = strippedLines(text);
+        var open = lines.indexOf(FRONTMATTER_FENCE);
+        if (open < 0) {
+            return FrontmatterBlock.ABSENT;
+        }
+        var close = lines.subList(open + 1, lines.size()).indexOf(FRONTMATTER_FENCE);
+        var block = close < 0 ? lines.subList(open + 1, lines.size())
+                : lines.subList(open + 1, open + 1 + close);
+        return new FrontmatterBlock(true,
+                firstValue(block, "name:"),
+                firstValue(block, "description:"),
+                firstValue(block, "type:"),
+                firstValue(block, "author:"),
+                firstValue(block, "release:"),
+                keywordValues(block, KEYWORD_ENTRY),
+                keywordValues(block, KEYWORD_EXIT));
+    }
+
+    private static String firstValue(List<String> block, String prefix) {
+        return block.stream().filter(line -> line.startsWith(prefix)).map(DesignerRegistry::valueOf)
+                .findFirst().orElse("");
+    }
+
+    private static List<String> keywordValues(List<String> block, String keyword) {
+        return block.stream().filter(line -> line.startsWith(keyword))
+                .map(DesignerRegistry::entryExitValue).toList();
     }
 
     private static String valueOf(String line) {
-        var idx = line.indexOf(':');
-        return idx >= 0 ? line.substring(idx + 1).strip() : line.strip();
+        var index = line.indexOf(':');
+        return index >= 0 ? line.substring(index + 1).strip() : line.strip();
     }
 
     private static String entryExitValue(String line) {
@@ -468,16 +431,19 @@ final class DesignerRegistry {
     }
 
     private static ProcessTree compose(String project) {
-        var projectId = project != null ? project : "machine";
-        var nodes = new ArrayList<ProcessNode>();
-        for (var phase : COMPOSED_PHASES) {
-            nodes.add(new ProcessNode(phase, phase, "phase", "planned", 1, 1, 0L, null,
-                    List.of(), List.of(), null, null, Map.of()));
-        }
+        var projectId = project != null ? project : MACHINE;
+        var nodes = COMPOSED_PHASES.stream()
+                .map(phase -> new ProcessNode(phase, phase, "phase", "planned", 1, 1, 0L, null,
+                        List.of(), List.of(), null, null, Map.of()))
+                .toList();
         return new ProcessTree("plan", "If a plan started now",
                 new ProcessProjectRef(projectId, projectId, null), null, "execute", "planned", null,
                 false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false), nodes, List.of(),
                 null, null, 0L);
+    }
+
+    private static List<String> strippedLines(String text) {
+        return Arrays.stream(text.split("\n", -1)).map(String::strip).toList();
     }
 
     private static WorkflowUnit toUnit(Map<String, Object> map) {
@@ -502,30 +468,27 @@ final class DesignerRegistry {
     }
 
     private static List<Map<String, Object>> objectList(Map<String, Object> map, String key) {
-        if (!(map.get(key) instanceof List<?> list)) {
-            return List.of();
-        }
-        var result = new ArrayList<Map<String, Object>>();
-        for (var item : list) {
-            var obj = JsonTree.asObject(item);
-            if (obj != null) {
-                result.add(obj);
-            }
-        }
-        return result;
+        return objectList(map.get(key));
     }
 
     private static List<Map<String, Object>> objectList(Object value) {
         if (!(value instanceof List<?> list)) {
             return List.of();
         }
-        var result = new ArrayList<Map<String, Object>>();
-        for (var item : list) {
-            var obj = JsonTree.asObject(item);
-            if (obj != null) {
-                result.add(obj);
-            }
-        }
-        return result;
+        return list.stream().map(JsonTree::asObject).filter(Objects::nonNull).toList();
+    }
+
+    private record FrontmatterBlock(
+            boolean present,
+            String displayName,
+            String description,
+            String type,
+            String author,
+            String release,
+            List<String> entries,
+            List<String> exits) {
+
+        static final FrontmatterBlock ABSENT =
+                new FrontmatterBlock(false, "", "", "", "", "", List.of(), List.of());
     }
 }

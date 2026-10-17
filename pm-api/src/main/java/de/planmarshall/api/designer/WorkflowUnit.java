@@ -146,18 +146,20 @@ public record WorkflowUnit(
      * @param digest   the digest of the copy
      */
     public record UnitLevel(String level, String text, int revision, String digest) {
+        private static final String FIELD_LEVEL = "level";
+
         /**
          * Compact constructor validating required properties.
          */
         public UnitLevel {
-            Objects.requireNonNull(level, "level");
+            Objects.requireNonNull(level, FIELD_LEVEL);
             text = text != null ? text : "";
             digest = digest != null ? digest : "";
         }
 
         Map<String, Object> toMap() {
             var map = new LinkedHashMap<String, Object>();
-            map.put("level", level);
+            map.put(FIELD_LEVEL, level);
             map.put("text", text);
             map.put("revision", revision);
             map.put("digest", digest);
@@ -168,7 +170,7 @@ public record WorkflowUnit(
             if (map == null) {
                 throw new JsonFormatException("UnitLevel requires an object");
             }
-            var level = JsonTree.string(map, "level");
+            var level = JsonTree.string(map, FIELD_LEVEL);
             if (level == null) {
                 throw new JsonFormatException("UnitLevel requires a level");
             }
@@ -193,10 +195,7 @@ public record WorkflowUnit(
         if (frontmatter != null) {
             map.put(FIELD_FRONTMATTER, frontmatter.toMap());
         }
-        var levelList = new ArrayList<Map<String, Object>>(levels.size());
-        for (var level : levels) {
-            levelList.add(level.toMap());
-        }
+        var levelList = levels.stream().map(UnitLevel::toMap).toList();
         map.put(FIELD_LEVELS, levelList);
         return map;
     }
@@ -224,7 +223,7 @@ public record WorkflowUnit(
         var frontmatterMap = JsonTree.asObject(map.get(FIELD_FRONTMATTER));
         var frontmatter = frontmatterMap != null ? Frontmatter.fromMap(frontmatterMap) : null;
         var levels = new ArrayList<UnitLevel>();
-        for (var levelMap : DesignerJson.objectList(map, FIELD_LEVELS)) {
+        for (var levelMap : DesignerJson.objectList(map, FIELD_LEVELS)) { // NOSONAR: the nested codec declares a checked IOException a stream cannot carry
             levels.add(UnitLevel.fromMap(levelMap));
         }
         return new WorkflowUnit(

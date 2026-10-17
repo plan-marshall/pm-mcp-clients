@@ -64,10 +64,7 @@ public record WorkflowCatalogue(
         map.put(FIELD_SCOPE, scope);
         map.put(FIELD_RUNTIME_VERSION, runtimeVersion);
         map.put(FIELD_DIGEST, digest);
-        var blockList = new ArrayList<Map<String, Object>>(blocks.size());
-        for (var block : blocks) {
-            blockList.add(block.toMap());
-        }
+        var blockList = blocks.stream().map(BuildingBlock::toMap).toList();
         map.put(FIELD_BLOCKS, blockList);
         return map;
     }
@@ -89,7 +86,7 @@ public record WorkflowCatalogue(
     public static WorkflowCatalogue fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var blocks = new ArrayList<BuildingBlock>();
-        for (var blockMap : DesignerJson.objectList(map, FIELD_BLOCKS)) {
+        for (var blockMap : DesignerJson.objectList(map, FIELD_BLOCKS)) { // NOSONAR: the nested codec declares a checked IOException a stream cannot carry
             blocks.add(BuildingBlock.fromMap(blockMap));
         }
         return new WorkflowCatalogue(

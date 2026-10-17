@@ -12,6 +12,7 @@ package de.planmarshall.api.designer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.experimental.UtilityClass;
 
 import de.planmarshall.api.json.JsonTree;
@@ -34,13 +35,7 @@ final class DesignerJson {
         if (object == null || !(object.get(name) instanceof List<?> list)) {
             return List.of();
         }
-        var result = new ArrayList<String>(list.size());
-        for (var item : list) {
-            if (item != null) {
-                result.add(String.valueOf(item));
-            }
-        }
-        return List.copyOf(result);
+        return list.stream().filter(Objects::nonNull).map(String::valueOf).toList();
     }
 
     /**

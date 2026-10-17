@@ -232,7 +232,7 @@ class DesignerRecordsTest {
     }
 
     @Test
-    void shouldRejectStructureAndStageErrors() throws Exception {
+    void shouldRejectStructureAndStageErrors() {
         assertThrows(JsonFormatException.class, () -> WorkflowValidationResult.fromJson("{\"stages\":[{}]}"));
         var map = new LinkedHashMap<String, Object>();
         map.put("structure", Map.of("states", List.of(Map.of())));
