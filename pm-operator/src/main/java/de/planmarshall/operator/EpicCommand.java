@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.process.EpicProcess;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -79,13 +81,29 @@ public final class EpicCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (epicId != null && !epicId.isBlank()) {
-            var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId);
+            var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/process";
             if (depth != null) {
-                path += "/process?depth=" + depth;
+                path += "?depth=" + depth;
             }
             var response = runtime.send(HttpRequest.get(path));
+            if (response.status() == 404) {
+                // Fallback to direct /api/v1/epics/{epicId}
+                response = runtime.send(HttpRequest.get(EPICS_API + OperatorUrlUtil.encodePathSegment(epicId)));
+            }
             if (response.status() == 200) {
-                out.println(response.bodyText());
+                var body = response.bodyText();
+                if (body.contains("\"running_plans\"") || body.contains("\"epic_id\"")) {
+                    try {
+                        var epic = EpicProcess.fromJson(body);
+                        printEpicProcess(out, epic);
+                        return 0;
+                    }
+                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+                    catch (Exception ignored) {
+                        // Fall through to print bodyText
+                    }
+                }
+                out.println(body);
                 out.flush();
                 return 0;
             }
@@ -110,6 +128,56 @@ public final class EpicCommand implements Callable<Integer> {
             return 0;
         }
         throw new OperatorRefusedException("epic list", response);
+    }
+
+    private void printEpicProcess(PrintWriter out, EpicProcess epic) {
+        var project = OutputSafety.stripControlSequences(epic.project());
+        var cleanEpicId = OutputSafety.stripControlSequences(epic.epicId());
+        out.printf("%s › %s%n", project, cleanEpicId);
+
+        var state = OutputSafety.stripControlSequences(epic.state());
+        var runningCount = epic.runningPlans().size();
+        var stagedCount = epic.stagedPlans().size();
+        out.printf("%s · epic · %s · %d running · %d staged%n",
+                            cleanEpicId, state, runningCount, stagedCount);
+
+        out.printf("  in %-45s status --project %s%n", project, project);
+
+        out.println("  running plans:");
+        if (epic.runningPlans().isEmpty()) {
+            out.println("    none");
+        } else {
+            for (var plan : epic.runningPlans()) {
+                var planId = OutputSafety.stripControlSequences(plan.planId());
+                var phase = OutputSafety.stripControlSequences(plan.currentPhase());
+                var pState = OutputSafety.stripControlSequences(plan.phaseState());
+                out.printf("    ▶ running   %-25s %s · %s%n", planId, phase, pState);
+            }
+        }
+
+        out.println("  staged plans:");
+        if (epic.stagedPlans().isEmpty()) {
+            out.println("    none");
+        } else {
+            for (var plan : epic.stagedPlans()) {
+                var planId = OutputSafety.stripControlSequences(plan.planId());
+                var phase = OutputSafety.stripControlSequences(plan.currentPhase());
+                var pState = OutputSafety.stripControlSequences(plan.phaseState());
+                out.printf("    ○ staged    %-25s %s · %s%n", planId, phase, pState);
+            }
+        }
+
+        var reviewStatus = epic.reviewReady() ? "ready" : "not ready";
+        out.printf("  completion review: %s%n", reviewStatus);
+
+        if (!epic.alongsideLandings().isEmpty()) {
+            out.println("  alongside landings:");
+            for (var landing : epic.alongsideLandings()) {
+                out.printf("    ✓ %s%n", OutputSafety.stripControlSequences(landing));
+            }
+        }
+
+        out.flush();
     }
 
     @Command(name = "add", description = "Starts an epic from its sources or adopts one.")

@@ -200,7 +200,9 @@
         type="button"
         class="tab-btn"
         class:tab-btn--active={activeTab === 'job'}
-        onclick={() => { activeTab = 'job'; }}
+        onclick={() => {
+          activeTab = 'job';
+        }}
         role="tab"
         aria-selected={activeTab === 'job'}
       >
@@ -210,7 +212,9 @@
         type="button"
         class="tab-btn"
         class:tab-btn--active={activeTab === 'kept'}
-        onclick={() => { activeTab = 'kept'; }}
+        onclick={() => {
+          activeTab = 'kept';
+        }}
         role="tab"
         aria-selected={activeTab === 'kept'}
       >
@@ -244,9 +248,7 @@
     {#if !job || allItems.length === 0}
       <div class="empty-state card">
         <h2>{$t('system.cleanup.none', { time: 'tomorrow 03:00' })}</h2>
-        <Button variant="secondary" onclick={() => navigateTo('system')}>
-          Back to System
-        </Button>
+        <Button variant="secondary" onclick={() => navigateTo('system')}>Back to System</Button>
       </div>
     {:else}
       <!-- Summary Card -->
@@ -352,11 +354,7 @@
         </div>
 
         <div class="actions-right">
-          <Button
-            variant="danger"
-            disabled={checkedItems.length === 0}
-            onclick={openDeleteModal}
-          >
+          <Button variant="danger" disabled={checkedItems.length === 0} onclick={openDeleteModal}>
             {$t('system.cleanup.action.delete', { what: `${checkedItems.length} items` })}
           </Button>
         </div>
@@ -440,11 +438,7 @@
         <Button variant="secondary" onclick={closeDeleteModal}>
           {$t('system.cleanup.confirm.back')}
         </Button>
-        <Button
-          variant="danger"
-          loading={isDeleting}
-          onclick={confirmDelete}
-        >
+        <Button variant="danger" loading={isDeleting} onclick={confirmDelete}>
           {$t('system.cleanup.confirm.do')}
         </Button>
       </div>

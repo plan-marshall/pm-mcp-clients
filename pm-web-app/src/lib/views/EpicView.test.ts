@@ -1,0 +1,139 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/svelte';
+import EpicView from './EpicView.svelte';
+import { apiClient, type EpicProcess } from '../api/client';
+import { runtimeStore } from '../stores/runtime';
+import { get } from 'svelte/store';
+
+describe('EpicView component', () => {
+  const mockEpic: EpicProcess = {
+    epic_id: 'relay-hardening',
+    project: 'pm-mcp-clients',
+    title: 'relay-hardening',
+    state: 'running',
+    review_ready: true,
+    running_plans: [
+      {
+        plan_id: 'fix-relay',
+        title: 'fix-relay',
+        current_phase: 'execute',
+        phase_state: 'running',
+        tasks_done: 4,
+        tasks_total: 10,
+        running: true,
+      },
+    ],
+    staged_plans: [
+      {
+        plan_id: 'relay-metrics',
+        title: 'relay-metrics',
+        current_phase: '',
+        phase_state: 'staged',
+        tasks_done: 0,
+        tasks_total: 6,
+        running: false,
+      },
+    ],
+    alongside_landings: ['landing doc/update.md · done', 'removing 2 moved documents · done'],
+    tokens_so_far: {
+      total: 3860000,
+      input: 3520000,
+      output: 340000,
+      floor: false,
+      tasks_total: 16,
+      tasks_measured: 16,
+      none_yet: false,
+      not_measured: false,
+    },
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    runtimeStore.set({
+      isInitialized: true,
+      isPaired: true,
+      isOnboarded: true,
+      deviceLabel: 'test',
+      machineName: 'test-mac',
+      currentRoute: 'epic',
+      currentState: null,
+      isRevoked: false,
+      revokedReason: '',
+      isOffline: false,
+      isDraining: false,
+      isStopped: false,
+      activeStep: 1,
+      unreadReportsCount: 0,
+      openDecisionsCount: 0,
+      selectedPlanId: null,
+      selectedEpicId: 'relay-hardening',
+      selectedTaskId: null,
+    });
+
+    vi.spyOn(apiClient, 'getEpicProcess').mockResolvedValue(mockEpic);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+  });
+
+  it('renders epic header, breadcrumb, title, state, tokens, and review badge', async () => {
+    render(EpicView);
+
+    expect(await screen.findByTestId('epic-title')).toHaveTextContent('relay-hardening');
+    expect(screen.getByTestId('breadcrumb-project')).toHaveTextContent('pm-mcp-clients');
+    expect(screen.getByTestId('breadcrumb-epic')).toHaveTextContent('relay-hardening');
+
+    expect(screen.getByTestId('epic-state')).toHaveTextContent('running');
+    expect(screen.getByTestId('review-ready-badge')).toHaveTextContent(
+      /completion review is ready/i,
+    );
+
+    expect(screen.getByTestId('epic-tokens')).toHaveTextContent(/3.86 M/);
+  });
+
+  it('renders running plans and staged plans with task counts', async () => {
+    render(EpicView);
+
+    const runningPlan = await screen.findByTestId('running-plan-fix-relay');
+    expect(runningPlan).toBeInTheDocument();
+    expect(runningPlan).toHaveTextContent('fix-relay');
+    expect(runningPlan).toHaveTextContent('execute');
+    expect(runningPlan).toHaveTextContent('4 of 10 tasks');
+
+    const stagedPlan = await screen.findByTestId('staged-plan-relay-metrics');
+    expect(stagedPlan).toBeInTheDocument();
+    expect(stagedPlan).toHaveTextContent('relay-metrics');
+    expect(stagedPlan).toHaveTextContent('0 of 6 tasks');
+  });
+
+  it('renders alongside landings list', async () => {
+    render(EpicView);
+
+    const landingsSection = await screen.findByTestId('epic-alongside-section');
+    expect(landingsSection).toBeInTheDocument();
+    const items = screen.getAllByTestId('alongside-item');
+    expect(items.length).toBe(2);
+    expect(items[0]).toHaveTextContent('landing doc/update.md · done');
+  });
+
+  it('clicking a plan card opens the plan view with selectedPlanId', async () => {
+    render(EpicView);
+
+    const runningPlan = await screen.findByTestId('running-plan-fix-relay');
+    await fireEvent.click(runningPlan);
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('plan');
+    expect(state.selectedPlanId).toBe('fix-relay');
+  });
+
+  it('clicking breadcrumb project or back button navigates back to overview', async () => {
+    render(EpicView);
+
+    await screen.findByTestId('epic-title');
+
+    const backBtn = screen.getByTestId('back-btn');
+    await fireEvent.click(backBtn);
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('overview');
+  });
+});

@@ -24,15 +24,35 @@ describe('CleanupView component', () => {
         project_id: 'pm-mcp-clients',
         display_name: 'pm-mcp-clients',
         items: [
-          { id: 'plan-1', kind: 'plan', title: 'fix-relay', ended_at: 'yesterday 14:00', freed_bytes: 100000000, detail: 'plan kept until 2026-10-20' },
-          { id: 'logs-1', kind: 'logs', title: 'logs of relay-docs', ended_at: 'yesterday 15:00', freed_bytes: 73741824, detail: 'logs of ended plan' },
+          {
+            id: 'plan-1',
+            kind: 'plan',
+            title: 'fix-relay',
+            ended_at: 'yesterday 14:00',
+            freed_bytes: 100000000,
+            detail: 'plan kept until 2026-10-20',
+          },
+          {
+            id: 'logs-1',
+            kind: 'logs',
+            title: 'logs of relay-docs',
+            ended_at: 'yesterday 15:00',
+            freed_bytes: 73741824,
+            detail: 'logs of ended plan',
+          },
         ],
       },
       {
         project_id: 'legacy-service',
         display_name: 'legacy-service',
         items: [
-          { id: 'unenrolled-1', kind: 'unenrolled', title: 'Unenrolled project legacy-service', ended_at: '2026-09-01', freed_bytes: 1758993459 },
+          {
+            id: 'unenrolled-1',
+            kind: 'unenrolled',
+            title: 'Unenrolled project legacy-service',
+            ended_at: '2026-09-01',
+            freed_bytes: 1758993459,
+          },
         ],
       },
     ],
@@ -49,8 +69,22 @@ describe('CleanupView component', () => {
   };
 
   const mockKeptItems: CleanupKeptItem[] = [
-    { item_id: 'kept-1', kind: 'plan', title: 'token-usage', why: 'exclude', kept_at: 'yesterday 18:00', who: 'operator' },
-    { item_id: 'kept-2', kind: 'epic', title: 'v1-migration', why: 'ignore', kept_at: '2026-10-10', who: 'web app (Firefox on mbp)' },
+    {
+      item_id: 'kept-1',
+      kind: 'plan',
+      title: 'token-usage',
+      why: 'exclude',
+      kept_at: 'yesterday 18:00',
+      who: 'operator',
+    },
+    {
+      item_id: 'kept-2',
+      kind: 'epic',
+      title: 'v1-migration',
+      why: 'ignore',
+      kept_at: '2026-10-10',
+      who: 'web app (Firefox on mbp)',
+    },
   ];
 
   beforeEach(() => {
@@ -133,7 +167,9 @@ describe('CleanupView component', () => {
   it('opens delete confirmation modal and executes cleanup with excluded ids', async () => {
     vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
     vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
-    const deleteSpy = vi.spyOn(apiClient, 'executeCleanup').mockResolvedValue({ status: 'deleted', freed_bytes: 1825361100 });
+    const deleteSpy = vi
+      .spyOn(apiClient, 'executeCleanup')
+      .mockResolvedValue({ status: 'deleted', freed_bytes: 1825361100 });
 
     render(CleanupView);
 
@@ -183,7 +219,9 @@ describe('CleanupView component', () => {
   it('switches to kept tab and releases kept items', async () => {
     vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
     vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
-    const releaseSpy = vi.spyOn(apiClient, 'releaseKeptCleanup').mockResolvedValue({ released_count: 2 });
+    const releaseSpy = vi
+      .spyOn(apiClient, 'releaseKeptCleanup')
+      .mockResolvedValue({ released_count: 2 });
 
     render(CleanupView);
 

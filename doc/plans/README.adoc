@@ -177,22 +177,22 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/project-contract.adoc[`project-contract`]; link:web-onboarding.adoc[`web-onboarding`]
 |epic clients
 
-|link:process-contract.adoc[`process-contract`]
+|link:implemented/process-contract.adoc[`process-contract`]
 |A plan's process: contract and mock runtime
-|`open`
+|`done`
 |link:operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
-|link:cli-plan-view.adoc[`cli-plan-view`]
+|link:implemented/cli-plan-view.adoc[`cli-plan-view`]
 |A plan's process in the terminal
-|`open`
-|link:process-contract.adoc[`process-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]
+|`done`
+|link:implemented/process-contract.adoc[`process-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]
 |epic clients
 
-|link:web-plan-view.adoc[`web-plan-view`]
+|link:implemented/web-plan-view.adoc[`web-plan-view`]
 |A plan's process in the web app
-|`open`
-|link:process-contract.adoc[`process-contract`]; link:implemented/web-overview.adoc[`web-overview`]
+|`done`
+|link:implemented/process-contract.adoc[`process-contract`]; link:implemented/web-overview.adoc[`web-overview`]
 |epic clients
 
 |link:control-contract.adoc[`control-contract`]

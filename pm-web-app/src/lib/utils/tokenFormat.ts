@@ -77,3 +77,16 @@ export function formatBytes(bytes: number): string {
   return `${rounded.toFixed(1)} GB`;
 }
 
+export function formatDurationSeconds(seconds: number): string {
+  if (seconds <= 0) return '0 min';
+  const mins = Math.floor(seconds / 60);
+  const hours = Math.floor(mins / 60);
+  if (hours > 0) {
+    const remMins = mins % 60;
+    return remMins > 0 ? `${hours} h ${remMins} min` : `${hours} h`;
+  }
+  if (mins > 0) {
+    return `${mins} min`;
+  }
+  return `${seconds} s`;
+}

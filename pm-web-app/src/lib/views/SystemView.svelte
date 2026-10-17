@@ -3,7 +3,12 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
-  import { apiClient, type SystemSnapshot, type WorkerMetric, type ModelMetric } from '../api/client';
+  import {
+    apiClient,
+    type SystemSnapshot,
+    type WorkerMetric,
+    type ModelMetric,
+  } from '../api/client';
   import { runtimeStore, navigateTo } from '../stores/runtime';
   import { formatTokens, formatSplit, formatBytes } from '../utils/tokenFormat';
 
@@ -29,7 +34,11 @@
   onMount(() => {
     isMounted = true;
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
-      if (event === 'system.metrics' || event === 'runtime.draining' || event === 'drain.withdrawn') {
+      if (
+        event === 'system.metrics' ||
+        event === 'runtime.draining' ||
+        event === 'drain.withdrawn'
+      ) {
         void loadSnapshot(false);
       }
     });
@@ -48,10 +57,7 @@
     if (showSpinner) isLoading = true;
     loadError = '';
     try {
-      const snap = await apiClient.getSystemSnapshot(
-        selectedWindow,
-        selectedProject || undefined,
-      );
+      const snap = await apiClient.getSystemSnapshot(selectedWindow, selectedProject || undefined);
       if (!isMounted) return;
       snapshot = snap;
     } catch (err: unknown) {
@@ -104,7 +110,10 @@
       } else if (activeModal === 'restart') {
         await apiClient.stopRuntime(modalWhen, 'restart');
       } else if (activeModal === 'upgrade') {
-        await apiClient.upgradeRuntime(snapshot?.runtime.upgrade_available_version || undefined, modalWhen);
+        await apiClient.upgradeRuntime(
+          snapshot?.runtime.upgrade_available_version || undefined,
+          modalWhen,
+        );
       }
       closeModal();
       void loadSnapshot(false);
@@ -166,7 +175,8 @@
         byRole[key].retries_count += m.retries_count;
         if (m.tokens_unmeasured) {
           byRole[key].tokens_unmeasured = true;
-          byRole[key].unmeasured_calls = (byRole[key].unmeasured_calls || 0) + (m.unmeasured_calls || m.calls_count);
+          byRole[key].unmeasured_calls =
+            (byRole[key].unmeasured_calls || 0) + (m.unmeasured_calls || m.calls_count);
         }
       }
       return Object.values(byRole);
@@ -321,7 +331,11 @@
             <div class="metric-row metric-row--highlight">
               <span class="metric-label">Update</span>
               <span class="metric-value">
-                <strong>{$t('system.runtime.available', { version: snapshot.runtime.upgrade_available_version })}</strong>
+                <strong
+                  >{$t('system.runtime.available', {
+                    version: snapshot.runtime.upgrade_available_version,
+                  })}</strong
+                >
                 {#if snapshot.runtime.upgrade_release_notes_url}
                   <a
                     href={snapshot.runtime.upgrade_release_notes_url}
@@ -356,7 +370,9 @@
           <div class="metric-row">
             <span class="metric-label">Memory</span>
             <span class="metric-value">
-              {formatBytes(snapshot.runtime.memory_used_bytes || 0)} in use of {formatBytes(snapshot.runtime.memory_max_bytes || 0)}
+              {formatBytes(snapshot.runtime.memory_used_bytes || 0)} in use of {formatBytes(
+                snapshot.runtime.memory_max_bytes || 0,
+              )}
               {#if snapshot.runtime.memory_resident_bytes}
                 · {formatBytes(snapshot.runtime.memory_resident_bytes)} resident
               {/if}
@@ -377,7 +393,9 @@
           <div class="metric-row">
             <span class="metric-label">Store</span>
             <span class="metric-value">
-              {formatBytes(snapshot.runtime.machine_store_bytes || 0)} · {formatBytes(snapshot.runtime.disk_free_bytes || 0)} free on disk
+              {formatBytes(snapshot.runtime.machine_store_bytes || 0)} · {formatBytes(
+                snapshot.runtime.disk_free_bytes || 0,
+              )} free on disk
               {#if snapshot.runtime.disk_measured_at}
                 (measured {snapshot.runtime.disk_measured_at})
               {/if}
@@ -441,7 +459,8 @@
           <div class="metric-row">
             <span class="metric-label">Tasks</span>
             <span class="metric-value">
-              <strong>{snapshot.work.tasks_running || 0}</strong> running · {snapshot.work.tasks_queued || 0} queued
+              <strong>{snapshot.work.tasks_running || 0}</strong> running · {snapshot.work
+                .tasks_queued || 0} queued
             </span>
           </div>
 
@@ -459,7 +478,10 @@
         <div class="card-header">
           <h2 id="heading-workers" class="card-title">{$t('system.workers.title')}</h2>
           <span class="badge">
-            {snapshot.workers.length} · {snapshot.workers.filter(w => w.state.toLowerCase() === 'busy').length} busy · {snapshot.workers.filter(w => w.state.toLowerCase() === 'idle').length} idle
+            {snapshot.workers.length} · {snapshot.workers.filter(
+              (w) => w.state.toLowerCase() === 'busy',
+            ).length} busy · {snapshot.workers.filter((w) => w.state.toLowerCase() === 'idle')
+              .length} idle
           </span>
         </div>
 
@@ -553,7 +575,9 @@
               type="button"
               class="btn-toggle"
               class:btn-toggle--active={selectedGroupBy === 'model'}
-              onclick={() => { selectedGroupBy = 'model'; }}
+              onclick={() => {
+                selectedGroupBy = 'model';
+              }}
             >
               {$t('system.models.per_model')}
             </button>
@@ -561,7 +585,9 @@
               type="button"
               class="btn-toggle"
               class:btn-toggle--active={selectedGroupBy === 'role'}
-              onclick={() => { selectedGroupBy = 'role'; }}
+              onclick={() => {
+                selectedGroupBy = 'role';
+              }}
             >
               {$t('system.models.per_role')}
             </button>
@@ -597,7 +623,13 @@
                         </span>
                       {:else}
                         <span class="mono">
-                          {formatSplit(m.tokens_total, m.tokens_in, m.tokens_out, false, $currentLocale)}
+                          {formatSplit(
+                            m.tokens_total,
+                            m.tokens_in,
+                            m.tokens_out,
+                            false,
+                            $currentLocale,
+                          )}
                         </span>
                       {/if}
                     </td>
@@ -606,12 +638,14 @@
                         <div class="tags-row">
                           {#if m.retries_count > 0}
                             <span class="badge badge--warning">
-                              {m.retries_count} {m.retries_count === 1 ? 'retry' : 'retries'}
+                              {m.retries_count}
+                              {m.retries_count === 1 ? 'retry' : 'retries'}
                             </span>
                           {/if}
                           {#if m.errors_count > 0}
                             <span class="badge badge--danger">
-                              {m.errors_count} {m.errors_count === 1 ? 'error' : 'errors'}
+                              {m.errors_count}
+                              {m.errors_count === 1 ? 'error' : 'errors'}
                             </span>
                           {/if}
                         </div>
@@ -635,7 +669,10 @@
   <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-card">
       <h2 id="modal-title" class="modal-title">
-        {$t('system.confirm.title', { act: activeModal, version: snapshot?.runtime.upgrade_available_version || '' })}
+        {$t('system.confirm.title', {
+          act: activeModal,
+          version: snapshot?.runtime.upgrade_available_version || '',
+        })}
       </h2>
 
       <div class="modal-body">
@@ -654,7 +691,9 @@
               name="modalWhen"
               value="drain"
               checked={modalWhen === 'drain'}
-              onchange={() => { modalWhen = 'drain'; }}
+              onchange={() => {
+                modalWhen = 'drain';
+              }}
             />
             <div class="radio-content">
               <strong>{$t('system.confirm.drain')}</strong>
@@ -668,7 +707,9 @@
               name="modalWhen"
               value="now"
               checked={modalWhen === 'now'}
-              onchange={() => { modalWhen = 'now'; }}
+              onchange={() => {
+                modalWhen = 'now';
+              }}
             />
             <div class="radio-content">
               <strong>{$t('system.confirm.now')}</strong>

@@ -12,6 +12,8 @@
   import SystemView from '../lib/views/SystemView.svelte';
   import CleanupView from '../lib/views/CleanupView.svelte';
   import ProjectExplorerView from '../lib/views/ProjectExplorerView.svelte';
+  import PlanView from '../lib/views/PlanView.svelte';
+  import EpicView from '../lib/views/EpicView.svelte';
 </script>
 
 {#if $runtimeStore.currentRoute === 'revoked'}
@@ -36,6 +38,10 @@
   <ProcessDesigner />
 {:else if $runtimeStore.currentRoute === 'workspace'}
   <WorkspaceView />
+{:else if $runtimeStore.currentRoute === 'plan'}
+  <PlanView />
+{:else if $runtimeStore.currentRoute === 'epic'}
+  <EpicView />
 {:else}
   <OverviewView />
 {/if}

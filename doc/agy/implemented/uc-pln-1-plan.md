@@ -48,7 +48,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-pln-1-plan-view /Users/oliver/git/worktrees/pm-mcp-clients-uc-pln-1 main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for untrusted text sanitization & output safety (worker activity, tools, files)
@@ -79,14 +79,14 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 ## 5. Phased Task Breakdown
 
 ### Phase 1: Traceability & Design Alignment
-- [ ] **1.1 Design Specification Audit**: Review `doc/design/shared/plan-view.adoc`, `epic-view.adoc`, and `doc/plans/process-contract.adoc`:
+- [x] **1.1 Design Specification Audit**: Review `doc/design/shared/plan-view.adoc`, `epic-view.adoc`, and `doc/plans/process-contract.adoc`:
   - Resource routes: `GET /api/v1/plans/{id}/process`, `GET /api/v1/plans/{id}/tasks/{taskId}/activity`, `GET /api/v1/plans/{id}/tasks/{taskId}/activity/events`, `GET /api/v1/epics/{id}/process`.
   - SSE events: `state.entered`, `state.left`, `subworkflow.called`, `subworkflow.returned`, `step.opened`, `step.closed`, `instance.changed`, `activity`, `task.off_track`.
   - Closed enumerations: `NodeKind` (`PHASE`, `SUB_WORKFLOW`, `STATE`, `LEAF`), `NodeState` (`DONE`, `RUNNING`, `WAITING_FOR_OPERATOR`, `FAILED`, `PLANNED`, `NOT_TAKEN`, `NOT_IN_PLAN`), `PruneReason` (`LANE_CHOICE`, `UNNEEDED_STEP`), `TaskStatus`, `OffTrackSignal`, `OffTrackAction`.
   - Extract the complete set of keys needed for `messages/plan_view.{en,de}.properties` and `messages/epic_view.{en,de}.properties`.
 
 ### Phase 2: `pm-api` Contracts & Message Catalogue
-- [ ] **2.1 Process Tree Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.process`:
+- [x] **2.1 Process Tree Data Records**: Implement immutable Java 25 records in `de.planmarshall.api.process`:
   - `ProcessTree`: `planId`, `project`, `epic`, `activity`, `needsOperator`, `instanceVersion`, `tokensSoFar`, `nodes`, `currentPositionPath`.
   - `ProcessNode`: `nodeId`, `title`, `kind`, `state`, `runCount`, `currentRun`, `durationSeconds`, `pruneReason`, `subNodes`, `leafTasks`, `links`.
   - `LeafTask`: `taskId`, `role`, `harness`, `model`, `attempt`, `status`, `durationSeconds`, `tokensSoFar`, `activityLink`, `offTrack`.
@@ -94,80 +94,80 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
   - `ActivityEntry`: `timestamp`, `kind` (`MODEL_TEXT`, `TOOL_CALL`, `FILES_CHANGED`, `QUESTIONS_ASKED`), `toolName`, `toolTarget`, `toolFailed`, `content`, `files`, `questions`.
   - `OffTrackInfo`: `signal` (`REPEATING`, `STALL`, `DRIFT`), `action` (`RESTARTED`, `YIELDED`).
   - `EpicProcess`: `epicId`, `project`, `title`, `state`, `runningPlans`, `stagedPlans`, `alongsideLandings`.
-- [ ] **2.2 Process Events**: Implement SSE event payload records:
+- [x] **2.2 Process Events**: Implement SSE event payload records:
   - `StateEnteredEvent`, `StateLeftEvent`, `SubworkflowCalledEvent`, `ActivityEvent`, `TaskOffTrackEvent`.
-- [ ] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
-- [ ] **2.4 Message Catalogue Entries**:
+- [x] **2.3 Streaming Codecs**: Implement Jackson streaming codecs (`JsonParser` / `JsonGenerator`) via `JsonTree`.
+- [x] **2.4 Message Catalogue Entries**:
   - Populate `pm-api/src/main/resources/messages/plan_view.en.properties` with keys from `plan-view.adoc#texts`.
   - Populate `pm-api/src/main/resources/messages/plan_view.de.properties` with German translations.
   - Populate `pm-api/src/main/resources/messages/epic_view.{en,de}.properties`.
   - Register `"plan_view"` and `"epic_view"` in `MessageCatalogue.SUPPORTED_AREAS`.
-- [ ] **2.5 Unit Tests**:
+- [x] **2.5 Unit Tests**:
   - `ProcessTreeTest.java`: Round-trip serialization and deserialization of tree hierarchy, leaf states, and worker activity entries.
   - `PlanViewCatalogueTest.java`: Key presence and ICU parameter validation across English and German bundles.
 
 ### Phase 3: `pm-mock-runtime` Scenarios & Handlers
-- [ ] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/plan-view.json`:
+- [x] **3.1 Scenario Definition**: Create `pm-mock-runtime/src/main/resources/scenarios/plan-view.json`:
   - Full plan process tree (`fix-relay`): phases `init`, `refine`, `outline`, `plan`, `execute` (with nested sub-workflows), and `finalize`.
   - Land lane plan (`docs-typo`): with pruned phases (`not in this plan: refine, outline, plan`).
   - Live activity entries for running worker tasks with tool calls, diffs, and off-track restart signals.
   - Epic process view with staged and running plans.
-- [ ] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
+- [x] **3.2 Dynamic Route Handlers**: Extend `MockRuntimeEngine.java`:
   - `GET /api/v1/plans/{id}/process`: Returns complete node hierarchy with current execution cursor.
   - `GET /api/v1/plans/{id}/tasks/{taskId}/activity`: Returns worker activity log.
   - `GET /api/v1/plans/{id}/tasks/{taskId}/activity/events`: SSE stream for live activity.
   - `GET /api/v1/epics/{id}/process`: Returns epic process structure.
-- [ ] **3.3 Scenario Registration**:
+- [x] **3.3 Scenario Registration**:
   - Add `PLAN_VIEW = "plan-view"` constant in `StandardScenarios.java` and register in `ALL`.
-- [ ] **3.4 Scenario Tests**:
+- [x] **3.4 Scenario Tests**:
   - `PlanViewScenarioTest.java` asserting scenario loading, REST responses, node expansion, and activity streaming.
 
 ### Phase 4: `pm-operator` Terminal Client Implementation
-- [ ] **4.1 Plan & Epic Commands Refactoring**:
+- [x] **4.1 Plan & Epic Commands Refactoring**:
   - Update `PlanCommand.java`:
     - `pm-operator plan <plan_id>`: Renders indented process tree with glyphs (`✓` done, `▶` running, `!` waiting, `○` planned, `–` not taken, `·` not in plan).
     - `pm-operator plan <plan_id> --task <task_id>`: Shows leaf worker activity log with model output, tools called, files changed, and off-track status.
     - Path navigation header: `project › epic › plan`.
   - Update `EpicCommand.java`:
     - `pm-operator epic <epic_id>`: Shows epic status, active plans, staged plans, and completion review status.
-- [ ] **4.2 Output Safety**:
+- [x] **4.2 Output Safety**:
   - Sanitize all model text, tool names, parameters, and file paths using `OutputSafety.stripControlSequences`.
-- [ ] **4.3 CLI Unit & Transcript Tests**:
+- [x] **4.3 CLI Unit & Transcript Tests**:
   - `PlanViewCommandTest.java`: Validate indented tree output, task activity printing, glyph rendering, and argument parsing.
 
 ### Phase 5: `pm-web-app` Client Implementation
-- [ ] **5.1 API Client Extensions**:
+- [x] **5.1 API Client Extensions**:
   - Add `getPlanProcess(planId)`, `getTaskActivity(planId, taskId)`, `getEpicProcess(epicId)` to `pm-web-app/src/lib/api/client.ts`.
   - Extend SSE event listener to handle process tree updates (`state.entered`, `activity`).
-- [ ] **5.2 Plan View (`PlanView.svelte`)**:
+- [x] **5.2 Plan View (`PlanView.svelte`)**:
   - Two-panel responsive layout:
     - Left/Main panel: Interactive tree of phases, sub-workflows, and states with expansion toggles and progress indicator.
     - Right/Detail panel: Leaf task inspector showing worker-at-work live activity feed, model metadata, tool calls, and off-track warnings.
   - Jump-to-current-position shortcut button.
   - One-step navigation links to parent project, parent epic, and completion report.
-- [ ] **5.3 Epic View (`EpicView.svelte`)**:
+- [x] **5.3 Epic View (`EpicView.svelte`)**:
   - Epic overview card: running vs staged plans list, overlap indicators, completion review trigger.
-- [ ] **5.4 Responsive Styling**:
+- [x] **5.4 Responsive Styling**:
   - Adapt from side-by-side desktop view to stacked mobile accordion (320px+).
-- [ ] **5.5 Vitest Tests**:
+- [x] **5.5 Vitest Tests**:
   - `PlanView.test.ts` and `EpicView.test.ts` verifying rendering, node toggling, activity feed updates, and off-track warning display.
 
 ### Phase 6: Integration Testing & Verification
-- [ ] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/plan-view.spec.js`:
+- [x] **6.1 Playwright E2E Suite**: Create `pm-web-e2e/tests/plan-view.spec.js`:
   - Test viewing plan process tree.
   - Test expanding sub-workflow nodes.
   - Test viewing worker activity stream with tool calls.
   - Test off-track warning badge display.
   - Test navigation back to epic and project views.
-- [ ] **6.2 Operator Process IT**:
+- [x] **6.2 Operator Process IT**:
   - Add process test in `PmOperatorProcessIT.java` executing `plan <id>` and `epic <id>` against running `pm-mock-runtime`.
-- [ ] **6.3 Domain Invariants Verification**:
+- [x] **6.3 Domain Invariants Verification**:
   - Verify against checklist in Section 1 of `doc/meta/implement_use-cases.md`.
 
 ### Phase 7: Completion Report, Pre-Commit, Review Gate & Landing (Runbook Discipline)
-- [ ] **7.1 Final Completion Report**:
+- [x] **7.1 Final Completion Report**:
   - Generate comprehensive completion report in `doc/agy/uc-pln-1-plan-report.md`.
-- [ ] **7.2 Plan Archival**:
+- [x] **7.2 Plan Archival**:
   - Move `doc/agy/uc-pln-1-plan.md` to `doc/agy/implemented/uc-pln-1-plan.md` and record entry in `doc/agy/implemented/README.md`.
 - [ ] **7.3 Pre-Commit Gate**:
   - Run `./mvnw verify -Ppre-commit` to validate OpenRewrite formatting, Checkstyle, and full test suite.
@@ -181,5 +181,5 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 - [ ] **7.7 Merge Queue & Cleanup**:
   - Enqueue PR via `gh pr merge --auto --squash`.
   - Upon merge, synchronize `main`, remove worktree and delete topic branch.
-- [ ] **7.8 Roadmap Archival**:
+- [x] **7.8 Roadmap Archival**:
   - Update `doc/plans/README.adoc` and move completed package documentation (`process-contract.adoc`, `cli-plan-view.adoc`, `web-plan-view.adoc`) to `doc/plans/implemented/`.

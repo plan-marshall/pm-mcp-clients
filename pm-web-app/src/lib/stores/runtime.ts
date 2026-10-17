@@ -31,7 +31,9 @@ export interface RuntimeState {
     | 'decisions'
     | 'system'
     | 'cleanup'
-    | 'projects';
+    | 'projects'
+    | 'plan'
+    | 'epic';
   currentState: StateRepresentation | null;
   isRevoked: boolean;
   revokedReason: string;
@@ -50,6 +52,9 @@ export interface RuntimeState {
   newDecisionArrivalNotice?: string | null;
   quietDecisionNotice?: string | null;
   projectEventNotice?: string | null;
+  selectedPlanId?: string | null;
+  selectedEpicId?: string | null;
+  selectedTaskId?: string | null;
 }
 
 const initialState: RuntimeState = {
@@ -77,6 +82,9 @@ const initialState: RuntimeState = {
   newDecisionArrivalNotice: null,
   quietDecisionNotice: null,
   projectEventNotice: null,
+  selectedPlanId: null,
+  selectedEpicId: null,
+  selectedTaskId: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -297,7 +305,12 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
       openDecisionsCount: Math.max(0, s.openDecisionsCount - 1),
     }));
   } else if (event === 'runtime.draining') {
-    const drainData = (data || {}) as { count?: number; what?: string; who?: string; since?: string };
+    const drainData = (data || {}) as {
+      count?: number;
+      what?: string;
+      who?: string;
+      since?: string;
+    };
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
@@ -369,5 +382,22 @@ export function navigateTo(route: RuntimeState['currentRoute']): void {
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
+  }));
+}
+
+export function openPlanView(planId: string, taskId?: string | null): void {
+  runtimeStore.update((s) => ({
+    ...s,
+    currentRoute: 'plan',
+    selectedPlanId: planId,
+    selectedTaskId: taskId || null,
+  }));
+}
+
+export function openEpicView(epicId: string): void {
+  runtimeStore.update((s) => ({
+    ...s,
+    currentRoute: 'epic',
+    selectedEpicId: epicId,
   }));
 }

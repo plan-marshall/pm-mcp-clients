@@ -153,6 +153,134 @@ export interface ProjectDetailResponse {
   alongside_landings: AlongsideLanding[];
 }
 
+export interface ProcessTokens {
+  total: number;
+  input: number;
+  output: number;
+  floor: boolean;
+  tasks_total: number;
+  tasks_measured: number;
+  none_yet: boolean;
+  not_measured: boolean;
+}
+
+export interface OffTrackInfo {
+  signal: string;
+  action: string;
+  value?: number | null;
+  threshold?: number | null;
+}
+
+export interface LeafTask {
+  task_id: string;
+  role: string;
+  harness: string;
+  model: string;
+  attempt: number;
+  status: string;
+  duration_seconds: number;
+  tokens_so_far: number;
+  activity_link?: string | null;
+  off_track?: OffTrackInfo | null;
+}
+
+export interface LeafJob {
+  job_id: string;
+  kind: string;
+  status: string;
+  duration_seconds: number;
+  tokens_so_far: number;
+  log_link?: string | null;
+}
+
+export interface ProcessNode {
+  node_id: string;
+  title: string;
+  kind: string;
+  state: string;
+  run_count: number;
+  current_run: number;
+  duration_seconds: number;
+  prune_reason?: string | null;
+  sub_nodes: ProcessNode[];
+  leaf_tasks: LeafTask[];
+  leaf_job?: LeafJob | null;
+  waits_for?: string | null;
+  links?: Record<string, string>;
+}
+
+export interface ProcessTree {
+  plan_id: string;
+  title: string;
+  project: {
+    project_id: string;
+    display_name?: string;
+    link?: string;
+  };
+  epic?: {
+    epic_id: string;
+    title?: string;
+    link?: string;
+  } | null;
+  current_phase: string;
+  phase_state: string;
+  activity?: string | null;
+  needs_operator: boolean;
+  instance_version: number;
+  tokens_so_far: ProcessTokens;
+  nodes: ProcessNode[];
+  current_position_path: string[];
+  pull_request_number?: number | null;
+  pull_request_url?: string | null;
+  duration_seconds: number;
+}
+
+export interface ActivityEntry {
+  timestamp: string;
+  kind: string;
+  tool_name?: string | null;
+  tool_target?: string | null;
+  tool_failed?: boolean;
+  content?: string | null;
+  size?: string | null;
+  files?: string[];
+  questions?: string[];
+}
+
+export interface TaskActivity {
+  task_id: string;
+  role: string;
+  harness: string;
+  model: string;
+  attempt: number;
+  duration_seconds: number;
+  tokens_so_far: number;
+  entries: ActivityEntry[];
+  off_track?: OffTrackInfo | null;
+}
+
+export interface EpicProcessPlan {
+  plan_id: string;
+  title: string;
+  current_phase: string;
+  phase_state: string;
+  tasks_done: number;
+  tasks_total: number;
+  running: boolean;
+}
+
+export interface EpicProcess {
+  epic_id: string;
+  project: string;
+  title: string;
+  state: string;
+  running_plans: EpicProcessPlan[];
+  staged_plans: EpicProcessPlan[];
+  alongside_landings: string[];
+  tokens_so_far?: ProcessTokens | null;
+  review_ready: boolean;
+}
+
 export interface EndedWorkItem {
   id?: string;
   item_id?: string;
@@ -889,11 +1017,7 @@ export class ApiClient {
     all = false,
   ): Promise<{ released_count: number }> {
     const body = all ? { all: true } : { item_ids: itemIds || [] };
-    return this.request<{ released_count: number }>(
-      'PUT',
-      '/api/v1/system/cleanup/kept',
-      body,
-    );
+    return this.request<{ released_count: number }>('PUT', '/api/v1/system/cleanup/kept', body);
   }
 
   public async getCleanupDurations(): Promise<CleanupDurations> {
@@ -954,6 +1078,96 @@ export class ApiClient {
     const href = typeof link === 'string' ? link : link.href;
     const method = typeof link === 'string' ? 'POST' : link.method || 'POST';
     return this.request<StateRepresentation>(method, href, body);
+  }
+
+  public async getPlanProcess(planId: string): Promise<ProcessTree> {
+    return this.request<ProcessTree>('GET', `/api/v1/plans/${encodeURIComponent(planId)}/process`);
+  }
+
+  public async getTaskActivity(planId: string, taskId: string): Promise<TaskActivity> {
+    return this.request<TaskActivity>(
+      'GET',
+      `/api/v1/plans/${encodeURIComponent(planId)}/tasks/${encodeURIComponent(taskId)}/activity`,
+    );
+  }
+
+  public async getEpicProcess(epicId: string): Promise<EpicProcess> {
+    return this.request<EpicProcess>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}/process`);
+  }
+
+  public subscribeTaskActivity(
+    planId: string,
+    taskId: string,
+    onEvent: (event: string, data: unknown) => void,
+    signal?: AbortSignal,
+  ): () => void {
+    let active = true;
+    let currentReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    const internalController = new AbortController();
+
+    if (signal) {
+      if (signal.aborted) {
+        internalController.abort();
+      } else {
+        signal.addEventListener('abort', () => internalController.abort(), { once: true });
+      }
+    }
+
+    const abortAll = () => {
+      active = false;
+      internalController.abort();
+      if (currentReader) {
+        void currentReader.cancel().catch(() => {});
+        currentReader = undefined;
+      }
+    };
+
+    const connect = async () => {
+      const secret = this.getSecret();
+      if (!secret || !active || internalController.signal.aborted) return;
+
+      try {
+        const path = `/api/v1/plans/${encodeURIComponent(planId)}/tasks/${encodeURIComponent(taskId)}/activity/events`;
+        const res = await fetch(`${this.baseUrl}${path}`, {
+          headers: {
+            Authorization: `Bearer ${secret}`,
+          },
+          signal: internalController.signal,
+        });
+
+        if (!res.ok || !res.body) {
+          return;
+        }
+
+        const reader = res.body.getReader();
+        currentReader = reader;
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (active && !internalController.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) {
+            currentReader = undefined;
+            return;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split(/(?:\r\n|\r|\n){2}/);
+          buffer = parts.pop() || '';
+
+          for (const chunk of parts) {
+            const parsed = parseSseChunk(chunk);
+            if (!parsed) continue;
+            handleSseMessage(parsed.eventType, parsed.eventData, onEvent, () => {});
+          }
+        }
+      } catch {
+        // Ignore stream closing
+      }
+    };
+
+    void connect();
+    return abortAll;
   }
 
   public subscribeEvents(

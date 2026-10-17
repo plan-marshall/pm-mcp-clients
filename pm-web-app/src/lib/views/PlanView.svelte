@@ -1,0 +1,1049 @@
+<script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
+  import { t, currentLocale } from '../i18n';
+  import Button from '../components/Button.svelte';
+  import Spinner from '../components/Spinner.svelte';
+  import {
+    apiClient,
+    type ProcessTree,
+    type ProcessNode,
+    type LeafTask,
+    type TaskActivity,
+    type ProcessTokens,
+  } from '../api/client';
+  import { runtimeStore, openEpicView, navigateTo } from '../stores/runtime';
+  import { formatSplit, formatDurationSeconds } from '../utils/tokenFormat';
+  import { stripControlSequences } from '../utils/outputSafety';
+
+  let planId = $derived($runtimeStore.selectedPlanId || '');
+  let plan = $state<ProcessTree | null>(null);
+  let isLoading = $state(true);
+  let errorMessage = $state('');
+
+  let selectedTaskId = $state<string | null>($runtimeStore.selectedTaskId || null);
+  let taskActivity = $state<TaskActivity | null>(null);
+  let isLoadingActivity = $state(false);
+
+  let expandedNodes = $state<Record<string, boolean>>({});
+
+  let unsubscribeEvents: (() => void) | null = null;
+  let unsubscribeActivity: (() => void) | null = null;
+
+  onMount(async () => {
+    unsubscribeEvents = apiClient.subscribeEvents((event) => {
+      if (
+        event === 'plan.changed' ||
+        event === 'activity.changed' ||
+        event === 'phase.changed' ||
+        event === 'task.off_track' ||
+        event === 'project.work_ended'
+      ) {
+        void loadPlanProcess(false);
+      }
+    });
+
+    await loadPlanProcess(true);
+  });
+
+  onDestroy(() => {
+    if (unsubscribeEvents) {
+      unsubscribeEvents();
+      unsubscribeEvents = null;
+    }
+    if (unsubscribeActivity) {
+      unsubscribeActivity();
+      unsubscribeActivity = null;
+    }
+  });
+
+  $effect(() => {
+    if (selectedTaskId && planId) {
+      void loadTaskActivity(planId, selectedTaskId);
+    } else {
+      taskActivity = null;
+      if (unsubscribeActivity) {
+        unsubscribeActivity();
+        unsubscribeActivity = null;
+      }
+    }
+  });
+
+  async function loadPlanProcess(initial = false) {
+    if (!planId) return;
+    if (initial) isLoading = true;
+    errorMessage = '';
+    try {
+      const res = await apiClient.getPlanProcess(planId);
+      plan = res;
+
+      // Expand all nodes by default or ensure active path is expanded
+      if (initial && res.nodes) {
+        const initExpanded: Record<string, boolean> = {};
+        function expand(nodes: ProcessNode[]) {
+          for (const n of nodes) {
+            initExpanded[n.node_id] = true;
+            if (n.sub_nodes && n.sub_nodes.length > 0) {
+              expand(n.sub_nodes);
+            }
+          }
+        }
+        expand(res.nodes);
+        expandedNodes = initExpanded;
+
+        // Auto-select initial task if provided or running task
+        if (!selectedTaskId) {
+          const runningTask = findRunningTask(res.nodes);
+          if (runningTask) {
+            selectedTaskId = runningTask.task_id;
+          }
+        }
+      }
+    } catch (err: unknown) {
+      errorMessage = (err as Error)?.message || 'Failed to load plan process';
+    } finally {
+      if (initial) isLoading = false;
+    }
+  }
+
+  function findRunningTask(nodes: ProcessNode[]): LeafTask | null {
+    for (const node of nodes) {
+      if (node.leaf_tasks && node.leaf_tasks.length > 0) {
+        const running = node.leaf_tasks.find((t) => t.status === 'running');
+        if (running) return running;
+        return node.leaf_tasks[0];
+      }
+      if (node.sub_nodes && node.sub_nodes.length > 0) {
+        const found = findRunningTask(node.sub_nodes);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  async function loadTaskActivity(pId: string, tId: string) {
+    if (unsubscribeActivity) {
+      unsubscribeActivity();
+      unsubscribeActivity = null;
+    }
+
+    isLoadingActivity = true;
+    try {
+      taskActivity = await apiClient.getTaskActivity(pId, tId);
+      unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (newEntry) => {
+        if (taskActivity) {
+          taskActivity = {
+            ...taskActivity,
+            entries: [...taskActivity.entries, newEntry],
+          };
+        }
+      });
+    } catch {
+      taskActivity = null;
+    } finally {
+      isLoadingActivity = false;
+    }
+  }
+
+  function toggleNode(nodeId: string) {
+    expandedNodes = {
+      ...expandedNodes,
+      [nodeId]: !expandedNodes[nodeId],
+    };
+  }
+
+  function jumpToCurrentPosition() {
+    if (!plan) return;
+    const path = plan.current_position_path || [];
+    const nextExp = { ...expandedNodes };
+    for (const p of path) {
+      nextExp[p] = true;
+    }
+    expandedNodes = nextExp;
+
+    const running = findRunningTask(plan.nodes);
+    if (running) {
+      selectedTaskId = running.task_id;
+    }
+    if (typeof document !== 'undefined') {
+      const el = document.querySelector('.node-item--running, .node-item--waiting');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }
+
+  function getNodeGlyph(state: string): string {
+    switch (state?.toLowerCase()) {
+      case 'done':
+        return '✓';
+      case 'running':
+        return '▶';
+      case 'waiting':
+      case 'waiting_for_you':
+        return '!';
+      case 'failed':
+        return '✗';
+      case 'planned':
+        return '○';
+      case 'not_taken':
+        return '–';
+      case 'not_in_plan':
+        return '·';
+      default:
+        return '○';
+    }
+  }
+
+  function getNodeStateText(node: ProcessNode): string {
+    const s = node.state?.toLowerCase();
+    if (s === 'done' && node.run_count > 1) {
+      return $t('plan.node.state.done_times', { count: node.run_count });
+    }
+    if (s === 'running' && node.current_run > 1) {
+      return $t('plan.node.state.running_run', { run: node.current_run });
+    }
+    if (s === 'waiting' || s === 'waiting_for_you') {
+      return $t('plan.node.state.waiting');
+    }
+    if (s === 'done') return $t('plan.node.state.done');
+    if (s === 'running') return $t('plan.node.state.running');
+    if (s === 'failed') return $t('plan.node.state.failed');
+    if (s === 'planned') return $t('plan.node.state.planned');
+    if (s === 'not_taken') return $t('plan.node.state.not_taken');
+    if (s === 'not_in_plan') return $t('plan.node.state.not_in_plan');
+    return node.state;
+  }
+
+  function formatTokensLine(tokens?: ProcessTokens | null, loc = 'en'): string {
+    if (!tokens || tokens.none_yet) {
+      return $t('plan.view.tokens_none');
+    }
+    if (tokens.not_measured) {
+      const unmeasured = tokens.tasks_total - tokens.tasks_measured;
+      return `not measured · ${unmeasured} of ${tokens.tasks_total} tasks not measured`;
+    }
+    const split = formatSplit(tokens.total, tokens.input, tokens.output, tokens.floor, loc);
+    if (tokens.floor && tokens.tasks_total > tokens.tasks_measured) {
+      const unmeasured = tokens.tasks_total - tokens.tasks_measured;
+      return `${split} · ${unmeasured} of ${tokens.tasks_total} tasks not measured`;
+    }
+    return split;
+  }
+
+  function goBackToOverview() {
+    navigateTo('overview');
+  }
+
+  function openEpic(epicId: string) {
+    openEpicView(epicId);
+  }
+
+  function openReport(pId: string) {
+    runtimeStore.update((s) => ({
+      ...s,
+      currentRoute: 'reports',
+      selectedReportDetailPlanId: pId,
+    }));
+  }
+
+  function selectTask(taskId: string) {
+    selectedTaskId = taskId;
+  }
+</script>
+
+<div class="plan-view" data-testid="plan-view">
+  {#if isLoading}
+    <div class="plan-view__loading" data-testid="plan-loading">
+      <Spinner size="2.5rem" label="Loading plan process…" />
+    </div>
+  {:else if errorMessage}
+    <div class="plan-view__error" role="alert" data-testid="plan-error">
+      <p>{errorMessage}</p>
+      <Button variant="secondary" onclick={() => loadPlanProcess(true)}>Retry</Button>
+    </div>
+  {:else if plan}
+    <!-- Path Navigation Header -->
+    <header class="plan-header" data-testid="plan-header">
+      <div class="plan-header__top">
+        <nav class="plan-breadcrumb mono" aria-label="Breadcrumb" data-testid="plan-breadcrumb">
+          <button
+            class="breadcrumb-link"
+            onclick={goBackToOverview}
+            data-testid="breadcrumb-project"
+          >
+            {plan.project?.display_name || plan.project?.project_id || 'project'}
+          </button>
+          {#if plan.epic}
+            <span class="breadcrumb-sep">›</span>
+            <button
+              class="breadcrumb-link"
+              onclick={() => openEpic(plan.epic!.epic_id)}
+              data-testid="breadcrumb-epic"
+            >
+              {plan.epic.title || plan.epic.epic_id}
+            </button>
+          {/if}
+          <span class="breadcrumb-sep">›</span>
+          <span class="breadcrumb-current font-semibold" data-testid="breadcrumb-plan">
+            {plan.plan_id}
+          </span>
+        </nav>
+
+        <div class="plan-header__actions">
+          <Button variant="secondary" onclick={jumpToCurrentPosition} data-testid="jump-btn">
+            {$t('plan.path.jump')}
+          </Button>
+          {#if plan.pull_request_number}
+            <a
+              href={plan.pull_request_url || '#'}
+              target="_blank"
+              rel="noreferrer"
+              class="pr-badge-link"
+              data-testid="pr-link"
+            >
+              #{plan.pull_request_number}
+            </a>
+          {/if}
+          <button
+            class="report-link-btn"
+            onclick={() => openReport(plan!.plan_id)}
+            data-testid="completion-report-link"
+          >
+            {$t('report.action.details')}
+          </button>
+          <Button variant="ghost" onclick={goBackToOverview} data-testid="back-btn">
+            {$t('common.actions.back')}
+          </Button>
+        </div>
+      </div>
+
+      <!-- Plan Title and Status Line -->
+      <div class="plan-headline">
+        <h1 class="plan-title" data-testid="plan-title">{plan.title}</h1>
+        <div class="plan-status-tags">
+          <span class="badge badge--phase" data-testid="plan-phase">{plan.current_phase}</span>
+          <span class="badge badge--state badge--state-{plan.phase_state}" data-testid="plan-state">
+            {plan.phase_state}
+          </span>
+          {#if plan.duration_seconds > 0}
+            <span class="duration-tag">{formatDurationSeconds(plan.duration_seconds)}</span>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Tokens So Far -->
+      <div class="plan-tokens mono" data-testid="plan-tokens">
+        <span class="tokens-label">{$t('plan.view.tokens')}</span>
+        <span class="tokens-value">{formatTokensLine(plan.tokens_so_far, $currentLocale)}</span>
+      </div>
+    </header>
+
+    <!-- Two-Panel Main Layout -->
+    <div class="plan-content">
+      <!-- Left: Process Tree -->
+      <section class="plan-tree-panel" aria-label="Process Tree" data-testid="process-tree">
+        <div class="tree-container">
+          {#each plan.nodes.filter((n) => n.state !== 'not_in_plan') as node}
+            <div
+              class="node-item node-item--level-1 node-item--{node.state}"
+              data-testid="node-{node.node_id}"
+            >
+              <div class="node-row">
+                <button
+                  class="toggle-btn"
+                  onclick={() => toggleNode(node.node_id)}
+                  aria-label="Toggle node"
+                >
+                  <span class="node-glyph">{getNodeGlyph(node.state)}</span>
+                  <span class="toggle-icon">
+                    {#if (node.sub_nodes && node.sub_nodes.length > 0) || (node.leaf_tasks && node.leaf_tasks.length > 0)}
+                      {expandedNodes[node.node_id] ? '▾' : '▸'}
+                    {:else}
+                      &nbsp;
+                    {/if}
+                  </span>
+                </button>
+
+                <div class="node-info">
+                  <span class="node-kind-badge">{node.kind}</span>
+                  <span class="node-title font-semibold">{node.title}</span>
+                  <span class="node-state-text">{getNodeStateText(node)}</span>
+                  {#if node.duration_seconds > 0}
+                    <span class="node-duration">{formatDurationSeconds(node.duration_seconds)}</span
+                    >
+                  {/if}
+                </div>
+              </div>
+
+              <!-- Children (Sub-nodes or Leaf Tasks) -->
+              {#if expandedNodes[node.node_id]}
+                <div class="node-children">
+                  <!-- Sub Nodes -->
+                  {#if node.sub_nodes && node.sub_nodes.length > 0}
+                    {#each node.sub_nodes as subNode}
+                      <div
+                        class="node-item node-item--sub node-item--{subNode.state}"
+                        data-testid="node-{subNode.node_id}"
+                      >
+                        <div class="node-row">
+                          <button
+                            class="toggle-btn"
+                            onclick={() => toggleNode(subNode.node_id)}
+                            aria-label="Toggle sub-node"
+                          >
+                            <span class="node-glyph">{getNodeGlyph(subNode.state)}</span>
+                            <span class="toggle-icon">
+                              {#if subNode.leaf_tasks && subNode.leaf_tasks.length > 0}
+                                {expandedNodes[subNode.node_id] ? '▾' : '▸'}
+                              {:else}
+                                &nbsp;
+                              {/if}
+                            </span>
+                          </button>
+                          <div class="node-info">
+                            <span class="node-kind-badge">↳ {subNode.kind}</span>
+                            <span class="node-title">{subNode.title}</span>
+                            <span class="node-state-text">{getNodeStateText(subNode)}</span>
+                          </div>
+                        </div>
+
+                        <!-- Sub-node leaf tasks -->
+                        {#if expandedNodes[subNode.node_id] && subNode.leaf_tasks}
+                          <div class="tasks-list">
+                            {#each subNode.leaf_tasks as task}
+                              <button
+                                class="task-row {selectedTaskId === task.task_id
+                                  ? 'task-row--selected'
+                                  : ''}"
+                                onclick={() => selectTask(task.task_id)}
+                                data-testid="task-{task.task_id}"
+                              >
+                                <span class="task-glyph">{getNodeGlyph(task.status)}</span>
+                                <span class="task-id font-semibold">{task.task_id}</span>
+                                <span class="task-role">{task.role}</span>
+                                <span class="task-model">{task.harness} {task.model}</span>
+                                <span class="task-attempt">attempt {task.attempt}</span>
+                                <span
+                                  class="task-status badge badge--state badge--state-{task.status}"
+                                  >{task.status}</span
+                                >
+                                {#if task.off_track}
+                                  <span
+                                    class="badge badge--warning"
+                                    data-testid="task-off-track-badge"
+                                  >
+                                    off track: {task.off_track.signal}
+                                  </span>
+                                {/if}
+                              </button>
+                            {/each}
+                          </div>
+                        {/if}
+                      </div>
+                    {/each}
+                  {/if}
+
+                  <!-- Leaf Tasks at Node level -->
+                  {#if node.leaf_tasks && node.leaf_tasks.length > 0}
+                    <div class="tasks-list">
+                      {#each node.leaf_tasks as task}
+                        <button
+                          class="task-row {selectedTaskId === task.task_id
+                            ? 'task-row--selected'
+                            : ''}"
+                          onclick={() => selectTask(task.task_id)}
+                          data-testid="task-{task.task_id}"
+                        >
+                          <span class="task-glyph">{getNodeGlyph(task.status)}</span>
+                          <span class="task-id font-semibold">{task.task_id}</span>
+                          <span class="task-role">{task.role}</span>
+                          <span class="task-model">{task.harness} {task.model}</span>
+                          <span class="task-attempt">attempt {task.attempt}</span>
+                          <span class="task-status badge badge--state badge--state-{task.status}"
+                            >{task.status}</span
+                          >
+                          {#if task.off_track}
+                            <span class="badge badge--warning" data-testid="task-off-track-badge">
+                              off track: {task.off_track.signal}
+                            </span>
+                          {/if}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              {/if}
+            </div>
+          {/each}
+
+          <!-- Pruned / Not in plan section -->
+          {#if plan.nodes.some((n) => n.state === 'not_in_plan')}
+            {@const pruned = plan.nodes.filter((n) => n.state === 'not_in_plan')}
+            <div class="not-in-plan-box" data-testid="not-in-plan-box">
+              <span class="not-in-plan-glyph">·</span>
+              <span class="not-in-plan-text">
+                {$t('plan.not_in_plan.group')}: {pruned.map((n) => n.title).join(', ')}
+                {#if pruned[0]?.prune_reason}
+                  ({pruned[0].prune_reason})
+                {/if}
+              </span>
+            </div>
+          {/if}
+        </div>
+      </section>
+
+      <!-- Right: Worker Task Activity Inspector -->
+      <section class="plan-detail-panel" aria-label="Task Inspector" data-testid="task-inspector">
+        {#if isLoadingActivity}
+          <div class="detail-loading">
+            <Spinner size="2rem" label="Loading task activity…" />
+          </div>
+        {:else if taskActivity}
+          <div class="task-inspector" data-testid="activity-feed">
+            <div class="task-inspector__head">
+              <div class="task-headline">
+                <h3 class="task-title font-semibold">{taskActivity.task_id}</h3>
+                <span class="task-role-tag">{taskActivity.role}</span>
+                <span class="task-meta">{taskActivity.harness} {taskActivity.model}</span>
+                <span class="task-meta">attempt {taskActivity.attempt}</span>
+              </div>
+              <div class="task-metrics mono">
+                <span>{formatDurationSeconds(taskActivity.duration_seconds)}</span>
+                {#if taskActivity.tokens_so_far > 0}
+                  <span>· {taskActivity.tokens_so_far} tokens</span>
+                {/if}
+              </div>
+            </div>
+
+            <!-- Off-track alert banner -->
+            {#if taskActivity.off_track}
+              <div class="off-track-banner" data-testid="off-track-alert" role="alert">
+                <span class="warning-icon">⚠</span>
+                <span class="off-track-msg">
+                  {$t('plan.activity.off_track', {
+                    signal: taskActivity.off_track.signal,
+                    value: taskActivity.off_track.value ?? '?',
+                    threshold: taskActivity.off_track.threshold ?? '?',
+                    action: taskActivity.off_track.action,
+                  })}
+                </span>
+              </div>
+            {/if}
+
+            <!-- Activity Entries -->
+            <div class="activity-entries">
+              {#if taskActivity.entries.length === 0}
+                <div class="activity-empty text-muted">No activity entries yet.</div>
+              {:else}
+                {#each taskActivity.entries as entry}
+                  <div
+                    class="activity-entry activity-entry--{entry.kind}"
+                    data-testid="activity-entry"
+                  >
+                    <span class="entry-time mono">{entry.timestamp}</span>
+                    <span class="entry-kind-tag entry-kind-tag--{entry.kind}">{entry.kind}</span>
+                    <div class="entry-body">
+                      {#if entry.kind === 'tool' || entry.kind === 'tool_call'}
+                        <div class="tool-call mono">
+                          <span class="tool-name">{entry.tool_name}</span>
+                          <span class="tool-target">{stripControlSequences(entry.tool_target)}</span
+                          >
+                          {#if entry.tool_failed}
+                            <span class="badge badge--danger">failed · {entry.size || ''}</span>
+                          {/if}
+                        </div>
+                      {:else if entry.kind === 'changed' || entry.kind === 'file_changed'}
+                        <div class="file-changed mono">
+                          {stripControlSequences(
+                            entry.content || (entry.files && entry.files[0]) || '',
+                          )}
+                        </div>
+                      {:else if entry.kind === 'gap'}
+                        <div class="activity-gap text-muted italic">
+                          {stripControlSequences(entry.content || '')}
+                        </div>
+                      {:else}
+                        <div class="entry-content">
+                          {stripControlSequences(entry.content)}
+                        </div>
+                      {/if}
+                    </div>
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          </div>
+        {:else}
+          <div class="no-task-selected text-muted">
+            <p>Select a task on the left to inspect its live activity.</p>
+          </div>
+        {/if}
+      </section>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .plan-view {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: calc(100vh - 4rem);
+    background-color: var(--color-bg-app);
+    color: var(--color-text-primary);
+  }
+
+  .plan-view__loading,
+  .plan-view__error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-8);
+    gap: var(--space-4);
+  }
+
+  .plan-header {
+    background-color: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-4) var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .plan-header__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .plan-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .breadcrumb-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-accent);
+    cursor: pointer;
+    text-decoration: underline;
+    font-size: inherit;
+    font-family: inherit;
+  }
+
+  .breadcrumb-link:hover {
+    color: var(--color-accent-hover, #2563eb);
+  }
+
+  .breadcrumb-sep {
+    color: var(--color-text-muted);
+  }
+
+  .breadcrumb-current {
+    color: var(--color-text-primary);
+  }
+
+  .plan-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .pr-badge-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm, 4px);
+    background-color: var(--color-bg-subtle, #f1f5f9);
+    border: 1px solid var(--color-border);
+    color: var(--color-accent);
+    font-size: var(--text-xs);
+    font-family: monospace;
+    text-decoration: none;
+  }
+
+  .report-link-btn {
+    background: none;
+    border: none;
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    text-decoration: underline;
+  }
+
+  .plan-headline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .plan-title {
+    font-size: var(--text-xl, 1.25rem);
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .plan-status-tags {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .plan-tokens {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .tokens-label {
+    color: var(--color-text-muted);
+  }
+
+  .tokens-value {
+    font-weight: 500;
+  }
+
+  /* Two-panel layout */
+  .plan-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .plan-tree-panel {
+    flex: 1;
+    min-width: 320px;
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
+    padding: var(--space-4);
+    background-color: var(--color-bg-surface);
+  }
+
+  .plan-detail-panel {
+    flex: 1.2;
+    min-width: 360px;
+    overflow-y: auto;
+    padding: var(--space-4);
+    background-color: var(--color-bg-app);
+  }
+
+  .tree-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .node-item {
+    border: 1px solid var(--color-border-subtle, #e2e8f0);
+    border-radius: var(--radius-md, 6px);
+    background-color: var(--color-bg-surface);
+    overflow: hidden;
+  }
+
+  .node-item--running {
+    border-left: 3px solid var(--color-accent, #3b82f6);
+  }
+
+  .node-item--waiting {
+    border-left: 3px solid #f59e0b;
+  }
+
+  .node-row {
+    display: flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  .node-glyph {
+    font-family: monospace;
+    font-weight: bold;
+    width: 1.2rem;
+    text-align: center;
+  }
+
+  .toggle-icon {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+
+  .node-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    font-size: var(--text-sm);
+  }
+
+  .node-kind-badge {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .node-state-text {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .node-duration {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    margin-left: auto;
+  }
+
+  .node-children {
+    padding-left: var(--space-6);
+    padding-bottom: var(--space-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border-top: 1px solid var(--color-border-subtle, #f1f5f9);
+  }
+
+  .node-item--sub {
+    border: none;
+    background: transparent;
+  }
+
+  .tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0 4px var(--space-4);
+  }
+
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid transparent;
+    background-color: var(--color-bg-subtle, #f8fafc);
+    cursor: pointer;
+    text-align: left;
+    font-size: var(--text-xs);
+    transition: background-color 0.15s ease;
+  }
+
+  .task-row:hover {
+    background-color: var(--color-bg-subtle-hover, #f1f5f9);
+  }
+
+  .task-row--selected {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: var(--color-accent, #3b82f6);
+  }
+
+  .task-glyph {
+    font-family: monospace;
+    font-weight: bold;
+  }
+
+  .task-id {
+    font-family: monospace;
+  }
+
+  .task-role {
+    color: var(--color-text-secondary);
+  }
+
+  .task-model {
+    color: var(--color-text-muted);
+  }
+
+  .task-attempt {
+    color: var(--color-text-muted);
+  }
+
+  .not-in-plan-box {
+    margin-top: var(--space-4);
+    padding: var(--space-3);
+    background-color: var(--color-bg-subtle, #f8fafc);
+    border-radius: var(--radius-md, 6px);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .not-in-plan-glyph {
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+
+  /* Right panel inspector */
+  .task-inspector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .task-inspector__head {
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md, 6px);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .task-headline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .task-title {
+    margin: 0;
+    font-size: var(--text-base);
+  }
+
+  .task-role-tag {
+    font-size: var(--text-xs);
+    padding: 2px 6px;
+    background-color: var(--color-bg-subtle, #f1f5f9);
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .task-meta {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .task-metrics {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .off-track-banner {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background-color: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: var(--radius-md, 6px);
+    color: #92400e;
+    font-size: var(--text-sm);
+    font-weight: 500;
+  }
+
+  .warning-icon {
+    font-size: 1.2rem;
+  }
+
+  .activity-entries {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .activity-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border-subtle, #e2e8f0);
+    border-radius: var(--radius-sm, 4px);
+    font-size: var(--text-xs);
+  }
+
+  .entry-time {
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+
+  .entry-kind-tag {
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    background-color: var(--color-bg-subtle, #e2e8f0);
+    color: var(--color-text-secondary);
+  }
+
+  .entry-kind-tag--tool,
+  .entry-kind-tag--tool_call {
+    background-color: #e0e7ff;
+    color: #3730a3;
+  }
+
+  .entry-kind-tag--changed,
+  .entry-kind-tag--file_changed {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  .entry-kind-tag--text {
+    background-color: #f3f4f6;
+    color: #374151;
+  }
+
+  .entry-body {
+    flex: 1;
+    word-break: break-word;
+  }
+
+  .tool-call {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .tool-name {
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+
+  .tool-target {
+    color: var(--color-text-primary);
+  }
+
+  .no-task-selected {
+    padding: var(--space-8);
+    text-align: center;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .plan-content {
+      flex-direction: column;
+    }
+    .plan-tree-panel {
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+    }
+  }
+</style>
