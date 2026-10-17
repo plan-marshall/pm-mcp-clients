@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -184,6 +185,36 @@ class PmConsoleTest {
                             () -> assertEquals(0, exitCode),
                             () -> assertTrue(output.contains("Left the setup before step 1. Nothing was sent. Enter continues the setup."))
         );
+    }
+
+    @Test
+    @DisplayName("asks for a fresh code when a device is paired (device.paired)")
+    void asksForFreshCodeOnDevicePaired() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/web/pairings".equals(request.target())) {
+                response.json(201, "{\"code\":\"FRESH-CODE\",\"url\":\"http://127.0.0.1:7420/pair#code=FRESH-CODE\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var outStream = new ByteArrayOutputStream();
+        var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), outStream);
+        var reader = LineReaderBuilder.builder().terminal(terminal).build();
+
+        var context = new OperatorContext(
+                            fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), outStream),
+                            null
+        );
+
+        new PmConsole(context).applyConsoleEvent("device.paired",
+                            Map.of("device_id", "dev-1", "label", "Firefox on mbp-oliver"), reader);
+
+        var output = outStream.toString(StandardCharsets.UTF_8);
+        assertTrue(output.contains("Paired: Firefox on mbp-oliver"), "output: " + output);
+        assertTrue(output.contains("FRESH-CODE"), "output: " + output);
     }
 
     @Test

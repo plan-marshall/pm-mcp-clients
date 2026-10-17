@@ -6,6 +6,7 @@
   import { runtimeStore, initRuntime, navigateTo } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
   import Spinner from '../lib/components/Spinner.svelte';
+  import ConnectionStatusBanner from '../lib/components/ConnectionStatusBanner.svelte';
 
   interface Props {
     children?: import('svelte').Snippet;
@@ -220,10 +221,13 @@
     </div>
   </header>
 
+  {#if $runtimeStore.isPaired}
+    <ConnectionStatusBanner />
+  {/if}
+
   <main class="app-body">
     {@render children?.()}
   </main>
-
   <div class="sr-only" aria-live="polite">
     {$runtimeStore.quietReportNotice || ''}
     {$runtimeStore.quietDecisionNotice || ''}

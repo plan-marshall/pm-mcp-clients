@@ -224,6 +224,63 @@ class PmOperatorTest {
         }
 
         @Test
+        @DisplayName("enable --lan reports the LAN URL and certificate fingerprint")
+        void enableLanReportsFingerprint() throws Exception {
+            runtime((request, response) -> {
+                if ("/api/v1/status/connection".equals(request.target())) {
+                    response.json(200, """
+                                        {"loopback_open":true,"lan_enabled":true,
+                                         "lan_url":"https://mbp-oliver.local:7421",
+                                         "lan_fingerprint":"4F:1A:9C","paired_devices_count":0,"onboarded":true}
+                                        """);
+                } else {
+                    response.json(200, "{\"enabled\":true,\"lan\":true,\"port\":7420,\"open\":true}");
+                }
+            });
+
+            assertEquals(0, run("web", "enable", "--lan"));
+
+            var output = out.toString();
+            assertTrue(output.contains("web       enabled (lan), port 7420, open"));
+            assertTrue(output.contains("https://mbp-oliver.local:7421"), "LAN URL is reported");
+            assertTrue(output.contains("4F:1A:9C"), "Certificate fingerprint is reported");
+        }
+
+        @Test
+        @DisplayName("enable --lan reports the LAN URL without a fingerprint when none is present")
+        void enableLanWithoutFingerprint() throws Exception {
+            runtime((request, response) -> {
+                if ("/api/v1/status/connection".equals(request.target())) {
+                    response.json(200, "{\"lan_enabled\":true,\"lan_url\":\"https://host:7421\","
+                                        + "\"paired_devices_count\":0,\"onboarded\":true}");
+                } else {
+                    response.json(200, "{\"enabled\":true,\"lan\":true,\"port\":7420,\"open\":true}");
+                }
+            });
+
+            assertEquals(0, run("web", "enable", "--lan"));
+
+            var output = out.toString();
+            assertTrue(output.contains("https://host:7421"), "LAN URL is reported");
+            assertFalse(output.contains("Fingerprint"), "No fingerprint line without a fingerprint");
+        }
+
+        @Test
+        @DisplayName("enable --lan tolerates a missing connection status")
+        void enableLanWithoutConnectionStatus() throws Exception {
+            runtime((request, response) -> {
+                if ("/api/v1/status/connection".equals(request.target())) {
+                    response.json(404, "{\"error\":\"not_found\"}");
+                } else {
+                    response.json(200, "{\"enabled\":true,\"lan\":true,\"port\":7420,\"open\":true}");
+                }
+            });
+
+            assertEquals(0, run("web", "enable", "--lan"));
+            assertEquals("web       enabled (lan), port 7420, open", out.toString().strip());
+        }
+
+        @Test
         @DisplayName("disable sends enabled false with the default port")
         void disable() throws Exception {
             var server = runtime((request, response) -> response.json(200,

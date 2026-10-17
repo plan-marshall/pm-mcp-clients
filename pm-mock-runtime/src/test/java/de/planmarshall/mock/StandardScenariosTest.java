@@ -12,9 +12,10 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
+import java.util.TreeSet;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -25,11 +26,12 @@ class StandardScenariosTest {
 
     @Test
     @DisplayName("defines all standard scenario constants correctly")
-    void shouldDefineStandardConstants() {
+    void shouldDefineStandardConstants() throws Exception {
         assertEquals("status-only", StandardScenarios.STATUS_ONLY);
         assertEquals("onboarding-happy", StandardScenarios.ONBOARDING_HAPPY);
         assertEquals("onboarding-harness-not-logged-in", StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN);
         assertEquals("web-pairing", StandardScenarios.WEB_PAIRING);
+        assertEquals("entry", StandardScenarios.ENTRY);
         assertEquals("paired-devices", StandardScenarios.PAIRED_DEVICES);
         assertEquals("running-work", StandardScenarios.RUNNING_WORK);
         assertEquals("decisions", StandardScenarios.DECISIONS);
@@ -38,19 +40,15 @@ class StandardScenariosTest {
         assertEquals("plan-view", StandardScenarios.PLAN_VIEW);
         assertEquals("control", StandardScenarios.CONTROL);
 
-        assertEquals(12, StandardScenarios.ALL.size());
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.STATUS_ONLY));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.ONBOARDING_HAPPY));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.WEB_PAIRING));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.PAIRED_DEVICES));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.RUNNING_WORK));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.REPORTS));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.DECISIONS));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.SYSTEM));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.PROJECTS));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.PLAN_VIEW));
-        assertTrue(StandardScenarios.ALL.contains(StandardScenarios.CONTROL));
+        // ALL lists exactly the scenario constants declared here. Reading them by reflection keeps
+        // the test correct when a scenario is added, so it does not break on a sibling change.
+        var expected = new TreeSet<String>();
+        for (var field : StandardScenarios.class.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.getType() == String.class) {
+                expected.add((String) field.get(null));
+            }
+        }
+        assertEquals(expected, new TreeSet<>(StandardScenarios.ALL));
     }
 
     @Test

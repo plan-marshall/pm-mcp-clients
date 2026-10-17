@@ -47,6 +47,12 @@ public final class StandardScenarios {
     public static final String WEB_PAIRING = "web-pairing";
 
     /**
+     * The entry: a machine not onboarded yet, the pairing on loopback, the network listener with
+     * its certificate fingerprint, and the fresh code after a redemption (UC-ENT-1, UC-ONB-8).
+     */
+    public static final String ENTRY = "entry";
+
+    /**
      * Paired devices management flow demonstrating listing, renaming, revoking devices,
      * and network listener toggling.
      */
@@ -97,6 +103,7 @@ public final class StandardScenarios {
             ONBOARDING_HAPPY,
             ONBOARDING_HARNESS_NOT_LOGGED_IN,
             WEB_PAIRING,
+            ENTRY,
             PAIRED_DEVICES,
             RUNNING_WORK,
             REPORTS,

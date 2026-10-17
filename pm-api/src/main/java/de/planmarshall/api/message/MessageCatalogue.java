@@ -38,6 +38,7 @@ public final class MessageCatalogue {
     public static final List<String> SUPPORTED_AREAS = List.of(
             "common",
             "pairing",
+            "entry",
             "onboarding",
             "settings",
             "designer",
