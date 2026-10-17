@@ -52,31 +52,10 @@ public record ProjectExplorer(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-
-        var favList = new ArrayList<Map<String, Object>>();
-        for (var p : favourites) {
-            favList.add(p.toMap());
-        }
-        map.put(FIELD_FAVOURITES, favList);
-
-        var recList = new ArrayList<Map<String, Object>>();
-        for (var p : recent) {
-            recList.add(p.toMap());
-        }
-        map.put(FIELD_RECENT, recList);
-
-        var allList = new ArrayList<Map<String, Object>>();
-        for (var p : allProjects) {
-            allList.add(p.toMap());
-        }
-        map.put(FIELD_ALL_PROJECTS, allList);
-
-        var addList = new ArrayList<Map<String, Object>>();
-        for (var b : beingAdded) {
-            addList.add(b.toMap());
-        }
-        map.put(FIELD_BEING_ADDED, addList);
-
+        map.put(FIELD_FAVOURITES, favourites.stream().map(EnrolledProject::toMap).toList());
+        map.put(FIELD_RECENT, recent.stream().map(EnrolledProject::toMap).toList());
+        map.put(FIELD_ALL_PROJECTS, allProjects.stream().map(EnrolledProject::toMap).toList());
+        map.put(FIELD_BEING_ADDED, beingAdded.stream().map(BeingAddedProject::toMap).toList());
         return map;
     }
 
@@ -99,58 +78,48 @@ public record ProjectExplorer(
     public static ProjectExplorer fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
 
-        var favs = new ArrayList<EnrolledProject>();
-        var favArray = JsonTree.asArray(map.get(FIELD_FAVOURITES));
-        if (favArray != null) {
-            for (var item : favArray) {
-                if (item instanceof Map<?, ?> itemMap) {
-                    @SuppressWarnings("unchecked")
-                    var m = (Map<String, Object>) itemMap;
-                    favs.add(EnrolledProject.fromMap(m));
-                }
-            }
-        }
+        var favs = parseProjectList(map.get(FIELD_FAVOURITES));
+        var recents = parseProjectList(map.get(FIELD_RECENT));
 
-        var recents = new ArrayList<EnrolledProject>();
-        var recArray = JsonTree.asArray(map.get(FIELD_RECENT));
-        if (recArray != null) {
-            for (var item : recArray) {
-                if (item instanceof Map<?, ?> itemMap) {
-                    @SuppressWarnings("unchecked")
-                    var m = (Map<String, Object>) itemMap;
-                    recents.add(EnrolledProject.fromMap(m));
-                }
-            }
-        }
-
-        var all = new ArrayList<EnrolledProject>();
-        var allArray = JsonTree.asArray(map.get(FIELD_ALL_PROJECTS));
+        var allArray = map.get(FIELD_ALL_PROJECTS);
         if (allArray == null) {
-            allArray = JsonTree.asArray(map.get("projects"));
+            allArray = map.get("projects");
         }
-        if (allArray != null) {
-            for (var item : allArray) {
-                if (item instanceof Map<?, ?> itemMap) {
-                    @SuppressWarnings("unchecked")
-                    var m = (Map<String, Object>) itemMap;
-                    all.add(EnrolledProject.fromMap(m));
-                }
-            }
-        }
+        var all = parseProjectList(allArray);
 
-        var adding = new ArrayList<BeingAddedProject>();
-        var addArray = JsonTree.asArray(map.get(FIELD_BEING_ADDED));
-        if (addArray != null) {
-            for (var item : addArray) {
-                if (item instanceof Map<?, ?> itemMap) {
-                    @SuppressWarnings("unchecked")
-                    var m = (Map<String, Object>) itemMap;
-                    adding.add(BeingAddedProject.fromMap(m));
-                }
-            }
-        }
+        var adding = parseBeingAddedList(map.get(FIELD_BEING_ADDED));
 
         return new ProjectExplorer(favs, recents, all, adding);
+    }
+
+    private static List<EnrolledProject> parseProjectList(Object raw) throws IOException {
+        var list = new ArrayList<EnrolledProject>();
+        var array = JsonTree.asArray(raw);
+        if (array != null) {
+            for (var item : array) {
+                if (item instanceof Map<?, ?> itemMap) {
+                    @SuppressWarnings("unchecked")
+                    var m = (Map<String, Object>) itemMap;
+                    list.add(EnrolledProject.fromMap(m));
+                }
+            }
+        }
+        return list;
+    }
+
+    private static List<BeingAddedProject> parseBeingAddedList(Object raw) throws IOException {
+        var list = new ArrayList<BeingAddedProject>();
+        var array = JsonTree.asArray(raw);
+        if (array != null) {
+            for (var item : array) {
+                if (item instanceof Map<?, ?> itemMap) {
+                    @SuppressWarnings("unchecked")
+                    var m = (Map<String, Object>) itemMap;
+                    list.add(BeingAddedProject.fromMap(m));
+                }
+            }
+        }
+        return list;
     }
 
     /**

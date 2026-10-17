@@ -87,21 +87,8 @@ public record ProjectOnboarding(
      */
     public static ProjectOnboarding fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var onboardingId = JsonTree.string(map, FIELD_ONBOARDING_ID);
-        if (onboardingId == null) {
-            onboardingId = JsonTree.string(map, "id");
-        }
-        if (onboardingId == null || onboardingId.isBlank()) {
-            throw new JsonFormatException("Missing onboarding_id in ProjectOnboarding");
-        }
-
-        var checkoutPath = JsonTree.string(map, FIELD_CHECKOUT_PATH);
-        if (checkoutPath == null) {
-            checkoutPath = JsonTree.string(map, "path");
-        }
-        if (checkoutPath == null || checkoutPath.isBlank()) {
-            throw new JsonFormatException("Missing checkout_path in ProjectOnboarding");
-        }
+        var onboardingId = extractOnboardingId(map);
+        var checkoutPath = extractCheckoutPath(map);
 
         var stateStr = JsonTree.string(map, FIELD_STATE);
         var state = ProjectOnboardingState.fromValue(stateStr);
@@ -109,37 +96,46 @@ public record ProjectOnboarding(
             state = ProjectOnboardingState.CHECKOUT;
         }
 
-        var domains = new ArrayList<String>();
-        var domainArray = JsonTree.asArray(map.get(FIELD_DETECTED_DOMAINS));
-        if (domainArray != null) {
-            for (var item : domainArray) {
-                if (item instanceof String s) {
-                    domains.add(s);
-                }
-            }
-        }
-
-        var modules = new ArrayList<String>();
-        var moduleArray = JsonTree.asArray(map.get(FIELD_DISCOVERED_MODULES));
-        if (moduleArray != null) {
-            for (var item : moduleArray) {
-                if (item instanceof String s) {
-                    modules.add(s);
-                }
-            }
-        }
-
-        var creds = new ArrayList<String>();
-        var credArray = JsonTree.asArray(map.get(FIELD_CREDENTIALS_NEEDED));
-        if (credArray != null) {
-            for (var item : credArray) {
-                if (item instanceof String s) {
-                    creds.add(s);
-                }
-            }
-        }
+        var domains = parseStringList(map.get(FIELD_DETECTED_DOMAINS));
+        var modules = parseStringList(map.get(FIELD_DISCOVERED_MODULES));
+        var creds = parseStringList(map.get(FIELD_CREDENTIALS_NEEDED));
 
         return new ProjectOnboarding(onboardingId, checkoutPath, state, domains, modules, creds);
+    }
+
+    private static String extractOnboardingId(Map<String, Object> map) throws JsonFormatException {
+        var id = JsonTree.string(map, FIELD_ONBOARDING_ID);
+        if (id == null) {
+            id = JsonTree.string(map, "id");
+        }
+        if (id == null || id.isBlank()) {
+            throw new JsonFormatException("Missing onboarding_id in ProjectOnboarding");
+        }
+        return id;
+    }
+
+    private static String extractCheckoutPath(Map<String, Object> map) throws JsonFormatException {
+        var path = JsonTree.string(map, FIELD_CHECKOUT_PATH);
+        if (path == null) {
+            path = JsonTree.string(map, "path");
+        }
+        if (path == null || path.isBlank()) {
+            throw new JsonFormatException("Missing checkout_path in ProjectOnboarding");
+        }
+        return path;
+    }
+
+    private static List<String> parseStringList(Object raw) {
+        var list = new ArrayList<String>();
+        var array = JsonTree.asArray(raw);
+        if (array != null) {
+            for (var item : array) {
+                if (item instanceof String s) {
+                    list.add(s);
+                }
+            }
+        }
+        return list;
     }
 
     /**

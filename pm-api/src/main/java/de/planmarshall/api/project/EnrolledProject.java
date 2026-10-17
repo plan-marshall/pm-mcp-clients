@@ -11,6 +11,7 @@ package de.planmarshall.api.project;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -110,76 +111,28 @@ public record EnrolledProject(
      */
     public static EnrolledProject fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var projectId = JsonTree.string(map, FIELD_PROJECT_ID);
-        if (projectId == null) {
-            projectId = JsonTree.string(map, "id");
-        }
+        var projectId = stringOrDefault(map, FIELD_PROJECT_ID, "id");
         if (projectId == null || projectId.isBlank()) {
             throw new JsonFormatException("Missing project_id in EnrolledProject");
         }
 
-        var displayName = JsonTree.string(map, FIELD_DISPLAY_NAME);
-        if (displayName == null) {
-            displayName = JsonTree.string(map, "name");
-        }
+        var displayName = stringOrDefault(map, FIELD_DISPLAY_NAME, "name");
+        var remoteUrl = stringOrDefault(map, FIELD_REMOTE_URL, "repo");
 
-        var remoteUrl = JsonTree.string(map, FIELD_REMOTE_URL);
-        if (remoteUrl == null) {
-            remoteUrl = JsonTree.string(map, "repo");
-        }
-
-        var readinessStr = JsonTree.string(map, FIELD_READINESS);
-        if (readinessStr == null) {
-            readinessStr = JsonTree.string(map, "state");
-        }
+        var readinessStr = stringOrDefault(map, FIELD_READINESS, "state");
         var readiness = ProjectReadiness.fromValue(readinessStr);
         if (readiness == null) {
             readiness = ProjectReadiness.READY;
         }
 
-        var setupNeedsSummary = JsonTree.string(map, FIELD_SETUP_NEEDS_SUMMARY);
-        if (setupNeedsSummary == null) {
-            setupNeedsSummary = JsonTree.string(map, "setup_needs");
-        }
+        var setupNeedsSummary = stringOrDefault(map, FIELD_SETUP_NEEDS_SUMMARY, "setup_needs");
+        int needsOperatorCount = intOrDefault(map, FIELD_NEEDS_OPERATOR_COUNT, null, 0);
+        int activePlansCount = intOrDefault(map, FIELD_ACTIVE_PLANS_COUNT, "plans_count", 0);
+        int activeEpicsCount = intOrDefault(map, FIELD_ACTIVE_EPICS_COUNT, "epics_count", 0);
 
-        var needsOp = JsonTree.integer(map, FIELD_NEEDS_OPERATOR_COUNT);
-        int needsOperatorCount = needsOp != null ? needsOp : 0;
-
-        var plans = JsonTree.integer(map, FIELD_ACTIVE_PLANS_COUNT);
-        if (plans == null) {
-            plans = JsonTree.integer(map, "plans_count");
-        }
-        int activePlansCount = plans != null ? plans : 0;
-
-        var epics = JsonTree.integer(map, FIELD_ACTIVE_EPICS_COUNT);
-        if (epics == null) {
-            epics = JsonTree.integer(map, "epics_count");
-        }
-        int activeEpicsCount = epics != null ? epics : 0;
-
-        var lastActiveStr = JsonTree.string(map, FIELD_LAST_ACTIVE);
-        Instant lastActive = null;
-        if (lastActiveStr != null && !lastActiveStr.isBlank()) {
-            try {
-                lastActive = Instant.parse(lastActiveStr);
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
-                // Ignore parse errors, leave null
-            }
-        }
-
-        var isFav = JsonTree.bool(map, FIELD_IS_FAVOURITE);
-        if (isFav == null) {
-            isFav = JsonTree.bool(map, "favourite");
-        }
-        boolean isFavourite = Boolean.TRUE.equals(isFav);
-
-        var isRel = JsonTree.bool(map, FIELD_IS_RELEASED);
-        if (isRel == null) {
-            isRel = JsonTree.bool(map, "released");
-        }
-        boolean isReleased = Boolean.TRUE.equals(isRel) || readiness == ProjectReadiness.RELEASED;
+        var lastActive = parseInstant(map.get(FIELD_LAST_ACTIVE));
+        boolean isFavourite = boolOrDefault(map, FIELD_IS_FAVOURITE, "favourite");
+        boolean isReleased = boolOrDefault(map, FIELD_IS_RELEASED, "released") || readiness == ProjectReadiness.RELEASED;
 
         return new EnrolledProject(
                 projectId,
@@ -194,6 +147,38 @@ public record EnrolledProject(
                 isFavourite,
                 isReleased
         );
+    }
+
+    private static @Nullable String stringOrDefault(Map<String, Object> map, String key1, String key2) {
+        var v = JsonTree.string(map, key1);
+        return v != null ? v : JsonTree.string(map, key2);
+    }
+
+    private static int intOrDefault(Map<String, Object> map, String key1, @Nullable String key2, int defaultValue) {
+        var v = JsonTree.integer(map, key1);
+        if (v == null && key2 != null) {
+            v = JsonTree.integer(map, key2);
+        }
+        return v != null ? v : defaultValue;
+    }
+
+    private static boolean boolOrDefault(Map<String, Object> map, String key1, String key2) {
+        var b = JsonTree.bool(map, key1);
+        if (b == null) {
+            b = JsonTree.bool(map, key2);
+        }
+        return Boolean.TRUE.equals(b);
+    }
+
+    private static @Nullable Instant parseInstant(Object raw) {
+        if (raw instanceof String str && !str.isBlank()) {
+            try {
+                return Instant.parse(str);
+            } catch (DateTimeParseException _) {
+                // Ignore parse errors, leave null
+            }
+        }
+        return null;
     }
 
     /**

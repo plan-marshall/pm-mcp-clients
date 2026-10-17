@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -42,6 +43,7 @@ import picocli.CommandLine.Spec;
 public final class ProjectCommand implements Callable<Integer> {
 
     private static final String PROJECTS_API = "/api/v1/projects/";
+    private static final String FMT_PROJECT_NOT_FOUND = "Project %s not found.%n";
 
     private final OperatorContext context;
 
@@ -69,42 +71,46 @@ public final class ProjectCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
 
         if (response.status() == 404) {
-            out.printf("Project %s not found.%n", OutputSafety.stripControlSequences(projectId));
+            out.printf(FMT_PROJECT_NOT_FOUND, OutputSafety.stripControlSequences(projectId));
             out.flush();
             return 1;
         }
 
         if (response.status() == 200) {
             var project = EnrolledProject.fromJson(response.bodyText());
-            var name = OutputSafety.stripControlSequences(project.displayName());
-            var pId = OutputSafety.stripControlSequences(project.projectId());
-            var remote = project.remoteUrl() != null ? OutputSafety.stripControlSequences(project.remoteUrl()) : "";
-            var readiness = switch (project.readiness()) {
-                case READY -> "ready";
-                case RELEASED -> "released";
-                case SETUP_NEEDS -> "setup needs: " + OutputSafety.stripControlSequences(
-                                    project.setupNeedsSummary() != null ? project.setupNeedsSummary() : "setup");
-            };
-
-            out.println("Project:   " + name + " (" + pId + ")");
-            if (!remote.isBlank()) {
-                out.println("Remote:    " + remote);
-            }
-            out.println("Readiness: " + readiness);
-            if (project.needsOperatorCount() > 0) {
-                out.println("Operator:  needs you: " + project.needsOperatorCount());
-            }
-            out.println("Work:      " + project.activePlansCount() + " plans · " + project.activeEpicsCount() + " epics");
-            if (project.lastActive() != null) {
-                out.println("Last seen: " + ProjectsCommand.formatRelativeTime(project.lastActive()));
-            }
-            out.println("Favourite: " + (project.isFavourite() ? "yes (★)" : "no"));
-            out.println("Released:  " + (project.isReleased() ? "yes" : "no"));
-            out.flush();
+            renderProjectDetail(out, project);
             return 0;
         }
 
         throw new OperatorRefusedException("project " + OutputSafety.stripControlSequences(projectId), response);
+    }
+
+    private static void renderProjectDetail(PrintWriter out, EnrolledProject project) {
+        var name = OutputSafety.stripControlSequences(project.displayName());
+        var pId = OutputSafety.stripControlSequences(project.projectId());
+        var remote = project.remoteUrl() != null ? OutputSafety.stripControlSequences(project.remoteUrl()) : "";
+        var readiness = switch (project.readiness()) {
+            case READY -> "ready";
+            case RELEASED -> "released";
+            case SETUP_NEEDS -> "setup needs: " + OutputSafety.stripControlSequences(
+                                project.setupNeedsSummary() != null ? project.setupNeedsSummary() : "setup");
+        };
+
+        out.println("Project:   " + name + " (" + pId + ")");
+        if (!remote.isBlank()) {
+            out.println("Remote:    " + remote);
+        }
+        out.println("Readiness: " + readiness);
+        if (project.needsOperatorCount() > 0) {
+            out.println("Operator:  needs you: " + project.needsOperatorCount());
+        }
+        out.println("Work:      " + project.activePlansCount() + " plans · " + project.activeEpicsCount() + " epics");
+        if (project.lastActive() != null) {
+            out.println("Last seen: " + ProjectsCommand.formatRelativeTime(project.lastActive()));
+        }
+        out.println("Favourite: " + (project.isFavourite() ? "yes (★)" : "no"));
+        out.println("Released:  " + (project.isReleased() ? "yes" : "no"));
+        out.flush();
     }
 
     @Command(name = "add", description = "Onboards a project from the specified or current directory.")
@@ -277,7 +283,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                err.printf("Project %s not found.%n", sanitizedId);
+                err.printf(FMT_PROJECT_NOT_FOUND, sanitizedId);
                 err.flush();
                 return 1;
             }
@@ -332,7 +338,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                err.printf("Project %s not found.%n", sanitizedId);
+                err.printf(FMT_PROJECT_NOT_FOUND, sanitizedId);
                 err.flush();
                 return 1;
             }

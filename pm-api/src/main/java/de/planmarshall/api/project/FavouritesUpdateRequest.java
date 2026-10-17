@@ -59,7 +59,7 @@ public record FavouritesUpdateRequest(List<String> projectIds) {
      * @return parsed request
      * @throws IOException on format failure
      */
-    public static FavouritesUpdateRequest fromMap(Map<String, Object> map) throws IOException {
+    public static FavouritesUpdateRequest fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var list = new ArrayList<String>();
         var array = JsonTree.asArray(map.get(FIELD_PROJECT_IDS));

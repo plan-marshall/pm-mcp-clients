@@ -11,6 +11,7 @@ package de.planmarshall.api.project;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -112,9 +113,7 @@ public record ProjectReleaseResult(
         if (relAtStr != null && !relAtStr.isBlank()) {
             try {
                 releasedAt = Instant.parse(relAtStr);
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            } catch (DateTimeParseException _) {
                 // Ignore parse errors, fallback to Instant.now()
             }
         }

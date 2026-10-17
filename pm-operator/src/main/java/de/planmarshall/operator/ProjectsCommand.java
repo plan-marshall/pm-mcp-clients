@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectExplorer;
 
@@ -63,16 +63,30 @@ public final class ProjectsCommand implements Callable<Integer> {
         var response = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
         var out = spec.commandLine().getOut();
         if (response.status() == 200) {
-            var parsed = JsonTree.parse(response.body());
-            ProjectExplorer explorer;
-            if (parsed instanceof Map<?, ?> map) {
+            var explorer = parseExplorer(response.body());
+            renderExplorer(out, explorer, filter, context.clientEnvironment().locale());
+        } else {
+            var err = spec.commandLine().getErr();
+            err.printf("Failed to list projects: HTTP %d%n", response.status());
+            err.flush();
+            return 1;
+        }
+        out.flush();
+        return 0;
+    }
+
+    private static ProjectExplorer parseExplorer(byte[] body) throws IOException {
+        var parsed = JsonTree.parse(body);
+        return switch (parsed) {
+            case Map<?, ?> map -> {
                 @SuppressWarnings("unchecked")
                 var m = (Map<String, Object>) map;
-                explorer = ProjectExplorer.fromMap(m);
-            } else if (parsed instanceof List<?> list) {
+                yield ProjectExplorer.fromMap(m);
+            }
+            case List<?> items -> {
                 var all = new ArrayList<EnrolledProject>();
                 var favs = new ArrayList<EnrolledProject>();
-                for (var item : list) {
+                for (var item : items) {
                     if (item instanceof Map<?, ?> itemMap) {
                         @SuppressWarnings("unchecked")
                         var m = (Map<String, Object>) itemMap;
@@ -83,19 +97,10 @@ public final class ProjectsCommand implements Callable<Integer> {
                         }
                     }
                 }
-                explorer = new ProjectExplorer(favs, List.of(), all, List.of());
-            } else {
-                explorer = new ProjectExplorer(List.of(), List.of(), List.of(), List.of());
+                yield new ProjectExplorer(favs, List.of(), all, List.of());
             }
-            renderExplorer(out, explorer, filter, context.clientEnvironment().locale());
-        } else {
-            var err = spec.commandLine().getErr();
-            err.printf("Failed to list projects: HTTP %d%n", response.status());
-            err.flush();
-            return 1;
-        }
-        out.flush();
-        return 0;
+            default -> new ProjectExplorer(List.of(), List.of(), List.of(), List.of());
+        };
     }
 
     private static void renderExplorer(PrintWriter out, ProjectExplorer explorer, @Nullable String filter, String locale) {
@@ -110,66 +115,83 @@ public final class ProjectsCommand implements Callable<Integer> {
         out.println("─────────────────────────────────────────────────────────────────────────────");
 
         if (filter != null && !filter.isBlank()) {
-            var query = filter.trim().toLowerCase(Locale.ROOT);
-            var matches = explorer.allProjects().stream()
-                                .filter(p -> p.projectId().toLowerCase(Locale.ROOT).contains(query)
-                                                    || p.displayName().toLowerCase(Locale.ROOT).contains(query))
-                                .toList();
-            if (matches.isEmpty()) {
-                out.printf("No projects matching '%s'.%n", OutputSafety.stripControlSequences(filter));
-            } else {
-                out.printf("Matches for '%s'%n", OutputSafety.stripControlSequences(filter));
-                for (var p : matches) {
-                    printProjectRow(out, p);
-                }
-            }
+            renderFiltered(out, explorer.allProjects(), filter);
             return;
         }
 
-        // 1. Being added
-        if (!explorer.beingAdded().isEmpty()) {
-            out.println(MessageCatalogue.hasKey("project.adding.title")
-                                ? MessageCatalogue.format(locale, "project.adding.title", Map.of())
-                                : "Being added");
-            for (var b : explorer.beingAdded()) {
-                var safePath = OutputSafety.stripControlSequences(b.checkoutPath());
-                var safeStep = OutputSafety.stripControlSequences(b.currentStep());
-                out.printf("    %-30s %s (%d of %d)%n", safePath, safeStep, b.stepNumber(), b.totalSteps());
-            }
-        }
+        renderBeingAdded(out, explorer.beingAdded(), locale);
+        renderFavourites(out, explorer.favourites(), locale);
+        renderRecent(out, explorer.recent(), locale);
+        renderAll(out, explorer.allProjects(), locale);
+    }
 
-        // 2. Favourites
-        if (!explorer.favourites().isEmpty()) {
-            out.println(MessageCatalogue.hasKey("project.explorer.favourites")
-                                ? MessageCatalogue.format(locale, "project.explorer.favourites", Map.of())
-                                : "Favourites");
-            for (var p : explorer.favourites()) {
+    private static void renderFiltered(PrintWriter out, List<EnrolledProject> allProjects, String filter) {
+        var query = filter.trim().toLowerCase(Locale.ROOT);
+        var matches = allProjects.stream()
+                            .filter(p -> p.projectId().toLowerCase(Locale.ROOT).contains(query)
+                                                || p.displayName().toLowerCase(Locale.ROOT).contains(query))
+                            .toList();
+        if (matches.isEmpty()) {
+            out.printf("No projects matching '%s'.%n", OutputSafety.stripControlSequences(filter));
+        } else {
+            out.printf("Matches for '%s'%n", OutputSafety.stripControlSequences(filter));
+            for (var p : matches) {
                 printProjectRow(out, p);
             }
         }
+    }
 
-        // 3. Recent
-        if (!explorer.recent().isEmpty()) {
-            out.println(MessageCatalogue.hasKey("project.explorer.recent")
-                                ? MessageCatalogue.format(locale, "project.explorer.recent", Map.of())
-                                : "Recent");
-            for (var p : explorer.recent()) {
-                printProjectRow(out, p);
-            }
+    private static void renderBeingAdded(PrintWriter out, List<BeingAddedProject> beingAdded, String locale) {
+        if (beingAdded.isEmpty()) {
+            return;
         }
+        out.println(MessageCatalogue.hasKey("project.adding.title")
+                            ? MessageCatalogue.format(locale, "project.adding.title", Map.of())
+                            : "Being added");
+        for (var b : beingAdded) {
+            var safePath = OutputSafety.stripControlSequences(b.checkoutPath());
+            var safeStep = OutputSafety.stripControlSequences(b.currentStep());
+            out.printf("    %-30s %s (%d of %d)%n", safePath, safeStep, b.stepNumber(), b.totalSteps());
+        }
+    }
 
-        // 4. All projects (by name)
-        if (!explorer.allProjects().isEmpty()) {
-            var allTitle = MessageCatalogue.hasKey("project.explorer.all")
-                                ? MessageCatalogue.format(locale, "project.explorer.all", Map.of())
-                                : "All projects";
-            var byName = MessageCatalogue.hasKey("project.explorer.by_name")
-                                ? MessageCatalogue.format(locale, "project.explorer.by_name", Map.of())
-                                : "by name";
-            out.println(allTitle + " (" + byName + ")");
-            for (var p : explorer.allProjects()) {
-                printProjectRow(out, p);
-            }
+    private static void renderFavourites(PrintWriter out, List<EnrolledProject> favourites, String locale) {
+        if (favourites.isEmpty()) {
+            return;
+        }
+        out.println(MessageCatalogue.hasKey("project.explorer.favourites")
+                            ? MessageCatalogue.format(locale, "project.explorer.favourites", Map.of())
+                            : "Favourites");
+        for (var p : favourites) {
+            printProjectRow(out, p);
+        }
+    }
+
+    private static void renderRecent(PrintWriter out, List<EnrolledProject> recent, String locale) {
+        if (recent.isEmpty()) {
+            return;
+        }
+        out.println(MessageCatalogue.hasKey("project.explorer.recent")
+                            ? MessageCatalogue.format(locale, "project.explorer.recent", Map.of())
+                            : "Recent");
+        for (var p : recent) {
+            printProjectRow(out, p);
+        }
+    }
+
+    private static void renderAll(PrintWriter out, List<EnrolledProject> allProjects, String locale) {
+        if (allProjects.isEmpty()) {
+            return;
+        }
+        var allTitle = MessageCatalogue.hasKey("project.explorer.all")
+                            ? MessageCatalogue.format(locale, "project.explorer.all", Map.of())
+                            : "All projects";
+        var byName = MessageCatalogue.hasKey("project.explorer.by_name")
+                            ? MessageCatalogue.format(locale, "project.explorer.by_name", Map.of())
+                            : "by name";
+        out.println(allTitle + " (" + byName + ")");
+        for (var p : allProjects) {
+            printProjectRow(out, p);
         }
     }
 
@@ -208,35 +230,31 @@ public final class ProjectsCommand implements Callable<Integer> {
         out.println(sb.toString().stripTrailing());
     }
 
-    public static String formatRelativeTime(Instant instant) {
+    public static String formatRelativeTime(@Nullable Instant instant) {
         if (instant == null) {
             return "";
         }
-        try {
-            var diff = Duration.between(instant, Instant.now());
-            long days = diff.toDays();
-            if (days == 0) {
-                long hours = diff.toHours();
-                if (hours > 0) {
-                    return hours + " h ago";
-                }
-                long minutes = diff.toMinutes();
-                return minutes > 0 ? minutes + " min ago" : "just now";
+        var diff = Duration.between(instant, Instant.now());
+        long days = diff.toDays();
+        if (days == 0) {
+            long hours = diff.toHours();
+            if (hours > 0) {
+                return hours + " h ago";
             }
-            if (days == 1) {
-                return "yesterday";
-            }
-            if (days < 7) {
-                return days + " d ago";
-            }
-            long weeks = days / 7;
-            if (weeks < 5) {
-                return weeks + (weeks == 1 ? " week ago" : " weeks ago");
-            }
-            long months = days / 30;
-            return months + (months == 1 ? " month ago" : " months ago");
-        } catch (DateTimeParseException _) {
-            return instant.toString();
+            long minutes = diff.toMinutes();
+            return minutes > 0 ? minutes + " min ago" : "just now";
         }
+        if (days == 1) {
+            return "yesterday";
+        }
+        if (days < 7) {
+            return days + " d ago";
+        }
+        long weeks = days / 7;
+        if (weeks < 5) {
+            return weeks + (weeks == 1 ? " week ago" : " weeks ago");
+        }
+        long months = days / 30;
+        return months + (months == 1 ? " month ago" : " months ago");
     }
 }

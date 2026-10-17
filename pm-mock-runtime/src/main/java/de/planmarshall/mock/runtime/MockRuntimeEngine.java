@@ -133,6 +133,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_PROJECT_CHANGED = "project.changed";
     private static final String KEY_PROJECT_ID = "project_id";
     private static final String KEY_EVENT = "event";
+    private static final String CONST_GITHUB_PM_PREFIX = "https://github.com/plan-marshall/";
+    private static final String CONST_TIME_10_14 = "2026-10-14T10:00:00Z";
+    private static final String CONST_PROJECTS = "projects";
+    private static final String PATH_PROJECTS = "/api/v1/projects";
+    private static final String CONST_LEGACY_PORTAL = "legacy-portal";
+    private static final String CONST_UNENROLLED = "unenrolled";
+    private static final String CONST_DECISION = "decision";
 
     private final ScenarioRegistry registry;
     private final String runtimeToken;
@@ -870,8 +877,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "relay-auth-v2 ended: merged (#210)",
                     Map.of("plan", CONST_RELAY_AUTH_V2, CONST_OUTCOME, "merged (#210)"),
                     null,
-                    Instant.parse("2026-10-14T10:00:00Z"),
-                    Instant.parse("2026-10-14T10:00:00Z"),
+                    Instant.parse(CONST_TIME_10_14),
+                    Instant.parse(CONST_TIME_10_14),
                     null, null, null,
                     "/api/v1/plans/relay-auth-v2/completion"
             ));
@@ -1197,7 +1204,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(route.status(), copy);
             return;
         }
-        if ("/api/v1/projects".equals(path) && rep instanceof Map<?, ?> map && map.get("projects") instanceof List<?> list) {
+        if (PATH_PROJECTS.equals(path) && rep instanceof Map<?, ?> map && map.get(CONST_PROJECTS) instanceof List<?> list) {
             var sorted = new ArrayList<>(list);
             sorted.sort((a, b) -> {
                 if (a instanceof Map<?, ?> ma && b instanceof Map<?, ?> mb) {
@@ -1215,7 +1222,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             for (var entry : map.entrySet()) {
                 copy.put(String.valueOf(entry.getKey()), entry.getValue());
             }
-            copy.put("projects", sorted);
+            copy.put(CONST_PROJECTS, sorted);
             response.json(route.status(), copy);
             return;
         }
@@ -1237,7 +1244,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var sub = path.substring("/api/v1/projects/".length());
                 var prj = sub.substring(0, sub.length() - "/ended".length());
                 response.json(200, Map.of(
-                        "project_id", prj,
+                        KEY_PROJECT_ID, prj,
                         "page", 1,
                         "total_pages", 1,
                         "has_newer", false,
@@ -1469,7 +1476,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
                 if (parsed != null) {
-                    event = Objects.requireNonNullElse(JsonTree.string(parsed, "event"), KEY_MESSAGE);
+                    event = Objects.requireNonNullElse(JsonTree.string(parsed, KEY_EVENT), KEY_MESSAGE);
                     data = Objects.requireNonNullElse(parsed.get("data"), Map.of());
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
@@ -1478,7 +1485,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         broadcastEvent(event, data);
-        response.json(200, Map.of(KEY_STATUS, "broadcasted", "event", event));
+        response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
     }
 
     /** @return the current scenario */
@@ -1545,13 +1552,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     new CleanupItemEntry("reports-core", "read_reports", "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
             );
             var unenrolledEntries = List.of(
-                    new CleanupItemEntry("legacy-portal", "unenrolled_project", "legacy-portal", "unenrolled 2 Sep · 7 plans, 1 epic", null, 1181116000L, 0, 0, null)
+                    new CleanupItemEntry(CONST_LEGACY_PORTAL, "unenrolled_project", CONST_LEGACY_PORTAL, "unenrolled 2 Sep · 7 plans, 1 epic", null, 1181116000L, 0, 0, null)
             );
 
             var projectItems = List.of(
                     new CleanupProjectItem(CONST_PM_MCP_CLIENTS, 2, 1, 21, 3, 135266304L, clientsEntries),
                     new CleanupProjectItem("pm-mcp-core", 10, 1, 19, 2, 681574400L, coreEntries),
-                    new CleanupProjectItem("unenrolled", 0, 0, 0, 0, 1181116000L, unenrolledEntries)
+                    new CleanupProjectItem(CONST_UNENROLLED, 0, 0, 0, 0, 1181116000L, unenrolledEntries)
             );
 
             var summary = new CleanupSummary(
@@ -1587,9 +1594,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.add(new EnrolledProject(
                     CONST_PM_MCP_CLIENTS,
                     "plan-marshall/" + CONST_PM_MCP_CLIENTS,
-                    "https://github.com/plan-marshall/" + CONST_PM_MCP_CLIENTS,
+                    CONST_GITHUB_PM_PREFIX + CONST_PM_MCP_CLIENTS,
                     ProjectReadiness.READY,
-                    "decision",
+                    CONST_DECISION,
                     2,
                     3,
                     1,
@@ -1600,7 +1607,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.add(new EnrolledProject(
                     CONST_PM_MCP_CORE,
                     "plan-marshall/" + CONST_PM_MCP_CORE,
-                    "https://github.com/plan-marshall/" + CONST_PM_MCP_CORE,
+                    CONST_GITHUB_PM_PREFIX + CONST_PM_MCP_CORE,
                     ProjectReadiness.READY,
                     null,
                     0,
@@ -1613,7 +1620,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.add(new EnrolledProject(
                     CONST_PLAN_MARSHALL,
                     CONST_PLAN_MARSHALL,
-                    "https://github.com/plan-marshall/" + CONST_PLAN_MARSHALL,
+                    CONST_GITHUB_PM_PREFIX + CONST_PLAN_MARSHALL,
                     ProjectReadiness.SETUP_NEEDS,
                     "credential sonar",
                     1,
@@ -1632,14 +1639,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     0,
                     0,
                     0,
-                    Instant.parse("2026-10-14T10:00:00Z"),
+                    Instant.parse(CONST_TIME_10_14),
                     false,
                     false
             ));
             enrolledProjects.add(new EnrolledProject(
                     "API-Sheriff",
                     "API-Sheriff",
-                    "https://github.com/plan-marshall/api-sheriff",
+                    CONST_GITHUB_PM_PREFIX + "api-sheriff",
                     ProjectReadiness.READY,
                     null,
                     0,
@@ -1650,9 +1657,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     false
             ));
             enrolledProjects.add(new EnrolledProject(
-                    "legacy-portal",
-                    "legacy-portal",
-                    "https://github.com/plan-marshall/legacy-portal",
+                    CONST_LEGACY_PORTAL,
+                    CONST_LEGACY_PORTAL,
+                    CONST_GITHUB_PM_PREFIX + CONST_LEGACY_PORTAL,
                     ProjectReadiness.RELEASED,
                     null,
                     0,
@@ -1689,7 +1696,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handleProjectExplorerGet(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
         if ("/api/v1/explorer".equals(path)
-                || ("/api/v1/projects".equals(path)
+                || (PATH_PROJECTS.equals(path)
                 && ((request.query() != null && request.query().contains("all"))
                 || StandardScenarios.PROJECTS.equals(currentScenario.get().name())))) {
             handleGetProjectsExplorer(response);
@@ -1726,7 +1733,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean handleProjectExplorerPost(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
-        if ("/api/v1/project-onboardings".equals(path) || "/api/v1/projects".equals(path)) {
+        if ("/api/v1/project-onboardings".equals(path) || PATH_PROJECTS.equals(path)) {
             handleStartProjectOnboarding(request, response);
             return true;
         }
@@ -1784,7 +1791,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var explorer = new ProjectExplorer(favs, recents, all, being);
             var map = new LinkedHashMap<String, Object>(explorer.toMap());
             var projectsList = all.stream().map(EnrolledProject::toMap).toList();
-            map.put("projects", projectsList);
+            map.put(CONST_PROJECTS, projectsList);
 
             response.json(200, map);
         }
@@ -2024,8 +2031,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             enrolledProjects.removeIf(p -> p.projectId().equals(projectId));
             favouriteProjectIds.remove(projectId);
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, KEY_STATUS, "unenrolled"));
-            response.json(200, Map.of(KEY_STATUS, "unenrolled", KEY_PROJECT_ID, projectId));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, KEY_STATUS, CONST_UNENROLLED));
+            response.json(200, Map.of(KEY_STATUS, CONST_UNENROLLED, KEY_PROJECT_ID, projectId));
         }
     }
 
@@ -2416,7 +2423,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 response.json(200, Map.of(
                         KEY_STATUS, "deleted",
                         "job_id", jobId,
-                        "decision", "delete",
+                        CONST_DECISION, "delete",
                         "freed_bytes", 1825361100L,
                         "kept_count", keptItems.size()
                 ));
@@ -2452,7 +2459,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
-                    "decision", "delete",
+                    CONST_DECISION, "delete",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
@@ -2469,7 +2476,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, Map.of(
                     KEY_STATUS, "deleted",
                     "job_id", jobId,
-                    "decision", "delete",
+                    CONST_DECISION, "delete",
                     "freed_bytes", 1825361100L,
                     "kept_count", keptItems.size()
             ));
@@ -2486,7 +2493,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 response.json(200, Map.of(
                         KEY_STATUS, "postponed",
                         "job_id", jobId,
-                        "decision", "remind",
+                        CONST_DECISION, "remind",
                         "remind_after_days", 3,
                         "remind_at", "2026-10-19T03:00:00Z"
                 ));
@@ -2504,7 +2511,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
-                    "decision", "remind",
+                    CONST_DECISION, "remind",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
                     "remind_after_days", 3
@@ -2513,7 +2520,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, Map.of(
                     KEY_STATUS, "postponed",
                     "job_id", jobId,
-                    "decision", "remind",
+                    CONST_DECISION, "remind",
                     "remind_after_days", 3,
                     "remind_at", "2026-10-19T03:00:00Z"
             ));
@@ -2530,7 +2537,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 response.json(200, Map.of(
                         KEY_STATUS, "done",
                         "job_id", jobId,
-                        "decision", "ignore",
+                        CONST_DECISION, "ignore",
                         "kept_count", keptItems.size()
                 ));
                 return;
@@ -2553,7 +2560,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
-                    "decision", "ignore",
+                    CONST_DECISION, "ignore",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli"
             ));
@@ -2561,7 +2568,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, Map.of(
                     KEY_STATUS, "done",
                     "job_id", jobId,
-                    "decision", "ignore",
+                    CONST_DECISION, "ignore",
                     "kept_count", keptItems.size()
             ));
         }
@@ -2769,7 +2776,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.put(decision.id(), decision);
         }
-        broadcastEvent("decision.opened", Map.of("decision", decision.toMap()));
+        broadcastEvent("decision.opened", Map.of(CONST_DECISION, decision.toMap()));
     }
 
     private static @Nullable String extractPlan(DecisionEnvelope entry) {
@@ -2785,8 +2792,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (sub.contains("session-log") || sub.contains("pm-mcp-core")) {
             return "pm-mcp-core";
         }
-        if (sub.contains("plan-marshall")) {
-            return "plan-marshall";
+        if (sub.contains(CONST_PLAN_MARSHALL)) {
+            return CONST_PLAN_MARSHALL;
         }
         return "pm-mcp-clients";
     }
@@ -3084,7 +3091,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.put("Q-009", replacement);
         }
-        broadcastEvent("decision.opened", Map.of("decision", replacement.toMap()));
+        broadcastEvent("decision.opened", Map.of(CONST_DECISION, replacement.toMap()));
 
         response.json(200, Map.of(KEY_STATUS, "withdrawn", "id", decisionId));
     }
