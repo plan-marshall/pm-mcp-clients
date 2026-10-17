@@ -52,7 +52,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-onb-machine /Users/oliver/git/worktrees/pm-mcp-clients-uc-onb main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/uc-onb-machine /Users/oliver/git/worktrees/pm-mcp-clients-uc-onb main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
