@@ -80,6 +80,11 @@ public final class StandardScenarios {
     public static final String PROJECTS = "projects";
 
     /**
+     * Process tree, sub-workflow traversal, leaf states, and live worker activity (UC-PLN-1, UC-PLN-5).
+     */
+    public static final String PLAN_VIEW = "plan-view";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -92,6 +97,7 @@ public final class StandardScenarios {
             REPORTS,
             DECISIONS,
             SYSTEM,
-            PROJECTS
+            PROJECTS,
+            PLAN_VIEW
     );
 }

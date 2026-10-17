@@ -12,6 +12,7 @@
     type AlongsideLanding,
     type EndedWorkPage,
   } from '../api/client';
+  import { openPlanView, openEpicView } from '../stores/runtime';
 
   let projects: ProjectSummary[] = [];
   let selectedProjectId: string | null = null;
@@ -498,7 +499,16 @@
               <!-- Plans List -->
               <div class="plan-cards">
                 {#each detail.plans as plan}
-                  <div class="work-card work-card--plan plan-card" data-testid="plan-card">
+                  <div
+                    class="work-card work-card--plan plan-card"
+                    data-testid="plan-card"
+                    role="button"
+                    tabindex="0"
+                    on:click={() => openPlanView((plan as any).plan_id || (plan as any).planId)}
+                    on:keydown={(e) =>
+                      e.key === 'Enter' &&
+                      openPlanView((plan as any).plan_id || (plan as any).planId)}
+                  >
                     <div class="work-card__header">
                       <div class="work-card__title-group">
                         <span class="work-card__glyph">▸</span>
@@ -557,6 +567,7 @@
                           target="_blank"
                           rel="noreferrer"
                           class="pr-link"
+                          on:click|stopPropagation
                         >
                           #{getPlanPrNumber(plan)}
                         </a>
@@ -569,7 +580,16 @@
               <!-- By Epic List -->
               <div class="epic-cards">
                 {#each detail.epics as epic}
-                  <div class="work-card work-card--epic epic-card" data-testid="epic-card">
+                  <div
+                    class="work-card work-card--epic epic-card"
+                    data-testid="epic-card"
+                    role="button"
+                    tabindex="0"
+                    on:click={() => openEpicView((epic as any).epic_id || (epic as any).epicId)}
+                    on:keydown={(e) =>
+                      e.key === 'Enter' &&
+                      openEpicView((epic as any).epic_id || (epic as any).epicId)}
+                  >
                     <div class="work-card__header">
                       <div class="work-card__title-group">
                         <span class="work-card__glyph">◇</span>
@@ -597,7 +617,16 @@
                     {#if epic.plans && epic.plans.length > 0}
                       <div class="nested-plans">
                         {#each epic.plans as childPlan, idx}
-                          <div class="nested-plan-row">
+                          <div
+                            class="nested-plan-row"
+                            role="button"
+                            tabindex="0"
+                            on:click|stopPropagation={() =>
+                              openPlanView((childPlan as any).plan_id || (childPlan as any).planId)}
+                            on:keydown|stopPropagation={(e) =>
+                              e.key === 'Enter' &&
+                              openPlanView((childPlan as any).plan_id || (childPlan as any).planId)}
+                          >
                             <span class="nested-tree-char"
                               >{idx === epic.plans.length - 1 ? '└─' : '├─'}</span
                             >
@@ -620,7 +649,15 @@
                   <div class="without-epic-section">
                     <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
                     {#each detail.plans.filter((p) => !p.epic_id && !(p as any).epicId) as plan}
-                      <div class="work-card work-card--plan">
+                      <div
+                        class="work-card work-card--plan"
+                        role="button"
+                        tabindex="0"
+                        on:click={() => openPlanView((plan as any).plan_id || (plan as any).planId)}
+                        on:keydown={(e) =>
+                          e.key === 'Enter' &&
+                          openPlanView((plan as any).plan_id || (plan as any).planId)}
+                      >
                         <div class="work-card__header">
                           <div class="work-card__title-group">
                             <span class="work-card__glyph">▸</span>

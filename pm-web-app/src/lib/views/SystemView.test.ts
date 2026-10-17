@@ -37,9 +37,27 @@ describe('SystemView component', () => {
       recovering_projects: [],
     },
     workers: [
-      { role: 'planner', harness: 'claude', model: 'opus-4.5', state: 'busy', current_plan_title: 'fix-relay' },
-      { role: 'implementer', harness: 'claude', model: 'sonnet-4.5', state: 'busy', current_plan_title: 'relay-docs' },
-      { role: 'implementer', harness: 'codex', model: 'gpt-5', state: 'idle', current_plan_title: null },
+      {
+        role: 'planner',
+        harness: 'claude',
+        model: 'opus-4.5',
+        state: 'busy',
+        current_plan_title: 'fix-relay',
+      },
+      {
+        role: 'implementer',
+        harness: 'claude',
+        model: 'sonnet-4.5',
+        state: 'busy',
+        current_plan_title: 'relay-docs',
+      },
+      {
+        role: 'implementer',
+        harness: 'codex',
+        model: 'gpt-5',
+        state: 'idle',
+        current_plan_title: null,
+      },
     ],
     jobs: {
       build: { slots_used: 1, slots_total: 2, queued: 1 },
@@ -47,9 +65,38 @@ describe('SystemView component', () => {
       locks_held: 3,
     },
     models: [
-      { id: 'claude:opus-4.5', role: 'planner', calls_count: 42, tokens_total: 2020000, tokens_in: 1900000, tokens_out: 120000, errors_count: 0, retries_count: 1 },
-      { id: 'claude:sonnet-4.5', role: 'implementer', calls_count: 118, tokens_total: 3610000, tokens_in: 3200000, tokens_out: 410000, errors_count: 0, retries_count: 0 },
-      { id: 'codex:gpt-5', role: 'implementer', calls_count: 12, tokens_total: 0, tokens_in: 0, tokens_out: 0, errors_count: 1, retries_count: 0, tokens_unmeasured: true, unmeasured_calls: 12 },
+      {
+        id: 'claude:opus-4.5',
+        role: 'planner',
+        calls_count: 42,
+        tokens_total: 2020000,
+        tokens_in: 1900000,
+        tokens_out: 120000,
+        errors_count: 0,
+        retries_count: 1,
+      },
+      {
+        id: 'claude:sonnet-4.5',
+        role: 'implementer',
+        calls_count: 118,
+        tokens_total: 3610000,
+        tokens_in: 3200000,
+        tokens_out: 410000,
+        errors_count: 0,
+        retries_count: 0,
+      },
+      {
+        id: 'codex:gpt-5',
+        role: 'implementer',
+        calls_count: 12,
+        tokens_total: 0,
+        tokens_in: 0,
+        tokens_out: 0,
+        errors_count: 1,
+        retries_count: 0,
+        tokens_unmeasured: true,
+        unmeasured_calls: 12,
+      },
     ],
     cleanup: {
       plans_count: 12,
@@ -123,7 +170,9 @@ describe('SystemView component', () => {
 
   it('opens lifecycle stop modal and calls stopRuntime with drain', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
-    const stopSpy = vi.spyOn(apiClient, 'stopRuntime').mockResolvedValue({ lifecycle_state: 'draining' });
+    const stopSpy = vi
+      .spyOn(apiClient, 'stopRuntime')
+      .mockResolvedValue({ lifecycle_state: 'draining' });
 
     render(SystemView);
 

@@ -24,6 +24,12 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.process.ActivityEntryKind;
+import de.planmarshall.api.process.NodeState;
+import de.planmarshall.api.process.ProcessNode;
+import de.planmarshall.api.process.ProcessTokens;
+import de.planmarshall.api.process.ProcessTree;
+import de.planmarshall.api.process.TaskActivity;
 import de.planmarshall.api.report.DecisionRecord;
 import de.planmarshall.api.report.DeliverableSummary;
 import de.planmarshall.api.report.PlanCompletionReport;
@@ -78,9 +84,15 @@ public final class PlanCommand implements Callable<Integer> {
     @Nullable
     String depth;
 
-    @Option(names = "--activity", description = "Task ID for worker activity")
+    @Option(names = {"--task", "--activity"}, description = "Task ID for worker activity")
     @Nullable
     String activity;
+
+    @Option(names = "--tokens", description = "Show tokens so far")
+    boolean tokens;
+
+    @Option(names = "--components", description = "Show raw token components")
+    boolean components;
 
     @Option(names = "--watch", description = "Watch updates")
     boolean watch;
@@ -96,15 +108,54 @@ public final class PlanCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (planId != null && !planId.isBlank()) {
-            var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId);
             if (activity != null && !activity.isBlank()) {
-                path += "/tasks/" + OperatorUrlUtil.encodePathSegment(activity) + "/activity";
-            } else if (depth != null) {
-                path += "/process?depth=" + depth;
+                var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId)
+                                    + "/tasks/" + OperatorUrlUtil.encodePathSegment(activity) + "/activity";
+                var response = runtime.send(HttpRequest.get(path));
+                if (response.status() == 200) {
+                    try {
+                        var taskActivity = TaskActivity.fromJson(response.bodyText());
+                        printTaskActivity(out, planId, taskActivity);
+                        return 0;
+                    }
+                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+                    catch (Exception e) {
+                        out.println(response.bodyText());
+                        out.flush();
+                        return 0;
+                    }
+                }
+                if (response.status() == 404) {
+                    out.printf("Task %s or plan %s not found.%n", activity, planId);
+                    out.flush();
+                    return 1;
+                }
+                throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
+            }
+
+            var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/process";
+            if (depth != null) {
+                path += "?depth=" + depth;
             }
             var response = runtime.send(HttpRequest.get(path));
+            if (response.status() == 404) {
+                // Fallback to direct plan endpoint for legacy/minimal test fixtures
+                response = runtime.send(HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId)));
+            }
             if (response.status() == 200) {
-                out.println(response.bodyText());
+                var body = response.bodyText();
+                if (body.contains("\"nodes\"") || body.contains("\"plan_id\"")) {
+                    try {
+                        var tree = ProcessTree.fromJson(body);
+                        printProcessTree(out, tree);
+                        return 0;
+                    }
+                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+                    catch (Exception ignored) {
+                        // Fall through to print bodyText
+                    }
+                }
+                out.println(body);
                 out.flush();
                 return 0;
             }
@@ -129,6 +180,266 @@ public final class PlanCommand implements Callable<Integer> {
             return 0;
         }
         throw new OperatorRefusedException("plan list", response);
+    }
+
+    private void printTaskActivity(PrintWriter out, String planId, TaskActivity act) {
+        var cleanPlan = OutputSafety.stripControlSequences(planId);
+        var cleanTask = OutputSafety.stripControlSequences(act.taskId());
+        out.printf("%s · %s%n", cleanPlan, cleanTask);
+
+        var duration = formatPlanDuration(act.durationSeconds());
+        var tokensStr = TokenFormat.formatTokens(act.tokensSoFar(), false, "en") + " tokens";
+        out.printf("  %s · %s %s · attempt %d · running %s · %s%n",
+                            OutputSafety.stripControlSequences(act.role()),
+                            OutputSafety.stripControlSequences(act.harness()),
+                            OutputSafety.stripControlSequences(act.model()),
+                            act.attempt(),
+                            duration,
+                            tokensStr);
+
+        for (var entry : act.entries()) {
+            var ts = OutputSafety.stripControlSequences(entry.timestamp());
+            var kind = ActivityEntryKind.fromValue(entry.kind());
+            switch (kind) {
+                case MODEL_TEXT -> {
+                    var content = OutputSafety.stripControlSequences(entry.content());
+                    out.printf("  %s  wrote      %s%n", ts, content != null ? content : "");
+                }
+                case TOOL_CALL -> {
+                    var toolName = OutputSafety.stripControlSequences(entry.toolName());
+                    var toolTarget = OutputSafety.stripControlSequences(entry.toolTarget());
+                    var toolStr = (toolName != null ? toolName : "") + (toolTarget != null ? " " + toolTarget : "");
+                    var failStr = entry.toolFailed() ? "        failed" + (entry.size() != null ? " · " + OutputSafety.stripControlSequences(entry.size()) : "") : "";
+                    out.printf("  %s  tool       %-30s%s%n", ts, toolStr, failStr);
+                }
+                case FILES_CHANGED -> {
+                    var files = entry.files().stream().map(OutputSafety::stripControlSequences).toList();
+                    out.printf("  %s  changed    %s%n", ts, String.join(", ", files));
+                }
+                case QUESTIONS_ASKED -> {
+                    var content = OutputSafety.stripControlSequences(entry.content());
+                    out.printf("  %s  asked      %s%n", ts, content != null ? content : "");
+                }
+                case LINK -> {
+                    var target = OutputSafety.stripControlSequences(entry.toolTarget());
+                    out.printf("  %s  link       %s%n", ts, target != null ? target : "");
+                }
+                default -> {
+                    var content = OutputSafety.stripControlSequences(entry.content());
+                    out.printf("  %s  %-9s  %s%n", ts, OutputSafety.stripControlSequences(entry.kind()), content != null ? content : "");
+                }
+            }
+        }
+
+        if (act.offTrack() != null) {
+            var ot = act.offTrack();
+            var sig = OutputSafety.stripControlSequences(ot.signal());
+            var action = OutputSafety.stripControlSequences(ot.action());
+            var valThresh = ot.value() != null && ot.threshold() != null ? String.format(" (%d of %d)", ot.value(), ot.threshold()) : "";
+            out.printf("  ⚠ off track  %s%s: %s%n", sig, valThresh, action);
+        }
+        out.flush();
+    }
+
+    private void printProcessTree(PrintWriter out, ProcessTree tree) {
+        var projectStr = tree.project() != null ? OutputSafety.stripControlSequences(tree.project().projectId()) : "";
+        var epicStr = tree.epic() != null ? OutputSafety.stripControlSequences(tree.epic().epicId()) : null;
+        var planStr = OutputSafety.stripControlSequences(tree.planId());
+
+        if (!projectStr.isEmpty()) {
+            if (epicStr != null && !epicStr.isEmpty()) {
+                out.printf("%s › %s › %s%n", projectStr, epicStr, planStr);
+            } else {
+                out.printf("%s › %s%n", projectStr, planStr);
+            }
+        }
+
+        var durationStr = tree.durationSeconds() > 0 ? " · " + formatPlanDuration(tree.durationSeconds()) : "";
+        var prStr = tree.pullRequestNumber() != null ? " · pull request #" + tree.pullRequestNumber() + (tree.pullRequestUrl() != null ? " " + OutputSafety.stripControlSequences(tree.pullRequestUrl()) : "") : "";
+        out.printf("%s · %s · %s%s%s%n",
+                            planStr,
+                            OutputSafety.stripControlSequences(tree.currentPhase()),
+                            OutputSafety.stripControlSequences(tree.phaseState()),
+                            durationStr,
+                            prStr);
+
+        if (!projectStr.isEmpty()) {
+            if (epicStr != null && !epicStr.isEmpty()) {
+                out.printf("  in %s · epic %-20s status --project %s · epic %s%n",
+                                    projectStr, epicStr, projectStr, epicStr);
+            } else {
+                out.printf("  in %-35s status --project %s%n", projectStr, projectStr);
+            }
+        }
+
+        if (tree.tokensSoFar() != null) {
+            out.printf("  tokens so far   %-25s plan %s --tokens%n", formatTokens(tree.tokensSoFar()), planStr);
+        }
+
+        int maxDepth = parseDepth(depth, all);
+        renderNodes(out, tree.nodes(), 1, maxDepth);
+        out.flush();
+    }
+
+    private void renderNodes(PrintWriter out, List<ProcessNode> nodes, int level, int maxDepth) {
+        for (var node : nodes) {
+            renderNode(out, node, level, maxDepth);
+        }
+    }
+
+    private void renderNode(PrintWriter out, ProcessNode node, int level, int maxDepth) {
+        var indent = "  ".repeat(level);
+        var stateEnum = NodeState.fromValue(node.state());
+        var glyph = stateEnum.glyph();
+        var stateName = stateEnum.value();
+
+        if (node.pruneReason() != null || stateEnum == NodeState.NOT_IN_PLAN) {
+            var reason = node.pruneReason() != null ? " (" + node.pruneReason().replace('_', ' ') + ")" : "";
+            out.printf("%s%s not in this plan: %s%s%n", indent, glyph, OutputSafety.stripControlSequences(node.title()), reason);
+            return;
+        }
+
+        var runStr = node.runCount() > 1 && stateEnum == NodeState.DONE ? " ×" + node.runCount() : "";
+        var currentRunStr = node.currentRun() > 1 && stateEnum == NodeState.RUNNING ? "run " + node.currentRun() : "";
+        var durationStr = node.durationSeconds() > 0 ? formatPlanDuration(node.durationSeconds()) : "";
+
+        var infoParts = new ArrayList<String>();
+        if (!currentRunStr.isEmpty()) infoParts.add(currentRunStr);
+        if (!durationStr.isEmpty()) infoParts.add(durationStr);
+        if (!node.leafTasks().isEmpty()) {
+            long doneCount = node.leafTasks().stream().filter(t -> "done".equalsIgnoreCase(t.status()) || "submitted".equalsIgnoreCase(t.status())).count();
+            infoParts.add(String.format("tasks: %d of %d done", doneCount, node.leafTasks().size()));
+        }
+        if (node.waitsFor() != null && !node.waitsFor().isBlank()) {
+            infoParts.add("waits: " + OutputSafety.stripControlSequences(node.waitsFor()));
+        }
+        var info = String.join(" · ", infoParts);
+
+        var kindPrefix = "phase".equals(node.kind()) ? "phase " : ("sub_workflow".equals(node.kind()) ? "sub-workflow " : "");
+        var title = OutputSafety.stripControlSequences(node.title());
+        if (title.startsWith("phase ") || title.startsWith("sub-workflow ")) {
+            kindPrefix = "";
+        }
+
+        var stateCol = String.format("%-9s", stateName + runStr);
+        var titleCol = kindPrefix + title;
+
+        if (!info.isEmpty()) {
+            out.printf("%s%s %s %-30s %s%n", indent, glyph, stateCol, titleCol, info);
+        } else {
+            out.printf("%s%s %s %s%n", indent, glyph, stateCol, titleCol);
+        }
+
+        if ((level + 1) <= maxDepth && !node.leafTasks().isEmpty()) {
+            var taskIndent = "  ".repeat(level + 1);
+            for (var task : node.leafTasks()) {
+                var taskGlyph = getTaskGlyph(task.status());
+                var taskStateCol = String.format("%-9s", task.status());
+                var taskDesc = OutputSafety.stripControlSequences(task.taskId() + " (" + task.role() + ")");
+                var taskInfoParts = new ArrayList<String>();
+                if (task.durationSeconds() > 0) {
+                    taskInfoParts.add(formatPlanDuration(task.durationSeconds()));
+                }
+                if (task.offTrack() != null) {
+                    taskInfoParts.add("off-track: " + OutputSafety.stripControlSequences(task.offTrack().signal()));
+                }
+                var taskInfo = String.join(" · ", taskInfoParts);
+                if (!taskInfo.isEmpty()) {
+                    out.printf("%s%s %s %-30s %s%n", taskIndent, taskGlyph, taskStateCol, taskDesc, taskInfo);
+                } else {
+                    out.printf("%s%s %s %s%n", taskIndent, taskGlyph, taskStateCol, taskDesc);
+                }
+            }
+        }
+
+        if ((level + 1) <= maxDepth && node.leafJob() != null) {
+            var job = node.leafJob();
+            var jobIndent = "  ".repeat(level + 1);
+            var jobGlyph = getTaskGlyph(job.status());
+            var jobStateCol = String.format("%-9s", job.status());
+            var jobDesc = OutputSafety.stripControlSequences("job (" + job.kind() + ")");
+            var jobInfoParts = new ArrayList<String>();
+            if (job.durationSeconds() > 0) {
+                jobInfoParts.add(formatPlanDuration(job.durationSeconds()));
+            }
+            if (job.waitsSlot()) {
+                jobInfoParts.add("waits slot");
+            }
+            if (job.outcome() != null && !job.outcome().isBlank()) {
+                jobInfoParts.add(job.outcome());
+            }
+            var jobInfo = String.join(" · ", jobInfoParts);
+            if (!jobInfo.isEmpty()) {
+                out.printf("%s%s %s %-30s %s%n", jobIndent, jobGlyph, jobStateCol, jobDesc, jobInfo);
+            } else {
+                out.printf("%s%s %s %s%n", jobIndent, jobGlyph, jobStateCol, jobDesc);
+            }
+        }
+
+        if (level < maxDepth && !node.subNodes().isEmpty()) {
+            renderNodes(out, node.subNodes(), level + 1, maxDepth);
+        }
+    }
+
+    private static String getTaskGlyph(@Nullable String status) {
+        if (status == null) {
+            return "○";
+        }
+        return switch (status.toLowerCase()) {
+            case "done", "submitted" -> "✓";
+            case "running" -> "▶";
+            case "waiting", "waiting_for_you" -> "!";
+            case "failed" -> "✗";
+            default -> "○";
+        };
+    }
+
+    static String formatPlanDuration(long seconds) {
+        if (seconds <= 0) {
+            return "0 s";
+        }
+        if (seconds < 60) {
+            return seconds + " s";
+        }
+        long hours = seconds / 3600;
+        long mins = (seconds % 3600) / 60;
+        if (hours > 0) {
+            return hours + " h " + mins + " min";
+        }
+        return mins + " min";
+    }
+
+    static String formatTokens(ProcessTokens tokens) {
+        if (tokens.noneYet()) {
+            return "none yet";
+        }
+        var prefix = tokens.floor() ? "≥ " : "";
+        return String.format("%s%s (%s in · %s out)",
+                            prefix,
+                            TokenFormat.formatTokens(tokens.total(), false, "en"),
+                            TokenFormat.formatTokens(tokens.input(), false, "en"),
+                            TokenFormat.formatTokens(tokens.output(), false, "en"));
+    }
+
+    private static int parseDepth(@Nullable String depth, boolean all) {
+        if (all) {
+            return Integer.MAX_VALUE;
+        }
+        if (depth == null || depth.isBlank()) {
+            return 3;
+        }
+        return switch (depth.toLowerCase()) {
+            case "compact", "1" -> 1;
+            case "standard", "2" -> 2;
+            case "full", "3" -> 3;
+            default -> {
+                try {
+                    yield Integer.parseInt(depth);
+                } catch (NumberFormatException e) {
+                    yield 3;
+                }
+            }
+        };
     }
 
     @Command(name = "add", description = "Starts a plan from its sources.")

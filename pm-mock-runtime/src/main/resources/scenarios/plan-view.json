@@ -1,0 +1,525 @@
+{
+  "format_version": 1,
+  "name": "plan-view",
+  "description": "Process tree, sub-workflow traversal, leaf states, and live worker activity (UC-PLN-1, UC-PLN-5)",
+  "start": "plan_view.active",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "listener": "unix",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "running_since": "08:14",
+        "workers_count": 2,
+        "build_slots_used": 1,
+        "build_slots_total": 2,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/plans": {
+      "representation": {
+        "plans": [
+          {
+            "id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "project": "pm-mcp-clients",
+            "phase": "execute",
+            "state": "running"
+          },
+          {
+            "id": "docs-typo",
+            "title": "Fix Documentation Typo",
+            "project": "pm-mcp-clients",
+            "phase": "execute",
+            "state": "running"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/projects": {
+      "representation": {
+        "projects": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "pm-mcp-clients",
+            "active_plans_count": 2,
+            "active_epics_count": 1,
+            "needs_operator_count": 0,
+            "needs_operator_summary": null,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:36:00Z"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/projects/pm-mcp-clients": {
+      "representation": {
+        "project_id": "pm-mcp-clients",
+        "display_name": "pm-mcp-clients",
+        "plans": [
+          {
+            "plan_id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "current_phase": "execute",
+            "phase_state": "running",
+            "running_since": "2026-10-16T13:28:00Z",
+            "phase_entered_at": "2026-10-16T15:13:00Z",
+            "tasks_done": 2,
+            "tasks_total": 3,
+            "epic_id": "relay-hardening",
+            "epic_title": "Relay Hardening",
+            "pull_request_number": 214,
+            "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214"
+          },
+          {
+            "plan_id": "docs-typo",
+            "title": "Fix Documentation Typo",
+            "current_phase": "execute",
+            "phase_state": "running",
+            "running_since": "2026-10-16T14:10:00Z",
+            "phase_entered_at": "2026-10-16T15:00:00Z",
+            "tasks_done": 1,
+            "tasks_total": 2
+          }
+        ],
+        "epics": [
+          {
+            "epic_id": "relay-hardening",
+            "title": "Relay Hardening",
+            "running_plans_count": 1,
+            "staged_plans_count": 1,
+            "needs_operator_count": 0,
+            "needs_operator_kind": null,
+            "plans": [
+              {
+                "plan_id": "fix-relay",
+                "title": "Fix Relay Transport",
+                "current_phase": "execute",
+                "phase_state": "running",
+                "tasks_done": 2,
+                "tasks_total": 3
+              }
+            ]
+          }
+        ],
+        "alongside_landings": [
+          {
+            "kind": "landing",
+            "unit": "remediation.ci-failure",
+            "state": "done"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/plans/fix-relay/process": {
+      "representation": {
+        "plan_id": "fix-relay",
+        "title": "Fix Relay Transport",
+        "project": {
+          "project_id": "pm-mcp-clients",
+          "display_name": "pm-mcp-clients",
+          "link": "/api/v1/projects/pm-mcp-clients"
+        },
+        "epic": {
+          "epic_id": "relay-hardening",
+          "title": "relay-hardening",
+          "link": "/api/v1/epics/relay-hardening/process"
+        },
+        "current_phase": "execute",
+        "phase_state": "running",
+        "activity": "execute.envelope · TASK-003",
+        "needs_operator": false,
+        "instance_version": 1,
+        "tokens_so_far": {
+          "total": 412000,
+          "input": 380000,
+          "output": 32000,
+          "floor": true,
+          "tasks_total": 17,
+          "tasks_measured": 15,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "nodes": [
+          {
+            "node_id": "init",
+            "title": "phase init",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 120,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "refine",
+            "title": "phase refine",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 840,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "outline",
+            "title": "phase outline",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 1860,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "plan",
+            "title": "phase plan",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 540,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "execute",
+            "title": "phase execute",
+            "kind": "phase",
+            "state": "running",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 1500,
+            "sub_nodes": [
+              {
+                "node_id": "execute.envelope",
+                "title": "execute.envelope",
+                "kind": "tasks",
+                "state": "running",
+                "run_count": 1,
+                "current_run": 1,
+                "duration_seconds": 360,
+                "sub_nodes": [],
+                "leaf_tasks": [
+                  {
+                    "task_id": "TASK-001",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "done",
+                    "outcome": "success",
+                    "duration_seconds": 240,
+                    "tokens_so_far": 25000,
+                    "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-001/activity"
+                  },
+                  {
+                    "task_id": "TASK-002",
+                    "role": "module-tester",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "done",
+                    "outcome": "success",
+                    "duration_seconds": 180,
+                    "tokens_so_far": 18000,
+                    "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-002/activity"
+                  },
+                  {
+                    "task_id": "TASK-003",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "running",
+                    "duration_seconds": 360,
+                    "tokens_so_far": 48000,
+                    "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-003/activity",
+                    "off_track": {
+                      "signal": "repeating",
+                      "action": "show",
+                      "value": 5,
+                      "threshold": 5
+                    }
+                  }
+                ]
+              },
+              {
+                "node_id": "remediation.ci-failure",
+                "title": "sub-workflow remediation.ci-failure",
+                "kind": "sub_workflow",
+                "state": "planned",
+                "run_count": 0,
+                "current_run": 0,
+                "duration_seconds": 0,
+                "sub_nodes": []
+              }
+            ],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "finalize",
+            "title": "phase finalize",
+            "kind": "phase",
+            "state": "planned",
+            "run_count": 0,
+            "current_run": 0,
+            "duration_seconds": 0,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          }
+        ],
+        "current_position_path": [
+          "execute",
+          "execute.envelope",
+          "TASK-003"
+        ],
+        "pull_request_number": 214,
+        "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+        "duration_seconds": 7800
+      }
+    },
+    "GET /api/v1/plans/docs-typo/process": {
+      "representation": {
+        "plan_id": "docs-typo",
+        "title": "Fix Documentation Typo",
+        "project": {
+          "project_id": "pm-mcp-clients",
+          "display_name": "pm-mcp-clients",
+          "link": "/api/v1/projects/pm-mcp-clients"
+        },
+        "current_phase": "execute",
+        "phase_state": "running",
+        "activity": "execute · land",
+        "needs_operator": false,
+        "instance_version": 1,
+        "tokens_so_far": {
+          "total": 12000,
+          "input": 11000,
+          "output": 1000,
+          "floor": false,
+          "tasks_total": 2,
+          "tasks_measured": 2,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "nodes": [
+          {
+            "node_id": "init",
+            "title": "phase init",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 60,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "execute",
+            "title": "phase execute",
+            "kind": "phase",
+            "state": "running",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 120,
+            "sub_nodes": [
+              {
+                "node_id": "land",
+                "title": "sub-workflow land",
+                "kind": "sub_workflow",
+                "state": "running",
+                "run_count": 1,
+                "current_run": 1,
+                "duration_seconds": 80,
+                "sub_nodes": [
+                  {
+                    "node_id": "land.commit",
+                    "title": "land.commit",
+                    "kind": "state",
+                    "state": "done",
+                    "run_count": 1,
+                    "current_run": 1,
+                    "duration_seconds": 30,
+                    "sub_nodes": [],
+                    "leaf_tasks": []
+                  },
+                  {
+                    "node_id": "land.push",
+                    "title": "land.push",
+                    "kind": "state",
+                    "state": "running",
+                    "run_count": 1,
+                    "current_run": 1,
+                    "duration_seconds": 50,
+                    "sub_nodes": [],
+                    "leaf_tasks": []
+                  }
+                ],
+                "leaf_tasks": []
+              }
+            ],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "finalize",
+            "title": "phase finalize",
+            "kind": "phase",
+            "state": "planned",
+            "run_count": 0,
+            "current_run": 0,
+            "duration_seconds": 0,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "refine",
+            "title": "refine, outline, plan",
+            "kind": "phase",
+            "state": "not_in_plan",
+            "prune_reason": "lane_choice",
+            "run_count": 0,
+            "current_run": 0,
+            "duration_seconds": 0,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          }
+        ],
+        "current_position_path": [
+          "execute",
+          "land",
+          "land.push"
+        ],
+        "duration_seconds": 180
+      }
+    },
+    "GET /api/v1/plans/fix-relay/tasks/TASK-003/activity": {
+      "representation": {
+        "task_id": "TASK-003",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 360,
+        "tokens_so_far": 48000,
+        "entries": [
+          {
+            "timestamp": "14:02:11",
+            "kind": "text",
+            "content": "Reading the relay's transport before changing it."
+          },
+          {
+            "timestamp": "14:02:14",
+            "kind": "tool_call",
+            "tool_name": "read",
+            "tool_target": "pm-relay/src/main/java/…/Transport.java",
+            "tool_failed": false
+          },
+          {
+            "timestamp": "14:02:20",
+            "kind": "tool_call",
+            "tool_name": "bash",
+            "tool_target": "./mvnw -pl pm-relay test",
+            "tool_failed": true,
+            "size": "4 KiB"
+          },
+          {
+            "timestamp": "14:03:02",
+            "kind": "file_changed",
+            "files": [
+              "pm-relay/src/main/java/…/Transport.java"
+            ]
+          },
+          {
+            "timestamp": "14:03:40",
+            "kind": "link",
+            "tool_target": "submit:TASK-003"
+          },
+          {
+            "timestamp": "14:03:41",
+            "kind": "question",
+            "content": "Should we retain backwards compatibility with v1 token format?",
+            "questions": [
+              "Retain v1 token compatibility?"
+            ]
+          }
+        ],
+        "off_track": {
+          "signal": "repeating",
+          "action": "show",
+          "value": 5,
+          "threshold": 5
+        },
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
+    "GET /api/v1/epics/relay-hardening/process": {
+      "representation": {
+        "epic_id": "relay-hardening",
+        "project": "pm-mcp-clients",
+        "title": "Relay Hardening",
+        "state": "running",
+        "running_plans": [
+          {
+            "plan_id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "current_phase": "execute",
+            "phase_state": "running",
+            "tasks_done": 2,
+            "tasks_total": 3,
+            "running": true
+          }
+        ],
+        "staged_plans": [
+          {
+            "plan_id": "relay-auth-v2",
+            "title": "Relay Auth v2",
+            "current_phase": "init",
+            "phase_state": "staged",
+            "tasks_done": 0,
+            "tasks_total": 4,
+            "running": false
+          }
+        ],
+        "alongside_landings": [
+          "remediation.ci-failure · done"
+        ],
+        "tokens_so_far": {
+          "total": 520000,
+          "input": 480000,
+          "output": 40000,
+          "floor": true,
+          "tasks_total": 20,
+          "tasks_measured": 18,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "review_ready": false
+      }
+    }
+  },
+  "states": {
+    "plan_view.active": {
+      "summary": "Plan and Epic process view active",
+      "representation": {
+        "active_plan": "fix-relay",
+        "active_epic": "relay-hardening"
+      },
+      "links": {}
+    }
+  }
+}

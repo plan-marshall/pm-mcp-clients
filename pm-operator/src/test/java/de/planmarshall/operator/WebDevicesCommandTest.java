@@ -21,6 +21,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -43,6 +48,7 @@ class WebDevicesCommandTest {
     Path tempDir;
 
     private RuntimeFixture fixture;
+    private String todayTimeStr;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -66,6 +72,13 @@ class WebDevicesCommandTest {
 
     private void seedRuntimeRoutes(boolean lanOn) throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        var now = Instant.now();
+        var todayInstant = now.minus(Duration.ofMinutes(5));
+        this.todayTimeStr = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
+                            .withZone(ZoneId.of("UTC"))
+                            .format(todayInstant);
+        var threeDaysAgo = now.minus(Duration.ofDays(3)).minus(Duration.ofMinutes(5));
+        var fiveWeeksAgo = now.minus(Duration.ofDays(35)).minus(Duration.ofMinutes(5));
         fixture.start((request, response) -> {
             var path = request.target();
             var method = request.method();
@@ -81,24 +94,24 @@ class WebDevicesCommandTest {
                                         "label": "Firefox on mbp-oliver",
                                         "paired_from": "loopback",
                                         "created_at": "2026-05-12T10:00:00Z",
-                                        "last_used_at": "2026-10-16T14:02:00Z"
+                                        "last_used_at": "%s"
                                       },
                                       {
                                         "device_id": "dev-2",
                                         "label": "Safari on iPad",
                                         "paired_from": "network",
                                         "created_at": "2026-05-20T10:00:00Z",
-                                        "last_used_at": "2026-10-13T10:00:00Z"
+                                        "last_used_at": "%s"
                                       },
                                       {
                                         "device_id": "dev-3",
                                         "label": "Chrome on build-box",
                                         "paired_from": "loopback",
                                         "created_at": "2026-06-02T10:00:00Z",
-                                        "last_used_at": "2026-09-08T10:00:00Z"
+                                        "last_used_at": "%s"
                                       }
                                     ]
-                                    """);
+                                    """.formatted(todayInstant, threeDaysAgo, fiveWeeksAgo));
             } else if (path.startsWith("/api/v1/web/devices/dev-2") && ("PUT".equals(method) || "PATCH".equals(method))) {
                 response.json(200, """
                                     {"device_id":"dev-2","label":"iPad Oliver"}
@@ -143,7 +156,7 @@ class WebDevicesCommandTest {
                             () -> assertTrue(output.contains("Paired devices · The browsers that can act on this machine")),
                             () -> assertTrue(output.contains("Firefox on mbp-oliver")),
                             () -> assertTrue(output.contains("paired 12 May from loopback")),
-                            () -> assertTrue(output.contains("last used today 14:02")),
+                            () -> assertTrue(output.contains("last used today " + todayTimeStr)),
                             () -> assertTrue(output.contains("Safari on iPad")),
                             () -> assertTrue(output.contains("paired 20 May from network")),
                             () -> assertTrue(output.contains("last used 3 d ago")),

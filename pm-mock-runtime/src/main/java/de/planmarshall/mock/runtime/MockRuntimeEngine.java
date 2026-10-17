@@ -361,6 +361,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
+        // 3d. Dynamic process and task activity routes (UC-PLN-1, UC-PLN-5)
+        if (handleProcessRoutes(request, response)) {
+            return;
+        }
+
         // 4. SSE event stream subscription
         if ("GET".equals(request.method()) && ("/api/v1/events".equals(path) || path.endsWith("/events"))) {
             handleEventStream(response);
@@ -1347,6 +1352,33 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // Keep the stream alive until client disconnects or closed
+        while (!closed && !stream.isClosed()) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        activeStreams.remove(stream);
+    }
+
+    private void handleTaskActivityEventStream(MockHttpResponse response) throws IOException {
+        var stream = response.events(200);
+        activeStreams.add(stream);
+        try {
+            stream.sendComment("connected to mock runtime");
+            stream.sendJson("task.activity", Map.of(
+                    "kind", "assistant_text",
+                    "text", "Analyzing module dependencies...",
+                    "tokens", 450,
+                    "timestamp", Instant.now().toString()
+            ));
+        } catch (IOException _) {
+            activeStreams.remove(stream);
+            return;
+        }
+
         while (!closed && !stream.isClosed()) {
             try {
                 Thread.sleep(1000);
@@ -3094,6 +3126,87 @@ public final class MockRuntimeEngine implements AutoCloseable {
         broadcastEvent("decision.opened", Map.of(CONST_DECISION, replacement.toMap()));
 
         response.json(200, Map.of(KEY_STATUS, "withdrawn", "id", decisionId));
+    }
+
+    private boolean handleProcessRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if (!"GET".equals(request.method())) {
+            return false;
+        }
+
+        var isPlanActivityEvents = path.startsWith("/api/v1/plans/") && path.endsWith("/activity/events");
+        var isPlanActivity = path.startsWith("/api/v1/plans/") && path.contains("/tasks/") && path.endsWith("/activity");
+        var isPlanProcess = path.startsWith("/api/v1/plans/") && path.endsWith("/process");
+        var isEpicProcess = path.startsWith("/api/v1/epics/") && path.endsWith("/process");
+
+        if (!isPlanActivityEvents && !isPlanActivity && !isPlanProcess && !isEpicProcess) {
+            return false;
+        }
+
+        // 1. If static route is defined for this exact process path, return it directly
+        var route = currentScenario.get().route("GET", path);
+        if (route != null) {
+            response.json(route.status(), route.representation());
+            return true;
+        }
+
+        // 2. Dynamic plan task activity events SSE stream
+        if (isPlanActivityEvents) {
+            handleTaskActivityEventStream(response);
+            return true;
+        }
+
+        // 3. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity
+        if (isPlanActivity) {
+            var parts = path.split("/");
+            if (parts.length >= 7 && "tasks".equals(parts[5])) {
+                var taskId = parts[6];
+                var defaultRoute = currentScenario.get().route("GET", "/api/v1/plans/fix-relay/tasks/TASK-003/activity");
+                if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
+                    var copy = new LinkedHashMap<String, Object>();
+                    repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
+                    copy.put("task_id", taskId);
+                    response.json(200, copy);
+                    return true;
+                }
+            }
+        }
+
+        // 4. Dynamic plan process route: /api/v1/plans/{planId}/process
+        if (isPlanProcess) {
+            var sub = path.substring("/api/v1/plans/".length());
+            var planId = sub.substring(0, sub.length() - "/process".length());
+            if (!planId.contains("/")) {
+                var defaultRoute = currentScenario.get().route("GET", "/api/v1/plans/fix-relay/process");
+                if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
+                    var copy = new LinkedHashMap<String, Object>();
+                    repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
+                    copy.put("plan_id", planId);
+                    copy.put("title", planId);
+                    response.json(200, copy);
+                    return true;
+                }
+            }
+        }
+
+        // 5. Dynamic epic process route: /api/v1/epics/{epicId}/process
+        if (isEpicProcess) {
+            var sub = path.substring("/api/v1/epics/".length());
+            var epicId = sub.substring(0, sub.length() - "/process".length());
+            if (!epicId.contains("/")) {
+                var defaultRoute = currentScenario.get().route("GET", "/api/v1/epics/relay-hardening/process");
+                if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
+                    var copy = new LinkedHashMap<String, Object>();
+                    repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
+                    copy.put("epic_id", epicId);
+                    copy.put("title", epicId);
+                    response.json(200, copy);
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     @Override
