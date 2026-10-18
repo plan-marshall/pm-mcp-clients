@@ -122,4 +122,9 @@ This directory archives work packages that have been implemented, verified, and 
 |API contract of `/api/v1` in `pm-api`
 |`de.planmarshall.api.resource` resource records (`RuntimeStatusResource`, `WebAccessResource`, `RuntimeStopResource`, `CredentialStatusResource`, `RuntimeEventStreamResource`), the closed `ApiErrorCode` and `LinkRelation` enums, `ResourceLink`, the `jackson-core` streaming codecs (`JsonTree.readValue`/`writeValue`), and `ApiContractTest`
 |Milestone 2
+
+|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|What every operator interaction shares: the operator state, the link scheme, the event catalogue, the configuration levels
+|`de.planmarshall.api.interaction` (`OperatorStateResource`, `OperatorLink`, `OperatorScope`, `OperatorProgress`, `OperatorText`, `OperatorProposal`, `OperatorItem`, and the closed `OperatorLinkRelation`, `OperatorScopeKind`, `TextSource` enums) in `pm-api`; `de.planmarshall.api.event` (`EventEnvelope`, `EventScope`, the closed `EventName` catalogue, and `StreamClosedEvent`) with streaming `jackson-core` codecs; `de.planmarshall.api.config` (`ConfigOrigin`, `ConfigValueResource`); and the `pm-mock-runtime` `operator-interaction` scenario with operator-link validation, keyed link routing, and the stale-link `act_not_available` answer
+|epic clients
 |===

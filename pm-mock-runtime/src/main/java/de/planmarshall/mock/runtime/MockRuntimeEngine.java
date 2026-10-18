@@ -365,6 +365,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
+    /**
+     * The operator links offered by the states entered so far, as {@code METHOD href}. A request that
+     * matches no link of the current state but one of these is an act against a state left meanwhile,
+     * answered {@code act_not_available} (409) as the real runtime answers it.
+     */
+    private final Set<String> offeredOperatorLinks = ConcurrentHashMap.newKeySet();
     private final DesignerRegistry designer = new DesignerRegistry();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
@@ -453,6 +459,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private synchronized void setScenario(Scenario scenario) {
         this.currentScenario.set(scenario);
+        offeredOperatorLinks.clear();
         initDefaultDevices();
         initDefaultReports();
         initDefaultDecisions();
@@ -472,6 +479,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Resets the active scenario back to its start state.
      */
     public synchronized void reset() {
+        offeredOperatorLinks.clear();
         initDefaultDevices();
         initDefaultReports();
         initDefaultDecisions();
@@ -527,6 +535,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
+        recordOfferedOperatorLinks(stateDef);
+
         // Schedule events
         for (var eventDef : stateDef.events()) {
             var task = scheduler.schedule(() -> broadcastEvent(eventDef.event(), eventDef.data()),
@@ -553,6 +563,36 @@ public final class MockRuntimeEngine implements AutoCloseable {
             task.cancel(false);
         }
         pendingTasks.clear();
+    }
+
+    /**
+     * Records the operator links a state offers, so that an act against a later state's stale link is
+     * refused {@code act_not_available} like the real runtime refuses it. Only a state whose
+     * representation carries an operator {@code links} array contributes; the legacy scenarios whose
+     * representations name no operator link keep answering {@code mock_no_route}.
+     *
+     * @param stateDef the state entered
+     */
+    private void recordOfferedOperatorLinks(StateDefinition stateDef) {
+        var representation = JsonTree.asObject(stateDef.representation());
+        if (representation == null) {
+            return;
+        }
+        var links = JsonTree.asArray(representation.get("links"));
+        if (links == null) {
+            return;
+        }
+        for (var element : links) {
+            var link = JsonTree.asObject(element);
+            if (link == null) {
+                continue;
+            }
+            var method = JsonTree.string(link, "method");
+            var href = JsonTree.string(link, "href");
+            if (method != null && href != null) {
+                offeredOperatorLinks.add(method.toUpperCase() + " " + href);
+            }
+        }
     }
 
     /**
@@ -732,6 +772,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleNoRoute(MockHttpRequest request, MockHttpResponse response) throws IOException {
         String activeStateId = this.currentStateId.get();
+
+        var requestKey = request.method().toUpperCase() + " " + request.path();
+        if (offeredOperatorLinks.contains(requestKey)) {
+            var staleBody = new LinkedHashMap<String, Object>();
+            staleBody.put(KEY_ERROR, "act_not_available");
+            staleBody.put(KEY_MESSAGE, "The link " + requestKey + " belongs to a state left meanwhile");
+            staleBody.put(KEY_STATE, activeStateId);
+            response.json(409, staleBody);
+            return;
+        }
+
         var state = currentScenario.get().state(activeStateId);
         var offeredLinks = state != null ? new ArrayList<>(state.links().keySet()) : List.<String>of();
         var errorBody = new LinkedHashMap<String, Object>();

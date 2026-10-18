@@ -123,28 +123,28 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
 |epic clients
 
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |What every operator interaction shares: a state for a client, the operator's links, the event catalogue, texts, client inputs
-|`open`
+|`done`
 |link:implemented/api-contract.adoc[`api-contract`]; link:implemented/mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
 |link:implemented/decision-contract.adoc[`decision-contract`]
 |Decisions: contract and mock runtime
 |`done`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
 |link:onboarding-contract.adoc[`onboarding-contract`]
 |Onboarding: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:entry-contract.adoc[`entry-contract`]
 |Entry: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:implemented/cli-decisions.adoc[`cli-decisions`]
@@ -162,7 +162,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/project-contract.adoc[`project-contract`]
 |Projects: contract and mock runtime
 |`done`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:implemented/cli-projects.adoc[`cli-projects`]
@@ -180,7 +180,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/process-contract.adoc[`process-contract`]
 |A plan's process: contract and mock runtime
 |`done`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:implemented/cli-plan-view.adoc[`cli-plan-view`]
@@ -198,7 +198,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:control-contract.adoc[`control-contract`]
 |Controlling work: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:cli-actions.adoc[`cli-actions`]
@@ -216,7 +216,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:start-contract.adoc[`start-contract`]
 |Starting work: contract and mock runtime
 |`open`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
 |link:cli-start.adoc[`cli-start`]
@@ -234,7 +234,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/overview-contract.adoc[`overview-contract`]
 |Overview of running work: contract and mock runtime
 |`done`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:implemented/cli-overview.adoc[`cli-overview`]
@@ -252,7 +252,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/report-contract.adoc[`report-contract`]
 |Reports to the operator and a plan's completion report: contract and mock runtime
 |`done`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:implemented/cli-reports.adoc[`cli-reports`]
@@ -270,7 +270,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/system-contract.adoc[`system-contract`]
 |The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
 |`done`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/report-contract.adoc[`report-contract`] (the closed kinds of reports)
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/report-contract.adoc[`report-contract`] (the closed kinds of reports)
 |epic clients
 
 |link:implemented/cli-system.adoc[`cli-system`]
@@ -288,7 +288,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/designer-contract.adoc[`designer-contract`]
 |Designing a process: contract and mock runtime
 |`done`
-|link:operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/process-contract.adoc[`process-contract`] (the composed process)
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/process-contract.adoc[`process-contract`] (the composed process)
 |epic clients
 
 |link:implemented/web-designer.adoc[`web-designer`]

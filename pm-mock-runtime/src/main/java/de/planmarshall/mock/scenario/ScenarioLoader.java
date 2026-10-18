@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,9 @@ import java.util.Objects;
 
 import lombok.experimental.UtilityClass;
 
+import de.planmarshall.api.event.EventName;
+import de.planmarshall.api.interaction.OperatorLink;
+import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
@@ -258,9 +262,58 @@ public class ScenarioLoader {
             // auto
             var auto = parseAuto(stateMap.get("auto"), scenario, stateId);
 
+            validateOperatorState(representation, links, events, scenario, stateId);
+
             states.put(stateId, new StateDefinition(representation, links, events, auto));
         }
         return states;
+    }
+
+    /**
+     * Validates a state whose representation is an operator representation, decoded with the codecs of
+     * {@code pm-api}: every representation, event, and link relation must be one the contract allows,
+     * and every scenario link must be one the state's representation offers by its id. A state whose
+     * representation is not an operator representation (the responses of the legacy scenarios) is left
+     * to the loader's own checks.
+     *
+     * @param representation the state representation
+     * @param links          the scenario links keyed by operator link id
+     * @param events         the timed events of the state
+     * @param scenario       the scenario identifier for error reporting
+     * @param stateId        the state identifier
+     */
+    private static void validateOperatorState(Object representation, Map<String, LinkDefinition> links,
+            List<EventDefinition> events, String scenario, String stateId) {
+        var representationMap = JsonTree.asObject(representation);
+        if (representationMap == null || !representationMap.containsKey(OperatorStateResource.FIELD_STATE_ID)) {
+            return;
+        }
+
+        OperatorStateResource state;
+        try {
+            state = OperatorStateResource.fromMap(representationMap);
+        } catch (IOException e) {
+            throw new ScenarioValidationException(scenario, stateId, "representation", e.getMessage());
+        }
+
+        var offeredIds = new HashSet<String>();
+        for (OperatorLink link : state.links()) {
+            offeredIds.add(link.id());
+        }
+        for (var linkId : links.keySet()) {
+            if (!offeredIds.contains(linkId)) {
+                throw new ScenarioValidationException(scenario, stateId, "links." + linkId,
+                        "no operator link with this id is offered in the representation");
+            }
+        }
+
+        for (var i = 0; i < events.size(); i++) {
+            var name = events.get(i).event();
+            if (!EventName.matchesGrammar(name) || !EventName.isCatalogueMember(name)) {
+                throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].event",
+                        "unknown event name: " + name);
+            }
+        }
     }
 
     private static Map<String, LinkDefinition> parseLinks(Object linksObj, String scenario, String stateId) {

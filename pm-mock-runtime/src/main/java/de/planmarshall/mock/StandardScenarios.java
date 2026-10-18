@@ -138,6 +138,13 @@ public final class StandardScenarios {
     public static final String ENROLMENT = "enrolment";
 
     /**
+     * The shared operator interaction of both clients: an operator state with links keyed by their id,
+     * {@code check.result} events from the closed catalogue, and a moved state whose stale link is
+     * refused {@code act_not_available} (PM-ARCH-11).
+     */
+    public static final String OPERATOR_INTERACTION = "operator-interaction";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -160,6 +167,7 @@ public final class StandardScenarios {
             GIT_SOURCES,
             DECOMPOSITION,
             DESIGNER,
-            ENROLMENT
+            ENROLMENT,
+            OPERATOR_INTERACTION
     );
 }
