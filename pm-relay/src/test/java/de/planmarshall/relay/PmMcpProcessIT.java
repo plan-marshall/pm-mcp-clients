@@ -10,8 +10,10 @@
 package de.planmarshall.relay;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -57,6 +59,9 @@ class PmMcpProcessIT {
     private static final Duration WAIT = Duration.ofSeconds(10);
     private static final String INITIALIZE = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":"
             + "{\"protocolVersion\":\"2025-11-25\",\"clientInfo\":{\"name\":\"it\",\"version\":\"1\"},\"capabilities\":{}}}";
+    private static final String INITIALIZE_RESULT = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-11-25\"}}";
+    private static final String DAEMON_ERROR = "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32601,\"message\":"
+            + "\"Method not found\"}}";
     private static final int STARTUP_RUNS = 15;
     private static final long BUDGET_MS = 50;
 
@@ -87,7 +92,7 @@ class PmMcpProcessIT {
     private static FakeRuntimeServer.Handler mcp() {
         return (request, response) -> {
             switch (String.valueOf(request.header("Mcp-Method"))) {
-                case "initialize" -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-11-25\"}}");
+                case "initialize" -> response.json(200, INITIALIZE_RESULT);
                 case "tools/list" -> {
                     try (var events = response.events(200)) {
                         events.send(null, "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\",\"params\":{\"progress\":1}}");
@@ -221,6 +226,120 @@ class PmMcpProcessIT {
             assertEquals(ServeCommand.EXIT_REFUSED, process.awaitExit(WAIT));
             assertEquals(0, process.stdout().length);
             assertTrue(process.stderr().contains("PM_MCP_JOB_ID is set"));
+        }
+    }
+
+    @Test
+    @DisplayName("keeps stdout strictly newline-framed JSON-RPC under daemon faults")
+    void stdoutFramingUnderFaults() throws Exception {
+        fixture.start((request, response) -> {
+            switch (String.valueOf(request.header("Mcp-Method"))) {
+                case "initialize" -> response.send(500, null, "");
+                case "tools/call" -> response.json(200, DAEMON_ERROR);
+                default -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":null,\"result\":{}}");
+            }
+        });
+        try (var process = relay(environment())) {
+            process.send(INITIALIZE);
+            var faulted = process.nextLine(WAIT);
+            assertNotNull(faulted, "no answer to the faulted initialize; stderr: " + process.stderr());
+            process.send("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"pm_unknown\"}}");
+            var unknown = process.nextLine(WAIT);
+            assertNotNull(unknown, "no answer to the unknown method; stderr: " + process.stderr());
+            process.closeStdin();
+            assertEquals(0, process.awaitExit(WAIT));
+
+            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
+            assertEquals(faulted.text() + "\n" + unknown.text() + "\n", stdout,
+                    "stdout holds exactly the two error messages, one per line");
+
+            var fault = JsonTree.asObject(JsonTree.parse(faulted.text()));
+            assertNotNull(fault, faulted.text());
+            assertEquals(1, JsonTree.integer(fault, "id"));
+            var faultError = JsonTree.object(fault, "error");
+            assertNotNull(faultError, "a daemon HTTP 500 becomes a JSON-RPC error object");
+            // the protocol-defined code, as a literal, so a relay constant and its emission cannot drift together
+            assertEquals(-32603, JsonTree.integer(faultError, "code"));
+            assertEquals("runtime_error: HTTP 500", JsonTree.string(faultError, "message"));
+
+            // the daemon's error, message and all, reaches the host verbatim
+            assertEquals(DAEMON_ERROR, unknown.text());
+        }
+    }
+
+    @Test
+    @DisplayName("answers a pending request and ends cleanly when the daemon socket breaks mid-response")
+    void abruptSocketDisconnect() throws Exception {
+        fixture.start((request, response) -> response.raw(
+                "HTTP/1.1 200 X\r\nContent-Type: application/json\r\nContent-Length: 100\r\n\r\n{\"jsonrpc\""));
+        try (var process = relay(environment())) {
+            process.send(INITIALIZE);
+            var line = process.nextLine(WAIT);
+            assertNotNull(line, "the relay did not answer the pending request; stderr: " + process.stderr());
+            var message = JsonTree.asObject(JsonTree.parse(line.text()));
+            assertNotNull(message, line.text());
+            assertEquals(1, JsonTree.integer(message, "id"));
+            var error = JsonTree.object(message, "error");
+            assertNotNull(error, "a broken daemon stream becomes runtime_unavailable");
+            // the protocol-defined relay code, as a literal (runtime_unavailable follows -32000 above)
+            assertEquals(-32000, JsonTree.integer(error, "code"));
+            assertEquals("runtime_unavailable", JsonTree.string(error, "message"));
+            assertFalse(process.stderr().isBlank(), "a diagnostic is written on stderr: " + process.stderr());
+
+            var eofNanos = System.nanoTime();
+            process.closeStdin();
+            var exit = process.awaitExit(WAIT);
+            var exitMillis = (System.nanoTime() - eofNanos) / 1_000_000;
+            assertEquals(0, exit);
+            assertTrue(exitMillis < 2000, "exit after EOF took " + exitMillis + " ms");
+        }
+    }
+
+    @Test
+    @DisplayName("exits 0 without any output when stdin closes immediately")
+    void immediateEof() throws Exception {
+        try (var process = relay(environment())) {
+            process.closeStdin();
+            assertEquals(0, process.awaitExit(WAIT));
+            assertEquals(0, process.stdout().length, "nothing is written on stdout without a request");
+            assertEquals("", process.stderr(), "no diagnostic without a request");
+        }
+    }
+
+    @Test
+    @DisplayName("answers malformed stdin with a parse error and keeps relaying")
+    void malformedStdin() throws Exception {
+        var server = fixture.start(mcp());
+        try (var process = relay(environment())) {
+            process.send("this is not JSON-RPC");
+            var parseError = process.nextLine(WAIT);
+            assertNotNull(parseError, "no parse error answer; stderr: " + process.stderr());
+            process.send(INITIALIZE);
+            var answered = process.nextLine(WAIT);
+            assertNotNull(answered, "the relay stopped after a malformed line; stderr: " + process.stderr());
+            process.closeStdin();
+            assertEquals(0, process.awaitExit(WAIT));
+
+            var error = JsonTree.asObject(JsonTree.parse(parseError.text()));
+            assertNotNull(error, parseError.text());
+            assertTrue(error.containsKey("id"), "a parse error frame carries its id member");
+            assertNull(error.get("id"), "a parse error carries a null id");
+            var errorObject = JsonTree.object(error, "error");
+            assertNotNull(errorObject, parseError.text());
+            // JSON-RPC parse error -32700, as a literal, not the Relay constant
+            assertEquals(-32700, JsonTree.integer(errorObject, "code"));
+            assertEquals("parse_error", JsonTree.string(errorObject, "message"));
+
+            // the malformed line stayed local: the daemon saw only the valid initialize, and its own
+            // distinctive result reached the host, so a synthesized answer cannot pass this
+            assertEquals(1, server.requests().size(), "only the valid request was forwarded");
+            assertTrue(server.requests().getFirst().bodyText().contains("\"method\":\"initialize\""),
+                    "the forwarded request is the host's initialize");
+            assertEquals(INITIALIZE_RESULT, answered.text(), "the daemon's own initialize result is relayed");
+
+            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
+            assertEquals(parseError.text() + "\n" + answered.text() + "\n", stdout,
+                    "stdout holds exactly the two frames, one per line");
         }
     }
 

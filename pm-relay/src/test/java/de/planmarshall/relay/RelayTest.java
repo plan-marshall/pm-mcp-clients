@@ -299,16 +299,19 @@ class RelayTest {
         }
 
         @Test
-        @DisplayName("answers an invalid line with invalid_request and keeps relaying")
+        @DisplayName("answers a parse error with -32700 and a non-object with -32600, and keeps relaying")
         void invalidLine() throws Exception {
             startCapturing((request, response) -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
 
             send("not json");
             send("[1,2]");
 
+            // the line is not JSON at all: JSON-RPC parse error -32700
+            assertEquals("{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"parse_error\"}}",
+                    out.next(5));
+            // valid JSON that is no request object: invalid request -32600
             assertEquals("{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32600,\"message\":\"invalid_request\"}}",
                     out.next(5));
-            assertNotNull(out.next(5));
             assertTrue(err.text().contains("pm-mcp serve: dropping a line"));
         }
 
