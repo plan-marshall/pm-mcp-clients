@@ -45,9 +45,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |nothing
 |Milestone 2
 
-|link:integration-layers.adoc[`integration-layers`]
+|link:implemented/integration-layers.adoc[`integration-layers`]
 |Exit: integration-test layers of this repository
-|`open`
+|`done`
 |link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
 |Milestone 2
 
