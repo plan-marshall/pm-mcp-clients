@@ -110,9 +110,10 @@ public record WebAccessResource(
         }
         return new WebAccessResource(
                 status,
-                intOf(map, FIELD_PORT),
+                Math.toIntExact(JsonTree.integralNumber(map, FIELD_PORT, 0, 65535)),
                 Boolean.TRUE.equals(JsonTree.bool(map, FIELD_LOOPBACK_ONLY)),
-                intOf(map, FIELD_PAIRED_DEVICES_COUNT),
+                Math.toIntExact(JsonTree.integralNumber(
+                        map, FIELD_PAIRED_DEVICES_COUNT, 0, Integer.MAX_VALUE)),
                 ResourceLink.fromArray(map.get(ResourceLink.FIELD_LINKS)));
     }
 
@@ -136,13 +137,5 @@ public record WebAccessResource(
      */
     public static WebAccessResource readFrom(JsonParser parser) throws IOException {
         return fromMap(ResourceLink.objectOf(parser, "WebAccessResource"));
-    }
-
-    private static int intOf(Map<String, Object> map, String field) throws IOException {
-        var number = JsonTree.number(map, field);
-        if (number == null) {
-            throw new JsonFormatException("Missing " + field + " in WebAccessResource");
-        }
-        return number.intValue();
     }
 }

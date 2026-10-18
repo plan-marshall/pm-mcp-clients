@@ -161,8 +161,12 @@ public enum ApiErrorCode {
     /** Retryable: the addressed project's recovery has not finished within its wait. */
     RUNTIME_RECOVERING("runtime_recovering", 503);
 
-    /** The HTTP statuses the closed catalogue draws from. */
-    private static final List<Integer> STATUSES = List.of(400, 403, 404, 409, 423, 500, 503);
+    /** The HTTP statuses the closed catalogue draws from, derived from its members. */
+    private static final List<Integer> STATUSES = Arrays.stream(values())
+            .map(ApiErrorCode::status)
+            .distinct()
+            .sorted()
+            .toList();
 
     private final String wire;
     private final int status;

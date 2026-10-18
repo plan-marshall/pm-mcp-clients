@@ -156,11 +156,9 @@ public record RuntimeStopResource(
         if (mode == null) {
             throw new JsonFormatException("Unknown stop mode in RuntimeStopResource: " + wire);
         }
-        var timeout = JsonTree.number(map, FIELD_TIMEOUT_SECONDS);
-        if (timeout == null) {
-            throw new JsonFormatException("Missing timeout_seconds in RuntimeStopResource");
-        }
-        return new RuntimeStopResource(mode, timeout.longValue(),
+        return new RuntimeStopResource(
+                mode,
+                JsonTree.integralNumber(map, FIELD_TIMEOUT_SECONDS, 0, Long.MAX_VALUE),
                 ResourceLink.fromArray(map.get(ResourceLink.FIELD_LINKS)));
     }
 

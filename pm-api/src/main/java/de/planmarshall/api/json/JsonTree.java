@@ -12,6 +12,7 @@ package de.planmarshall.api.json;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -77,22 +78,22 @@ public class JsonTree {
 
     /**
      * Reads one JSON value from a streaming parser. A parser before its first token is advanced to
-     * it; a parser already positioned at a value's first token reads from there. Trailing content is
-     * left to the caller, so a stream of values can be read one after another.
+     * it; a parser already positioned at a value's first token reads from there. The value is
+     * consumed, so a stream of values can be read one after another and the next call moves to the
+     * following value.
      *
      * @param parser the parser
      * @return the tree value
      * @throws IOException on malformed JSON
      */
     public static Object readValue(JsonParser parser) throws IOException {
-        var token = parser.currentToken();
-        if (token == null || token == JsonToken.END_OBJECT || token == JsonToken.END_ARRAY) {
-            token = parser.nextToken();
-        }
-        if (token == null) {
+        if (parser.currentToken() == null && parser.nextToken() == null) {
             throw new JsonFormatException("Empty JSON input");
         }
-        return read(parser);
+        var value = read(parser);
+        // the value is consumed: the next call advances to the following value
+        parser.clearCurrentToken();
+        return value;
     }
 
     /**
@@ -286,6 +287,48 @@ public class JsonTree {
     public static Integer integer(Map<String, Object> object, String name) {
         var num = number(object, name);
         return num != null ? num.intValue() : null;
+    }
+
+    /**
+     * Reads a member that must be an exact integral number within the given bounds.
+     * <p>
+     * A missing member, a value that is no number, a number with a fractional part, a number that is
+     * not finite, or a value outside the bounds is refused with a {@link JsonFormatException}: the
+     * wire boundary never truncates a fraction, wraps a range, or hands an out-of-range value to a
+     * constructor.
+     *
+     * @param object  an object, may be {@code null}
+     * @param name    the member name
+     * @param minimum the inclusive lower bound
+     * @param maximum the inclusive upper bound
+     * @return the value as a {@code long}
+     * @throws IOException if the member is missing or not an exact in-range integral number
+     */
+    public static long integralNumber(Map<String, Object> object, String name, long minimum, long maximum)
+            throws IOException {
+        var raw = object == null ? null : object.get(name);
+        if (raw == null) {
+            throw new JsonFormatException("Missing " + name);
+        }
+        var text = switch (raw) {
+            case JsonNumber value -> value.text();
+            case Number value -> value.toString();
+            case String value -> value;
+            default -> null;
+        };
+        if (text == null) {
+            throw new JsonFormatException("Not a number for " + name);
+        }
+        final long value;
+        try {
+            value = new BigDecimal(text).longValueExact();
+        } catch (NumberFormatException | ArithmeticException _) {
+            throw new JsonFormatException("Not an exact integral number for " + name + ": " + text);
+        }
+        if (value < minimum || value > maximum) {
+            throw new JsonFormatException("Out-of-range number for " + name + ": " + text);
+        }
+        return value;
     }
 
     /**

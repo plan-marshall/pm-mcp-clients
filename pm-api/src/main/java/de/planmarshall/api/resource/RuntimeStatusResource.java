@@ -50,9 +50,9 @@ public record RuntimeStatusResource(
     public static final String FIELD_SOCKET_PATH = "socket_path";
 
     public RuntimeStatusResource {
-        state = requireText(state, FIELD_STATE);
-        version = requireText(version, FIELD_VERSION);
-        socketPath = requireText(socketPath, FIELD_SOCKET_PATH);
+        requireText(state, FIELD_STATE);
+        requireText(version, FIELD_VERSION);
+        requireText(socketPath, FIELD_SOCKET_PATH);
         Objects.requireNonNull(startedAt, FIELD_STARTED_AT);
         links = links == null ? List.of() : List.copyOf(links);
     }
@@ -104,7 +104,7 @@ public record RuntimeStatusResource(
         return new RuntimeStatusResource(
                 text(map, FIELD_STATE),
                 text(map, FIELD_VERSION),
-                longOf(map, FIELD_PID),
+                JsonTree.integralNumber(map, FIELD_PID, 0, Long.MAX_VALUE),
                 instantOf(map, FIELD_STARTED_AT),
                 text(map, FIELD_SOCKET_PATH),
                 ResourceLink.fromArray(map.get(ResourceLink.FIELD_LINKS)));
@@ -132,11 +132,10 @@ public record RuntimeStatusResource(
         return fromMap(ResourceLink.objectOf(parser, "RuntimeStatusResource"));
     }
 
-    private static String requireText(String value, String field) {
+    private static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Missing " + field + " in RuntimeStatusResource");
         }
-        return value;
     }
 
     private static String text(Map<String, Object> map, String field) throws IOException {
@@ -145,14 +144,6 @@ public record RuntimeStatusResource(
             throw new JsonFormatException("Missing " + field + " in RuntimeStatusResource");
         }
         return value;
-    }
-
-    private static long longOf(Map<String, Object> map, String field) throws IOException {
-        var number = JsonTree.number(map, field);
-        if (number == null) {
-            throw new JsonFormatException("Missing " + field + " in RuntimeStatusResource");
-        }
-        return number.longValue();
     }
 
     private static Instant instantOf(Map<String, Object> map, String field) throws IOException {

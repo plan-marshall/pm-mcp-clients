@@ -101,13 +101,10 @@ public record RuntimeEventStreamResource(
         if (status == null || status.isBlank()) {
             throw new JsonFormatException("Missing status in RuntimeEventStreamResource");
         }
-        var listeners = JsonTree.number(map, FIELD_ACTIVE_LISTENERS);
-        if (listeners == null) {
-            throw new JsonFormatException("Missing active_listeners in RuntimeEventStreamResource");
-        }
         return new RuntimeEventStreamResource(
                 status,
-                listeners.intValue(),
+                Math.toIntExact(JsonTree.integralNumber(
+                        map, FIELD_ACTIVE_LISTENERS, 0, Integer.MAX_VALUE)),
                 JsonTree.string(map, FIELD_LAST_EVENT_ID),
                 ResourceLink.fromArray(map.get(ResourceLink.FIELD_LINKS)));
     }

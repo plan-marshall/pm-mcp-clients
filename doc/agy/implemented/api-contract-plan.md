@@ -1,6 +1,6 @@
 # Implementation Plan: `api-contract` (Milestone 2 API Contract in `pm-api`)
 
-This implementation plan governs the implementation of the `api-contract` work package (`doc/plans/api-contract.adoc`, Roadmap Milestone 2) in `pm-api`.
+This implementation plan governs the implementation of the `api-contract` work package (`doc/plans/implemented/api-contract.adoc`, Roadmap Milestone 2) in `pm-api`.
 
 It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 

@@ -2,7 +2,7 @@
 
 **Work package:** `doc/plans/implemented/api-contract.adoc` (Roadmap Milestone 2)
 **Planning document:** `doc/agy/implemented/api-contract-plan.md`
-**Governing process:** [`doc/agy/runbook.md`](../runbook.md)
+**Governing process:** [`doc/agy/runbook.md`](runbook.md)
 **Topic branch:** `feat/api-contract`
 **Requirements served:** `PM-ARCH-1`, `PM-IMPL-1`, `PM-IMPL-3`
 
@@ -49,7 +49,7 @@ destination in this change.
 | Specification | Runtime Model § Local API — error codes | `ApiErrorCode`, the closed catalogue with its HTTP statuses. |
 | Specification | Runtime Model § Local API — the operator representation and its links | `LinkRelation` and `ResourceLink`. |
 | Specification | Identifiers | The link `href` and relation forms the records carry. |
-| Watch | `PM-WATCH-MOD-4` (the TOON encoder in two modules) | Decided: option (1), a JSON-only local API (§3); the watch item is deleted in the documentation repository. |
+| Watch | `PM-WATCH-MOD-4` (the TOON encoder in two modules) | Decided: option (1), a JSON-only local API (§3); deletion in the documentation repository remains a follow-up. |
 | Watch | `PM-WATCH-MOD-1` (clients never reach the engine) | Verified: no new dependency was added; the `jackson-core-only` and `clients-depend-on-pm-api-only` enforcer rules still pass. |
 
 Rows left out of the slice: none. The package's own scope (the resource representations, the links,
@@ -103,7 +103,7 @@ documentation session to land.
 
 | Artifact | Purpose |
 |---|---|
-| `pm-api/src/test/java/de/planmarshall/api/resource/ApiContractTest.java` | 15 tests: the closed error-code catalogue equals the specification list and every member's status lies in the closed status set (and none carries a bare 401); an unknown code is refused fail-closed; the closed link-relation catalogue; the `ResourceLink` round-trip and the refusal of an unknown/missing relation; a round-trip of every resource through `toJson`/`fromJson`, `toMap`/`fromMap`, and the streaming `writeTo`/`readFrom`; both stop modes and both credential availabilities; malformed JSON and missing required fields; constructor validation; the streaming reader leaving trailing values readable; and the absence of `jackson-databind`. |
+| `pm-api/src/test/java/de/planmarshall/api/resource/ApiContractTest.java` | 16 tests: the closed error-code catalogue equals the specification list and every member's status lies in the closed status set (and none carries a bare 401); an unknown code is refused fail-closed; the closed link-relation catalogue; the `ResourceLink` round-trip and the refusal of an unknown/missing relation; a round-trip of every resource through `toJson`/`fromJson`, `toMap`/`fromMap`, and the streaming `writeTo`/`readFrom`; both stop modes and both credential availabilities; malformed JSON and missing required fields; a numeric field outside its exact integral range; constructor validation; the streaming reader over a stream of objects and of scalars; and the absence of `jackson-databind`. |
 
 ### 4.4 Documentation
 
@@ -135,7 +135,7 @@ import block moved below the `java`/`lombok` block).
 
 | Suite | Tests | Result |
 |---|---|---|
-| `API contract of /api/v1` (`ApiContractTest`) | 15 | pass |
+| `API contract of /api/v1` (`ApiContractTest`) | 16 | pass |
 
 ### 5.2 Requirement set of the package
 
@@ -150,7 +150,7 @@ import block moved below the `java`/`lombok` block).
 
 | Module | Tests | Failures | Errors | Skipped |
 |---|---|---|---|---|
-| `pm-api` | 442 | 0 | 0 | 0 |
+| `pm-api` | 443 | 0 | 0 | 0 |
 | `pm-exec` | 87 | 0 | 0 | 3 |
 | `pm-relay` | 25 | 0 | 0 | 0 |
 | `pm-operator` | 418 | 0 | 0 | 0 |
@@ -182,17 +182,17 @@ import block moved below the `java`/`lombok` block).
 
 ```
 [INFO] Reactor Summary for pm-mcp-clients 0.1.0-SNAPSHOT:
-[INFO] pm-mcp-clients ..................................... SUCCESS [ 10.427 s]
-[INFO] pm-api ............................................. SUCCESS [01:08 min]
-[INFO] pm-exec ............................................ SUCCESS [ 13.041 s]
-[INFO] pm-relay ........................................... SUCCESS [ 15.729 s]
-[INFO] pm-operator ........................................ SUCCESS [01:18 min]
-[INFO] pm-mock-runtime .................................... SUCCESS [01:05 min]
-[INFO] pm-web-app ......................................... SUCCESS [ 37.275 s]
-[INFO] pm-web-e2e ......................................... SUCCESS [ 10.126 s]
+[INFO] pm-mcp-clients ..................................... SUCCESS [ 17.459 s]
+[INFO] pm-api ............................................. SUCCESS [01:53 min]
+[INFO] pm-exec ............................................ SUCCESS [ 24.088 s]
+[INFO] pm-relay ........................................... SUCCESS [ 24.663 s]
+[INFO] pm-operator ........................................ SUCCESS [01:56 min]
+[INFO] pm-mock-runtime .................................... SUCCESS [ 57.889 s]
+[INFO] pm-web-app ......................................... SUCCESS [ 42.231 s]
+[INFO] pm-web-e2e ......................................... SUCCESS [  9.797 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
-[INFO] Total time:  05:00 min
+[INFO] Total time:  06:48 min
 ```
 
 The gate validated the OpenRewrite formatting, the licence headers, the enforcer rules
@@ -255,3 +255,30 @@ committed (§4.5), so the gate ends with a clean `git status`.
 4. **Wire the records into the mock runtime and the clients** (`overview-contract` and the control
    packages already reference the daemon resources); this package delivers the contract only, as the
    plan scopes it.
+5. **Rebase the sibling plans' reference to this plan.** The concurrency section of
+   `doc/agy/installation-layout-plan.md` and `doc/agy/integration-layers-plan.md` names
+   `doc/agy/api-contract-plan.md`, which now lives under `doc/agy/implemented/`. Those two files are
+   the active planning documents of concurrently-executing work packages (Wave 6); updating them
+   from this branch would collide with their own sessions, so each package rebases the reference to
+   `doc/agy/implemented/api-contract-plan.md` when it archives its own plan.
+
+---
+
+## 11. Review Findings Resolved (CodeRabbit, SonarCloud, cuioss-review-bot)
+
+The automated reviewers ran against the pull request (no `skip-bot-review` label). cuioss-review-bot
+found no major issues; SonarCloud's Quality Gate passed; CodeRabbit posted seven findings. Each was
+evaluated with the adversarial-refute lenses and resolved.
+
+| # | Source | Finding | Resolution |
+|---|---|---|---|
+| 1 | CodeRabbit | The report's runbook link `../runbook.md` resolves to `doc/runbook.md`. | **Fixed.** The link is `runbook.md` (the report sits in `doc/agy/`). |
+| 2 | CodeRabbit | §2 states `PM-WATCH-MOD-4` is already deleted, contradicting §3/§10. | **Fixed.** The wording now marks the deletion as a follow-up. |
+| 3 | CodeRabbit | The moved plan still names `doc/plans/api-contract.adoc`; the sibling plans reference the old plan path. | **Partly fixed.** The moved plan names `doc/plans/implemented/api-contract.adoc`; the sibling-plan references are deferred to their own sessions (follow-up 5). |
+| 4 | CodeRabbit | The new archive row uses `file:///Users/oliver/...` links. | **Fixed.** The new row uses repository-relative links (the pre-existing rows keep their file-codex convention, out of this change's footprint). |
+| 5 | CodeRabbit | `JsonTree.readValue` reads a scalar value twice on a stream. | **Fixed.** The value is consumed (`clearCurrentToken`), so a stream of scalars reads each value once; a scalar-stream test locks it. |
+| 6 | CodeRabbit | `ApiErrorCode.STATUSES` is a hand-kept second list. | **Fixed.** The status list is derived from the enum's members; it cannot drift. |
+| 7 | CodeRabbit | The numeric fields truncate fractions, wrap ranges, and throw `IllegalArgumentException` from the wire parser. | **Fixed.** `JsonTree.integralNumber(object, name, minimum, maximum)` reads the raw text, rejects a fraction/non-finite/out-of-range value with `JsonFormatException`, and the four numeric fields (pid, port, paired-device count, active listeners, timeout) use it; a numeric-validation test covers it. |
+| 8 | SonarCloud | `java:S4165` × 3 — the text validation in `RuntimeStatusResource` reassigns a value it does not change. | **Fixed.** The validation helper is `void`; the fields keep their values. |
+| 9 | SonarCloud | `java:S1130` — an unnecessary `throws Exception` in `ApiContractTest`. | **Fixed.** The declaration is gone. |
+

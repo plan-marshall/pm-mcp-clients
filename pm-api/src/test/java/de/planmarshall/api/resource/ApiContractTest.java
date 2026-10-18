@@ -32,6 +32,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("API contract of /api/v1")
 class ApiContractTest {
@@ -253,7 +254,7 @@ class ApiContractTest {
     }
 
     @Test
-    @DisplayName("the streaming reader leaves trailing values readable")
+    @DisplayName("the streaming reader reads a stream of scalars and objects one after another")
     void streamingReaderLeavesTrailingValues() throws Exception {
         var resource = new RuntimeStopResource(RuntimeStopResource.StopMode.DRAIN, 45L, List.of());
         var stream = resource.toJson() + resource.toJson();
@@ -262,6 +263,41 @@ class ApiContractTest {
             assertEquals(resource, RuntimeStopResource.readFrom(parser));
             assertEquals(resource, RuntimeStopResource.readFrom(parser));
         }
+
+        // a stream of scalars: each call returns the next value, never the same one twice
+        try (var parser = FACTORY.createParser("1 2 \"three\"")) {
+            assertEquals("1", JsonTree.readValue(parser).toString());
+            assertEquals("2", JsonTree.readValue(parser).toString());
+            assertEquals("three", JsonTree.readValue(parser).toString());
+        }
+    }
+
+    @Test
+    @DisplayName("a numeric field outside its exact integral range is refused")
+    void numericFieldsAreValidated() {
+        assertAll(
+                () -> assertThrows(JsonFormatException.class,
+                        () -> WebAccessResource.fromJson(
+                                "{\"status\":\"on\",\"port\":1.5,\"paired_devices_count\":0}")),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> WebAccessResource.fromJson(
+                                "{\"status\":\"on\",\"port\":70000,\"paired_devices_count\":0}")),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> WebAccessResource.fromJson(
+                                "{\"status\":\"on\",\"port\":7420,\"paired_devices_count\":4294967296}")),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RuntimeStopResource.fromJson(
+                                "{\"mode\":\"drain\",\"timeout_seconds\":1.5}")),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RuntimeStopResource.fromJson(
+                                "{\"mode\":\"drain\",\"timeout_seconds\":-1}")),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RuntimeEventStreamResource.fromJson(
+                                "{\"status\":\"open\",\"active_listeners\":1.5}")),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RuntimeStatusResource.fromJson(
+                                "{\"state\":\"running\",\"version\":\"1\",\"pid\":1.5,"
+                                        + "\"started_at\":\"2026-03-01T08:30:00Z\",\"socket_path\":\"/s\"}")));
     }
 
     @Test
@@ -273,7 +309,7 @@ class ApiContractTest {
 
     @Test
     @DisplayName("the error body of a refusal carries a code of the closed list")
-    void refusalCarriesAClosedCode() throws Exception {
+    void refusalCarriesAClosedCode() {
         var body = Map.of("status", 404, "code", ApiErrorCode.SCOPE_NOT_FOUND.wire());
         var code = (String) body.get("code");
         assertEquals(404, ApiErrorCode.fromWire(code).status());
