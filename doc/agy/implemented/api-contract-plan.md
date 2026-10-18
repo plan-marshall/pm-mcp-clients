@@ -1,8 +1,8 @@
 # Implementation Plan: `api-contract` (Milestone 2 API Contract in `pm-api`)
 
-This implementation plan governs the implementation of the `api-contract` work package (`doc/plans/api-contract.adoc`, Roadmap Milestone 2) in `pm-api`.
+This implementation plan governs the implementation of the `api-contract` work package (`doc/plans/implemented/api-contract.adoc`, Roadmap Milestone 2) in `pm-api`.
 
-It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
+It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -58,16 +58,16 @@ This plan executes concurrently in Wave 6 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/api-contract /Users/oliver/git/worktrees/pm-mcp-clients-api-contract main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/api-contract /Users/oliver/git/worktrees/pm-mcp-clients-api-contract main`).
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for Java 25 records and Jackson streaming codecs
   - `persona-security-expert` for strict input validation, closed error code boundaries, and fail-closed parsing
   - `persona-documenter` for documentation, ADRs, and roadmap updates
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/api-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/api-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/api-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/api-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/api-contract-plan-report.md` by orchestrator session.
 

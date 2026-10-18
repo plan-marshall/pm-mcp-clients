@@ -117,4 +117,9 @@ This directory archives work packages that have been implemented, verified, and 
 |Installation layout seen from the binaries
 |`InstallationLayout.java` and `InstallationLayoutException.java` (the versioned installation directory `${install_root}/<version>/` that is `<PM_MCP_HOME>`, the two switched `PATH` links, sibling binaries by absolute path, and the refusals of an unversioned, broken, or insecure layout) with `InstallationLayoutTest.java` in `pm-api`; `OperatorLayout.java` and `SwitchedSymlinkLayoutIT.java` in `pm-operator`; `RuntimeAccess` and `OperatorContext` resolve `pm-mcpd` through the switched link
 |Milestone 2
+
+|link:api-contract.adoc[`api-contract`]
+|API contract of `/api/v1` in `pm-api`
+|`de.planmarshall.api.resource` resource records (`RuntimeStatusResource`, `WebAccessResource`, `RuntimeStopResource`, `CredentialStatusResource`, `RuntimeEventStreamResource`), the closed `ApiErrorCode` and `LinkRelation` enums, `ResourceLink`, the `jackson-core` streaming codecs (`JsonTree.readValue`/`writeValue`), and `ApiContractTest`
+|Milestone 2
 |===
