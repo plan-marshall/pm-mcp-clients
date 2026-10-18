@@ -80,10 +80,13 @@ class OperatorLayoutTest {
     @Test
     @DisplayName("resolves the layout of the running operator process")
     void currentProcess() throws Exception {
-        var operator = OperatorLayout.current(Map.of());
+        stage(VERSION);
 
-        assertTrue(operator.runtimeExecutable().isAbsolute());
-        assertEquals(operator.installation().home().resolve("bin/pm-mcpd"), operator.runtimeExecutable());
+        var operator = OperatorLayout.current(
+                            Map.of(InstallationLayout.ENV_HOME, installRoot.resolve(VERSION).toString()));
+
+        assertEquals(Optional.of(VERSION), operator.version());
+        assertEquals(installRoot.resolve(VERSION).resolve("bin/pm-mcpd"), operator.runtimeExecutable());
     }
 
     @Test
