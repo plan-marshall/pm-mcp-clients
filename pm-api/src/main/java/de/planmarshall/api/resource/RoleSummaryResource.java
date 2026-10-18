@@ -166,7 +166,7 @@ public record RoleSummaryResource(
         var modelLevel = JsonTree.string(map, FIELD_MODEL_LEVEL);
         var effortLevel = JsonTree.string(map, FIELD_EFFORT_LEVEL);
         var state = qualificationState(map);
-        var guardHeld = Boolean.TRUE.equals(JsonTree.bool(map, FIELD_START_FAILURE_GUARD_HELD));
+        var guardHeld = requireBoolean(map, FIELD_START_FAILURE_GUARD_HELD);
         try {
             return new RoleSummaryResource(role, displayName, description, capabilities, sourceSet,
                     roleClass, form, harness, model, effort, harnessLevel, modelLevel,
@@ -257,21 +257,30 @@ public record RoleSummaryResource(
         throw new JsonFormatException("Expected a JSON object for " + resource);
     }
 
-    private static List<String> strings(Map<String, Object> map, String field, String alias) {
-        var value = map.get(field);
+    private static List<String> strings(Map<String, Object> map, String field, String alias)
+            throws IOException {
+        var value = map.containsKey(field) ? map.get(field) : map.get(alias);
         if (value == null) {
-            value = map.get(alias);
+            return List.of();
         }
         if (!(value instanceof List<?> list)) {
-            return List.of();
+            throw new JsonFormatException(field + " must be a JSON array of strings");
         }
         var strings = new ArrayList<String>(list.size());
         for (var element : list) {
-            if (element instanceof String text) {
-                strings.add(text);
+            if (!(element instanceof String text)) {
+                throw new JsonFormatException(field + " must hold only strings");
             }
+            strings.add(text);
         }
         return strings;
+    }
+
+    private static boolean requireBoolean(Map<String, Object> map, String field) throws IOException {
+        if (map.get(field) instanceof Boolean flag) {
+            return flag;
+        }
+        throw new JsonFormatException("Missing or non-boolean " + field);
     }
 
     private static RoleQualificationState qualificationState(Map<String, Object> map) throws IOException {

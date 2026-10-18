@@ -73,6 +73,8 @@ class OperatorRolesCatalogueTest {
                 "operator.roles.qualify.confirm",
                 "operator.roles.qualify.confirm_required",
                 "operator.roles.qualify.declined",
+                "operator.roles.qualify.pending",
+                "operator.roles.qualify.incomplete",
                 "operator.roles.qualify.done",
                 "operator.roles.qualify.not_found",
                 "operator.roles.qualify.failed",

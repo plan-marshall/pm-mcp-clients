@@ -250,7 +250,10 @@ class EnrolHarnessCommandTest {
     @Test
     @DisplayName("refuses a coding-agent environment before the executable is probed (PM-SEC-3)")
     void refusesCodingAgentEnvironment() throws Exception {
-        var executable = executable("claude", "2.4.1", 0);
+        var marker = binRoot.resolve("probed");
+        Files.writeString(bin.resolve("claude"),
+                            "#!/bin/sh\ntouch '" + marker + "'\nprintf '2.4.1\\n'\n");
+        Files.setPosixFilePermissions(bin.resolve("claude"), PosixFilePermissions.fromString("rwx------"));
         var environment = new HashMap<>(fixture.environment());
         environment.put("PATH", bin.toString());
         environment.put("CLAUDE_CODE", "1");
@@ -266,7 +269,18 @@ class EnrolHarnessCommandTest {
         assertEquals(4, code);
         assertTrue(error.toString().contains("coding-agent environment detected (claude)"), error.toString());
         assertTrue(writer.toString().isEmpty());
-        assertTrue(Files.exists(executable), "the probe was never reached");
-        assertFalse(Files.exists(fixture.paths().socket()), "no request reached a runtime");
+        assertFalse(Files.exists(marker), "the probe was never reached");
+    }
+
+    @Test
+    @DisplayName("refuses a recorded read that is not 404")
+    void refusesRecordedReadFailure() throws Exception {
+        executable("claude", "2.4.1", 0);
+        var server = fixture.start((request, response) -> response.json(500, "{\"error\":\"internal_fault\"}"));
+
+        assertEquals(1, execute("", "enrol-harness", "claude", "--yes"));
+
+        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+        assertEquals(1, server.requests().size(), "no enrolment request may be sent");
     }
 }

@@ -19,7 +19,10 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -31,30 +34,61 @@ import java.util.regex.Pattern;
  * Discovers and probes the headless CLI of one of the client profiles the terminal client knows
  * (CLI &amp; Security § Harness Enrolment). It resolves the executable through the absolute entries
  * of the login {@code PATH}, never through a shell, computes its SHA-256 digest, and runs the
- * profile's version probe with a bounded timeout and a bounded output.
+ * profile's version probe with a bounded timeout, a bounded output, and a minimal environment.
  * <p>
- * The probe reports only facts the operator sees before the enrolment is recorded; it captures no
- * environment value and never stores a harness credential.
+ * The probe reports only facts the operator sees before the enrolment is recorded; it never hands
+ * the operator's environment to the probed executable and never stores a harness credential. A
+ * profile that declares no version probe (the antigravity profile does not) is enrolled with the
+ * version {@value #UNREPORTED_VERSION} instead of running an unsupported flag.
  */
 final class HarnessDiscovery {
 
-    /** The client ids the terminal client knows how to discover. */
-    static final List<String> SUPPORTED_CLIENTS = List.of("claude", "opencode", "codex", "antigravity");
+    /** The version recorded for a client whose profile declares no version probe. */
+    static final String UNREPORTED_VERSION = "unknown";
 
-    private static final Map<String, String> EXECUTABLES = Map.of(
-                        "claude", "claude",
-                        "opencode", "opencode",
-                        "codex", "codex",
-                        "antigravity", "antigravity");
+    private static final Map<String, String> EXECUTABLES = executables();
+    private static final Map<String, List<String>> PROBES = probes();
+
+    /** The client ids the terminal client knows how to discover. */
+    static final List<String> SUPPORTED_CLIENTS = List.copyOf(EXECUTABLES.keySet());
 
     private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(10);
+    private static final Duration READER_TIMEOUT = Duration.ofSeconds(2);
     private static final int MAX_OUTPUT_BYTES = 8 * 1024;
     private static final int MAX_VERSION_LENGTH = 128;
     private static final int BUFFER_SIZE = 1024;
     private static final Pattern VERSION = Pattern.compile("(\\d+(?:\\.\\d+)+)");
 
+    /**
+     * The environment variables a version probe may see. The operator's environment is never handed
+     * to the probed executable, which could otherwise read and exfiltrate an inherited credential.
+     */
+    private static final List<String> PROBE_ENVIRONMENT = List.of(
+                        "PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "TERM", "USER", "LOGNAME",
+                        "SHELL", "TMPDIR", "SystemRoot", "windir", "COMSPEC", "PATHEXT", "USERPROFILE",
+                        "APPDATA", "LOCALAPPDATA");
+
     private HarnessDiscovery() {
         // Utility class
+    }
+
+    private static Map<String, String> executables() {
+        var map = new LinkedHashMap<String, String>();
+        map.put("claude", "claude");
+        map.put("opencode", "opencode");
+        map.put("codex", "codex");
+        map.put("antigravity", "antigravity");
+        return Collections.unmodifiableMap(map);
+    }
+
+    private static Map<String, List<String>> probes() {
+        var map = new LinkedHashMap<String, List<String>>();
+        map.put("claude", List.of("--version"));
+        map.put("opencode", List.of("--version"));
+        map.put("codex", List.of("--version"));
+        // the antigravity profile declares version_probe: null
+        map.put("antigravity", List.of());
+        return Collections.unmodifiableMap(map);
     }
 
     /**
@@ -62,7 +96,7 @@ final class HarnessDiscovery {
      *
      * @param client       the client id
      * @param executable   the resolved absolute executable path
-     * @param version      the version the probe reported
+     * @param version      the version the probe reported, or {@link #UNREPORTED_VERSION}
      * @param sha256Digest the SHA-256 digest of the executable
      */
     record Harness(String client, Path executable, String version, String sha256Digest) {
@@ -95,13 +129,14 @@ final class HarnessDiscovery {
     }
 
     /**
-     * Resolves and probes one client's executable.
+     * Resolves and probes one client's executable. The digest is read before and after the probe, so
+     * a version and a digest that describe different binaries are never combined.
      *
      * @param client      the client id, one of {@link #SUPPORTED_CLIENTS}
-     * @param environment the process environment, read for {@code PATH} only
+     * @param environment the process environment, read for {@code PATH} and the probe allowlist only
      * @return the discovered harness
      * @throws HarnessNotFoundException if no absolute {@code PATH} entry holds the executable
-     * @throws HarnessProbeException    if the version probe fails or reports no version
+     * @throws HarnessProbeException    if the version probe fails, reports no version, or the binary changes
      * @throws IOException              on another read failure
      */
     static Harness discover(String client, Map<String, String> environment) throws IOException {
@@ -111,7 +146,18 @@ final class HarnessDiscovery {
             throw new IllegalArgumentException("Unknown harness client: " + client);
         }
         var executable = resolveExecutable(EXECUTABLES.get(client), environment);
-        return new Harness(client, executable, probeVersion(executable), sha256(executable));
+        var argv = PROBES.getOrDefault(client, List.of());
+        if (argv.isEmpty()) {
+            return new Harness(client, executable, UNREPORTED_VERSION, sha256(executable));
+        }
+        var before = sha256(executable);
+        var version = probeVersion(executable, argv, environment);
+        var after = sha256(executable);
+        if (!before.equals(after)) {
+            throw new HarnessProbeException(
+                                "the executable of " + client + " changed while it was probed");
+        }
+        return new Harness(client, executable, version, after);
     }
 
     private static Path resolveExecutable(String name, Map<String, String> environment)
@@ -160,10 +206,22 @@ final class HarnessDiscovery {
         return HexFormat.of().formatHex(digest.digest());
     }
 
-    private static String probeVersion(Path executable) throws IOException {
-        var process = new ProcessBuilder(executable.toString(), "--version")
-                            .redirectErrorStream(true)
-                            .start();
+    private static String probeVersion(Path executable, List<String> argv, Map<String, String> environment)
+                        throws IOException {
+        var command = new ArrayList<String>(argv.size() + 1);
+        command.add(executable.toString());
+        command.addAll(argv);
+        var builder = new ProcessBuilder(command).redirectErrorStream(true);
+        var processEnvironment = builder.environment();
+        processEnvironment.clear();
+        for (var name : PROBE_ENVIRONMENT) {
+            var value = environment.get(name);
+            if (value != null) {
+                processEnvironment.put(name, value);
+            }
+        }
+        var process = builder.start();
+
         var output = new ByteArrayOutputStream();
         var readFailure = new AtomicReference<IOException>();
         var reader = Thread.ofVirtual().name("harness-probe").start(() -> {
@@ -183,13 +241,19 @@ final class HarnessDiscovery {
                 readFailure.set(e);
             }
         });
+        boolean joined;
         try {
             if (!process.waitFor(PROBE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
                 process.destroyForcibly();
                 process.waitFor(1, TimeUnit.SECONDS);
                 throw new HarnessProbeException("version probe of " + executable + " timed out");
             }
-            reader.join(TimeUnit.SECONDS.toMillis(1));
+            reader.join(READER_TIMEOUT.toMillis());
+            joined = !reader.isAlive();
+            if (joined) {
+                // the reader reached EOF; nothing more is pending
+                reader.join();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             process.destroyForcibly();
@@ -198,6 +262,11 @@ final class HarnessDiscovery {
             if (process.isAlive()) {
                 process.destroyForcibly();
             }
+        }
+        if (!joined) {
+            process.destroyForcibly();
+            throw new HarnessProbeException(
+                                "version probe of " + executable + " left its output open");
         }
         if (readFailure.get() != null) {
             throw new HarnessProbeException("version probe of " + executable

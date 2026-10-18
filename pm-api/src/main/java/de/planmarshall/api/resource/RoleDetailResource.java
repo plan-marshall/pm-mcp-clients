@@ -11,6 +11,7 @@ package de.planmarshall.api.resource;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -190,11 +191,11 @@ public record RoleDetailResource(
         var role = firstString(map, FIELD_ROLE, "name");
         var displayName = JsonTree.string(map, FIELD_DISPLAY_NAME);
         var description = JsonTree.string(map, FIELD_DESCRIPTION);
-        var tools = strings(map, FIELD_ADVISORY_TOOL_SET, "tools");
-        var narrowedEffort = narrowedEffort(map);
-        var qualification = qualification(map);
-        var parameters = parameters(map);
         try {
+            var tools = strings(map, FIELD_ADVISORY_TOOL_SET, "tools");
+            var narrowedEffort = narrowedEffort(map);
+            var qualification = qualification(map);
+            var parameters = parameters(map);
             return new RoleDetailResource(role, displayName, description, tools, narrowedEffort,
                     qualification, parameters);
         } catch (IllegalArgumentException | NullPointerException e) {
@@ -309,19 +310,21 @@ public record RoleDetailResource(
         return parameters;
     }
 
-    private static List<String> strings(Map<String, Object> map, String field, String alias) {
-        var value = map.get(field);
+    private static List<String> strings(Map<String, Object> map, String field, String alias)
+            throws IOException {
+        var value = map.containsKey(field) ? map.get(field) : map.get(alias);
         if (value == null) {
-            value = map.get(alias);
+            return List.of();
         }
         if (!(value instanceof List<?> list)) {
-            return List.of();
+            throw new JsonFormatException(field + " must be a JSON array of strings");
         }
         var strings = new ArrayList<String>(list.size());
         for (var element : list) {
-            if (element instanceof String text) {
-                strings.add(text);
+            if (!(element instanceof String text)) {
+                throw new JsonFormatException(field + " must hold only strings");
             }
+            strings.add(text);
         }
         return strings;
     }
@@ -343,14 +346,15 @@ public record RoleDetailResource(
     private static Object normalize(@Nullable Object value) {
         return switch (value) {
             case null -> null;
-            case JsonNumber number -> normalizeNumber(number.text());
-            case Byte number -> number.longValue();
-            case Short number -> number.longValue();
-            case Integer number -> number.longValue();
-            case Long number -> number;
-            case Float number -> number.doubleValue();
-            case Double number -> number;
-            case BigDecimal number -> number.doubleValue();
+            case JsonNumber number -> number;
+            case Byte number -> JsonNumber.of(number.longValue());
+            case Short number -> JsonNumber.of(number.longValue());
+            case Integer number -> JsonNumber.of(number.longValue());
+            case Long number -> JsonNumber.of(number);
+            case Float number -> new JsonNumber(number.toString());
+            case Double number -> new JsonNumber(number.toString());
+            case BigDecimal number -> new JsonNumber(number.toPlainString());
+            case BigInteger number -> new JsonNumber(number.toString());
             case String text -> text;
             case Boolean flag -> flag;
             case Map<?, ?> nested -> immutableMap(asStringMap(nested));
@@ -358,18 +362,6 @@ public record RoleDetailResource(
             default -> throw new IllegalArgumentException(
                     "Not a JSON value in configuration_parameters: " + value.getClass().getName());
         };
-    }
-
-    private static Object normalizeNumber(String text) {
-        try {
-            return Long.parseLong(text);
-        } catch (NumberFormatException _) {
-            try {
-                return Double.parseDouble(text);
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException("Not a JSON number: " + text, e);
-            }
-        }
     }
 
     private static Map<String, Object> asStringMap(Map<?, ?> map) {

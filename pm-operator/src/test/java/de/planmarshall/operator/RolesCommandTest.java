@@ -207,6 +207,38 @@ class RolesCommandTest {
         var post = server.awaitRequest(Duration.ofSeconds(1));
         assertEquals("POST", post.method());
         assertEquals("/api/v1/roles/implementer/qualify?project=my-service", post.target());
+        assertTrue(post.header("Idempotency-Key") != null && !post.header("Idempotency-Key").isBlank(),
+                            "the qualification carries an idempotency key");
+    }
+
+    @Test
+    @DisplayName("qualify reports a still-running qualification without claiming success")
+    void qualifyPending() throws Exception {
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(202, "{\"status\":\"running\"}");
+            }
+        });
+
+        assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
+        assertTrue(out.toString().contains("Qualification of implementer is still running"), out.toString());
+    }
+
+    @Test
+    @DisplayName("qualify reports an unusable completion body as a failure")
+    void qualifyIncomplete() throws Exception {
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(200, "{\"unrelated\":true}");
+            }
+        });
+
+        assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
+        assertTrue(err.toString().contains("answered no usable measurements"), err.toString());
     }
 
     @Test
@@ -234,7 +266,13 @@ class RolesCommandTest {
     @Test
     @DisplayName("an interactive yes runs the qualification")
     void confirmsQualification() throws Exception {
-        var server = fixture.start((request, response) -> response.json(200, detail("implementer").toJson()));
+        var server = fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, detail("implementer").toJson());
+            } else {
+                response.json(200, "{\"fresh_agreement\":0.86}");
+            }
+        });
 
         assertEquals(0, execute("y\n", "roles", "qualify", "implementer"));
 

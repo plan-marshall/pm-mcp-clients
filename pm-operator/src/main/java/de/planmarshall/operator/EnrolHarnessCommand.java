@@ -15,7 +15,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -166,7 +168,14 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
     private @Nullable HarnessEnrolmentResource fetchRecorded(String clientId) throws IOException {
         var target = PATH_HARNESSES + OperatorUrlUtil.encodePathSegment(clientId);
         var response = context.runtime(true).send(HttpRequest.get(target));
-        if (response.status() != 200 || response.bodyText().isBlank()) {
+        if (response.status() == 404) {
+            return null;
+        }
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("enrol-harness " + OutputSafety.stripControlSequences(clientId),
+                                response);
+        }
+        if (response.bodyText().isBlank()) {
             return null;
         }
         return HarnessEnrolmentResource.fromJson(response.bodyText());
@@ -217,7 +226,12 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
     private boolean confirm() throws IOException {
         try (var terminal = context.createTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(terminal).build();
-            var line = reader.readLine(MessageCatalogue.get("enrolment.harness.confirm") + " \u203a ");
+            String line;
+            try {
+                line = reader.readLine(MessageCatalogue.get("enrolment.harness.confirm") + " \u203a ");
+            } catch (EndOfFileException | UserInterruptException _) {
+                return false;
+            }
             if (line == null) {
                 return false;
             }

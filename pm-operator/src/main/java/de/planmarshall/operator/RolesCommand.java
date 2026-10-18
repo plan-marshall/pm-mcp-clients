@@ -15,11 +15,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.Callable;
+import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.resource.RoleDetailResource;
@@ -52,6 +56,9 @@ import picocli.CommandLine.Spec;
 public final class RolesCommand implements Callable<Integer> {
 
     private static final String PATH_ROLES = "/api/v1/roles";
+    private static final List<String> MEASUREMENT_FIELDS = List.of(
+                        "fresh_agreement", "warm_agreement", "warm_fresh_gap",
+                        "qualified_fresh", "qualified_warm", "record_path");
     private static final int LABEL_WIDTH = 16;
     private static final int[] LIST_WIDTHS = {18, 8, 10, 6, 16, 22, 14, 20, 6};
 
@@ -266,10 +273,24 @@ public final class RolesCommand implements Callable<Integer> {
             }
 
             var response = context.runtime(true).send(
-                                HttpRequest.json("POST", qualifyTarget(role, project), "{}"));
-            if (response.status() == 200 || response.status() == 201 || response.status() == 202) {
+                                HttpRequest.json("POST", qualifyTarget(role, project), "{}")
+                                                    .withHeader("Idempotency-Key", UUID.randomUUID().toString()));
+            if (response.status() == 202) {
+                out.println(MessageCatalogue.format("operator.roles.qualify.pending",
+                                    Map.of("role", safeRole)));
+                out.flush();
+                return 1;
+            }
+            if (response.status() == 200 || response.status() == 201) {
+                var measurements = measurements(response.bodyText());
+                if (measurements == null) {
+                    err.println(MessageCatalogue.format("operator.roles.qualify.incomplete",
+                                        Map.of("role", safeRole)));
+                    err.flush();
+                    return 1;
+                }
                 out.println(MessageCatalogue.format("operator.roles.qualify.done", Map.of("role", safeRole)));
-                printMeasurements(out, response.bodyText());
+                printMeasurements(out, measurements);
                 out.flush();
                 return 0;
             }
@@ -286,7 +307,12 @@ public final class RolesCommand implements Callable<Integer> {
         private boolean confirm() throws IOException {
             try (var terminal = context.createTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(terminal).build();
-                var line = reader.readLine(MessageCatalogue.get("operator.roles.qualify.confirm") + " \u203a ");
+                String line;
+                try {
+                    line = reader.readLine(MessageCatalogue.get("operator.roles.qualify.confirm") + " \u203a ");
+                } catch (EndOfFileException | UserInterruptException _) {
+                    return false;
+                }
                 if (line == null) {
                     return false;
                 }
@@ -314,8 +340,10 @@ public final class RolesCommand implements Callable<Integer> {
                                                 String.join(", ", detail.advisoryToolSet())))));
         var narrowed = detail.narrowedEffort();
         var narrowedText = narrowed == null ? "-"
-                            : narrowed.category() + (narrowed.description() == null ? ""
-                            : " — " + OutputSafety.stripControlSequences(narrowed.description()));
+                            : OutputSafety.stripControlSequences(narrowed.category())
+                            + (narrowed.description() == null ? ""
+                            : " — " + OutputSafety.stripControlSequences(
+                            narrowed.description()));
         out.println(MessageCatalogue.format("operator.roles.show.narrowed", Map.of("effort", narrowedText)));
         out.println(MessageCatalogue.format("operator.roles.show.qualification",
                             Map.of("state", detail.qualification().state().wire())));
@@ -363,26 +391,30 @@ public final class RolesCommand implements Callable<Integer> {
         }
     }
 
-    private static void printMeasurements(PrintWriter out, String body) {
+    private static @Nullable Map<String, Object> measurements(String body) {
         if (body == null || body.isBlank()) {
-            return;
+            return null;
         }
         Map<String, Object> map;
         try {
             map = JsonTree.asObject(JsonTree.parse(body));
         } catch (IOException _) {
-            return;
+            return null;
         }
-        if (map == null) {
-            return;
+        if (map == null || MEASUREMENT_FIELDS.stream().noneMatch(map::containsKey)) {
+            return null;
         }
+        return map;
+    }
+
+    private static void printMeasurements(PrintWriter out, Map<String, Object> measurements) {
         out.println(MessageCatalogue.get("operator.roles.qualify.measurements"));
-        printMeasurement(out, map, "fresh_agreement", "operator.roles.qualify.fresh");
-        printMeasurement(out, map, "warm_agreement", "operator.roles.qualify.warm");
-        printMeasurement(out, map, "warm_fresh_gap", "operator.roles.qualify.gap");
-        printMeasurement(out, map, "qualified_fresh", "operator.roles.qualify.qualified_fresh");
-        printMeasurement(out, map, "qualified_warm", "operator.roles.qualify.qualified_warm");
-        var recordPath = map.get("record_path");
+        printMeasurement(out, measurements, "fresh_agreement", "operator.roles.qualify.fresh");
+        printMeasurement(out, measurements, "warm_agreement", "operator.roles.qualify.warm");
+        printMeasurement(out, measurements, "warm_fresh_gap", "operator.roles.qualify.gap");
+        printMeasurement(out, measurements, "qualified_fresh", "operator.roles.qualify.qualified_fresh");
+        printMeasurement(out, measurements, "qualified_warm", "operator.roles.qualify.qualified_warm");
+        var recordPath = measurements.get("record_path");
         if (recordPath != null) {
             out.println(MessageCatalogue.format("operator.roles.qualify.record",
                                 Map.of("path", OutputSafety.stripControlSequences(String.valueOf(recordPath)))));
@@ -404,8 +436,10 @@ public final class RolesCommand implements Callable<Integer> {
     private static String displayValue(@Nullable Object value) {
         return switch (value) {
             case null -> "-";
+            case JsonNumber number -> number.text();
             case List<?> list -> list.isEmpty() ? "-"
-                                : String.join(", ", list.stream().map(String::valueOf).toList());
+                                : OutputSafety.stripControlSequences(
+                                String.join(", ", list.stream().map(String::valueOf).toList()));
             case Map<?, ?> map -> OutputSafety.stripControlSequences(JsonTree.write(map));
             default -> OutputSafety.stripControlSequences(String.valueOf(value));
         };

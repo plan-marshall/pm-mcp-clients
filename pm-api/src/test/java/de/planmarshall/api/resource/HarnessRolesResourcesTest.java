@@ -29,6 +29,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Harness enrolment and role resource records")
@@ -119,7 +120,9 @@ class HarnessRolesResourcesTest {
         assertEquals(resource, readStreaming(resource.toJson(), RoleSummaryResource::readFrom));
         assertEquals(resource, writeStreaming(resource, RoleSummaryResource::fromJson));
 
-        var minimal = RoleSummaryResource.fromMap(Map.of("role", "judge"));
+        var minimal = RoleSummaryResource.fromMap(Map.of(
+                "role", "judge",
+                "start_failure_guard_held", false));
         assertAll(
                 () -> assertEquals("judge", minimal.displayName()),
                 () -> assertEquals("", minimal.description()),
@@ -143,6 +146,32 @@ class HarnessRolesResourcesTest {
                         () -> RoleSummaryResource.fromJson("[]")),
                 () -> assertThrows(JsonFormatException.class,
                         () -> RoleSummaryResource.fromMap(Map.of())));
+    }
+
+    @Test
+    @DisplayName("a malformed guard or tool array is refused instead of coerced")
+    void malformedRoleArraysAreRefused() {
+        assertAll(
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RoleSummaryResource.fromMap(Map.of("role", "judge"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RoleSummaryResource.fromMap(Map.of(
+                                "role", "judge",
+                                "start_failure_guard_held", "yes"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RoleSummaryResource.fromMap(Map.of(
+                                "role", "judge",
+                                "start_failure_guard_held", false,
+                                "capabilities", "pm_wait"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RoleSummaryResource.fromMap(Map.of(
+                                "role", "judge",
+                                "start_failure_guard_held", false,
+                                "capabilities", List.of(1)))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> RoleDetailResource.fromMap(Map.of(
+                                "role", "judge",
+                                "advisory_tool_set", List.of(1)))));
     }
 
     @Test
@@ -183,7 +212,7 @@ class HarnessRolesResourcesTest {
         assertEquals(resource, RoleDetailResource.fromMap(resource.toMap()));
         assertEquals(resource, readStreaming(resource.toJson(), RoleDetailResource::readFrom));
         assertEquals(resource, writeStreaming(resource, RoleDetailResource::fromJson));
-        assertEquals(2L, resource.configurationParameters().get("count"));
+        assertEquals(JsonNumber.of(2), resource.configurationParameters().get("count"));
         assertThrows(UnsupportedOperationException.class,
                 () -> resource.configurationParameters().put("x", "y"));
     }

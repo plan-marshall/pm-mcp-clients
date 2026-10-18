@@ -8,7 +8,7 @@ Operator verbs of harness enrolment and roles (Roadmap Milestone 4), implemented
 
 This work package delivers the operator CLI verbs for harness enrolment and role management, backed by strict `pm-api` contract records and guarded by the `OperatorGate` (`PM-SEC-3`):
 
-* `pm-operator enrol-harness <client>` resolves the headless CLI of a client profile (`claude`, `opencode`, `codex`, `antigravity`) through the absolute entries of the login `PATH`, computes its SHA-256 digest, runs the profile's version probe with a bounded timeout and a bounded output, and shows path, version, and digest side by side with any recorded values before the operator confirms. Nothing is recorded before the confirmation; `--yes` skips the confirmation but never the operator gate.
+* `pm-operator enrol-harness <client>` resolves the headless CLI of a client profile (`claude`, `opencode`, `codex`, `antigravity`) through the absolute entries of the login `PATH`, computes its SHA-256 digest, runs the profile's version probe with a bounded timeout, a bounded output, and a minimal environment, and shows path, version, and digest side by side with any recorded values before the operator confirms. Nothing is recorded before the confirmation; `--yes` skips the confirmation but never the operator gate. A profile without a version probe (antigravity) is recorded with the version `unknown` instead of running an unsupported flag.
 * `pm-operator roles list|show|qualify` reads the effective role set and shows the source set, class, form, effective harness/model/effort with the level each comes from, the qualification state, and whether the start-failure guard holds; `qualify` shows the configuration, corpus topics, item counts, and the expected tokens and time first and runs only after confirmation.
 
 The resource contracts (`HarnessEnrolmentResource`, `RoleSummaryResource`, `RoleDetailResource`, and the closed `RoleQualificationState`) live in `pm-api:de.planmarshall.api.resource` with `toMap`/`toJson`/`writeTo`/`fromMap`/`fromJson`/`readFrom` codecs on `jackson-core` (never `jackson-databind`), fail-closed validation at the wire boundary, and bilingual catalogue entries (EN & DE).
@@ -34,9 +34,9 @@ The importable API these verbs consume (`harness-and-roles-api` in `plan-marshal
 
 | File | Content |
 |---|---|
-| `HarnessDiscovery.java` (new) | Closed client catalogue; resolves the executable through the absolute entries of `PATH` (relative entries are never executed), resolves symlinks, computes the SHA-256 digest, and runs the version probe with a 10-second timeout and an 8 KiB output bound, stripping terminal control sequences. Reports not-found and probe-failure as distinct exceptions. |
-| `EnrolHarnessCommand.java` (new) | `enrol-harness <client> [-y|--yes] [--no-input]`. Gate first, then discovery, then the recorded/detected comparison table, then confirmation (unless `--yes`), then `POST /api/v1/harnesses/{client}/enrol` with the detected resource. `--no-input` without `--yes` exits `3`; unknown client exits `2`; not-found/probe/refusal exit `1`; `PM-SEC-3` exits `4`. |
-| `RolesCommand.java` (new) | `roles list [--project]`, `roles show <role> [--project]`, `roles qualify <role> [--project] [--yes] [--no-input]`. `list` renders the effective role set; `show` renders the advisory tool set, narrowed effort, qualification, and configuration parameters; `qualify` previews the configuration and corpus facts, confirms (unless `--yes`), posts `POST /api/v1/roles/{role}/qualify`, and prints the measurements and record path. |
+| `HarnessDiscovery.java` (new) | Ordered client catalogue (client ids derived from the executable map, never duplicated); resolves the executable through the absolute entries of `PATH` (relative entries are never executed), resolves symlinks, computes the SHA-256 digest before and after the probe (a binary that changes while probed is refused), and runs the version probe with a 10-second timeout, an 8 KiB output bound, a bounded reader, and a minimal allowlisted environment. A profile that declares no version probe (antigravity) is recorded with the version `unknown`. Reports not-found and probe-failure as distinct exceptions. |
+| `EnrolHarnessCommand.java` (new) | `enrol-harness <client> [-y\|--yes] [--no-input]`. Gate first, then discovery, then the recorded/detected comparison table, then confirmation (unless `--yes`), then `POST /api/v1/harnesses/{client}/enrol` with the detected resource. A recorded read that is not `404` is refused; `--no-input` without `--yes` exits `3`; unknown client exits `2`; not-found/probe/refusal exit `1`; `PM-SEC-3` exits `4`. |
+| `RolesCommand.java` (new) | `roles list [--project]`, `roles show <role> [--project]`, `roles qualify <role> [--project] [--yes] [--no-input]`. `list` renders the effective role set; `show` renders the advisory tool set, narrowed effort, qualification, and configuration parameters; `qualify` previews the configuration and corpus facts, confirms (unless `--yes`), posts `POST /api/v1/roles/{role}/qualify` with an idempotency key, prints the measurements and record path, treats `202` as still running, and refuses a successful status without usable measurements. Runtime-provided strings are stripped of terminal control sequences before they are printed. |
 | `PmOperator.java` (modified) | Registers `EnrolHarnessCommand` and `RolesCommand` in the command tree. |
 
 ### Tests
@@ -46,9 +46,9 @@ The importable API these verbs consume (`harness-and-roles-api` in `plan-marshal
 | `pm-api/.../resource/HarnessRolesResourcesTest.java` (new) | 10 tests: JSON and streaming round-trips for all three records, path normalization, digest/role validation, wire-boundary refusals, list parsing, parameter normalization/immutability, and the closed state catalogue. |
 | `pm-api/.../message/OperatorRolesCatalogueTest.java` (new) | EN/DE key parity, required-role-key coverage, bilingual formatting. |
 | `pm-api/.../message/EnrolCatalogueTest.java` (modified) | Adds the 19 harness keys and bilingual formatting assertions. |
-| `pm-operator/.../HarnessDiscoveryTest.java` (new) | 6 tests: absolute PATH resolution and digest equality, relative-entry refusal, missing executable, failing/empty probe, first-line fallback, closed client catalogue. |
-| `pm-operator/.../EnrolHarnessCommandTest.java` (new) | 10 tests: discovery and record flow, request body, recorded/detected comparison and re-baseline, declined/interactive/`--no-input` confirmation, unknown client, missing executable, failing probe, unsupported version, and the `PM-SEC-3` coding-agent refusal. |
-| `pm-operator/.../RolesCommandTest.java` (new) | 10 tests: list rendering, project query, empty set, refusal, show detail, missing role, qualify preview and measurements, confirmation paths, and refusal reason. |
+| `pm-operator/.../HarnessDiscoveryTest.java` (new) | 8 tests: absolute PATH resolution and digest equality, relative-entry refusal, missing executable, failing/empty probe, first-line fallback, the antigravity no-probe path, the restricted probe environment, and the closed client catalogue. |
+| `pm-operator/.../EnrolHarnessCommandTest.java` (new) | 11 tests: discovery and record flow, request body, recorded/detected comparison and re-baseline, declined/interactive/`--no-input` confirmation, unknown client, missing executable, failing probe, unsupported version, a non-`404` recorded read, and the `PM-SEC-3` coding-agent refusal (with a marker proving the probe never ran). |
+| `pm-operator/.../RolesCommandTest.java` (new) | 12 tests: list rendering, project query, empty set, refusal, show detail, missing role, qualify preview and measurements (with the idempotency key), a `202` still-running answer, an unusable completion body, confirmation paths, and refusal reason. |
 | `pm-operator/.../PmOperatorProcessIT.java` (modified) | Adds `enrol-harness`/`roles` coding-agent host refusals and process-level terminal-refusal tests asserting exit code `4` and empty stdout. |
 
 ### Documentation
@@ -72,7 +72,7 @@ The importable API these verbs consume (`harness-and-roles-api` in `plan-marshal
 | `PM-SEC-3` Operator channel isolation | `OperatorGate` enforcement in `EnrolHarnessCommand.call` and every `RolesCommand` subcommand; `PmOperatorProcessIT` exit-code-4 tests |
 | `PM-EXEC-1` Harness enrolment | `HarnessEnrolmentResource`, `HarnessDiscovery`, `EnrolHarnessCommand` |
 | CLI & Security § Harness Enrolment | Side-by-side path/version/digest display, confirmation, `--yes`, `--no-input` behaviour, `harness_version_unsupported` handling |
-| CLI & Security § Roles | `roles list|show|qualify` output, advisory tool set, narrowed effort, qualification state, read-only `list`/`show`, confirmed `qualify` |
+| CLI & Security § Roles | `roles list\|show\|qualify` output, advisory tool set, narrowed effort, qualification state, read-only `list`/`show`, confirmed `qualify` |
 | CLI & Security § Command Tree | Verbs registered at the top level of `pm-operator` without an `operator` sub-level |
 
 ---
@@ -122,8 +122,8 @@ The gate ran the OpenRewrite recipes (formatting and unused-import/fully-qualifi
 * **No `jackson-databind`**: The new records use `jackson-core` streaming only; `ApiContractTest.noJacksonDatabind` continues to guard the classpath, and `HarnessRolesResourcesTest` exercises `writeTo`/`readFrom`.
 * **Bilingual catalogue**: Every new user-facing string is a key in both `en` and `de` packs; `OperatorRolesCatalogueTest` asserts exact key parity and `EnrolCatalogueTest` asserts the harness keys and bilingual formatting.
 * **`PM-SEC-3` gate**: `EnrolHarnessCommand` and all `RolesCommand` subcommands call `OperatorGate.verify()` first; the process ITs assert exit `4` with empty stdout for a non-interactive terminal and for every coding-agent host signal.
-* **Fail-closed wire boundary**: Unknown status/state/qualification values, relative paths, malformed digests, and out-of-pattern role/client identifiers are refused with `JsonFormatException` or `IllegalArgumentException`.
-* **No capture of harness secrets**: neither the resource nor the discovery stores an environment value or credential; only path, version, and digest are transmitted.
+* **Fail-closed wire boundary**: Unknown status/state/qualification values, relative paths, malformed digests, missing or non-boolean guard values, malformed tool/capability arrays, and out-of-pattern role/client identifiers are refused with `JsonFormatException` or `IllegalArgumentException`; a `roles`/`qualify` success body without usable measurements is a failure.
+* **No capture of harness secrets**: neither the resource nor the discovery stores an environment value or credential; the probe runs with a small allowlisted environment so a probed executable cannot read an inherited secret, and only path, version, and digest are transmitted.
 * **No uncatalogued strings**: the new verbs take their texts from the `pm-api` message catalogue.
 
 ---
@@ -136,7 +136,7 @@ The runtime endpoints are owned by the parallel `harness-and-roles-api` package 
 * `POST /api/v1/harnesses/{client_id}/enrol` — records the enrolment and answers the recorded resource.
 * `GET /api/v1/roles` (optional `?project=<project_id>`) — a role list (a bare array or `{"roles": […]}`).
 * `GET /api/v1/roles/{role}` (optional `?project=`) — a `RoleDetailResource`.
-* `POST /api/v1/roles/{role}/qualify` (optional `?project=`) — runs the grading and answers the measurements.
+* `POST /api/v1/roles/{role}/qualify` (optional `?project=`) — runs the grading and answers the measurements; carries an `Idempotency-Key` header, and a `202` is shown as still running.
 
 The request and response bodies are the `pm-api` records above, so both sides share one schema; the endpoint paths are documented here for the runtime side to align with. No `pm-mock-runtime` scenario was added because this package owns `pm-operator` and `pm-api` only and the module matrix marks `pm-mock-runtime` as a read-only test fixture; the verbs are exercised against `FakeRuntimeServer` and the process ITs.
 

@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -105,13 +106,40 @@ class HarnessDiscoveryTest {
     }
 
     @Test
-    @DisplayName("falls back to the first output line when it carries no dotted version")
-    void fallsBackToFirstLine() throws Exception {
-        executable("antigravity", "antigravity preview", 0);
+    @DisplayName("records an unreported version for a profile without a version probe")
+    void antigravityHasNoVersionProbe() throws Exception {
+        var marker = root.resolve("antigravity-ran");
+        Files.writeString(bin.resolve("antigravity"),
+                            "#!/bin/sh\ntouch '" + marker + "'\nprintf 'antigravity preview\\n'\n");
+        Files.setPosixFilePermissions(bin.resolve("antigravity"), PosixFilePermissions.fromString("rwx------"));
 
         var harness = HarnessDiscovery.discover("antigravity", Map.of("PATH", bin.toString()));
 
-        assertEquals("antigravity preview", harness.version());
+        assertEquals(HarnessDiscovery.UNREPORTED_VERSION, harness.version());
+        assertFalse(Files.exists(marker), "a profile without a version probe never runs the executable");
+    }
+
+    @Test
+    @DisplayName("falls back to the first output line when it carries no dotted version")
+    void fallsBackToFirstLine() throws Exception {
+        executable("claude", "claude preview", 0);
+
+        var harness = HarnessDiscovery.discover("claude", Map.of("PATH", bin.toString()));
+
+        assertEquals("claude preview", harness.version());
+    }
+
+    @Test
+    @DisplayName("never hands the operator's environment to the probed executable")
+    void probeEnvironmentIsRestricted() throws Exception {
+        Files.writeString(bin.resolve("claude"),
+                            "#!/bin/sh\nprintf '%s\\n' \"${PM_TEST_SECRET:-none}\"\n");
+        Files.setPosixFilePermissions(bin.resolve("claude"), PosixFilePermissions.fromString("rwx------"));
+
+        var harness = HarnessDiscovery.discover("claude",
+                            Map.of("PATH", bin.toString(), "PM_TEST_SECRET", "super-secret"));
+
+        assertEquals("none", harness.version());
     }
 
     @Test
