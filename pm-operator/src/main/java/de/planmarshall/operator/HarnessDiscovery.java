@@ -65,7 +65,6 @@ final class HarnessDiscovery {
     private static final int MAX_OUTPUT_BYTES = 8 * 1024;
     private static final int MAX_VERSION_LENGTH = 128;
     private static final int BUFFER_SIZE = 1024;
-    private static final Pattern VERSION = Pattern.compile("\\d+(?:\\.\\d+){1,4}");
 
     /**
      * The environment variables a version probe may see. The operator's environment is never handed
@@ -300,11 +299,34 @@ final class HarnessDiscovery {
         if (safe.isEmpty()) {
             throw new HarnessProbeException("version probe of " + executable + " reported no output");
         }
-        var matcher = VERSION.matcher(safe);
-        var version = matcher.find() ? matcher.group() : safe.lines().findFirst().orElse("").strip();
+        var matcher = dottedVersion(safe);
+        var version = matcher != null ? matcher : safe.lines().findFirst().orElse("").strip();
         if (version.isEmpty()) {
             throw new HarnessProbeException("version probe of " + executable + " reported no version");
         }
         return version.length() > MAX_VERSION_LENGTH ? version.substring(0, MAX_VERSION_LENGTH) : version;
+    }
+
+    private static @Nullable String dottedVersion(String text) {
+        var start = -1;
+        var dotted = false;
+        for (var index = 0; index < text.length(); index++) {
+            var character = text.charAt(index);
+            if (Character.isDigit(character)) {
+                if (start < 0) {
+                    start = index;
+                }
+            } else if (character == '.' && start >= 0
+                                && index + 1 < text.length() && Character.isDigit(text.charAt(index + 1))) {
+                dotted = true;
+            } else if (start >= 0) {
+                if (dotted) {
+                    return text.substring(start, index);
+                }
+                start = -1;
+                dotted = false;
+            }
+        }
+        return start >= 0 && dotted ? text.substring(start) : null;
     }
 }

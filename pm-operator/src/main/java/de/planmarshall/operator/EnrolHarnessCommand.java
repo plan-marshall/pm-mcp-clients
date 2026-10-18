@@ -252,7 +252,7 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
     private static String refusalReason(String body) {
         try {
             var map = JsonTree.asObject(JsonTree.parse(body));
-            var reason = JsonTree.string(map, "reason");
+            var reason = JsonTree.string(map, KEY_REASON);
             if (reason == null) {
                 reason = JsonTree.string(map, "error");
             }

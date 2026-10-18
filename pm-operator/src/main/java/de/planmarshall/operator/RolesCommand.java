@@ -210,7 +210,7 @@ public final class RolesCommand implements Callable<Integer> {
             if (response.status() >= 400 && response.status() < 500) {
                 err.println(MessageCatalogue.format("operator.roles.show.failed",
                                     Map.of("role", OutputSafety.stripControlSequences(role),
-                                                        "status", response.status())));
+                                                        FIELD_STATUS, response.status())));
                 err.flush();
                 return 1;
             }
@@ -258,7 +258,7 @@ public final class RolesCommand implements Callable<Integer> {
             }
             if (detailResponse.status() != 200) {
                 err.println(MessageCatalogue.format("operator.roles.qualify.failed",
-                                    Map.of("role", safeRole, "status", detailResponse.status())));
+                                    Map.of("role", safeRole, FIELD_STATUS, detailResponse.status())));
                 err.flush();
                 return 1;
             }
@@ -304,7 +304,7 @@ public final class RolesCommand implements Callable<Integer> {
             }
             if (response.status() == 400 || response.status() == 404 || response.status() == 409) {
                 err.println(MessageCatalogue.format("operator.roles.qualify.refused",
-                                    Map.of("reason", OutputSafety.stripControlSequences(
+                                    Map.of(FIELD_REASON, OutputSafety.stripControlSequences(
                                                         refusalReason(response.bodyText())))));
                 err.flush();
                 return 1;
@@ -344,12 +344,12 @@ public final class RolesCommand implements Callable<Integer> {
                                                 : OutputSafety.stripControlSequences(
                                                 String.join(", ", detail.advisoryToolSet())))));
         out.println(MessageCatalogue.format("operator.roles.show.narrowed",
-                            Map.of("effort", narrowedText(detail.narrowedEffort()))));
+                            Map.of(PARAM_EFFORT, narrowedText(detail.narrowedEffort()))));
         out.println(MessageCatalogue.format("operator.roles.show.qualification",
                             Map.of("state", detail.qualification().state().wire())));
         if (detail.qualification().reason() != null) {
             out.println("  " + MessageCatalogue.format("operator.roles.show.reason",
-                                Map.of("reason", OutputSafety.stripControlSequences(
+                                Map.of(FIELD_REASON, OutputSafety.stripControlSequences(
                                                     detail.qualification().reason()))));
         }
         if (!detail.qualification().criteria().isEmpty()) {
