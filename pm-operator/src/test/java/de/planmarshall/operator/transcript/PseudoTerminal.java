@@ -11,11 +11,13 @@ package de.planmarshall.operator.transcript;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -24,15 +26,16 @@ import java.util.stream.Collectors;
  * no such seam, so a native transcript test needs a terminal that the operating system provides.
  * {@code script(1)} allocates one and forwards the child's terminal to this process; the test
  * needs no pseudo-terminal library of its own. The terminal is pinned to the same 80x24 grid as
- * {@link TranscriptTerminal}, so a transcript never depends on the size of the terminal that runs
- * the build.
+ * {@link TranscriptTerminal}, and the child's own exit status is read from a side file, because
+ * the macOS {@code script} does not propagate it.
  */
 final class PseudoTerminal {
 
     private static final String SCRIPT = "/usr/bin/script";
     private static final String SHELL = "/bin/sh";
     private static final String PIN_SIZE = "stty rows " + TranscriptTerminal.ROWS
-                        + " cols " + TranscriptTerminal.COLUMNS + " 2>/dev/null; exec ";
+                        + " cols " + TranscriptTerminal.COLUMNS + " 2>/dev/null; ";
+    private static final String CAPTURE_STATUS = "; s=$?; printf %s \"$s\" > ";
 
     private PseudoTerminal() {
     }
@@ -47,13 +50,24 @@ final class PseudoTerminal {
      */
     static String run(List<String> command, Map<String, String> environment, Path workingDirectory)
                         throws IOException, InterruptedException {
-        var builder = new ProcessBuilder(onPseudoTerminal(command)).directory(workingDirectory.toFile());
+        var statusFile = Files.createTempFile("pm-transcript-status", ".txt");
+        try {
+            return runOnTerminal(command, environment, workingDirectory, statusFile);
+        } finally {
+            Files.deleteIfExists(statusFile);
+        }
+    }
+
+    private static String runOnTerminal(List<String> command, Map<String, String> environment,
+                        Path workingDirectory, Path statusFile) throws IOException, InterruptedException {
+        var builder = new ProcessBuilder(onPseudoTerminal(command, statusFile)).directory(workingDirectory.toFile());
         builder.environment().clear();
         builder.environment().putAll(environment);
         var process = builder.start();
         try (var stdin = process.getOutputStream()) {
             var rendered = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            var exitCode = process.waitFor();
+            var outerExit = process.waitFor();
+            var exitCode = childExit(statusFile).orElse(outerExit);
             if (exitCode != 0) {
                 throw new IllegalStateException("the command exited with " + exitCode + ":\n" + rendered);
             }
@@ -61,8 +75,18 @@ final class PseudoTerminal {
         }
     }
 
-    private static List<String> onPseudoTerminal(List<String> command) {
-        var inner = PIN_SIZE + command.stream().map(PseudoTerminal::quote).collect(Collectors.joining(" "));
+    private static Optional<Integer> childExit(Path statusFile) {
+        try {
+            var text = Files.readString(statusFile, StandardCharsets.UTF_8).strip();
+            return text.isEmpty() ? Optional.empty() : Optional.of(Integer.parseInt(text));
+        } catch (IOException | NumberFormatException _) {
+            return Optional.empty();
+        }
+    }
+
+    private static List<String> onPseudoTerminal(List<String> command, Path statusFile) {
+        var inner = PIN_SIZE + command.stream().map(PseudoTerminal::quote).collect(Collectors.joining(" "))
+                            + CAPTURE_STATUS + quote(statusFile.toString()) + "; exit \"$s\"";
         var wrapped = new ArrayList<String>();
         wrapped.add(SCRIPT);
         wrapped.add("-q");
