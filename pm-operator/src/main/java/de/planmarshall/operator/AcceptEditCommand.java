@@ -43,6 +43,7 @@ import picocli.CommandLine.Spec;
 @Command(name = "accept-edit",
                     description = "Accepts a manual store edit after showing its recorded and current size and SHA-256.")
 @OperatorVerb
+@SuppressWarnings("java:S1075")
 public final class AcceptEditCommand implements Callable<Integer> {
 
     private static final String PREFIX_PROJECTS = "/api/v1/projects/";
@@ -54,6 +55,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
     private static final int RECORDED_WIDTH = 68;
     private static final int CURRENT_WIDTH = 64;
     private static final String SEPARATOR = "-".repeat(LABEL_WIDTH + RECORDED_WIDTH + CURRENT_WIDTH);
+    private static final String ROW_FORMAT = "%-" + LABEL_WIDTH + "s%-" + RECORDED_WIDTH + "s%s%n";
 
     private final OperatorContext context;
 
@@ -61,7 +63,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
     CommandSpec spec = CommandSpec.create();
 
     @Parameters(index = "0", description = "Store path to accept, relative to its scope root")
-    String storePath;
+    String storePath = "";
 
     @Option(names = "--project", description = "Project that owns the store")
     @Nullable
@@ -163,14 +165,14 @@ public final class AcceptEditCommand implements Callable<Integer> {
         var recordedSha = OutputSafety.stripControlSequences(comparison.recordedSha256());
         var currentSha = OutputSafety.stripControlSequences(comparison.currentSha256());
 
-        out.printf(Locale.ROOT, "%-" + LABEL_WIDTH + "s%-" + RECORDED_WIDTH + "s%s%n",
+        out.printf(Locale.ROOT, ROW_FORMAT,
                             MessageCatalogue.get("enrolment.accept.metric"),
                             MessageCatalogue.get("enrolment.accept.recorded"),
                             MessageCatalogue.get("enrolment.accept.current"));
         out.println(SEPARATOR);
-        out.printf(Locale.ROOT, "%-" + LABEL_WIDTH + "s%-" + RECORDED_WIDTH + "s%s%n",
+        out.printf(Locale.ROOT, ROW_FORMAT,
                             MessageCatalogue.get("enrolment.accept.size"), recordedSize, currentSize);
-        out.printf(Locale.ROOT, "%-" + LABEL_WIDTH + "s%-" + RECORDED_WIDTH + "s%s%n",
+        out.printf(Locale.ROOT, ROW_FORMAT,
                             MessageCatalogue.get("enrolment.accept.sha256"), recordedSha, currentSha);
         if (comparison.mismatchDetails() != null) {
             out.println(MessageCatalogue.format("enrolment.accept.mismatch",

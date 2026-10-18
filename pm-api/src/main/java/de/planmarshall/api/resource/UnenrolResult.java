@@ -31,7 +31,7 @@ public record UnenrolResult(
     public static final String STATUS_UNENROLLED = "unenrolled";
 
     public UnenrolResult {
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, FIELD_STATUS);
     }
 
     /**
@@ -59,9 +59,8 @@ public record UnenrolResult(
      *
      * @param map input map
      * @return parsed result
-     * @throws IOException on format failure
      */
-    public static UnenrolResult fromMap(Map<String, Object> map) throws IOException {
+    public static UnenrolResult fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var status = JsonTree.string(map, FIELD_STATUS);
         if (status == null || status.isBlank()) {

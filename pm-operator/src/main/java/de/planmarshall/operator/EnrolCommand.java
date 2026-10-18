@@ -37,6 +37,7 @@ import picocli.CommandLine.Spec;
  */
 @Command(name = "enrol", description = "Enrols a project from the specified or current directory.")
 @OperatorVerb
+@SuppressWarnings("java:S1075")
 public final class EnrolCommand implements Callable<Integer> {
 
     private static final String PATH_ENROL = "/api/v1/enrol";

@@ -35,7 +35,7 @@ public record AcceptEditResult(
     public static final String STATUS_ACCEPTED = "accepted";
 
     public AcceptEditResult {
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, FIELD_STATUS);
         Objects.requireNonNull(newSha256, "newSha256");
     }
 

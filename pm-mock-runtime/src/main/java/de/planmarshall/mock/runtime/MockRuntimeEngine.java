@@ -218,13 +218,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String EVENT_PROJECT_UNENROLLED = "project.unenrolled";
     private static final String EVENT_STORE_EDIT_ACCEPTED = "store.edit_accepted";
     private static final String KEY_STORE_PATH = "store_path";
-    private static final String KEY_RECORDED_SIZE = "recorded_size";
-    private static final String KEY_RECORDED_SHA256 = "recorded_sha256";
-    private static final String KEY_CURRENT_SIZE = "current_size";
     private static final String KEY_CURRENT_SHA256 = "current_sha256";
-    private static final String KEY_MISMATCH = "mismatch";
-    private static final String KEY_MISMATCH_DETAILS = "mismatch_details";
-    private static final String KEY_CONFIRMED_SHA256 = "confirmed_sha256";
     private static final String KEY_NEW_SHA256 = "new_sha256";
     private static final String KEY_STORE_PATH_QUERY = "path";
     private static final String ERR_STORE_NOT_FOUND = "store_not_found";

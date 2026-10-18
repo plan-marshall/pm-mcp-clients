@@ -46,7 +46,7 @@ public final class UnenrolCommand implements Callable<Integer> {
     CommandSpec spec = CommandSpec.create();
 
     @Parameters(index = "0", description = "Project ID")
-    String projectId;
+    String projectId = "";
 
     @Option(names = {"-y", "--yes"}, description = "Confirm unenrolment without an interactive prompt")
     boolean yes;

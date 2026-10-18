@@ -37,7 +37,7 @@ public record EnrolResult(
     public static final String STATUS_ENROLLED = "enrolled";
 
     public EnrolResult {
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, FIELD_STATUS);
         Objects.requireNonNull(projectId, "projectId");
     }
 
