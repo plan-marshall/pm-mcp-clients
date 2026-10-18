@@ -10,6 +10,7 @@
 package de.planmarshall.mock.runtime;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -86,6 +87,7 @@ import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
 import de.planmarshall.api.project.ProjectChangedEvent;
+import de.planmarshall.api.project.ProjectEnrolledEvent;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.api.project.ProjectReleaseResult;
@@ -104,6 +106,12 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.report.TokenWasteRecord;
+import de.planmarshall.api.resource.AcceptEditRequest;
+import de.planmarshall.api.resource.AcceptEditResult;
+import de.planmarshall.api.resource.EnrolRequest;
+import de.planmarshall.api.resource.EnrolResult;
+import de.planmarshall.api.resource.StoreDigestComparison;
+import de.planmarshall.api.resource.UnenrolResult;
 import de.planmarshall.api.source.git.ChangedFile;
 import de.planmarshall.api.source.git.LocalChangesCaptureRequest;
 import de.planmarshall.api.source.git.LocalChangesCaptureResult;
@@ -203,6 +211,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_PROJECTS = "/api/v1/projects";
     private static final String CONST_LEGACY_PORTAL = "legacy-portal";
     private static final String CONST_UNENROLLED = "unenrolled";
+    private static final String PATH_ENROL = "/api/v1/enrol";
+    private static final String SEGMENT_ENROL = "/enrol";
+    private static final String SEGMENT_STORES_DIGEST = "/stores/digest";
+    private static final String SEGMENT_STORES_ACCEPT_EDIT = "/stores/accept-edit";
+    private static final String EVENT_PROJECT_UNENROLLED = "project.unenrolled";
+    private static final String EVENT_STORE_EDIT_ACCEPTED = "store.edit_accepted";
+    private static final String KEY_STORE_PATH = "store_path";
+    private static final String KEY_CURRENT_SHA256 = "current_sha256";
+    private static final String KEY_NEW_SHA256 = "new_sha256";
+    private static final String KEY_STORE_PATH_QUERY = "path";
+    private static final String ERR_STORE_NOT_FOUND = "store_not_found";
+    private static final String ERR_CONFIRMATION_MISMATCH = "confirmation_mismatch";
+    private static final String ENROL_STORE_PATH = ".plan/marshal.json";
+    private static final String ENROL_RECORDED_SHA256 =
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    private static final String ENROL_CURRENT_SHA256 =
+            "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
     private static final String CONST_DECISION = "decision";
     private static final String PATH_CONNECTION_STATUS = "/api/v1/status/connection";
     private static final String PATH_LAN_LISTENER = "/api/v1/web/listeners/lan";
@@ -360,6 +385,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
     private final List<BeingAddedProject> beingAddedProjects = new ArrayList<>();
+    private final Object storeLock = new Object();
+    private final Map<String, MockStore> mockStores = new LinkedHashMap<>();
     private final Object startLock = new Object();
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
@@ -431,6 +458,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultDecisions();
         initDefaultSystem();
         initDefaultProjects();
+        initDefaultEnrolment();
         initDefaultControl();
         initDefaultOnboarding();
         initDefaultStart();
@@ -449,6 +477,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultDecisions();
         initDefaultSystem();
         initDefaultProjects();
+        initDefaultEnrolment();
         initDefaultControl();
         initDefaultOnboarding();
         initDefaultStart();
@@ -603,6 +632,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleOnboardingRoutes(request, response)
                 || handleMachineSettingsRoutes(request, response)
                 || handleDesignerRoutes(request, response, isWeb)
+                || handleEnrolmentRoutes(request, response)
                 || handleProjectExplorerRoutes(request, response)
                 || handleProjectOverviewRoutes(request, response)
                 || handleReportRoutes(request, response, isWeb)
@@ -4091,6 +4121,184 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    private void initDefaultEnrolment() {
+        synchronized (storeLock) {
+            mockStores.clear();
+            mockStores.put(CONST_PM_MCP_CLIENTS, new MockStore(CONST_PM_MCP_CLIENTS, ENROL_STORE_PATH,
+                    1248L, ENROL_RECORDED_SHA256, 1512L, ENROL_CURRENT_SHA256));
+            mockStores.put(CONST_PLAN_MARSHALL, new MockStore(CONST_PLAN_MARSHALL, ENROL_STORE_PATH,
+                    2048L, ENROL_RECORDED_SHA256, 2048L, ENROL_RECORDED_SHA256));
+        }
+    }
+
+    /**
+     * A store the mock runtime keeps for enrolment integrity: the size and SHA-256 its digest sidecar
+     * records and the size and SHA-256 the file currently has.
+     */
+    private record MockStore(String projectId, String storePath, long recordedSize, String recordedSha256,
+    long currentSize, String currentSha256) {
+
+        /** @return the store re-baselined to its current file. */
+        MockStore rebased() {
+            return new MockStore(projectId, storePath, currentSize, currentSha256, currentSize, currentSha256);
+        }
+    }
+
+    private boolean handleEnrolmentRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        var method = request.method();
+
+        if ("POST".equals(method) && PATH_ENROL.equals(path)) {
+            handleEnrol(request, response, null);
+            return true;
+        }
+        if ("POST".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROL)) {
+            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROL.length());
+            handleEnrol(request, response, prjId);
+            return true;
+        }
+        if ("GET".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_DIGEST)) {
+            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_STORES_DIGEST.length());
+            handleStoreDigest(request, response, prjId);
+            return true;
+        }
+        if ("POST".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
+            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_STORES_ACCEPT_EDIT.length());
+            handleAcceptEdit(request, response, prjId);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleEnrol(MockHttpRequest request, MockHttpResponse response, @Nullable String pathProjectId)
+            throws IOException {
+        String projectPath = null;
+        boolean pilot = false;
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null) {
+                    projectPath = JsonTree.string(parsed, EnrolRequest.FIELD_PATH);
+                    if (projectPath == null) {
+                        projectPath = JsonTree.string(parsed, "project_path");
+                    }
+                    pilot = Boolean.TRUE.equals(JsonTree.bool(parsed, EnrolRequest.FIELD_PILOT));
+                }
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (IOException | RuntimeException _) {
+                // ignore a malformed payload and report the missing path below
+            }
+        }
+
+        boolean hasId = pathProjectId != null && !pathProjectId.isBlank();
+        if (!hasId && (projectPath == null || projectPath.isBlank())) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "A checkout path is required"));
+            return;
+        }
+        var projectId = hasId ? pathProjectId : projectIdFromPath(projectPath);
+
+        synchronized (projectsLock) {
+            boolean known = enrolledProjects.stream().anyMatch(p -> p.projectId().equals(projectId));
+            if (!known) {
+                enrolledProjects.add(new EnrolledProject(projectId, projectId, null, ProjectReadiness.READY,
+                        null, 0, 0, 0, Instant.now(), false, false));
+            }
+        }
+        synchronized (storeLock) {
+            mockStores.computeIfAbsent(projectId, id -> new MockStore(id, ENROL_STORE_PATH,
+                    2048L, ENROL_RECORDED_SHA256, 2048L, ENROL_RECORDED_SHA256));
+        }
+
+        var timestamp = Instant.now();
+        broadcastEvent(ProjectEnrolledEvent.EVENT_NAME,
+                new ProjectEnrolledEvent(projectId, projectId, timestamp).toMap());
+        broadcastEvent(ProjectChangedEvent.EVENT_NAME,
+                Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, KEY_STATE, "enrolled"));
+        response.json(200, new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, pilot).toMap());
+    }
+
+    private static String projectIdFromPath(@Nullable String path) {
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+        var trimmed = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+        var slash = trimmed.lastIndexOf('/');
+        return slash >= 0 ? trimmed.substring(slash + 1) : trimmed;
+    }
+
+    private void handleStoreDigest(MockHttpRequest request, MockHttpResponse response, String projectId)
+            throws IOException {
+        var requestedPath = readQueryParam(request.query(), KEY_STORE_PATH_QUERY);
+        synchronized (storeLock) {
+            var store = mockStores.get(projectId);
+            if (store == null) {
+                sendStoreNotFound(response, projectId);
+                return;
+            }
+            var storePath = requestedPath != null && !requestedPath.isBlank() ? requestedPath : store.storePath();
+            var mismatch = store.recordedSize() != store.currentSize()
+                    || !store.recordedSha256().equals(store.currentSha256());
+            var details = mismatch ? "the current file differs from the recorded sidecar" : null;
+            response.json(200, new StoreDigestComparison(storePath, store.recordedSize(), store.recordedSha256(),
+                    store.currentSize(), store.currentSha256(), details).toMap());
+        }
+    }
+
+    private void handleAcceptEdit(MockHttpRequest request, MockHttpResponse response, String projectId)
+            throws IOException {
+        var accept = parseAcceptEdit(request.body());
+        synchronized (storeLock) {
+            var store = mockStores.get(projectId);
+            if (store == null) {
+                sendStoreNotFound(response, projectId);
+                return;
+            }
+            if (accept == null || !store.currentSha256().equals(accept.confirmedSha256())) {
+                response.json(409, Map.of(
+                        KEY_ERROR, ERR_CONFIRMATION_MISMATCH,
+                        KEY_MESSAGE, "The confirmed SHA-256 does not match the current file",
+                        KEY_CURRENT_SHA256, store.currentSha256()));
+                return;
+            }
+            var rebased = store.rebased();
+            mockStores.put(projectId, rebased);
+            broadcastEvent(EVENT_STORE_EDIT_ACCEPTED, Map.of(
+                    KEY_PROJECT_ID, projectId,
+                    KEY_STORE_PATH, accept.storePath(),
+                    KEY_NEW_SHA256, rebased.currentSha256()));
+            response.json(200, new AcceptEditResult(AcceptEditResult.STATUS_ACCEPTED, rebased.currentSha256()).toMap());
+        }
+    }
+
+    private static @Nullable AcceptEditRequest parseAcceptEdit(byte[] body) {
+        if (body.length == 0) {
+            return null;
+        }
+        try {
+            return AcceptEditRequest.fromJson(new String(body, StandardCharsets.UTF_8));
+        } catch (IOException _) {
+            return null;
+        }
+    }
+
+    private static @Nullable String readQueryParam(@Nullable String query, String name) {
+        if (query == null || query.isBlank()) {
+            return null;
+        }
+        for (var part : query.split("&")) {
+            if (part.startsWith(name + "=")) {
+                return URLDecoder.decode(part.substring(name.length() + 1), StandardCharsets.UTF_8);
+            }
+        }
+        return null;
+    }
+
+    private static void sendStoreNotFound(MockHttpResponse response, String projectId) throws IOException {
+        response.json(404, Map.of(KEY_ERROR, ERR_STORE_NOT_FOUND,
+                KEY_MESSAGE, "No store recorded for project " + projectId));
+    }
+
     private boolean handleProjectExplorerRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         var method = request.method();
@@ -4441,8 +4649,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             enrolledProjects.removeIf(p -> p.projectId().equals(projectId));
             favouriteProjectIds.remove(projectId);
+            synchronized (storeLock) {
+                mockStores.remove(projectId);
+            }
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, KEY_STATUS, CONST_UNENROLLED));
-            response.json(200, Map.of(KEY_STATUS, CONST_UNENROLLED, KEY_PROJECT_ID, projectId));
+            broadcastEvent(EVENT_PROJECT_UNENROLLED, Map.of(KEY_EVENT, EVENT_PROJECT_UNENROLLED, KEY_PROJECT_ID, projectId));
+            var body = new LinkedHashMap<String, Object>(
+                    new UnenrolResult(UnenrolResult.STATUS_UNENROLLED).toMap());
+            body.put(KEY_PROJECT_ID, projectId);
+            response.json(200, body);
         }
     }
 
