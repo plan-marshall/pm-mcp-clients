@@ -67,9 +67,12 @@ final class PseudoTerminal {
         try (var stdin = process.getOutputStream()) {
             var rendered = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             var outerExit = process.waitFor();
-            var exitCode = childExit(statusFile).orElse(outerExit);
+            // macOS script(1) does not propagate the child status, so a missing status file there is
+            // an abnormal run and fails closed; util-linux script -e propagates it itself.
+            var exitCode = childExit(statusFile).orElseGet(() -> isBsdScript() ? -1 : outerExit);
             if (exitCode != 0) {
-                throw new IllegalStateException("the command exited with " + exitCode + ":\n" + rendered);
+                var reason = exitCode < 0 ? "with an unknown status" : "with " + exitCode;
+                throw new IllegalStateException("the command exited " + reason + ":\n" + rendered);
             }
             return rendered;
         }
