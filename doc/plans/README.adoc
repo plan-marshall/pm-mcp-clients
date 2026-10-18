@@ -39,9 +39,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:api-contract.adoc[`api-contract`]; link:implemented/operator-checks.adoc[`operator-checks`]
 |Milestone 2
 
-|link:installation-layout.adoc[`installation-layout`]
+|link:implemented/installation-layout.adoc[`installation-layout`]
 |Installation layout seen from the binaries
-|`open`
+|`done`
 |nothing
 |Milestone 2
 

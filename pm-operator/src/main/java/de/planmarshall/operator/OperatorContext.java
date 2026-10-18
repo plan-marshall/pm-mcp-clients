@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jspecify.annotations.Nullable;
@@ -25,6 +26,7 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.runtime.RuntimeAccess;
 import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.operator.layout.OperatorLayout;
 
 /**
  * What an operator command takes from its process: the environment and the user's home directory,
@@ -177,7 +179,28 @@ public final class OperatorContext {
         var headers = Map.of(
                             "User-Agent", "pm-operator/" + PmVersion.current(),
                             "Accept-Language", clientEnvironment.locale());
-        return RuntimeAccess.local(environment, userHome, headers, startOnDemand);
+        return RuntimeAccess.local(environment, userHome, headers, startOnDemand,
+                            () -> OperatorLayout.current(environment).runtimeExecutable());
+    }
+
+    /**
+     * The reason the running installation may not be upgraded by the runtime, resolved from the
+     * operator's own installation layout. Empty when the operator does not run from a versioned
+     * installation (a development checkout or a test JVM), so the runtime decides.
+     *
+     * @return the refusal reason, or empty when the installation is upgradable or undetermined
+     */
+    public Optional<String> installationUpgradabilityRefusal() {
+        try {
+            var layout = OperatorLayout.current(environment);
+            if (layout.installed() && !layout.runtimeUpgradable()) {
+                return Optional.of(layout.upgradabilityRefusal()
+                                    .orElse("the installation is not runtime-upgradable"));
+            }
+            return Optional.empty();
+        } catch (IOException e) {
+            return Optional.empty();
+        }
     }
 
     /**

@@ -10,7 +10,7 @@
 /**
  * Runtime access of the client binaries: the runtime-token client check, the authenticated client
  * with its single {@code 401} retry, the on-demand start procedure under
- * {@code locks/runtime-start.lock}, the detached spawn of {@code pm-mcpd}, the resolution of
- * {@code PM_MCP_HOME}, and the read-only codec of the runtime record.
+ * {@code locks/runtime-start.lock}, the detached spawn of {@code pm-mcpd}, and the read-only codec
+ * of the runtime record.
  */
 package de.planmarshall.api.runtime;

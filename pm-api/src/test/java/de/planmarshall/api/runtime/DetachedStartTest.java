@@ -28,6 +28,7 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.layout.InstallationLayout;
 import de.planmarshall.api.posix.PosixPlatform;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -71,7 +72,7 @@ class DetachedStartTest {
 
     private Map<String, String> environment() {
         var environment = fixture.environment();
-        environment.put(PmMcpHome.ENV_HOME, home.toString());
+        environment.put(InstallationLayout.ENV_HOME, home.toString());
         environment.put("PM_TEST_MARKER", marker.toString());
         environment.put("PATH", "/usr/bin:/bin");
         return environment;
