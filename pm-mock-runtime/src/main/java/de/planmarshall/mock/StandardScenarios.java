@@ -132,6 +132,12 @@ public final class StandardScenarios {
     public static final String DESIGNER = "designer";
 
     /**
+     * Operator verbs of enrolment and store integrity: the project enrol and unenrol, and the digest
+     * verification of a store the operator accepts an edit for (PM-EXEC-2, PM-SEC-3).
+     */
+    public static final String ENROLMENT = "enrolment";
+
+    /**
      * Unmodifiable list of all delivered standard scenario names.
      */
     public static final List<String> ALL = List.of(
@@ -153,6 +159,7 @@ public final class StandardScenarios {
             LESSON_SOURCE,
             GIT_SOURCES,
             DECOMPOSITION,
-            DESIGNER
+            DESIGNER,
+            ENROLMENT
     );
 }
