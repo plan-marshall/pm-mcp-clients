@@ -54,7 +54,7 @@ This plan executes concurrently in Wave 5 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/profile-documents /Users/oliver/git/worktrees/pm-mcp-clients-profile-documents main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/profile-documents /Users/oliver/git/worktrees/pm-mcp-clients-profile-documents main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for profile schemas and streaming parsing
   - `persona-security-expert` for classpath resource loading safety and untrusted JSON parsing
