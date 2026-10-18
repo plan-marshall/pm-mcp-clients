@@ -22,6 +22,10 @@ clients. Every concrete
 implementation follows the project skill `traced-implementation`, which lives there with `doc-review`; the skills of
 the same names here only point to them.
 
+Read `../plan-marshall-documentation/doc/developer/project-setup.adoc` before starting work. It is the reference for the
+repositories and their checkouts, building, work packages, and the way of a change from a branch to `main`; this file
+holds only what is specific to this repository.
+
 ## Build
 
 - Compile: `./mvnw compile`
@@ -98,9 +102,12 @@ own work.
 
 ## Git Workflow
 
-`main` is protected by rulesets and merges go through the merge queue; direct pushes to `main` are not allowed.
-Branch, commit, push, open a pull request, wait for the checks, answer and resolve every review comment. Do not
-merge without the user's word. Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
+The way from a branch to `main` is in `../plan-marshall-documentation/doc/developer/project-setup.adoc` (_From a Branch
+to `main`_). The hard rules:
+
+- `main` is protected by rulesets and the merge queue; nobody pushes to `main`.
+- Do not merge without the user's word.
+- Commits end with `Co-Authored-By: plan-marshall <noreply@cuioss.de>`.
 
 CI: reusable workflows of `cuioss/cuioss-organization`, pinned by full SHA with a version comment; configuration in
 `.github/project.yml`.
