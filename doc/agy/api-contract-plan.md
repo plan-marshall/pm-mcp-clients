@@ -58,7 +58,7 @@ This plan executes concurrently in Wave 6 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/api-contract /Users/oliver/git/worktrees/pm-mcp-clients-api-contract main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/api-contract /Users/oliver/git/worktrees/pm-mcp-clients-api-contract main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for Java 25 records and Jackson streaming codecs
   - `persona-security-expert` for strict input validation, closed error code boundaries, and fail-closed parsing
