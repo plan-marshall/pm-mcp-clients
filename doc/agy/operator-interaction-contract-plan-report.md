@@ -221,6 +221,16 @@ reactor.
 | A link is keyed by its `id`, never its relation | **Verified** by the unique-id check (state and items) and the scenario's `links` map with load validation. |
 | The event catalogue, event-scope kinds, and stream-end reasons are the specification's closed lists | **Verified** by the verbatim comparison in `EventEnvelopeTest`. |
 
+### 6.1 The runbook's standard invariants, for this package
+
+| Runbook invariant | Applicability |
+|---|---|
+| Java 25 | **Verified**: the reactor compiles with `release 25` (the CI log and the local build); no older language level is used. |
+| No uncatalogued strings | **Verified** for this package: every message key the new scenario names (`onboard.harness.choose.title`, `onboard.harness.consent.title`) exists in the English and German packs, and every mock event name is an `EventName` catalogue member. |
+| Bilingual catalogue in EN and DE | **Not changed** by this package: no key was added to or removed from the message catalogue, so the EN/DE pack parity of the delivered catalogue tests is untouched. |
+| Mock runtime completeness | **Verified**: the `operator-interaction` scenario is added to `StandardScenarios.ALL`, loads and validates, and is asserted end-to-end by `OperatorInteractionScenarioTest`. |
+| Responsive layout down to 320px | **Not applicable**: this package touches no web-app view or CSS; it delivers the `pm-api`/`pm-mock-runtime` contract only. |
+
 ---
 
 ## 7. Build & Quality Evidence
@@ -329,3 +339,9 @@ were declined with a reason.
 | 4 | The closed-schema statement held only at the top level. | Every nested decoder rejects unknown members. |
 | 5 | `fromMap` let `IllegalArgumentException` escape. | Decoders wrap constructor checks into `JsonFormatException` (duplicate ids, `done > of`, scope, override order). |
 | 6 | The mock answered 409 for a link the current state still offers. | The history is keyed by the offering state and the current state is excluded. |
+| 7 | The duplicate-link test asserted against a level that fails first. | The duplicate-link case uses an allowed level (`null`); an invalid level is asserted separately. |
+| 8 | `validateOperatorState` checked only top-level links. | Item links are included in the advertised set. |
+| 9 | The report did not cover the runbook's standard invariants. | Added §6.1 (Java 25, no uncatalogued strings, EN/DE catalogue, mock completeness, responsive layout applicability). |
+| 10 | `EventScope` accepted an `id` on a kind that carries none. | The constructor rejects an `id` for `runtime`, `machine`, and `workspace`; a test pins it. |
+
+All inline threads are answered on the pull request; the findings landed in commits `a4522cb` (the hardening batch) and the follow-up commit for findings 7–10.

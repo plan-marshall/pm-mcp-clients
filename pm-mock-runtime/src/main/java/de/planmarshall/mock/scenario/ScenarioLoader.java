@@ -303,6 +303,7 @@ public class ScenarioLoader {
 
         var advertised = new LinkedHashMap<String, OperatorLink>();
         state.links().forEach(link -> advertised.put(link.id(), link));
+        state.items().forEach(item -> item.links().forEach(link -> advertised.put(link.id(), link)));
 
         links.forEach((linkId, definition) -> {
             var offered = advertised.get(linkId);

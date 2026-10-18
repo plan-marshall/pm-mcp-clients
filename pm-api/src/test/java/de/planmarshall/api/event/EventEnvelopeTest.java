@@ -189,6 +189,9 @@ class EventEnvelopeTest {
                 () -> new EventEnvelope(EventName.RESET, -1L, AT, new EventScope(EventScopeKind.RUNTIME, null, null), Map.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> new EventScope(EventScopeKind.PLAN, null, null));
+        // a kind that carries no identifier refuses one
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventScope(EventScopeKind.MACHINE, "m", null));
         // a payload never carries the envelope's own members
         assertThrows(IllegalArgumentException.class,
                 () -> new EventEnvelope(EventName.RESET, 1L, AT, new EventScope(EventScopeKind.RUNTIME, null, null),

@@ -46,8 +46,12 @@ public record EventScope(
 
     public EventScope {
         Objects.requireNonNull(kind, FIELD_KIND);
-        if (kind.requiresIdentifier() && (id == null || id.isBlank())) {
-            throw new IllegalArgumentException("A " + kind.wire() + " event scope requires an id in EventScope");
+        if (kind.requiresIdentifier()) {
+            if (id == null || id.isBlank()) {
+                throw new IllegalArgumentException("A " + kind.wire() + " event scope requires an id in EventScope");
+            }
+        } else if (id != null) {
+            throw new IllegalArgumentException("A " + kind.wire() + " event scope carries no id in EventScope");
         }
     }
 

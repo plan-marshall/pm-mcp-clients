@@ -216,12 +216,18 @@ class OperatorStateResourceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new OperatorStateResource(
                         new OperatorScope(OperatorScopeKind.MACHINE, null, null, null),
-                        "onboarding", null, null, ConfigOrigin.DEFAULT, null, null,
+                        "onboarding", null, null, null, null, null,
                         List.of(), Map.of(), List.of(), List.of(), null,
                         List.of(new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/api/v1/x",
                                         Map.of(), false, null),
                                 new OperatorLink("yes", OperatorLinkRelation.ALT, "POST", "/api/v1/y",
                                         Map.of(), false, null))));
+        // a level a state does not write (the default or a derived one) is refused
+        assertThrows(IllegalArgumentException.class,
+                () -> new OperatorStateResource(
+                        new OperatorScope(OperatorScopeKind.MACHINE, null, null, null),
+                        "onboarding", null, null, ConfigOrigin.DEFAULT, null, null,
+                        List.of(), Map.of(), List.of(), List.of(), null, List.of()));
     }
 
     @Test
