@@ -17,7 +17,7 @@ they trace to:
 - **`pm-relay` (`PmMcpProcessIT`)** — the `pm-mcp serve` STDIO relay as a real process against the fake runtime on
   a Unix socket. New cases pin `stdout` framing purity under daemon faults (a JSON-RPC error response and an HTTP
   500), the immediate-EOF termination path (exit `0`, no output), the answer to a request whose daemon stream
-  breaks mid-response (`runtime_unavailable`, exit cleanly on EOF), and the JSON-RPC `-32600` parse error for a
+  breaks mid-response (`runtime_unavailable`, exit cleanly on EOF), and the JSON-RPC `-32700` parse error for a
   malformed `stdin` line while the relay keeps relaying valid requests.
 - **`pm-operator` (`PmOperatorProcessIT`)** — the terminal client and operator verbs as a real process. New cases
   pin the runtime-free verbs (`--version`, `--help`) as exit-`0` and zero-footprint under `PM_MCP_BASE`, the
@@ -190,6 +190,7 @@ Findings from the automatic reviewers on PR #95, evaluated with the `persona-cod
 | CR1 | CodeRabbit: absolute `file:///…` links in `doc/agy/implemented/README.md` | **Fixed.** The new archive entry uses repository-relative links. |
 | CR2 | CodeRabbit: workstation-specific `file:///…` links in this report | **Fixed.** The report header links to the plan and runbook relatively. |
 | CR4 | CodeRabbit (nitpick): `abruptSocketDisconnect` couples its `stderr` assertion to a `pm-api` parser message | **Fixed.** It now asserts `stderr` is non-blank, not the parser's text. |
+| CR5 | CodeRabbit: the executive summary still said `-32600` for malformed stdin | **Fixed.** §1 now says `-32700`, aligned with §3, §4 and §8. |
 | CR-S6 | cuioss-review-bot: PR Reviewer Guide — no security concerns, no major issues | **No action** (informational). |
 | CR-S7 | CodeRabbit: review skipped by the erroneous `skip-bot-review` label | **Re-triggered** by removing the label and commenting `@coderabbitai review`; the review completed and its findings are the CR rows above. |
 
