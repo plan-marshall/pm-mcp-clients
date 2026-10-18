@@ -66,22 +66,25 @@ record LinuxConfinement(Kernel kernel, Path root) {
     private void addRules(int ruleset, List<Path> paths, int abi, boolean write, List<Path> deniedPaths)
             throws NativeCallException {
         for (var path : paths) {
-            if (ReadSet.reopensDenied(path, deniedPaths)) {
-                // An explicit --read/--write inside <PM_MCP_BASE> is how the runtime names the
-                // job-private directory and the daemon store; any other denied path stays withheld.
-                continue;
+            // An explicit --read/--write inside <PM_MCP_BASE> is how the runtime names the
+            // job-private directory and the daemon store; any other denied path stays withheld.
+            if (!ReadSet.reopensDenied(path, deniedPaths)) {
+                addRule(ruleset, path, abi, write);
             }
-            var fd = kernel.openPath(path);
-            if (fd.isEmpty()) {
-                continue;
-            }
-            try {
-                boolean directory = Files.isDirectory(path);
-                long access = write ? Landlock.writeAccess(abi, directory) : Landlock.readAccess(abi, directory);
-                kernel.addPathBeneath(ruleset, fd.getAsInt(), access);
-            } finally {
-                kernel.close(fd.getAsInt());
-            }
+        }
+    }
+
+    private void addRule(int ruleset, Path path, int abi, boolean write) throws NativeCallException {
+        var fd = kernel.openPath(path);
+        if (fd.isEmpty()) {
+            return;
+        }
+        try {
+            boolean directory = Files.isDirectory(path);
+            long access = write ? Landlock.writeAccess(abi, directory) : Landlock.readAccess(abi, directory);
+            kernel.addPathBeneath(ruleset, fd.getAsInt(), access);
+        } finally {
+            kernel.close(fd.getAsInt());
         }
     }
 }

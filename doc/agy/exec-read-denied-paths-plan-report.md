@@ -150,6 +150,10 @@ Code and configuration changed (`pm-exec/**`, `doc/**`), so the full pre-commit 
 
 Result: **BUILD SUCCESS**, with a clean `git status` (no OpenRewrite reformats, no untracked artifacts).
 
+SonarCloud on PR #89: **Quality Gate passed**, 0 new issues, 0 accepted issues, 0 security hotspots,
+96.0% coverage on new code, 0.0% duplication on new code. The one first-pass finding (`java:S135`, two
+`continue` statements in the rule loop) was resolved by extracting the single-rule helper `addRule`.
+
 ---
 
 ## 5. Notes & Follow-Ups
