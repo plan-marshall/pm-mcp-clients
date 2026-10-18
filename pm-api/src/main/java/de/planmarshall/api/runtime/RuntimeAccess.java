@@ -16,6 +16,7 @@ import lombok.experimental.UtilityClass;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.layout.InstallationLayout;
 import de.planmarshall.api.posix.PosixPlatform;
 import de.planmarshall.api.posix.PosixSpawn;
 
@@ -26,7 +27,9 @@ import de.planmarshall.api.posix.PosixSpawn;
 public class RuntimeAccess {
 
     /**
-     * The client of a local session or operator command, authenticated with the runtime token.
+     * The client of a local session or operator command, authenticated with the runtime token. The
+     * runtime it starts is the {@code pm-mcpd} of the running binary's own installation, resolved
+     * through the switched {@code PATH} links (installation layout).
      *
      * @param environment   the process environment
      * @param userHome      the user's home directory
@@ -37,6 +40,24 @@ public class RuntimeAccess {
      */
     public static RuntimeClient local(Map<String, String> environment, Path userHome, Map<String, String> headers,
                                       boolean startOnDemand) throws IOException {
+        return local(environment, userHome, headers, startOnDemand,
+                () -> InstallationLayout.current(environment).binary(InstallationLayout.DAEMON_BINARY));
+    }
+
+    /**
+     * The client of a local session or operator command with an explicit runtime executable.
+     *
+     * @param environment       the process environment
+     * @param userHome          the user's home directory
+     * @param headers           headers sent on every request (for example the client version)
+     * @param startOnDemand     {@code true} to start the runtime when none answers
+     * @param daemonExecutable  the {@code pm-mcpd} the on-demand start spawns by its absolute path
+     * @return the client
+     * @throws IOException if the effective user id cannot be read
+     */
+    public static RuntimeClient local(Map<String, String> environment, Path userHome, Map<String, String> headers,
+                                      boolean startOnDemand, OnDemandStart.ExecutableSource daemonExecutable)
+            throws IOException {
         var os = MachinePaths.Os.current();
         var paths = MachinePaths.resolve(environment, userHome, os);
         var platform = PosixPlatform.of(os);
@@ -45,7 +66,7 @@ public class RuntimeAccess {
             return RuntimeClient.local(paths, tokenFile, null, headers);
         }
         var probe = RuntimeClient.local(paths, tokenFile, null, headers);
-        var starter = OnDemandStart.of(paths, () -> PmMcpHome.current(environment).daemon(), probe::isLive,
+        var starter = OnDemandStart.of(paths, daemonExecutable, probe::isLive,
                 new PosixDaemonLauncher(platform, environment));
         return RuntimeClient.local(paths, tokenFile, starter, headers);
     }

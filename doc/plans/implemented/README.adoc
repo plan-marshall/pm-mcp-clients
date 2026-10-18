@@ -113,6 +113,11 @@ This directory archives work packages that have been implemented, verified, and 
 |`Command.Launch` with a repeatable `--deny-read <path>` and `List<Path> deniedPaths`; `ReadSet.enumerate` enumerating the read set around several holes (the session-bus socket, the container engine's sockets, `<PM_MCP_BASE>`) breadth-first with siblings kept readable; `LinuxConfinement`/`Launcher` wiring; `CommandTest`, `ReadSetTest`, `LauncherTest`, `LinuxConfinementTest`, and `PmExecIT`
 |Milestone 4
 
+|link:installation-layout.adoc[`installation-layout`]
+|Installation layout seen from the binaries
+|`InstallationLayout.java` and `InstallationLayoutException.java` (the versioned installation directory `${install_root}/<version>/` that is `<PM_MCP_HOME>`, the two switched `PATH` links, sibling binaries by absolute path, and the refusals of an unversioned, broken, or insecure layout) with `InstallationLayoutTest.java` in `pm-api`; `OperatorLayout.java` and `SwitchedSymlinkLayoutIT.java` in `pm-operator`; `RuntimeAccess` and `OperatorContext` resolve `pm-mcpd` through the switched link
+|Milestone 2
+
 |link:api-contract.adoc[`api-contract`]
 |API contract of `/api/v1` in `pm-api`
 |`de.planmarshall.api.resource` resource records (`RuntimeStatusResource`, `WebAccessResource`, `RuntimeStopResource`, `CredentialStatusResource`, `RuntimeEventStreamResource`), the closed `ApiErrorCode` and `LinkRelation` enums, `ResourceLink`, the `jackson-core` streaming codecs (`JsonTree.readValue`/`writeValue`), and `ApiContractTest`

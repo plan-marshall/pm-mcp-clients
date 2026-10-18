@@ -25,6 +25,7 @@ import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.runtime.RuntimeAccess;
 import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.operator.layout.OperatorLayout;
 
 /**
  * What an operator command takes from its process: the environment and the user's home directory,
@@ -177,7 +178,8 @@ public final class OperatorContext {
         var headers = Map.of(
                             "User-Agent", "pm-operator/" + PmVersion.current(),
                             "Accept-Language", clientEnvironment.locale());
-        return RuntimeAccess.local(environment, userHome, headers, startOnDemand);
+        return RuntimeAccess.local(environment, userHome, headers, startOnDemand,
+                            () -> OperatorLayout.current(environment).runtimeExecutable());
     }
 
     /**
