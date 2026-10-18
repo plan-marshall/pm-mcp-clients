@@ -1,0 +1,18 @@
+{
+  "client_id": "antigravity",
+  "detection": {
+    "precedence": 10,
+    "primary_signals": [
+      { "variable": "ANTIGRAVITY_AGENT", "equals": null }
+    ],
+    "secondary_signals": [],
+    "process_markers": []
+  },
+  "identity": {
+    "session_id_variable": "ANTIGRAVITY_CONVERSATION_ID",
+    "version_probe": null,
+    "version_pattern": null,
+    "model_source": "declared",
+    "provisional": true
+  }
+}

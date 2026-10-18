@@ -1,0 +1,16 @@
+{
+  "client_id": "neutral",
+  "detection": {
+    "precedence": 50,
+    "primary_signals": [],
+    "secondary_signals": [],
+    "process_markers": []
+  },
+  "identity": {
+    "session_id_variable": null,
+    "version_probe": null,
+    "version_pattern": null,
+    "model_source": "declared",
+    "provisional": false
+  }
+}

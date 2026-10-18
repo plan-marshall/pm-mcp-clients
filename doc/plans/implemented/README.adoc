@@ -103,6 +103,11 @@ This directory archives work packages that have been implemented, verified, and 
 |`ProcessDesigner.svelte`, `BlockPalette.svelte`, and `WorkflowValidationResults.svelte` in `pm-web-app` with the runtime-backed text/structure panes, the catalogue palette, live validation, and placing; the designer methods of `client.ts`; and the `designer.spec.js` Playwright suite
 |epic clients; UC-PLN-3
 
+|link:profile-documents.adoc[`profile-documents`]
+|Host-detection data in the profile documents
+|One profile document per harness (`pm-api/src/main/resources/profiles/*.json`) carrying the `detection` and `identity` objects; `ProfileDocumentReader.java` (the generic `jackson-core` streaming reader that skips the other sections and names no harness); the data-driven `HostDetection.java` with no host constant; and `HarnessIsolationArchTest.java` with its negative-control fixture
+|Milestone 2
+
 |link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]
 |`pm-exec`: several read-denied paths
 |`Command.Launch` with a repeatable `--deny-read <path>` and `List<Path> deniedPaths`; `ReadSet.enumerate` enumerating the read set around several holes (the session-bus socket, the container engine's sockets, `<PM_MCP_BASE>`) breadth-first with siblings kept readable; `LinuxConfinement`/`Launcher` wiring; `CommandTest`, `ReadSetTest`, `LauncherTest`, `LinuxConfinementTest`, and `PmExecIT`

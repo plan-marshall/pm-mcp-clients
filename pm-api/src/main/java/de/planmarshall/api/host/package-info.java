@@ -8,7 +8,8 @@
  * the root of this repository.
  */
 /**
- * The compiled host-detection table: environment signals with their precedence, the session ID
- * variable, and the version probe per host.
+ * The host-detection table read from the shipped client profile documents: environment signals with
+ * their precedence, the session ID variable, and the version probe per host. The package names no
+ * harness; which hosts exist is data, the profile documents below {@code classpath:/profiles}.
  */
 package de.planmarshall.api.host;
