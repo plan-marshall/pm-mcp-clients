@@ -9,11 +9,6 @@
  */
 package de.planmarshall.api.json;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.json.JsonWriteFeature;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
@@ -23,6 +18,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.json.JsonWriteFeature;
 
 /**
  * The minimal JSON tree of {@code pm-api} on the {@code jackson-core} streaming API: an object is a
@@ -72,6 +73,37 @@ public class JsonTree {
             throw new JsonFormatException("Trailing content after the JSON value");
         }
         return value;
+    }
+
+    /**
+     * Reads one JSON value from a streaming parser. A parser before its first token is advanced to
+     * it; a parser already positioned at a value's first token reads from there. Trailing content is
+     * left to the caller, so a stream of values can be read one after another.
+     *
+     * @param parser the parser
+     * @return the tree value
+     * @throws IOException on malformed JSON
+     */
+    public static Object readValue(JsonParser parser) throws IOException {
+        var token = parser.currentToken();
+        if (token == null || token == JsonToken.END_OBJECT || token == JsonToken.END_ARRAY) {
+            token = parser.nextToken();
+        }
+        if (token == null) {
+            throw new JsonFormatException("Empty JSON input");
+        }
+        return read(parser);
+    }
+
+    /**
+     * Writes a tree value to a streaming generator.
+     *
+     * @param generator the generator
+     * @param value     the tree value
+     * @throws IOException on write failure
+     */
+    public static void writeValue(JsonGenerator generator, Object value) throws IOException {
+        write(generator, value);
     }
 
     private static Object read(JsonParser parser) throws IOException {
