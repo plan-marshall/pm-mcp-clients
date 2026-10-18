@@ -137,6 +137,10 @@ sends nothing, and a missing project or store is reported rather than sent.
   reviewed and committed.
 - The three-module compile and test runs (`pm-api`, `pm-mock-runtime`, `pm-operator`) are green locally before
   the pre-commit gate.
+- **SonarCloud (PR #91)**: the Quality Gate is `OK` with 0 new issues. The first analysis reported two reliability
+  bugs (`java:S2637`: the picocli `@Parameters` fields were uninitialised under `@NullMarked`) and thirteen code
+  smells (`java:S1192`, `java:S1130`, `java:S1068`, `java:S1075`); all fifteen were resolved and the re-analysis is
+  green. CI (`build 25/26`, `sonar-build`, `integration-tests`, `dependency-review`) passes on the fix commit.
 
 ### Deliberate scope note
 
