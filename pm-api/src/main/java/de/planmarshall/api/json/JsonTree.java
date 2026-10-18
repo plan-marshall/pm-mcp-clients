@@ -311,7 +311,7 @@ public class JsonTree {
             throw new JsonFormatException("Missing " + name);
         }
         var text = switch (raw) {
-            case JsonNumber value -> value.text();
+            case JsonNumber(String value) -> value;
             case Number value -> value.toString();
             case String value -> value;
             default -> null;
