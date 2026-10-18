@@ -92,7 +92,9 @@
                          module of the product other than pm-api, and none on Quarkus. One convenience
                          dependency would let a client binary run engine or store code in its own process, and
                          a dependency of one CLI module on the other would put operator verbs into the binary
-                         the model may run. -->
+                         the model may run. The mock runtime is the one exception, and only in test scope: the
+                         transcript and dialogue tests of pm-operator (PM-TEST-7) drive the verbs against it,
+                         and a test-scoped dependency never reaches a binary. -->
                     <execution>
                         <id>clients-depend-on-pm-api-only</id>
                         <phase>validate</phase>
@@ -108,8 +110,9 @@
                                     </excludes>
                                     <includes>
                                         <include>de.planmarshall:pm-api</include>
+                                        <include>de.planmarshall:pm-mock-runtime:*:jar:test</include>
                                     </includes>
-                                    <message>A module of pm-mcp-clients depends on pm-api at most among the modules of the product, and never on Quarkus.</message>
+                                    <message>A module of pm-mcp-clients depends, among the modules of the product, on pm-api and on pm-mock-runtime in test scope only, and never on Quarkus.</message>
                                 </bannedDependencies>
                             </rules>
                         </configuration>

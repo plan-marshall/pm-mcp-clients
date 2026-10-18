@@ -1,8 +1,8 @@
 # Implementation Plan: `cli-test-infra` (Test Infrastructure of the Terminal Client)
 
-This implementation plan governs the implementation of the `cli-test-infra` work package (`doc/plans/cli-test-infra.adoc`, epic clients) in `pm-operator` and `pm-mock-runtime`.
+This implementation plan governs the implementation of the `cli-test-infra` work package (`doc/plans/implemented/cli-test-infra.adoc`, epic clients) in `pm-operator` and `pm-mock-runtime`.
 
-It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
+It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -11,7 +11,7 @@ It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.
 The goal is to deliver the transcript and dialogue test infrastructure for `pm-operator` against `pm-mock-runtime`: driving interactive terminal verbs with scripted inputs, asserting rendered output against recorded transcripts with readable diffs, and verifying JLine 4 terminal behavior in JVM and native modes.
 
 ### Target Work Package
-- Specification: `doc/plans/cli-test-infra.adoc`.
+- Specification: `doc/plans/implemented/cli-test-infra.adoc`.
 - Requirements: `PM-TEST-7`.
 - Specifications: Runtime Model § Mock Runtime; Terminal Client, Transcripts; CLI & Security § Operator Channel Isolation.
 - Primary Modules: `pm-operator` (test scope), `pm-mock-runtime` (scenario execution in tests).
@@ -53,14 +53,14 @@ This plan executes concurrently in Wave 7 alongside:
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/cli-test-infra /Users/oliver/git/worktrees/pm-mcp-clients-cli-test-infra main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-module-tester` & `persona-integration-tester` for terminal test harness, pseudo-terminal simulation, and transcript assertion
   - `persona-security-expert` for test seam containment ensuring no production security bypass
   - `persona-documenter` for transcript documentation, ADRs, and roadmap updates
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/cli-test-infra-plan-report.md`), initial plan moved to `doc/agy/implemented/cli-test-infra-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/cli-test-infra-plan-report.md`), initial plan moved to `doc/agy/implemented/cli-test-infra-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-test-infra-plan-report.md` by orchestrator session.

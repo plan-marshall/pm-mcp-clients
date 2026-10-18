@@ -13,7 +13,7 @@
     <description>Operator CLI, native binary pm-operator.</description>
     <properties>
         <maven.jar.plugin.automatic.module.name>de.planmarshall.operator</maven.jar.plugin.automatic.module.name>
-        <version.jline>3.30.15</version.jline>
+        <version.jline>4.4.8</version.jline>
         <version.qrcodegen>1.8.0</version.qrcodegen>
         <!-- Enabled by the integration-tests profile -->
         <skipITs>true</skipITs>
@@ -81,6 +81,14 @@
             <groupId>de.planmarshall</groupId>
             <artifactId>pm-api</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- The mock runtime of the transcript and dialogue tests (PM-TEST-7): the verbs are driven
+             against the same scenario files the web tests use. Test scope only. -->
+        <dependency>
+            <groupId>de.planmarshall</groupId>
+            <artifactId>pm-mock-runtime</artifactId>
             <scope>test</scope>
             <version>${project.version}</version>
         </dependency>
@@ -155,6 +163,11 @@
                             <skipNativeTests>true</skipNativeTests>
                             <buildArgs>
                                 <buildArg>--enable-native-access=ALL-UNNAMED</buildArg>
+                                <!-- The message catalogue is read from /messages/&lt;area&gt;.&lt;locale&gt;.properties
+                                     with getResourceAsStream; without it every text of the runtime would
+                                     render as its key in the binary. Only the catalogue is added, so the
+                                     native libraries of jline-native stay out. -->
+                                <buildArg>-H:IncludeResources=messages/.*</buildArg>
                             </buildArgs>
                         </configuration>
                         <executions>

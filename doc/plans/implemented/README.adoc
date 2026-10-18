@@ -132,4 +132,9 @@ This directory archives work packages that have been implemented, verified, and 
 |Operator verbs of harness enrolment and roles
 |`HarnessEnrolmentResource`, `RoleSummaryResource`, `RoleDetailResource`, and `RoleQualificationState` in `pm-api` with `jackson-core` streaming codecs; `HarnessDiscovery`, `EnrolHarnessCommand`, and `RolesCommand` in `pm-operator`; bilingual `enrolment.harness.*` and `operator.roles.*` catalogue keys; `HarnessRolesResourcesTest`, `HarnessDiscoveryTest`, `EnrolHarnessCommandTest`, `RolesCommandTest`, and the process-level `PM-SEC-3` refusals in `PmOperatorProcessIT`
 |Milestone 4
+
+|link:cli-test-infra.adoc[`cli-test-infra`]
+|Transcript tests of `pm-operator` against the mock runtime
+|`TranscriptTerminal`, `ScriptedInput`, `TerminalTestDriver`, `TranscriptNormalizer`, `TranscriptAssert`, and `UnifiedDiff` in the test scope of `pm-operator`; the `status`, `web pair`, and console `.transcript` fixtures; `StatusDialogueTranscriptTest`, `WebPairDialogueTranscriptTest`, `ConsoleDialogueTranscriptTest`, `TranscriptDialogueIT`, and `NativeTranscriptIT`; JLine 4 and the native-image catalogue resource in `pm-operator/pom.xml`; the test-scoped mock-runtime dependency in the root POM guard
+|epic clients
 |===
