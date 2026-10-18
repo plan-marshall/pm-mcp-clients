@@ -45,8 +45,8 @@ module-disjointness matrix holds).
 | File | Purpose |
 |---|---|
 | `Command.java` | `Command.Launch` now carries `List<Path> deniedPaths` instead of `Optional<Path> deniedBase`; `--deny-read` is collected in the argument loop without the former "given twice" refusal; `deniedBase()` returns the first denied path for backward compatibility; the `DENY_READ` constant documents the socket/base use. |
-| `ReadSet.java` | `enumerate(Path root, List<Path> deniedPaths)` canonicalizes, validates (every denied path strictly below the root), and deduplicates the holes, then enumerates the read set breadth-first: a denied path gets no rule, an ancestor directory is descended into but gets no rule, any other entry gets a rule unless its real path overlaps a denied path. Private helpers `isAncestorOfAny` and the multi-path `overlaps`. |
-| `LinuxConfinement.java` | Passes `launch.deniedPaths()` to `ReadSet.enumerate`; still refuses a launch without any `--deny-read` before the first native call. |
+| `ReadSet.java` | `enumerate(Path root, List<Path> deniedPaths)` canonicalizes, validates (every denied path strictly below the root), and deduplicates the holes, then enumerates the read set breadth-first: a denied path gets no rule, an ancestor directory is descended into but gets no rule, any other entry gets a rule unless its resolved path or its inode (symbolic or hard link) matches a denied path. `reopensDenied(path, deniedPaths)` reports whether a rule would reopen a denied path other than `<PM_MCP_BASE>`. |
+| `LinuxConfinement.java` | Passes `launch.deniedPaths()` to `ReadSet.enumerate`; still refuses a launch without any `--deny-read` before the first native call. Withholds any explicit or enumerated rule whose path would reopen a denied path other than `<PM_MCP_BASE>` (re-checked when the rule is created), so Landlock's combined grants cannot hand the session-bus or container-engine sockets back to the job while the job-private directory and daemon store below the base stay the documented exceptions. |
 | `Confinement.java` | Unchanged (listed for completeness): the classification and `landlock_abi` reporting are not affected by the number of holes. |
 | `Launcher.java` | Unchanged (listed for completeness): the parsed launch already flows to `LinuxConfinement`; the report line and exit codes are unchanged. |
 | `package-info.java` | Protocol documentation updated to `[--deny-read <path>]...` with the base, session-bus socket, and container-engine socket examples. |
@@ -56,9 +56,9 @@ module-disjointness matrix holds).
 | File | Purpose |
 |---|---|
 | `CommandTest.java` | A launch with several `--deny-read` paths in order, the single-path case, a bare launch (`deniedPaths()` and `deniedBase()` empty), and a relative `--deny-read` refusal. The former `--deny-read`-twice refusal is removed (repeatable is the new contract). |
-| `ReadSetTest.java` | `enumerate` with one denied path, two disjoint paths, only the second path, a nested pair, a denied path given as a symbolic link (canonicalized), a duplicate, a missing path (fail-closed), the root itself, and a path outside the root beside a valid one. The fixture gained `run/user/1000/{bus, docker.sock, systemd/}` beside `home/alice/.plan-marshall-mcp`. |
+| `ReadSetTest.java` | `enumerate` with one denied path, two disjoint paths, only the second path, a nested pair, a denied path given as a symbolic link (canonicalized), a duplicate, a hard link to a denied path, a missing path (fail-closed), the root itself, and a path outside the root beside a valid one; plus a `reopensDenied` nest (socket, above the socket, hard link, inside the base, the base itself, single denied path). The fixture gained `run/user/1000/{bus, docker.sock, systemd/}` beside `home/alice/.plan-marshall-mcp`. |
 | `LauncherTest.java` | A Linux launch with two `--deny-read` paths: both holes get no rule, the ancestor directories get no rule, the siblings stay readable, and the report line still says `confined`/ABI 3. |
-| `LinuxConfinementTest.java` | A multi-hole launch asserting the rules that reach the kernel via the fake kernel; the launch helper now takes a `List<Path>`. |
+| `LinuxConfinementTest.java` | A multi-hole launch asserting the rules that reach the kernel via the fake kernel; a launch whose explicit `--read`/`--write` names the second denied path (withheld) while a `--read` inside the base is kept; the launch helper now takes a `List<Path>`. |
 | `PmExecIT.java` | A new Linux gated case launching `pm-exec` as a child with `<PM_MCP_BASE>` plus a `secrets` directory denied: both are unreadable, their siblings (`sibling.txt`, `checkout/`) stay readable, and the report line is unchanged. |
 
 ### 2.3 Documentation
@@ -119,6 +119,8 @@ reporting **Landlock ABI 8**, `confinement: confined`):
 | Write into `<PM_MCP_BASE>` | same | `Permission denied`, exit 2 |
 | List `/tree`, `/tree/run`, `/tree/run/user/1000` | same | `cannot open directory ... Permission denied` (the way down is not listable, traversal still works) |
 | List `checkout`, `run/user/1000/systemd` | same | listed |
+| Explicit `--read` / `--write` of the denied bus socket, or `--read` above it | `... --read run/user/1000/bus ...` | still `Permission denied` (the rule is withheld) |
+| Explicit `--read` of `<PM_MCP_BASE>/run` | `... --read base/run ...` | `runtime-token-canary` (the documented base exception is kept) |
 | Nested `--deny-read base --deny-read base/run` | | denied path unreadable, sibling readable |
 
 The nested case confirms the documented invariant: a hole covered by an ancestor's hole adds nothing and
@@ -160,3 +162,16 @@ Result: **BUILD SUCCESS**, with a clean `git status` (no OpenRewrite reformats, 
   the specification's accepted residual risk.
 - `deniedBase()` is kept as a convenience accessor; no production caller depended on the removed
   `Optional<Path>` shape.
+
+---
+
+## 6. Review Responses (Sourcery)
+
+| # | Finding | Disposition |
+|---|---|---|
+| 1 | Explicit `--read`/`--write` overlapping a `--deny-read` path reopens it (Landlock combines grants) | **Fixed**: `LinuxConfinement` withholds any rule that `ReadSet.reopensDenied` finds would grant access to a denied path other than the first; `<PM_MCP_BASE>` stays the documented exception (job-private directory, runtime socket, daemon store). Verified on the fake kernel and on a real Linux kernel. |
+| 2 | On Landlock below ABI 9 the Docker socket stays connectable / `DOCKER_HOST` retained | **Refuted for `pm-exec`**: the specification states the pre-ABI-9 pathname-socket reachability as an accepted residual risk (`PM-SEC-5`, § *Unix sockets*), and states that without the opt-in no job receives `DOCKER_HOST`/`DOCKER_CONFIG`/`TESTCONTAINERS_*` — that environment policy is the runtime's, not the launcher's, which passes the environment it is handed unchanged by design. `pm-exec` cannot change the kernel's ABI. |
+| 3 | Hard links to a denied socket bypass the hole | **Partially fixed**: `overlaps` now compares inode identity (`Files.isSameFile`) as well as resolved path, so a direct symbolic *or hard* link to a denied path in an enumerated directory gets no rule. The alias placed *inside a subtree covered by another read rule* cannot be excluded by enumeration; that is inherent to Landlock's path-based recursive grants and pre-exists for `<PM_MCP_BASE>`'s files, and is the same accepted same-user residual surface. |
+| 4 | Concurrent swap between the check and `openPath` (TOCTOU) | **Mitigated**: the overlap check is re-evaluated (`reopensDenied`) immediately before each rule is created, so a swapped path is caught. Closing the final sub-`open` window would need an `fstat`-on-fd native call; the residual lies in the accepted same-user boundary and matches the pre-existing single-base implementation, which also enumerates then opens. |
+| 5 | An older `pm-exec` binary refuses repeated `--deny-read` | **Documented**: `pm-exec` and the runtime ship as one release of the same installation; `package-info` now states that a launcher older than the repeatable flag refuses a second `--deny-read`, so the two are upgraded together. No runtime-side capability detection is needed for a same-release binary, and the flag is additive for a single path. |
+

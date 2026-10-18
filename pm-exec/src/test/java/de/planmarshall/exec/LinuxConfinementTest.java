@@ -53,7 +53,11 @@ class LinuxConfinementTest {
     }
 
     private Command.Launch launch(List<Path> denied, List<Path> writes) {
-        return new Command.Launch(writes, List.of(jobDir), denied, List.of("/usr/bin/true"));
+        return launch(denied, writes, List.of(jobDir));
+    }
+
+    private Command.Launch launch(List<Path> denied, List<Path> writes, List<Path> reads) {
+        return new Command.Launch(writes, reads, denied, List.of("/usr/bin/true"));
     }
 
     @Test
@@ -87,6 +91,17 @@ class LinuxConfinementTest {
         assertEquals(-1L, kernel.accessOf(root.resolve("run/user/1000")));
         assertEquals(0xdL, kernel.accessOf(root.resolve("run/user/1000/systemd")));
         assertEquals(0xdL, kernel.accessOf(root.resolve("usr")));
+    }
+
+    @Test
+    @DisplayName("withholds an explicit read or write that would reopen a denied path, keeps the base")
+    void withholdsExplicitReopening() throws Exception {
+        var kernel = new FakeKernel(3);
+
+        new LinuxConfinement(kernel, root).apply(launch(List.of(base, bus), List.of(bus), List.of(bus, jobDir)));
+
+        assertEquals(-1L, kernel.accessOf(bus));
+        assertEquals(0xdL, kernel.accessOf(jobDir));
     }
 
     @Test

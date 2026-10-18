@@ -10,7 +10,9 @@
 package de.planmarshall.exec;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,7 +25,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-@DisplayName("ReadSet: everything except PM_MCP_BASE")
+@DisplayName("ReadSet: everything except the read-denied paths")
 class ReadSetTest {
 
     @TempDir
@@ -133,6 +135,25 @@ class ReadSetTest {
         }
 
         @Test
+        @DisplayName("a hard link to a denied path in an enumerated directory gets no rule")
+        void hardLink() throws Exception {
+            var alias = Files.createLink(root.resolve("home/alice/bus-alias"), bus);
+
+            var readSet = ReadSet.enumerate(root, List.of(base, bus));
+
+            assertFalse(readSet.contains(alias));
+            assertEquals(List.of(
+                    root.resolve("bin"),
+                    root.resolve("etc"),
+                    root.resolve("home/bob"),
+                    root.resolve("home/alice/.bashrc"),
+                    root.resolve("home/alice/projects"),
+                    root.resolve("home/alice/to-file"),
+                    root.resolve("run/user/1000/docker.sock"),
+                    root.resolve("run/user/1000/systemd")), readSet);
+        }
+
+        @Test
         @DisplayName("stops at a missing directory on the path (fail closed)")
         void missingBase() throws Exception {
             var readSet = ReadSet.enumerate(root, List.of(root.resolve("home/carol/.plan-marshall-mcp")));
@@ -180,6 +201,49 @@ class ReadSetTest {
             var relative = Path.of("nowhere/at/all");
 
             assertEquals(relative, ReadSet.canonical(relative));
+        }
+    }
+
+    @Nested
+    @DisplayName("reopensDenied")
+    class ReopensDenied {
+
+        @Test
+        @DisplayName("withholds a rule on a denied socket")
+        void socket() {
+            assertTrue(ReadSet.reopensDenied(bus, List.of(base, bus)));
+        }
+
+        @Test
+        @DisplayName("withholds a rule above a denied socket")
+        void above() {
+            assertTrue(ReadSet.reopensDenied(root.resolve("run"), List.of(base, bus)));
+        }
+
+        @Test
+        @DisplayName("withholds a hard link to a denied socket")
+        void hardLink() throws Exception {
+            var alias = Files.createLink(root.resolve("home/alice/bus-alias"), bus);
+
+            assertTrue(ReadSet.reopensDenied(alias, List.of(base, bus)));
+        }
+
+        @Test
+        @DisplayName("keeps a rule inside the base, the documented exception")
+        void insideBase() {
+            assertFalse(ReadSet.reopensDenied(base.resolve("run"), List.of(base, bus)));
+        }
+
+        @Test
+        @DisplayName("keeps a rule on the base itself")
+        void baseItself() {
+            assertFalse(ReadSet.reopensDenied(base, List.of(base, bus)));
+        }
+
+        @Test
+        @DisplayName("withholds nothing when the base is the only denied path")
+        void singleDeniedPath() {
+            assertFalse(ReadSet.reopensDenied(bus, List.of(base)));
         }
     }
 }

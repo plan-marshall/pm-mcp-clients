@@ -32,13 +32,18 @@
  * of a worker below {@code <PM_MCP_BASE>/run/jobs/}, or the runtime socket {@code <PM_MCP_BASE>/run/runtime.sock}
  * of a job relay. From Landlock ABI 9 the read set also governs {@code connect(2)} to pathname Unix sockets
  * ({@code LANDLOCK_ACCESS_FS_RESOLVE_UNIX}): a socket outside the read and write sets is unreachable, so the
- * runtime socket needs its own {@code --read} rule. Below ABI 9 every pathname socket stays reachable.</li>
+ * runtime socket needs its own {@code --read} rule. Below ABI 9 every pathname socket stays reachable.
+ * A {@code --read} or {@code --write} rule that would reopen a denied path other than {@code <PM_MCP_BASE>}
+ * is withheld, since Landlock combines grants: the job-private directory and the daemon store below the base
+ * stay the only explicit exceptions.</li>
  * <li>{@code --deny-read} names a path kept out of the read set; it is repeatable. The runtime passes
  * {@code <PM_MCP_BASE>} first and then, without the container-engine opt-in, the session-bus socket
  * ({@code /run/user/<uid>/bus}) and the container engine's sockets ({@code /var/run/docker.sock},
  * {@code /run/docker.sock}, {@code $XDG_RUNTIME_DIR/docker.sock}, and the path of a {@code unix:}
  * {@code DOCKER_HOST}). The read set is everything except them, built by enumerating the siblings of
- * every denied path ({@link de.planmarshall.exec.ReadSet}). At least one is mandatory on Linux.</li>
+ * every denied path ({@link de.planmarshall.exec.ReadSet}). At least one is mandatory on Linux. A launcher
+ * older than the repeatable flag refuses a second {@code --deny-read}, so the runtime and this binary ship
+ * as one release.</li>
  * <li>{@code --} ends the options; the next argument is the absolute path of the program, never
  * searched in {@code PATH}, and the rest is its argument vector.</li>
  * </ul>

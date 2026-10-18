@@ -20,8 +20,10 @@ import java.util.List;
  * higher, a ruleset with the write set and the enumerated read set. ABI 1 applies no ruleset
  * ({@code partial(abi=1)}), no Landlock records {@code unavailable}.
  * <p>
- * A rule whose path cannot be opened is skipped, which only withholds access. Any other failure
- * after the ABI probe aborts the launch: a job never runs unconfined where Landlock is available.
+ * A rule whose path cannot be opened is skipped, which only withholds access; a rule that would
+ * reopen a denied path other than {@code <PM_MCP_BASE>} is withheld the same way (see
+ * {@link ReadSet#reopensDenied}). Any other failure after the ABI probe aborts the launch: a job
+ * never runs unconfined where Landlock is available.
  *
  * @param kernel the native calls
  * @param root   the filesystem root the read set is enumerated from, {@code /} in production
@@ -52,8 +54,8 @@ record LinuxConfinement(Kernel kernel, Path root) {
         int abi = confinement.landlockAbi();
         int ruleset = kernel.createRuleset(Landlock.handledAccess(abi));
         try {
-            addRules(ruleset, launch.writePaths(), abi, true);
-            addRules(ruleset, readSet, abi, false);
+            addRules(ruleset, launch.writePaths(), abi, true, deniedPaths);
+            addRules(ruleset, readSet, abi, false, deniedPaths);
             kernel.restrictSelf(ruleset);
         } finally {
             kernel.close(ruleset);
@@ -61,8 +63,14 @@ record LinuxConfinement(Kernel kernel, Path root) {
         return confinement;
     }
 
-    private void addRules(int ruleset, List<Path> paths, int abi, boolean write) throws NativeCallException {
+    private void addRules(int ruleset, List<Path> paths, int abi, boolean write, List<Path> deniedPaths)
+            throws NativeCallException {
         for (var path : paths) {
+            if (ReadSet.reopensDenied(path, deniedPaths)) {
+                // An explicit --read/--write inside <PM_MCP_BASE> is how the runtime names the
+                // job-private directory and the daemon store; any other denied path stays withheld.
+                continue;
+            }
             var fd = kernel.openPath(path);
             if (fd.isEmpty()) {
                 continue;
