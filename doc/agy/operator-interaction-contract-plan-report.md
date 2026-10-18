@@ -259,6 +259,11 @@ The gate validated the OpenRewrite formatting, the licence headers, the enforcer
 validation, and the complete unit-test reactor, and ended with a clean `git status` (no reformatted
 files).
 
+The same command was re-run under Linux in a `eclipse-temurin:25-jdk` container both as `verify` and
+as `verify -Pintegration-tests`; both completed green in about two minutes, so the CI hangs observed
+on a few GitHub-hosted runners (a job stuck in its Maven step until the 20-minute cap) are an
+environment issue, not a defect of the change.
+
 ---
 
 ## 8. Cognitive Personas Applied
