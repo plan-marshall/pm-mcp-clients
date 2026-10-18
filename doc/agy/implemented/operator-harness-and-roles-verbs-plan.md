@@ -65,17 +65,17 @@ This plan executes concurrently in Wave 7 alongside:
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/operator-harness-and-roles-verbs /Users/oliver/git/worktrees/pm-mcp-clients-operator-harness-and-roles-verbs main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for Picocli verbs, resource records, and Jackson streaming codecs
   - `persona-security-expert` for `PM-SEC-3` operator gate, binary digest computation, and confirmation boundaries
   - `persona-documenter` for documentation, ADRs, and roadmap updates
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/operator-harness-and-roles-verbs-plan-report.md`), initial plan moved to `doc/agy/implemented/operator-harness-and-roles-verbs-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (NEVER use `skip-bot-review`), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/operator-harness-and-roles-verbs-plan-report.md` by orchestrator session.
+- [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/operator-harness-and-roles-verbs-plan-report.md`), initial plan moved to `doc/agy/implemented/operator-harness-and-roles-verbs-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 6. PR opened (NEVER use `skip-bot-review`), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/operator-harness-and-roles-verbs-plan-report.md` by orchestrator session.
 
 ---
 
