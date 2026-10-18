@@ -23,8 +23,8 @@ sibling binaries that a binary starts by absolute path in its own version direct
 - **Runtime discovery through the switched link (`pm-operator`)**: `OperatorLayout` wraps the resolver as the
   operator sees it (`runtimeExecutable()`, `relayExecutable()`, `version()`, `runtimeUpgradable()`), and
   `OperatorContext` supplies the resolved `pm-mcpd` to the on-demand start. After the links are switched to a
-  new release, both binaries resolve and start the new version's `pm-mcpd`; the runtime upgrade of an
-  installation that is not runtime-upgradable is refused from the client with its reason.
+  new release, both binaries resolve and start the new version's `pm-mcpd`. The runtime owns the upgrade
+  refusal (it knows the two `PATH` links); the operator's layout exposes `runtimeUpgradable()` for it.
 - **Refusals (`PM-SEC-4`)**: a layout that cannot be resolved (unknown executable, executable outside a `bin/`
   directory, dangling link) and an installation directory or root writable by group or others are refused.
 - **Tests**: `InstallationLayoutTest` (17 unit tests in `pm-api`), the staged multi-version
@@ -52,16 +52,16 @@ parent of the `bin/` directory that holds the running executable, it also resolv
 | `pm-api` | `src/main/java/de/planmarshall/api/runtime/PmMcpHome.java` | **Removed**: superseded by `InstallationLayout` (one resolver; no duplicate layout logic). |
 | `pm-operator` | `src/main/java/de/planmarshall/operator/layout/OperatorLayout.java` | The layout as the operator sees it: `current`/`resolve`, `runtimeExecutable()` (`<PM_MCP_HOME>/bin/pm-mcpd`), `relayExecutable()`, `version()`, `installed()`, `runtimeUpgradable()`/`upgradabilityRefusal()`. |
 | `pm-operator` | `src/main/java/de/planmarshall/operator/layout/package-info.java` | Package documentation. |
-| `pm-operator` | `src/main/java/de/planmarshall/operator/OperatorContext.java` | Builds the runtime client's executable source from `OperatorLayout`; exposes `installationUpgradabilityRefusal()`. |
-| `pm-operator` | `src/main/java/de/planmarshall/operator/RuntimeCommand.java` | `runtime upgrade` refuses locally with its reason when the operator runs from a versioned installation that is not runtime-upgradable (deferring to the runtime otherwise). |
+| `pm-operator` | `src/main/java/de/planmarshall/operator/OperatorContext.java` | Builds the runtime client's executable source from `OperatorLayout` (the resolved `pm-mcpd` of the operator's own installation). |
 
 ### 2.2 Tests
 
 | Module | File | Purpose |
 |---|---|---|
-| `pm-api` | `src/test/java/de/planmarshall/api/layout/InstallationLayoutTest.java` | 17 tests: environment and executable resolution, a chain of two symlinks, the versioned directory and its installation root, the `versions/<version>` nesting, `resolveHome`/`resolveVersion`, sibling location, and the refusals (unknown executable, root, outside `bin/`, dangling link, group-/other-writable home and root) plus runtime upgradability. |
+| `pm-api` | `src/test/java/de/planmarshall/api/layout/InstallationLayoutTest.java` | 30 tests: environment and executable resolution, a chain of two symlinks, the versioned directory and its installation root, the `versions/<version>` nesting, `resolveHome`/`resolveVersion`, the version-token grammar (13 parameterized cases), sibling location, and the refusals (unknown executable, root, outside `bin/`, dangling link, group-/other-writable home and root) plus runtime upgradability. |
 | `pm-api` | `src/test/java/de/planmarshall/api/runtime/DetachedStartTest.java` | Uses `InstallationLayout.ENV_HOME` (constant moved). |
 | `pm-api` | `src/test/java/de/planmarshall/api/runtime/PmMcpHomeTest.java` | **Removed**: its resolution coverage lives in `InstallationLayoutTest`. |
+| `pm-operator` | `src/test/java/de/planmarshall/operator/layout/OperatorLayoutTest.java` | 5 tests: the runtime/relay siblings and the version of a staged installation, the running process's layout, and the refusals of an unversioned, an environment-named, and an insecure installation. |
 | `pm-operator` | `src/test/java/de/planmarshall/operator/layout/SwitchedSymlinkLayoutIT.java` | 5 staged integration tests: two versioned directories and two `PATH` links; both entry binaries resolve the layout and start the `pm-mcpd` of the same version directory by absolute path; after an atomic link switch both resolve and start the new version; a lookalike `pm-mcpd`/`pm-exec` earlier on `PATH` is never started; an unversioned installation and a group-/other-writable root are refused. |
 
 ### 2.3 Documentation & archival
@@ -89,7 +89,7 @@ its destination:
 | REQ | `PM-ARCH-1` bullet 17 | The four binaries of one release are installed side by side and start each other by path, on an identical release version | `InstallationLayout.locateSibling`/`binary`; `InstallationLayoutTest.Siblings`; `SwitchedSymlinkLayoutIT.resolvesAndStartsSibling` | Phase 2-4 |
 | REQ | `PM-ARCH-1` bullet 13-14 (direct file reads, only `runtime-start.lock`) | The CLI binaries read only the closed list and take no lock but `runtime-start.lock` | `out of slice`: the layout adds no file read and no lock; `RuntimeAccess` still takes only `runtime-start.lock` | — |
 | REQ | `PM-ARCH-6` (filesystem persistence; the installation holds no store) | Durable state lives in `<PM_MCP_BASE>`; the installation directory holds no store or configuration | `out of slice` (no store touched): `InstallationLayout` resolves paths only and reads no store; asserted by the class contract | — |
-| REQ | `PM-ARCH-7` (upgrade & version mismatch) | The installation is upgraded by the runtime; an installation that is not runtime-upgradable is refused with its reason | `InstallationLayout.runtimeUpgradable`/`upgradabilityRefusal`; `OperatorLayout`; `OperatorContext.installationUpgradabilityRefusal`; `RuntimeCommand` upgrade guard | Phase 3, 5 |
+| REQ | `PM-ARCH-7` (upgrade & version mismatch) | The installation is upgraded by the runtime; an installation that is not runtime-upgradable is refused with its reason | `InstallationLayout.runtimeUpgradable`/`upgradabilityRefusal`; `OperatorLayout.runtimeUpgradable`/`upgradabilityRefusal`; `InstallationLayoutTest.Upgradability`, `OperatorLayoutTest` (the runtime owns the upgrade itself) | Phase 3, 5 |
 | REQ | `PM-IMPL-7` (locks; the CLI takes no store lock) | Every store lock is the runtime's; the CLI's only lock is `runtime-start.lock` | `out of slice`: unchanged; the layout takes no lock | — |
 | REQ | `PM-DIST-1` (single version authority) | One release is one version; a binary starts siblings of its own version directory | `InstallationLayout.version`/`locateSibling`; `InstallationLayoutTest.installationRootHoldsVersions`; `SwitchedSymlinkLayoutIT.resolvesNewInstallationAfterSwitch` | Phase 2, 4 |
 | SPEC | CLI & Security § Installation Layout (Installation directory) | `<PM_MCP_HOME>/` holds `bin/pm-mcp`, `bin/pm-operator`, `bin/pm-mcpd`, `bin/pm-exec`, read-only after installation | `InstallationLayout` binary-name constants and `binary()` | Phase 2 |
@@ -108,10 +108,12 @@ The package row is not split or extended: the matrix closes within `pm-api:…la
 
 ### 3.2 Unit tests
 
-`./mvnw test -pl pm-api,pm-operator` - **BUILD SUCCESS**: `pm-api` 441 tests, `pm-operator` 422 tests,
+`./mvnw test -pl pm-api,pm-operator` - **BUILD SUCCESS**: `pm-api` 454 tests, `pm-operator` 428 tests,
 0 failures, 0 errors.
 
-Key new suite: `InstallationLayoutTest` - 17 tests, 0 failures.
+Key new suites: `InstallationLayoutTest` - 30 tests (including 13 parameterized version-token cases),
+`OperatorLayoutTest` - 5 tests; both 0 failures. New-code line coverage of the core classes is 90.2%
+(`InstallationLayout` 88.7%, `InstallationLayoutException` 100%, `RuntimeAccess` 100%, `OperatorLayout` 100%).
 
 ### 3.3 Integration tests
 
@@ -164,9 +166,10 @@ Result: **BUILD SUCCESS** (`pm-api`, `pm-exec`, `pm-relay`, `pm-operator`, `pm-m
   the home as the parent of the `bin/` directory that holds the running executable, so both shapes resolve
   identically; the staged IT uses the specification's shape and a unit test pins the `versions/<version>`
   nesting.
-- **Client-side vs runtime refusal.** The runtime (`pm-mcp-core`) owns the upgrade; the client checks its own
-  installation's upgradability only when the operator runs from a versioned installation and otherwise defers
-  to the runtime, so a development checkout or a test JVM is never blocked.
+- **Runtime-owned refusal.** The runtime (`pm-mcp-core`) owns the upgrade and its `upgrade_not_possible`
+  refusal, because it knows the two `PATH` links; the client's `InstallationLayout`/`OperatorLayout` expose
+  `runtimeUpgradable()`/`upgradabilityRefusal()` for it, and no client-side pre-check duplicates the runtime's
+  decision.
 - **Out of slice.** `PM-ARCH-6`, `PM-IMPL-7`, and `PM-WATCH-MOD-2` are recorded `out of slice` above: the
   layout holds no store, takes no lock, and does not assemble the release (that is the runtime/assembly side);
   `InstallationLayout` only names the four binaries.
@@ -175,5 +178,13 @@ Result: **BUILD SUCCESS** (`pm-api`, `pm-exec`, `pm-relay`, `pm-operator`, `pm-m
 
 ## 6. Review Responses
 
-Findings from the review bots are resolved after the pull request is opened (runbook Step 6); this section is
-updated with each disposition.
+Findings from the review bots and SonarCloud are resolved after the pull request is opened (runbook Step 6).
+
+| # | Source | Finding | Disposition |
+|---|---|---|---|
+| 1 | SonarCloud `java:S5998` (MAJOR BUG) | The version regular expression `\d+(\.\d+)*([-+]…)?` repeats a repetition and can overflow the stack on a long input | **Fixed**: the pattern is replaced by a linear parser (`numericPrefixEnd`/`isVersionSuffix`), which does not backtrack |
+| 2 | SonarCloud `java:S1845` (BLOCKER) | The field `version` clashes with the constant `VERSION` | **Fixed**: the constant is gone with the pattern; the accessor stays `version()` |
+| 3 | SonarCloud `java:S1192` (CRITICAL) | The literal `"the installation root "` is repeated four times | **Fixed**: extracted to the `INSTALLATION_ROOT` constant |
+| 4 | SonarCloud `java:S7467` (MINOR) | Unused exception binding in two `catch` blocks | **Fixed**: unnamed `_` patterns |
+| 5 | SonarCloud quality gate | `new_coverage` was 66.3% (minimum 80%) | **Fixed**: `OperatorLayoutTest` and the parameterized version-token cases raise new-code line coverage to 90.2% on the core classes |
+| 6 | Self-review (code-reviewer lens) | The client-side `runtime upgrade` pre-check (`OperatorContext.installationUpgradabilityRefusal` + the `RuntimeCommand` guard) is unreachable: a versioned installation resolved from the binary is always upgradable, so the branch was dead and untested | **Removed**: the runtime owns the upgrade refusal; `OperatorLayout` keeps `runtimeUpgradable()` as the operator-facing contract |

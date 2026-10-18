@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /**
  * The installation layout seen from a client binary (PM-ARCH-1, PM-ARCH-7, PM-DIST-1): the
@@ -67,8 +66,8 @@ public final class InstallationLayout {
     /** File name of the job launcher binary. */
     public static final String LAUNCHER_BINARY = "pm-exec";
 
-    /** A versioned installation directory is named by a version such as {@code 1.2.3} or {@code 0.1.0-SNAPSHOT}. */
-    private static final Pattern VERSION = Pattern.compile("\\d+(\\.\\d+)*([-+][0-9A-Za-z][0-9A-Za-z.+-]*)?");
+    /** Prefix of the runtime-upgradability refusals that name the installation root. */
+    private static final String INSTALLATION_ROOT = "the installation root ";
 
     private static final Set<PosixFilePermission> BROADER_THAN_OWNER = Set.of(PosixFilePermission.GROUP_WRITE,
             PosixFilePermission.OTHERS_WRITE);
@@ -188,7 +187,69 @@ public final class InstallationLayout {
             return Optional.empty();
         }
         var name = directory.getFileName().toString();
-        return VERSION.matcher(name).matches() ? Optional.of(name) : Optional.empty();
+        return isVersion(name) ? Optional.of(name) : Optional.empty();
+    }
+
+    /**
+     * A version is one or more dot-separated non-empty digit segments, optionally followed by a
+     * {@code -} or {@code +} suffix of letters, digits, dots, hyphens, and plus signs, as in
+     * {@code 1.2.3} or {@code 0.1.0-SNAPSHOT}. Parsed in one linear pass rather than by a nested
+     * regular expression, which can backtrack catastrophically on a long menu of dots.
+     */
+    private static boolean isVersion(String name) {
+        var index = numericPrefixEnd(name);
+        if (index < 0) {
+            return false;
+        }
+        if (index == name.length()) {
+            return true;
+        }
+        var separator = name.charAt(index);
+        return (separator == '-' || separator == '+') && isVersionSuffix(name.substring(index + 1));
+    }
+
+    /**
+     * @param name the directory name
+     * @return the index after one or more dot-separated non-empty digit segments, or {@code -1}
+     *         when the name does not start with one
+     */
+    private static int numericPrefixEnd(String name) {
+        var index = 0;
+        while (index < name.length()) {
+            var start = index;
+            while (index < name.length() && Character.isDigit(name.charAt(index))) {
+                index++;
+            }
+            if (index == start) {
+                return -1;
+            }
+            if (index == name.length()) {
+                return index;
+            }
+            if (name.charAt(index) != '.') {
+                return index;
+            }
+            index++;
+        }
+        return -1;
+    }
+
+    /**
+     * @param suffix the text after the version separator
+     * @return {@code true} for a non-empty run of letters, digits, dots, hyphens, and plus signs
+     */
+    private static boolean isVersionSuffix(String suffix) {
+        if (suffix.isEmpty()) {
+            return false;
+        }
+        for (var index = 0; index < suffix.length(); index++) {
+            var character = suffix.charAt(index);
+            if (!Character.isLetterOrDigit(character) && character != '.' && character != '-'
+                    && character != '+') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean writableByOthers(Path directory) {
@@ -198,7 +259,7 @@ public final class InstallationLayout {
         try {
             return !Collections.disjoint(Files.getPosixFilePermissions(directory, LinkOption.NOFOLLOW_LINKS),
                     BROADER_THAN_OWNER);
-        } catch (IOException | UnsupportedOperationException e) {
+        } catch (IOException | UnsupportedOperationException _) {
             return false;
         }
     }
@@ -276,16 +337,16 @@ public final class InstallationLayout {
             return Optional.of("the installation directory " + home + " has no installation root");
         }
         if (Files.isSymbolicLink(installRoot)) {
-            return Optional.of("the installation root " + installRoot + " is a symbolic link");
+            return Optional.of(INSTALLATION_ROOT + installRoot + " is a symbolic link");
         }
         if (!Files.isDirectory(installRoot, LinkOption.NOFOLLOW_LINKS)) {
-            return Optional.of("the installation root " + installRoot + " is not a directory");
+            return Optional.of(INSTALLATION_ROOT + installRoot + " is not a directory");
         }
         if (!Files.isWritable(installRoot)) {
-            return Optional.of("the installation root " + installRoot + " is not writable by the current user");
+            return Optional.of(INSTALLATION_ROOT + installRoot + " is not writable by the current user");
         }
         if (writableByOthers(installRoot)) {
-            return Optional.of("the installation root " + installRoot + " is writable by group or others");
+            return Optional.of(INSTALLATION_ROOT + installRoot + " is writable by group or others");
         }
         return Optional.empty();
     }

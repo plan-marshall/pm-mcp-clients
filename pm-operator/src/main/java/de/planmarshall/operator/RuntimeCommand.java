@@ -258,13 +258,6 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private int executeUpgrade(PrintWriter out) throws IOException {
-            var refusal = context.installationUpgradabilityRefusal();
-            if (refusal.isPresent()) {
-                var err = spec.commandLine().getErr();
-                err.println("runtime   upgrade not possible: " + refusal.get());
-                err.flush();
-                return 1;
-            }
             var body = new LinkedHashMap<String, Object>();
             if (version != null) body.put("version", version);
             body.put("when", drain ? "drain" : "now");

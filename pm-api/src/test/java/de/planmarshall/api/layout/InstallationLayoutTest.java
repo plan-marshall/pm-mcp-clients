@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * The installation layout of the client binaries: the resolution of {@code PM_MCP_HOME} through the
@@ -152,6 +154,23 @@ class InstallationLayoutTest {
 
             assertEquals(installation, InstallationLayout.resolveHome(Map.of(), Optional.of(binaryOf(installation))));
             assertEquals(Optional.of(OLD), InstallationLayout.resolveVersion(binaryOf(installation)));
+        }
+    }
+
+    @Nested
+    @DisplayName("Version tokens")
+    class VersionTokens {
+
+        @ParameterizedTest(name = "\"{0}\" is a version: {1}")
+        @CsvSource({"1.2.3, true", "1, true", "0.1.0-SNAPSHOT, true", "1.2.3+build.4, true", "1-2, true",
+                "1.2.3x, false", "1.2.3!, false", "1.2.3-SNAP!, false", "1-, false", "latest, false", "1., false",
+                "1..2, false", ".1, false"})
+        void recognizesVersions(String name, boolean versioned) throws Exception {
+            var installation = stage("install", name);
+
+            var home = InstallationLayout.resolve(Map.of(), Optional.of(binaryOf(installation)));
+
+            assertEquals(versioned, home.version().isPresent());
         }
     }
 
