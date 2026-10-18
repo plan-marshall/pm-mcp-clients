@@ -64,7 +64,7 @@ This plan executes concurrently in Wave 7 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/operator-harness-and-roles-verbs /Users/oliver/git/worktrees/pm-mcp-clients-operator-harness-and-roles-verbs main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/operator-harness-and-roles-verbs /Users/oliver/git/worktrees/pm-mcp-clients-operator-harness-and-roles-verbs main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for Picocli verbs, resource records, and Jackson streaming codecs
   - `persona-security-expert` for `PM-SEC-3` operator gate, binary digest computation, and confirmation boundaries
