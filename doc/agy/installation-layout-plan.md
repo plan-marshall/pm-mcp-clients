@@ -56,7 +56,7 @@ This plan executes concurrently in Wave 6 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/installation-layout /Users/oliver/git/worktrees/pm-mcp-clients-installation-layout main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/installation-layout /Users/oliver/git/worktrees/pm-mcp-clients-installation-layout main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for path resolution, symlink traversal, and unit tests
   - `persona-security-expert` for symlink path traversal safety, permission checks, and absolute path confinement
