@@ -20,7 +20,7 @@ Sibling epic:: `pm-mcp-core-m2-m4` in `pm-mcp-core`, run in parallel; an epic or
 
 In scope:: every package of the index except those named below.
 Not in scope:: `cli-design` and `web-design`: design work, run directly in Claude Code sessions without plan-marshall (each file's _How It Is Run_). The epic waits on them as on an outside dependency: a package that depends on one is parked until the index shows it `done`.
-Parked from the start:: `landlock-on-wsl2`: its dependency in the index is a machine the operator provides.
+Parked from the start:: `landlock-on-wsl2`: its dependency in the index is the first fully integrated run of the system and the operator's Windows machine with WSL2; the session that reaches that run tells the operator.
 
 [#order]
 == Order and Priority

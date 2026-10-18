@@ -4,8 +4,9 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `landlock-on-wsl2`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 4
-Where:: pm-exec (measurement)
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 7
+Where:: pm-exec (measurement), run by the operator on their Windows machine with WSL2
+Trigger:: the first fully integrated run of the system (integration testing); the session that reaches it tells the operator before the measurement starts
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What

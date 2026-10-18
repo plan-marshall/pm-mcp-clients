@@ -13,7 +13,7 @@ Status and dependencies:: in the link:../README.adoc#packages[index], the only p
 
 The package implements the specification of the languages and the message catalogue listed under _Trace_. A statement of it that the implementation proves wrong is corrected in `plan-marshall-documentation` in the same plan (link:../README.adoc#how[How to Work a Package]).
 
-* *The message format first*: how the catalogue formats its arguments is an open question (link:../../../../plan-marshall-documentation/doc/discussions/open-questions.adoc#message-format[Open Questions, Message Format]); the package proposes the format, the operator decides it, and the decision is written into the specification and the question removed, as a correction task of the documentation pull request, before the packs are written.
+* *The message format*: the catalogue evaluates the subset of the ICU message syntax that its packs use (named arguments, `plural`, `select`) in `pm-api`, with no formatting library.
 * The message catalogue: keys `<area>.<view>.<element>.<part>`, one pack per area and locale (`messages/<area>.<locale>.properties`, UTF-8), the lookup by key, locale and arguments.
 * English complete as the base, German from the start, addressing the operator with _du_.
 * The number format of tokens as link:../../design/shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers] defines it, with its keys `common.tokens.*`; a test formats every example of that section in both languages.
@@ -30,4 +30,4 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 == Done When
 
-The message format is decided and written into the specification; each build check has a test that makes it fail; `pm-operator` prints its texts from the catalogue in both languages; the mock runtime answers both messages routes with the packs of each language, and a test asserts it.
+The message format is the subset of the ICU message syntax named above; each build check has a test that makes it fail; `pm-operator` prints its texts from the catalogue in both languages; the mock runtime answers both messages routes with the packs of each language, and a test asserts it.
