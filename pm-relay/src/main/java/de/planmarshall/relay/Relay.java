@@ -44,6 +44,8 @@ final class Relay {
     /** JSON-RPC error code of the closed code {@code runtime_unavailable}. */
     static final int RUNTIME_UNAVAILABLE_CODE = -32000;
     static final String RUNTIME_UNAVAILABLE = "runtime_unavailable";
+    /** JSON-RPC parse error (JSON-RPC 2.0): the line is not JSON at all. */
+    static final int PARSE_ERROR = -32700;
     static final int INVALID_REQUEST = -32600;
     static final int INTERNAL_ERROR = -32603;
     static final String MCP_PATH = "/mcp";
@@ -111,12 +113,16 @@ final class Relay {
      * @param line one JSON-RPC message
      */
     void accept(String line) {
-        Map<String, Object> message;
+        Object tree;
         try {
-            message = JsonTree.asObject(JsonTree.parse(line));
+            tree = JsonTree.parse(line);
         } catch (IOException e) {
-            message = null;
+            // JSON-RPC 2.0 keeps the parse failure (-32700) apart from a valid request object (-32600)
+            diagnostic("dropping a line that is no JSON");
+            emit(error(null, PARSE_ERROR, "parse_error"));
+            return;
         }
+        var message = JsonTree.asObject(tree);
         if (message == null) {
             diagnostic("dropping a line that is no JSON-RPC object");
             emit(error(null, INVALID_REQUEST, "invalid_request"));
