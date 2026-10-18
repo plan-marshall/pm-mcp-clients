@@ -43,8 +43,8 @@ import java.util.Set;
  * (not named by {@code PM_MCP_HOME}), its directory is named by a version, and its installation
  * root is a user-writable directory (see {@link #runtimeUpgradable()}). A layout that cannot be
  * resolved - an unknown executable, an executable outside a {@code bin/} directory, a dangling
- * link - and an installation directory writable by group or others are refused with an
- * {@link InstallationLayoutException} (PM-SEC-4).
+ * link - and an installation directory, its {@code bin/} directory, or its root writable by group
+ * or others are refused with an {@link InstallationLayoutException} (PM-SEC-4).
  */
 public final class InstallationLayout {
 
@@ -65,6 +65,10 @@ public final class InstallationLayout {
 
     /** File name of the job launcher binary. */
     public static final String LAUNCHER_BINARY = "pm-exec";
+
+    /** The four binaries of a release; a running executable is one of them (PM-ARCH-1). */
+    private static final Set<String> RELEASE_BINARIES = Set.of(CLIENT_BINARY, OPERATOR_BINARY, DAEMON_BINARY,
+            LAUNCHER_BINARY);
 
     /** Prefix of the runtime-upgradability refusals that name the installation root. */
     private static final String INSTALLATION_ROOT = "the installation root ";
@@ -91,8 +95,8 @@ public final class InstallationLayout {
      * @param executable  the running executable, if known
      * @return the layout
      * @throws InstallationLayoutException if neither the environment nor the executable names a
-     *                                     resolvable installation, or the installation is writable
-     *                                     by group or others
+     *                                     resolvable installation, or the installation or its
+     *                                     {@code bin/} directory is writable by group or others
      * @throws IOException                 if a symbolic link on the way cannot be read
      */
     public static InstallationLayout resolve(Map<String, String> environment, Optional<Path> executable)
@@ -106,7 +110,14 @@ public final class InstallationLayout {
         }
         var binary = executable.orElseThrow(() -> new InstallationLayoutException(
                 "Cannot resolve the installation: the running executable is unknown and " + ENV_HOME + " is not set"));
-        var bin = realPath(binary).getParent();
+        var real = realPath(binary);
+        var name = real.getFileName() == null ? null : real.getFileName().toString();
+        if (name == null || !RELEASE_BINARIES.contains(name)) {
+            throw new InstallationLayoutException("The running executable " + binary
+                    + " is not one of the binaries of an installation (" + CLIENT_BINARY + ", " + OPERATOR_BINARY
+                    + ", " + DAEMON_BINARY + ", " + LAUNCHER_BINARY + ")");
+        }
+        var bin = real.getParent();
         if (bin == null || !BIN_DIRECTORY.equals(bin.getFileName() == null ? null : bin.getFileName().toString())) {
             throw new InstallationLayoutException("The running executable " + binary + " does not lie in a "
                     + BIN_DIRECTORY + "/ directory of an installation");
@@ -117,9 +128,10 @@ public final class InstallationLayout {
                     "The running executable " + binary + " lies too high in the filesystem to name an installation");
         }
         var installRoot = home.getParent();
-        if (writableByOthers(home) || writableByOthers(installRoot)) {
+        if (writableByOthers(bin) || writableByOthers(home) || writableByOthers(installRoot)) {
             throw new InstallationLayoutException("Refusing the installation " + home
-                    + ": the installation directory is writable by group or others");
+                    + ": its " + BIN_DIRECTORY + "/ directory, the installation directory, or its root is writable"
+                    + " by group or others");
         }
         return layout(home, installRoot, true);
     }

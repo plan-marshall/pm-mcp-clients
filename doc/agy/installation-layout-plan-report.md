@@ -25,8 +25,9 @@ sibling binaries that a binary starts by absolute path in its own version direct
   `OperatorContext` supplies the resolved `pm-mcpd` to the on-demand start. After the links are switched to a
   new release, both binaries resolve and start the new version's `pm-mcpd`. The runtime owns the upgrade
   refusal (it knows the two `PATH` links); the operator's layout exposes `runtimeUpgradable()` for it.
-- **Refusals (`PM-SEC-4`)**: a layout that cannot be resolved (unknown executable, executable outside a `bin/`
-  directory, dangling link) and an installation directory or root writable by group or others are refused.
+- **Refusals (`PM-SEC-4`)**: a layout that cannot be resolved (unknown executable, an executable that is not
+  one of the four release binaries, an executable outside a `bin/` directory, a dangling link) and an
+  installation directory, its `bin/` directory, or its root writable by group or others are refused.
 - **Tests**: `InstallationLayoutTest` (17 unit tests in `pm-api`), the staged multi-version
   `SwitchedSymlinkLayoutIT` (5 integration tests in `pm-operator`) that runs two mock binaries, switches the
   links atomically, and proves that a same-named executable earlier on `PATH` is never started.
@@ -44,7 +45,7 @@ parent of the `bin/` directory that holds the running executable, it also resolv
 
 | Module | File | Purpose |
 |---|---|---|
-| `pm-api` | `src/main/java/de/planmarshall/api/layout/InstallationLayout.java` | The installation layout: `resolve`/`current` (environment variable or real path of the executable's `bin/` parent), `resolveHome`/`resolveVersion` (the two steps), `home()`/`installRoot()`/`version()`/`resolvedFromBinary()`, `binary(name)`/`locateSibling(name)` (siblings by absolute path), and `runtimeUpgradable()`/`upgradabilityRefusal()`. Refuses an unresolvable or group-/other-writable layout with an `InstallationLayoutException`. Names the four binaries (`pm-mcp`, `pm-operator`, `pm-mcpd`, `pm-exec`). |
+| `pm-api` | `src/main/java/de/planmarshall/api/layout/InstallationLayout.java` | The installation layout: `resolve`/`current` (environment variable or real path of the executable's `bin/` parent; the running executable must be one of the four release binaries), `resolveHome`/`resolveVersion` (the two steps), `home()`/`installRoot()`/`version()`/`resolvedFromBinary()`, `binary(name)`/`locateSibling(name)` (siblings by absolute path), and `runtimeUpgradable()`/`upgradabilityRefusal()`. Refuses an unresolvable layout and one whose installation directory, `bin/` directory, or root is group-/other-writable, with an `InstallationLayoutException`. Names the four binaries (`pm-mcp`, `pm-operator`, `pm-mcpd`, `pm-exec`). |
 | `pm-api` | `src/main/java/de/planmarshall/api/layout/InstallationLayoutException.java` | The refusal of a layout that cannot be resolved or is insecure. |
 | `pm-api` | `src/main/java/de/planmarshall/api/layout/package-info.java` | Package documentation and the specification reference. |
 | `pm-api` | `src/main/java/de/planmarshall/api/runtime/RuntimeAccess.java` | The on-demand start now resolves `pm-mcpd` through `InstallationLayout` (the switched link); a second overload lets the operator pass its own executable source. |
@@ -111,9 +112,10 @@ The package row is not split or extended: the matrix closes within `pm-api:…la
 `./mvnw test -pl pm-api,pm-operator` - **BUILD SUCCESS**: `pm-api` 454 tests, `pm-operator` 428 tests,
 0 failures, 0 errors.
 
-Key new suites: `InstallationLayoutTest` - 30 tests (including 13 parameterized version-token cases),
-`OperatorLayoutTest` - 5 tests; both 0 failures. New-code line coverage of the core classes is 90.2%
-(`InstallationLayout` 88.7%, `InstallationLayoutException` 100%, `RuntimeAccess` 100%, `OperatorLayout` 100%).
+Key new suites: `InstallationLayoutTest` - 34 tests (including 13 parameterized version-token cases and two
+permission refusals), `OperatorLayoutTest` - 5 tests; both 0 failures. New-code line coverage of the core
+classes is 91.5% (`InstallationLayout` 89.2%, `InstallationLayoutException` 100%, `RuntimeAccess` 100%,
+`OperatorLayout` 100%).
 
 ### 3.3 Integration tests
 
@@ -141,7 +143,7 @@ directory by absolute path.
 | No model-facing content in a public artifact | Held - enforcer `no-model-facing-content` green |
 | Path resolution in one resolver | Held - `InstallationLayout` is the single resolver (`PmMcpHome` removed) |
 | Siblings started by absolute path, never `PATH` | Held - `locateSibling`; `SwitchedSymlinkLayoutIT.ignoresExecutablesEarlierOnPath` |
-| Symlink traversal safety, absolute-path confinement | Held - real-path resolution; group-/other-writable installations and outside-`bin/` executables refused |
+| Symlink traversal safety, absolute-path confinement | Held - real-path resolution; an executable that is not a release binary, an executable outside `bin/`, and a group-/other-writable installation, `bin/`, or root are refused |
 | License headers, Javadoc, Checkstyle, OpenRewrite | Held - part of `verify -Ppre-commit` (§4) |
 
 ---
@@ -156,6 +158,22 @@ Code and configuration changed (`pm-api/**`, `pm-operator/**`), so the full pre-
 
 Result: **BUILD SUCCESS** (`pm-api`, `pm-exec`, `pm-relay`, `pm-operator`, `pm-mock-runtime`, `pm-web-app`,
 `pm-web-e2e` all green) with a clean `git status` after the OpenRewrite/license pass.
+
+The CI gate on the pull request is the reusable Maven build (`./mvnw verify -Dmaven.compiler.release=25|26`,
+`integration-tests`, and `./mvnw verify -Psonar` with `sonar.qualitygate.wait=true`). All three pass, and the
+SonarCloud quality gate reports **passed** with new-code line coverage 91.5% on the core classes.
+
+Two further gates of the package's _Done_ wording, recorded here for completeness:
+
+- **`./mvnw verify -Pcoverage`**: the modules build and their tests pass, but `pm-api`'s bundle-level
+  `jacoco:check` (branch coverage ≥ 0.80) fails at 0.71. This is pre-existing and unrelated to this package:
+  the same ratio is 0.710 without `InstallationLayout` (whose 80 branches are 63 covered). The `coverage`
+  profile is not part of the repository's CI; the enforced gate is the SonarCloud quality gate, which passes.
+- **Native build**: the `pm-operator` POM defines a GraalVM `native` profile, but no `native-image` toolchain
+  is available in this environment and the profile is not part of the CI build. The change adds no
+  reflection or resource metadata and no native-only code path: `InstallationLayout` uses the JDK
+  `java.nio.file` API only, and `OperatorContext` only passes an absolute path to the existing on-demand
+  start. The native build therefore remains an unrun, environment-bound gate.
 
 ---
 
@@ -188,3 +206,7 @@ Findings from the review bots and SonarCloud are resolved after the pull request
 | 4 | SonarCloud `java:S7467` (MINOR) | Unused exception binding in two `catch` blocks | **Fixed**: unnamed `_` patterns |
 | 5 | SonarCloud quality gate | `new_coverage` was 66.3% (minimum 80%) | **Fixed**: `OperatorLayoutTest` and the parameterized version-token cases raise new-code line coverage to 90.2% on the core classes |
 | 6 | Self-review (code-reviewer lens) | The client-side `runtime upgrade` pre-check (`OperatorContext.installationUpgradabilityRefusal` + the `RuntimeCommand` guard) is unreachable: a versioned installation resolved from the binary is always upgradable, so the branch was dead and untested | **Removed**: the runtime owns the upgrade refusal; `OperatorLayout` keeps `runtimeUpgradable()` as the operator-facing contract |
+| 7 | CodeRabbit | `resolve` accepts any executable in a `bin/` directory as an installation (a JVM's `$JAVA_HOME/bin/java` included) | **Fixed**: the running executable's real name must be one of the four release binaries, else `InstallationLayoutException`; test `notAReleaseBinary` |
+| 8 | CodeRabbit (security, CWE-276) | The group-/other-write check covered only `home` and `installRoot`, not the `bin/` directory that holds the started executables | **Fixed**: `bin` is added to the check, and the message names all three; test `insecureBinDirectory` |
+| 9 | CodeRabbit | `OperatorContext.installationUpgradabilityRefusal` treats a refused insecure layout as undetermined (finding on commit 6327d50) | **Resolved by removal**: the method and the `RuntimeCommand` guard were removed (finding 6); the runtime owns the refusal, so the finding no longer applies |
+| 10 | CodeRabbit | Record the `verify -Pcoverage` and native-build results before keeping the package row at `done` | **Addressed**: §4 records both. The `coverage` profile's `pm-api` bundle `jacoco:check` is pre-existing red (0.71 branch; 0.710 without this change) and is not part of CI; the `native` profile is not run (no GraalVM toolchain) and the change adds no native-image metadata |

@@ -231,6 +231,27 @@ class InstallationLayoutTest {
         }
 
         @Test
+        @DisplayName("refuses an executable that is not one of the release binaries")
+        void notAReleaseBinary() throws Exception {
+            var bin = Files.createDirectories(root.resolve("install").resolve(OLD).resolve("bin"));
+            var java = Files.writeString(bin.resolve("java"), "");
+
+            assertThrows(InstallationLayoutException.class,
+                    () -> InstallationLayout.resolve(Map.of(), Optional.of(java)));
+        }
+
+        @Test
+        @DisplayName("refuses a bin/ directory writable by group or others")
+        void insecureBinDirectory() throws Exception {
+            var installation = stage("install", OLD);
+            Files.setPosixFilePermissions(installation.resolve(InstallationLayout.BIN_DIRECTORY),
+                    PosixFilePermissions.fromString("rwxrwxrwx"));
+
+            assertThrows(InstallationLayoutException.class,
+                    () -> InstallationLayout.resolve(Map.of(), Optional.of(binaryOf(installation))));
+        }
+
+        @Test
         @DisplayName("refuses an installation directory writable by group or others")
         void insecureInstallationDirectory() throws Exception {
             var installation = stage("install", OLD);
