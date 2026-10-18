@@ -21,10 +21,12 @@ they trace to:
   malformed `stdin` line while the relay keeps relaying valid requests.
 - **`pm-operator` (`PmOperatorProcessIT`)** — the terminal client and operator verbs as a real process. New cases
   pin the runtime-free verbs (`--version`, `--help`) as exit-`0` and zero-footprint under `PM_MCP_BASE`, the
-  coding-agent host detection (`PM-SEC-3`, exit code `4`, host-named diagnostic) for every host signal
-  (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) across verbs, and the interactive-terminal
-  gate of the inspection verbs (`config`, `questions`, `settings`). The existing `status`-without-runtime case
-  already covers the third runtime-free verb.
+  coding-agent host detection (`PM-SEC-3`, exit code `4`, host-named diagnostic) for one representative marker
+  per host (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_HOME`) across two verbs, and the
+  interactive-terminal gate of the inspection verbs (`config`, `questions`, `settings`). The existing
+  `status`-without-runtime case already covers the third runtime-free verb. The exhaustive marker aliases per
+  host stay at the unit level (`OperatorGateTest`); the process layer proves the exit-code-and-diagnostic
+  contract a real child process exposes.
 
 No production code changed: the package delivers the guarding process tests the requirements demand and the
 `Verify -Pintegration-tests` exit of `doc/plans/integration-layers.adoc`. The process-IT layer now proves the
@@ -158,3 +160,26 @@ package (`-Pnative`), which only the release/verification run exercises; no sour
   archived to `doc/agy/implemented/` and the work package marked `done` in `doc/plans/README.adoc`.
 - **Scope note**: the package deliberately owns only the two `*IT` classes; the daemon-side and web-listener
   integration layers and the release-shape `pm-e2e` layer are separate packages/modules (matrix rows above).
+- **Review**: the PR carries no `skip-bot-review` label; the automatic reviewers run and their findings are
+  triaged in §8. SonarCloud's quality gate is green on the PR.
+
+---
+
+## 8. Review Triage
+
+Findings from the automatic reviewers on PR #95, evaluated with the `persona-code-reviewer` lenses
+(defect vs. preference, real vs. false positive, load-bearing vs. surplus).
+
+| # | Finding | Disposition |
+|---|---|---|
+| S1 | Sourcery: malformed JSON should answer `-32700` (parse error), not `-32600` | **Declined.** `-32700` appears nowhere in the relay; `Relay.accept` deliberately maps any line that is no JSON-RPC object to `-32600 invalid_request`, and the pre-existing unit contract `RelayTest.invalidLine` pins exactly that. A real `-32700` is the MCP server's JSON-RPC parser, not the relay's line reader. Changing it is a production-behaviour change with a requirement/spec correction, out of this test-layer package. |
+| S2 | Sourcery: `stdoutFramingUnderFaults` checks only the code, not the whole forwarded error | **Fixed.** The daemon error is asserted verbatim (`assertEquals(DAEMON_ERROR, unknown.text())`), covering message and any other members. |
+| S3 | Sourcery: host-refusal coverage is incomplete; exercise every verb × every marker alias | **Partly addressed.** The exhaustive alias set is already unit-level (`OperatorGateTest`: 4 Claude, 2 Antigravity, 3 OpenCode, 4 Codex aliases plus precedence); duplicating ~25 verbs × ~13 aliases as process spawns is not warranted. The process display name and this report were corrected so they no longer overclaim. |
+| S4 | Sourcery: process tests assert emitted codes against `Relay` constants, so a constant and its emission can drift together | **Fixed.** The three process tests now assert the protocol-defined literals (`-32603`, `-32000`, `-32600`). |
+| S5 | Sourcery: `malformedStdin` could pass against a synthesized generic answer | **Fixed.** The fake runtime now asserts it received exactly the one valid `initialize`, and the relayed `answered` frame is compared to the daemon's own distinctive `INITIALIZE_RESULT`. |
+| S6 | cuioss-review-bot: PR Reviewer Guide — no security concerns, no major issues | **No action** (informational). |
+| S7 | CodeRabbit: review skipped | Re-triggered by removing the erroneous `skip-bot-review` label. |
+
+The one genuine protocol question (S1) is recorded here rather than silently changing the relay's error
+taxonomy; if the project decides the relay should emit `-32700` for a syntax error, that is a separate package
+with a requirement correction, not a change smuggled through a test layer.

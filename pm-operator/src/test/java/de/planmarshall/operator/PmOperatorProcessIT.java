@@ -169,8 +169,9 @@ class PmOperatorProcessIT {
     }
 
     @Test
-    @DisplayName("refuses every coding-agent host signal with exit code 4 (PM-SEC-3)")
+    @DisplayName("refuses a coding-agent host signal of every host with exit code 4 (PM-SEC-3)")
     void refusesCodingAgentHostSignals() throws Exception {
+        // one representative marker per host; the exhaustive marker set is the unit-level OperatorGateTest
         for (var signal : HOST_SIGNALS.entrySet()) {
             assertHostRefusal(signal.getKey(), signal.getValue(), "reports");
             assertHostRefusal(signal.getKey(), signal.getValue(), "plan", "fix-relay");

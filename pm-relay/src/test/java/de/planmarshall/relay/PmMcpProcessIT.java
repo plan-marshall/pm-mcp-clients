@@ -58,6 +58,9 @@ class PmMcpProcessIT {
     private static final Duration WAIT = Duration.ofSeconds(10);
     private static final String INITIALIZE = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":"
             + "{\"protocolVersion\":\"2025-11-25\",\"clientInfo\":{\"name\":\"it\",\"version\":\"1\"},\"capabilities\":{}}}";
+    private static final String INITIALIZE_RESULT = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-11-25\"}}";
+    private static final String DAEMON_ERROR = "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32601,\"message\":"
+            + "\"Method not found\"}}";
     private static final int STARTUP_RUNS = 15;
     private static final long BUDGET_MS = 50;
 
@@ -88,7 +91,7 @@ class PmMcpProcessIT {
     private static FakeRuntimeServer.Handler mcp() {
         return (request, response) -> {
             switch (String.valueOf(request.header("Mcp-Method"))) {
-                case "initialize" -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-11-25\"}}");
+                case "initialize" -> response.json(200, INITIALIZE_RESULT);
                 case "tools/list" -> {
                     try (var events = response.events(200)) {
                         events.send(null, "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\",\"params\":{\"progress\":1}}");
@@ -231,8 +234,7 @@ class PmMcpProcessIT {
         fixture.start((request, response) -> {
             switch (String.valueOf(request.header("Mcp-Method"))) {
                 case "initialize" -> response.send(500, null, "");
-                case "tools/call" -> response.json(200,
-                        "{\"jsonrpc\":\"2.0\",\"id\":2,\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}");
+                case "tools/call" -> response.json(200, DAEMON_ERROR);
                 default -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":null,\"result\":{}}");
             }
         });
@@ -255,15 +257,12 @@ class PmMcpProcessIT {
             assertEquals(1, JsonTree.integer(fault, "id"));
             var faultError = JsonTree.object(fault, "error");
             assertNotNull(faultError, "a daemon HTTP 500 becomes a JSON-RPC error object");
-            assertEquals(Relay.INTERNAL_ERROR, JsonTree.integer(faultError, "code"));
+            // the protocol-defined code, as a literal, so a relay constant and its emission cannot drift together
+            assertEquals(-32603, JsonTree.integer(faultError, "code"));
             assertEquals("runtime_error: HTTP 500", JsonTree.string(faultError, "message"));
 
-            var forwarded = JsonTree.asObject(JsonTree.parse(unknown.text()));
-            assertNotNull(forwarded, unknown.text());
-            assertEquals(2, JsonTree.integer(forwarded, "id"));
-            var forwardedError = JsonTree.object(forwarded, "error");
-            assertNotNull(forwardedError, "the daemon's JSON-RPC error is forwarded verbatim");
-            assertEquals(-32601, JsonTree.integer(forwardedError, "code"));
+            // the daemon's error, message and all, reaches the host verbatim
+            assertEquals(DAEMON_ERROR, unknown.text());
         }
     }
 
@@ -281,8 +280,9 @@ class PmMcpProcessIT {
             assertEquals(1, JsonTree.integer(message, "id"));
             var error = JsonTree.object(message, "error");
             assertNotNull(error, "a broken daemon stream becomes runtime_unavailable");
-            assertEquals(Relay.RUNTIME_UNAVAILABLE_CODE, JsonTree.integer(error, "code"));
-            assertEquals(Relay.RUNTIME_UNAVAILABLE, JsonTree.string(error, "message"));
+            // the protocol-defined relay code, as a literal (runtime_unavailable follows -32000 above)
+            assertEquals(-32000, JsonTree.integer(error, "code"));
+            assertEquals("runtime_unavailable", JsonTree.string(error, "message"));
             assertTrue(process.stderr().contains("End of stream"), "diagnostic on stderr: " + process.stderr());
 
             var eofNanos = System.nanoTime();
@@ -308,7 +308,7 @@ class PmMcpProcessIT {
     @Test
     @DisplayName("answers malformed stdin with a parse error and keeps relaying")
     void malformedStdin() throws Exception {
-        fixture.start(mcp());
+        var server = fixture.start(mcp());
         try (var process = relay(environment())) {
             process.send("this is not JSON-RPC");
             var parseError = process.nextLine(WAIT);
@@ -325,13 +325,16 @@ class PmMcpProcessIT {
             assertNull(error.get("id"), "a parse error carries a null id");
             var errorObject = JsonTree.object(error, "error");
             assertNotNull(errorObject, parseError.text());
-            assertEquals(Relay.INVALID_REQUEST, JsonTree.integer(errorObject, "code"));
+            // the invalid_request code, as a literal, not the Relay constant
+            assertEquals(-32600, JsonTree.integer(errorObject, "code"));
             assertEquals("invalid_request", JsonTree.string(errorObject, "message"));
 
-            var result = JsonTree.asObject(JsonTree.parse(answered.text()));
-            assertNotNull(result, answered.text());
-            assertEquals(1, JsonTree.integer(result, "id"));
-            assertNotNull(result.get("result"), "a valid request after the malformed line is served");
+            // the malformed line stayed local: the daemon saw only the valid initialize, and its own
+            // distinctive result reached the host, so a synthesized answer cannot pass this
+            assertEquals(1, server.requests().size(), "only the valid request was forwarded");
+            assertTrue(server.requests().getFirst().bodyText().contains("\"method\":\"initialize\""),
+                    "the forwarded request is the host's initialize");
+            assertEquals(INITIALIZE_RESULT, answered.text(), "the daemon's own initialize result is relayed");
 
             var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
             assertEquals(parseError.text() + "\n" + answered.text() + "\n", stdout,
