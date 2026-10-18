@@ -3,7 +3,7 @@
 Companion report of the implementation plan
 [`doc/agy/implemented/exec-read-denied-paths-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/exec-read-denied-paths-plan.md),
 executed under [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md) on branch
-`feat/exec-read-denied-paths`.
+`feat/exec-read-denied-paths` (PR [#89](https://github.com/plan-marshall/pm-mcp-clients/pull/89)).
 
 ---
 
