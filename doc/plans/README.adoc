@@ -51,9 +51,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
 |Milestone 2
 
-|link:operator-enrolment-verbs.adoc[`operator-enrolment-verbs`]
+|link:implemented/operator-enrolment-verbs.adoc[`operator-enrolment-verbs`]
 |Operator verbs of enrolment and store integrity
-|`open`
+|`done`
 |link:api-contract.adoc[`api-contract`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
 |Milestone 3
 

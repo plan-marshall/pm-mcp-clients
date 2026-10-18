@@ -416,7 +416,7 @@ class PmOperatorProcessIT {
         }
 
         try (var process = operator(environment(), "epic", "instruct", "relay-hardening", "--plan", "relay-auth-v2",
-                            "--instruction", "change it")) {
+                                 "--instruction", "change it")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
@@ -492,6 +492,40 @@ class PmOperatorProcessIT {
         }
 
         try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--local-changes")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
+
+    @Test
+    @DisplayName("enrol refuses execution without an interactive terminal (PM-SEC-3)")
+    void enrolRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "enrol", "--pilot", ".")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
+
+    @Test
+    @DisplayName("unenrol refuses execution without an interactive terminal (PM-SEC-3)")
+    void unenrolRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "unenrol", "pm-mcp-clients", "--yes")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
+
+    @Test
+    @DisplayName("accept-edit refuses execution without an interactive terminal (PM-SEC-3)")
+    void acceptEditRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "accept-edit", ".plan/marshal.json",
+                                 "--project", "pm-mcp-clients", "--force")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);

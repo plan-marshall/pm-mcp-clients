@@ -56,7 +56,8 @@ public final class MessageCatalogue {
             "lesson_source",
             "git_sources",
             "decomposition",
-            "operator"
+            "operator",
+            "enrolment"
     );
 
     private static final String DEFAULT_LOCALE = "en";

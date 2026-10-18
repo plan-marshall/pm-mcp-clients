@@ -50,7 +50,10 @@ import picocli.CommandLine.Command;
                                         AnswerCommand.class,
                                         ReportsCommand.class,
                                         SystemCommand.class,
-                                        CleanupCommand.class
+                                        CleanupCommand.class,
+                                        EnrolCommand.class,
+                                        UnenrolCommand.class,
+                                        AcceptEditCommand.class
                     })
 @OperatorVerb
 public final class PmOperator implements Callable<Integer> {
