@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +37,7 @@ class LinuxConfinementTest {
     private Path project;
     private Path cacheFile;
     private Path jobDir;
+    private Path bus;
 
     @BeforeEach
     void tree() throws IOException {
@@ -47,17 +47,24 @@ class LinuxConfinementTest {
         cacheFile = Files.writeString(root.resolve("home/u/.netrc-like"), "x");
         base = Files.createDirectories(root.resolve("home/u/.plan-marshall-mcp"));
         jobDir = Files.createDirectories(base.resolve("run/jobs/l1"));
+        var runtime = Files.createDirectories(root.resolve("run/user/1000"));
+        bus = Files.writeString(runtime.resolve("bus"), "socket");
+        Files.createDirectories(runtime.resolve("systemd"));
     }
 
-    private Command.Launch launch(Optional<Path> denied, List<Path> writes) {
-        return new Command.Launch(writes, List.of(jobDir), denied, List.of("/usr/bin/true"));
+    private Command.Launch launch(List<Path> denied, List<Path> writes) {
+        return launch(denied, writes, List.of(jobDir));
+    }
+
+    private Command.Launch launch(List<Path> denied, List<Path> writes, List<Path> reads) {
+        return new Command.Launch(writes, reads, denied, List.of("/usr/bin/true"));
     }
 
     @Test
     @DisplayName("ABI 3: write set with all rights, read set read-only, files restricted to file rights")
     void confined() throws Exception {
         var kernel = new FakeKernel(3);
-        var confinement = new LinuxConfinement(kernel, root).apply(launch(Optional.of(base), List.of(project, cacheFile)));
+        var confinement = new LinuxConfinement(kernel, root).apply(launch(List.of(base), List.of(project, cacheFile)));
 
         assertEquals(new Confinement("confined", 3, true), confinement);
         assertEquals(List.of("prctl", "abi", "create:7fff", "restrict:100"), kernel.calls);
@@ -72,12 +79,38 @@ class LinuxConfinementTest {
     }
 
     @Test
+    @DisplayName("several denied paths: each hole gets no rule, the siblings of the way stay readable")
+    void severalDeniedPaths() throws Exception {
+        var kernel = new FakeKernel(3);
+
+        new LinuxConfinement(kernel, root).apply(launch(List.of(base, bus), List.of(project)));
+
+        assertEquals(-1L, kernel.accessOf(base));
+        assertEquals(-1L, kernel.accessOf(bus));
+        assertEquals(-1L, kernel.accessOf(root.resolve("home/u")));
+        assertEquals(-1L, kernel.accessOf(root.resolve("run/user/1000")));
+        assertEquals(0xdL, kernel.accessOf(root.resolve("run/user/1000/systemd")));
+        assertEquals(0xdL, kernel.accessOf(root.resolve("usr")));
+    }
+
+    @Test
+    @DisplayName("withholds an explicit read or write that would reopen a denied path, keeps the base")
+    void withholdsExplicitReopening() throws Exception {
+        var kernel = new FakeKernel(3);
+
+        new LinuxConfinement(kernel, root).apply(launch(List.of(base, bus), List.of(bus), List.of(bus, jobDir)));
+
+        assertEquals(-1L, kernel.accessOf(bus));
+        assertEquals(0xdL, kernel.accessOf(jobDir));
+    }
+
+    @Test
     @DisplayName("skips a rule whose path cannot be opened")
     void skipsUnopenable() throws Exception {
         var kernel = new FakeKernel(2);
         kernel.unopenable.add(project);
 
-        new LinuxConfinement(kernel, root).apply(launch(Optional.of(base), List.of(project)));
+        new LinuxConfinement(kernel, root).apply(launch(List.of(base), List.of(project)));
 
         assertEquals(-1L, kernel.accessOf(project));
         assertEquals(0xdL, kernel.accessOf(root.resolve("usr")));
@@ -89,7 +122,7 @@ class LinuxConfinementTest {
     void noRuleset(int abi, String state) throws Exception {
         var kernel = new FakeKernel(abi);
 
-        var confinement = new LinuxConfinement(kernel, root).apply(launch(Optional.of(base), List.of(project)));
+        var confinement = new LinuxConfinement(kernel, root).apply(launch(List.of(base), List.of(project)));
 
         assertEquals(state, confinement.state());
         assertFalse(confinement.isConfined());
@@ -103,7 +136,7 @@ class LinuxConfinementTest {
         var kernel = new FakeKernel(3);
         var confinement = new LinuxConfinement(kernel, root);
 
-        assertThrows(UsageException.class, () -> confinement.apply(launch(Optional.empty(), List.of())));
+        assertThrows(UsageException.class, () -> confinement.apply(launch(List.of(), List.of())));
         assertTrue(kernel.calls.isEmpty());
     }
 
@@ -114,7 +147,7 @@ class LinuxConfinementTest {
         kernel.refuseNoNewPrivs = true;
         var confinement = new LinuxConfinement(kernel, root);
 
-        assertThrows(NativeCallException.class, () -> confinement.apply(launch(Optional.of(base), List.of())));
+        assertThrows(NativeCallException.class, () -> confinement.apply(launch(List.of(base), List.of())));
     }
 
     @Test
@@ -125,7 +158,7 @@ class LinuxConfinementTest {
         var confinement = new LinuxConfinement(kernel, root);
 
         var e = assertThrows(NativeCallException.class,
-                () -> confinement.apply(launch(Optional.of(base), List.of(project))));
+                () -> confinement.apply(launch(List.of(base), List.of(project))));
         assertEquals("landlock_add_rule", e.stage());
         assertEquals(22, e.errno());
         assertTrue(kernel.closed.contains(100));

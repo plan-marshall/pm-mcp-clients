@@ -299,6 +299,32 @@ class PmExecIT {
         }
 
         @Test
+        @DisplayName("several denied paths: each is unreadable, their siblings stay readable")
+        void severalDeniedPaths() throws Exception {
+            var root = temp.toRealPath();
+            var secrets = Files.createDirectories(root.resolve("secrets"));
+            Files.writeString(secrets.resolve("token"), "secrets-canary");
+            var checkout = Files.createDirectories(root.resolve("checkout"));
+            Files.writeString(checkout.resolve("readme.md"), "checkout-canary");
+            var options = new ArrayList<>(List.of("--deny-read", base.toString(),
+                    "--deny-read", secrets.toString(), "--write", project.toString(), "--write", "/dev"));
+
+            var baseRun = run(options, "/bin/cat", base.resolve("run/runtime.token").toString());
+            var secretsRun = run(options, "/bin/cat", secrets.resolve("token").toString());
+            var siblingRun = run(options, "/bin/cat", root.resolve("sibling.txt").toString());
+            var checkoutRun = run(options, "/bin/cat", checkout.resolve("readme.md").toString());
+
+            boolean denied = baseRun.exit() != 0 && !baseRun.out().contains("canary")
+                    && secretsRun.exit() != 0 && !secretsRun.out().contains("canary");
+            boolean readable = siblingRun.exit() == 0 && siblingRun.out().contains("sibling-canary")
+                    && checkoutRun.exit() == 0 && checkoutRun.out().contains("checkout-canary");
+            measured("several_denied_paths_denied", denied, denied);
+            measured("several_denied_paths_siblings_readable", readable, readable);
+            assertTrue(denied, baseRun.err() + secretsRun.err());
+            assertTrue(readable, siblingRun.err() + checkoutRun.err());
+        }
+
+        @Test
         @DisplayName("the job-private directory given with --read is readable, not writable")
         void jobPrivateReadOnly() throws Exception {
             var jobDir = base.resolve("run/jobs/l1");
