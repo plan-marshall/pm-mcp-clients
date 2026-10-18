@@ -47,9 +47,24 @@ class CommandTest {
             var launch = assertInstanceOf(Command.Launch.class, command);
             assertEquals(List.of(Path.of("/work/p1"), Path.of("/tmp")), launch.writePaths());
             assertEquals(List.of(Path.of("/base/run/jobs/l1")), launch.readPaths());
+            assertEquals(List.of(Path.of("/home/u/.plan-marshall-mcp")), launch.deniedPaths());
             assertEquals(Optional.of(Path.of("/home/u/.plan-marshall-mcp")), launch.deniedBase());
             assertEquals(List.of("/usr/bin/git", "status", "--", "-x"), launch.argv());
             assertEquals("/usr/bin/git", launch.program());
+        }
+
+        @Test
+        @DisplayName("several --deny-read paths, in the order given")
+        void severalDeniedPaths() throws Exception {
+            var launch = assertInstanceOf(Command.Launch.class, Command.parse(List.of(
+                    "--deny-read", "/home/u/.plan-marshall-mcp",
+                    "--deny-read", "/run/user/1000/bus",
+                    "--deny-read", "/var/run/docker.sock",
+                    "--", "/bin/true")));
+
+            assertEquals(List.of(Path.of("/home/u/.plan-marshall-mcp"), Path.of("/run/user/1000/bus"),
+                    Path.of("/var/run/docker.sock")), launch.deniedPaths());
+            assertEquals(Optional.of(Path.of("/home/u/.plan-marshall-mcp")), launch.deniedBase());
         }
 
         @Test
@@ -58,6 +73,8 @@ class CommandTest {
             var launch = assertInstanceOf(Command.Launch.class, Command.parse(List.of("--", "/bin/echo")));
 
             assertTrue(launch.writePaths().isEmpty());
+            assertTrue(launch.readPaths().isEmpty());
+            assertTrue(launch.deniedPaths().isEmpty());
             assertTrue(launch.deniedBase().isEmpty());
             assertEquals(List.of("/bin/echo"), launch.argv());
         }
@@ -99,10 +116,10 @@ class CommandTest {
         }
 
         @Test
-        @DisplayName("--deny-read twice")
-        void denyTwice() {
+        @DisplayName("a relative --deny-read path")
+        void relativeDeniedPath() {
             assertThrows(UsageException.class,
-                    () -> Command.parse(List.of("--deny-read", "/a", "--deny-read", "/b", "--", "/bin/true")));
+                    () -> Command.parse(List.of("--deny-read", "relative", "--", "/bin/true")));
         }
 
         @ParameterizedTest(name = "path ''{0}''")

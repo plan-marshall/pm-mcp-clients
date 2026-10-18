@@ -57,9 +57,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:api-contract.adoc[`api-contract`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
 |Milestone 3
 
-|link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]
+|link:implemented/exec-read-denied-paths.adoc[`exec-read-denied-paths`]
 |`pm-exec`: several read-denied paths
-|`open`
+|`done`
 |nothing
 |Milestone 4
 

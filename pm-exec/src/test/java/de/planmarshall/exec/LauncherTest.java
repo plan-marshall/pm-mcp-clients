@@ -126,6 +126,30 @@ class LauncherTest {
         }
 
         @Test
+        @DisplayName("Linux: every --deny-read path is carved out, the siblings of the way stay readable")
+        void linuxSeveralDeniedPaths() throws Exception {
+            var root = temp.toRealPath();
+            var base = Files.createDirectories(root.resolve("home/u/.plan-marshall-mcp"));
+            var sibling = Files.createDirectories(root.resolve("home/u/project"));
+            var bus = Files.writeString(
+                    Files.createDirectories(root.resolve("run/user/1000")).resolve("bus"), "socket");
+            Files.createDirectories(root.resolve("run/user/1000/systemd"));
+            var kernel = new FakeKernel(3);
+
+            launcher(Os.LINUX, kernel).run(List.of(
+                    "--deny-read", base.toString(), "--deny-read", bus.toString(), "--", "/bin/true"));
+
+            assertEquals(-1L, kernel.accessOf(base));
+            assertEquals(-1L, kernel.accessOf(bus));
+            assertEquals(-1L, kernel.accessOf(root.resolve("home/u")));
+            assertEquals(-1L, kernel.accessOf(root.resolve("run/user/1000")));
+            assertEquals(0xdL, kernel.accessOf(sibling));
+            assertEquals(0xdL, kernel.accessOf(root.resolve("run/user/1000/systemd")));
+            assertTrue(err().lines().findFirst().orElseThrow().endsWith(
+                    ",\"confinement\":\"confined\",\"landlock_abi\":3,\"no_new_privs\":true}"));
+        }
+
+        @Test
         @DisplayName("usage error: exit 64, nothing executed")
         void usage() throws Exception {
             var kernel = new FakeKernel(3);

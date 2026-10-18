@@ -12,48 +12,64 @@ package de.planmarshall.exec;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 import lombok.experimental.UtilityClass;
 
 /**
- * Builds the Landlock read set: the whole filesystem except {@code <PM_MCP_BASE>}.
+ * Builds the Landlock read set: the whole filesystem except the read-denied paths ({@code <PM_MCP_BASE>}
+ * and, without the container-engine opt-in, the session-bus socket and the container engine's sockets).
  * <p>
- * Landlock rules only grant access, so a rule on {@code /} would also grant the base. The read set
- * is therefore one rule per entry of every directory from the root down to the parent of the base,
- * leaving out the next directory on that path (pm-mcp-core/doc/specification/job-runtime/
- * 02-confinement-and-environment.adoc, Read set). An entry whose real path (symbolic links
- * resolved) lies inside the base or contains it is left out as well, since the kernel attaches a
- * rule to the inode the link points to. Entries created after enumeration are not readable.
- * The directories on the path themselves get no rule, so a job cannot list them.
+ * Landlock rules only grant access, so a rule on {@code /} would also grant the denied paths. The read set
+ * is therefore one rule per entry of every directory that contains a denied path, leaving out the next
+ * directory on the way down and the denied path itself
+ * (pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc, Read set). Every directory
+ * that contains or lies on the way to a denied path receives no rule, so a job can traverse it but not list
+ * it; an entry whose real path (symbolic links resolved) lies inside a denied path or contains one is left
+ * out as well, since the kernel attaches a rule to the inode the link points to. Entries created after
+ * enumeration are not readable.
  */
 @UtilityClass
 class ReadSet {
 
     /**
-     * Enumerates the read set.
+     * Enumerates the read set around every denied path, breadth-first from the root.
      *
-     * @param root the filesystem root, {@code /} in production, a temporary directory in tests; real path
-     * @param base the denied directory, canonical (see {@link #canonical(Path)}) and below the root
+     * @param root        the filesystem root, {@code /} in production, a temporary directory in tests; real path
+     * @param deniedPaths the denied paths; canonicalized here and each strictly below the root
      * @return the paths that get a read rule, in enumeration order
-     * @throws UsageException if the base is not strictly below the root
+     * @throws UsageException if a denied path is not strictly below the root
      */
-    static List<Path> enumerate(Path root, Path base) throws UsageException {
-        if (!base.startsWith(root) || base.equals(root)) {
-            throw new UsageException("denied base " + base + " is not below " + root);
+    static List<Path> enumerate(Path root, List<Path> deniedPaths) throws UsageException {
+        var denied = new ArrayList<Path>();
+        for (var path : deniedPaths) {
+            var canonical = canonical(path);
+            if (!canonical.startsWith(root) || canonical.equals(root)) {
+                throw new UsageException("denied path " + canonical + " is not below " + root);
+            }
+            if (!denied.contains(canonical)) {
+                denied.add(canonical);
+            }
         }
-        var relative = root.relativize(base);
         var result = new ArrayList<Path>();
-        var directory = root;
-        for (int i = 0; i < relative.getNameCount(); i++) {
-            var next = directory.resolve(relative.getName(i));
+        var directories = new ArrayDeque<Path>();
+        directories.add(root);
+        while (!directories.isEmpty()) {
+            var directory = directories.removeFirst();
             for (var entry : list(directory)) {
-                if (!entry.equals(next) && !overlaps(entry, base)) {
+                if (denied.contains(entry)) {
+                    // The denied path itself: no rule, and its whole subtree stays out.
+                    continue;
+                }
+                if (isAncestorOfAny(entry, denied)) {
+                    // On the way to a denied path: descend, but grant nothing on the directory itself.
+                    directories.addLast(entry);
+                } else if (!overlaps(entry, denied)) {
                     result.add(entry);
                 }
             }
-            directory = next;
         }
         return result;
     }
@@ -89,7 +105,11 @@ class ReadSet {
         }
     }
 
-    private static boolean overlaps(Path entry, Path base) {
+    private static boolean isAncestorOfAny(Path entry, List<Path> denied) {
+        return denied.stream().anyMatch(deniedPath -> deniedPath.startsWith(entry));
+    }
+
+    private static boolean overlaps(Path entry, List<Path> denied) {
         Path real;
         try {
             real = entry.toRealPath();
@@ -97,6 +117,6 @@ class ReadSet {
             // Dangling or unreachable: the kernel could not open it either.
             return true;
         }
-        return real.startsWith(base) || base.startsWith(real);
+        return denied.stream().anyMatch(deniedPath -> real.startsWith(deniedPath) || deniedPath.startsWith(real));
     }
 }

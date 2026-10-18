@@ -37,9 +37,11 @@ record LinuxConfinement(Kernel kernel, Path root) {
      * @throws NativeCallException if a native call fails
      */
     Confinement apply(Command.Launch launch) throws UsageException, NativeCallException {
-        var base = ReadSet.canonical(launch.deniedBase()
-                .orElseThrow(() -> new UsageException(Command.DENY_READ + " is mandatory on Linux")));
-        var readSet = new ArrayList<>(ReadSet.enumerate(root, base));
+        var deniedPaths = launch.deniedPaths();
+        if (deniedPaths.isEmpty()) {
+            throw new UsageException(Command.DENY_READ + " is mandatory on Linux");
+        }
+        var readSet = new ArrayList<>(ReadSet.enumerate(root, deniedPaths));
         readSet.addAll(launch.readPaths());
 
         kernel.setNoNewPrivs();

@@ -102,4 +102,9 @@ This directory archives work packages that have been implemented, verified, and 
 |The process designer in the web app (the web app only)
 |`ProcessDesigner.svelte`, `BlockPalette.svelte`, and `WorkflowValidationResults.svelte` in `pm-web-app` with the runtime-backed text/structure panes, the catalogue palette, live validation, and placing; the designer methods of `client.ts`; and the `designer.spec.js` Playwright suite
 |epic clients; UC-PLN-3
+
+|link:exec-read-denied-paths.adoc[`exec-read-denied-paths`]
+|`pm-exec`: several read-denied paths
+|`Command.Launch` with a repeatable `--deny-read <path>` and `List<Path> deniedPaths`; `ReadSet.enumerate` enumerating the read set around several holes (the session-bus socket, the container engine's sockets, `<PM_MCP_BASE>`) breadth-first with siblings kept readable; `LinuxConfinement`/`Launcher` wiring; `CommandTest`, `ReadSetTest`, `LauncherTest`, `LinuxConfinementTest`, and `PmExecIT`
+|Milestone 4
 |===
