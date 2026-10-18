@@ -273,18 +273,34 @@ class ApiContractTest {
     }
 
     @Test
-    @DisplayName("a numeric field outside its exact integral range is refused")
+    @DisplayName("a numeric field at, past, or outside its range is validated exactly")
     void numericFieldsAreValidated() {
         assertAll(
+                // the inclusive bounds are accepted, one past the port bound is refused
+                () -> assertEquals(0, WebAccessResource.fromJson(
+                        "{\"status\":\"on\",\"port\":0,\"paired_devices_count\":0}").port()),
+                () -> assertEquals(65535, WebAccessResource.fromJson(
+                        "{\"status\":\"on\",\"port\":65535,\"paired_devices_count\":0}").port()),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> WebAccessResource.fromJson(
+                                "{\"status\":\"on\",\"port\":65536,\"paired_devices_count\":0}")),
+                // a fraction, a non-numeric string, and an unsupported type are refused
                 () -> assertThrows(JsonFormatException.class,
                         () -> WebAccessResource.fromJson(
                                 "{\"status\":\"on\",\"port\":1.5,\"paired_devices_count\":0}")),
                 () -> assertThrows(JsonFormatException.class,
                         () -> WebAccessResource.fromJson(
-                                "{\"status\":\"on\",\"port\":70000,\"paired_devices_count\":0}")),
+                                "{\"status\":\"on\",\"port\":\"abc\",\"paired_devices_count\":0}")),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> WebAccessResource.fromJson(
+                                "{\"status\":\"on\",\"port\":true,\"paired_devices_count\":0}")),
+                // a value that wraps an int is refused, not truncated
                 () -> assertThrows(JsonFormatException.class,
                         () -> WebAccessResource.fromJson(
                                 "{\"status\":\"on\",\"port\":7420,\"paired_devices_count\":4294967296}")),
+                // an exact integral decimal is accepted, a fraction and a negative are refused
+                () -> assertEquals(1L, RuntimeStopResource.fromJson(
+                        "{\"mode\":\"drain\",\"timeout_seconds\":1.0}").timeoutSeconds()),
                 () -> assertThrows(JsonFormatException.class,
                         () -> RuntimeStopResource.fromJson(
                                 "{\"mode\":\"drain\",\"timeout_seconds\":1.5}")),
