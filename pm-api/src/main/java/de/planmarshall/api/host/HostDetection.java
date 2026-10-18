@@ -118,7 +118,7 @@ public class HostDetection {
      * The hosts in detection precedence, read from the shipped profile documents. The neutral
      * fallback profile is not a host: it carries no signal and is never detected.
      */
-    private static final List<Host> HOSTS = loadHosts();
+    public static final List<Host> HOSTS = loadHosts();
 
     /**
      * Secondary agent signals not yet mapped to a host (provisional; the mapping is a host fact

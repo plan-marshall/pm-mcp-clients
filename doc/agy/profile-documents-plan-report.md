@@ -39,23 +39,24 @@ unchanged against the documents; the build test fails for a harness name added t
 | `pm-api/src/main/resources/profiles/antigravity.json` | Profile document, `detection.precedence` 10, primary signal `ANTIGRAVITY_AGENT`, session variable `ANTIGRAVITY_CONVERSATION_ID`, no version probe. |
 | `pm-api/src/main/resources/profiles/opencode.json` | Profile document, precedence 20, primary signals `OPENCODE`/`OPENCODE_PID`, process marker `OPENCODE_PID`, probe `["opencode","--version"]`. |
 | `pm-api/src/main/resources/profiles/claude.json` | Profile document, precedence 30, primary signal `CLAUDE_CODE_SESSION_ID`, secondary `CLAUDECODE=1`, process marker `CLAUDE_PID`, probe `["claude","--version"]`. |
-| `pm-api/src/main/resources/profiles/codex.json` | Profile document, precedence 40, primary signals `CODEX_SANDBOX`/`CODEX_CI=1`/`CODEX_THREAD_ID`, session variable `CODEX_THREAD_ID`, probe `["codex","--version"]`. |
+| `pm-api/src/main/resources/profiles/codex.json` | Profile document, precedence 40, primary signals `CODEX_SANDBOX`/`CODEX_CI`/`CODEX_THREAD_ID` (presence-only, as the table had them), session variable `CODEX_THREAD_ID`, probe `["codex","--version"]`. |
 | `pm-api/src/main/resources/profiles/neutral.json` | Neutral fallback document, precedence 50, empty signals, no probe; not a host row. |
-| `pm-api/src/main/java/de/planmarshall/api/host/ProfileDocumentReader.java` | Generic streaming reader: discovers the documents (classpath directory and archive), parses `client_id`, `detection`, and `identity` with `jackson-core`, skips every other token, validates the closed form, and refuses a document as a whole. |
+| `pm-api/src/main/resources/META-INF/pm-api/profiles.index` | The shipped catalog: one client id per line, named by `ProfileDocumentReader` for discovery. |
+| `pm-api/src/main/java/de/planmarshall/api/host/ProfileDocumentReader.java` | Generic streaming reader: discovers the documents through the catalog, parses `client_id`, `detection`, and `identity` with `jackson-core`, skips every other token, validates the closed form, and refuses a document as a whole. |
 
 ### 2.2 `pm-api` — modified production artifacts
 
 | Artifact | Change |
 |---|---|
-| `pm-api/src/main/java/de/planmarshall/api/host/HostDetection.java` | Removed the hard-coded `HOSTS` list, the `DECLARED_MODEL`, `VERSION_FLAG`, and `PROVISIONAL_VERSION_PATTERN` constants; the table is loaded from the shipped documents at initialization, sorted by ascending `detection.precedence`. Public contract preserved. |
+| `pm-api/src/main/java/de/planmarshall/api/host/HostDetection.java` | The hard-coded `HOSTS` literal and the `DECLARED_MODEL`, `VERSION_FLAG`, and `PROVISIONAL_VERSION_PATTERN` constants are gone; `HOSTS` is now a public, document-loaded table (public API preserved), sorted by ascending `detection.precedence`. |
 | `pm-api/src/main/java/de/planmarshall/api/host/package-info.java` | Describes the table as read from the shipped profile documents; names no harness. |
-| `pm-api/src/main/resources/META-INF/native-image/de.planmarshall/pm-api/reachability-metadata.json` | Registers `profiles/*.json` as native-image resources. |
+| `pm-api/src/main/resources/META-INF/native-image/de.planmarshall/pm-api/reachability-metadata.json` | Registers `profiles/*.json` and the catalog `META-INF/pm-api/profiles.index` as native-image resources. |
 
 ### 2.3 `pm-api` — test artifacts
 
 | Artifact | Purpose |
 |---|---|
-| `pm-api/src/test/java/de/planmarshall/api/host/ProfileDocumentReaderTest.java` | 14 tests: the shipped documents read in an ascending, unique precedence; closed-form client ids; discovery from both an exploded classpath and an archive (the `verification/` records beside the documents skipped); refusal of an empty class path, a file-name/client-id mismatch, a shared precedence, malformed JSON, trailing content, missing detection, a non-positive precedence, a signal without `equals`, and a version pattern without a probe; and skipping of unrelated sections. |
+| `pm-api/src/test/java/de/planmarshall/api/host/ProfileDocumentReaderTest.java` | 19 tests: the shipped documents read in an ascending, unique precedence; the catalog matching the shipped documents exactly (drift guard); closed-form client ids; catalog-driven discovery from an archive, with a document the catalog does not name left unread; refusal of an empty catalog, an absent cataloged document, a file-name/client-id mismatch, a shared precedence, malformed JSON, trailing content after a valid document, a repeated field, a client id outside the canonical form, a missing detection, a non-positive precedence, a signal without `equals`, an identity without the session ID variable, and a version pattern without a probe; and skipping of unrelated sections. |
 | `pm-api/src/test/java/de/planmarshall/api/host/HarnessIsolationArchTest.java` | 2 tests: no production class of `de.planmarshall.api.host` names a harness (ids derived from the shipped documents), and the negative control. |
 | `pm-api/src/test/java/de/planmarshall/api/host/HarnessNamingControlFixture.java` | Negative-control fixture (test class) that names a harness; it proves the guard detects an injected name. |
 
@@ -97,6 +98,18 @@ every field of `identity`; it skips `process_markers` and any other detection me
 the plan's Phase 3 prescribes. The `process_markers` of each harness are data in the document, kept
 for the nested-host rule of the Host Integration Table, and are not consumed by the table rows yet
 (`Host` carries no process-marker component today).
+
+### 3.0 Discovery: the shipped catalog
+
+Which documents are read is data: the catalog `classpath:/META-INF/pm-api/profiles.index`, one client
+id per line (`#` comments and blank lines ignored). The reader never enumerates a classpath
+directory — an archive built without directory entries, a shaded artifact, or a native image does not
+expose one — and a document below `profiles/` that the catalog does not name is not read, so
+unrelated content beside the documents cannot refuse the table. The catalog is the plan's sanctioned
+*resource catalog index*; `catalogMatchesTheShippedDocuments` keeps it in step with the documents
+below `profiles/`, so a new harness is a new document **and** its line, and a divergence fails the
+build. Discovery is fail-closed: an absent or empty catalog, or a cataloged document that is not on
+the classpath, refuses the table rather than yielding a partial one.
 
 ### 3.1 Precedence
 
@@ -146,13 +159,14 @@ and `clientIds()` lists it last.
 | Suite | Tests | Result |
 |---|---|---|
 | `HostDetection` (existing, unchanged) | 13 | pass |
-| `ProfileDocumentReader` — the shipped documents (directory and archive) | 6 | pass |
-| `ProfileDocumentReader` — one document | 8 | pass |
+| `ProfileDocumentReader` — the shipped documents (catalog-driven) | 8 | pass |
+| `ProfileDocumentReader` — one document | 11 | pass |
 | `harness isolation of the host package` | 2 | pass |
 
-The reader discovers the documents through a `ClassLoader` seam (`readShippedProfiles(ClassLoader)`), so the
-archive path is exercised by building a jar in a temporary directory and reading it through a
-`URLClassLoader`; the shipped path is exercised against the module's own exploded classpath.
+The reader discovers the documents through a `ClassLoader` seam (`readShippedProfiles(ClassLoader)`), so
+the archive path is exercised by building a jar that holds the catalog and its documents and reading
+it through a `URLClassLoader`; the shipped path is exercised against the module's own exploded
+classpath, where the drift guard compares the catalog with the documents below `profiles/`.
 
 The existing `HostDetectionTest` was not edited: it passes unchanged against the documents, which is
 the work package's *Done When* criterion.
@@ -175,7 +189,7 @@ The injection was reverted and the guard passed again. The committed
 
 | Module | Tests | Failures | Errors |
 |---|---|---|---|
-| `pm-api` | 412 | 0 | 0 |
+| `pm-api` | 417 | 0 | 0 |
 | `pm-exec` | 71 | 0 | 3 (skipped) |
 | `pm-relay` | 25 | 0 | 0 |
 | `pm-operator` | 399 | 0 | 0 |
@@ -197,9 +211,9 @@ unchanged against the data-driven table, confirming the public contract is prese
 | Every shipped document has both objects in the closed form of the schema, with pairwise different `precedence` | **Verified** by `ProfileDocumentReaderTest` and by the reader's own validation (refuses a document that is not in the closed form or that shares a precedence). |
 | The existing detection tests pass unchanged against the documents | **Verified** — `HostDetectionTest` unedited, 13/13 pass. |
 | The build test fails for a harness name added to a production class (control fixture) | **Verified** by `HarnessNamingControlFixture` and §4.2. |
-| Failure is closed | **Verified** — a missing, unreadable, malformed, or incomplete document, an empty document set, a non-positive precedence, or a shared precedence each raises and no partial table is used. |
+| Failure is closed | **Verified** — an absent or empty catalog, a cataloged document that is absent, a document that is malformed, incomplete, repeats a field, carries a non-canonical client id, shows a non-positive precedence, or shares a precedence each raises, and no partial table is used. |
 | `pm-api` depends on the `jackson-core` streaming API only | **Verified** by the `jackson-core-only` enforcer rule (no new dependency was added; the reader uses `JsonFactory`/`JsonParser` only). |
-| Native-image resources | Registered `profiles/*.json` in `reachability-metadata.json`. Discovery reads the classpath directory for an exploded classpath and the entries of the archive otherwise; the shipped Maven jar carries the `profiles/` directory entry it needs. The directory enumeration inside a GraalVM native image, and an archive built without directory entries, are the remaining hardening items recorded in §8. |
+| Discovery is portable and needs no directory enumeration | **Verified** by the catalog-driven reader and the drift guard; the archive path is exercised through a `URLClassLoader`. The catalog and the documents are registered as native-image resources. |
 
 ---
 
@@ -211,17 +225,17 @@ unchanged against the data-driven table, confirming the public contract is prese
 
 ```
 [INFO] Reactor Summary for pm-mcp-clients 0.1.0-SNAPSHOT:
-[INFO] pm-mcp-clients ..................................... SUCCESS [  8.834 s]
-[INFO] pm-api ............................................. SUCCESS [ 52.878 s]
-[INFO] pm-exec ............................................ SUCCESS [ 11.193 s]
-[INFO] pm-relay ........................................... SUCCESS [ 14.709 s]
-[INFO] pm-operator ........................................ SUCCESS [ 53.829 s]
-[INFO] pm-mock-runtime .................................... SUCCESS [ 38.561 s]
-[INFO] pm-web-app ......................................... SUCCESS [ 35.818 s]
-[INFO] pm-web-e2e ......................................... SUCCESS [  7.804 s]
+[INFO] pm-mcp-clients ..................................... SUCCESS [  9.226 s]
+[INFO] pm-api ............................................. SUCCESS [01:06 min]
+[INFO] pm-exec ............................................ SUCCESS [ 15.200 s]
+[INFO] pm-relay ........................................... SUCCESS [ 19.128 s]
+[INFO] pm-operator ........................................ SUCCESS [01:13 min]
+[INFO] pm-mock-runtime .................................... SUCCESS [01:00 min]
+[INFO] pm-web-app ......................................... SUCCESS [ 57.215 s]
+[INFO] pm-web-e2e ......................................... SUCCESS [ 11.252 s]
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
-[INFO] Total time:  03:44 min
+[INFO] Total time:  05:12 min
 ```
 
 Validated by the gate: OpenRewrite formatting, licence headers, the enforcer rules
@@ -251,11 +265,28 @@ validation, and the complete unit-test reactor.
 2. **Widen the harness-isolation guard.** Extend `HarnessIsolationArchTest` to the client modules
    once `pm-operator` and `pm-mock-runtime` retire their harness constants and mock fixtures in
    their own work packages.
-3. **Discovery hardening for the packaged binaries.** Confirm the classpath `profiles` directory is
-   enumerable in a GraalVM native image and in an archive built without directory entries (a jar
-   that lacks the `profiles/` entry hides the directory from `ClassLoader.getResources`); if not, add
-   a compiled index resource beside the documents (the plan's sanctioned *resource catalog index*).
-   Discovery fails closed today — it refuses to run on an empty table rather than detecting nothing.
+3. **Native-image confirmation.** Confirm in a GraalVM native image build that the catalog and the
+   documents (both registered in `reachability-metadata.json`) are read; the catalog removes the
+   dependence on classpath directory enumeration that a native image does not offer.
 4. **Host Integration Table comparison test.** The plan's fourth deliverable bullet (compare the
    table with the documents using the documentation checkout) needs a sibling checkout; recorded as
    a work package of its own.
+
+---
+
+## 9. Review Findings Resolved (Sourcery AI, PR #90)
+
+The review bot raised nine findings; each was evaluated with the adversarial-refute lenses and
+resolved in code (commit 2) or answered where the concern is by design.
+
+| # | Finding | Resolution |
+|---|---|---|
+| 1 | *High* — shipped profiles disappear when the classpath `profiles` root is not enumerable (archive without directory entries, native image). | **Fixed.** Discovery is now the shipped catalog `META-INF/pm-api/profiles.index`; no classpath directory enumeration remains. The catalog and the documents are registered as native-image resources. |
+| 2 | *High* — making `HOSTS` private breaks source and binary compatibility. | **Fixed.** `HOSTS` is public again, now a document-loaded table; the hard-coded literal is what was removed. |
+| 3 | *Medium* — an omitted `identity.session_id_variable` is silently accepted as null. | **Fixed.** The field must be declared (null allowed); an identity without it is refused. |
+| 4 | *Medium* — duplicate JSON keys are accepted. | **Fixed.** The factory enables `StreamReadFeature.STRICT_DUPLICATE_DETECTION`; a repeated field is refused. |
+| 5 | *High* — an unrelated top-level JSON below `profiles/` is treated as a profile and can refuse the table. | **Fixed.** Only cataloged documents are read; the archive test proves a document the catalog does not name is left unread. |
+| 6 | *Medium* — a non-canonical `client_id` is accepted. | **Fixed.** `client_id` is validated against the schema pattern `[a-z][a-z0-9-]{0,31}`. |
+| 7 | *Medium* — `CODEX_CI` required the exact value `1`, so other values go undetected. | **Fixed.** `CODEX_CI` is a presence-only signal again, matching the table this refactor replaces (the hard-coded `Signal.present("CODEX_CI")`). |
+| 8 | *Medium* — `detection.process_markers` is not validated. | **By design.** The reader consumes the table's fields (`precedence`, `primary_signals`, `secondary_signals`, `identity`) and deliberately skips the rest, as the plan's Phase 3 ("skips the rest of the document") prescribes; whole-document validation is the profile loader of `pm-core`, not this reader. The `client_id` half of the finding is fixed (#6). |
+| 9 | *Medium* — `refusesTrailingContent` passed vacuously (the first object was incomplete). | **Fixed.** The test now parses a valid document followed by trailing content, so only the trailing-content check can raise. |

@@ -19,14 +19,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -51,11 +54,12 @@ class ProfileDocumentReaderTest {
                 """.formatted(clientId, precedence);
     }
 
-    /** A class loader whose single classpath entry is an archive of the given {@code name, json} pairs. */
-    private static URLClassLoader archiveOf(Path temp, String... documents) throws IOException {
+    /** A class loader whose single classpath entry is an archive with a catalog and its documents. */
+    private static URLClassLoader archiveOf(Path temp, String catalog, String... documents) throws IOException {
         var archive = temp.resolve("profiles.jar");
         try (var out = new JarOutputStream(Files.newOutputStream(archive))) {
-            out.putNextEntry(new JarEntry("profiles/"));
+            out.putNextEntry(new JarEntry("META-INF/pm-api/profiles.index"));
+            out.write(catalog.getBytes(StandardCharsets.UTF_8));
             out.closeEntry();
             for (var i = 0; i < documents.length; i += 2) {
                 out.putNextEntry(new JarEntry("profiles/" + documents[i]));
@@ -64,6 +68,15 @@ class ProfileDocumentReaderTest {
             }
         }
         return new URLClassLoader(new URL[]{archive.toUri().toURL()}, null);
+    }
+
+    private static Path profilesDirectory() throws IOException {
+        var source = HostDetection.class.getProtectionDomain().getCodeSource().getLocation();
+        try {
+            return Path.of(source.toURI()).resolve("profiles");
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException("cannot resolve the shipped profiles directory", e);
+        }
     }
 
     @Nested
@@ -91,22 +104,43 @@ class ProfileDocumentReaderTest {
         }
 
         @Test
-        @DisplayName("are read from an archive, skipping the records beside them")
+        @DisplayName("are named by the catalog, every one and no other")
+        void catalogMatchesTheShippedDocuments() throws Exception {
+            try (var shipped = Files.list(profilesDirectory())) {
+                var documentIds = shipped.map(path -> path.getFileName().toString())
+                        .filter(name -> name.endsWith(".json"))
+                        .map(name -> name.substring(0, name.length() - ".json".length()))
+                        .collect(Collectors.toSet());
+
+                assertEquals(documentIds, Set.copyOf(HostDetection.clientIds()));
+            }
+        }
+
+        @Test
+        @DisplayName("are read from an archive, with only the cataloged ones")
         void readsFromAnArchive(@TempDir Path temp) throws Exception {
-            try (var loader = archiveOf(temp, "fixture.json", document("fixture", 3), "verification/fixture.json",
-                         "{}")) {
+            try (var loader = archiveOf(temp, "fixture\n", "fixture.json", document("fixture", 3), "unrelated.json",
+                         document("unrelated", 4))) {
                 var profiles = ProfileDocumentReader.readShippedProfiles(loader);
 
                 assertAll(
-                        () -> assertEquals(1, profiles.size()),
+                        () -> assertEquals(1, profiles.size(), "a document the catalog does not name is unread"),
                         () -> assertEquals("fixture", profiles.getFirst().clientId()));
             }
         }
 
         @Test
-        @DisplayName("refuse a class loader without a document")
-        void refusesAnEmptyClasspath(@TempDir Path temp) throws Exception {
-            try (var loader = archiveOf(temp)) {
+        @DisplayName("refuse an empty catalog")
+        void refusesAnEmptyCatalog(@TempDir Path temp) throws Exception {
+            try (var loader = archiveOf(temp, "# no documents\n")) {
+                assertThrows(IllegalStateException.class, () -> ProfileDocumentReader.readShippedProfiles(loader));
+            }
+        }
+
+        @Test
+        @DisplayName("refuse a cataloged document that is not on the classpath")
+        void refusesAMissingDocument(@TempDir Path temp) throws Exception {
+            try (var loader = archiveOf(temp, "fixture\n")) {
                 assertThrows(IllegalStateException.class, () -> ProfileDocumentReader.readShippedProfiles(loader));
             }
         }
@@ -114,7 +148,7 @@ class ProfileDocumentReaderTest {
         @Test
         @DisplayName("refuse a document whose file name is not its client id")
         void refusesFileNameMismatch(@TempDir Path temp) throws Exception {
-            try (var loader = archiveOf(temp, "fixture.json", document("other", 3))) {
+            try (var loader = archiveOf(temp, "fixture\n", "fixture.json", document("other", 3))) {
                 assertThrows(IllegalStateException.class, () -> ProfileDocumentReader.readShippedProfiles(loader));
             }
         }
@@ -122,7 +156,7 @@ class ProfileDocumentReaderTest {
         @Test
         @DisplayName("refuse two documents that share a precedence")
         void refusesDuplicatedPrecedence(@TempDir Path temp) throws Exception {
-            try (var loader = archiveOf(temp, "alpha.json", document("alpha", 3), "beta.json",
+            try (var loader = archiveOf(temp, "alpha\nbeta\n", "alpha.json", document("alpha", 3), "beta.json",
                          document("beta", 3))) {
                 assertThrows(IllegalStateException.class, () -> ProfileDocumentReader.readShippedProfiles(loader));
             }
@@ -207,9 +241,26 @@ class ProfileDocumentReaderTest {
         }
 
         @Test
-        @DisplayName("refuses trailing content after the object")
+        @DisplayName("refuses trailing content after a valid document")
         void refusesTrailingContent() {
-            assertThrows(IllegalStateException.class, () -> parse("{} {}"));
+            assertThrows(IllegalStateException.class, () -> parse(document("fixture", 1) + " {}"));
+        }
+
+        @Test
+        @DisplayName("refuses a repeated field")
+        void refusesRepeatedField() {
+            assertThrows(IllegalStateException.class, () -> parse("""
+                    { "client_id": "fixture", "client_id": "fixture",
+                      "detection": { "precedence": 1, "primary_signals": [], "secondary_signals": [] },
+                      "identity": { "session_id_variable": null, "version_probe": null, "version_pattern": null,
+                        "model_source": "declared", "provisional": false } }
+                    """));
+        }
+
+        @Test
+        @DisplayName("refuses a client id outside the canonical form")
+        void refusesNonCanonicalClientId() {
+            assertThrows(IllegalStateException.class, () -> parse(document("Fixture", 1)));
         }
 
         @Test
@@ -241,6 +292,17 @@ class ProfileDocumentReaderTest {
                       "detection": { "precedence": 1,
                         "primary_signals": [ { "variable": "FIXTURE_PRIMARY" } ], "secondary_signals": [] },
                       "identity": { "session_id_variable": null, "version_probe": null, "version_pattern": null,
+                        "model_source": "declared", "provisional": false } }
+                    """));
+        }
+
+        @Test
+        @DisplayName("refuses an identity without the session id variable")
+        void refusesIdentityWithoutSessionVariable() {
+            assertThrows(IllegalStateException.class, () -> parse("""
+                    { "client_id": "fixture",
+                      "detection": { "precedence": 1, "primary_signals": [], "secondary_signals": [] },
+                      "identity": { "version_probe": null, "version_pattern": null,
                         "model_source": "declared", "provisional": false } }
                     """));
         }

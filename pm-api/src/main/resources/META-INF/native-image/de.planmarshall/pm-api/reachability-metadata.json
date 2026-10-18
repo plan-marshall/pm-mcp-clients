@@ -5,6 +5,9 @@
     },
     {
       "glob": "profiles/*.json"
+    },
+    {
+      "glob": "META-INF/pm-api/profiles.index"
     }
   ],
   "foreign": {

@@ -12,20 +12,18 @@ package de.planmarshall.api.host;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.net.JarURLConnection;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.jar.JarEntry;
 import lombok.experimental.UtilityClass;
 
 /**
@@ -34,9 +32,11 @@ import lombok.experimental.UtilityClass;
  * every document with the streaming API of {@code jackson-core}, and skips every other section
  * (tools, configuration, prompt extensions) by jumping over its tokens.
  * <p>
- * The reader names no harness. Which documents exist is data, the set of files below the resource
- * directory; the file name is the client id. A document that is not in the closed form of the two
- * objects is refused as a whole, never partly taken.
+ * The reader names no harness. Which documents are shipped is data, the catalog
+ * {@code classpath:/META-INF/pm-api/profiles.index} of client ids: discovery never enumerates a
+ * classpath directory, which an archive or a native image does not expose, and an unrelated document
+ * below the directory is not read. The file name of a document is its client id. A document that is
+ * not in the closed form of the two objects is refused as a whole, never partly taken.
  */
 @UtilityClass
 public class ProfileDocumentReader {
@@ -47,7 +47,14 @@ public class ProfileDocumentReader {
     /** The suffix of a profile document. */
     private static final String DOCUMENT_SUFFIX = ".json";
 
-    private static final JsonFactory FACTORY = new JsonFactory();
+    /** The resource catalog of the shipped client ids, one per line. */
+    private static final String INDEX = "META-INF/pm-api/profiles.index";
+
+    /** The canonical client id of the schema: the file name of the document. */
+    private static final String CLIENT_ID_PATTERN = "[a-z][a-z0-9-]{0,31}";
+
+    private static final JsonFactory FACTORY = JsonFactory.builder()
+            .enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();
 
     /**
      * One detection object: how a host is recognised in an environment.
@@ -109,35 +116,35 @@ public class ProfileDocumentReader {
     }
 
     /**
-     * Reads every shipped profile document below {@code classpath:/profiles}, in ascending
-     * {@code detection.precedence}.
+     * Reads every shipped profile document named by the catalog below {@code classpath:/profiles}, in
+     * ascending {@code detection.precedence}.
      *
      * @return the documents in detection precedence
-     * @throws IllegalStateException if no document is found, one is not in the closed form of the two
-     *                               objects, or two documents share a precedence
+     * @throws IllegalStateException if the catalog is absent or empty, a named document is absent or is
+     *                               not in the closed form of the two objects, or two documents share a
+     *                               precedence
      */
     public static List<Profile> readShippedProfiles() {
         return readShippedProfiles(ProfileDocumentReader.class.getClassLoader());
     }
 
     /**
-     * Reads every shipped profile document below {@code classpath:/profiles} of one class loader, in
-     * ascending {@code detection.precedence}.
+     * Reads every profile document named by the catalog of one class loader, in ascending
+     * {@code detection.precedence}.
      *
-     * @param loader the class loader holding the documents
+     * @param loader the class loader holding the catalog and the documents
      * @return the documents in detection precedence
-     * @throws IllegalStateException if no document is found, one is not in the closed form of the two
-     *                               objects, or two documents share a precedence
+     * @throws IllegalStateException if the catalog is absent or empty, a named document is absent or is
+     *                               not in the closed form of the two objects, or two documents share a
+     *                               precedence
      */
     static List<Profile> readShippedProfiles(ClassLoader loader) {
         var documents = new TreeMap<String, Profile>();
-        for (var root : profileRoots(loader)) {
-            for (var name : documentNames(root)) {
-                documents.computeIfAbsent(name, document -> readDocument(loader, document));
-            }
+        for (var clientId : catalogEntries(loader)) {
+            documents.putIfAbsent(clientId, readDocument(loader, clientId + DOCUMENT_SUFFIX));
         }
         if (documents.isEmpty()) {
-            throw new IllegalStateException("no client profile document below classpath:/" + PROFILES);
+            throw new IllegalStateException("the profile catalog names no document: " + INDEX);
         }
         var profiles = List.copyOf(documents.values());
         requireDistinctPrecedence(profiles);
@@ -164,72 +171,32 @@ public class ProfileDocumentReader {
         }
     }
 
-    private static List<URL> profileRoots(ClassLoader loader) {
-        var roots = new ArrayList<URL>();
-        try {
-            var found = loader.getResources(PROFILES);
-            while (found.hasMoreElements()) {
-                roots.add(found.nextElement());
+    private static List<String> catalogEntries(ClassLoader loader) {
+        var entries = new ArrayList<String>();
+        try (var input = loader.getResourceAsStream(INDEX)) {
+            if (input == null) {
+                throw new IllegalStateException("the profile catalog is not on the classpath: " + INDEX);
+            }
+            try (var lines = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = lines.readLine()) != null) {
+                    var entry = line.trim();
+                    if (!entry.isEmpty() && !entry.startsWith("#")) {
+                        entries.add(entry);
+                    }
+                }
             }
         } catch (IOException e) {
-            throw new UncheckedIOException("cannot list classpath:/" + PROFILES, e);
+            throw new UncheckedIOException("cannot read the profile catalog " + INDEX, e);
         }
-        return roots;
-    }
-
-    private static List<String> documentNames(URL root) {
-        var names = new TreeSet<String>();
-        // A classpath directory (development and tests) lists its files; an archive (the shipped
-        // binary) lists its entries. Any other protocol names no document the reader could read.
-        if ("file".equals(root.getProtocol())) {
-            addDirectoryNames(root, names);
-        } else if ("jar".equals(root.getProtocol())) {
-            addArchiveNames(root, names);
-        }
-        return List.copyOf(names);
-    }
-
-    private static void addDirectoryNames(URL root, TreeSet<String> names) {
-        try (var entries = Files.list(directoryOf(root))) {
-            entries.map(path -> path.getFileName().toString()).filter(ProfileDocumentReader::isDocument)
-                    .forEach(names::add);
-        } catch (IOException e) {
-            throw new UncheckedIOException("cannot list the profile documents below " + root, e);
-        }
-    }
-
-    private static Path directoryOf(URL root) {
-        try {
-            return Path.of(root.toURI());
-        } catch (URISyntaxException e) {
-            throw new IllegalStateException("cannot resolve the profile resource directory " + root, e);
-        }
-    }
-
-    private static void addArchiveNames(URL root, TreeSet<String> names) {
-        try {
-            var connection = (JarURLConnection) root.openConnection();
-            connection.setUseCaches(false);
-            var prefix = connection.getEntryName() + "/";
-            try (var archive = connection.getJarFile()) {
-                archive.stream().map(JarEntry::getName).filter(name -> name.startsWith(prefix))
-                        .map(name -> name.substring(prefix.length())).filter(ProfileDocumentReader::isDocument)
-                        .forEach(names::add);
-            }
-        } catch (IOException e) {
-            throw new UncheckedIOException("cannot list the profile documents in " + root, e);
-        }
-    }
-
-    private static boolean isDocument(String name) {
-        return name.endsWith(DOCUMENT_SUFFIX) && !name.contains("/");
+        return entries;
     }
 
     private static Profile readDocument(ClassLoader loader, String name) {
         var resource = PROFILES + "/" + name;
         try (var input = loader.getResourceAsStream(resource)) {
             if (input == null) {
-                throw new IllegalStateException("client profile document not found: " + resource);
+                throw new IllegalStateException("the catalog names a document that is not on the classpath: " + resource);
             }
             var profile = parseDocument(input);
             if (!name.equals(profile.clientId() + DOCUMENT_SUFFIX)) {
@@ -267,8 +234,8 @@ public class ProfileDocumentReader {
                 default -> parser.skipChildren();
             }
         }
-        if (clientId == null || clientId.isBlank()) {
-            throw new IllegalStateException("client_id is required");
+        if (clientId == null || !clientId.matches(CLIENT_ID_PATTERN)) {
+            throw new IllegalStateException("client_id must be a client id of the schema");
         }
         if (detection == null) {
             throw new IllegalStateException("detection is required");
@@ -310,13 +277,17 @@ public class ProfileDocumentReader {
         String versionPattern = null;
         String modelSource = null;
         Boolean provisional = null;
+        var sessionDeclared = false;
         var probeDeclared = false;
         var patternDeclared = false;
         while (parser.nextToken() == JsonToken.FIELD_NAME) {
             var field = parser.currentName();
             parser.nextToken();
             switch (field) {
-                case "session_id_variable" -> sessionIdVariable = readText(parser, "identity.session_id_variable");
+                case "session_id_variable" -> {
+                    sessionIdVariable = readText(parser, "identity.session_id_variable");
+                    sessionDeclared = true;
+                }
                 case "version_probe" -> {
                     versionProbe = readStrings(parser, "identity.version_probe");
                     probeDeclared = true;
@@ -330,8 +301,9 @@ public class ProfileDocumentReader {
                 default -> parser.skipChildren();
             }
         }
-        if (!probeDeclared || !patternDeclared) {
-            throw new IllegalStateException("identity.version_probe and identity.version_pattern are required");
+        if (!sessionDeclared || !probeDeclared || !patternDeclared) {
+            throw new IllegalStateException("identity.session_id_variable, identity.version_probe, and "
+                    + "identity.version_pattern are required, null declared where absent");
         }
         if (modelSource == null || modelSource.isBlank()) {
             throw new IllegalStateException("identity.model_source is required");

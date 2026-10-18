@@ -4,7 +4,7 @@
     "precedence": 40,
     "primary_signals": [
       { "variable": "CODEX_SANDBOX", "equals": null },
-      { "variable": "CODEX_CI", "equals": "1" },
+      { "variable": "CODEX_CI", "equals": null },
       { "variable": "CODEX_THREAD_ID", "equals": null }
     ],
     "secondary_signals": [],

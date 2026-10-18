@@ -1,0 +1,9 @@
+# The catalog of the shipped client profiles of pm-api, read by
+# de.planmarshall.api.host.ProfileDocumentReader. One client id per line; the client id is the file
+# name of the document below classpath:/profiles/<client_id>.json. A new harness is a new document
+# and its line here.
+antigravity
+opencode
+claude
+codex
+neutral
