@@ -17,13 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
 import de.planmarshall.api.config.ConfigOrigin;
+import de.planmarshall.api.id.DottedIdentifier;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -86,10 +86,6 @@ public record OperatorStateResource(
             FIELD_SCOPE, FIELD_STATE_ID, FIELD_NODE_ID, FIELD_KIND, FIELD_LEVEL, FIELD_PROGRESS, FIELD_TITLE,
             FIELD_TEXTS, FIELD_FACTS, FIELD_PROPOSAL, FIELD_ITEMS, FIELD_REVISION, FIELD_LINKS);
 
-    private static final Pattern STATE_ID_GRAMMAR =
-            Pattern.compile("^[a-z][a-z0-9_-]{0,31}(\\.[a-z][a-z0-9_-]{0,31})*$");
-    private static final int MAX_STATE_ID_LENGTH = 64;
-
     /** The configuration levels a state's {@code level} may name. */
     private static final Set<ConfigOrigin> CONFIG_LEVELS =
             Set.of(ConfigOrigin.MACHINE, ConfigOrigin.PROJECT, ConfigOrigin.PLAN);
@@ -118,7 +114,7 @@ public record OperatorStateResource(
      * @return {@code true} if the value satisfies the state id grammar
      */
     public static boolean matchesStateIdGrammar(String value) {
-        return value != null && value.length() <= MAX_STATE_ID_LENGTH && STATE_ID_GRAMMAR.matcher(value).matches();
+        return DottedIdentifier.stateId(value);
     }
 
     private static void requireUniqueLinkIds(List<OperatorLink> links) {

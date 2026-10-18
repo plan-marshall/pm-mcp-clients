@@ -9,7 +9,6 @@
  */
 package de.planmarshall.api.interaction;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -171,27 +170,26 @@ class OperatorStateResourceTest {
     @Test
     @DisplayName("a state refuses an unknown field, a duplicate link id, and an invalid level")
     void stateFailsClosed() {
-        assertAll(
-                () -> assertThrows(JsonFormatException.class,
-                        () -> OperatorStateResource.fromJson(
-                                "{\"scope\":{\"kind\":\"machine\"},\"state_id\":\"onboarding\",\"links\":[],\"nope\":1}")),
-                () -> assertThrows(JsonFormatException.class,
-                        () -> OperatorStateResource.fromJson("{\"state_id\":\"onboarding\",\"links\":[]}")),
-                () -> assertThrows(JsonFormatException.class,
-                        () -> OperatorStateResource.fromJson(
-                                "{\"scope\":{\"kind\":\"project\"},\"state_id\":\"onboarding\",\"links\":[]}")),
-                () -> assertThrows(JsonFormatException.class,
-                        () -> OperatorStateResource.fromJson(
-                                "{\"scope\":{\"kind\":\"machine\"},\"state_id\":\"Onboarding\",\"links\":[]}")),
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> new OperatorStateResource(
-                                new OperatorScope(OperatorScopeKind.MACHINE, null, null, null),
-                                "onboarding", null, null, ConfigOrigin.DEFAULT, null, null,
-                                List.of(), Map.of(), List.of(), List.of(), null,
-                                List.of(new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/x",
-                                                Map.of(), false, null),
-                                        new OperatorLink("yes", OperatorLinkRelation.ALT, "POST", "/y",
-                                                Map.of(), false, null)))));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorStateResource.fromJson(
+                        "{\"scope\":{\"kind\":\"machine\"},\"state_id\":\"onboarding\",\"links\":[],\"nope\":1}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorStateResource.fromJson("{\"state_id\":\"onboarding\",\"links\":[]}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorStateResource.fromJson(
+                        "{\"scope\":{\"kind\":\"project\"},\"state_id\":\"onboarding\",\"links\":[]}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorStateResource.fromJson(
+                        "{\"scope\":{\"kind\":\"machine\"},\"state_id\":\"Onboarding\",\"links\":[]}"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OperatorStateResource(
+                        new OperatorScope(OperatorScopeKind.MACHINE, null, null, null),
+                        "onboarding", null, null, ConfigOrigin.DEFAULT, null, null,
+                        List.of(), Map.of(), List.of(), List.of(), null,
+                        List.of(new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/x",
+                                        Map.of(), false, null),
+                                new OperatorLink("yes", OperatorLinkRelation.ALT, "POST", "/y",
+                                        Map.of(), false, null))));
     }
 
     @Test

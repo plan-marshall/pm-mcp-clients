@@ -9,7 +9,6 @@
  */
 package de.planmarshall.api.event;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -136,34 +135,32 @@ class EventEnvelopeTest {
     @Test
     @DisplayName("an unknown event, a mismatched data.event, or a bad id is refused")
     void malformedEnvelopeIsRefused() {
-        assertAll(
-                () -> assertThrows(JsonFormatException.class,
-                        () -> EventEnvelope.fromJson("{\"event\":\"check\",\"id\":1,\"data\":{}}")),
-                () -> assertThrows(JsonFormatException.class,
-                        () -> EventEnvelope.fromJson(
-                                "{\"event\":\"check.result\",\"id\":1,\"data\":{\"event\":\"state.entered\","
-                                        + "\"at\":\"2026-10-18T09:30:00Z\",\"scope\":{\"kind\":\"machine\"}}}")),
-                () -> assertThrows(JsonFormatException.class,
-                        () -> EventEnvelope.fromJson(
-                                "{\"event\":\"check.result\",\"id\":-1,\"data\":{\"event\":\"check.result\","
-                                        + "\"at\":\"2026-10-18T09:30:00Z\",\"scope\":{\"kind\":\"machine\"}}}")),
-                () -> assertThrows(JsonFormatException.class,
-                        () -> EventEnvelope.fromJson("{\"event\":\"check.result\",\"id\":1}")),
-                () -> assertThrows(JsonFormatException.class,
-                        () -> EventEnvelope.fromJson(
-                                "{\"event\":\"check.result\",\"id\":1,\"data\":{\"event\":\"check.result\","
-                                        + "\"at\":\"not-a-time\",\"scope\":{\"kind\":\"machine\"}}}")),
-                () -> assertThrows(JsonFormatException.class, () -> EventEnvelope.fromJson("[]")));
+        assertThrows(JsonFormatException.class,
+                () -> EventEnvelope.fromJson("{\"event\":\"check\",\"id\":1,\"data\":{}}"));
+        assertThrows(JsonFormatException.class,
+                () -> EventEnvelope.fromJson(
+                        "{\"event\":\"check.result\",\"id\":1,\"data\":{\"event\":\"state.entered\","
+                                + "\"at\":\"2026-10-18T09:30:00Z\",\"scope\":{\"kind\":\"machine\"}}}"));
+        assertThrows(JsonFormatException.class,
+                () -> EventEnvelope.fromJson(
+                        "{\"event\":\"check.result\",\"id\":-1,\"data\":{\"event\":\"check.result\","
+                                + "\"at\":\"2026-10-18T09:30:00Z\",\"scope\":{\"kind\":\"machine\"}}}"));
+        assertThrows(JsonFormatException.class,
+                () -> EventEnvelope.fromJson("{\"event\":\"check.result\",\"id\":1}"));
+        assertThrows(JsonFormatException.class,
+                () -> EventEnvelope.fromJson(
+                        "{\"event\":\"check.result\",\"id\":1,\"data\":{\"event\":\"check.result\","
+                                + "\"at\":\"not-a-time\",\"scope\":{\"kind\":\"machine\"}}}"));
+        assertThrows(JsonFormatException.class, () -> EventEnvelope.fromJson("[]"));
     }
 
     @Test
     @DisplayName("the constructors reject invalid values")
     void constructorsRejectInvalidValues() {
-        assertAll(
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> new EventEnvelope(EventName.RESET, -1L, AT, new EventScope("runtime", null, null), Map.of())),
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> new EventScope(" ", null, null)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventEnvelope(EventName.RESET, -1L, AT, new EventScope("runtime", null, null), Map.of()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventScope(" ", null, null));
     }
 
     private static EventEnvelope readStreaming(String json) throws IOException {

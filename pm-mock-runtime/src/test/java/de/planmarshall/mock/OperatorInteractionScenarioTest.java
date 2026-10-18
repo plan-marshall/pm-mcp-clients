@@ -94,7 +94,9 @@ class OperatorInteractionScenarioTest {
     @DisplayName("loads the scenario and validates its operator representation against the pm-api codecs")
     void scenarioValidatesAgainstTheContract() {
         // the delivered scenario decodes with the operator recording codecs
-        ScenarioLoader.load(StandardScenarios.OPERATOR_INTERACTION);
+        var scenario = ScenarioLoader.load(StandardScenarios.OPERATOR_INTERACTION);
+        assertEquals("operator-interaction", scenario.name());
+        assertEquals("wait.choose", scenario.start());
     }
 
     @Test

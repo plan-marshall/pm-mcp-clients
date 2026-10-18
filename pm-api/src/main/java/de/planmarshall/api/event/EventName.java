@@ -11,7 +11,8 @@ package de.planmarshall.api.event;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Pattern;
+
+import de.planmarshall.api.id.DottedIdentifier;
 
 /**
  * The closed catalogue of the events the runtime streams to the operator's clients, one name of the
@@ -233,9 +234,6 @@ public enum EventName {
     /** One entry of a task's activity journal. */
     ACTIVITY("activity");
 
-    private static final Pattern GRAMMAR = Pattern.compile("^[a-z][a-z_]*(\\.[a-z][a-z_]*)*$");
-    private static final int MAX_LENGTH = 64;
-
     private final String wire;
 
     EventName(String wire) {
@@ -254,7 +252,7 @@ public enum EventName {
      * @return {@code true} if the value satisfies the event name grammar
      */
     public static boolean matchesGrammar(String wire) {
-        return wire != null && wire.length() <= MAX_LENGTH && GRAMMAR.matcher(wire).matches();
+        return DottedIdentifier.eventName(wire);
     }
 
     /**

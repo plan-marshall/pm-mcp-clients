@@ -13,12 +13,12 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
+import de.planmarshall.api.id.DottedIdentifier;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -50,10 +50,6 @@ public record OperatorText(
     public static final String FIELD_ARGS = "args";
     public static final String FIELD_VERBATIM = "verbatim";
     public static final String FIELD_SOURCE = "source";
-
-    private static final Pattern MESSAGE_KEY_GRAMMAR =
-            Pattern.compile("^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)+$");
-    private static final int MAX_MESSAGE_KEY_LENGTH = 128;
 
     public OperatorText {
         var hasKey = key != null;
@@ -108,7 +104,7 @@ public record OperatorText(
      * @return {@code true} if the value satisfies the Message Key grammar
      */
     public static boolean matchesMessageKeyGrammar(String value) {
-        return value != null && value.length() <= MAX_MESSAGE_KEY_LENGTH && MESSAGE_KEY_GRAMMAR.matcher(value).matches();
+        return DottedIdentifier.messageKey(value);
     }
 
     /**

@@ -16,11 +16,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 
 import lombok.experimental.UtilityClass;
@@ -296,15 +296,11 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(scenario, stateId, "representation", e.getMessage());
         }
 
-        var offeredIds = new HashSet<String>();
-        for (OperatorLink link : state.links()) {
-            offeredIds.add(link.id());
-        }
-        for (var linkId : links.keySet()) {
-            if (!offeredIds.contains(linkId)) {
-                throw new ScenarioValidationException(scenario, stateId, "links." + linkId,
-                        "no operator link with this id is offered in the representation");
-            }
+        var offeredIds = state.links().stream().map(OperatorLink::id).collect(Collectors.toSet());
+        var unoffered = links.keySet().stream().filter(linkId -> !offeredIds.contains(linkId)).findFirst();
+        if (unoffered.isPresent()) {
+            throw new ScenarioValidationException(scenario, stateId, "links." + unoffered.get(),
+                    "no operator link with this id is offered in the representation");
         }
 
         for (var i = 0; i < events.size(); i++) {

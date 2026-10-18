@@ -248,6 +248,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final int DEFAULT_LAN_PORT = 7421;
     private static final String KEY_LANDING = "landing";
     private static final String KEY_METHOD = "method";
+    private static final String KEY_LINKS = "links";
+    private static final String KEY_HREF = "href";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
@@ -578,7 +580,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (representation == null) {
             return;
         }
-        var links = JsonTree.asArray(representation.get("links"));
+        var links = JsonTree.asArray(representation.get(KEY_LINKS));
         if (links == null) {
             return;
         }
@@ -587,8 +589,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (link == null) {
                 continue;
             }
-            var method = JsonTree.string(link, "method");
-            var href = JsonTree.string(link, "href");
+            var method = JsonTree.string(link, KEY_METHOD);
+            var href = JsonTree.string(link, KEY_HREF);
             if (method != null && href != null) {
                 offeredOperatorLinks.add(method.toUpperCase() + " " + href);
             }
@@ -826,7 +828,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!(state.representation() instanceof Map<?, ?> repMap)) {
             return false;
         }
-        if (checkLinkGroup(repMap.get("links"), linkName, path)) {
+        if (checkLinkGroup(repMap.get(KEY_LINKS), linkName, path)) {
             return true;
         }
         return checkLinkGroup(repMap.get("_links"), linkName, path);
@@ -837,7 +839,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
         var targetObj = links.get(linkName);
-        if (targetObj instanceof Map<?, ?> targetMap && path.equals(targetMap.get("href"))) {
+        if (targetObj instanceof Map<?, ?> targetMap && path.equals(targetMap.get(KEY_HREF))) {
             return true;
         }
         return path.equals(String.valueOf(targetObj));
@@ -3772,12 +3774,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             for (var entry : state.links().entrySet()) {
                 var link = entry.getValue();
                 var target = new LinkedHashMap<String, Object>();
-                target.put("href", link.href() != null ? link.href() : "/api/v1/onboarding/step");
+                target.put(KEY_HREF, link.href() != null ? link.href() : "/api/v1/onboarding/step");
                 target.put(KEY_METHOD, link.method());
                 target.put("next", link.next());
                 links.put(entry.getKey(), target);
             }
-            body.put("links", links);
+            body.put(KEY_LINKS, links);
         }
         body.put(KEY_STATE, stateId);
         body.put("completed_steps", completedStepsFor(stateId));
