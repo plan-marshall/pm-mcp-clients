@@ -416,7 +416,7 @@ class PmOperatorProcessIT {
         }
 
         try (var process = operator(environment(), "epic", "instruct", "relay-hardening", "--plan", "relay-auth-v2",
-                            "--instruction", "change it")) {
+                                 "--instruction", "change it")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
