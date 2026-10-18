@@ -11,6 +11,7 @@ package de.planmarshall.operator.transcript;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -73,12 +74,38 @@ public final class TranscriptAssert {
      * @return the recorded file
      */
     static Path fixture(String name) {
-        var moduleRelative = Path.of("src", "test", "resources", "transcript", name + EXTENSION);
-        if (Files.exists(moduleRelative)) {
-            return moduleRelative;
+        return moduleDirectory().resolve("src", "test", "resources", "transcript", name + EXTENSION);
+    }
+
+    /**
+     * @return the module directory, found through the compiled test classes so that recording
+     *         writes into the module also when the tests run from the repository root
+     */
+    private static Path moduleDirectory() {
+        var module = moduleOfTestClasses();
+        if (module != null && Files.isDirectory(module.resolve("src").resolve("test"))) {
+            return module;
         }
-        var rootRelative = Path.of("pm-operator").resolve(moduleRelative);
-        return Files.exists(rootRelative) ? rootRelative : moduleRelative;
+        var working = Path.of("").toAbsolutePath();
+        if (Files.isDirectory(working.resolve("src").resolve("test"))) {
+            return working;
+        }
+        var nested = working.resolve("pm-operator");
+        return Files.isDirectory(nested.resolve("src").resolve("test")) ? nested : working;
+    }
+
+    private static Path moduleOfTestClasses() {
+        var domain = TranscriptAssert.class.getProtectionDomain();
+        var source = domain == null ? null : domain.getCodeSource();
+        if (source == null || source.getLocation() == null) {
+            return null;
+        }
+        try {
+            var classes = Path.of(source.getLocation().toURI());
+            return classes.getParent() == null ? null : classes.getParent().getParent();
+        } catch (URISyntaxException _) {
+            return null;
+        }
     }
 
     private static String read(Path fixture) {

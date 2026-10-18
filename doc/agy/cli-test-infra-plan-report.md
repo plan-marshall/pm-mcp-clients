@@ -1,6 +1,6 @@
 # Completion Report: `cli-test-infra` (Transcript and Dialogue Test Infrastructure)
 
-**Work package**: `doc/plans/cli-test-infra.adoc` (epic clients)
+**Work package**: `doc/plans/implemented/cli-test-infra.adoc` (epic clients)
 **Requirement**: `PM-TEST-7`
 **Status**: Implemented, verified locally and against the native image
 **Branch**: `feat/cli-test-infra`
@@ -64,7 +64,7 @@ message catalogue, so every runtime text rendered as its key. The native profile
 
 | File | Change |
 |---|---|
-| `pm-operator/pom.xml` | JLine `3.30.15` → `4.4.8` (the specification's line editor); test-scoped dependency on `pm-mock-runtime`; native profile includes the message catalogue (`-H:IncludeResources=messages/.*`) |
+| `pm-operator/pom.xml` | JLine `3.30.15` → `4.4.8` (the specification's line editor) with `jline-native` excluded; test-scoped dependency on `pm-mock-runtime`; native profile includes the message catalogue (`-H:IncludeResources=messages/.*`) |
 | `pom.xml` | The `clients-depend-on-pm-api-only` guard allows `de.planmarshall:pm-mock-runtime:*:jar:test` — test scope only, so no mock or engine code can reach a binary |
 
 ### 2.3 Documentation
@@ -114,11 +114,12 @@ That is the 423 pre-existing tests plus 12 new ones:
   `overview.state.waiting`, …): the native image had no `/messages/*.properties`. The native
   profile now includes `messages/.*`; the rerun passes.
 * No `libjlinenative` artifact is produced or shipped (`target/` has only the JDK's AWT/JVM
-  libraries beside the executable), so the JNI provider's native libraries stay out; the process
-  uses the FFM provider.
-* Still to measure (recorded in the design): size and time to the first prompt with and without
-  the line editor, `Ctrl+C` during a running verb, and the FFM signal handler under the macOS
-  hardened runtime.
+  libraries beside the executable): `jline-native` is excluded from the JLine dependencies, and
+  the process uses the FFM provider. The only trace left in the binary is a handled
+  `NoClassDefFoundError` for `org.jline.nativ.JLineNativeLoader` from the reachability metadata.
+* The remaining measurements from the design's open point are `cli-onboarding`'s scope (its plan
+  and "Done When" name them): size and time to the first prompt with and without the line editor,
+  `Ctrl+C` during a running verb, and the FFM signal handler under the macOS hardened runtime.
 
 ### 3.4 Drift detection
 
@@ -167,4 +168,5 @@ update.
   change in `plan-marshall-documentation`.
 * **Native measurements**: the remaining open-point measurements (with/without line editor,
   `Ctrl+C`, hardened-runtime signals) need a benchmark harness and a hardened runtime; they are
-  recorded in `doc/design/terminal-client/README.adoc` for `cli-onboarding`.
+  `cli-onboarding`'s scope, named in its plan and "Done When", and recorded in
+  `doc/design/terminal-client/README.adoc`.

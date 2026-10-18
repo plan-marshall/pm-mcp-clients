@@ -23,7 +23,6 @@ final class UnifiedDiff {
     private static final int CONTEXT = 3;
     private static final String OLD_FILE = "--- ";
     private static final String NEW_FILE = "+++ ";
-    private static final String HUNK = "@@ ";
 
     private UnifiedDiff() {
     }
@@ -121,7 +120,7 @@ final class UnifiedDiff {
                 actualCount++;
             }
         }
-        diff.append(HUNK).append("@@ -").append(first.expectedLine()).append(',').append(expectedCount)
+        diff.append("@@ -").append(first.expectedLine()).append(',').append(expectedCount)
                             .append(" +").append(first.actualLine()).append(',').append(actualCount)
                             .append(" @@").append('\n');
         for (var index = start; index <= end; index++) {

@@ -12,6 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == What
 
 * The console `pm-operator` (the entry, the console commands, the prompt with its badges, the connection) and `pm-operator config <aspect>` as designed in `cli-design`, without the decisions, which are `cli-decisions`, rendering the states the runtime reports; no step order or rule in the client. The line editor is JLine 4 (`jline-reader`, `jline-terminal`, `jline-terminal-ffm`), approved by the operator; its version is managed in `pm-mcp-parent`.
+* The native line-editor measurements `cli-test-infra` left open, in the native binary: the size and the time to the first prompt with and without the line editor, `Ctrl+C` during a running verb, and the FFM provider's signal handler under the macOS hardened runtime (link:../design/terminal-client/README.adoc#open-points[Terminal Client, Open Points]).
 * One shared sanitiser of every text from the runtime before it reaches the terminal (notices, dialogues, notifications, the window title; link:../design/terminal-client/04-console.adoc#output-safety[Output Safety]), with tests that feed it control sequences of every kind.
 * The scenarios of every case the use cases name (each consent answered no, each check failing, stop and resume, the automatic run), in `pm-mock-runtime`.
 * Tokens, never money: the consent field `tokens` with its estimate; what each harness reports of its tokens in the choice, the enrolment, the installed profile, and `config harnesses`, and the verification's stage `usage` (link:../design/terminal-client/06-transcripts-steps-1-3.adoc#t-harness-choose[Terminal Client, Choose]).
@@ -30,4 +31,4 @@ Requirements, specification sections, and use cases stay in `plan-marshall-docum
 
 == Done When
 
-Every scenario of the onboarding, the entry, and the console passes as a transcript test, in the JVM and native; no text is written in the client's code (a test fails for a literal user-facing string).
+Every scenario of the onboarding, the entry, and the console passes as a transcript test, in the JVM and native; the native line-editor measurements are recorded; no text is written in the client's code (a test fails for a literal user-facing string).

@@ -11,6 +11,7 @@ package de.planmarshall.operator.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -80,7 +81,8 @@ class TranscriptHarnessTest {
             var diff = UnifiedDiff.between("expected", List.of("one", "two", "three"),
                                 "rendered", List.of("one", "changed", "three"));
             assertAll(
-                                () -> assertTrue(diff.startsWith("--- expected\n+++ rendered\n@@ "), diff),
+                                () -> assertTrue(diff.startsWith("--- expected\n+++ rendered\n@@ -1,3 +1,3 @@\n"), diff),
+                                () -> assertFalse(diff.contains("@@ @@"), diff),
                                 () -> assertTrue(diff.contains("-two\n"), diff),
                                 () -> assertTrue(diff.contains("+changed\n"), diff),
                                 () -> assertTrue(diff.contains(" one\n"), diff));

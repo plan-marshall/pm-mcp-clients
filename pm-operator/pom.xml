@@ -36,16 +36,37 @@
             <groupId>org.jline</groupId>
             <artifactId>jline-terminal</artifactId>
             <version>${version.jline}</version>
+            <!-- The console uses the FFM and dumb providers only: the JNI provider, whose
+                 jline-native library would be unpacked at runtime and could reach the binary, is
+                 not used, so its artifact stays out (doc/design/terminal-client, Open Points). -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jline</groupId>
+                    <artifactId>jline-native</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.jline</groupId>
             <artifactId>jline-reader</artifactId>
             <version>${version.jline}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jline</groupId>
+                    <artifactId>jline-native</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.jline</groupId>
             <artifactId>jline-terminal-ffm</artifactId>
             <version>${version.jline}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.jline</groupId>
+                    <artifactId>jline-native</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.nayuki</groupId>
