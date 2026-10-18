@@ -23,11 +23,16 @@ import java.util.stream.Collectors;
  * The JVM transcript tests use the test seam of {@link TerminalTestDriver}; the native binary has
  * no such seam, so a native transcript test needs a terminal that the operating system provides.
  * {@code script(1)} allocates one and forwards the child's terminal to this process; the test
- * needs no pseudo-terminal library of its own.
+ * needs no pseudo-terminal library of its own. The terminal is pinned to the same 80x24 grid as
+ * {@link TranscriptTerminal}, so a transcript never depends on the size of the terminal that runs
+ * the build.
  */
 final class PseudoTerminal {
 
     private static final String SCRIPT = "/usr/bin/script";
+    private static final String SHELL = "/bin/sh";
+    private static final String PIN_SIZE = "stty rows " + TranscriptTerminal.ROWS
+                        + " cols " + TranscriptTerminal.COLUMNS + " 2>/dev/null; exec ";
 
     private PseudoTerminal() {
     }
@@ -57,17 +62,27 @@ final class PseudoTerminal {
     }
 
     private static List<String> onPseudoTerminal(List<String> command) {
-        var os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (os.contains("mac") || os.contains("bsd")) {
-            var wrapped = new ArrayList<String>();
-            wrapped.add(SCRIPT);
-            wrapped.add("-q");
+        var inner = PIN_SIZE + command.stream().map(PseudoTerminal::quote).collect(Collectors.joining(" "));
+        var wrapped = new ArrayList<String>();
+        wrapped.add(SCRIPT);
+        wrapped.add("-q");
+        if (isBsdScript()) {
             wrapped.add("/dev/null");
-            wrapped.addAll(command);
-            return wrapped;
+            wrapped.add(SHELL);
+            wrapped.add("-c");
+            wrapped.add(inner);
+        } else {
+            wrapped.add("-e");
+            wrapped.add("-c");
+            wrapped.add(inner);
+            wrapped.add("/dev/null");
         }
-        var joined = command.stream().map(PseudoTerminal::quote).collect(Collectors.joining(" "));
-        return List.of(SCRIPT, "-q", "-e", "-c", joined, "/dev/null");
+        return wrapped;
+    }
+
+    private static boolean isBsdScript() {
+        var os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        return os.contains("mac") || os.contains("bsd");
     }
 
     private static String quote(String part) {
