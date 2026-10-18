@@ -53,14 +53,14 @@ This plan executes concurrently in Wave 6 alongside:
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/integration-layers /Users/oliver/git/worktrees/pm-mcp-clients-integration-layers main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for process lifecycle, stdio pipes, and integration testing
   - `persona-security-expert` for `PM-SEC-3` coding-agent host signal boundaries and `PM-SEC-4` file permission invariants
   - `persona-documenter` for documentation, ADRs, and roadmap updates
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/integration-layers-plan-report.md`), initial plan moved to `doc/agy/implemented/integration-layers-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/integration-layers-plan-report.md`), initial plan moved to `doc/agy/implemented/integration-layers-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/integration-layers-plan-report.md` by orchestrator session.

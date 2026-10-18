@@ -30,6 +30,7 @@ import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.MachinePaths;
+import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupItemEntry;
 import de.planmarshall.api.system.CleanupJob;
@@ -72,6 +73,13 @@ class PmOperatorProcessIT {
     private static final Duration WAIT = Duration.ofSeconds(10);
     private static final int STARTUP_RUNS = 15;
     private static final long BUDGET_MS = 50;
+
+    /** One environment marker per coding-agent host of the Host Integration Table (PM-SEC-3). */
+    private static final Map<String, String> HOST_SIGNALS = Map.of(
+                        "ANTIGRAVITY_AGENT", "antigravity",
+                        "CLAUDE_CODE", "claude",
+                        "OPENCODE_CLIENT", "opencode",
+                        "CODEX_HOME", "codex");
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
@@ -136,6 +144,61 @@ class PmOperatorProcessIT {
             assertEquals(0, process.awaitExit(WAIT));
             assertEquals("runtime   not running\n", new String(process.stdout(), StandardCharsets.UTF_8));
             assertTrue(Files.notExists(fixture.base()), "status created nothing below PM_MCP_BASE");
+        }
+    }
+
+    @Test
+    @DisplayName("--version prints the release version and writes nothing")
+    void versionIsRuntimeFree() throws Exception {
+        try (var process = operator(environment(), "--version")) {
+            assertEquals(0, process.awaitExit(WAIT));
+            assertEquals("pm-operator " + PmVersion.current(), new String(process.stdout(), StandardCharsets.UTF_8).strip());
+            assertTrue(Files.notExists(fixture.base()), "--version created nothing below PM_MCP_BASE");
+        }
+    }
+
+    @Test
+    @DisplayName("--help prints usage and writes nothing")
+    void helpIsRuntimeFree() throws Exception {
+        try (var process = operator(environment(), "--help")) {
+            assertEquals(0, process.awaitExit(WAIT));
+            assertTrue(new String(process.stdout(), StandardCharsets.UTF_8).contains("Usage: pm-operator"),
+                                "help prints the usage; stdout: " + new String(process.stdout(), StandardCharsets.UTF_8));
+            assertTrue(Files.notExists(fixture.base()), "--help created nothing below PM_MCP_BASE");
+        }
+    }
+
+    @Test
+    @DisplayName("refuses every coding-agent host signal with exit code 4 (PM-SEC-3)")
+    void refusesCodingAgentHostSignals() throws Exception {
+        for (var signal : HOST_SIGNALS.entrySet()) {
+            assertHostRefusal(signal.getKey(), signal.getValue(), "reports");
+            assertHostRefusal(signal.getKey(), signal.getValue(), "plan", "fix-relay");
+        }
+    }
+
+    @Test
+    @DisplayName("inspection verbs refuse execution without an interactive terminal (PM-SEC-3)")
+    void inspectionVerbsRefuseWithoutTerminal() throws Exception {
+        for (var verb : List.of("config", "questions", "settings")) {
+            try (var process = operator(environment(), verb)) {
+                assertEquals(4, process.awaitExit(WAIT), verb);
+                assertTrue(process.stderr().contains("operator refused: interactive terminal required"),
+                                    verb + " stderr: " + process.stderr());
+                assertEquals(0, process.stdout().length, verb + " wrote nothing to stdout");
+            }
+        }
+    }
+
+    private void assertHostRefusal(String signal, String host, String... verb) throws Exception {
+        var environment = environment();
+        environment.put(signal, "1");
+        try (var process = operator(environment, verb)) {
+            var invocation = signal + " " + List.of(verb);
+            assertEquals(4, process.awaitExit(WAIT), invocation);
+            assertTrue(process.stderr().contains("operator refused: coding-agent environment detected (" + host + ")"),
+                                invocation + " stderr: " + process.stderr());
+            assertEquals(0, process.stdout().length, invocation + " wrote nothing to stdout");
         }
     }
 
