@@ -297,6 +297,12 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/designer-contract.adoc[`designer-contract`]; link:implemented/web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:implemented/web-projects.adoc[`web-projects`] (a project's setup); link:implemented/web-design.adoc[`web-design`]
 |epic clients
 
+|link:intent-views.adoc[`intent-views`]
+|Intent, outline, and their checks in both clients: the plan's intent record and outline record, results per criterion, the epic's intent and its done-when checks, the spread of `over_size`
+|`open`
+|link:api-contract.adoc[`api-contract`]
+|Milestones 8, 10, 11, and 12
+
 |===
 
 The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
