@@ -52,7 +52,7 @@ This plan executes concurrently in Wave 7 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/cli-test-infra /Users/oliver/git/worktrees/pm-mcp-clients-cli-test-infra main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/cli-test-infra /Users/oliver/git/worktrees/pm-mcp-clients-cli-test-infra main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-module-tester` & `persona-integration-tester` for terminal test harness, pseudo-terminal simulation, and transcript assertion
   - `persona-security-expert` for test seam containment ensuring no production security bypass
