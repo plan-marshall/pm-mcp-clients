@@ -46,7 +46,7 @@ This plan executes concurrently in Wave 5 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/exec-read-denied-paths /Users/oliver/git/worktrees/pm-mcp-clients-exec-read-denied-paths main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/exec-read-denied-paths /Users/oliver/git/worktrees/pm-mcp-clients-exec-read-denied-paths main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for confinement algorithms and unit tests
   - `persona-security-expert` for Landlock filesystem security, socket isolation, and permission checks
