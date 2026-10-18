@@ -1,0 +1,19 @@
+{
+  "client_id": "opencode",
+  "detection": {
+    "precedence": 20,
+    "primary_signals": [
+      { "variable": "OPENCODE", "equals": null },
+      { "variable": "OPENCODE_PID", "equals": null }
+    ],
+    "secondary_signals": [],
+    "process_markers": [ "OPENCODE_PID" ]
+  },
+  "identity": {
+    "session_id_variable": null,
+    "version_probe": [ "opencode", "--version" ],
+    "version_pattern": "(\\d+(?:\\.\\d+)+)",
+    "model_source": "declared",
+    "provisional": true
+  }
+}

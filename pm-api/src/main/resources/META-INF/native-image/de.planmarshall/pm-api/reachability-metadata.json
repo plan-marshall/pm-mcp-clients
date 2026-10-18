@@ -2,6 +2,12 @@
   "resources": [
     {
       "glob": "de/planmarshall/api/version.properties"
+    },
+    {
+      "glob": "profiles/*.json"
+    },
+    {
+      "glob": "META-INF/pm-api/profiles.index"
     }
   ],
   "foreign": {

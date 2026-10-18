@@ -102,4 +102,9 @@ This directory archives work packages that have been implemented, verified, and 
 |The process designer in the web app (the web app only)
 |`ProcessDesigner.svelte`, `BlockPalette.svelte`, and `WorkflowValidationResults.svelte` in `pm-web-app` with the runtime-backed text/structure panes, the catalogue palette, live validation, and placing; the designer methods of `client.ts`; and the `designer.spec.js` Playwright suite
 |epic clients; UC-PLN-3
+
+|link:profile-documents.adoc[`profile-documents`]
+|Host-detection data in the profile documents
+|One profile document per harness (`pm-api/src/main/resources/profiles/*.json`) carrying the `detection` and `identity` objects; `ProfileDocumentReader.java` (the generic `jackson-core` streaming reader that skips the other sections and names no harness); the data-driven `HostDetection.java` with no host constant; and `HarnessIsolationArchTest.java` with its negative-control fixture
+|Milestone 2
 |===

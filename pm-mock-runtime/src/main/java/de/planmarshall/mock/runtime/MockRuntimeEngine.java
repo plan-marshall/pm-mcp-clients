@@ -1838,7 +1838,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleInstructDecomposition(MockHttpRequest request, MockHttpResponse response, String projectId,
-                                             String epicId) throws IOException {
+            String epicId) throws IOException {
         var bodyMap = readBodyObject(request);
         DecompositionInstructRequest instruct;
         try {
