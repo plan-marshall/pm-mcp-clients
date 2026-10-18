@@ -66,9 +66,9 @@ This plan executes concurrently in Wave 6 alongside:
 - [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
 - [x] 4. Final completion report written (`doc/agy/installation-layout-plan-report.md`), initial plan moved to `doc/agy/implemented/installation-layout-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/installation-layout-plan-report.md` by orchestrator session.
+- [x] 6. PR opened (with `--label "skip-bot-review"` if authorized), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/installation-layout-plan-report.md` by orchestrator session.
 
 ---
 
