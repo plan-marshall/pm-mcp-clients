@@ -169,6 +169,28 @@ public final class RolesCommand implements Callable<Integer> {
             }
             out.println(line);
         }
+
+        private static String pad(@Nullable String value, int width) {
+            var safe = OutputSafety.stripControlSequences(value == null ? "-" : value);
+            if (safe.length() > width) {
+                safe = width <= 1 ? safe.substring(0, width) : safe.substring(0, width - 1) + "…";
+            }
+            var padded = new StringBuilder(safe);
+            while (padded.length() < width) {
+                padded.append(' ');
+            }
+            return padded.toString();
+        }
+
+        private static String valueWithLevel(@Nullable String value, @Nullable String level) {
+            var safeValue = valueOrDash(value);
+            return level == null || level.isBlank() ? safeValue
+                                : safeValue + " (" + OutputSafety.stripControlSequences(level) + ")";
+        }
+
+        private static String rolesTarget(@Nullable String project) {
+            return withProject(PATH_ROLES, project);
+        }
     }
 
     @Command(name = "show", description = "Shows one role's effective artifact, tools, effort and qualification.")
@@ -215,6 +237,53 @@ public final class RolesCommand implements Callable<Integer> {
                 return 1;
             }
             throw new OperatorRefusedException("roles show " + role, response);
+        }
+
+        private static void renderDetail(PrintWriter out, RoleDetailResource detail) {
+            out.println(MessageCatalogue.format("operator.roles.show.title",
+                                Map.of("role", OutputSafety.stripControlSequences(detail.role()))));
+            out.println(MessageCatalogue.format("operator.roles.show.description",
+                                Map.of("description", OutputSafety.stripControlSequences(detail.description()))));
+            out.println(MessageCatalogue.format("operator.roles.show.class", Map.of(
+                                "class", valueOrDash(stringParameter(detail, "class")),
+                                "form", valueOrDash(stringParameter(detail, "form")))));
+            out.println(MessageCatalogue.format("operator.roles.show.effective", configuration(detail)));
+            out.println(MessageCatalogue.format("operator.roles.show.tools",
+                                Map.of("tools", detail.advisoryToolSet().isEmpty() ? "-"
+                                                    : OutputSafety.stripControlSequences(
+                                                    String.join(", ", detail.advisoryToolSet())))));
+            out.println(MessageCatalogue.format("operator.roles.show.narrowed",
+                                Map.of(PARAM_EFFORT, narrowedText(detail.narrowedEffort()))));
+            out.println(MessageCatalogue.format("operator.roles.show.qualification",
+                                Map.of("state", detail.qualification().state().wire())));
+            if (detail.qualification().reason() != null) {
+                out.println("  " + MessageCatalogue.format("operator.roles.show.reason",
+                                    Map.of(FIELD_REASON, OutputSafety.stripControlSequences(
+                                                        detail.qualification().reason()))));
+            }
+            if (!detail.qualification().criteria().isEmpty()) {
+                out.println("  " + MessageCatalogue.format("operator.roles.show.criteria",
+                                    Map.of("criteria", OutputSafety.stripControlSequences(
+                                                        String.join(", ", detail.qualification().criteria())))));
+            }
+            if (!detail.configurationParameters().isEmpty()) {
+                out.println(MessageCatalogue.get("operator.roles.show.parameters"));
+                detail.configurationParameters().forEach((key, value) -> out.printf(Locale.ROOT,
+                                    "  %-" + (LABEL_WIDTH + 8) + "s %s%n",
+                                    OutputSafety.stripControlSequences(key), displayValue(value)));
+            }
+            out.flush();
+        }
+
+        private static String narrowedText(@Nullable NarrowedEffort narrowed) {
+            if (narrowed == null) {
+                return "-";
+            }
+            var text = OutputSafety.stripControlSequences(narrowed.category());
+            if (narrowed.description() == null) {
+                return text;
+            }
+            return text + " — " + OutputSafety.stripControlSequences(narrowed.description());
         }
     }
 
@@ -328,63 +397,85 @@ public final class RolesCommand implements Callable<Integer> {
                 return answer.startsWith("y") || answer.startsWith("j");
             }
         }
-    }
 
-    private static void renderDetail(PrintWriter out, RoleDetailResource detail) {
-        out.println(MessageCatalogue.format("operator.roles.show.title",
-                            Map.of("role", OutputSafety.stripControlSequences(detail.role()))));
-        out.println(MessageCatalogue.format("operator.roles.show.description",
-                            Map.of("description", OutputSafety.stripControlSequences(detail.description()))));
-        out.println(MessageCatalogue.format("operator.roles.show.class", Map.of(
-                            "class", valueOrDash(stringParameter(detail, "class")),
-                            "form", valueOrDash(stringParameter(detail, "form")))));
-        out.println(MessageCatalogue.format("operator.roles.show.effective", configuration(detail)));
-        out.println(MessageCatalogue.format("operator.roles.show.tools",
-                            Map.of("tools", detail.advisoryToolSet().isEmpty() ? "-"
-                                                : OutputSafety.stripControlSequences(
-                                                String.join(", ", detail.advisoryToolSet())))));
-        out.println(MessageCatalogue.format("operator.roles.show.narrowed",
-                            Map.of(PARAM_EFFORT, narrowedText(detail.narrowedEffort()))));
-        out.println(MessageCatalogue.format("operator.roles.show.qualification",
-                            Map.of("state", detail.qualification().state().wire())));
-        if (detail.qualification().reason() != null) {
-            out.println("  " + MessageCatalogue.format("operator.roles.show.reason",
-                                Map.of(FIELD_REASON, OutputSafety.stripControlSequences(
-                                                    detail.qualification().reason()))));
+        private static void renderQualificationPreview(PrintWriter out, RoleDetailResource detail) {
+            out.println(MessageCatalogue.format("operator.roles.qualify.title",
+                                Map.of("role", OutputSafety.stripControlSequences(detail.role()))));
+            out.println(MessageCatalogue.format("operator.roles.qualify.configuration", configuration(detail)));
+            printParameter(out, "operator.roles.qualify.topics", detail, "corpus_topics");
+            printParameter(out, "operator.roles.qualify.items", detail, "item_counts");
+            var tokens = displayValue(detail.configurationParameters().get("expected_tokens"));
+            var time = displayValue(detail.configurationParameters().get("expected_time"));
+            if (!"-".equals(tokens) || !"-".equals(time)) {
+                out.println(MessageCatalogue.format("operator.roles.qualify.expected",
+                                    Map.of("tokens", tokens, "time", time)));
+            }
+            out.flush();
         }
-        if (!detail.qualification().criteria().isEmpty()) {
-            out.println("  " + MessageCatalogue.format("operator.roles.show.criteria",
-                                Map.of("criteria", OutputSafety.stripControlSequences(
-                                                    String.join(", ", detail.qualification().criteria())))));
-        }
-        if (!detail.configurationParameters().isEmpty()) {
-            out.println(MessageCatalogue.get("operator.roles.show.parameters"));
-            detail.configurationParameters().forEach((key, value) -> out.printf(Locale.ROOT,
-                                "  %-" + (LABEL_WIDTH + 8) + "s %s%n",
-                                OutputSafety.stripControlSequences(key), displayValue(value)));
-        }
-        out.flush();
-    }
 
-    private static void renderQualificationPreview(PrintWriter out, RoleDetailResource detail) {
-        out.println(MessageCatalogue.format("operator.roles.qualify.title",
-                            Map.of("role", OutputSafety.stripControlSequences(detail.role()))));
-        out.println(MessageCatalogue.format("operator.roles.qualify.configuration", configuration(detail)));
-        printParameter(out, "operator.roles.qualify.topics", detail, "corpus_topics");
-        printParameter(out, "operator.roles.qualify.items", detail, "item_counts");
-        var tokens = displayValue(detail.configurationParameters().get("expected_tokens"));
-        var time = displayValue(detail.configurationParameters().get("expected_time"));
-        if (!"-".equals(tokens) || !"-".equals(time)) {
-            out.println(MessageCatalogue.format("operator.roles.qualify.expected",
-                                Map.of("tokens", tokens, "time", time)));
+        private static void printParameter(PrintWriter out, String key, RoleDetailResource detail, String parameter) {
+            var value = displayValue(detail.configurationParameters().get(parameter));
+            if (!"-".equals(value)) {
+                out.println(MessageCatalogue.format(key, Map.of("value", value)));
+            }
         }
-        out.flush();
-    }
 
-    private static void printParameter(PrintWriter out, String key, RoleDetailResource detail, String parameter) {
-        var value = displayValue(detail.configurationParameters().get(parameter));
-        if (!"-".equals(value)) {
-            out.println(MessageCatalogue.format(key, Map.of("value", value)));
+        private static @Nullable Map<String, Object> measurements(@Nullable String body) {
+            if (body == null || body.isBlank()) {
+                return null;
+            }
+            Map<String, Object> map;
+            try {
+                map = JsonTree.asObject(JsonTree.parse(body));
+            } catch (IOException _) {
+                return null;
+            }
+            if (map == null || MEASUREMENT_FIELDS.stream().noneMatch(map::containsKey)) {
+                return null;
+            }
+            return map;
+        }
+
+        private static void printMeasurements(PrintWriter out, Map<String, Object> measurements) {
+            out.println(MessageCatalogue.get("operator.roles.qualify.measurements"));
+            printMeasurement(out, measurements, "fresh_agreement", "operator.roles.qualify.fresh");
+            printMeasurement(out, measurements, "warm_agreement", "operator.roles.qualify.warm");
+            printMeasurement(out, measurements, "warm_fresh_gap", "operator.roles.qualify.gap");
+            printMeasurement(out, measurements, "qualified_fresh", "operator.roles.qualify.qualified_fresh");
+            printMeasurement(out, measurements, "qualified_warm", "operator.roles.qualify.qualified_warm");
+            var recordPath = measurements.get("record_path");
+            if (recordPath != null) {
+                out.println(MessageCatalogue.format("operator.roles.qualify.record",
+                                    Map.of("path", OutputSafety.stripControlSequences(String.valueOf(recordPath)))));
+            }
+        }
+
+        private static void printMeasurement(PrintWriter out, Map<String, Object> map, String parameter, String key) {
+            var value = map.get(parameter);
+            if (value != null) {
+                out.println("  " + MessageCatalogue.format(key,
+                                    Map.of("value", OutputSafety.stripControlSequences(displayValue(value)))));
+            }
+        }
+
+        private static String qualifyTarget(String role, @Nullable String project) {
+            return withProject(PATH_ROLES + "/" + OperatorUrlUtil.encodePathSegment(role) + "/qualify", project);
+        }
+
+        private static String refusalReason(String body) {
+            try {
+                var map = JsonTree.asObject(JsonTree.parse(body));
+                var reason = JsonTree.string(map, FIELD_REASON);
+                if (reason == null) {
+                    reason = JsonTree.string(map, "error");
+                }
+                if (reason == null) {
+                    reason = JsonTree.string(map, "code");
+                }
+                return reason != null ? reason : "";
+            } catch (IOException _) {
+                return "";
+            }
         }
     }
 
@@ -393,55 +484,6 @@ public final class RolesCommand implements Callable<Integer> {
                             PARAM_HARNESS, valueOrDash(stringParameter(detail, PARAM_HARNESS)),
                             PARAM_MODEL, valueOrDash(stringParameter(detail, PARAM_MODEL)),
                             PARAM_EFFORT, valueOrDash(stringParameter(detail, PARAM_EFFORT)));
-    }
-
-    private static String narrowedText(@Nullable NarrowedEffort narrowed) {
-        if (narrowed == null) {
-            return "-";
-        }
-        var text = OutputSafety.stripControlSequences(narrowed.category());
-        if (narrowed.description() == null) {
-            return text;
-        }
-        return text + " — " + OutputSafety.stripControlSequences(narrowed.description());
-    }
-
-    private static @Nullable Map<String, Object> measurements(@Nullable String body) {
-        if (body == null || body.isBlank()) {
-            return null;
-        }
-        Map<String, Object> map;
-        try {
-            map = JsonTree.asObject(JsonTree.parse(body));
-        } catch (IOException _) {
-            return null;
-        }
-        if (map == null || MEASUREMENT_FIELDS.stream().noneMatch(map::containsKey)) {
-            return null;
-        }
-        return map;
-    }
-
-    private static void printMeasurements(PrintWriter out, Map<String, Object> measurements) {
-        out.println(MessageCatalogue.get("operator.roles.qualify.measurements"));
-        printMeasurement(out, measurements, "fresh_agreement", "operator.roles.qualify.fresh");
-        printMeasurement(out, measurements, "warm_agreement", "operator.roles.qualify.warm");
-        printMeasurement(out, measurements, "warm_fresh_gap", "operator.roles.qualify.gap");
-        printMeasurement(out, measurements, "qualified_fresh", "operator.roles.qualify.qualified_fresh");
-        printMeasurement(out, measurements, "qualified_warm", "operator.roles.qualify.qualified_warm");
-        var recordPath = measurements.get("record_path");
-        if (recordPath != null) {
-            out.println(MessageCatalogue.format("operator.roles.qualify.record",
-                                Map.of("path", OutputSafety.stripControlSequences(String.valueOf(recordPath)))));
-        }
-    }
-
-    private static void printMeasurement(PrintWriter out, Map<String, Object> map, String parameter, String key) {
-        var value = map.get(parameter);
-        if (value != null) {
-            out.println("  " + MessageCatalogue.format(key,
-                                Map.of("value", OutputSafety.stripControlSequences(displayValue(value)))));
-        }
     }
 
     private static @Nullable String stringParameter(RoleDetailResource detail, String parameter) {
@@ -460,38 +502,12 @@ public final class RolesCommand implements Callable<Integer> {
         };
     }
 
-    private static String pad(@Nullable String value, int width) {
-        var safe = OutputSafety.stripControlSequences(value == null ? "-" : value);
-        if (safe.length() > width) {
-            safe = width <= 1 ? safe.substring(0, width) : safe.substring(0, width - 1) + "…";
-        }
-        var padded = new StringBuilder(safe);
-        while (padded.length() < width) {
-            padded.append(' ');
-        }
-        return padded.toString();
-    }
-
     private static String valueOrDash(@Nullable String value) {
         return value == null || value.isBlank() ? "-" : OutputSafety.stripControlSequences(value);
     }
 
-    private static String valueWithLevel(@Nullable String value, @Nullable String level) {
-        var safeValue = valueOrDash(value);
-        return level == null || level.isBlank() ? safeValue
-                            : safeValue + " (" + OutputSafety.stripControlSequences(level) + ")";
-    }
-
-    private static String rolesTarget(@Nullable String project) {
-        return withProject(PATH_ROLES, project);
-    }
-
     private static String roleTarget(String role, @Nullable String project) {
         return withProject(PATH_ROLES + "/" + OperatorUrlUtil.encodePathSegment(role), project);
-    }
-
-    private static String qualifyTarget(String role, @Nullable String project) {
-        return withProject(PATH_ROLES + "/" + OperatorUrlUtil.encodePathSegment(role) + "/qualify", project);
     }
 
     private static String withProject(String target, @Nullable String project) {
@@ -499,19 +515,5 @@ public final class RolesCommand implements Callable<Integer> {
                             : target + QUERY_PROJECT + OperatorUrlUtil.encodeQueryValue(project);
     }
 
-    private static String refusalReason(String body) {
-        try {
-            var map = JsonTree.asObject(JsonTree.parse(body));
-            var reason = JsonTree.string(map, FIELD_REASON);
-            if (reason == null) {
-                reason = JsonTree.string(map, "error");
-            }
-            if (reason == null) {
-                reason = JsonTree.string(map, "code");
-            }
-            return reason != null ? reason : "";
-        } catch (IOException _) {
-            return "";
-        }
-    }
+
 }
