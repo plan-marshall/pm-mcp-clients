@@ -270,7 +270,8 @@ class RolesCommandTest {
             if ("GET".equals(request.method())) {
                 response.json(200, detail("implementer").toJson());
             } else {
-                response.json(200, "{\"fresh_agreement\":0.86}");
+                response.json(200, "{\"fresh_agreement\":0.86,"
+                                    + "\"record_path\":\"/base/projects/my-service/roles/qualification/implementer.json\"}");
             }
         });
 

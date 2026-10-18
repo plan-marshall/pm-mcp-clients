@@ -20,9 +20,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HexFormat;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -30,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
+
+import de.planmarshall.api.host.HostDetection;
 
 /**
  * Discovers and probes the headless CLI of one of the client profiles the terminal client knows
@@ -47,18 +47,10 @@ final class HarnessDiscovery {
     /** The version recorded for a client whose profile declares no version probe. */
     static final String UNREPORTED_VERSION = "unknown";
 
-    private static final String CLAUDE = "claude";
-    private static final String OPENCODE = "opencode";
-    private static final String CODEX = "codex";
-    private static final String ANTIGRAVITY = "antigravity";
-    private static final String VERSION_FLAG = "--version";
     private static final String PATH_VARIABLE = "PATH";
 
-    private static final Map<String, String> EXECUTABLES = executables();
-    private static final Map<String, List<String>> PROBES = probes();
-
-    /** The client ids the terminal client knows how to discover. */
-    static final List<String> SUPPORTED_CLIENTS = List.copyOf(EXECUTABLES.keySet());
+    /** The client ids the terminal client knows how to discover, from the shipped profiles. */
+    static final List<String> SUPPORTED_CLIENTS = List.copyOf(HostDetection.clientIds());
 
     private static final Duration PROBE_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration READER_TIMEOUT = Duration.ofSeconds(2);
@@ -77,25 +69,6 @@ final class HarnessDiscovery {
 
     private HarnessDiscovery() {
         // Utility class
-    }
-
-    private static Map<String, String> executables() {
-        var map = new LinkedHashMap<String, String>();
-        map.put(CLAUDE, CLAUDE);
-        map.put(OPENCODE, OPENCODE);
-        map.put(CODEX, CODEX);
-        map.put(ANTIGRAVITY, ANTIGRAVITY);
-        return Collections.unmodifiableMap(map);
-    }
-
-    private static Map<String, List<String>> probes() {
-        var map = new LinkedHashMap<String, List<String>>();
-        map.put(CLAUDE, List.of(VERSION_FLAG));
-        map.put(OPENCODE, List.of(VERSION_FLAG));
-        map.put(CODEX, List.of(VERSION_FLAG));
-        // the antigravity profile declares version_probe: null
-        map.put(ANTIGRAVITY, List.of());
-        return Collections.unmodifiableMap(map);
     }
 
     /**
@@ -152,13 +125,15 @@ final class HarnessDiscovery {
         if (!isSupported(client)) {
             throw new IllegalArgumentException("Unknown harness client: " + client);
         }
-        var executable = resolveExecutable(EXECUTABLES.get(client), environment);
-        var argv = PROBES.getOrDefault(client, List.of());
-        if (argv.isEmpty()) {
+        var probe = HostDetection.host(client).map(HostDetection.Host::versionProbe).orElse(List.of());
+        if (probe.size() <= 1) {
+            // the profile declares no version probe (antigravity); record the path and digest only
+            var executable = resolveExecutable(client, environment);
             return new Harness(client, executable, UNREPORTED_VERSION, sha256(executable));
         }
+        var executable = resolveExecutable(probe.getFirst(), environment);
         var before = sha256(executable);
-        var version = probeVersion(executable, argv, environment);
+        var version = probeVersion(executable, probe.subList(1, probe.size()), environment);
         var after = sha256(executable);
         if (!before.equals(after)) {
             throw new HarnessProbeException(

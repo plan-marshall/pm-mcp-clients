@@ -11,6 +11,8 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -63,9 +65,8 @@ public final class RolesCommand implements Callable<Integer> {
     private static final String PARAM_HARNESS = "harness";
     private static final String PARAM_MODEL = "model";
     private static final String PARAM_EFFORT = "effort";
-    private static final List<String> MEASUREMENT_FIELDS = List.of(
-                        "fresh_agreement", "warm_agreement", "warm_fresh_gap",
-                        "qualified_fresh", "qualified_warm", "record_path");
+    private static final String RECORD_PATH = "record_path";
+    private static final Map<String, String> MEASUREMENT_LABELS = measurementLabels();
     private static final int LABEL_WIDTH = 16;
     private static final int[] LIST_WIDTHS = {18, 8, 10, 6, 16, 22, 14, 20, 6};
 
@@ -430,20 +431,24 @@ public final class RolesCommand implements Callable<Integer> {
             } catch (IOException _) {
                 return null;
             }
-            if (map == null || MEASUREMENT_FIELDS.stream().noneMatch(map::containsKey)) {
+            if (map == null || !(map.get(RECORD_PATH) instanceof String path) || path.isBlank()) {
                 return null;
             }
-            return map;
+            var measured = MEASUREMENT_LABELS.keySet().stream().anyMatch(key -> isMeasurement(map.get(key)));
+            return measured ? map : null;
+        }
+
+        private static boolean isMeasurement(@Nullable Object value) {
+            return switch (value) {
+                case JsonNumber _, Number _, Boolean _ -> true;
+                case null, default -> false;
+            };
         }
 
         private static void printMeasurements(PrintWriter out, Map<String, Object> measurements) {
             out.println(MessageCatalogue.get("operator.roles.qualify.measurements"));
-            printMeasurement(out, measurements, "fresh_agreement", "operator.roles.qualify.fresh");
-            printMeasurement(out, measurements, "warm_agreement", "operator.roles.qualify.warm");
-            printMeasurement(out, measurements, "warm_fresh_gap", "operator.roles.qualify.gap");
-            printMeasurement(out, measurements, "qualified_fresh", "operator.roles.qualify.qualified_fresh");
-            printMeasurement(out, measurements, "qualified_warm", "operator.roles.qualify.qualified_warm");
-            var recordPath = measurements.get("record_path");
+            MEASUREMENT_LABELS.forEach((field, key) -> printMeasurement(out, measurements, field, key));
+            var recordPath = measurements.get(RECORD_PATH);
             if (recordPath != null) {
                 out.println(MessageCatalogue.format("operator.roles.qualify.record",
                                     Map.of("path", OutputSafety.stripControlSequences(String.valueOf(recordPath)))));
@@ -477,6 +482,16 @@ public final class RolesCommand implements Callable<Integer> {
                 return "";
             }
         }
+    }
+
+    private static Map<String, String> measurementLabels() {
+        var labels = new LinkedHashMap<String, String>();
+        labels.put("fresh_agreement", "operator.roles.qualify.fresh");
+        labels.put("warm_agreement", "operator.roles.qualify.warm");
+        labels.put("warm_fresh_gap", "operator.roles.qualify.gap");
+        labels.put("qualified_fresh", "operator.roles.qualify.qualified_fresh");
+        labels.put("qualified_warm", "operator.roles.qualify.qualified_warm");
+        return Collections.unmodifiableMap(labels);
     }
 
     private static Map<String, Object> configuration(RoleDetailResource detail) {
