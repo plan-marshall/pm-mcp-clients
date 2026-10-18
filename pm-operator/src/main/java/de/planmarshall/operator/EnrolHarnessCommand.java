@@ -51,6 +51,7 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
     private static final String PATH_HARNESSES = "/api/v1/harnesses/";
     private static final String SUFFIX_ENROL = "/enrol";
     private static final String ERR_HARNESS_VERSION_UNSUPPORTED = "harness_version_unsupported";
+    private static final String KEY_REASON = "reason";
 
     private static final int LABEL_WIDTH = 12;
     private static final int VALUE_WIDTH = 66;
@@ -86,7 +87,7 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
 
         if (!HarnessDiscovery.isSupported(client)) {
             err.println(MessageCatalogue.format("enrolment.harness.unsupported_client",
-                                Map.of("client", safeClient)));
+                                Map.of(HarnessEnrolmentResource.FIELD_CLIENT, safeClient)));
             err.flush();
             return 2;
         }
@@ -96,13 +97,13 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
             harness = HarnessDiscovery.discover(client, context.environment());
         } catch (HarnessDiscovery.HarnessNotFoundException _) {
             err.println(MessageCatalogue.format("enrolment.harness.not_found",
-                                Map.of("client", safeClient)));
+                                Map.of(HarnessEnrolmentResource.FIELD_CLIENT, safeClient)));
             err.flush();
             return 1;
         } catch (HarnessDiscovery.HarnessProbeException e) {
             err.println(MessageCatalogue.format("enrolment.harness.probe_failed",
-                                Map.of("client", safeClient,
-                                                    "reason", OutputSafety.stripControlSequences(e.getMessage()))));
+                                Map.of(HarnessEnrolmentResource.FIELD_CLIENT, safeClient,
+                                                    KEY_REASON, OutputSafety.stripControlSequences(e.getMessage()))));
             err.flush();
             return 1;
         }
@@ -124,6 +125,12 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
             }
         }
 
+        return sendEnrolment(out, err, safeClient, recorded, harness);
+    }
+
+    private int sendEnrolment(PrintWriter out, PrintWriter err, String safeClient,
+                        @Nullable HarnessEnrolmentResource recorded, HarnessDiscovery.Harness harness)
+                        throws IOException {
         var requested = new HarnessEnrolmentResource(client, harness.executable().toString(),
                             harness.version(), harness.sha256Digest(),
                             HarnessEnrolmentResource.Status.DETECTED);
@@ -131,20 +138,8 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
         var response = context.runtime(true).send(HttpRequest.json("POST", target, requested.toJson()));
 
         if (response.status() == 200 || response.status() == 201) {
-            var recordedStatus = recordedStatus(recorded, harness);
-            var result = recordedStatus == HarnessEnrolmentResource.Status.ENROLLED
-                                ? MessageCatalogue.format("enrolment.harness.done", Map.of(
-                                "client", safeClient,
-                                "path", OutputSafety.stripControlSequences(
-                                                    harness.executable().toString()),
-                                "version", OutputSafety.stripControlSequences(harness.version())))
-                                : MessageCatalogue.format("enrolment.harness.updated", Map.of(
-                                "client", safeClient,
-                                "path", OutputSafety.stripControlSequences(
-                                                    harness.executable().toString()),
-                                "version", OutputSafety.stripControlSequences(harness.version())));
-            out.println(result);
-            out.flush();
+            printEnrolmentResult(out, safeClient, harness,
+                                recordedStatus(recorded, harness) == HarnessEnrolmentResource.Status.UPDATED);
             return 0;
         }
 
@@ -152,17 +147,30 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
         if (response.status() == 400 || response.status() == 404 || response.status() == 409) {
             if (ERR_HARNESS_VERSION_UNSUPPORTED.equals(reason)) {
                 err.println(MessageCatalogue.format("enrolment.harness.version_unsupported",
-                                    Map.of("client", safeClient,
-                                                        "version", OutputSafety.stripControlSequences(harness.version()))));
+                                    Map.of(HarnessEnrolmentResource.FIELD_CLIENT, safeClient,
+                                                        HarnessEnrolmentResource.FIELD_VERSION,
+                                                        OutputSafety.stripControlSequences(harness.version()))));
             } else {
                 err.println(MessageCatalogue.format("enrolment.harness.invalid",
-                                    Map.of("client", safeClient,
-                                                        "reason", OutputSafety.stripControlSequences(reason))));
+                                    Map.of(HarnessEnrolmentResource.FIELD_CLIENT, safeClient,
+                                                        KEY_REASON, OutputSafety.stripControlSequences(reason))));
             }
             err.flush();
             return 1;
         }
         throw new OperatorRefusedException("enrol-harness " + safeClient, response);
+    }
+
+    private static void printEnrolmentResult(PrintWriter out, String safeClient,
+                        HarnessDiscovery.Harness harness, boolean updated) {
+        var key = updated ? "enrolment.harness.updated" : "enrolment.harness.done";
+        out.println(MessageCatalogue.format(key, Map.of(
+                            HarnessEnrolmentResource.FIELD_CLIENT, safeClient,
+                            HarnessEnrolmentResource.FIELD_EXECUTABLE_PATH,
+                            OutputSafety.stripControlSequences(harness.executable().toString()),
+                            HarnessEnrolmentResource.FIELD_VERSION,
+                            OutputSafety.stripControlSequences(harness.version()))));
+        out.flush();
     }
 
     private @Nullable HarnessEnrolmentResource fetchRecorded(String clientId) throws IOException {
@@ -191,7 +199,8 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
 
     private static void render(PrintWriter out, String client,
                         @Nullable HarnessEnrolmentResource recorded, HarnessDiscovery.Harness harness) {
-        out.println(MessageCatalogue.format("enrolment.harness.title", Map.of("client", client)));
+        out.println(MessageCatalogue.format("enrolment.harness.title",
+                            Map.of(HarnessEnrolmentResource.FIELD_CLIENT, client)));
         out.printf(Locale.ROOT, ROW_FORMAT,
                             MessageCatalogue.get("enrolment.harness.metric"),
                             MessageCatalogue.get("enrolment.harness.recorded"),

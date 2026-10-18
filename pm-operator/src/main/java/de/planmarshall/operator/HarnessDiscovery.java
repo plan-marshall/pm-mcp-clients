@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Discovers and probes the headless CLI of one of the client profiles the terminal client knows
@@ -46,6 +47,13 @@ final class HarnessDiscovery {
     /** The version recorded for a client whose profile declares no version probe. */
     static final String UNREPORTED_VERSION = "unknown";
 
+    private static final String CLAUDE = "claude";
+    private static final String OPENCODE = "opencode";
+    private static final String CODEX = "codex";
+    private static final String ANTIGRAVITY = "antigravity";
+    private static final String VERSION_FLAG = "--version";
+    private static final String PATH_VARIABLE = "PATH";
+
     private static final Map<String, String> EXECUTABLES = executables();
     private static final Map<String, List<String>> PROBES = probes();
 
@@ -57,7 +65,7 @@ final class HarnessDiscovery {
     private static final int MAX_OUTPUT_BYTES = 8 * 1024;
     private static final int MAX_VERSION_LENGTH = 128;
     private static final int BUFFER_SIZE = 1024;
-    private static final Pattern VERSION = Pattern.compile("(\\d+(?:\\.\\d+)+)");
+    private static final Pattern VERSION = Pattern.compile("\\d+(?:\\.\\d+){1,4}");
 
     /**
      * The environment variables a version probe may see. The operator's environment is never handed
@@ -74,20 +82,20 @@ final class HarnessDiscovery {
 
     private static Map<String, String> executables() {
         var map = new LinkedHashMap<String, String>();
-        map.put("claude", "claude");
-        map.put("opencode", "opencode");
-        map.put("codex", "codex");
-        map.put("antigravity", "antigravity");
+        map.put(CLAUDE, CLAUDE);
+        map.put(OPENCODE, OPENCODE);
+        map.put(CODEX, CODEX);
+        map.put(ANTIGRAVITY, ANTIGRAVITY);
         return Collections.unmodifiableMap(map);
     }
 
     private static Map<String, List<String>> probes() {
         var map = new LinkedHashMap<String, List<String>>();
-        map.put("claude", List.of("--version"));
-        map.put("opencode", List.of("--version"));
-        map.put("codex", List.of("--version"));
+        map.put(CLAUDE, List.of(VERSION_FLAG));
+        map.put(OPENCODE, List.of(VERSION_FLAG));
+        map.put(CODEX, List.of(VERSION_FLAG));
         // the antigravity profile declares version_probe: null
-        map.put("antigravity", List.of());
+        map.put(ANTIGRAVITY, List.of());
         return Collections.unmodifiableMap(map);
     }
 
@@ -162,31 +170,39 @@ final class HarnessDiscovery {
 
     private static Path resolveExecutable(String name, Map<String, String> environment)
                         throws HarnessNotFoundException {
-        var path = environment.get("PATH");
+        var path = environment.get(PATH_VARIABLE);
         if (path == null || path.isBlank()) {
             throw new HarnessNotFoundException(name + " is not on PATH");
         }
         for (var entry : path.split(Pattern.quote(File.pathSeparator))) {
-            if (entry.isBlank()) {
-                continue;
-            }
-            var directory = Path.of(entry);
-            if (!directory.isAbsolute()) {
-                // a relative PATH entry is resolved against the working directory, which the
-                // operator did not name; never execute from it
-                continue;
-            }
-            var candidate = directory.resolve(name);
-            if (!Files.isRegularFile(candidate) || !Files.isExecutable(candidate)) {
-                continue;
-            }
-            try {
-                return candidate.toRealPath();
-            } catch (IOException _) {
-                // an unresolvable entry is no candidate
+            var resolved = candidateIn(entry, name);
+            if (resolved != null) {
+                return resolved;
             }
         }
         throw new HarnessNotFoundException(name + " is not on PATH");
+    }
+
+    private static @Nullable Path candidateIn(String entry, String name) {
+        if (entry.isBlank()) {
+            return null;
+        }
+        var directory = Path.of(entry);
+        if (!directory.isAbsolute()) {
+            // a relative PATH entry is resolved against the working directory, which the operator
+            // did not name; never execute from it
+            return null;
+        }
+        var candidate = directory.resolve(name);
+        if (!Files.isRegularFile(candidate) || !Files.isExecutable(candidate)) {
+            return null;
+        }
+        try {
+            return candidate.toRealPath();
+        } catch (IOException _) {
+            // an unresolvable entry is no candidate
+            return null;
+        }
     }
 
     private static String sha256(Path executable) throws IOException {
@@ -241,28 +257,7 @@ final class HarnessDiscovery {
                 readFailure.set(e);
             }
         });
-        boolean joined;
-        try {
-            if (!process.waitFor(PROBE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
-                process.destroyForcibly();
-                process.waitFor(1, TimeUnit.SECONDS);
-                throw new HarnessProbeException("version probe of " + executable + " timed out");
-            }
-            reader.join(READER_TIMEOUT.toMillis());
-            joined = !reader.isAlive();
-            if (joined) {
-                // the reader reached EOF; nothing more is pending
-                reader.join();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            process.destroyForcibly();
-            throw new HarnessProbeException("version probe of " + executable + " was interrupted");
-        } finally {
-            if (process.isAlive()) {
-                process.destroyForcibly();
-            }
-        }
+        boolean joined = awaitProbe(process, reader, executable);
         if (!joined) {
             process.destroyForcibly();
             throw new HarnessProbeException(
@@ -279,13 +274,34 @@ final class HarnessDiscovery {
         return versionOf(executable, output.toString(StandardCharsets.UTF_8));
     }
 
+    private static boolean awaitProbe(Process process, Thread reader, Path executable)
+                        throws HarnessProbeException {
+        try {
+            if (!process.waitFor(PROBE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+                process.destroyForcibly();
+                process.waitFor(1, TimeUnit.SECONDS);
+                throw new HarnessProbeException("version probe of " + executable + " timed out");
+            }
+            reader.join(READER_TIMEOUT.toMillis());
+            return !reader.isAlive();
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            process.destroyForcibly();
+            throw new HarnessProbeException("version probe of " + executable + " was interrupted");
+        } finally {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+            }
+        }
+    }
+
     private static String versionOf(Path executable, String output) throws HarnessProbeException {
         var safe = OutputSafety.stripControlSequences(output).strip();
         if (safe.isEmpty()) {
             throw new HarnessProbeException("version probe of " + executable + " reported no output");
         }
         var matcher = VERSION.matcher(safe);
-        var version = matcher.find() ? matcher.group(1) : safe.lines().findFirst().orElse("").strip();
+        var version = matcher.find() ? matcher.group() : safe.lines().findFirst().orElse("").strip();
         if (version.isEmpty()) {
             throw new HarnessProbeException("version probe of " + executable + " reported no version");
         }

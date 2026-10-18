@@ -198,7 +198,7 @@ public record HarnessEnrolmentResource(
      * @throws IOException on format failure
      */
     public static HarnessEnrolmentResource fromJson(String json) throws IOException {
-        return fromMap(objectOf(json, "HarnessEnrolmentResource"));
+        return fromMap(ResourceJson.objectOf(json, "HarnessEnrolmentResource"));
     }
 
     /**
@@ -209,27 +209,7 @@ public record HarnessEnrolmentResource(
      * @throws IOException on format failure
      */
     public static HarnessEnrolmentResource readFrom(JsonParser parser) throws IOException {
-        return fromMap(objectOf(parser, "HarnessEnrolmentResource"));
-    }
-
-    private static Map<String, Object> objectOf(String json, String resource) throws IOException {
-        var parsed = JsonTree.parse(json);
-        if (parsed instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            var object = (Map<String, Object>) map;
-            return object;
-        }
-        throw new JsonFormatException("Expected a JSON object for " + resource);
-    }
-
-    private static Map<String, Object> objectOf(JsonParser parser, String resource) throws IOException {
-        var parsed = JsonTree.readValue(parser);
-        if (parsed instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            var object = (Map<String, Object>) map;
-            return object;
-        }
-        throw new JsonFormatException("Expected a JSON object for " + resource);
+        return fromMap(ResourceJson.objectOf(parser, "HarnessEnrolmentResource"));
     }
 
     private static void requireClient(String client) {

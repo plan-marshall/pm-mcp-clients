@@ -152,12 +152,12 @@ public record RoleSummaryResource(
      */
     public static RoleSummaryResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var role = firstString(map, FIELD_ROLE, "name");
+        var role = ResourceJson.firstString(map, FIELD_ROLE, "name");
         var displayName = JsonTree.string(map, FIELD_DISPLAY_NAME);
         var description = JsonTree.string(map, FIELD_DESCRIPTION);
-        var capabilities = strings(map, FIELD_CAPABILITIES, "tools");
-        var sourceSet = firstString(map, FIELD_SOURCE_SET, "set");
-        var roleClass = firstString(map, FIELD_CLASS, "role_class");
+        var capabilities = ResourceJson.strings(map, FIELD_CAPABILITIES, "tools");
+        var sourceSet = ResourceJson.firstString(map, FIELD_SOURCE_SET, "set");
+        var roleClass = ResourceJson.firstString(map, FIELD_CLASS, "role_class");
         var form = JsonTree.string(map, FIELD_FORM);
         var harness = JsonTree.string(map, FIELD_HARNESS);
         var model = JsonTree.string(map, FIELD_MODEL);
@@ -184,7 +184,7 @@ public record RoleSummaryResource(
      * @throws IOException on format failure
      */
     public static RoleSummaryResource fromJson(String json) throws IOException {
-        return fromMap(objectOf(json, "RoleSummaryResource"));
+        return fromMap(ResourceJson.objectOf(json, "RoleSummaryResource"));
     }
 
     /**
@@ -195,7 +195,7 @@ public record RoleSummaryResource(
      * @throws IOException on format failure
      */
     public static RoleSummaryResource readFrom(JsonParser parser) throws IOException {
-        return fromMap(objectOf(parser, "RoleSummaryResource"));
+        return fromMap(ResourceJson.objectOf(parser, "RoleSummaryResource"));
     }
 
     /**
@@ -237,45 +237,6 @@ public record RoleSummaryResource(
         return List.copyOf(roles);
     }
 
-    private static Map<String, Object> objectOf(String json, String resource) throws IOException {
-        var parsed = JsonTree.parse(json);
-        if (parsed instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            var object = (Map<String, Object>) map;
-            return object;
-        }
-        throw new JsonFormatException("Expected a JSON object for " + resource);
-    }
-
-    private static Map<String, Object> objectOf(JsonParser parser, String resource) throws IOException {
-        var parsed = JsonTree.readValue(parser);
-        if (parsed instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            var object = (Map<String, Object>) map;
-            return object;
-        }
-        throw new JsonFormatException("Expected a JSON object for " + resource);
-    }
-
-    private static List<String> strings(Map<String, Object> map, String field, String alias)
-            throws IOException {
-        var value = map.containsKey(field) ? map.get(field) : map.get(alias);
-        if (value == null) {
-            return List.of();
-        }
-        if (!(value instanceof List<?> list)) {
-            throw new JsonFormatException(field + " must be a JSON array of strings");
-        }
-        var strings = new ArrayList<String>(list.size());
-        for (var element : list) {
-            if (!(element instanceof String text)) {
-                throw new JsonFormatException(field + " must hold only strings");
-            }
-            strings.add(text);
-        }
-        return strings;
-    }
-
     private static boolean requireBoolean(Map<String, Object> map, String field) throws IOException {
         if (map.get(field) instanceof Boolean flag) {
             return flag;
@@ -301,11 +262,6 @@ public record RoleSummaryResource(
             throw new JsonFormatException("Unknown role qualification state: " + wire);
         }
         return state;
-    }
-
-    private static @Nullable String firstString(Map<String, Object> map, String field, String alias) {
-        var value = JsonTree.string(map, field);
-        return value != null ? value : JsonTree.string(map, alias);
     }
 
     private static void putIfPresent(Map<String, Object> map, String field, @Nullable String value) {

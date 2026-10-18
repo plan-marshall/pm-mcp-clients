@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -173,7 +174,7 @@ class EnrolHarnessCommandTest {
         assertEquals(1, execute("n\n", "enrol-harness", "claude"));
 
         assertTrue(out.toString().contains("The harness was not enrolled"), out.toString());
-        assertTrue(server.awaitRequest(Duration.ofSeconds(1)) != null, "the recorded values are read");
+        assertNotNull(server.awaitRequest(Duration.ofSeconds(1)), "the recorded values are read");
         assertEquals(1, server.requests().size(), "no enrolment request may be sent");
     }
 

@@ -12,7 +12,6 @@ package de.planmarshall.api.resource;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -188,11 +187,11 @@ public record RoleDetailResource(
      */
     public static RoleDetailResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var role = firstString(map, FIELD_ROLE, "name");
+        var role = ResourceJson.firstString(map, FIELD_ROLE, "name");
         var displayName = JsonTree.string(map, FIELD_DISPLAY_NAME);
         var description = JsonTree.string(map, FIELD_DESCRIPTION);
         try {
-            var tools = strings(map, FIELD_ADVISORY_TOOL_SET, "tools");
+            var tools = ResourceJson.strings(map, FIELD_ADVISORY_TOOL_SET, "tools");
             var narrowedEffort = narrowedEffort(map);
             var qualification = qualification(map);
             var parameters = parameters(map);
@@ -211,7 +210,7 @@ public record RoleDetailResource(
      * @throws IOException on format failure
      */
     public static RoleDetailResource fromJson(String json) throws IOException {
-        return fromMap(objectOf(json, "RoleDetailResource"));
+        return fromMap(ResourceJson.objectOf(json, "RoleDetailResource"));
     }
 
     /**
@@ -222,27 +221,7 @@ public record RoleDetailResource(
      * @throws IOException on format failure
      */
     public static RoleDetailResource readFrom(JsonParser parser) throws IOException {
-        return fromMap(objectOf(parser, "RoleDetailResource"));
-    }
-
-    private static Map<String, Object> objectOf(String json, String resource) throws IOException {
-        var parsed = JsonTree.parse(json);
-        if (parsed instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            var object = (Map<String, Object>) map;
-            return object;
-        }
-        throw new JsonFormatException("Expected a JSON object for " + resource);
-    }
-
-    private static Map<String, Object> objectOf(JsonParser parser, String resource) throws IOException {
-        var parsed = JsonTree.readValue(parser);
-        if (parsed instanceof Map<?, ?> map) {
-            @SuppressWarnings("unchecked")
-            var object = (Map<String, Object>) map;
-            return object;
-        }
-        throw new JsonFormatException("Expected a JSON object for " + resource);
+        return fromMap(ResourceJson.objectOf(parser, "RoleDetailResource"));
     }
 
     private static @Nullable NarrowedEffort narrowedEffort(Map<String, Object> map) throws IOException {
@@ -278,7 +257,7 @@ public record RoleDetailResource(
             var object = JsonTree.asObject(nested);
             wire = JsonTree.string(object, Qualification.FIELD_STATE);
             reason = JsonTree.string(object, Qualification.FIELD_REASON);
-            criteria = strings(object, Qualification.FIELD_CRITERIA, "topics");
+            criteria = ResourceJson.strings(object, Qualification.FIELD_CRITERIA, "topics");
         } else if (value != null) {
             throw new JsonFormatException("qualification must be a string or an object");
         }
@@ -296,6 +275,7 @@ public record RoleDetailResource(
     }
 
     private static Map<String, Object> parameters(Map<String, Object> map) {
+        Objects.requireNonNull(map, "map");
         var explicit = JsonTree.object(map, FIELD_CONFIGURATION_PARAMETERS);
         if (explicit != null) {
             return explicit;
@@ -308,30 +288,6 @@ public record RoleDetailResource(
             }
         }
         return parameters;
-    }
-
-    private static List<String> strings(Map<String, Object> map, String field, String alias)
-            throws IOException {
-        var value = map.containsKey(field) ? map.get(field) : map.get(alias);
-        if (value == null) {
-            return List.of();
-        }
-        if (!(value instanceof List<?> list)) {
-            throw new JsonFormatException(field + " must be a JSON array of strings");
-        }
-        var strings = new ArrayList<String>(list.size());
-        for (var element : list) {
-            if (!(element instanceof String text)) {
-                throw new JsonFormatException(field + " must hold only strings");
-            }
-            strings.add(text);
-        }
-        return strings;
-    }
-
-    private static @Nullable String firstString(Map<String, Object> map, String field, String alias) {
-        var value = JsonTree.string(map, field);
-        return value != null ? value : JsonTree.string(map, alias);
     }
 
     private static Map<String, Object> immutableMap(@Nullable Map<String, Object> map) {

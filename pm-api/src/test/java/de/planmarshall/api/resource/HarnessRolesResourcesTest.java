@@ -60,6 +60,7 @@ class HarnessRolesResourcesTest {
     @Test
     @DisplayName("a harness enrolment normalizes its absolute path and refuses invalid members")
     void harnessEnrolmentValidation() {
+        var upper = SHA.toUpperCase();
         assertAll(
                 () -> assertEquals("/usr/local/bin/claude",
                         new HarnessEnrolmentResource("claude", "/usr/local/./bin/claude", "2.4.1", SHA,
@@ -74,7 +75,7 @@ class HarnessRolesResourcesTest {
                         () -> new HarnessEnrolmentResource("claude", "/bin/claude", " ", SHA,
                                 HarnessEnrolmentResource.Status.ENROLLED)),
                 () -> assertThrows(IllegalArgumentException.class,
-                        () -> new HarnessEnrolmentResource("claude", "/bin/claude", "2.4.1", SHA.toUpperCase(),
+                        () -> new HarnessEnrolmentResource("claude", "/bin/claude", "2.4.1", upper,
                                 HarnessEnrolmentResource.Status.ENROLLED)),
                 () -> assertThrows(IllegalArgumentException.class,
                         () -> new HarnessEnrolmentResource("claude", "/bin/claude", "2.4.1", "abc",
@@ -213,8 +214,9 @@ class HarnessRolesResourcesTest {
         assertEquals(resource, readStreaming(resource.toJson(), RoleDetailResource::readFrom));
         assertEquals(resource, writeStreaming(resource, RoleDetailResource::fromJson));
         assertEquals(JsonNumber.of(2), resource.configurationParameters().get("count"));
+        var configuration = resource.configurationParameters();
         assertThrows(UnsupportedOperationException.class,
-                () -> resource.configurationParameters().put("x", "y"));
+                () -> configuration.put("x", "y"));
     }
 
     @Test
@@ -253,11 +255,12 @@ class HarnessRolesResourcesTest {
     @Test
     @DisplayName("RoleDetailResource refuses a parameter value that is no JSON tree value")
     void roleDetailParameterValidation() {
+        var qualification = new RoleDetailResource.Qualification(RoleQualificationState.UNQUALIFIED, null,
+                List.of());
+        var parameters = Map.of("bad", new Object());
         assertThrows(IllegalArgumentException.class,
                 () -> new RoleDetailResource("judge", null, null, List.of(), null,
-                        new RoleDetailResource.Qualification(RoleQualificationState.UNQUALIFIED, null,
-                                List.of()),
-                        Map.of("bad", new Object())));
+                        qualification, parameters));
     }
 
     @Test

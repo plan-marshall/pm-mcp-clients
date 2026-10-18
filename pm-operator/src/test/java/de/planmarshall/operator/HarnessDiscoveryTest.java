@@ -149,7 +149,8 @@ class HarnessDiscoveryTest {
         assertTrue(HarnessDiscovery.isSupported("opencode"));
         assertTrue(HarnessDiscovery.isSupported("codex"));
         assertTrue(HarnessDiscovery.isSupported("antigravity"));
+        var environment = Map.of("PATH", bin.toString());
         assertThrows(IllegalArgumentException.class,
-                            () -> HarnessDiscovery.discover("cursor", Map.of("PATH", bin.toString())));
+                            () -> HarnessDiscovery.discover("cursor", environment));
     }
 }

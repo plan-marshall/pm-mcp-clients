@@ -27,6 +27,7 @@ import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.resource.RoleDetailResource;
+import de.planmarshall.api.resource.RoleDetailResource.NarrowedEffort;
 import de.planmarshall.api.resource.RoleSummaryResource;
 
 import picocli.CommandLine.Command;
@@ -56,6 +57,12 @@ import picocli.CommandLine.Spec;
 public final class RolesCommand implements Callable<Integer> {
 
     private static final String PATH_ROLES = "/api/v1/roles";
+    private static final String QUERY_PROJECT = "?project=";
+    private static final String FIELD_STATUS = "status";
+    private static final String FIELD_REASON = "reason";
+    private static final String PARAM_HARNESS = "harness";
+    private static final String PARAM_MODEL = "model";
+    private static final String PARAM_EFFORT = "effort";
     private static final List<String> MEASUREMENT_FIELDS = List.of(
                         "fresh_agreement", "warm_agreement", "warm_fresh_gap",
                         "qualified_fresh", "qualified_warm", "record_path");
@@ -115,7 +122,7 @@ public final class RolesCommand implements Callable<Integer> {
             }
             if (response.status() >= 400 && response.status() < 500) {
                 err.println(MessageCatalogue.format("operator.roles.failed",
-                                    Map.of("status", response.status())));
+                                    Map.of(FIELD_STATUS, response.status())));
                 err.flush();
                 return 1;
             }
@@ -136,9 +143,10 @@ public final class RolesCommand implements Callable<Integer> {
         }
 
         private static void printRow(PrintWriter out, RoleSummaryResource role) {
-            var guard = role.startFailureGuardHeld()
-                                ? MessageCatalogue.get("operator.roles.guard.held")
-                                : MessageCatalogue.get("operator.roles.guard.none");
+            var guard = MessageCatalogue.get("operator.roles.guard.none");
+            if (role.startFailureGuardHeld()) {
+                guard = MessageCatalogue.get("operator.roles.guard.held");
+            }
             printRow(out,
                                 role.role(),
                                 valueOrDash(role.sourceSet()),
@@ -330,21 +338,13 @@ public final class RolesCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format("operator.roles.show.class", Map.of(
                             "class", valueOrDash(stringParameter(detail, "class")),
                             "form", valueOrDash(stringParameter(detail, "form")))));
-        out.println(MessageCatalogue.format("operator.roles.show.effective", Map.of(
-                            "harness", valueOrDash(stringParameter(detail, "harness")),
-                            "model", valueOrDash(stringParameter(detail, "model")),
-                            "effort", valueOrDash(stringParameter(detail, "effort")))));
+        out.println(MessageCatalogue.format("operator.roles.show.effective", configuration(detail)));
         out.println(MessageCatalogue.format("operator.roles.show.tools",
                             Map.of("tools", detail.advisoryToolSet().isEmpty() ? "-"
                                                 : OutputSafety.stripControlSequences(
                                                 String.join(", ", detail.advisoryToolSet())))));
-        var narrowed = detail.narrowedEffort();
-        var narrowedText = narrowed == null ? "-"
-                            : OutputSafety.stripControlSequences(narrowed.category())
-                            + (narrowed.description() == null ? ""
-                            : " — " + OutputSafety.stripControlSequences(
-                            narrowed.description()));
-        out.println(MessageCatalogue.format("operator.roles.show.narrowed", Map.of("effort", narrowedText)));
+        out.println(MessageCatalogue.format("operator.roles.show.narrowed",
+                            Map.of("effort", narrowedText(detail.narrowedEffort()))));
         out.println(MessageCatalogue.format("operator.roles.show.qualification",
                             Map.of("state", detail.qualification().state().wire())));
         if (detail.qualification().reason() != null) {
@@ -369,10 +369,7 @@ public final class RolesCommand implements Callable<Integer> {
     private static void renderQualificationPreview(PrintWriter out, RoleDetailResource detail) {
         out.println(MessageCatalogue.format("operator.roles.qualify.title",
                             Map.of("role", OutputSafety.stripControlSequences(detail.role()))));
-        out.println(MessageCatalogue.format("operator.roles.qualify.configuration", Map.of(
-                            "harness", valueOrDash(stringParameter(detail, "harness")),
-                            "model", valueOrDash(stringParameter(detail, "model")),
-                            "effort", valueOrDash(stringParameter(detail, "effort")))));
+        out.println(MessageCatalogue.format("operator.roles.qualify.configuration", configuration(detail)));
         printParameter(out, "operator.roles.qualify.topics", detail, "corpus_topics");
         printParameter(out, "operator.roles.qualify.items", detail, "item_counts");
         var tokens = displayValue(detail.configurationParameters().get("expected_tokens"));
@@ -391,7 +388,25 @@ public final class RolesCommand implements Callable<Integer> {
         }
     }
 
-    private static @Nullable Map<String, Object> measurements(String body) {
+    private static Map<String, Object> configuration(RoleDetailResource detail) {
+        return Map.of(
+                            PARAM_HARNESS, valueOrDash(stringParameter(detail, PARAM_HARNESS)),
+                            PARAM_MODEL, valueOrDash(stringParameter(detail, PARAM_MODEL)),
+                            PARAM_EFFORT, valueOrDash(stringParameter(detail, PARAM_EFFORT)));
+    }
+
+    private static String narrowedText(@Nullable NarrowedEffort narrowed) {
+        if (narrowed == null) {
+            return "-";
+        }
+        var text = OutputSafety.stripControlSequences(narrowed.category());
+        if (narrowed.description() == null) {
+            return text;
+        }
+        return text + " — " + OutputSafety.stripControlSequences(narrowed.description());
+    }
+
+    private static @Nullable Map<String, Object> measurements(@Nullable String body) {
         if (body == null || body.isBlank()) {
             return null;
         }
@@ -436,7 +451,7 @@ public final class RolesCommand implements Callable<Integer> {
     private static String displayValue(@Nullable Object value) {
         return switch (value) {
             case null -> "-";
-            case JsonNumber number -> number.text();
+            case JsonNumber(String text) -> text;
             case List<?> list -> list.isEmpty() ? "-"
                                 : OutputSafety.stripControlSequences(
                                 String.join(", ", list.stream().map(String::valueOf).toList()));
@@ -445,12 +460,16 @@ public final class RolesCommand implements Callable<Integer> {
         };
     }
 
-    private static String pad(String value, int width) {
+    private static String pad(@Nullable String value, int width) {
         var safe = OutputSafety.stripControlSequences(value == null ? "-" : value);
         if (safe.length() > width) {
             safe = width <= 1 ? safe.substring(0, width) : safe.substring(0, width - 1) + "…";
         }
-        return String.format(Locale.ROOT, "%-" + width + "s", safe);
+        var padded = new StringBuilder(safe);
+        while (padded.length() < width) {
+            padded.append(' ');
+        }
+        return padded.toString();
     }
 
     private static String valueOrDash(@Nullable String value) {
@@ -464,26 +483,26 @@ public final class RolesCommand implements Callable<Integer> {
     }
 
     private static String rolesTarget(@Nullable String project) {
-        return project == null || project.isBlank() ? PATH_ROLES
-                            : PATH_ROLES + "?project=" + OperatorUrlUtil.encodeQueryValue(project);
+        return withProject(PATH_ROLES, project);
     }
 
     private static String roleTarget(String role, @Nullable String project) {
-        var target = PATH_ROLES + "/" + OperatorUrlUtil.encodePathSegment(role);
-        return project == null || project.isBlank() ? target
-                            : target + "?project=" + OperatorUrlUtil.encodeQueryValue(project);
+        return withProject(PATH_ROLES + "/" + OperatorUrlUtil.encodePathSegment(role), project);
     }
 
     private static String qualifyTarget(String role, @Nullable String project) {
-        var target = PATH_ROLES + "/" + OperatorUrlUtil.encodePathSegment(role) + "/qualify";
+        return withProject(PATH_ROLES + "/" + OperatorUrlUtil.encodePathSegment(role) + "/qualify", project);
+    }
+
+    private static String withProject(String target, @Nullable String project) {
         return project == null || project.isBlank() ? target
-                            : target + "?project=" + OperatorUrlUtil.encodeQueryValue(project);
+                            : target + QUERY_PROJECT + OperatorUrlUtil.encodeQueryValue(project);
     }
 
     private static String refusalReason(String body) {
         try {
             var map = JsonTree.asObject(JsonTree.parse(body));
-            var reason = JsonTree.string(map, "reason");
+            var reason = JsonTree.string(map, FIELD_REASON);
             if (reason == null) {
                 reason = JsonTree.string(map, "error");
             }
