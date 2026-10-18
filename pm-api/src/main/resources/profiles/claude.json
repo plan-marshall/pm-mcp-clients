@@ -1,0 +1,20 @@
+{
+  "client_id": "claude",
+  "detection": {
+    "precedence": 30,
+    "primary_signals": [
+      { "variable": "CLAUDE_CODE_SESSION_ID", "equals": null }
+    ],
+    "secondary_signals": [
+      { "variable": "CLAUDECODE", "equals": "1" }
+    ],
+    "process_markers": [ "CLAUDE_PID" ]
+  },
+  "identity": {
+    "session_id_variable": "CLAUDE_CODE_SESSION_ID",
+    "version_probe": [ "claude", "--version" ],
+    "version_pattern": "(\\d+(?:\\.\\d+)+)",
+    "model_source": "declared",
+    "provisional": true
+  }
+}

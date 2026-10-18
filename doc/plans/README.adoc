@@ -21,16 +21,16 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |nothing
 |Milestone 2
 
-|link:profile-documents.adoc[`profile-documents`]
+|link:implemented/profile-documents.adoc[`profile-documents`]
 |Host-detection data in the profile documents
-|`open`
+|`done`
 |nothing
 |Milestone 2
 
 |link:implemented/operator-checks.adoc[`operator-checks`]
 |Operator checks of `pm-operator`
 |`done`
-|link:profile-documents.adoc[`profile-documents`]
+|link:implemented/profile-documents.adoc[`profile-documents`]
 |Milestone 2
 
 |link:implemented/command-tree.adoc[`command-tree`]

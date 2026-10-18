@@ -1,0 +1,20 @@
+{
+  "client_id": "codex",
+  "detection": {
+    "precedence": 40,
+    "primary_signals": [
+      { "variable": "CODEX_SANDBOX", "equals": null },
+      { "variable": "CODEX_CI", "equals": null },
+      { "variable": "CODEX_THREAD_ID", "equals": null }
+    ],
+    "secondary_signals": [],
+    "process_markers": []
+  },
+  "identity": {
+    "session_id_variable": "CODEX_THREAD_ID",
+    "version_probe": [ "codex", "--version" ],
+    "version_pattern": "(\\d+(?:\\.\\d+)+)",
+    "model_source": "declared",
+    "provisional": true
+  }
+}
