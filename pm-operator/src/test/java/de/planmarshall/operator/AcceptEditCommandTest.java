@@ -86,12 +86,12 @@ class AcceptEditCommandTest {
     }
 
     private static String mismatching() {
-        return new StoreDigestComparison(STORE, 1248L, RECORDED_SHA, 1512L, CURRENT_SHA, true,
+        return new StoreDigestComparison(STORE, 1248L, RECORDED_SHA, 1512L, CURRENT_SHA,
                             "size and digest changed").toJson();
     }
 
     private static String matching() {
-        return new StoreDigestComparison(STORE, 1248L, RECORDED_SHA, 1248L, RECORDED_SHA, false, null).toJson();
+        return new StoreDigestComparison(STORE, 1248L, RECORDED_SHA, 1248L, RECORDED_SHA, null).toJson();
     }
 
     private static String accepted() {
@@ -232,7 +232,7 @@ class AcceptEditCommandTest {
     @Test
     @DisplayName("the server-reported store path is sanitized before display")
     void sanitizesServerReportedPath() throws Exception {
-        var unsafe = new StoreDigestComparison("\u001B[31m/evil\u001B[0m", 1L, RECORDED_SHA, 2L, CURRENT_SHA, true,
+        var unsafe = new StoreDigestComparison("\u001B[31m/evil\u001B[0m", 1L, RECORDED_SHA, 2L, CURRENT_SHA,
                             null).toJson();
         runtime((request, response) -> {
             if ("GET".equals(request.method())) {

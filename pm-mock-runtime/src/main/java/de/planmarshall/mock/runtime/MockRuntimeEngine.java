@@ -4247,7 +4247,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     || !store.recordedSha256().equals(store.currentSha256());
             var details = mismatch ? "the current file differs from the recorded sidecar" : null;
             response.json(200, new StoreDigestComparison(storePath, store.recordedSize(), store.recordedSha256(),
-                    store.currentSize(), store.currentSha256(), mismatch, details).toMap());
+                    store.currentSize(), store.currentSha256(), details).toMap());
         }
     }
 

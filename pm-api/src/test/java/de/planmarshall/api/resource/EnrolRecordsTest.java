@@ -97,7 +97,7 @@ class EnrolRecordsTest {
     @DisplayName("StoreDigestComparison derives the mismatch and round-trips")
     void storeDigestComparison() throws Exception {
         var mismatch = new StoreDigestComparison(".plan/marshal.json", 1248L, RECORDED_SHA,
-                1512L, CURRENT_SHA, false, "size and digest changed");
+                1512L, CURRENT_SHA, "size and digest changed");
         assertNotNull(mismatch.toJson());
         assertTrue(mismatch.mismatch());
 
@@ -113,7 +113,7 @@ class EnrolRecordsTest {
         );
 
         var matched = new StoreDigestComparison(".plan/marshal.json", 1248L, RECORDED_SHA,
-                1248L, RECORDED_SHA, true, null);
+                1248L, RECORDED_SHA, null);
         assertFalse(matched.mismatch(), "mismatch is derived, never taken from input");
 
         var viaAlias = StoreDigestComparison.fromMap(Map.of(

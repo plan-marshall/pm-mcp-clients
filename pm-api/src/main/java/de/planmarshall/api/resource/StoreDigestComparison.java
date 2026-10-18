@@ -23,14 +23,13 @@ import de.planmarshall.api.json.JsonTree;
  * them side by side before the confirmation (Store Schemas § Store Digest Verification, PM-SEC-3).
  * <p>
  * The recorded values come from the store's digest sidecar, the current values from the file on
- * disk. {@code mismatch} is derived: it is {@code true} exactly when the two differ.
+ * disk. {@link #mismatch()} is derived: it is {@code true} exactly when the two differ.
  *
  * @param storePath      the store's path relative to its scope root
  * @param recordedSize   the size the sidecar records, in bytes
  * @param recordedSha256 the SHA-256 the sidecar records
  * @param currentSize    the size the file currently has, in bytes
  * @param currentSha256  the SHA-256 the file currently has
- * @param mismatch       whether the current file differs from the recorded values
  * @param mismatchDetails a human-readable description of the difference, or {@code null}
  */
 public record StoreDigestComparison(
@@ -39,7 +38,6 @@ public record StoreDigestComparison(
         String recordedSha256,
         long currentSize,
         String currentSha256,
-        boolean mismatch,
         @Nullable String mismatchDetails
 ) {
     public static final String FIELD_STORE_PATH = "store_path";
@@ -54,8 +52,13 @@ public record StoreDigestComparison(
         Objects.requireNonNull(storePath, "storePath");
         recordedSha256 = recordedSha256 == null ? "" : recordedSha256;
         currentSha256 = currentSha256 == null ? "" : currentSha256;
-        // mismatch is derived from the two digests, never taken from input
-        mismatch = recordedSize != currentSize || !recordedSha256.equals(currentSha256);
+    }
+
+    /**
+     * @return whether the current file differs from the recorded digest
+     */
+    public boolean mismatch() {
+        return recordedSize != currentSize || !recordedSha256.equals(currentSha256);
     }
 
     /**
@@ -70,7 +73,7 @@ public record StoreDigestComparison(
         map.put(FIELD_RECORDED_SHA256, recordedSha256);
         map.put(FIELD_CURRENT_SIZE, currentSize);
         map.put(FIELD_CURRENT_SHA256, currentSha256);
-        map.put(FIELD_MISMATCH, mismatch);
+        map.put(FIELD_MISMATCH, mismatch());
         if (mismatchDetails != null) {
             map.put(FIELD_MISMATCH_DETAILS, mismatchDetails);
         }
@@ -110,7 +113,7 @@ public record StoreDigestComparison(
         var mismatchDetails = stringOrDefault(map, FIELD_MISMATCH_DETAILS, "details");
 
         return new StoreDigestComparison(storePath, recordedSize, recordedSha256,
-                currentSize, currentSha256, false, mismatchDetails);
+                currentSize, currentSha256, mismatchDetails);
     }
 
     private static long size(Map<String, Object> map, String key) {
