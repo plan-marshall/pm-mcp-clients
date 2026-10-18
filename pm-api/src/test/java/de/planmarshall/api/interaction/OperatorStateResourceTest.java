@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Operator representation and link scheme")
 class OperatorStateResourceTest {
@@ -36,10 +37,8 @@ class OperatorStateResourceTest {
     private static final String STATE_JSON = """
             {
               "scope": {"kind": "plan", "id": "plan-2026-042", "project_id": "p-1", "display_name": "Demo"},
-              "state_id": "remediation.choose",
-              "node_id": "plan.finalize",
-              "kind": "operator_wait",
-              "level": "project",
+              "state": {"state_id": "remediation.choose", "node_id": "plan.finalize",
+                        "kind": "operator_wait", "level": "project"},
               "progress": {"done": 2, "of": 5},
               "title": {"key": "state.title"},
               "texts": [
@@ -86,6 +85,8 @@ class OperatorStateResourceTest {
         assertEquals(TextSource.HARNESS, TextSource.fromWire("harness"));
         assertNull(OperatorScopeKind.fromWireOrNull("project"));
         assertNull(TextSource.fromWireOrNull("provider_x"));
+        assertTrue(OperatorScopeKind.PLAN.requiresIdentifier());
+        assertFalse(OperatorScopeKind.MACHINE.requiresIdentifier());
     }
 
     @Test
@@ -108,9 +109,14 @@ class OperatorStateResourceTest {
         assertEquals(state, readStreaming(state.toJson()));
         assertEquals(state, writeStreaming(state));
 
-        // a minimal state carries only the required scope, state id, and links
+        // the state fields are nested under the state object, the shape the specification describes
+        var tree = JsonTree.asObject(JsonTree.parse(state.toJson()));
+        var stateObject = JsonTree.object(tree, "state");
+        assertEquals("remediation.choose", JsonTree.string(stateObject, "state_id"));
+
+        // a minimal state carries only the required scope, state, and links
         var minimal = OperatorStateResource.fromJson(
-                "{\"scope\":{\"kind\":\"machine\"},\"state_id\":\"onboarding\",\"links\":[]}");
+                "{\"scope\":{\"kind\":\"machine\"},\"state\":{\"state_id\":\"onboarding\"},\"links\":[]}");
         assertNull(minimal.level());
         assertNull(minimal.progress());
         assertNull(minimal.revision());
@@ -130,19 +136,33 @@ class OperatorStateResourceTest {
 
         assertThrows(JsonFormatException.class,
                 () -> OperatorLink.fromJson(
-                        "{\"id\":\"yes\",\"rel\":\"nope\",\"method\":\"POST\",\"href\":\"/x\"}"));
+                        "{\"id\":\"yes\",\"rel\":\"nope\",\"method\":\"POST\",\"href\":\"/api/v1/x\"}"));
         assertThrows(JsonFormatException.class,
                 () -> OperatorLink.fromJson(
-                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"FETCH\",\"href\":\"/x\"}"));
+                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"FETCH\",\"href\":\"/api/v1/x\"}"));
         assertThrows(JsonFormatException.class,
                 () -> OperatorLink.fromJson(
-                        "{\"id\":\"Yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/x\"}"));
+                        "{\"id\":\"Yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/api/v1/x\"}"));
         assertThrows(JsonFormatException.class,
                 () -> OperatorLink.fromJson(
-                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/x\",\"extra\":1}"));
+                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/api/v1/x\",\"extra\":1}"));
         assertThrows(JsonFormatException.class,
                 () -> OperatorLink.fromJson(
-                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/x\",\"confirm\":\"nodot\"}"));
+                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/api/v1/x\",\"confirm\":\"nodot\"}"));
+        // an external, protocol-relative, or relative target can never leave the local API boundary
+        assertThrows(JsonFormatException.class,
+                () -> OperatorLink.fromJson(
+                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"https://evil.example/x\"}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorLink.fromJson(
+                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"//evil.example/x\"}"));
+        // a wrong-typed preselected or params is refused, never coerced or dropped
+        assertThrows(JsonFormatException.class,
+                () -> OperatorLink.fromJson(
+                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/api/v1/x\",\"preselected\":\"yes\"}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorLink.fromJson(
+                        "{\"id\":\"yes\",\"rel\":\"next\",\"method\":\"POST\",\"href\":\"/api/v1/x\",\"params\":[]}"));
     }
 
     @Test
@@ -161,6 +181,8 @@ class OperatorStateResourceTest {
         assertThrows(JsonFormatException.class, () -> OperatorText.fromJson("{\"source\":\"provider\"}"));
         assertThrows(JsonFormatException.class,
                 () -> OperatorText.fromJson("{\"verbatim\":\"x\",\"source\":\"nope\"}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorText.fromJson("{\"key\":\"a.b\",\"args\":[],\"extra\":1}"));
         assertThrows(IllegalArgumentException.class, () -> OperatorText.ofKey("nodot"));
         assertThrows(IllegalArgumentException.class, () -> new OperatorText(null, Map.of(), null, null));
         assertThrows(IllegalArgumentException.class,
@@ -172,23 +194,33 @@ class OperatorStateResourceTest {
     void stateFailsClosed() {
         assertThrows(JsonFormatException.class,
                 () -> OperatorStateResource.fromJson(
-                        "{\"scope\":{\"kind\":\"machine\"},\"state_id\":\"onboarding\",\"links\":[],\"nope\":1}"));
-        assertThrows(JsonFormatException.class,
-                () -> OperatorStateResource.fromJson("{\"state_id\":\"onboarding\",\"links\":[]}"));
+                        "{\"scope\":{\"kind\":\"machine\"},\"state\":{\"state_id\":\"onboarding\"},\"links\":[],\"nope\":1}"));
         assertThrows(JsonFormatException.class,
                 () -> OperatorStateResource.fromJson(
-                        "{\"scope\":{\"kind\":\"project\"},\"state_id\":\"onboarding\",\"links\":[]}"));
+                        "{\"state\":{\"state_id\":\"onboarding\"},\"links\":[]}"));
         assertThrows(JsonFormatException.class,
                 () -> OperatorStateResource.fromJson(
-                        "{\"scope\":{\"kind\":\"machine\"},\"state_id\":\"Onboarding\",\"links\":[]}"));
+                        "{\"scope\":{\"kind\":\"project\"},\"state\":{\"state_id\":\"onboarding\"},\"links\":[]}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorStateResource.fromJson(
+                        "{\"scope\":{\"kind\":\"machine\"},\"state\":{\"state_id\":\"Onboarding\"},\"links\":[]}"));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorStateResource.fromJson(
+                        "{\"scope\":{\"kind\":\"machine\"},\"state\":{\"state_id\":\"onboarding\",\"nope\":1},\"links\":[]}"));
+        // done > of is a format error, not a bare IllegalArgumentException
+        assertThrows(JsonFormatException.class,
+                () -> OperatorStateResource.fromJson(
+                        "{\"scope\":{\"kind\":\"machine\"},\"state\":{\"state_id\":\"onboarding\"},"
+                                + "\"progress\":{\"done\":4,\"of\":3},\"links\":[]}"));
+        // two links of the same id, the item link included, are refused
         assertThrows(IllegalArgumentException.class,
                 () -> new OperatorStateResource(
                         new OperatorScope(OperatorScopeKind.MACHINE, null, null, null),
                         "onboarding", null, null, ConfigOrigin.DEFAULT, null, null,
                         List.of(), Map.of(), List.of(), List.of(), null,
-                        List.of(new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/x",
+                        List.of(new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/api/v1/x",
                                         Map.of(), false, null),
-                                new OperatorLink("yes", OperatorLinkRelation.ALT, "POST", "/y",
+                                new OperatorLink("yes", OperatorLinkRelation.ALT, "POST", "/api/v1/y",
                                         Map.of(), false, null))));
     }
 
@@ -207,6 +239,13 @@ class OperatorStateResourceTest {
 
         assertThrows(IllegalArgumentException.class, () -> new OperatorProgress(4, 3));
         assertThrows(IllegalArgumentException.class, () -> new OperatorProgress(1, 0));
+        // a plan scope requires an id; the machine scope carries none
+        assertThrows(IllegalArgumentException.class,
+                () -> new OperatorScope(OperatorScopeKind.PLAN, null, null, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OperatorScope(OperatorScopeKind.MACHINE, "m", null, null));
+        assertThrows(JsonFormatException.class,
+                () -> OperatorScope.fromMap(JsonTree.asObject(JsonTree.parse("{\"kind\":\"epic\"}"))));
     }
 
     private static OperatorStateResource readStreaming(String json) throws IOException {

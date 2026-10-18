@@ -48,7 +48,7 @@ class OperatorInteractionScenarioTest {
                         .withHeader("Authorization", auth));
                 assertEquals(200, yes.status());
                 var check = JsonTree.asObject(JsonTree.parse(yes.body()));
-                assertEquals("onboarding.check", JsonTree.string(check, "state_id"));
+                assertEquals("onboarding.check", JsonTree.string(JsonTree.object(check, "state"), "state_id"));
 
                 // the state's operator links are keyed by their id and carry the whole contract
                 var links = JsonTree.asArray(check.get("links"));
@@ -59,11 +59,15 @@ class OperatorInteractionScenarioTest {
                 assertEquals("POST", JsonTree.string(retry, "method"));
                 assertEquals("/api/v1/machine/links/retry", JsonTree.string(retry, "href"));
 
-                // 2. the check.result events of the closed catalogue arrive on the stream
+                // 2. the check.result events of the closed catalogue arrive as envelopes
                 var version = sse.next();
                 assertNotNull(version);
                 assertEquals("check.result", version.event());
-                assertEquals("version", JsonTree.string(JsonTree.asObject(JsonTree.parse(version.data())), "check_id"));
+                var versionData = JsonTree.asObject(JsonTree.parse(version.data()));
+                assertEquals("check.result", JsonTree.string(versionData, "event"));
+                assertNotNull(JsonTree.string(versionData, "at"));
+                assertEquals("machine", JsonTree.string(JsonTree.object(versionData, "scope"), "kind"));
+                assertEquals("version", JsonTree.string(versionData, "check_id"));
                 var login = sse.next();
                 assertNotNull(login);
                 assertEquals("check.result", login.event());
@@ -104,22 +108,36 @@ class OperatorInteractionScenarioTest {
     void invalidOperatorScenarioIsRefused() {
         var linkNotOffered = """
                 {"format_version":1,"name":"bad","start":"a.b",
-                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state_id":"onboarding.choose","links":[]},
+                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},"links":[]},
                  "links":{"yes":{"next":"a.b"}}}}}
                 """;
         assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(linkNotOffered, "bad-link"));
 
+        var linkWithoutRoute = """
+                {"format_version":1,"name":"bad","start":"a.b",
+                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},
+                 "links":[{"id":"yes","rel":"next","method":"POST","href":"/api/v1/machine/links/yes"}]},"links":{}}}}
+                """;
+        assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(linkWithoutRoute, "bad-route"));
+
         var unknownEvent = """
                 {"format_version":1,"name":"bad","start":"a.b",
-                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state_id":"onboarding.choose","links":[]},
+                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},"links":[]},
                  "events":[{"after_ms":1,"event":"check","data":{}}]}}}
                 """;
         assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(unknownEvent, "bad-event"));
 
+        var eventWithoutEnvelope = """
+                {"format_version":1,"name":"bad","start":"a.b",
+                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},"links":[]},
+                 "events":[{"after_ms":1,"event":"check.result","data":{"check_id":"version"}}]}}}
+                """;
+        assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(eventWithoutEnvelope, "bad-envelope"));
+
         var unknownRelation = """
                 {"format_version":1,"name":"bad","start":"a.b",
-                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state_id":"onboarding.choose",
-                 "links":[{"id":"yes","rel":"nope","method":"POST","href":"/x"}]}}}}
+                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},
+                 "links":[{"id":"yes","rel":"nope","method":"POST","href":"/api/v1/x"}]}}}}
                 """;
         assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(unknownRelation, "bad-rel"));
     }

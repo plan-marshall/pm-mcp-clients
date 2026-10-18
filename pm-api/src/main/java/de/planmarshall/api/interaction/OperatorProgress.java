@@ -74,9 +74,18 @@ public record OperatorProgress(long done, long of) {
      */
     public static OperatorProgress fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
+        for (var key : map.keySet()) {
+            if (!FIELD_DONE.equals(key) && !FIELD_OF.equals(key)) {
+                throw new JsonFormatException("Unknown field in OperatorProgress: " + key);
+            }
+        }
         var done = JsonTree.integralNumber(map, FIELD_DONE, 0, Long.MAX_VALUE);
         var of = JsonTree.integralNumber(map, FIELD_OF, 1, Long.MAX_VALUE);
-        return new OperatorProgress(done, of);
+        try {
+            return new OperatorProgress(done, of);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid OperatorProgress: " + e.getMessage(), e);
+        }
     }
 
     /**

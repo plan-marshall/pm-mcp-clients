@@ -15,6 +15,7 @@ import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -54,6 +55,9 @@ public record EventEnvelope(
     public static final String FIELD_AT = "at";
     public static final String FIELD_SCOPE = "scope";
 
+    /** The envelope's own members, which a payload must not carry. */
+    private static final Set<String> RESERVED_KEYS = Set.of(FIELD_EVENT, FIELD_AT, FIELD_SCOPE);
+
     public EventEnvelope {
         Objects.requireNonNull(event, FIELD_EVENT);
         Objects.requireNonNull(at, FIELD_AT);
@@ -61,7 +65,13 @@ public record EventEnvelope(
         if (id < 0) {
             throw new IllegalArgumentException("id cannot be negative: " + id);
         }
-        payload = payload == null ? Map.of() : Map.copyOf(payload);
+        payload = JsonTree.immutableMap(payload);
+        for (var reserved : RESERVED_KEYS) {
+            if (payload.containsKey(reserved)) {
+                throw new IllegalArgumentException(
+                        "The event payload must not carry the reserved envelope member " + reserved);
+            }
+        }
     }
 
     /**
@@ -148,7 +158,11 @@ public record EventEnvelope(
             }
         }
 
-        return new EventEnvelope(event, id, at, scope, payload);
+        try {
+            return new EventEnvelope(event, id, at, scope, payload);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid EventEnvelope: " + e.getMessage(), e);
+        }
     }
 
     /**

@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -51,6 +52,9 @@ public record OperatorText(
     public static final String FIELD_VERBATIM = "verbatim";
     public static final String FIELD_SOURCE = "source";
 
+    private static final Set<String> KNOWN_KEY_FIELDS = Set.of(FIELD_KEY, FIELD_ARGS);
+    private static final Set<String> KNOWN_VERBATIM_FIELDS = Set.of(FIELD_VERBATIM, FIELD_SOURCE);
+
     public OperatorText {
         var hasKey = key != null;
         var hasVerbatim = verbatim != null;
@@ -58,13 +62,13 @@ public record OperatorText(
             throw new IllegalArgumentException("OperatorText carries either a key or verbatim text, never none or both");
         }
         if (hasKey) {
-            if (!matchesMessageKeyGrammar(key)) {
+            if (!DottedIdentifier.messageKey(key)) {
                 throw new IllegalArgumentException("Invalid message key in OperatorText: " + key);
             }
             if (source != null) {
                 throw new IllegalArgumentException("A message key carries no source in OperatorText");
             }
-            args = args == null ? Map.of() : Map.copyOf(args);
+            args = JsonTree.immutableMap(args);
         } else {
             if (source == null) {
                 throw new IllegalArgumentException("Verbatim text requires a source in OperatorText");
@@ -167,17 +171,31 @@ public record OperatorText(
             if (verbatim != null) {
                 throw new JsonFormatException("OperatorText carries both key and verbatim");
             }
-            return new OperatorText(key, JsonTree.object(map, FIELD_ARGS), null, null);
+            requireOnlyKnown(map, KNOWN_KEY_FIELDS);
+            try {
+                return new OperatorText(key, JsonTree.objectOrNull(map, FIELD_ARGS, "OperatorText"), null, null);
+            } catch (IllegalArgumentException e) {
+                throw new JsonFormatException("Invalid OperatorText: " + e.getMessage(), e);
+            }
         }
         if (verbatim == null) {
             throw new JsonFormatException("OperatorText carries neither key nor verbatim");
         }
+        requireOnlyKnown(map, KNOWN_VERBATIM_FIELDS);
         var source = TextSource.fromWireOrNull(JsonTree.string(map, FIELD_SOURCE));
         if (source == null) {
             throw new JsonFormatException(
                     "Unknown " + FIELD_SOURCE + " in OperatorText: " + JsonTree.string(map, FIELD_SOURCE));
         }
         return new OperatorText(null, Map.of(), verbatim, source);
+    }
+
+    private static void requireOnlyKnown(Map<String, Object> map, Set<String> known) throws IOException {
+        for (var key : map.keySet()) {
+            if (!known.contains(key)) {
+                throw new JsonFormatException("Unknown field in OperatorText: " + key);
+            }
+        }
     }
 
     /**

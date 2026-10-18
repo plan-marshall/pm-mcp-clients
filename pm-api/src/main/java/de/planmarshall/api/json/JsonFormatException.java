@@ -26,4 +26,12 @@ public class JsonFormatException extends IOException {
     public JsonFormatException(String message) {
         super(message);
     }
+
+    /**
+     * @param message what was malformed
+     * @param cause   the value that failed a constructor's check
+     */
+    public JsonFormatException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

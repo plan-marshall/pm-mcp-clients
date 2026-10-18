@@ -65,6 +65,7 @@ public record ConfigValueResource(
         if (revision < 0) {
             throw new IllegalArgumentException("revision cannot be negative: " + revision);
         }
+        value = value == null ? null : JsonTree.immutableCopy(value);
     }
 
     /**
@@ -75,9 +76,7 @@ public record ConfigValueResource(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put(FIELD_KEY, key);
-        if (value != null) {
-            map.put(FIELD_VALUE, value);
-        }
+        map.put(FIELD_VALUE, value);
         map.put(FIELD_ORIGIN, origin.wire());
         if (overrides != null) {
             map.put(FIELD_OVERRIDES, overrides.wire());
@@ -131,9 +130,17 @@ public record ConfigValueResource(
                         "Unknown " + FIELD_OVERRIDES + " in ConfigValueResource: "
                                 + JsonTree.string(map, FIELD_OVERRIDES));
             }
+            if (!origin.overrides(overrides)) {
+                throw new JsonFormatException(
+                        "origin " + origin.wire() + " cannot override " + overrides.wire() + " in ConfigValueResource");
+            }
         }
         var revision = JsonTree.integralNumber(map, FIELD_REVISION, 0, Long.MAX_VALUE);
-        return new ConfigValueResource(key, map.get(FIELD_VALUE), origin, overrides, revision);
+        try {
+            return new ConfigValueResource(key, map.get(FIELD_VALUE), origin, overrides, revision);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid ConfigValueResource: " + e.getMessage(), e);
+        }
     }
 
     /**

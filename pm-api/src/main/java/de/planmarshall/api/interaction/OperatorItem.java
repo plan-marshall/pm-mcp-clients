@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -40,11 +41,13 @@ public record OperatorItem(
     public static final String FIELD_FACTS = "facts";
     public static final String FIELD_LINKS = OperatorLink.FIELD_LINKS;
 
+    private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_ID, FIELD_FACTS, FIELD_LINKS);
+
     public OperatorItem {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("id must not be blank in OperatorItem");
         }
-        facts = facts == null ? Map.of() : Map.copyOf(facts);
+        facts = JsonTree.immutableMap(facts);
         links = links == null ? List.of() : List.copyOf(links);
     }
 
@@ -84,11 +87,21 @@ public record OperatorItem(
      */
     public static OperatorItem fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
+        for (var key : map.keySet()) {
+            if (!KNOWN_FIELDS.contains(key)) {
+                throw new JsonFormatException("Unknown field in OperatorItem: " + key);
+            }
+        }
         var id = JsonTree.string(map, FIELD_ID);
         if (id == null || id.isBlank()) {
             throw new JsonFormatException("Missing " + FIELD_ID + " in OperatorItem");
         }
-        return new OperatorItem(id, JsonTree.object(map, FIELD_FACTS), OperatorLink.fromArray(map.get(FIELD_LINKS)));
+        try {
+            return new OperatorItem(id, JsonTree.objectOrNull(map, FIELD_FACTS, "OperatorItem"),
+                    OperatorLink.fromArray(map.get(FIELD_LINKS)));
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid OperatorItem: " + e.getMessage(), e);
+        }
     }
 
     /**

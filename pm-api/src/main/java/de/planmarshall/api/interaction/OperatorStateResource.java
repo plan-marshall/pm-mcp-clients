@@ -30,14 +30,16 @@ import de.planmarshall.api.json.JsonTree;
 /**
  * The operator representation of a scope's current state, the resource {@code pm-api} serves to both
  * operator clients over the local API (Hypermedia Format, Operator Representation): the scope, the
- * state with its id, node id, kind, and the configuration level it writes, its progress, its title and
+ * state (its id, node id, kind, and the configuration level it writes), its progress, its title and
  * texts, its facts, the values it proposes, the rows of a list it shows, the revision of the decision
  * or setting an act must name, and the operator links an act follows.
  * <p>
- * The representation is written and read fail-closed against a closed schema: every member is one of
- * the known fields, the scope kind and the configuration level are catalogue members, the state id and
- * the message keys satisfy their grammars, and a link id is unique within the state. Text of a model,
- * a provider, or a harness is carried verbatim, marked untrusted (see {@link OperatorText}).
+ * On the wire the state fields sit under the {@code state} object, the shape the specification
+ * describes ({@code "state": {"state_id": …, "node_id": …, "kind": …, "level": …}}); the Java record
+ * keeps them as its own components. The representation is written and read fail-closed against a
+ * closed schema: every member of every object is one of the known fields, the scope kind and the
+ * configuration level are catalogue members, the state id satisfies its grammar, and a link id is
+ * unique within the state (its items' links included).
  *
  * @param scope    the scope the state belongs to
  * @param stateId  the id of the state ({@code <phase>.<step>[.<substate>]})
@@ -69,6 +71,7 @@ public record OperatorStateResource(
         List<OperatorLink> links
 ) {
     public static final String FIELD_SCOPE = "scope";
+    public static final String FIELD_STATE = "state";
     public static final String FIELD_STATE_ID = "state_id";
     public static final String FIELD_NODE_ID = "node_id";
     public static final String FIELD_KIND = "kind";
@@ -83,8 +86,10 @@ public record OperatorStateResource(
     public static final String FIELD_LINKS = OperatorLink.FIELD_LINKS;
 
     private static final Set<String> KNOWN_FIELDS = Set.of(
-            FIELD_SCOPE, FIELD_STATE_ID, FIELD_NODE_ID, FIELD_KIND, FIELD_LEVEL, FIELD_PROGRESS, FIELD_TITLE,
-            FIELD_TEXTS, FIELD_FACTS, FIELD_PROPOSAL, FIELD_ITEMS, FIELD_REVISION, FIELD_LINKS);
+            FIELD_SCOPE, FIELD_STATE, FIELD_PROGRESS, FIELD_TITLE, FIELD_TEXTS, FIELD_FACTS, FIELD_PROPOSAL,
+            FIELD_ITEMS, FIELD_REVISION, FIELD_LINKS);
+    private static final Set<String> KNOWN_STATE_FIELDS = Set.of(
+            FIELD_STATE_ID, FIELD_NODE_ID, FIELD_KIND, FIELD_LEVEL);
 
     /** The configuration levels a state's {@code level} may name. */
     private static final Set<ConfigOrigin> CONFIG_LEVELS =
@@ -92,7 +97,7 @@ public record OperatorStateResource(
 
     public OperatorStateResource {
         Objects.requireNonNull(scope, FIELD_SCOPE);
-        if (!matchesStateIdGrammar(stateId)) {
+        if (!DottedIdentifier.stateId(stateId)) {
             throw new IllegalArgumentException("Invalid state id: " + stateId);
         }
         if (level != null && !CONFIG_LEVELS.contains(level)) {
@@ -102,11 +107,11 @@ public record OperatorStateResource(
             throw new IllegalArgumentException("revision cannot be negative: " + revision);
         }
         texts = texts == null ? List.of() : List.copyOf(texts);
-        facts = facts == null ? Map.of() : Map.copyOf(facts);
+        facts = JsonTree.immutableMap(facts);
         proposal = proposal == null ? List.of() : List.copyOf(proposal);
         items = items == null ? List.of() : List.copyOf(items);
         links = links == null ? List.of() : List.copyOf(links);
-        requireUniqueLinkIds(links);
+        requireUniqueLinkIds(links, items);
     }
 
     /**
@@ -117,11 +122,18 @@ public record OperatorStateResource(
         return DottedIdentifier.stateId(value);
     }
 
-    private static void requireUniqueLinkIds(List<OperatorLink> links) {
+    private static void requireUniqueLinkIds(List<OperatorLink> links, List<OperatorItem> items) {
         var seen = new HashSet<String>();
         for (var link : links) {
             if (!seen.add(link.id())) {
                 throw new IllegalArgumentException("Duplicate operator link id in state: " + link.id());
+            }
+        }
+        for (var item : items) {
+            for (var link : item.links()) {
+                if (!seen.add(link.id())) {
+                    throw new IllegalArgumentException("Duplicate operator link id in state: " + link.id());
+                }
             }
         }
     }
@@ -132,18 +144,21 @@ public record OperatorStateResource(
      * @return map representation
      */
     public Map<String, Object> toMap() {
-        var map = new LinkedHashMap<String, Object>();
-        map.put(FIELD_SCOPE, scope.toMap());
-        map.put(FIELD_STATE_ID, stateId);
+        var state = new LinkedHashMap<String, Object>();
+        state.put(FIELD_STATE_ID, stateId);
         if (nodeId != null) {
-            map.put(FIELD_NODE_ID, nodeId);
+            state.put(FIELD_NODE_ID, nodeId);
         }
         if (kind != null) {
-            map.put(FIELD_KIND, kind);
+            state.put(FIELD_KIND, kind);
         }
         if (level != null) {
-            map.put(FIELD_LEVEL, level.wire());
+            state.put(FIELD_LEVEL, level.wire());
         }
+
+        var map = new LinkedHashMap<String, Object>();
+        map.put(FIELD_SCOPE, scope.toMap());
+        map.put(FIELD_STATE, state);
         if (progress != null) {
             map.put(FIELD_PROGRESS, progress.toMap());
         }
@@ -197,11 +212,7 @@ public record OperatorStateResource(
      */
     public static OperatorStateResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        for (var key : map.keySet()) {
-            if (!KNOWN_FIELDS.contains(key)) {
-                throw new JsonFormatException("Unknown field in OperatorStateResource: " + key);
-            }
-        }
+        requireOnlyKnown(map, KNOWN_FIELDS, "OperatorStateResource");
 
         var scopeMap = JsonTree.object(map, FIELD_SCOPE);
         if (scopeMap == null) {
@@ -209,31 +220,34 @@ public record OperatorStateResource(
         }
         var scope = OperatorScope.fromMap(scopeMap);
 
-        var stateId = JsonTree.string(map, FIELD_STATE_ID);
-        if (!matchesStateIdGrammar(stateId)) {
+        var stateMap = JsonTree.object(map, FIELD_STATE);
+        if (stateMap == null) {
+            throw new JsonFormatException("Missing " + FIELD_STATE + " in OperatorStateResource");
+        }
+        requireOnlyKnown(stateMap, KNOWN_STATE_FIELDS, "OperatorStateResource state");
+
+        var stateId = JsonTree.string(stateMap, FIELD_STATE_ID);
+        if (!DottedIdentifier.stateId(stateId)) {
             throw new JsonFormatException("Invalid or missing " + FIELD_STATE_ID + " in OperatorStateResource: " + stateId);
         }
 
-        var nodeId = JsonTree.string(map, FIELD_NODE_ID);
-        var kind = JsonTree.string(map, FIELD_KIND);
-
         ConfigOrigin level = null;
-        if (map.get(FIELD_LEVEL) != null) {
-            level = ConfigOrigin.fromWireOrNull(JsonTree.string(map, FIELD_LEVEL));
+        if (stateMap.get(FIELD_LEVEL) != null) {
+            level = ConfigOrigin.fromWireOrNull(JsonTree.string(stateMap, FIELD_LEVEL));
             if (level == null || !CONFIG_LEVELS.contains(level)) {
                 throw new JsonFormatException(
-                        "Invalid " + FIELD_LEVEL + " in OperatorStateResource: " + JsonTree.string(map, FIELD_LEVEL));
+                        "Invalid " + FIELD_LEVEL + " in OperatorStateResource: " + JsonTree.string(stateMap, FIELD_LEVEL));
             }
         }
 
         OperatorProgress progress = null;
-        var progressMap = JsonTree.object(map, FIELD_PROGRESS);
+        var progressMap = JsonTree.objectOrNull(map, FIELD_PROGRESS, "OperatorStateResource");
         if (progressMap != null) {
             progress = OperatorProgress.fromMap(progressMap);
         }
 
         OperatorText title = null;
-        var titleMap = JsonTree.object(map, FIELD_TITLE);
+        var titleMap = JsonTree.objectOrNull(map, FIELD_TITLE, "OperatorStateResource");
         if (titleMap != null) {
             title = OperatorText.fromMap(titleMap);
         }
@@ -243,20 +257,24 @@ public record OperatorStateResource(
             revision = JsonTree.integralNumber(map, FIELD_REVISION, 0, Long.MAX_VALUE);
         }
 
-        return new OperatorStateResource(
-                scope,
-                stateId,
-                nodeId,
-                kind,
-                level,
-                progress,
-                title,
-                textsFromArray(map.get(FIELD_TEXTS)),
-                JsonTree.object(map, FIELD_FACTS),
-                proposalFromArray(map.get(FIELD_PROPOSAL)),
-                OperatorItem.fromArray(map.get(FIELD_ITEMS)),
-                revision,
-                OperatorLink.fromArray(map.get(FIELD_LINKS)));
+        try {
+            return new OperatorStateResource(
+                    scope,
+                    stateId,
+                    JsonTree.string(stateMap, FIELD_NODE_ID),
+                    JsonTree.string(stateMap, FIELD_KIND),
+                    level,
+                    progress,
+                    title,
+                    textsFromArray(map.get(FIELD_TEXTS)),
+                    JsonTree.objectOrNull(map, FIELD_FACTS, "OperatorStateResource"),
+                    proposalFromArray(map.get(FIELD_PROPOSAL)),
+                    OperatorItem.fromArray(map.get(FIELD_ITEMS)),
+                    revision,
+                    OperatorLink.fromArray(map.get(FIELD_LINKS)));
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid OperatorStateResource: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -279,6 +297,15 @@ public record OperatorStateResource(
      */
     public static OperatorStateResource readFrom(JsonParser parser) throws IOException {
         return fromMap(objectOf(JsonTree.readValue(parser)));
+    }
+
+    private static void requireOnlyKnown(Map<String, Object> map, Set<String> known, String type)
+            throws IOException {
+        for (var key : map.keySet()) {
+            if (!known.contains(key)) {
+                throw new JsonFormatException("Unknown field in " + type + ": " + key);
+            }
+        }
     }
 
     private static List<OperatorText> textsFromArray(Object array) throws IOException {

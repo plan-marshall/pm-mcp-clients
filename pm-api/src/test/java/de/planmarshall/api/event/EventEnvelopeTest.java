@@ -101,10 +101,22 @@ class EventEnvelopeTest {
     }
 
     @Test
+    @DisplayName("the event scope kinds are the closed catalogue with their identifier rule")
+    void closedEventScopeKinds() {
+        assertEquals(List.of("runtime", "plan", "epic", "workspace", "machine", "entry"),
+                EventScopeKind.wireValues());
+        assertEquals(EventScopeKind.ENTRY, EventScopeKind.fromWire("entry"));
+        assertNull(EventScopeKind.fromWireOrNull("project"));
+        assertTrue(EventScopeKind.PLAN.requiresIdentifier());
+        assertFalse(EventScopeKind.MACHINE.requiresIdentifier());
+        assertThrows(IllegalArgumentException.class, () -> EventScopeKind.fromWire("project"));
+    }
+
+    @Test
     @DisplayName("an event envelope round-trips through JSON, the map, and the streaming codec")
     void eventEnvelopeRoundTrip() throws Exception {
         var envelope = new EventEnvelope(EventName.CHECK_RESULT, 7L, AT,
-                new EventScope("machine", null, null),
+                new EventScope(EventScopeKind.MACHINE, null, null),
                 Map.of("check_id", "login", "result", "fail"));
 
         assertEquals(envelope, EventEnvelope.fromJson(envelope.toJson()));
@@ -125,11 +137,22 @@ class EventEnvelopeTest {
     @DisplayName("a scoped envelope carries the scope id and project")
     void scopedEnvelope() throws Exception {
         var envelope = new EventEnvelope(EventName.HOLD_OPENED, 12L, AT,
-                new EventScope("plan", "plan-2026-042", "p-1"), Map.of("hold_id", "H-1", "kind", "landing_failed"));
+                new EventScope(EventScopeKind.PLAN, "plan-2026-042", "p-1"), Map.of("hold_id", "H-1", "kind", "landing_failed"));
         var parsed = EventEnvelope.fromJson(envelope.toJson());
         assertEquals(envelope, parsed);
         assertEquals("plan-2026-042", parsed.scope().id());
         assertEquals("p-1", parsed.scope().projectId());
+    }
+
+    @Test
+    @DisplayName("a payload may carry a member whose value is null, and it survives a round-trip")
+    void payloadMayCarryNullMembers() throws Exception {
+        var json = "{\"event\":\"task.ended\",\"id\":3,\"data\":{\"event\":\"task.ended\","
+                + "\"at\":\"2026-10-18T09:30:00Z\",\"scope\":{\"kind\":\"plan\",\"id\":\"p1\"},"
+                + "\"queue_task_id\":\"qt-1\",\"outcome\":null}}";
+        var parsed = EventEnvelope.fromJson(json);
+        assertNull(parsed.payload().get("outcome"));
+        assertEquals(parsed, EventEnvelope.fromJson(parsed.toJson()));
     }
 
     @Test
@@ -152,15 +175,24 @@ class EventEnvelopeTest {
                         "{\"event\":\"check.result\",\"id\":1,\"data\":{\"event\":\"check.result\","
                                 + "\"at\":\"not-a-time\",\"scope\":{\"kind\":\"machine\"}}}"));
         assertThrows(JsonFormatException.class, () -> EventEnvelope.fromJson("[]"));
+        // an unknown scope kind is refused
+        assertThrows(JsonFormatException.class,
+                () -> EventEnvelope.fromJson(
+                        "{\"event\":\"reset\",\"id\":1,\"data\":{\"event\":\"reset\","
+                                + "\"at\":\"2026-10-18T09:30:00Z\",\"scope\":{\"kind\":\"project\"}}}"));
     }
 
     @Test
     @DisplayName("the constructors reject invalid values")
     void constructorsRejectInvalidValues() {
         assertThrows(IllegalArgumentException.class,
-                () -> new EventEnvelope(EventName.RESET, -1L, AT, new EventScope("runtime", null, null), Map.of()));
+                () -> new EventEnvelope(EventName.RESET, -1L, AT, new EventScope(EventScopeKind.RUNTIME, null, null), Map.of()));
         assertThrows(IllegalArgumentException.class,
-                () -> new EventScope(" ", null, null));
+                () -> new EventScope(EventScopeKind.PLAN, null, null));
+        // a payload never carries the envelope's own members
+        assertThrows(IllegalArgumentException.class,
+                () -> new EventEnvelope(EventName.RESET, 1L, AT, new EventScope(EventScopeKind.RUNTIME, null, null),
+                        Map.of(EventEnvelope.FIELD_EVENT, "reset")));
     }
 
     private static EventEnvelope readStreaming(String json) throws IOException {

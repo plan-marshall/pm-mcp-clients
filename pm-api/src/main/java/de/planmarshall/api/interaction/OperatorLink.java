@@ -33,10 +33,11 @@ import de.planmarshall.api.json.JsonTree;
  * {@code id} follows the link identifier grammar and is unique within the state; a client and a mock
  * scenario key a link by its {@code id}, never by its relation, which several links share.
  * {@code method} and {@code href} are the local API request that takes the act
- * ({@code POST /api/v1/entries/ent-3f9a2c41/links/yes}); {@code params} is the closed schema of the
- * request body as a JSON object (an empty object where the act takes none); {@code preselected} marks
- * the link the state proposes; {@code confirm} names the message key of a confirmation the client shows
- * before it follows the link, where the state asks for one.
+ * ({@code POST /api/v1/entries/ent-3f9a2c41/links/yes}); {@code href} is an absolute path of the local
+ * API ({@code /api/v1/…}), never an external or protocol-relative target; {@code params} is the closed
+ * schema of the request body as a JSON object (an empty object where the act takes none);
+ * {@code preselected} marks the link the state proposes; {@code confirm} names the message key of a
+ * confirmation the client shows before it follows the link, where the state asks for one.
  *
  * @param id          the id of the link, unique within the state
  * @param rel         the closed relation of the link
@@ -81,6 +82,9 @@ public record OperatorLink(
     private static final Set<String> KNOWN_FIELDS = Set.of(
             FIELD_ID, FIELD_REL, FIELD_METHOD, FIELD_HREF, FIELD_PARAMS, FIELD_PRESELECTED, FIELD_CONFIRM);
 
+    /** The prefix of every href of the local API. */
+    public static final String LOCAL_API_PREFIX = "/api/v1/";
+
     public OperatorLink {
         if (!matchesIdGrammar(id)) {
             throw new IllegalArgumentException("Invalid operator link id: " + id);
@@ -89,10 +93,10 @@ public record OperatorLink(
         if (method == null || !METHODS.contains(method)) {
             throw new IllegalArgumentException("Invalid operator link method: " + method);
         }
-        if (href == null || href.isBlank()) {
-            throw new IllegalArgumentException("href must not be blank in OperatorLink");
+        if (href == null || !href.startsWith(LOCAL_API_PREFIX)) {
+            throw new IllegalArgumentException("An operator link href is an absolute path of the local API: " + href);
         }
-        params = params == null ? Map.of() : Map.copyOf(params);
+        params = JsonTree.immutableMap(params);
         if (confirm != null && !OperatorText.matchesMessageKeyGrammar(confirm)) {
             throw new IllegalArgumentException("Invalid confirm message key in OperatorLink: " + confirm);
         }
@@ -174,16 +178,24 @@ public record OperatorLink(
             throw new JsonFormatException("Invalid " + FIELD_METHOD + " in OperatorLink: " + method);
         }
         var href = JsonTree.string(map, FIELD_HREF);
-        if (href == null || href.isBlank()) {
-            throw new JsonFormatException("Missing " + FIELD_HREF + " in OperatorLink");
+        if (href == null || !href.startsWith(LOCAL_API_PREFIX)) {
+            throw new JsonFormatException("Invalid " + FIELD_HREF + " in OperatorLink: " + href);
         }
-        var params = JsonTree.object(map, FIELD_PARAMS);
-        var preselected = Boolean.TRUE.equals(JsonTree.bool(map, FIELD_PRESELECTED));
+        if (map.containsKey(FIELD_PRESELECTED) && map.get(FIELD_PRESELECTED) != null
+                && !(map.get(FIELD_PRESELECTED) instanceof Boolean)) {
+            throw new JsonFormatException("Invalid " + FIELD_PRESELECTED + " in OperatorLink");
+        }
+        var params = JsonTree.objectOrNull(map, FIELD_PARAMS, "OperatorLink");
+        var preselected = Boolean.TRUE.equals(map.get(FIELD_PRESELECTED));
         var confirm = JsonTree.string(map, FIELD_CONFIRM);
         if (confirm != null && !OperatorText.matchesMessageKeyGrammar(confirm)) {
             throw new JsonFormatException("Invalid " + FIELD_CONFIRM + " in OperatorLink: " + confirm);
         }
-        return new OperatorLink(id, rel, method, href, params, preselected, confirm);
+        try {
+            return new OperatorLink(id, rel, method, href, params, preselected, confirm);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid OperatorLink: " + e.getMessage(), e);
+        }
     }
 
     /**

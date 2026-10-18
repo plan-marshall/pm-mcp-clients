@@ -368,11 +368,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     /**
-     * The operator links offered by the states entered so far, as {@code METHOD href}. A request that
-     * matches no link of the current state but one of these is an act against a state left meanwhile,
-     * answered {@code act_not_available} (409) as the real runtime answers it.
+     * The operator links offered by the states entered so far, as {@code METHOD href} to the state id
+     * that offered it. A request that matches no link of the current state but one of these, offered by
+     * a state left meanwhile, is an act against a state left meanwhile, answered {@code act_not_available}
+     * (409) as the real runtime answers it.
      */
-    private final Set<String> offeredOperatorLinks = ConcurrentHashMap.newKeySet();
+    private final Map<String, String> offeredOperatorLinks = new ConcurrentHashMap<>();
     private final DesignerRegistry designer = new DesignerRegistry();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
@@ -537,7 +538,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        recordOfferedOperatorLinks(stateDef);
+        recordOfferedOperatorLinks(stateDef, nextStateId);
 
         // Schedule events
         for (var eventDef : stateDef.events()) {
@@ -574,8 +575,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * representations name no operator link keep answering {@code mock_no_route}.
      *
      * @param stateDef the state entered
+     * @param stateId  the id of the state entered
      */
-    private void recordOfferedOperatorLinks(StateDefinition stateDef) {
+    private void recordOfferedOperatorLinks(StateDefinition stateDef, String stateId) {
         var representation = JsonTree.asObject(stateDef.representation());
         if (representation == null) {
             return;
@@ -592,7 +594,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var method = JsonTree.string(link, KEY_METHOD);
             var href = JsonTree.string(link, KEY_HREF);
             if (method != null && href != null) {
-                offeredOperatorLinks.add(method.toUpperCase() + " " + href);
+                offeredOperatorLinks.put(method.toUpperCase() + " " + href, stateId);
             }
         }
     }
@@ -638,6 +640,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 2. Authentication check
         if (!isAuthorized(request, response, isWeb)) {
+            return;
+        }
+
+        // 2b. An act against a state left meanwhile is refused before any dynamic route serves it.
+        if (handleStaleOperatorLink(request, response)) {
             return;
         }
 
@@ -763,6 +770,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         synchronized (this) {
+            if (!Objects.equals(this.currentStateId.get(), activeStateId)) {
+                var stale = new LinkedHashMap<String, Object>();
+                stale.put(KEY_ERROR, "act_not_available");
+                stale.put(KEY_MESSAGE, "The state '" + activeStateId + "' was left meanwhile");
+                stale.put(KEY_STATE, this.currentStateId.get());
+                response.json(409, stale);
+                return true;
+            }
             transitionTo(linkDef.next());
             state = currentScenario.get().state(this.currentStateId.get());
         }
@@ -772,19 +787,44 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return true;
     }
 
-    private void handleNoRoute(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        String activeStateId = this.currentStateId.get();
-
-        var requestKey = request.method().toUpperCase() + " " + request.path();
-        if (offeredOperatorLinks.contains(requestKey)) {
-            var staleBody = new LinkedHashMap<String, Object>();
-            staleBody.put(KEY_ERROR, "act_not_available");
-            staleBody.put(KEY_MESSAGE, "The link " + requestKey + " belongs to a state left meanwhile");
-            staleBody.put(KEY_STATE, activeStateId);
-            response.json(409, staleBody);
-            return;
+    /**
+     * Answers an act against a state left meanwhile. A request that is not offered by the current
+     * state but was offered by an earlier state of this scenario is refused {@code act_not_available};
+     * a request the current state offers (for example with another method) is left to the normal
+     * routing, and a request never offered falls through to {@code mock_no_route}.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return {@code true} if the request was answered here
+     * @throws IOException on write failure
+     */
+    private boolean handleStaleOperatorLink(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String activeStateId;
+        StateDefinition state;
+        synchronized (this) {
+            activeStateId = this.currentStateId.get();
+            state = currentScenario.get().state(activeStateId);
         }
 
+        var requestKey = request.method().toUpperCase() + " " + request.path();
+        var offeredBy = offeredOperatorLinks.get(requestKey);
+        if (offeredBy == null || offeredBy.equals(activeStateId)) {
+            return false;
+        }
+        if (state != null && findMatchingLink(request, state) != null) {
+            return false;
+        }
+
+        var body = new LinkedHashMap<String, Object>();
+        body.put(KEY_ERROR, "act_not_available");
+        body.put(KEY_MESSAGE, requestKey + " belongs to the state '" + offeredBy + "' left meanwhile");
+        body.put(KEY_STATE, activeStateId);
+        response.json(409, body);
+        return true;
+    }
+
+    private void handleNoRoute(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String activeStateId = this.currentStateId.get();
         var state = currentScenario.get().state(activeStateId);
         var offeredLinks = state != null ? new ArrayList<>(state.links().keySet()) : List.<String>of();
         var errorBody = new LinkedHashMap<String, Object>();

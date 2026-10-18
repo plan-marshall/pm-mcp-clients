@@ -20,11 +20,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 
 import lombok.experimental.UtilityClass;
 
+import de.planmarshall.api.event.EventEnvelope;
 import de.planmarshall.api.event.EventName;
 import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorStateResource;
@@ -272,9 +272,10 @@ public class ScenarioLoader {
     /**
      * Validates a state whose representation is an operator representation, decoded with the codecs of
      * {@code pm-api}: every representation, event, and link relation must be one the contract allows,
-     * and every scenario link must be one the state's representation offers by its id. A state whose
-     * representation is not an operator representation (the responses of the legacy scenarios) is left
-     * to the loader's own checks.
+     * every scenario link must agree with the operator link the state's representation offers by its
+     * id, and every advertised operator link must have a scenario link, so a client that sends what the
+     * representation offers is answered. A state whose representation is not an operator representation
+     * (the responses of the legacy scenarios) is left to the loader's own checks.
      *
      * @param representation the state representation
      * @param links          the scenario links keyed by operator link id
@@ -285,7 +286,11 @@ public class ScenarioLoader {
     private static void validateOperatorState(Object representation, Map<String, LinkDefinition> links,
             List<EventDefinition> events, String scenario, String stateId) {
         var representationMap = JsonTree.asObject(representation);
-        if (representationMap == null || !representationMap.containsKey(OperatorStateResource.FIELD_STATE_ID)) {
+        if (representationMap == null) {
+            return;
+        }
+        var stateMap = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_STATE));
+        if (stateMap == null || !stateMap.containsKey(OperatorStateResource.FIELD_STATE_ID)) {
             return;
         }
 
@@ -296,19 +301,52 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(scenario, stateId, "representation", e.getMessage());
         }
 
-        var offeredIds = state.links().stream().map(OperatorLink::id).collect(Collectors.toSet());
-        var unoffered = links.keySet().stream().filter(linkId -> !offeredIds.contains(linkId)).findFirst();
-        if (unoffered.isPresent()) {
-            throw new ScenarioValidationException(scenario, stateId, "links." + unoffered.get(),
-                    "no operator link with this id is offered in the representation");
+        var advertised = new LinkedHashMap<String, OperatorLink>();
+        state.links().forEach(link -> advertised.put(link.id(), link));
+
+        links.forEach((linkId, definition) -> {
+            var offered = advertised.get(linkId);
+            if (offered == null) {
+                throw new ScenarioValidationException(scenario, stateId, "links." + linkId,
+                        "no operator link with this id is offered in the representation");
+            }
+            if (!offered.method().equalsIgnoreCase(definition.method())) {
+                throw new ScenarioValidationException(scenario, stateId, "links." + linkId + ".method",
+                        "the scenario method " + definition.method() + " disagrees with the offered " + offered.method());
+            }
+            var expectedHref = definition.href();
+            if (expectedHref != null ? !expectedHref.equals(offered.href()) : !offered.href().endsWith("/" + linkId)) {
+                throw new ScenarioValidationException(scenario, stateId, "links." + linkId + ".href",
+                        "the scenario href disagrees with the offered " + offered.href());
+            }
+        });
+
+        var withoutRoute = advertised.keySet().stream().filter(linkId -> !links.containsKey(linkId)).findFirst();
+        if (withoutRoute.isPresent()) {
+            throw new ScenarioValidationException(scenario, stateId, "representation.links",
+                    "the advertised operator link '" + withoutRoute.get() + "' has no scenario link");
         }
 
         for (var i = 0; i < events.size(); i++) {
-            var name = events.get(i).event();
-            if (!EventName.matchesGrammar(name) || !EventName.isCatalogueMember(name)) {
-                throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].event",
-                        "unknown event name: " + name);
-            }
+            validateOperatorEvent(events.get(i), i, scenario, stateId);
+        }
+    }
+
+    private static void validateOperatorEvent(EventDefinition event, int index, String scenario, String stateId) {
+        var name = event.event();
+        if (!EventName.matchesGrammar(name) || !EventName.isCatalogueMember(name)) {
+            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].event",
+                    "unknown event name: " + name);
+        }
+        var envelope = new LinkedHashMap<String, Object>();
+        envelope.put(EventEnvelope.FIELD_EVENT, name);
+        envelope.put(EventEnvelope.FIELD_ID, index + 1);
+        envelope.put(EventEnvelope.FIELD_DATA, event.data());
+        try {
+            EventEnvelope.fromMap(envelope);
+        } catch (IOException e) {
+            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+                    "the event is no envelope: " + e.getMessage());
         }
     }
 

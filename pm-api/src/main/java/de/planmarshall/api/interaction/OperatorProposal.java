@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
@@ -39,11 +40,14 @@ public record OperatorProposal(
     public static final String FIELD_VALUE = "value";
     public static final String FIELD_ORIGIN = "origin";
 
+    private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_KEY, FIELD_VALUE, FIELD_ORIGIN);
+
     public OperatorProposal {
         if (key == null || key.isBlank()) {
             throw new IllegalArgumentException("key must not be blank in OperatorProposal");
         }
         Objects.requireNonNull(value, FIELD_VALUE);
+        value = JsonTree.immutableCopy(value);
         Objects.requireNonNull(origin, FIELD_ORIGIN);
     }
 
@@ -79,11 +83,16 @@ public record OperatorProposal(
      */
     public static OperatorProposal fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
+        for (var key : map.keySet()) {
+            if (!KNOWN_FIELDS.contains(key)) {
+                throw new JsonFormatException("Unknown field in OperatorProposal: " + key);
+            }
+        }
         var key = JsonTree.string(map, FIELD_KEY);
         if (key == null || key.isBlank()) {
             throw new JsonFormatException("Missing " + FIELD_KEY + " in OperatorProposal");
         }
-        if (!map.containsKey(FIELD_VALUE)) {
+        if (!map.containsKey(FIELD_VALUE) || map.get(FIELD_VALUE) == null) {
             throw new JsonFormatException("Missing " + FIELD_VALUE + " in OperatorProposal");
         }
         var origin = ConfigOrigin.fromWireOrNull(JsonTree.string(map, FIELD_ORIGIN));
@@ -91,7 +100,11 @@ public record OperatorProposal(
             throw new JsonFormatException(
                     "Unknown " + FIELD_ORIGIN + " in OperatorProposal: " + JsonTree.string(map, FIELD_ORIGIN));
         }
-        return new OperatorProposal(key, map.get(FIELD_VALUE), origin);
+        try {
+            return new OperatorProposal(key, map.get(FIELD_VALUE), origin);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid OperatorProposal: " + e.getMessage(), e);
+        }
     }
 
     /**

@@ -52,6 +52,14 @@ public enum OperatorScopeKind {
     }
 
     /**
+     * @return {@code true} if a scope of this kind carries an identifier (a plan, an epic, an entry);
+     *         the machine scope and the project's workspace scope carry none
+     */
+    public boolean requiresIdentifier() {
+        return this == PLAN || this == EPIC || this == ENTRY;
+    }
+
+    /**
      * Resolves a wire value to its kind.
      *
      * @param wire the wire representation

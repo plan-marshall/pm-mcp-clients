@@ -125,6 +125,19 @@ class ConfigOriginTest {
                 () -> ConfigValueResource.fromJson("[]"));
     }
 
+    @Test
+    @DisplayName("an explicit null value is serialized; an invalid override order is a format error")
+    void explicitNullAndOverrideOrder() throws Exception {
+        var nullValue = new ConfigValueResource("k.a", null, ConfigOrigin.DEFAULT, null, 0L);
+        assertTrue(nullValue.toJson().contains("\"value\":null"));
+        assertEquals(nullValue, ConfigValueResource.fromJson(nullValue.toJson()));
+
+        assertThrows(JsonFormatException.class,
+                () -> ConfigValueResource.fromJson(
+                        "{\"key\":\"k.a\",\"value\":\"v\",\"origin\":\"machine\",\"overrides\":\"plan\","
+                                + "\"revision\":1}"));
+    }
+
     private static ConfigValueResource readStreaming(String json) throws IOException {
         try (var parser = FACTORY.createParser(json)) {
             return ConfigValueResource.readFrom(parser);
