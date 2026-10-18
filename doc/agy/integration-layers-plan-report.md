@@ -1,10 +1,10 @@
 # Completion Report: `integration-layers` — Integration-Test Layers in `pm-relay` and `pm-operator`
 
 Companion report of the implementation plan
-[`doc/agy/implemented/integration-layers-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/integration-layers-plan.md),
-executed under [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md) on branch
+[`implemented/integration-layers-plan.md`](implemented/integration-layers-plan.md),
+executed under [`runbook.md`](runbook.md) on branch
 `feat/integration-layers`. It is the work package `integration-layers` (Roadmap Milestone 2,
-`doc/plans/integration-layers.adoc`).
+`../plans/implemented/integration-layers.adoc`).
 
 ---
 
@@ -67,7 +67,7 @@ package does not carry is marked `out of slice` with its reason.
 | REQ | `PM-SEC-4` bullet 9 | Child subprocess `stdout`/`stderr` redirected, never inherited | code, test | `pm-exec`/job launcher (own module); `RuntimeFixture` spawns no inheriting child |
 | REQ | `PM-SEC-4` bullet 10 | Every file `0600`, every directory `0700`; `0700` base protects the rest | code, test | `RuntimeFixture.writeToken`, `OnDemandStart`; `detachedStart` asserts `rwx------` on `locks/` |
 | SPEC | MCP Tools § Errors & Protocol Testing — End-to-End STDIO Integration Testing | The relay layer verifies forwarding against its stub daemon over real `stdin`/`stdout`; the operator layer serves no MCP | test | `PmMcpProcessIT` (stdio relay), `PmOperatorProcessIT` (binary, no MCP) |
-| SPEC | MCP Tools § Errors & Protocol Testing — Protocol errors vs. domain failures | Malformed JSON-RPC is a JSON-RPC `error` (`-32700`/`-32600`), not a `CallToolResult` | code, test | `Relay.accept` (`INVALID_REQUEST`); `malformedStdin` |
+| SPEC | MCP Tools § Errors & Protocol Testing — Protocol errors vs. domain failures | Malformed JSON-RPC is a JSON-RPC `error` (`-32700` parse error for non-JSON, `-32600` invalid request for a valid-but-not-object line), not a `CallToolResult` | code, test | `Relay.accept` (`PARSE_ERROR`/`INVALID_REQUEST`); `malformedStdin`, `RelayTest.invalidLine` |
 | SPEC | Module Structure § Test Placement | Integration tests are `*IT` under `-Pintegration-tests` in the four layers | code, test | Both `*IT` classes and the `integration-tests` profile wiring |
 | WATCH | `PM-WATCH-CLI-14` | Operator checks refuse before anything is sent; every verb refuses without a terminal and with each agent marker | test | `refusesCodingAgentHostSignals`, `inspectionVerbsRefuseWithoutTerminal`, all `*RefusesWithoutTerminal` (stdout empty, zero requests) |
 | WATCH | `PM-WATCH-RUN-5` | Without a runtime the runtime-free verbs start nothing and write nothing | test | `statusWithoutRuntime`, `versionIsRuntimeFree`, `helpIsRuntimeFree` (`Files.notExists(base)`) |
@@ -78,10 +78,18 @@ package does not carry is marked `out of slice` with its reason.
 | WATCH | `PM-WATCH-CLI-21`, `PM-WATCH-CLI-27` | The web listener route table is a closed allowlist; a listener exists only while enabled | test | `out of slice`: web listener is runtime-side (`pm-mcp-server`); the client sends only the operator verbs |
 | WATCH | `PM-WATCH-CLI-13` | Weakening an enforcement rule needs the terminal | test | `out of slice`: bundle-installer/change-plan surface, no installer verb in this package |
 
-**Corrections.** None. The plan's Phase 2 wording ("relay exits cleanly without hanging" on an abrupt daemon
-socket close) is honoured as the closed relay rule: the relay answers the pending request at once with
-`runtime_unavailable` (rule 3) and then ends on `stdin` EOF; the test asserts both, so the observation is clean
-termination, not an early exit on the daemon's close. No requirement or specification text needed correction.
+**Corrections.** One, found in review (Sourcery S1, CodeRabbit CR3 — two independent reviewers): the relay mapped
+a line that is not JSON at all to `-32600 invalid_request`. The plan's Phase 2 and MCP Tools § Errors &
+Protocol Testing require a JSON-RPC *parse error* for garbage on `stdin`; JSON-RPC 2.0 reserves `-32700` for a
+parse failure and `-32600` for valid JSON that is no Request object. `Relay.accept` now emits `-32700` /
+`parse_error` for a `JsonTree.parse` failure and keeps `-32600` / `invalid_request` for a valid-JSON non-object;
+the unit contract `RelayTest.invalidLine` and the process test `malformedStdin` were updated with it. The
+specification was right; the code was corrected to it.
+
+The plan's Phase 2 wording ("relay exits cleanly without hanging" on an abrupt daemon socket close) is honoured
+as the closed relay rule: the relay answers the pending request at once with `runtime_unavailable` (rule 3) and
+then ends on `stdin` EOF; the test asserts both, so the observation is clean termination, not an early exit on
+the daemon's close.
 
 ---
 
@@ -102,8 +110,9 @@ New coverage detail:
   connection makes the relay answer the pending request with the `-32000` / `runtime_unavailable` error on
   `stdout`, log the read failure on `stderr`, and exit `0` within the budget once `stdin` closes (no hang).
 - `immediateEof` — `stdin` closed before any request: exit `0`, empty `stdout`, empty `stderr`.
-- `malformedStdin` — a non-JSON line yields the `-32600` / `invalid_request` frame with a `null` `id`; a following
-  `initialize` is still served, proving the relay continues; `stdout` holds exactly the two frames.
+- `malformedStdin` — a non-JSON line yields the `-32700` / `parse_error` frame with a `null` `id`; the daemon
+  received exactly the one valid `initialize` (so no synthesized answer can pass) and its own distinctive result
+  is relayed; `stdout` holds exactly the two frames.
 - `versionIsRuntimeFree` / `helpIsRuntimeFree` — exit `0`, the expected text (`pm-operator <version>` /
   `Usage: pm-operator`), and nothing created below `PM_MCP_BASE`.
 - `refusesCodingAgentHostSignals` — each of `ANTIGRAVITY_AGENT`→`antigravity`, `CLAUDE_CODE`→`claude`,
@@ -122,7 +131,8 @@ package (`-Pnative`), which only the release/verification run exercises; no sour
 
 ## 5. Domain Invariants
 
-1. **Test-only slice**: no production source changed; `pm-relay` and `pm-operator` main classes are untouched.
+1. **Near test-only slice**: the only production change is the one review-driven correction in `Relay.accept`
+   (the `-32700` parse-error distinct from `-32600`, §3); `pm-operator` main classes are untouched.
 2. **IT placement**: both classes keep the `*IT` suffix, `@EnabledOnOs({OS.MAC, OS.LINUX})`, and the
    `integration-tests` Failsafe profile; nothing moved into the unit (`*Test`) layer.
 3. **Real process boundary**: every case runs the packaged binary as a child process (`BinaryUnderTest`), with a
@@ -172,14 +182,16 @@ Findings from the automatic reviewers on PR #95, evaluated with the `persona-cod
 
 | # | Finding | Disposition |
 |---|---|---|
-| S1 | Sourcery: malformed JSON should answer `-32700` (parse error), not `-32600` | **Declined.** `-32700` appears nowhere in the relay; `Relay.accept` deliberately maps any line that is no JSON-RPC object to `-32600 invalid_request`, and the pre-existing unit contract `RelayTest.invalidLine` pins exactly that. A real `-32700` is the MCP server's JSON-RPC parser, not the relay's line reader. Changing it is a production-behaviour change with a requirement/spec correction, out of this test-layer package. |
+| S1 / CR3 | Sourcery + CodeRabbit (independently): malformed JSON must answer `-32700` (parse error), not `-32600` | **Fixed.** Two reviewers agree, the plan text says "parse error", and JSON-RPC 2.0 reserves `-32700`. `Relay.accept` now distinguishes a `JsonTree.parse` failure (`-32700` / `parse_error`) from a valid-JSON non-object (`-32600` / `invalid_request`); `RelayTest.invalidLine` and `PmMcpProcessIT.malformedStdin` updated. See §3 Corrections. |
 | S2 | Sourcery: `stdoutFramingUnderFaults` checks only the code, not the whole forwarded error | **Fixed.** The daemon error is asserted verbatim (`assertEquals(DAEMON_ERROR, unknown.text())`), covering message and any other members. |
-| S3 | Sourcery: host-refusal coverage is incomplete; exercise every verb × every marker alias | **Partly addressed.** The exhaustive alias set is already unit-level (`OperatorGateTest`: 4 Claude, 2 Antigravity, 3 OpenCode, 4 Codex aliases plus precedence); duplicating ~25 verbs × ~13 aliases as process spawns is not warranted. The process display name and this report were corrected so they no longer overclaim. |
-| S4 | Sourcery: process tests assert emitted codes against `Relay` constants, so a constant and its emission can drift together | **Fixed.** The three process tests now assert the protocol-defined literals (`-32603`, `-32000`, `-32600`). |
+| S3 / CR-coverage | Sourcery: host-refusal coverage is incomplete; exercise every verb × every marker alias | **Partly addressed (declined the exhaustive demand).** The exhaustive alias set is unit-level (`OperatorGateTest`: 4 Claude, 2 Antigravity, 3 OpenCode, 4 Codex aliases plus precedence); duplicating ~25 verbs × ~13 aliases as process spawns is not warranted. The process display name and this report were corrected so they no longer overclaim. |
+| S4 | Sourcery: process tests assert emitted codes against `Relay` constants, so a constant and its emission can drift together | **Fixed.** The three process tests assert the protocol-defined literals (`-32603`, `-32000`, `-32700`, `-32600`). |
 | S5 | Sourcery: `malformedStdin` could pass against a synthesized generic answer | **Fixed.** The fake runtime now asserts it received exactly the one valid `initialize`, and the relayed `answered` frame is compared to the daemon's own distinctive `INITIALIZE_RESULT`. |
-| S6 | cuioss-review-bot: PR Reviewer Guide — no security concerns, no major issues | **No action** (informational). |
-| S7 | CodeRabbit: review skipped | Re-triggered by removing the erroneous `skip-bot-review` label. |
+| CR1 | CodeRabbit: absolute `file:///…` links in `doc/agy/implemented/README.md` | **Fixed.** The new archive entry uses repository-relative links. |
+| CR2 | CodeRabbit: workstation-specific `file:///…` links in this report | **Fixed.** The report header links to the plan and runbook relatively. |
+| CR4 | CodeRabbit (nitpick): `abruptSocketDisconnect` couples its `stderr` assertion to a `pm-api` parser message | **Fixed.** It now asserts `stderr` is non-blank, not the parser's text. |
+| CR-S6 | cuioss-review-bot: PR Reviewer Guide — no security concerns, no major issues | **No action** (informational). |
+| CR-S7 | CodeRabbit: review skipped by the erroneous `skip-bot-review` label | **Re-triggered** by removing the label and commenting `@coderabbitai review`; the review completed and its findings are the CR rows above. |
 
-The one genuine protocol question (S1) is recorded here rather than silently changing the relay's error
-taxonomy; if the project decides the relay should emit `-32700` for a syntax error, that is a separate package
-with a requirement correction, not a change smuggled through a test layer.
+Every actionable finding is either fixed in the commits on this branch or declined with the specific reason
+above; no finding is left unaddressed.

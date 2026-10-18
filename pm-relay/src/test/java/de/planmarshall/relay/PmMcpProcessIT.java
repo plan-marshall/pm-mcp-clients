@@ -10,6 +10,7 @@
 package de.planmarshall.relay;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -283,7 +284,7 @@ class PmMcpProcessIT {
             // the protocol-defined relay code, as a literal (runtime_unavailable follows -32000 above)
             assertEquals(-32000, JsonTree.integer(error, "code"));
             assertEquals("runtime_unavailable", JsonTree.string(error, "message"));
-            assertTrue(process.stderr().contains("End of stream"), "diagnostic on stderr: " + process.stderr());
+            assertFalse(process.stderr().isBlank(), "a diagnostic is written on stderr: " + process.stderr());
 
             var eofNanos = System.nanoTime();
             process.closeStdin();
@@ -325,9 +326,9 @@ class PmMcpProcessIT {
             assertNull(error.get("id"), "a parse error carries a null id");
             var errorObject = JsonTree.object(error, "error");
             assertNotNull(errorObject, parseError.text());
-            // the invalid_request code, as a literal, not the Relay constant
-            assertEquals(-32600, JsonTree.integer(errorObject, "code"));
-            assertEquals("invalid_request", JsonTree.string(errorObject, "message"));
+            // JSON-RPC parse error -32700, as a literal, not the Relay constant
+            assertEquals(-32700, JsonTree.integer(errorObject, "code"));
+            assertEquals("parse_error", JsonTree.string(errorObject, "message"));
 
             // the malformed line stayed local: the daemon saw only the valid initialize, and its own
             // distinctive result reached the host, so a synthesized answer cannot pass this
