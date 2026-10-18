@@ -77,7 +77,7 @@ This plan executes concurrently in Wave 5 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/operator-enrolment-verbs /Users/oliver/git/worktrees/pm-mcp-clients-operator-enrolment-verbs main`).
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/operator-enrolment-verbs /Users/oliver/git/worktrees/pm-mcp-clients-operator-enrolment-verbs main`).
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for commands, models, and unit tests
   - `persona-security-expert` for PM-SEC-3 confirmation gate, store digest validation, and safe terminal display
