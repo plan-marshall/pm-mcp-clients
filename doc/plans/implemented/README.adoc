@@ -112,4 +112,9 @@ This directory archives work packages that have been implemented, verified, and 
 |`pm-exec`: several read-denied paths
 |`Command.Launch` with a repeatable `--deny-read <path>` and `List<Path> deniedPaths`; `ReadSet.enumerate` enumerating the read set around several holes (the session-bus socket, the container engine's sockets, `<PM_MCP_BASE>`) breadth-first with siblings kept readable; `LinuxConfinement`/`Launcher` wiring; `CommandTest`, `ReadSetTest`, `LauncherTest`, `LinuxConfinementTest`, and `PmExecIT`
 |Milestone 4
+
+|link:api-contract.adoc[`api-contract`]
+|API contract of `/api/v1` in `pm-api`
+|`de.planmarshall.api.resource` resource records (`RuntimeStatusResource`, `WebAccessResource`, `RuntimeStopResource`, `CredentialStatusResource`, `RuntimeEventStreamResource`), the closed `ApiErrorCode` and `LinkRelation` enums, `ResourceLink`, the `jackson-core` streaming codecs (`JsonTree.readValue`/`writeValue`), and `ApiContractTest`
+|Milestone 2
 |===
