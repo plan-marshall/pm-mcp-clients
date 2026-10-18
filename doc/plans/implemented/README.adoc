@@ -122,4 +122,9 @@ This directory archives work packages that have been implemented, verified, and 
 |API contract of `/api/v1` in `pm-api`
 |`de.planmarshall.api.resource` resource records (`RuntimeStatusResource`, `WebAccessResource`, `RuntimeStopResource`, `CredentialStatusResource`, `RuntimeEventStreamResource`), the closed `ApiErrorCode` and `LinkRelation` enums, `ResourceLink`, the `jackson-core` streaming codecs (`JsonTree.readValue`/`writeValue`), and `ApiContractTest`
 |Milestone 2
+
+|link:operator-harness-and-roles-verbs.adoc[`operator-harness-and-roles-verbs`]
+|Operator verbs of harness enrolment and roles
+|`HarnessEnrolmentResource`, `RoleSummaryResource`, `RoleDetailResource`, and `RoleQualificationState` in `pm-api` with `jackson-core` streaming codecs; `HarnessDiscovery`, `EnrolHarnessCommand`, and `RolesCommand` in `pm-operator`; bilingual `enrolment.harness.*` and `operator.roles.*` catalogue keys; `HarnessRolesResourcesTest`, `HarnessDiscoveryTest`, `EnrolHarnessCommandTest`, `RolesCommandTest`, and the process-level `PM-SEC-3` refusals in `PmOperatorProcessIT`
+|Milestone 4
 |===
