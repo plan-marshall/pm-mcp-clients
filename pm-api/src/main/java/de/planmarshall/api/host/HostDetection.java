@@ -17,34 +17,23 @@ import java.util.Optional;
 import lombok.experimental.UtilityClass;
 
 /**
- * The compiled, data-only host-detection table (Client Profiles Specification, Host Integration
- * Table and Host Identity Probes): per host its environment signals in detection precedence, its
- * session ID variable, and its version probe. It is the single source of these values for both
- * client binaries and the client profiles; profile overrides never touch it.
+ * The host-detection table (Client Profiles Specification, Host-Detection Table): per host its
+ * environment signals in detection precedence, its session ID variable, and its version probe. The
+ * table holds no host by name; it is read from the {@code detection} and {@code identity} objects of
+ * the shipped profile documents ({@link ProfileDocumentReader}), which are the single source of
+ * these values. Profile overrides never touch it.
  * <p>
  * Most values are <em>provisional</em> until they are verified against a live host (verification gate
- * 14); each entry records whether it carries a provisional value.
+ * 14); each row records whether it carries a provisional value.
  */
 @UtilityClass
 public class HostDetection {
 
-    /** The client id of the neutral fallback profile. */
+    /** The client id of the neutral fallback profile, not a host of the table. */
     public static final String NEUTRAL = "neutral";
 
     /** The detected client when no signal matched. */
     public static final String UNKNOWN = "unknown";
-
-    /**
-     * The version pattern applied to a probe's {@code stdout} (first capture group), provisional for
-     * every host: the specification names no per-host pattern yet.
-     */
-    public static final String PROVISIONAL_VERSION_PATTERN = "(\\d+(?:\\.\\d+)+)";
-
-    /** Model source of a host that declares its model identity itself. */
-    private static final String DECLARED_MODEL = "declared";
-
-    /** The argument that makes a host binary print its build. */
-    private static final String VERSION_FLAG = "--version";
 
     /**
      * One environment signal.
@@ -125,18 +114,11 @@ public class HostDetection {
         }
     }
 
-    /** The hosts in detection precedence: {@code antigravity -> opencode -> claude -> codex}. */
-    public static final List<Host> HOSTS = List.of(
-            new Host("antigravity", List.of(Signal.present("ANTIGRAVITY_AGENT")), List.of(),
-                    "ANTIGRAVITY_CONVERSATION_ID", List.of(), null, DECLARED_MODEL, true),
-            new Host("opencode", List.of(Signal.present("OPENCODE"), Signal.present("OPENCODE_PID")), List.of(),
-                    null, List.of("opencode", VERSION_FLAG), PROVISIONAL_VERSION_PATTERN, DECLARED_MODEL, true),
-            new Host("claude", List.of(Signal.present("CLAUDE_CODE_SESSION_ID")),
-                    List.of(new Signal("CLAUDECODE", "1")), "CLAUDE_CODE_SESSION_ID",
-                    List.of("claude", VERSION_FLAG), PROVISIONAL_VERSION_PATTERN, DECLARED_MODEL, true),
-            new Host("codex", List.of(Signal.present("CODEX_SANDBOX"), Signal.present("CODEX_CI"),
-                            Signal.present("CODEX_THREAD_ID")), List.of(), "CODEX_THREAD_ID",
-                    List.of("codex", VERSION_FLAG), PROVISIONAL_VERSION_PATTERN, DECLARED_MODEL, true));
+    /**
+     * The hosts in detection precedence, read from the shipped profile documents. The neutral
+     * fallback profile is not a host: it carries no signal and is never detected.
+     */
+    private static final List<Host> HOSTS = loadHosts();
 
     /**
      * Secondary agent signals not yet mapped to a host (provisional; the mapping is a host fact
@@ -188,5 +170,17 @@ public class HostDetection {
         HOSTS.forEach(host -> ids.add(host.client()));
         ids.add(NEUTRAL);
         return List.copyOf(ids);
+    }
+
+    private static List<Host> loadHosts() {
+        return ProfileDocumentReader.readShippedProfiles().stream().filter(profile -> !NEUTRAL.equals(profile.clientId()))
+                .map(HostDetection::toHost).toList();
+    }
+
+    private static Host toHost(ProfileDocumentReader.Profile profile) {
+        var identity = profile.identity();
+        return new Host(profile.clientId(), profile.detection().primarySignals(), profile.detection().secondarySignals(),
+                identity.sessionIdVariable(), identity.versionProbe() == null ? List.of() : identity.versionProbe(),
+                identity.versionPattern(), identity.modelSource(), identity.provisional());
     }
 }
