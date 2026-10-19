@@ -439,7 +439,7 @@ class StartContractTest {
 
     @Test
     @DisplayName("every start scenario's fixture names only members of the closed contract catalogues")
-    void fixturesUseTheContract() throws Exception {
+    void fixturesUseTheContract() {
         for (var name : StandardScenarios.ALL.stream()
                 .filter(candidate -> StandardScenarios.START.equals(candidate) || candidate.startsWith("start-"))
                 .toList()) {
