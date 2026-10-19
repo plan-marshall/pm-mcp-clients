@@ -52,7 +52,7 @@ This plan executes concurrently in Wave 10 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-intent-views` on branch `feat/intent-views`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-intent-views` on branch `feat/intent-views`.
 - [ ] 2. Domain skills & engineering personas loaded:
   - `persona-documenter` for companion design specification in `doc/design/shared/intent-and-outline.adoc`.
   - `persona-implementer` & `pm-dev-java:java-core` for Java 25 immutable records and Jackson streaming codecs.
