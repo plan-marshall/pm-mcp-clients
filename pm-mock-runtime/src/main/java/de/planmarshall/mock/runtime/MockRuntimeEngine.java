@@ -3546,8 +3546,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleEventStream(MockHttpResponse response) throws IOException {
-        var stream = response.events(200);
-        activeStreams.add(stream);
+        var stream = response.events(200, activeStreams::add);
         try {
             stream.sendComment("connected to mock runtime");
         } catch (IOException _) {
@@ -3568,8 +3567,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleTaskActivityEventStream(MockHttpResponse response) throws IOException {
-        var stream = response.events(200);
-        activeStreams.add(stream);
+        var stream = response.events(200, activeStreams::add);
         try {
             stream.sendComment("connected to mock runtime");
             stream.sendJson("task.activity", Map.of(

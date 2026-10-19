@@ -19,6 +19,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
@@ -30,6 +31,7 @@ import de.planmarshall.mock.scenario.ScenarioValidationException;
 
 @DisplayName("Operator interaction scenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
 class OperatorInteractionScenarioTest {
 
     @Test

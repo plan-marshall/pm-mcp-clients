@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import de.planmarshall.api.json.JsonTree;
 
@@ -118,6 +119,22 @@ public final class MockHttpResponse {
      * @throws IOException on write error
      */
     public MockEventStream events(int status) throws IOException {
+        return events(status, null);
+    }
+
+    /**
+     * Starts a Server-Sent Events stream using chunked transfer encoding. The {@code onCreated}
+     * callback runs with the stream that is about to be written, after it is created but <em>before</em>
+     * the response head is flushed: a caller that registers the stream there makes it visible before a
+     * client that reads the response head can send a request whose answer is broadcast to the stream,
+     * so the first event is never missed.
+     *
+     * @param status    HTTP status code (typically 200)
+     * @param onCreated the callback that registers the stream before the head is written, or {@code null}
+     * @return an open {@link MockEventStream}
+     * @throws IOException on write error
+     */
+    public MockEventStream events(int status, Consumer<MockEventStream> onCreated) throws IOException {
         if (committed) {
             throw new IllegalStateException("Response already committed");
         }
@@ -131,9 +148,13 @@ public final class MockHttpResponse {
             sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\r\n");
         }
         sb.append("\r\n");
+        var stream = new MockEventStream(out);
+        if (onCreated != null) {
+            onCreated.accept(stream);
+        }
         out.write(sb.toString().getBytes(StandardCharsets.US_ASCII));
         out.flush();
-        return new MockEventStream(out);
+        return stream;
     }
 
     /**

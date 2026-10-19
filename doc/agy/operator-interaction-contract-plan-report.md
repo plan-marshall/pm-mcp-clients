@@ -146,6 +146,7 @@ Rows left out of the slice: none.
 | `pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java` | `validateOperatorState`: an operator representation is decoded with `OperatorStateResource.fromMap`; every scenario link must be an offered operator link whose `method`/`href` agree; every advertised operator link must have a scenario route; and every event must be a catalogue member whose `data` is a valid `EventEnvelope` `data` object (`event`, `at`, `scope`). |
 | `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` | Records the operator links offered by the states entered, with the offering state; answers a stale act `409 act_not_available` before a dynamic route and rechecks the state after a delayed link; the history is cleared on scenario switch and reset. |
 | `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/MockEventStream.java` | Writes the monotonic SSE `id` line of the event envelope. |
+| `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/MockHttpResponse.java` | `events(status, onCreated)` registers the stream through the callback *before* the response head is flushed, closing the race in which a client that read the head could send an act whose broadcast the not-yet-registered stream missed (the root cause of the intermittent CI hangs, §7). The one-argument `events(status)` delegates with no callback. |
 | `pm-mock-runtime/src/main/java/de/planmarshall/mock/StandardScenarios.java` | Added the `OPERATOR_INTERACTION` constant and its `ALL` entry. |
 
 ### 4.4 `pm-mock-runtime` — new production and test artifacts
@@ -260,9 +261,15 @@ validation, and the complete unit-test reactor, and ended with a clean `git stat
 files).
 
 The same command was re-run under Linux in a `eclipse-temurin:25-jdk` container both as `verify` and
-as `verify -Pintegration-tests`; both completed green in about two minutes, so the CI hangs observed
-on a few GitHub-hosted runners (a job stuck in its Maven step until the 20-minute cap) are an
-environment issue, not a defect of the change.
+as `verify -Pintegration-tests`; both completed green in about two minutes.
+
+The intermittent CI hangs observed on a few GitHub-hosted runners were traced to a race in the mock
+server, not to a slow runner: `MockHttpResponse.events` flushed the response head before the engine
+registered the stream, so a client that read the head and then sent an act could miss the broadcast
+event and block on the stream. `MockHttpResponse.events(status, onCreated)` now registers the stream
+through the callback before the head is flushed, and the engine uses it; the new
+`OperatorInteractionScenarioTest` is additionally bounded by a `@Timeout` so a regression fails
+instead of hanging.
 
 ---
 
