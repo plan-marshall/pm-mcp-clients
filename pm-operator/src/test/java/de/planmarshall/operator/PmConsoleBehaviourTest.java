@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
@@ -55,7 +56,7 @@ class PmConsoleBehaviourTest {
         }
     }
 
-    private OperatorContext context(ByteArrayOutputStream rendered, String typed) throws Exception {
+    private OperatorContext context(ByteArrayOutputStream rendered, String typed) throws IOException {
         var input = new ByteArrayInputStream(typed.getBytes(StandardCharsets.UTF_8));
         return new OperatorContext(fixture.environment(), tempDir, true,
                             ClientEnvironment.capture(fixture.environment()),

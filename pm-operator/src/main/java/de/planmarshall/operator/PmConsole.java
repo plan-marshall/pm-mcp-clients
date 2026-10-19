@@ -390,14 +390,8 @@ public final class PmConsole {
         var payload = MessageCatalogue.format(locale(), "operator.console.notification.line",
                             Map.of("scope", TerminalSanitizer.sanitize(scope),
                                                 "kind", TerminalSanitizer.sanitize(kind)));
-        try {
-            terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
-            terminal.writer().flush();
-        }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (RuntimeException _) {
-            // a terminal without a notification channel is fine
-        }
+        terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
+        terminal.writer().flush();
     }
 
 

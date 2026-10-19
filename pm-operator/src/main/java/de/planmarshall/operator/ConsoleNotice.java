@@ -171,7 +171,7 @@ public final class ConsoleNotice {
                                 Map.of("plan", scope, REASON, safeDetail));
             case "stalled" -> MessageCatalogue.format(locale, "operator.console.notice.stalled",
                                 Map.of("plan", scope, REASON, safeDetail));
-            case "condition" -> MessageCatalogue.format(locale, "operator.console.notice.condition",
+            case CONDITION -> MessageCatalogue.format(locale, "operator.console.notice.condition",
                                 Map.of("plan", scope, CONDITION, safeDetail));
             case "held" -> MessageCatalogue.format(locale, "operator.console.notice.held",
                                 Map.of("epic", scope, DETAIL, safeDetail));
@@ -316,7 +316,7 @@ public final class ConsoleNotice {
                 formatHoldNotice(locale,
                                     type,
                                     String.valueOf(event.getOrDefault(SCOPE, "")),
-                                    String.valueOf(event.getOrDefault(DETAIL, event.getOrDefault("reason", ""))));
+                                    String.valueOf(event.getOrDefault(DETAIL, event.getOrDefault(REASON, ""))));
             case "report.sent", "report" -> formatReportNotice(locale, event);
             default -> null;
         };
@@ -340,7 +340,7 @@ public final class ConsoleNotice {
      * @return formatted quiet notice string
      */
     public static @Nullable String formatReportNotice(String locale, Map<String, Object> event) {
-        if (event.containsKey("count") && event.get("count") instanceof Number num && num.intValue() > 1) {
+        if (event.containsKey(COUNT) && event.get(COUNT) instanceof Number num && num.intValue() > 1) {
             var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault(KEY_PROJECT, "plan-marshall")));
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.reports_many",
                                 Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitize(scope)));

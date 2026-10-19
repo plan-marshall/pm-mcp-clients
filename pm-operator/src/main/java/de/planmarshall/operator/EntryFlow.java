@@ -106,9 +106,9 @@ public final class EntryFlow {
 
         var locale = context.clientEnvironment().locale();
         if (wasAlive) {
-            out.println(MessageCatalogue.format(locale, "operator.entry.runtime_running", Map.of("version", version)));
+            out.println(MessageCatalogue.format(locale, "operator.entry.runtime_running", Map.of(VERSION, version)));
         } else {
-            out.println(MessageCatalogue.format(locale, "operator.entry.runtime_started", Map.of("version", version)));
+            out.println(MessageCatalogue.format(locale, "operator.entry.runtime_started", Map.of(VERSION, version)));
         }
         out.flush();
 
@@ -291,7 +291,7 @@ public final class EntryFlow {
                             Map.of("port", port, "user", user, "host", host)));
         out.println(MessageCatalogue.format(locale, "operator.entry.open", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.entry.open_url",
-                            Map.of("url", LOOPBACK_URL_PREFIX + port + "/pair#code=" + code)));
+                            Map.of("url", LOOPBACK_URL_PREFIX + port + PAIR_CODE + code)));
         out.println(MessageCatalogue.format(locale, "operator.entry.code",
                             Map.of("code", code, "time", validUntil)));
     }
@@ -331,7 +331,7 @@ public final class EntryFlow {
                 if (json != null && json.get("code") instanceof String code) {
                     var url = (String) json.get("url");
                     if (url == null || url.isBlank()) {
-                        url = LOOPBACK_URL_PREFIX + port + "/pair#code=" + code;
+                        url = LOOPBACK_URL_PREFIX + port + PAIR_CODE + code;
                     }
                     return new PairingCode(code, url);
                 }

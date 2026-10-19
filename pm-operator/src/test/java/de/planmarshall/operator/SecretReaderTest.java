@@ -74,8 +74,8 @@ class SecretReaderTest {
     @DisplayName("Ctrl+C cancels the entry and clears the buffer")
     void ctrlC() throws Exception {
         try (var terminal = terminal("abc\u0003")) {
-            assertThrows(UserInterruptException.class,
-                                () -> SecretReader.read(terminal, new PrintWriter(rendered, true), "en"));
+            var writer = new PrintWriter(rendered, true);
+            assertThrows(UserInterruptException.class, () -> SecretReader.read(terminal, writer, "en"));
         }
     }
 

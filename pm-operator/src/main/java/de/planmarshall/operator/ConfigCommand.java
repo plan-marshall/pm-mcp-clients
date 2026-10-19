@@ -67,11 +67,11 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String STATUS = "status";
     private static final String VALUE = "value";
     private static final String INDEX = "index";
+    private static final String TITLE = "title";
     private static final String RANGE = "range";
     private static final String ASPECT = "aspect";
     private static final String SETTINGS_FAILED = "operator.settings.list_failed";
     private static final String ONBOARD_SETTINGS = "onboard.settings.";
-    private static final String OPERATOR_SETTINGS = "operator.settings.";
     private static final List<String> ASPECT_COMMANDS = List.of(
                         "language", "harnesses", "models", ROLES, CREDENTIALS, "providers", "plan-defaults");
 
@@ -182,7 +182,7 @@ public final class ConfigCommand implements Callable<Integer> {
             for (var consent : settings.consents()) {
                 out.println(MessageCatalogue.format(locale, "operator.settings.consents.row", Map.of(
                                     INDEX, index++,
-                                    "title", MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
+                                    TITLE, MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
                                     "kind", consent.kind().wireValue())));
             }
         }
@@ -793,7 +793,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 int idx = 1;
                 for (var c : list) {
                     out.println(MessageCatalogue.format(locale, "operator.config.consents_row",
-                                        Map.of(INDEX, idx++, "title", TerminalSanitizer.sanitizeLine(String.valueOf(c)))));
+                                        Map.of(INDEX, idx++, TITLE, TerminalSanitizer.sanitizeLine(String.valueOf(c)))));
                 }
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.config.consents_none", Map.of()));
@@ -807,7 +807,7 @@ public final class ConfigCommand implements Callable<Integer> {
             int idx = 1;
             for (var consent : consents) {
                 out.println(MessageCatalogue.format(locale, "operator.consents.row", Map.of(
-                                    INDEX, idx++, "title", MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
+                                    INDEX, idx++, TITLE, MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
                                     "kind", consent.kind().wireValue())));
                 out.println(MessageCatalogue.format(locale, "operator.consents.row_detail", Map.of(
                                     "when", consent.grantedAt() != null ? consent.grantedAt() : "",
@@ -831,7 +831,7 @@ public final class ConfigCommand implements Callable<Integer> {
         private int withdraw(PrintWriter out, String locale, MachineSettingsRecord settings, ConsentRecord consent)
                             throws IOException {
             var title = MessageCatalogue.format(locale, consent.titleKey(), Map.of());
-            out.println(MessageCatalogue.format(locale, "operator.consents.withdraw_confirm", Map.of("title", title)));
+            out.println(MessageCatalogue.format(locale, "operator.consents.withdraw_confirm", Map.of(TITLE, title)));
             out.println(MessageCatalogue.format(locale, "operator.consents.withdraw_explain",
                                 Map.of("step", MessageCatalogue.format(locale,
                                                     consent.kind().titleKey().startsWith("common") ? "onboard.harness"

@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.nayuki.qrcodegen.QrCode;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -96,8 +97,6 @@ class NativeMeasurementsIT {
                                 verbTimes, providerName());
             Files.createDirectories(Path.of("target"));
             Files.writeString(Path.of("target", "native-measurements.txt"), report, StandardCharsets.UTF_8);
-            /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
-            /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.out.println(report);
 
             assertTrue(sizeBytes > 0, "the binary has a footprint");
             assertTrue(consoleOutput.contains("pm \u203a ") || consoleOutput.contains("pm ["),
@@ -138,8 +137,7 @@ class NativeMeasurementsIT {
         try (var terminal = TerminalBuilder.builder().system(false).ffm(true).dumb(true).build()) {
             return terminal.getClass().getSimpleName();
         }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception e) {
+        catch (IOException e) {
             return "unavailable: " + e.getClass().getSimpleName();
         }
     }
