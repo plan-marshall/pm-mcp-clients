@@ -59,77 +59,133 @@
       }
     }
   },
+  "start_case": {
+    "project_id": "pm-mcp-clients",
+    "kind": "plan",
+    "state": "start.sources",
+    "landing": "landing.pull-request",
+    "documents_mode": "ask",
+    "lessons_available": true,
+    "local_changes": true,
+    "epic_auto_start": true,
+    "epic_auto_start_origin": "machine",
+    "parallelization_scope": 1,
+    "overlap_max_files": 0,
+    "title": "Start a plan in pm-mcp-clients",
+    "sources": [],
+    "recipes": [
+      {
+        "key": "agentfile-hygiene",
+        "name": "agentfile-hygiene",
+        "description": "classify and clean the agent files against the rubric",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": []
+      },
+      {
+        "key": "code-review",
+        "name": "code-review",
+        "description": "a structural and quality review of the current footprint",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "depth",
+            "value": "standard",
+            "options": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "lesson-cleanup",
+        "name": "lesson-cleanup",
+        "description": "turn one lesson into a slim, deterministic plan",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": []
+      },
+      {
+        "key": "audit",
+        "name": "audit",
+        "description": "audit the code against a request",
+        "origin": "project",
+        "takes_request": true,
+        "parameters": [
+          {
+            "name": "modules",
+            "value": "all 9",
+            "options": [
+              "all 9"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "no-modules",
+        "name": "no-modules",
+        "description": "a recipe whose parameter has no option",
+        "origin": "project",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "modules",
+            "options": [],
+            "proposed": false,
+            "available": false,
+            "reason": "none the recipe can work on"
+          }
+        ]
+      }
+    ]
+  },
   "states": {
     "start.sources": {
       "representation": {
-        "scope": "workspace",
-        "state": "start.sources",
-        "state_kind": "start",
-        "summary": "Starting a plan · The sources so far",
-        "kind": "plan",
-        "project_id": "pm-mcp-clients",
-        "title": "Start a plan in pm-mcp-clients",
-        "sources": [],
-        "can_continue": false
-      },
-      "links": {
-        "continue": {
-          "method": "POST",
-          "next": "start.ready",
-          "href": "/api/v1/projects/pm-mcp-clients/plans/start"
-        }
-      }
-    },
-    "start.epic-sources": {
-      "representation": {
-        "scope": "workspace",
-        "state": "start.epic-sources",
-        "state_kind": "start",
-        "summary": "Starting an epic · The sources so far",
-        "kind": "epic",
-        "project_id": "pm-mcp-clients",
-        "title": "Start an epic in pm-mcp-clients",
-        "sources": [],
-        "can_continue": false
-      },
-      "links": {
-        "continue": {
-          "method": "POST",
-          "next": "start.epic-ready",
-          "href": "/api/v1/projects/pm-mcp-clients/epics/start"
-        }
-      }
-    },
-    "start.ready": {
-      "representation": {
-        "scope": "workspace",
-        "state": "start.ready",
-        "state_kind": "start",
-        "summary": "Starting a plan · Ready",
-        "kind": "plan",
-        "project_id": "pm-mcp-clients"
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "start.sources",
+          "kind": "operator_wait"
+        },
+        "links": []
       },
       "links": {}
     },
-    "start.epic-ready": {
+    "start.ready": {
       "representation": {
-        "scope": "workspace",
-        "state": "start.epic-ready",
-        "state_kind": "start",
-        "summary": "Starting an epic · Ready",
-        "kind": "epic",
-        "project_id": "pm-mcp-clients"
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "start.ready",
+          "kind": "operator_wait"
+        },
+        "links": []
       },
       "links": {}
     },
     "start.recipe": {
       "representation": {
-        "scope": "workspace",
-        "state": "start.recipe",
-        "state_kind": "start",
-        "summary": "Starting a plan · Which recipe?",
-        "kind": "plan",
-        "project_id": "pm-mcp-clients"
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "start.recipe",
+          "kind": "operator_wait"
+        },
+        "links": []
       },
       "links": {}
     }

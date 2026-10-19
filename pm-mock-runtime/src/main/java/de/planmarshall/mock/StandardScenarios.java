@@ -261,6 +261,95 @@ public final class StandardScenarios {
     public static final String START = "start";
 
     /**
+     * A plan from one description, a plan from a description, documents, and an issue of another
+     * repository, an issue not found and tried again, a flagged issue accepted and one removed, and
+     * an issue whose grant is refused (UC-STA-1, UC-STA-4).
+     */
+    public static final String START_SOURCES = "start-sources";
+
+    /**
+     * Documents copied and moved, a directory, a file tracked by git, and a file refused (UC-STA-3).
+     */
+    public static final String START_DOCUMENTS = "start-documents";
+
+    /**
+     * An issue not found and tried again, a flagged issue accepted and one removed, and an issue
+     * whose grant is refused (UC-STA-4).
+     */
+    public static final String START_ISSUE_FAILED = "start-issue-failed";
+
+    /**
+     * An issue and a pull request left unscreened (the screener failing, no qualified configuration)
+     * and accepted as untrusted (UC-STA-4, UC-STA-7).
+     */
+    public static final String START_UNSCREENED = "start-unscreened";
+
+    /**
+     * A lesson whose premise no longer holds, used anyway, retired, and removed; a lesson claimed
+     * meanwhile returning to the choice with its cause (UC-STA-8).
+     */
+    public static final String START_LESSON = "start-lesson";
+
+    /**
+     * An issue fetched without a credential and one with a credential refused as {@code rate_limited},
+     * tried again after the reset (UC-STA-4).
+     */
+    public static final String START_RATE_LIMITED = "start-rate-limited";
+
+    /**
+     * Local changes, and local changes not offered while the project's landing is
+     * {@code landing.files}, with the reason (UC-STA-9).
+     */
+    public static final String START_LOCAL_CHANGES = "start-local-changes";
+
+    /**
+     * A pull request from a fork with its untrusted changed files (UC-STA-7).
+     */
+    public static final String START_PULL_REQUEST = "start-pull-request";
+
+    /**
+     * An epic from documents, its ready step showing {@code epic.auto_start} in force with its origin
+     * and never asking the scope (UC-STA-2).
+     */
+    public static final String START_EPIC = "start-epic";
+
+    /**
+     * An existing epic adopted at {@code start-epic.adopt}, and an adoption failed at
+     * {@code start-epic.adopt-failed} (UC-STA-2).
+     */
+    public static final String START_EPIC_ADOPT = "start-epic-adopt";
+
+    /**
+     * A start refused at {@code start.refused} with its reason (UC-STA-1).
+     */
+    public static final String START_REFUSED = "start-refused";
+
+    /**
+     * A recipe with parameters through {@code start.ready}, and one with a parameter without an
+     * option (UC-STA-5).
+     */
+    public static final String START_RECIPE = "start-recipe";
+
+    /**
+     * An entry left and continued, with no time limit: an entry never expires and no sweep removes
+     * it (UC-STA-1).
+     */
+    public static final String START_ENTRY_CONTINUE = "start-entry-continue";
+
+    /**
+     * The start chat: a question only, an addition accepted, a rewrite rejected, an epic's entry, a
+     * description-only entry, a chat disabled while an issue is not yet screened, and a create and an
+     * abandon each while a chat is still open (UC-STA-1, UC-CTL-1).
+     */
+    public static final String START_CHAT = "start-chat";
+
+    /**
+     * The follow-up plan of a chat about ended work, from an ended plan and from an ended epic
+     * (UC-CTL-1).
+     */
+    public static final String START_FOLLOW_UP = "start-follow-up";
+
+    /**
      * Starting a plan from a lesson: the unclaimed lessons of a project, a holding and a broken
      * premise, the three-way failure recovery, and the retirement of a lesson (UC-STA-8).
      */
@@ -311,7 +400,11 @@ public final class StandardScenarios {
             List.of(PAIRED_DEVICES, RUNNING_WORK, REPORTS, DECISIONS, SYSTEM, PROJECTS, PLAN_VIEW, CONTROL,
                     CONTROL_PAUSE, CONTROL_HOLDS, CONTROL_SETTINGS, CONTROL_EPIC, CONTROL_DECOMPOSITION,
                     CONTROL_CHAT, CONTROL_REVIEW, CONTROL_TOKENS,
-                    START, LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
+                    START, START_SOURCES, START_DOCUMENTS, START_ISSUE_FAILED, START_UNSCREENED,
+                    START_LESSON, START_RATE_LIMITED, START_LOCAL_CHANGES, START_PULL_REQUEST,
+                    START_EPIC, START_EPIC_ADOPT, START_REFUSED, START_RECIPE, START_ENTRY_CONTINUE,
+                    START_CHAT, START_FOLLOW_UP,
+                    LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
                     OPERATOR_INTERACTION))
             .flatMap(List::stream)
             .toList();
