@@ -221,9 +221,10 @@ class StartContractTest {
                     SourceTrust.UNTRUSTED, null, SourceFailure.of(SourceFailureCause.NOT_FOUND, "212"),
                     List.of(), null, null, List.of(), null);
             assertTrue(failed.blocksContinue());
+            var notFound = SourceFailure.of(SourceFailureCause.NOT_FOUND);
             assertThrows(IllegalArgumentException.class, () -> new SourceResource("src-1", SourceKind.ISSUE,
                     "212", null, SourceState.STORED, SourceTrust.UNTRUSTED, ScreeningVerdict.CLEAN,
-                    SourceFailure.of(SourceFailureCause.NOT_FOUND), List.of(), null, null, List.of(), null));
+                    notFound, List.of(), null, null, List.of(), null));
             assertThrows(IllegalArgumentException.class, () -> new SourceResource("src-1", SourceKind.ISSUE,
                     "212", null, SourceState.FAILED, SourceTrust.UNTRUSTED, null, null, List.of(), null, null,
                     List.of(), null));
@@ -301,8 +302,8 @@ class StartContractTest {
             assertThrows(IllegalArgumentException.class, () -> ConfinedPath.resolve(root, "doc/\0x"));
             assertThrows(IllegalArgumentException.class, () -> ConfinedPath.resolve(root, "../../.ssh/id_rsa"));
             assertThrows(IllegalArgumentException.class, () -> ConfinedPath.resolve(root, "doc/../../../etc"));
-            assertThrows(IllegalArgumentException.class,
-                    () -> ConfinedPath.resolve(Path.of("relative"), "doc"));
+            var relativeRoot = Path.of("relative");
+            assertThrows(IllegalArgumentException.class, () -> ConfinedPath.resolve(relativeRoot, "doc"));
         }
 
         @Test
@@ -338,7 +339,8 @@ class StartContractTest {
             assertFalse(RecipePlanId.isRecipePlanId("recipe-Coverage-2026-10-12-14-05-00"));
             assertFalse(RecipePlanId.isRecipePlanId("recipe-coverage-2026-13-12-14-05-00"));
             assertFalse(RecipePlanId.isRecipePlanId(null));
-            assertThrows(IllegalArgumentException.class, () -> RecipePlanId.derive(null, LocalDateTime.now()));
+            var at = LocalDateTime.now();
+            assertThrows(IllegalArgumentException.class, () -> RecipePlanId.derive(null, at));
         }
 
         @Test
@@ -441,10 +443,10 @@ class StartContractTest {
         @Test
         @DisplayName("EntryResource refuses a recipe on an epic and an unexplained disabled chat")
         void entryResourceInvariants() {
+            var recipe = new RecipeRef("audit", "audit", "", "project", false, List.of());
             assertThrows(IllegalArgumentException.class, () -> new EntryResource("ent-1", EntryKind.EPIC,
                     "pm-mcp-clients", StartState.SOURCES, null, null, List.of(), List.of(), true, false,
-                    "start.chat.role_unqualified",
-                    new RecipeRef("audit", "audit", "", "project", false, List.of()), List.of(), null));
+                    "start.chat.role_unqualified", recipe, List.of(), null));
             assertThrows(IllegalArgumentException.class, () -> new EntryResource("ent-1", EntryKind.PLAN,
                     "pm-mcp-clients", StartState.SOURCES, null, null, List.of(), List.of(), false, false,
                     null, null, List.of(), null));
@@ -581,7 +583,8 @@ class StartContractTest {
             assertNotNull(state.link(StartStateResource.LINK_CREATE));
             assertNotNull(state.link(StartStateResource.LINK_BACK));
 
-            assertThrows(IllegalArgumentException.class, () -> StartStateResource.of(sourcesEntry(), ready,
+            var sources = sourcesEntry();
+            assertThrows(IllegalArgumentException.class, () -> StartStateResource.of(sources, ready,
                     null, null, null, List.of()));
         }
 

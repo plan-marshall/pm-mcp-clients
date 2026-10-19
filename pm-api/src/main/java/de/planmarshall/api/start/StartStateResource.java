@@ -169,7 +169,7 @@ public record StartStateResource(
     public static StartStateResource of(EntryResource entry, @Nullable StartReadyResource ready,
                                         @Nullable StartChatResource chat, @Nullable StartRefusal refusal, @Nullable AdoptionFailure failure,
                                         List<RecipeRef> recipes) {
-        Objects.requireNonNull(entry, "entry");
+        Objects.requireNonNull(entry, FIELD_ENTRY);
         var facts = factsOf(entry, ready, refusal, failure, recipes);
         var items = itemsOf(entry);
         var links = linksOf(entry, chat);
@@ -327,19 +327,19 @@ public record StartStateResource(
         facts.put("can_continue", entry.canContinue());
         facts.put("source_count", Integer.toString(entry.sourceCount()));
         if (entry.title() != null) {
-            facts.put("title", entry.title());
+            facts.put(ITEM_TITLE, entry.title());
         }
         if (entry.planId() != null) {
             facts.put("plan_id", entry.planId());
         }
         if (ready != null) {
-            facts.put("ready", ready.toMap());
+            facts.put(FIELD_READY, ready.toMap());
         }
         if (refusal != null) {
-            facts.put("refusal", refusal.toMap());
+            facts.put(FIELD_REFUSAL, refusal.toMap());
         }
         if (failure != null) {
-            facts.put("adoption_failure", failure.toMap());
+            facts.put(FIELD_ADOPTION_FAILURE, failure.toMap());
         }
         if (!recipes.isEmpty()) {
             facts.put("recipe_count", Integer.toString(recipes.size()));
@@ -400,9 +400,7 @@ public record StartStateResource(
     private static List<OperatorLink> chooseLinks(EntryResource entry) {
         return List.of(
                 link(LINK_SOURCES, OperatorLinkRelation.NEXT, base(entry) + LINK_SOURCES, true),
-                entry.recipe() != null
-                        ? link(LINK_RECIPE, OperatorLinkRelation.ALT, base(entry) + LINK_RECIPE, false)
-                        : link(LINK_RECIPE, OperatorLinkRelation.ALT, base(entry) + LINK_RECIPE, false),
+                link(LINK_RECIPE, OperatorLinkRelation.ALT, base(entry) + LINK_RECIPE, false),
                 abandonLink(entry));
     }
 

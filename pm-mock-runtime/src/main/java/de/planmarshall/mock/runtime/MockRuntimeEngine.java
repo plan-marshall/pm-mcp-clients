@@ -246,7 +246,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_ENTRY_CHAT_TURNS = SEGMENT_ENTRY_CHAT + "/turns";
     private static final String SEGMENT_ENTRY_CHAT_END = "/chat/end";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL = SEGMENT_ENTRY_CHAT + "/proposal/";
-    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + "accept";
+    private static final String ACTION_ACCEPT = "accept";
+    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = SEGMENT_ENTRY_CHAT_PROPOSAL + "reject";
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
     private static final String SEGMENT_PROJECT_FILES = "/files";
@@ -300,6 +301,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_METHOD = "method";
     private static final String KEY_LINKS = "links";
     private static final String KEY_HREF = "href";
+    private static final String KEY_TEXT = "text";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
@@ -1685,7 +1687,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "H-0001", "relay-cursor-order", "plan", "integrity_pause",
                     "the plan's store file references.json changed outside the runtime",
                     0, null, "references.json", 4812L, "3f9a6b2cc21e", 5034L, "b70d41aa9a44",
-                    List.of("retry", "accept", "abort"), null));
+                    List.of("retry", ACTION_ACCEPT, "abort"), null));
             controlHolds.put(holdKey("relay-docs", "H-0002"), new HoldRecord(
                     "H-0002", "relay-docs", "plan", "held",
                     "waits: overlap with relay-auth-v2 (2 files)",
@@ -1857,13 +1859,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             localChangePreviews.clear();
             capturedProjects.clear();
         }
-        try {
-            startRegistry.init(currentScenario.get());
-            // cui-rewrite:disable InvalidExceptionUsageRecipe
-        } catch (StartRegistry.ActRefused e) {
-            throw new IllegalStateException("The start fixtures of scenario '"
-                    + currentScenario.get().name() + "' are invalid: " + e.detail(), e);
-        }
+        startRegistry.init(currentScenario.get());
     }
 
     private void initDefaultLessonSource() {
@@ -2531,40 +2527,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private boolean handleStartEntryRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
-        var method = request.method();
         if (!path.startsWith(PATH_ENTRIES_PREFIX)) {
             return false;
         }
         var rest = path.substring(PATH_ENTRIES_PREFIX.length());
-        if (rest.isEmpty()) {
+        if (rest.isEmpty() || rest.endsWith(SEGMENT_EVENTS)) {
             return false;
         }
-        if (rest.endsWith(SEGMENT_EVENTS)) {
-            return false;
-        }
-        if ("POST".equals(method) && rest.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
-            var id = rest.substring(0, rest.length() - SEGMENT_ENTRY_CHAT_TURNS.length());
-            handleEntryChatTurn(request, response, id);
-            return true;
-        }
-        if ("POST".equals(method) && rest.endsWith(SEGMENT_ENTRY_CHAT_END)) {
-            var id = rest.substring(0, rest.length() - SEGMENT_ENTRY_CHAT_END.length());
-            var state = startRegistry.endChat(id);
-            if (state == null) {
-                sendEntryNotFound(response, id);
-                return true;
-            }
-            response.json(200, state.toMap());
-            return true;
-        }
-        if ("POST".equals(method) && rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT)) {
-            var id = rest.substring(0, rest.length() - SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT.length());
-            handleEntryChatProposal(response, id, true);
-            return true;
-        }
-        if ("POST".equals(method) && rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT)) {
-            var id = rest.substring(0, rest.length() - SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT.length());
-            handleEntryChatProposal(response, id, false);
+        if (handleEntryChatRoutes(request, response, rest)) {
             return true;
         }
         var entryId = rest;
@@ -2577,7 +2547,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (entryId.isEmpty() || entryId.contains("/")) {
             return false;
         }
-        if ("GET".equals(method) && act == null) {
+        if ("GET".equals(request.method()) && act == null) {
             var state = startRegistry.find(entryId);
             if (state == null) {
                 sendEntryNotFound(response, entryId);
@@ -2586,11 +2556,44 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, state.toMap());
             return true;
         }
-        if ("POST".equals(method) && act != null) {
+        if ("POST".equals(request.method()) && act != null) {
             handleEntryAct(request, response, entryId, act);
             return true;
         }
         return false;
+    }
+
+    private boolean handleEntryChatRoutes(MockHttpRequest request, MockHttpResponse response, String rest)
+            throws IOException {
+        if (!"POST".equals(request.method())) {
+            return false;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
+            handleEntryChatTurn(request, response, rest, SEGMENT_ENTRY_CHAT_TURNS);
+            return true;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_END)) {
+            handleEntryChatEnd(response, rest, SEGMENT_ENTRY_CHAT_END);
+            return true;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT)) {
+            handleEntryChatProposal(response, rest, SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT, true);
+            return true;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT)) {
+            handleEntryChatProposal(response, rest, SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT, false);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleEntryChatEnd(MockHttpResponse response, String rest, String suffix) throws IOException {
+        var state = startRegistry.endChat(rest.substring(0, rest.length() - suffix.length()));
+        if (state == null) {
+            sendEntryNotFound(response, rest.substring(0, rest.length() - suffix.length()));
+            return;
+        }
+        response.json(200, state.toMap());
     }
 
     private void handleOpenEntry(MockHttpRequest request, MockHttpResponse response, String projectId)
@@ -2641,9 +2644,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void handleEntryChatTurn(MockHttpRequest request, MockHttpResponse response, String entryId)
-            throws IOException {
-        var text = JsonTree.string(readBodyObject(request), "text");
+    private void handleEntryChatTurn(MockHttpRequest request, MockHttpResponse response, String rest,
+            String suffix) throws IOException {
+        var entryId = rest.substring(0, rest.length() - suffix.length());
+        var text = JsonTree.string(readBodyObject(request), KEY_TEXT);
         if (text == null || text.isBlank()) {
             response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "A chat turn carries its text"));
             return;
@@ -2660,8 +2664,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void handleEntryChatProposal(MockHttpResponse response, String entryId, boolean accept)
+    private void handleEntryChatProposal(MockHttpResponse response, String rest, String suffix, boolean accept)
             throws IOException {
+        var entryId = rest.substring(0, rest.length() - suffix.length());
         try {
             var state = startRegistry.chatProposal(entryId, accept);
             if (state == null) {
@@ -3584,7 +3589,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             var act = resolution.act();
             var ending = "abort".equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
-            var released = "accept".equals(act) || "retry".equals(act) || "grant".equals(act)
+            var released = ACTION_ACCEPT.equals(act) || "retry".equals(act) || "grant".equals(act)
                     || "add_credential".equals(act) || "raise_budget".equals(act)
                     || "give_up_removal".equals(act) || "recycle".equals(act);
             if ("integrity_pause".equals(hold.kind()) && "retry".equals(act)) {

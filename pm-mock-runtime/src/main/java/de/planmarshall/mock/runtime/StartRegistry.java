@@ -106,7 +106,6 @@ final class StartRegistry {
     private static final String KEY_ADOPTABLE_EPICS = "adoptable_epics";
     private static final String KEY_ADOPTION_FAILURE = "adoption_failure";
     private static final String KEY_ADD_OUTCOMES = "add_outcomes";
-    private static final String KEY_FOLLOW_UP = "follow_up";
     private static final String KEY_ENDED_WORK = "ended_work";
     private static final String KEY_NEED = "need";
     private static final String KEY_REASON = "reason";
@@ -138,7 +137,6 @@ final class StartRegistry {
     private static final String KEY_FAILURE = "failure";
     private static final String KEY_DETAIL = "detail";
     private static final String KEY_SOURCE_ID = "source_id";
-    private static final String KEY_FROM_EPIC = "from_epic";
     private static final String KEY_OBJECTIVE = "objective";
     private static final String KEY_RECIPE_KEY = "recipe_key";
     private static final String KEY_PARAMETERS = "parameters";
@@ -158,6 +156,7 @@ final class StartRegistry {
     private static final String PREFIX_ENTRY = "ent-";
     private static final String CHAT_PREFIX = "chat-";
     private static final String CHAT_DIRECTORY = "chat";
+    private static final String PATH_SEPARATOR = "/";
     private static final String PENDING_DIRECTORY = "pending/";
     private static final String PLANS_DIRECTORY = "plans/";
     private static final String EPICS_DIRECTORY = "epics/";
@@ -180,7 +179,6 @@ final class StartRegistry {
     private static final String KEY_VALUE = "value";
     private static final String KEY_CAUSE = "cause";
     private static final long DEFAULT_RESET_EPOCH = 1_792_507_200L;
-    private static final String KEY_PLAN_SLUG = "plan_slug";
     private static final String TYPE = "start_case";
     private static final String DESCRIPTION_REFERENCE = "A description";
     private static final String DEFAULT_DOCUMENT = "doc/concepts/forgejo.adoc";
@@ -190,7 +188,6 @@ final class StartRegistry {
     private static final String DEFAULT_ISSUE = "https://codeberg.org/forgejo/forgejo/issues/4711";
     private static final String DEFAULT_PULL_REQUEST = "https://github.com/plan-marshall/pm-mcp-clients/pull/214";
     private static final String DEFAULT_WORK = "started-work";
-    private static final String DEFAULT_TITLE = "A description";
 
     /** The callback a start uses to tell its clients of an event. */
     private final Consumer<StartEvent> broadcaster;
@@ -295,7 +292,7 @@ final class StartRegistry {
      *
      * @param scenario the active scenario
      */
-    synchronized void init(Scenario scenario) throws ActRefused {
+    synchronized void init(Scenario scenario) {
         entries.clear();
         projectRecipes.clear();
         projectLandings.clear();
@@ -354,7 +351,7 @@ final class StartRegistry {
     private static RecipeParameter parameterFrom(Map<String, Object> parameter) {
         var rawOptions = JsonTree.asArray(parameter.get(KEY_OPTIONS));
         var options = rawOptions == null ? List.<String>of()
-                : rawOptions.stream().filter(option -> option != null).map(String::valueOf).toList();
+                : rawOptions.stream().filter(Objects::nonNull).map(String::valueOf).toList();
         return new RecipeParameter(JsonTree.string(parameter, KEY_NAME), JsonTree.string(parameter, KEY_VALUE),
                 options, Boolean.TRUE.equals(JsonTree.bool(parameter, KEY_PROPOSED)),
                 !Boolean.FALSE.equals(JsonTree.bool(parameter, KEY_AVAILABLE)),
@@ -377,7 +374,7 @@ final class StartRegistry {
                 });
     }
 
-    private void seedEntry(Map<String, Object> fixture) throws ActRefused {
+    private void seedEntry(Map<String, Object> fixture) {
         var projectId = JsonTree.string(fixture, KEY_PROJECT_ID);
         var kind = EntryKind.fromWireOrNull(JsonTree.string(fixture, KEY_KIND));
         var state = JsonTree.string(fixture, KEY_STATE);
@@ -397,9 +394,9 @@ final class StartRegistry {
         entry.adoptable = kind.epic() ? List.copyOf(adoptableEpics) : List.of();
         seedEntryRefusal(entry, fixture, projectId);
         seedEntryRecipe(entry, fixture);
-        seedEntryOutcomes(entry, fixture, kind);
+        seedEntryOutcomes(entry, fixture);
         entry.sources.addAll(objects(fixture.get(KEY_SOURCES)).stream()
-                .map(source -> sourceFromQuietly(source)).toList());
+                .map(this::sourceFromQuietly).toList());
         seedEntryChat(entry, fixture);
         refresh(entry);
         entries.put(entry.entryId, entry);
@@ -425,7 +422,7 @@ final class StartRegistry {
         }
     }
 
-    private void seedEntryOutcomes(StartEntry entry, Map<String, Object> fixture, EntryKind kind) {
+    private void seedEntryOutcomes(StartEntry entry, Map<String, Object> fixture) {
         var outcomes = JsonTree.object(fixture, KEY_ADD_OUTCOMES);
         if (outcomes == null) {
             return;
@@ -456,20 +453,32 @@ final class StartRegistry {
         }
     }
 
+    private static ChatRole defaultRole(StartEntry entry, @Nullable ChatRole role) {
+        if (role != null) {
+            return role;
+        }
+        return entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE;
+    }
+
+    private static ChatTurnResource turnFrom(Map<String, Object> object) {
+        var role = JsonTree.string(object, KEY_ROLE);
+        var text = JsonTree.string(object, KEY_TEXT);
+        var at = JsonTree.string(object, KEY_AT);
+        return new ChatTurnResource(Objects.requireNonNull(role), Objects.requireNonNull(text),
+                at != null ? at : "", Boolean.TRUE.equals(JsonTree.bool(object, KEY_UNTRUSTED)));
+    }
+
     private void seedChat(StartEntry entry, Map<String, Object> chat) {
         var available = JsonTree.bool(chat, KEY_AVAILABLE);
         entry.chatAvailable = available == null || available;
         entry.chatDisabledReason = entry.chatAvailable ? null : JsonTree.string(chat, KEY_DISABLED_REASON);
         var role = ChatRole.fromValue(JsonTree.string(chat, KEY_ROLE));
-        var chatState = new StartChat(CHAT_PREFIX + entry.entryId,
-                role != null ? role : entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE);
-        chatState.transcriptPath = PENDING_DIRECTORY + entry.entryId + "/" + CHAT_DIRECTORY;
+        var chatState = new StartChat(CHAT_PREFIX + entry.entryId, defaultRole(entry, role));
+        chatState.transcriptPath = PENDING_DIRECTORY + entry.entryId + PATH_SEPARATOR + CHAT_DIRECTORY;
         chatState.turns.addAll(objects(chat.get(KEY_TURNS)).stream()
                 .filter(object -> JsonTree.string(object, KEY_ROLE) != null
                         && JsonTree.string(object, KEY_TEXT) != null)
-                .map(object -> new ChatTurnResource(JsonTree.string(object, KEY_ROLE),
-                        JsonTree.string(object, KEY_TEXT), JsonTree.string(object, KEY_AT),
-                        Boolean.TRUE.equals(JsonTree.bool(object, KEY_UNTRUSTED))))
+                .map(StartRegistry::turnFrom)
                 .toList());
         var proposal = JsonTree.object(chat, KEY_PROPOSAL);
         if (proposal != null) {
@@ -574,7 +583,7 @@ final class StartRegistry {
             documentsMode(entry, linkId.substring("documents_mode:".length()));
         } else {
             switch (linkId) {
-                case "sources" -> entry.state = STATE_SOURCES;
+                case KEY_SOURCES -> entry.state = STATE_SOURCES;
                 case "recipe" -> entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
                 case "add_description" -> addDescription(entry, body);
                 case "add_documents" -> addDocuments(entry);
@@ -583,7 +592,7 @@ final class StartRegistry {
                 case "add_local_changes" -> addSource(entry, SourceKind.LOCAL_CHANGES);
                 case "add_pr" -> addSource(entry, SourceKind.PULL_REQUEST);
                 case "chat" -> openChat(entry);
-                case "start" -> continueToReady(entry);
+                case KEY_START -> continueToReady(entry);
                 case "back" -> entry.state = STATE_SOURCES;
                 case "create" -> create(entry, body);
                 case "set" -> setParameters(entry, body);
@@ -783,7 +792,7 @@ final class StartRegistry {
             text = entry.objective;
         }
         if (text == null || text.isBlank()) {
-            text = DEFAULT_TITLE;
+            text = DESCRIPTION_REFERENCE;
         }
         storeDescription(entry, text);
     }
@@ -937,8 +946,8 @@ final class StartRegistry {
     private void openChat(StartEntry entry) {
         if (entry.chat == null) {
             var role = entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE;
-            entry.chat = new StartChat("chat-" + entry.entryId + "-" + (++chatCounter), role);
-            entry.chat.transcriptPath = PENDING_DIRECTORY + entry.entryId + "/" + CHAT_DIRECTORY;
+            entry.chat = new StartChat(CHAT_PREFIX + entry.entryId + "-" + (++chatCounter), role);
+            entry.chat.transcriptPath = PENDING_DIRECTORY + entry.entryId + PATH_SEPARATOR + CHAT_DIRECTORY;
             entry.chat.turns.add(new ChatTurnResource(ChatRole.REFINE == role ? ROLE_REFINE : ROLE_DECOMPOSE,
                     "What did you understand, and what is unclear?", now(), false));
         }
@@ -978,7 +987,7 @@ final class StartRegistry {
             entry.chat.proposal = null;
             entry.chat.transcript = StartTranscriptState.MOVED;
             entry.chat.transcriptPath = (entry.kind.epic() ? EPICS_DIRECTORY : PLANS_DIRECTORY)
-                    + entry.planId + "/" + CHAT_DIRECTORY;
+                    + entry.planId + PATH_SEPARATOR + CHAT_DIRECTORY;
         }
         entry.created = true;
         entry.state = STATE_READY;
@@ -1371,7 +1380,7 @@ final class StartRegistry {
 
     private static String firstLine(@Nullable String text) {
         if (text == null) {
-            return DEFAULT_TITLE;
+            return DESCRIPTION_REFERENCE;
         }
         var trimmed = text.strip();
         var newline = trimmed.indexOf('\n');
