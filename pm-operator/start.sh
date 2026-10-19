@@ -16,6 +16,18 @@ mkdir -p "$SCRIPT_DIR/target"
 PID_FILE="$SCRIPT_DIR/target/pm-operator.pid"
 LOG_FILE="$SCRIPT_DIR/target/pm-operator.log"
 
+# The operator resolves <PM_MCP_HOME> from its executable. Launched from the Maven classpath that
+# executable is `java`, which is not one of the release binaries, so the layout resolution refuses
+# the process. A development home keeps that resolution working; it is only used to locate a
+# sibling runtime, and a development run either has one running already or starts it separately.
+DEV_HOME=false
+if [ -z "${PM_MCP_HOME:-}" ]; then
+    PM_MCP_HOME="$REPO_ROOT/target/pm-operator-dev-home"
+    mkdir -p "$PM_MCP_HOME/bin"
+    export PM_MCP_HOME
+    DEV_HOME=true
+fi
+
 # 1. Check if already running in background
 if [ -f "$PID_FILE" ]; then
     EXISTING_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
@@ -28,28 +40,52 @@ if [ -f "$PID_FILE" ]; then
     fi
 fi
 
-# 2. Smart build check (incremental, no clean)
+# 2. Smart build check
 CLASSES_DIR="$SCRIPT_DIR/target/classes"
 CP_FILE="$SCRIPT_DIR/target/classpath.txt"
+BUILD_STAMP="$SCRIPT_DIR/target/.build-stamp"
 BUILD_NEEDED=false
 
-if [ ! -d "$CLASSES_DIR" ] || [ ! -f "$CP_FILE" ]; then
+# Newest modification time under the given paths, portable across BSD and GNU stat.
+newest_mtime() {
+    if stat -f "%m" "$1" >/dev/null 2>&1; then
+        find "$@" -type f -exec stat -f "%m" {} + 2>/dev/null
+    else
+        find "$@" -type f -exec stat -c "%Y" {} + 2>/dev/null
+    fi | sort -nr | head -n1 || true
+}
+
+if [ ! -d "$CLASSES_DIR" ] || [ ! -f "$CP_FILE" ] || [ ! -f "$BUILD_STAMP" ]; then
     BUILD_NEEDED=true
 else
-    # Check if any sources in pm-operator or pm-api are newer than target/classes
-    NEWEST_SRC="$((find "$SCRIPT_DIR/src" "$REPO_ROOT/pm-api/src" -type f -exec stat -f "%m" {} + 2>/dev/null || find "$SCRIPT_DIR/src" "$REPO_ROOT/pm-api/src" -type f -exec stat -c "%Y" {} + 2>/dev/null) | sort -nr | head -n1 || echo 0)"
-    TARGET_MTIME="$(stat -f "%m" "$CLASSES_DIR" 2>/dev/null || stat -c "%Y" "$CLASSES_DIR" 2>/dev/null || echo 0)"
-    if [ "${NEWEST_SRC:-0}" -gt "${TARGET_MTIME:-0}" ]; then
+    # Only main sources: `compile` does not build tests, and editing a test must not force a
+    # rebuild of the operator before every verb.
+    NEWEST_SRC="$(newest_mtime "$SCRIPT_DIR/src/main" "$REPO_ROOT/pm-api/src/main" \
+        "$SCRIPT_DIR/pom.xml" "$REPO_ROOT/pm-api/pom.xml" "$REPO_ROOT/pom.xml")"
+    STAMP_MTIME="$(stat -f "%m" "$BUILD_STAMP" 2>/dev/null || stat -c "%Y" "$BUILD_STAMP" 2>/dev/null || echo 0)"
+    if [ "${NEWEST_SRC:-0}" -gt "${STAMP_MTIME:-0}" ]; then
+        BUILD_NEEDED=true
+    fi
+    # A class file newer than the stamp was written after the build (an IDE compiler), so the
+    # tree is not the one that was verified; compile it again.
+    NEWEST_CLASS="$(newest_mtime "$CLASSES_DIR" "$REPO_ROOT/pm-api/target/classes")"
+    if [ "${NEWEST_CLASS:-0}" -gt "${STAMP_MTIME:-0}" ]; then
         BUILD_NEEDED=true
     fi
 fi
 
 if [ "$BUILD_NEEDED" = true ]; then
-    echo "Building pm-operator (incremental ./mvnw -am, without clean)..."
+    echo "Building pm-operator (full recompile of pm-operator and pm-api)..."
     TMP_CP="$CP_FILE.tmp.$$"
     trap 'rm -f "$TMP_CP"' EXIT INT TERM
+    # Discard previously compiled classes instead of trusting them: the IDE's incremental
+    # compiler can overwrite target/classes with bytecode whose Lombok @Value constructors miss
+    # the Object super call, which fails at runtime with "Constructor must call super()".
+    rm -rf "$CLASSES_DIR" "$REPO_ROOT/pm-api/target/classes"
     (cd "$REPO_ROOT" && ./mvnw compile dependency:build-classpath -Dmdep.outputFile="$TMP_CP" -pl pm-operator -am)
+    mkdir -p "$SCRIPT_DIR/target"
     mv "$TMP_CP" "$CP_FILE"
+    touch "$BUILD_STAMP"
     trap - EXIT INT TERM
 fi
 
@@ -84,6 +120,19 @@ if [ -z "${PM_MCP_BASE:-}" ]; then
             fi
         fi
     fi
+fi
+
+# 5. A source checkout has only the mock runtime. The console starts a runtime on demand and
+# needs an installed pm-mcpd, which this tree does not build; point at the development runtime
+# instead of letting the operator fail on a missing binary.
+RUNTIME_BASE="${PM_MCP_BASE:-$HOME/.plan-marshall-mcp}"
+if [ "$DEV_HOME" = true ] && [ "${#PASSED_ARGS[@]}" -eq 0 ] \
+        && [ ! -S "$RUNTIME_BASE/run/runtime.sock" ]; then
+    echo "No runtime is available." >&2
+    echo "pm-mcpd is the product's runtime and is not built by this repository. The development" >&2
+    echo "runtime is pm-mock-runtime: start it first, then run this script again." >&2
+    echo "  $REPO_ROOT/pm-mock-runtime/start.sh" >&2
+    exit 1
 fi
 
 CP="$CLASSES_DIR:$REPO_ROOT/pm-api/target/classes:$(cat "$CP_FILE")"

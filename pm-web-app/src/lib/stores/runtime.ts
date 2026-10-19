@@ -32,6 +32,8 @@ export interface RuntimeState {
   isRevoked: boolean;
   revokedReason: string;
   revokedInfo?: RevokedInfo | null;
+  /** A code in the address bar was refused; the pairing page shows why. */
+  pairingFailed?: boolean;
   isOffline: boolean;
   /** The network listener this browser reached the machine over was turned off. */
   isListenerClosed: boolean;
@@ -69,6 +71,7 @@ const initialState: RuntimeState = {
   isRevoked: false,
   revokedReason: '',
   revokedInfo: null,
+  pairingFailed: false,
   isOffline: false,
   isListenerClosed: false,
   listenerClosedAt: null,
@@ -126,12 +129,16 @@ export async function checkUrlHashForCode(): Promise<boolean> {
     const match = /code=([^&]+)/.exec(window.location.hash);
     if (match?.[1]) {
       const extracted = decodeURIComponent(match[1]);
-      history.replaceState(null, '', window.location.pathname);
       try {
         await pairBrowser(extracted);
+        // Redeemed: drop the fragment so a reload does not replay a single-use code.
+        history.replaceState(null, '', window.location.pathname);
+        runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
         return true;
       } catch {
-        // Fall through
+        // Keep the fragment: a premature rewrite loses the code and makes the refusal look like
+        // a plain redirect to /pair. The pairing page shows that the code was refused.
+        runtimeStore.update((s) => ({ ...s, pairingFailed: true }));
       }
     }
   }

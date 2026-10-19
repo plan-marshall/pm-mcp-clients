@@ -237,10 +237,19 @@ class EntryScenarioTest {
 
             assertEquals(200, post(baseUrl + "/api/v1/pair", "{\"code\":\"KXQB-MRTN\"}").statusCode());
 
+            // The control state names the code that is accepted, not the scenario's now-consumed one.
+            var consumedState = JsonTree.asObject(JsonTree.parse(
+                    new String(client.send(HttpRequest.get("/mock/state")).body(), StandardCharsets.UTF_8)));
+            assertEquals("", JsonTree.string(consumedState, "pairing_code"));
+
             var second = client.send(HttpRequest.json("POST", "/api/v1/web/pairings", "{}")
                     .withHeader("Authorization", auth));
             var fresh = PairingResource.fromJson(new String(second.body(), StandardCharsets.UTF_8));
             assertNotEquals(firstCode.code(), fresh.code());
+
+            var issuedState = JsonTree.asObject(JsonTree.parse(
+                    new String(client.send(HttpRequest.get("/mock/state")).body(), StandardCharsets.UTF_8)));
+            assertEquals(fresh.code().value(), JsonTree.string(issuedState, "pairing_code"));
 
             var consumed = post(baseUrl + "/api/v1/pair", "{\"code\":\"KXQB-MRTN\"}");
             assertEquals(400, consumed.statusCode());
