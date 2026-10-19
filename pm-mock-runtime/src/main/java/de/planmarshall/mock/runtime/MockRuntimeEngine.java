@@ -4337,7 +4337,49 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put(KEY_STATE, stateId);
         body.put("completed_steps", completedStepsFor(stateId));
         body.put("auto", onboardingAuto);
+        body.put("step_summaries", stepSummariesFor(stateId));
         return body;
+    }
+
+    /**
+     * The summary the runtime reports for each done step: the recorded value of an aspect the
+     * onboarding has already passed, keyed by the step number (1 to 7).
+     *
+     * @param stateId the current state
+     * @return the summaries of the done steps
+     */
+    private Map<String, String> stepSummariesFor(@Nullable String stateId) {
+        var summaries = new LinkedHashMap<String, String>();
+        if (stateId == null) {
+            return summaries;
+        }
+        var current = MachineOnboardingState.aspectOf(stateId);
+        var upTo = current != null ? current.step() - 1 : 0;
+        if ("onboard.completed".equals(stateId) || stateId.startsWith("settings.")) {
+            upTo = 7;
+        }
+        if (upTo >= 1) {
+            summaries.put("1", "Deutsch, models English");
+        }
+        if (upTo >= 2) {
+            summaries.put("2", "Claude Code 2.4.1 (default), OpenCode 1.9.0");
+        }
+        if (upTo >= 3) {
+            summaries.put("3", "3 models on 2 harnesses");
+        }
+        if (upTo >= 4) {
+            summaries.put("4", "36 roles assigned");
+        }
+        if (upTo >= 5) {
+            summaries.put("5", "macOS Keychain");
+        }
+        if (upTo >= 6) {
+            summaries.put("6", "GitHub (gh)");
+        }
+        if (upTo >= 7) {
+            summaries.put("7", "Pull Request \u00b7 Test first \u00b7 key points");
+        }
+        return summaries;
     }
 
     private static int completedStepsFor(@Nullable String stateId) {

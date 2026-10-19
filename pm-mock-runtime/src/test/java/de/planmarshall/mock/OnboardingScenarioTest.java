@@ -133,6 +133,27 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("serves the recorded summary of each done step")
+        void shouldServeStepSummaries() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("harness.choose");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var res = client.send(HttpRequest.get("/api/v1/onboarding/state")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, res.status());
+                var map = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
+                var summaries = JsonTree.asObject(map.get("step_summaries"));
+
+                // Only the step the run has passed reports a summary; the current one does not.
+                assertEquals(1, summaries.size());
+                assertEquals("Deutsch, models English", JsonTree.string(summaries, "1"));
+                assertFalse(summaries.containsKey("2"));
+            }
+        }
+
+        @Test
         @DisplayName("serves the automatic run's result items with their closed reasons")
         void shouldServeAutoResultItems() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
