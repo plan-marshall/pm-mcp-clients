@@ -144,12 +144,14 @@ public record DeliverableRecord(
      */
     public record AffectedFile(String path, FileIntent intent) {
 
+        private static final String FIELD_PATH = "path";
+        private static final String FIELD_INTENT = "intent";
         private static final String TYPE = "AffectedFile";
-        private static final Set<String> KNOWN_FIELDS = Set.of("path", "intent");
+        private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_PATH, FIELD_INTENT);
 
         public AffectedFile {
-            Objects.requireNonNull(path, "path");
-            Objects.requireNonNull(intent, "intent");
+            Objects.requireNonNull(path, FIELD_PATH);
+            Objects.requireNonNull(intent, FIELD_INTENT);
             if (path.isBlank()) {
                 throw new IllegalArgumentException("path must not be blank");
             }
@@ -160,15 +162,15 @@ public record DeliverableRecord(
          */
         public Map<String, Object> toMap() {
             var map = new LinkedHashMap<String, Object>();
-            map.put("path", path);
-            map.put("intent", intent.wireValue());
+            map.put(FIELD_PATH, path);
+            map.put(FIELD_INTENT, intent.wireValue());
             return map;
         }
 
         private void writeTo(JsonGenerator generator) throws IOException {
             generator.writeStartObject();
-            generator.writeStringField("path", path);
-            generator.writeStringField("intent", intent.wireValue());
+            generator.writeStringField(FIELD_PATH, path);
+            generator.writeStringField(FIELD_INTENT, intent.wireValue());
             generator.writeEndObject();
         }
 
@@ -176,8 +178,8 @@ public record DeliverableRecord(
             IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
             try {
                 return new AffectedFile(
-                        IntentJson.requireText(map, "path", TYPE),
-                        FileIntent.fromWire(IntentJson.requireText(map, "intent", TYPE)));
+                        IntentJson.requireText(map, FIELD_PATH, TYPE),
+                        FileIntent.fromWire(IntentJson.requireText(map, FIELD_INTENT, TYPE)));
             } catch (IllegalArgumentException e) {
                 throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
             }

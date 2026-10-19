@@ -69,12 +69,14 @@ public record EpicIntentResource(
      */
     public record PlanDoneWhen(String planId, String title, List<String> doneWhen) {
 
+        private static final String FIELD_PLAN_ID = "plan_id";
+        private static final String FIELD_TITLE = "title";
         private static final String TYPE = "PlanDoneWhen";
-        private static final Set<String> KNOWN_FIELDS = Set.of("plan_id", "title", "done_when");
+        private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_PLAN_ID, FIELD_TITLE, FIELD_DONE_WHEN);
 
         public PlanDoneWhen {
-            Objects.requireNonNull(planId, "plan_id");
-            Objects.requireNonNull(title, "title");
+            Objects.requireNonNull(planId, FIELD_PLAN_ID);
+            Objects.requireNonNull(title, FIELD_TITLE);
             if (planId.isBlank() || title.isBlank()) {
                 throw new IllegalArgumentException("plan_id and title must not be blank");
             }
@@ -92,17 +94,17 @@ public record EpicIntentResource(
          */
         public Map<String, Object> toMap() {
             var map = new LinkedHashMap<String, Object>();
-            map.put("plan_id", planId);
-            map.put("title", title);
-            map.put("done_when", doneWhen);
+            map.put(FIELD_PLAN_ID, planId);
+            map.put(FIELD_TITLE, title);
+            map.put(FIELD_DONE_WHEN, doneWhen);
             return map;
         }
 
         private void writeTo(JsonGenerator generator) throws IOException {
             generator.writeStartObject();
-            generator.writeStringField("plan_id", planId);
-            generator.writeStringField("title", title);
-            IntentJson.writeStrings(generator, "done_when", doneWhen);
+            generator.writeStringField(FIELD_PLAN_ID, planId);
+            generator.writeStringField(FIELD_TITLE, title);
+            IntentJson.writeStrings(generator, FIELD_DONE_WHEN, doneWhen);
             generator.writeEndObject();
         }
 
@@ -110,9 +112,9 @@ public record EpicIntentResource(
             IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
             try {
                 return new PlanDoneWhen(
-                        IntentJson.requireText(map, "plan_id", TYPE),
-                        IntentJson.requireText(map, "title", TYPE),
-                        IntentJson.readStrings(map, "done_when"));
+                        IntentJson.requireText(map, FIELD_PLAN_ID, TYPE),
+                        IntentJson.requireText(map, FIELD_TITLE, TYPE),
+                        IntentJson.readStrings(map, FIELD_DONE_WHEN));
             } catch (IllegalArgumentException e) {
                 throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
             }
@@ -128,28 +130,45 @@ public record EpicIntentResource(
         if (destination.isBlank()) {
             throw new IllegalArgumentException("destination must not be blank");
         }
-        doneWhen = doneWhen == null ? List.of() : List.copyOf(doneWhen);
-        if (doneWhen.size() < 3 || doneWhen.size() > 6) {
+        doneWhen = requireDoneWhen(doneWhen);
+        nonGoals = requireNonGoals(nonGoals);
+        notYetSpecified = copyTexts(notYetSpecified, FIELD_NOT_YET_SPECIFIED);
+        plans = requirePlans(plans);
+    }
+
+    private static List<DoneWhenCheck> requireDoneWhen(List<DoneWhenCheck> value) {
+        var checks = value == null ? List.<DoneWhenCheck>of() : List.copyOf(value);
+        if (checks.size() < 3 || checks.size() > 6) {
             throw new IllegalArgumentException("done_when must hold three to six checks");
         }
-        nonGoals = nonGoals == null ? List.of() : List.copyOf(nonGoals);
-        if (nonGoals.isEmpty()) {
+        return checks;
+    }
+
+    private static List<String> requireNonGoals(List<String> value) {
+        var goals = copyTexts(value, FIELD_NON_GOALS);
+        if (goals.isEmpty()) {
             throw new IllegalArgumentException("non_goals must not be empty");
         }
-        if (nonGoals.stream().anyMatch(value -> value == null || value.isBlank())) {
-            throw new IllegalArgumentException("non_goals must not carry a blank entry");
+        return goals;
+    }
+
+    private static List<String> copyTexts(List<String> value, String name) {
+        var texts = value == null ? List.<String>of() : List.copyOf(value);
+        if (texts.stream().anyMatch(text -> text == null || text.isBlank())) {
+            throw new IllegalArgumentException(name + " must not carry a blank entry");
         }
-        notYetSpecified = notYetSpecified == null ? List.of() : List.copyOf(notYetSpecified);
-        if (notYetSpecified.stream().anyMatch(value -> value == null || value.isBlank())) {
-            throw new IllegalArgumentException("not_yet_specified must not carry a blank entry");
-        }
-        plans = plans == null ? List.of() : List.copyOf(plans);
+        return texts;
+    }
+
+    private static List<PlanDoneWhen> requirePlans(List<PlanDoneWhen> value) {
+        var rows = value == null ? List.<PlanDoneWhen>of() : List.copyOf(value);
         var planIds = new HashSet<String>();
-        for (var plan : plans) {
+        for (var plan : rows) {
             if (!planIds.add(plan.planId())) {
                 throw new IllegalArgumentException("duplicate plan id: " + plan.planId());
             }
         }
+        return rows;
     }
 
     /**

@@ -93,7 +93,7 @@ class IntentContractTest {
 
         @Test
         @DisplayName("every record round-trips through its map, JSON, and streaming codecs")
-        void everyRecord() throws Exception {
+        void everyRecord() {
             assertAll(
                     () -> verify(planIntent(), PlanIntentResource::toJson, PlanIntentResource::toMap,
                             PlanIntentResource::fromJson, PlanIntentResource::fromMap,
@@ -239,10 +239,11 @@ class IntentContractTest {
         @Test
         @DisplayName("a plan intent without a goal, criteria, or unique ids is refused")
         void invalidPlanIntent() {
+            var repeated = List.of(criterion(), criterion());
             assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
                     "{\"plan_id\":\"p\",\"revision\":1,\"goal\":\"\",\"criteria\":[]}"));
             assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource("p", 1, "goal",
-                    List.of(criterion(), criterion()), List.of("none"), List.of(), List.of(), List.of(), null));
+                    repeated, List.of("none"), List.of(), List.of(), List.of(), null));
         }
 
         @Test
@@ -258,11 +259,14 @@ class IntentContractTest {
         @Test
         @DisplayName("an outline with a duplicate deliverable or an orphan dependency is refused")
         void invalidOutline() {
+            var first = deliverable();
+            var second = deliverable();
+            var one = List.of(first);
+            var orphan = new DependencyJustification("x", null, "needed", 7);
             assertThrows(IllegalArgumentException.class, () -> new OutlineResource("p", 1, "summary",
-                    List.of(deliverable(), deliverable()), List.of(), List.of(), List.of(), null));
+                    List.of(first, second), List.of(), List.of(), List.of(), null));
             assertThrows(IllegalArgumentException.class, () -> new OutlineResource("p", 1, "summary",
-                    List.of(deliverable()), List.of(new DependencyJustification("x", null, "needed", 7)),
-                    List.of(), List.of(), null));
+                    one, List.of(orphan), List.of(), List.of(), null));
         }
 
         @Test
@@ -277,24 +281,28 @@ class IntentContractTest {
         @Test
         @DisplayName("an epic intent with too few checks or no non-goal is refused")
         void invalidEpicIntent() {
+            var check = doneWhen();
+            var three = List.of(check, check, check);
             assertThrows(IllegalArgumentException.class, () -> new EpicIntentResource("e", "destination",
-                    List.of(doneWhen()), List.of("none"), List.of(), List.of()));
+                    List.of(check), List.of("none"), List.of(), List.of()));
             assertThrows(IllegalArgumentException.class, () -> new EpicIntentResource("e", "destination",
-                    List.of(doneWhen(), doneWhen(), doneWhen()), List.of(), List.of(), List.of()));
+                    three, List.of(), List.of(), List.of()));
         }
 
         @Test
         @DisplayName("an over-size distribution with a bad bucket or a bad share is refused")
         void invalidDistribution() {
+            var overlapping = List.of(new TokenBucket("a", 1.0, 3.0, 1, 0),
+                    new TokenBucket("b", 2.0, 4.0, 1, 0));
+            var valid = List.of(bucket());
             assertThrows(IllegalArgumentException.class,
                     () -> new TokenBucket("x", 1.0, 2.0, 3, 4));
             assertThrows(IllegalArgumentException.class,
                     () -> new TokenBucket("x", 2.0, 2.0, 1, 0));
-            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource("p", "r",
-                    3.0, 2.0, List.of(new TokenBucket("a", 1.0, 3.0, 1, 0),
-                            new TokenBucket("b", 2.0, 4.0, 1, 0))));
-            assertThrows(IllegalArgumentException.class, () -> new OverSizeDistributionResource("p", "r",
-                    3.0, 0.0, List.of(bucket())));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, 2.0, overlapping));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OverSizeDistributionResource("p", "r", 3.0, 0.0, valid));
         }
 
         @Test

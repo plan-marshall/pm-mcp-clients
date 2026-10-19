@@ -91,23 +91,29 @@ public record PlanIntentResource(
             @Nullable String questionId
     ) {
 
+        private static final String FIELD_ID = "id";
+        private static final String FIELD_TEXT = "text";
+        private static final String FIELD_DECIDER = "decider";
+        private static final String FIELD_OPTIONS_WEIGHED = "options_weighed";
+        private static final String FIELD_QUESTION_ID = "question_id";
         private static final String TYPE = "Decision";
         private static final Set<String> KNOWN_FIELDS = Set.of(
-                "id", "text", "decider", "options_weighed", "question_id");
+                FIELD_ID, FIELD_TEXT, FIELD_DECIDER, FIELD_OPTIONS_WEIGHED, FIELD_QUESTION_ID);
 
         public Decision {
-            Objects.requireNonNull(id, "id");
-            Objects.requireNonNull(text, "text");
-            Objects.requireNonNull(decider, "decider");
+            Objects.requireNonNull(id, FIELD_ID);
+            Objects.requireNonNull(text, FIELD_TEXT);
+            Objects.requireNonNull(decider, FIELD_DECIDER);
             if (id.isBlank() || text.isBlank()) {
                 throw new IllegalArgumentException("id and text must not be blank");
             }
             optionsWeighed = optionsWeighed == null ? List.of() : List.copyOf(optionsWeighed);
             if (optionsWeighed.stream().anyMatch(option -> option == null || option.isBlank())) {
-                throw new IllegalArgumentException("options_weighed must not carry a blank option");
+                throw new IllegalArgumentException(FIELD_OPTIONS_WEIGHED + " must not carry a blank option");
             }
             if (decider.operatorFacing() && (questionId == null || questionId.isBlank())) {
-                throw new IllegalArgumentException("a " + decider.wireValue() + " decision requires its question_id");
+                throw new IllegalArgumentException(
+                        "a " + decider.wireValue() + " decision requires its " + FIELD_QUESTION_ID);
             }
             if (!decider.operatorFacing() && questionId != null) {
                 throw new IllegalArgumentException("only an operator or quorum decision names a question");
@@ -119,23 +125,23 @@ public record PlanIntentResource(
          */
         public Map<String, Object> toMap() {
             var map = new LinkedHashMap<String, Object>();
-            map.put("id", id);
-            map.put("text", text);
-            map.put("decider", decider.wireValue());
-            map.put("options_weighed", optionsWeighed);
+            map.put(FIELD_ID, id);
+            map.put(FIELD_TEXT, text);
+            map.put(FIELD_DECIDER, decider.wireValue());
+            map.put(FIELD_OPTIONS_WEIGHED, optionsWeighed);
             if (questionId != null) {
-                map.put("question_id", questionId);
+                map.put(FIELD_QUESTION_ID, questionId);
             }
             return map;
         }
 
         private void writeTo(JsonGenerator generator) throws IOException {
             generator.writeStartObject();
-            generator.writeStringField("id", id);
-            generator.writeStringField("text", text);
-            generator.writeStringField("decider", decider.wireValue());
-            IntentJson.writeStrings(generator, "options_weighed", optionsWeighed);
-            IntentJson.writeOptionalString(generator, "question_id", questionId);
+            generator.writeStringField(FIELD_ID, id);
+            generator.writeStringField(FIELD_TEXT, text);
+            generator.writeStringField(FIELD_DECIDER, decider.wireValue());
+            IntentJson.writeStrings(generator, FIELD_OPTIONS_WEIGHED, optionsWeighed);
+            IntentJson.writeOptionalString(generator, FIELD_QUESTION_ID, questionId);
             generator.writeEndObject();
         }
 
@@ -143,11 +149,11 @@ public record PlanIntentResource(
             IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
             try {
                 return new Decision(
-                        IntentJson.requireText(map, "id", TYPE),
-                        IntentJson.requireText(map, "text", TYPE),
-                        IntentDecider.fromWire(IntentJson.requireText(map, "decider", TYPE)),
-                        IntentJson.readStrings(map, "options_weighed"),
-                        IntentJson.optionalText(map, "question_id", TYPE));
+                        IntentJson.requireText(map, FIELD_ID, TYPE),
+                        IntentJson.requireText(map, FIELD_TEXT, TYPE),
+                        IntentDecider.fromWire(IntentJson.requireText(map, FIELD_DECIDER, TYPE)),
+                        IntentJson.readStrings(map, FIELD_OPTIONS_WEIGHED),
+                        IntentJson.optionalText(map, FIELD_QUESTION_ID, TYPE));
             } catch (IllegalArgumentException e) {
                 throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
             }
@@ -163,13 +169,16 @@ public record PlanIntentResource(
      */
     public record DeferredItem(String id, String text, String reason) {
 
+        private static final String FIELD_ID = "id";
+        private static final String FIELD_TEXT = "text";
+        private static final String FIELD_REASON = "reason";
         private static final String TYPE = "DeferredItem";
-        private static final Set<String> KNOWN_FIELDS = Set.of("id", "text", "reason");
+        private static final Set<String> KNOWN_FIELDS = Set.of(FIELD_ID, FIELD_TEXT, FIELD_REASON);
 
         public DeferredItem {
-            Objects.requireNonNull(id, "id");
-            Objects.requireNonNull(text, "text");
-            Objects.requireNonNull(reason, "reason");
+            Objects.requireNonNull(id, FIELD_ID);
+            Objects.requireNonNull(text, FIELD_TEXT);
+            Objects.requireNonNull(reason, FIELD_REASON);
             if (id.isBlank() || text.isBlank() || reason.isBlank()) {
                 throw new IllegalArgumentException("id, text, and reason must not be blank");
             }
@@ -180,17 +189,17 @@ public record PlanIntentResource(
          */
         public Map<String, Object> toMap() {
             var map = new LinkedHashMap<String, Object>();
-            map.put("id", id);
-            map.put("text", text);
-            map.put("reason", reason);
+            map.put(FIELD_ID, id);
+            map.put(FIELD_TEXT, text);
+            map.put(FIELD_REASON, reason);
             return map;
         }
 
         private void writeTo(JsonGenerator generator) throws IOException {
             generator.writeStartObject();
-            generator.writeStringField("id", id);
-            generator.writeStringField("text", text);
-            generator.writeStringField("reason", reason);
+            generator.writeStringField(FIELD_ID, id);
+            generator.writeStringField(FIELD_TEXT, text);
+            generator.writeStringField(FIELD_REASON, reason);
             generator.writeEndObject();
         }
 
@@ -198,9 +207,9 @@ public record PlanIntentResource(
             IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
             try {
                 return new DeferredItem(
-                        IntentJson.requireText(map, "id", TYPE),
-                        IntentJson.requireText(map, "text", TYPE),
-                        IntentJson.requireText(map, "reason", TYPE));
+                        IntentJson.requireText(map, FIELD_ID, TYPE),
+                        IntentJson.requireText(map, FIELD_TEXT, TYPE),
+                        IntentJson.requireText(map, FIELD_REASON, TYPE));
             } catch (IllegalArgumentException e) {
                 throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
             }

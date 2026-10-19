@@ -224,7 +224,7 @@ class IntentScenarioTest {
 
     @Test
     @DisplayName("every fixture is the contract's shape before it is served")
-    void fixturesAreContractShaped() throws Exception {
+    void fixturesAreContractShaped() {
         var planIntent = ScenarioLoader.load(StandardScenarios.INTENT_PLAN)
                 .route("GET", "/api/v1/plans/fix-relay/intent");
         var outline = ScenarioLoader.load(StandardScenarios.INTENT_OUTLINE)

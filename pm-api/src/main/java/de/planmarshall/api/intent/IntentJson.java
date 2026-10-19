@@ -187,7 +187,7 @@ final class IntentJson {
         final double number;
         try {
             number = switch (value) {
-                case JsonNumber raw -> Double.parseDouble(raw.text());
+                case JsonNumber(String text) -> Double.parseDouble(text);
                 case Number raw -> raw.doubleValue();
                 default -> throw new JsonFormatException("Not a number for " + key + " in " + type);
             };

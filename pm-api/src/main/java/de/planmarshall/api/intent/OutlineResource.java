@@ -80,31 +80,45 @@ public record OutlineResource(
         if (summary.isBlank()) {
             throw new IllegalArgumentException("summary must not be blank");
         }
-        deliverables = deliverables == null ? List.of() : List.copyOf(deliverables);
-        if (deliverables.isEmpty()) {
+        deliverables = requireDeliverables(deliverables);
+        var numbers = new HashSet<>(deliverables.stream().map(DeliverableRecord::number).toList());
+        addedDependencies = requireDependencies(addedDependencies, numbers);
+        interfaces = copyTexts(interfaces, FIELD_INTERFACES);
+        keyLinks = copyTexts(keyLinks, FIELD_KEY_LINKS);
+    }
+
+    private static List<DeliverableRecord> requireDeliverables(List<DeliverableRecord> value) {
+        var records = value == null ? List.<DeliverableRecord>of() : List.copyOf(value);
+        if (records.isEmpty()) {
             throw new IllegalArgumentException("deliverables must not be empty");
         }
         var numbers = new HashSet<Integer>();
-        for (var deliverable : deliverables) {
+        for (var deliverable : records) {
             if (!numbers.add(deliverable.number())) {
                 throw new IllegalArgumentException("duplicate deliverable number: " + deliverable.number());
             }
         }
-        addedDependencies = addedDependencies == null ? List.of() : List.copyOf(addedDependencies);
-        for (var dependency : addedDependencies) {
+        return records;
+    }
+
+    private static List<DependencyJustification> requireDependencies(List<DependencyJustification> value,
+                                                                     Set<Integer> numbers) {
+        var dependencies = value == null ? List.<DependencyJustification>of() : List.copyOf(value);
+        for (var dependency : dependencies) {
             if (!numbers.contains(dependency.deliverable())) {
                 throw new IllegalArgumentException(
                         "added dependency " + dependency.name() + " names no deliverable");
             }
         }
-        interfaces = interfaces == null ? List.of() : List.copyOf(interfaces);
-        keyLinks = keyLinks == null ? List.of() : List.copyOf(keyLinks);
-        if (interfaces.stream().anyMatch(value -> value == null || value.isBlank())) {
-            throw new IllegalArgumentException("interfaces must not carry a blank entry");
+        return dependencies;
+    }
+
+    private static List<String> copyTexts(List<String> value, String name) {
+        var texts = value == null ? List.<String>of() : List.copyOf(value);
+        if (texts.stream().anyMatch(text -> text == null || text.isBlank())) {
+            throw new IllegalArgumentException(name + " must not carry a blank entry");
         }
-        if (keyLinks.stream().anyMatch(value -> value == null || value.isBlank())) {
-            throw new IllegalArgumentException("key_links must not carry a blank entry");
-        }
+        return texts;
     }
 
     /**
