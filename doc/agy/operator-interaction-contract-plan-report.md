@@ -355,5 +355,6 @@ were declined with a reason.
 | 8 | `validateOperatorState` checked only top-level links. | Item links are included in the advertised set. |
 | 9 | The report did not cover the runbook's standard invariants. | Added §6.1 (Java 25, no uncatalogued strings, EN/DE catalogue, mock completeness, responsive layout applicability). |
 | 10 | `EventScope` accepted an `id` on a kind that carries none. | The constructor rejects an `id` for `runtime`, `machine`, and `workspace`; a test pins it. |
+| 11 | The new archive row used `file:///Users/oliver/...` links. | The row uses repository-relative links (the pre-existing rows keep their file-codex convention, out of this change's footprint). |
 
 All inline threads are answered on the pull request; the findings landed in commits `a4522cb` (the hardening batch) and the follow-up commit for findings 7–10.
