@@ -1,0 +1,93 @@
+{
+  "format_version": 1,
+  "name": "onboarding-harness-tokens-partial",
+  "description": "The harness scan where a harness reports its tokens only in part; the missing figures are named and do not keep it from being enrolled.",
+  "start": "harness.choose",
+  "pairing_code": "MOCKMOCK",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "onboarding",
+        "onboarded": false
+      }
+    }
+  },
+  "states": {
+    "harness.choose": {
+      "representation": {
+        "scope": "machine",
+        "state": "harness.choose",
+        "summary": "Choose the harnesses to enrol",
+        "harnesses": [
+          {
+            "harness_id": "claude",
+            "name": "Claude Code",
+            "path": "~/.local/bin/claude",
+            "version": "2.4.1",
+            "found": true,
+            "supported": true,
+            "worker_eligible": true,
+            "token_usage": "complete",
+            "default": true,
+            "usage": {
+              "coverage": "complete",
+              "figures": {
+                "input": "reported",
+                "cache_read": "reported",
+                "cache_write": "not_applicable",
+                "output": "reported"
+              }
+            }
+          },
+          {
+            "harness_id": "opencode",
+            "name": "OpenCode",
+            "path": "/opt/homebrew/bin/opencode",
+            "version": "1.9.0",
+            "found": true,
+            "supported": true,
+            "worker_eligible": true,
+            "token_usage": "partial",
+            "missing_figures": ["cache_read", "cache_write"],
+            "usage": {
+              "coverage": "partial",
+              "figures": {
+                "input": "reported",
+                "cache_read": "not_reported",
+                "cache_write": "not_reported",
+                "output": "reported"
+              }
+            }
+          }
+        ]
+      },
+      "links": {
+        "choose": {
+          "next": "harness.confirm",
+          "href": "/api/v1/onboarding/harness/choose"
+        }
+      }
+    },
+    "harness.confirm": {
+      "representation": {
+        "scope": "machine",
+        "state": "harness.confirm",
+        "summary": "Enrol 2 harnesses"
+      },
+      "links": {
+        "confirm": {
+          "next": "onboard.completed",
+          "href": "/api/v1/onboarding/harness/confirm"
+        }
+      }
+    },
+    "onboard.completed": {
+      "representation": {
+        "scope": "machine",
+        "state": "onboard.completed",
+        "summary": "This machine is ready"
+      },
+      "links": {}
+    }
+  }
+}

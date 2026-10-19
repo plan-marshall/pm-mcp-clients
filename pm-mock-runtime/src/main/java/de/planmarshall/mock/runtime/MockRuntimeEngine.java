@@ -275,6 +275,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
     private static final String CONSENT_PREFIX = "consent:";
+    private static final String CREDENTIAL_PREFIX = "credential:";
     private static final String CONST_CLAUDE = "claude";
     private static final String CONST_SONNET = "sonnet-4.5";
     private static final List<String> CLEANUP_DAY_KEYS = List.of(KEY_PLANS_AFTER_DAYS,
@@ -4110,6 +4111,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
             applyPlanDefaults(value);
         } else if (key.startsWith(CONSENT_PREFIX)) {
             applyConsentWithdrawal(key);
+        } else if (key.startsWith(CREDENTIAL_PREFIX)) {
+            applyCredentialRotation(key, value);
+        }
+    }
+
+    private void applyCredentialRotation(String key, @Nullable String value) {
+        var credentialKey = key.substring(CREDENTIAL_PREFIX.length());
+        for (var credential : machineCredentials) {
+            if (credentialKey.equals(credential.get("key"))) {
+                if (value != null && !value.isBlank()) {
+                    credential.put("kind", value);
+                }
+                credential.remove("expires_in_days");
+                credential.put("expired", false);
+                credential.put("rotated", true);
+                return;
+            }
         }
     }
 
@@ -4159,6 +4177,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if (KEY_CLEANUP_DURATIONS.equals(key)) {
             return String.valueOf(machineCleanupDurations.get(KEY_PLANS_AFTER_DAYS));
+        }
+        if (key.startsWith(CREDENTIAL_PREFIX)) {
+            return currentCredentialKind(key.substring(CREDENTIAL_PREFIX.length()));
+        }
+        return "";
+    }
+
+    private String currentCredentialKind(String credentialKey) {
+        for (var credential : machineCredentials) {
+            if (credentialKey.equals(credential.get("key"))) {
+                return String.valueOf(credential.get("kind"));
+            }
         }
         return "";
     }

@@ -1,0 +1,74 @@
+{
+  "format_version": 1,
+  "name": "onboarding-settings-conflict",
+  "description": "The machine settings where the documents mode is changed in two clients at once: the second change is refused with conflict and applied again on the current revision.",
+  "start": "settings.choose",
+  "pairing_code": "MOCKMOCK",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "onboarding",
+        "onboarded": true
+      }
+    }
+  },
+  "states": {
+    "settings.choose": {
+      "representation": {
+        "scope": "machine",
+        "state": "settings.choose",
+        "summary": "Machine settings"
+      },
+      "links": {
+        "documents_mode": {
+          "next": "settings.documents-mode",
+          "href": "/api/v1/onboarding/settings/documents"
+        },
+        "done": {
+          "next": "onboard.completed",
+          "href": "/api/v1/onboarding/settings/done"
+        }
+      }
+    },
+    "settings.documents-mode": {
+      "representation": {
+        "scope": "machine",
+        "state": "settings.documents-mode",
+        "summary": "How should documents be taken into a plan?",
+        "current": "ask"
+      },
+      "links": {
+        "set": {
+          "next": "settings.record",
+          "href": "/api/v1/onboarding/settings/documents/set"
+        }
+      }
+    },
+    "settings.record": {
+      "representation": {
+        "scope": "machine",
+        "state": "settings.record",
+        "summary": "Saved"
+      },
+      "links": {
+        "continue": {
+          "next": "settings.choose",
+          "href": "/api/v1/onboarding/settings/back"
+        }
+      }
+    },
+    "onboard.completed": {
+      "representation": {
+        "scope": "machine",
+        "state": "onboard.completed",
+        "summary": "This machine is ready"
+      },
+      "links": {
+        "settings": {
+          "next": "settings.choose",
+          "href": "/api/v1/onboarding/settings"
+        }
+      }
+    }
+  }
+}
