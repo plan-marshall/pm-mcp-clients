@@ -87,9 +87,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
-|link:cli-test-infra.adoc[`cli-test-infra`]
+|link:implemented/cli-test-infra.adoc[`cli-test-infra`]
 |Transcript tests of `pm-operator` against the mock runtime
-|`open`
+|`done`
 |link:implemented/mock-runtime.adoc[`mock-runtime`]
 |epic clients
 
@@ -108,7 +108,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-onboarding.adoc[`cli-onboarding`]
 |The console `pm-operator`: entry and onboarding
 |`open`
-|link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
+|link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
 |epic clients
 
 |link:implemented/web-app-foundation.adoc[`web-app-foundation`]
@@ -150,7 +150,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/cli-decisions.adoc[`cli-decisions`]
 |Decisions in the terminal
 |`done`
-|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
+|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:cli-start.adoc[`cli-start`] (the chat dialogue)
 |epic clients
 
 |link:implemented/web-decisions.adoc[`web-decisions`]
@@ -240,7 +240,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/cli-overview.adoc[`cli-overview`]
 |Overview of running work in the terminal
 |`done`
-|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
+|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
 |link:implemented/web-overview.adoc[`web-overview`]
