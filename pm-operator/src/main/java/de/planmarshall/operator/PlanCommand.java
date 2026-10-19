@@ -41,6 +41,7 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
+import de.planmarshall.api.start.EntryKind;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -464,7 +465,8 @@ public final class PlanCommand implements Callable<Integer> {
         List<String> issues = new ArrayList<>();
 
         @Option(names = "--lesson", description = "Input lesson ID")
-        List<String> lessons = new ArrayList<>();
+        @Nullable
+        String lesson;
 
         @Option(names = "--local-changes", description = "Include local changes as source")
         boolean localChanges;
@@ -482,46 +484,32 @@ public final class PlanCommand implements Callable<Integer> {
         @Option(names = "--no-input", description = "Stop on missing required input")
         boolean noInput;
 
+        @Option(names = "--entry", description = "Continue starting an open entry")
+        @Nullable
+        String entryId;
+
         AddCommand(OperatorContext context) {
             this.context = context;
-        }
-
-        private Map<String, Object> buildPayload() {
-            var payload = new LinkedHashMap<String, Object>();
-            ActionSupport.populateCommonAdd(payload, common);
-            if (!documents.isEmpty()) payload.put("documents", documents);
-            if (!issues.isEmpty()) payload.put("issues", issues);
-            if (!lessons.isEmpty()) payload.put("lessons", lessons);
-            if (localChanges) payload.put("local_changes", true);
-            if (pullRequest != null) payload.put("pull_request", pullRequest);
-            if (copy) payload.put("documents_mode", "copy");
-            if (move) payload.put("documents_mode", "move");
-            return payload;
         }
 
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var out = spec.commandLine().getOut();
-            var payload = buildPayload();
-
-            var path = common.project != null && !".".equals(common.project)
-                                ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(common.project) + "/entries"
-                                : "/api/v1/plans";
-
-            var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 201) {
-                String planName = "Plan";
-                if (common.id != null) {
-                    planName = common.id;
-                } else if (common.title != null) {
-                    planName = common.title;
-                }
-                out.printf("✓ %s has started%n", planName);
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("plan add", response);
+            var answers = new StartAnswers()
+                                .withProject(common.project)
+                                .withDescription(common.description);
+            answers.title = common.title;
+            answers.id = common.id;
+            answers.documents.addAll(documents);
+            answers.issues.addAll(issues);
+            answers.lesson = lesson;
+            answers.localChanges = localChanges;
+            answers.pullRequest = pullRequest;
+            answers.copy = copy;
+            answers.move = move;
+            answers.noInput = noInput;
+            answers.entryId = entryId;
+            return StartDialogue.run(context, spec.commandLine().getOut(), EntryKind.PLAN, answers);
         }
     }
 

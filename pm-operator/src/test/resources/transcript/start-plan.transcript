@@ -1,0 +1,21 @@
+[1/2] Sources · What does the plan start from?   project pm-mcp-clients
+
+  d) Description   f) Documents   i) Issue   l) Lesson   c) Local changes   p) Pull request
+  Continue   ?
+?  › d
+Description (an empty line ends it)
+  › Add a Codeberg provider
+  ›
+[1/2] Sources · What does the plan start from?   project pm-mcp-clients
+  ✓  Description   Add a Codeberg provider   stored
+  d) Description   f) Documents   i) Issue   l) Lesson   c) Local changes   p) Pull request
+  Continue   Chat   x) remove one   ?
+?  ›
+[2/2] Ready · The plan starts from
+  Description   Add a Codeberg provider
+  Title  [Add a Codeberg provider] ← from the description
+  Id     [add-a-codeberg-provider] ← from the title
+  Start the plan? [Enter]   e) edit   ?
+Start the plan? [Enter]   e) edit   ?  ›
+add-a-codeberg-provider has started
+Follow it

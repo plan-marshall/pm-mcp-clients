@@ -9,17 +9,16 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Files;
-import java.time.Duration;
 
-import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,13 +52,6 @@ class RecipeCommandTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
-    private FakeRuntimeServer runtime(FakeRuntimeServer.Handler handler) throws IOException {
-        var self = ProcessHandle.current();
-        Files.createDirectories(fixture.paths().stateDir());
-        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
-                            + self.info().startInstant().orElseThrow() + "\"}");
-        return fixture.start(handler);
-    }
 
     @Test
     @DisplayName("recipe without subcommands prints usage")
@@ -69,55 +61,42 @@ class RecipeCommandTest {
     }
 
     @Test
-    @DisplayName("recipe run requires recipe key")
-    void runRequiresKey() {
-        assertEquals(1, run("recipe", "run"));
-        assertTrue(out.toString().contains("Recipe key required."));
+    @DisplayName("recipe run without a key and --no-input names the recipe state")
+    void runRequiresKey() throws Exception {
+        var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
+                            "recipe", "run", "--project", "pm-mcp-clients", "--no-input");
+        assertAll(
+                            () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("start.recipe needs"), outcome.rendered()));
     }
 
     @Test
-    @DisplayName("recipe run sends post request with options and succeeds")
+    @DisplayName("recipe run resolves its parameters and starts")
     void runSuccess() throws Exception {
-        var server = runtime((request, response) -> {
-            if ("/api/v1/projects/my-proj/recipes/code-review/run".equals(request.target())
-                                && "POST".equals(request.method())) {
-                response.send(201, null, "{\"plan_id\":\"plan-42\"}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        assertEquals(0, run("recipe", "run", "code-review", "--project", "my-proj",
-                            "--title", "Review Auth", "--param", "depth=deep", "--source", "src/"));
-        assertTrue(out.toString().contains("✓ Recipe code-review started"));
-
-        var recorded = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(recorded.bodyText().contains("\"title\":\"Review Auth\""));
-        assertTrue(recorded.bodyText().contains("\"params\":{\"depth\":\"deep\"}"));
-        assertTrue(recorded.bodyText().contains("\"sources\":[\"src/\"]"));
+        var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
+                            "recipe", "run", "code-review", "--project", "pm-mcp-clients",
+                            "--title", "Review Auth", "--param", "depth=deep", "--no-input");
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("code-review"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("has started"), outcome.rendered()));
     }
 
     @Test
-    @DisplayName("recipe run defaults project to default when omitted")
+    @DisplayName("recipe run with an explicit project starts the recipe")
     void runDefaultProject() throws Exception {
-        runtime((request, response) -> {
-            if ("/api/v1/projects/default/recipes/cleanup/run".equals(request.target())) {
-                response.send(200, null, "");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        assertEquals(0, run("recipe", "run", "cleanup"));
-        assertTrue(out.toString().contains("✓ Recipe cleanup started"));
+        var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
+                            "recipe", "run", "code-review", "--no-input");
+        assertEquals(0, outcome.code(), outcome.rendered());
+        assertTrue(outcome.rendered().contains("has started"), outcome.rendered());
     }
 
     @Test
-    @DisplayName("recipe run reports refusal on failure")
+    @DisplayName("recipe run reports the refusal of an unknown recipe")
     void runRefused() throws Exception {
-        runtime((request, response) -> response.json(404, "{\"code\":\"recipe_not_found\"}"));
-
-        assertEquals(PmOperator.EXIT_FAILURE, run("recipe", "run", "missing-recipe"));
-        assertTrue(err.toString().contains("recipe_not_found"));
+        var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
+                            "recipe", "run", "missing-recipe", "--project", "pm-mcp-clients", "--no-input");
+        assertEquals(PmOperator.EXIT_FAILURE, outcome.code(), outcome.rendered());
+        assertTrue(outcome.rendered().contains("No recipe with the key missing-recipe"), outcome.rendered());
     }
 }

@@ -17,9 +17,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
-import java.time.Duration;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,39 +85,27 @@ class EpicCommandTest {
     }
 
     @Test
-    @DisplayName("epic add creates epic")
+    @DisplayName("epic add creates an epic from its sources")
     void epicAdd() throws Exception {
-        var server = fixture.start((request, response) -> {
-            if ("/api/v1/epics".equals(request.target()) && "POST".equals(request.method())) {
-                response.send(201, null, "{\"id\":\"ep-new\"}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("epic", "add", "--title", "Refactor Auth", "--id", "ep-auth", "--description", "Desc");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ ep-auth has started"));
-
-        var req = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(req.bodyText().contains("\"title\":\"Refactor Auth\""));
-        assertTrue(req.bodyText().contains("\"id\":\"ep-auth\""));
+        var outcome = StartTestSupport.run(StandardScenarios.START_EPIC, null,
+                            "epic", "add", "--project", "pm-mcp-clients", "--title", "Refactor Auth",
+                            "--id", "ep-auth", "--description", "Desc", "--no-input");
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("ep-auth has started"),
+                                                outcome.rendered()));
     }
 
     @Test
-    @DisplayName("epic add with project routes to project entries")
+    @DisplayName("epic add with project adopts an epic from the ledger")
     void epicAddWithProject() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/projects/my-proj/entries".equals(request.target()) && "POST".equals(request.method())) {
-                response.send(200, null, "");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("epic", "add", "--project", "my-proj", "--adopt", "spec-auth");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ spec-auth has started"));
+        var outcome = StartTestSupport.run(StandardScenarios.START_EPIC_ADOPT, null,
+                            "epic", "add", "--project", "pm-mcp-clients", "--adopt", "relay-hardening",
+                            "--no-input");
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("relay-hardening adopted from the ledger"),
+                                                outcome.rendered()));
     }
 
     @Test

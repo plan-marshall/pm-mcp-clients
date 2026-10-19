@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.EpicProcess;
+import de.planmarshall.api.start.EntryKind;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -196,42 +198,50 @@ public final class EpicCommand implements Callable<Integer> {
         @Nullable
         String adopt;
 
+        @Option(names = "--document", description = "Input documents")
+        List<String> documents = new ArrayList<>();
+
+        @Option(names = "--issue", description = "Input issue URL or number")
+        List<String> issues = new ArrayList<>();
+
+        @Option(names = "--copy", description = "Copy input documents")
+        boolean copy;
+
+        @Option(names = "--move", description = "Move input documents")
+        boolean move;
+
+        @Option(names = "--no-input", description = "Stop on missing required input")
+        boolean noInput;
+
+        @Option(names = "--entry", description = "Continue starting an open entry")
+        @Nullable
+        String entryId;
+
+        @Option(names = "--instruction", description = "The words of 'draft again' for the decomposition")
+        @Nullable
+        String instruction;
+
         AddCommand(OperatorContext context) {
             this.context = context;
-        }
-
-        private Map<String, Object> buildPayload() {
-            var payload = new LinkedHashMap<String, Object>();
-            ActionSupport.populateCommonAdd(payload, common);
-            if (adopt != null) payload.put("adopt", adopt);
-            return payload;
         }
 
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var out = spec.commandLine().getOut();
-            var payload = buildPayload();
-
-            var path = common.project != null && !".".equals(common.project)
-                                ? "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(common.project) + "/entries"
-                                : "/api/v1/epics";
-
-            var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 201) {
-                String epicName = "Epic";
-                if (adopt != null) {
-                    epicName = adopt;
-                } else if (common.id != null) {
-                    epicName = common.id;
-                } else if (common.title != null) {
-                    epicName = common.title;
-                }
-                out.printf("✓ %s has started%n", epicName);
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("epic add", response);
+            var answers = new StartAnswers()
+                                .withProject(common.project)
+                                .withDescription(common.description);
+            answers.title = common.title;
+            answers.id = common.id;
+            answers.adopt = adopt;
+            answers.documents.addAll(documents);
+            answers.issues.addAll(issues);
+            answers.copy = copy;
+            answers.move = move;
+            answers.noInput = noInput;
+            answers.entryId = entryId;
+            answers.instruction = instruction;
+            return StartDialogue.run(context, spec.commandLine().getOut(), EntryKind.EPIC, answers);
         }
     }
 
