@@ -17,6 +17,7 @@
   import PlanView from './PlanView.svelte';
   import EpicView from './EpicView.svelte';
   import EpicDecompositionView from './EpicDecompositionView.svelte';
+  import StartView from './StartView.svelte';
 
   /**
    * The one dispatcher of the app.
@@ -31,6 +32,14 @@
   <RevokedView />
 {:else if $runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'}
   <ListenerOffView />
+{:else if $runtimeStore.currentRoute === 'start'}
+  {#key `${$runtimeStore.startEntryId ?? ''}|${$runtimeStore.startProjectId ?? ''}|${$runtimeStore.startKind ?? 'plan'}`}
+    <StartView
+      projectId={$runtimeStore.startProjectId ?? null}
+      entryId={$runtimeStore.startEntryId ?? null}
+      kind={$runtimeStore.startKind ?? 'plan'}
+    />
+  {/key}
 {:else if !$runtimeStore.isPaired}
   <PairingView />
 {:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding'}

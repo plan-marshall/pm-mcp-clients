@@ -156,7 +156,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/web-decisions.adoc[`web-decisions`]
 |Decisions in the web app
 |`done`
-|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:web-start.adoc[`web-start`] (the chat panel)
+|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:implemented/web-start.adoc[`web-start`] (the chat panel)
 |epic clients
 
 |link:implemented/project-contract.adoc[`project-contract`]
@@ -210,7 +210,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:web-actions.adoc[`web-actions`]
 |Actions on plans and epics in the web app
 |`open`
-|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
+|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:implemented/web-start.adoc[`web-start`]
 |epic clients
 
 |link:implemented/start-contract.adoc[`start-contract`]
@@ -225,9 +225,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
 |epic clients
 
-|link:web-start.adoc[`web-start`]
+|link:implemented/web-start.adoc[`web-start`]
 |Starting work in the web app
-|`open`
+|`done`
 |link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]
 |epic clients
 
