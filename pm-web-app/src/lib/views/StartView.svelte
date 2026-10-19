@@ -91,6 +91,7 @@
   let destroyed = false;
   let mounted = false;
   let loadedEntryId: string | null = entryId;
+  let entryGeneration = 0;
 
   $: entry = state?.entry ?? null;
   $: ready = state?.ready ?? null;
@@ -100,14 +101,14 @@
 
   onMount(() => {
     mounted = true;
-    void load();
+    void load(++entryGeneration);
   });
 
   $: if (mounted && entryId && entryId !== loadedEntryId) {
     loadedEntryId = entryId;
     unsubscribeEntry?.();
     unsubscribeEntry = null;
-    void load();
+    void load(++entryGeneration);
   }
 
   onDestroy(() => {
@@ -116,19 +117,20 @@
     unsubscribeEntry = null;
   });
 
-  async function load(): Promise<void> {
+  async function load(generation: number): Promise<void> {
+    const requestedEntryId = entryId;
     loading = true;
     loadError = '';
     try {
-      if (entryId) {
-        const resource = await apiClient.getEntry(entryId);
-        if (destroyed) return;
-        loadedEntryId = entryId;
+      if (requestedEntryId) {
+        const resource = await apiClient.getEntry(requestedEntryId);
+        if (destroyed || generation !== entryGeneration || requestedEntryId !== entryId) return;
+        loadedEntryId = requestedEntryId;
         apply(resource);
-        subscribeEntry(entryId);
+        subscribeEntry(requestedEntryId);
       } else if (projectId) {
         const opened = await apiClient.openEntry(projectId, { kind });
-        if (destroyed) return;
+        if (destroyed || generation !== entryGeneration) return;
         apply(opened);
         const id = opened.start.entry?.entry_id;
         if (id) {
@@ -138,14 +140,18 @@
         }
       } else {
         const overview = await apiClient.getProjects();
-        if (destroyed) return;
+        if (destroyed || generation !== entryGeneration) return;
         projects = overview.projects ?? [];
       }
-      await resolveProjectRepository();
+      await resolveProjectRepository(generation);
     } catch (e) {
-      loadError = messageOf(e);
+      if (generation === entryGeneration) {
+        loadError = messageOf(e);
+      }
     } finally {
-      loading = false;
+      if (generation === entryGeneration) {
+        loading = false;
+      }
     }
   }
 
@@ -153,12 +159,12 @@
    * Reads the project's forge repository from the explorer, so a bare issue number and the
    * grant question compare against `owner/repo`, not the project id.
    */
-  async function resolveProjectRepository(): Promise<void> {
+  async function resolveProjectRepository(generation: number): Promise<void> {
     const project = currentProject;
     if (!project) return;
     try {
       const explorer = await apiClient.getProjectExplorer();
-      if (destroyed) return;
+      if (destroyed || generation !== entryGeneration) return;
       const enrolled = [...explorer.favourites, ...explorer.recent, ...explorer.all_projects].find(
         (candidate) => candidate.project_id === project,
       );
@@ -179,9 +185,20 @@
   }
 
   async function refresh(): Promise<void> {
-    if (!entry?.entry_id) return;
+    const target = entry?.entry_id;
+    if (!target) return;
+    const generation = entryGeneration;
     try {
-      apply(await apiClient.getEntry(entry.entry_id));
+      const resource = await apiClient.getEntry(target);
+      if (
+        destroyed ||
+        generation !== entryGeneration ||
+        resource.start.entry?.entry_id !== target ||
+        target !== (entryId ?? target)
+      ) {
+        return;
+      }
+      apply(resource);
     } catch {
       // A refresh that fails leaves the shown representation as it is.
     }
@@ -230,11 +247,16 @@
   }
 
   async function act(link: string, body: Record<string, unknown> = {}): Promise<StartState | null> {
-    if (!entry?.entry_id) return null;
+    const target = entry?.entry_id;
+    if (!target || (entryId !== null && target !== entryId)) return null;
+    const generation = entryGeneration;
     busy = true;
     actionError = '';
     try {
-      const resource = await apiClient.actEntry(entry.entry_id, link, body);
+      const resource = await apiClient.actEntry(target, link, body);
+      if (!accepts(resource, target, generation)) {
+        return null;
+      }
       apply(resource);
       return resource.start;
     } catch (e) {
@@ -425,11 +447,28 @@
     }
   }
 
+  /**
+   * @param resource the answer of an entry call
+   * @param target the entry the call addressed
+   * @param generation the selection generation the call was made under
+   * @returns whether the answer may still be applied
+   */
+  function accepts(resource: StartStateResource, target: string, generation: number): boolean {
+    return (
+      !destroyed && generation === entryGeneration && resource.start.entry?.entry_id === target
+    );
+  }
+
   async function sendChat(text: string): Promise<void> {
-    if (!entry?.entry_id) return;
+    const target = entry?.entry_id;
+    if (!target) return;
+    const generation = entryGeneration;
     busy = true;
     try {
-      apply(await apiClient.chatTurn(entry.entry_id, text));
+      const resource = await apiClient.chatTurn(target, text);
+      if (accepts(resource, target, generation)) {
+        apply(resource);
+      }
     } catch (e) {
       actionError = messageOf(e);
     } finally {
@@ -438,11 +477,16 @@
   }
 
   async function endChat(): Promise<void> {
-    if (!entry?.entry_id) return;
+    const target = entry?.entry_id;
+    if (!target) return;
+    const generation = entryGeneration;
     busy = true;
     try {
-      apply(await apiClient.endEntryChat(entry.entry_id));
-      chatOpen = false;
+      const resource = await apiClient.endEntryChat(target);
+      if (accepts(resource, target, generation)) {
+        apply(resource);
+        chatOpen = false;
+      }
     } catch (e) {
       actionError = messageOf(e);
     } finally {
@@ -451,10 +495,15 @@
   }
 
   async function answerProposal(accept: boolean): Promise<void> {
-    if (!entry?.entry_id) return;
+    const target = entry?.entry_id;
+    if (!target) return;
+    const generation = entryGeneration;
     busy = true;
     try {
-      apply(await apiClient.answerChatProposal(entry.entry_id, accept));
+      const resource = await apiClient.answerChatProposal(target, accept);
+      if (accepts(resource, target, generation)) {
+        apply(resource);
+      }
     } catch (e) {
       actionError = messageOf(e);
     } finally {
