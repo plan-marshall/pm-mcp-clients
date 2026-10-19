@@ -46,4 +46,16 @@ class TranscriptDialogueIT {
     void consoleSettingsDialogue() throws Exception {
         TranscriptDialogues.consoleSettings().assertRecorded();
     }
+
+    @Test
+    @DisplayName("interactive plan start matches its transcript")
+    void interactivePlanStart() throws Exception {
+        TranscriptDialogues.startPlan().assertRecorded();
+    }
+
+    @Test
+    @DisplayName("plan add --no-input matches its transcript")
+    void shellPlanStart() throws Exception {
+        TranscriptDialogues.startPlanNoInput().assertRecorded();
+    }
 }

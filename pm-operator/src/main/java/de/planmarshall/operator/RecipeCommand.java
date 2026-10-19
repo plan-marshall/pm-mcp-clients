@@ -18,8 +18,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.http.HttpRequest;
-import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.start.EntryKind;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -75,6 +74,29 @@ public final class RecipeCommand implements Callable<Integer> {
         @Option(names = "--source", description = "Source input")
         List<String> sources = new ArrayList<>();
 
+        @Option(names = "--description", description = "The request the recipe starts from")
+        @Nullable
+        String description;
+
+        @Option(names = "--document", description = "Input documents")
+        List<String> documents = new ArrayList<>();
+
+        @Option(names = "--issue", description = "Input issue URL or number")
+        List<String> issues = new ArrayList<>();
+
+        @Option(names = "--copy", description = "Copy input documents")
+        boolean copy;
+
+        @Option(names = "--move", description = "Move input documents")
+        boolean move;
+
+        @Option(names = "--no-input", description = "Stop on missing required input")
+        boolean noInput;
+
+        @Option(names = "--entry", description = "Continue starting an open entry")
+        @Nullable
+        String entryId;
+
         RunCommand(OperatorContext context) {
             this.context = context;
         }
@@ -82,29 +104,21 @@ public final class RecipeCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var out = spec.commandLine().getOut();
-            if (recipeKey == null || recipeKey.isBlank()) {
-                out.println("Recipe key required.");
-                out.flush();
-                return 1;
-            }
-
-            var payload = new LinkedHashMap<String, Object>();
-            if (!params.isEmpty()) payload.put("params", params);
-            if (title != null) payload.put("title", title);
-            if (!sources.isEmpty()) payload.put("sources", sources);
-
-            var proj = project != null && !".".equals(project) ? project : "default";
-            var path = "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(proj)
-                                + "/recipes/" + OperatorUrlUtil.encodePathSegment(recipeKey) + "/run";
-
-            var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 201) {
-                out.printf("✓ Recipe %s started%n", recipeKey);
-                out.flush();
-                return 0;
-            }
-            throw new OperatorRefusedException("recipe run", response);
+            var answers = new StartAnswers()
+                                .project(project)
+                                .description(description)
+                                .recipe(recipeKey);
+            answers.recipeCommand = true;
+            answers.title = title;
+            answers.parameters.putAll(params);
+            answers.documents.addAll(documents);
+            answers.documents.addAll(sources);
+            answers.issues.addAll(issues);
+            answers.copy = copy;
+            answers.move = move;
+            answers.noInput = noInput;
+            answers.entryId = entryId;
+            return StartDialogue.run(context, spec.commandLine().getOut(), EntryKind.PLAN, answers);
         }
     }
 }

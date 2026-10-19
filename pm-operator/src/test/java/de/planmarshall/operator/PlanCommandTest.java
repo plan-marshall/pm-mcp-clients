@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -129,44 +130,30 @@ class PlanCommandTest {
     }
 
     @Test
-    @DisplayName("plan add starts a new plan with options")
+    @DisplayName("plan add starts a new plan from its sources")
     void planAdd() throws Exception {
-        var server = fixture.start((request, response) -> {
-            if ("/api/v1/plans".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(201, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("plan", "add", "--title", "Add relay feature", "--id", "relay-feature",
-                            "--description", "relays messages", "--document", "doc.md", "--issue", "42",
-                            "--lesson", "L-001", "--local-changes", "--pull-request", "12", "--copy");
+        var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
+                            "plan", "add", "--project", "pm-mcp-clients", "--title", "Add relay feature",
+                            "--id", "relay-feature", "--description", "relays messages",
+                            "--document", "doc.md", "--issue", "42", "--copy", "--no-input");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ relay-feature has started"))
-        );
-
-        var req = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(req.bodyText().contains("\"documents_mode\":\"copy\""));
-        assertTrue(req.bodyText().contains("\"local_changes\":true"));
-        assertTrue(req.bodyText().contains("\"issues\":[\"42\"]"));
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("relay-feature has started"),
+                                                outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("relays messages"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("copied"), outcome.rendered()));
     }
 
     @Test
-    @DisplayName("plan add with project routes to project entries")
+    @DisplayName("plan add with project opens the entry under that project")
     void planAddWithProject() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/projects/my-proj/entries".equals(request.target()) && "POST".equals(request.method())) {
-                response.send(200, null, "");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("plan", "add", "--project", "my-proj", "--title", "Project Plan", "--move");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Project Plan has started"));
+        var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
+                            "plan", "add", "--project", "pm-mcp-clients", "--title", "Project Plan",
+                            "--description", "A project plan", "--no-input");
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("project-plan has started"),
+                                                outcome.rendered()));
     }
 
     @Test

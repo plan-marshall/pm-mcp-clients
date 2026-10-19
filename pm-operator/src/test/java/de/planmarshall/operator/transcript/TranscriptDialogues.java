@@ -132,6 +132,49 @@ final class TranscriptDialogues {
         }
     }
 
+    /**
+     * @return {@code plan add} typed at the source list, with the ready step and the start
+     * @throws Exception if the runtime or the verb fails
+     */
+    static Dialogue startPlan() throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.START_SOURCES).build());
+             var driver = TerminalTestDriver.create()) {
+            MockMachine.recordLiveRuntime(runtime);
+            driver.project(environment(runtime), runtime.base().getParent());
+            driver.type("d\nAdd a Codeberg provider\n\n\n\n");
+
+            var exitCode = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(),
+                                "plan", "add", "--project", "pm-mcp-clients");
+            if (exitCode != 0) {
+                throw new IllegalStateException("plan add exited with " + exitCode);
+            }
+            return new Dialogue("start-plan", driver.render(), runtime.base());
+        }
+    }
+
+    /**
+     * @return {@code plan add --no-input} as one shell command
+     * @throws Exception if the runtime or the verb fails
+     */
+    static Dialogue startPlanNoInput() throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.START_SOURCES).build());
+             var driver = TerminalTestDriver.create()) {
+            MockMachine.recordLiveRuntime(runtime);
+            driver.project(environment(runtime), runtime.base().getParent());
+            driver.endOfInput();
+
+            var exitCode = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(),
+                                "plan", "add", "--project", "pm-mcp-clients",
+                                "--description", "Add a Codeberg provider", "--no-input");
+            if (exitCode != 0) {
+                throw new IllegalStateException("plan add --no-input exited with " + exitCode);
+            }
+            return new Dialogue("start-plan-no-input", driver.render(), runtime.base());
+        }
+    }
+
     private static Map<String, String> environment(MockRuntime runtime) {
         var environment = new HashMap<>(runtime.environment());
         environment.put("USER", "operator");

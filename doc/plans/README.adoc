@@ -219,9 +219,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
-|link:cli-start.adoc[`cli-start`]
+|link:implemented/cli-start.adoc[`cli-start`]
 |Starting work in the terminal
-|`open`
+|`done`
 |link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
 |epic clients
 

@@ -51,7 +51,12 @@ class LiteralTextGuardTest {
                         "CredentialsCommand.java",
                         "SecretReader.java",
                         "TerminalTitle.java",
-                        "OnboardCommand.java");
+                        "OnboardCommand.java",
+                        "StartDialogue.java",
+                        "StartPrompt.java",
+                        "StartRenderer.java",
+                        "ChatDialogue.java",
+                        "EpicDecompositionDialogue.java");
 
     /** A call that renders text to the operator. */
     private static final Pattern RENDER_CALL = Pattern.compile(

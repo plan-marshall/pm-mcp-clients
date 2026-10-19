@@ -82,6 +82,23 @@ class NativeTranscriptIT {
         }
     }
 
+    @Test
+    @DisplayName("plan add --no-input matches the recorded transcript on the native binary")
+    void startPlanMatchesRecordedTranscript() throws Exception {
+        Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.START_SOURCES).build())) {
+            MockMachine.recordLiveRuntime(runtime);
+
+            var rendered = PseudoTerminal.run(binary.with("plan", "add", "--project", "pm-mcp-clients",
+                                                    "--description", "Add a Codeberg provider", "--no-input"),
+                                environment(runtime), Path.of("").toAbsolutePath());
+
+            TranscriptAssert.assertMatches("start-plan-no-input", rendered,
+                                new TranscriptNormalizer().replacing(runtime.base(), "<machine-root>"));
+        }
+    }
+
     private static Map<String, String> environment(MockRuntime runtime) {
         var environment = new HashMap<>(runtime.environment());
         environment.put("USER", "operator");
