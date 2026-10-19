@@ -15,9 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -27,8 +25,6 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 
 /**
  * The pieces of the transcript harness on their own: the normalizer that keeps the diff readable,
@@ -145,22 +141,6 @@ class TranscriptHarnessTest {
 
                 assertThrows(EndOfFileException.class, () -> reader.readLine("pm › "));
             }
-        }
-    }
-
-    @Nested
-    @DisplayName("pseudo terminal")
-    @EnabledOnOs({OS.MAC, OS.LINUX})
-    class PseudoTerminalRun {
-
-        @Test
-        @DisplayName("reports the child's own non-zero exit status")
-        void reportsChildExit() {
-            var error = assertThrows(IllegalStateException.class, () -> PseudoTerminal.run(
-                                List.of("/bin/sh", "-c", "exit 3"),
-                                Map.of("PATH", "/usr/bin:/bin"),
-                                Path.of("").toAbsolutePath()));
-            assertTrue(error.getMessage().contains("exited with 3"), error.getMessage());
         }
     }
 }

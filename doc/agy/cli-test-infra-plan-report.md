@@ -170,3 +170,7 @@ update.
   `Ctrl+C`, hardened-runtime signals) need a benchmark harness and a hardened runtime; they are
   `cli-onboarding`'s scope, named in its plan and "Done When", and recorded in
   `doc/design/terminal-client/README.adoc`.
+* **Pseudo-terminal exit status**: the wrapper's own exit-status capture is covered by
+  `NativeTranscriptIT` only; a `script(1)` subprocess in the unit phase was dropped because a
+  hanging shell in the standard build is a larger risk than the missing unit coverage
+  (the native IT is gated on `target/pm-operator` and skipped on CI).
