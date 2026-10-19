@@ -13,9 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 
@@ -28,11 +30,19 @@ import org.junit.jupiter.api.condition.OS;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.onboarding.AutoResultItem;
+import de.planmarshall.api.onboarding.AutoResultReason;
+import de.planmarshall.api.onboarding.ConsentKind;
+import de.planmarshall.api.onboarding.DocumentsMode;
+import de.planmarshall.api.onboarding.HarnessScanResult;
+import de.planmarshall.api.onboarding.HarnessVerification;
+import de.planmarshall.api.onboarding.HarnessVerificationStage;
 import de.planmarshall.api.onboarding.MachineOnboardingState;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
+import de.planmarshall.api.onboarding.TokenUsageCoverage;
 
 @DisplayName("OnboardingScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -119,6 +129,27 @@ class OnboardingScenarioTest {
                 var map = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
                 assertEquals("auto.consent", JsonTree.string(map, "state"));
                 assertEquals(Boolean.TRUE, JsonTree.bool(map, "auto"));
+            }
+        }
+
+        @Test
+        @DisplayName("serves the automatic run's result items with their closed reasons")
+        void shouldServeAutoResultItems() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("auto.result");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var res = client.send(HttpRequest.get("/api/v1/onboarding/state")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, res.status());
+                var state = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
+                var items = AutoResultItem.listFromJson(JsonTree.write(state.get("results")));
+
+                assertEquals(OnboardingAspect.values().length, items.size());
+                var harness = items.stream()
+                        .filter(item -> item.aspect() == OnboardingAspect.HARNESSES).findFirst().orElseThrow();
+                assertEquals(AutoResultReason.ALL_SUPPORTED, harness.reason());
             }
         }
     }
@@ -243,6 +274,27 @@ class OnboardingScenarioTest {
                 assertEquals("full", settings.planDefaults().posture());
             }
         }
+
+        @Test
+        @DisplayName("rotates a credential, dropping its old expiry")
+        void shouldRotateCredential() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"credential:github\",\"value\":\"user token\",\"revision\":4}"));
+
+                var settings = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings")
+                                .withHeader("Authorization", auth)).body(), StandardCharsets.UTF_8));
+                var github = settings.credentials().stream()
+                        .filter(credential -> "github".equals(credential.key())).findFirst().orElseThrow();
+                assertEquals("user token", github.kind());
+                assertNull(github.expiresInDays());
+                assertFalse(github.expired());
+            }
+        }
     }
 
     @Nested
@@ -286,6 +338,158 @@ class OnboardingScenarioTest {
                 var map = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
                 assertEquals(Boolean.TRUE, JsonTree.bool(map, "auto"));
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("Case scenarios")
+    class CaseScenarios {
+
+        @Test
+        @DisplayName("serves a complete, a partial, and a not-reported harness token report")
+        void shouldServeHarnessTokenReports() throws Exception {
+            assertTokenReport(StandardScenarios.ONBOARDING_HARNESS_TOKENS_COMPLETE, "claude",
+                    TokenUsageCoverage.COMPLETE, List.of());
+            assertTokenReport(StandardScenarios.ONBOARDING_HARNESS_TOKENS_PARTIAL, "opencode",
+                    TokenUsageCoverage.PARTIAL, List.of("cache_read", "cache_write"));
+            assertTokenReport(StandardScenarios.ONBOARDING_HARNESS_TOKENS_NOT_REPORTED, "codex",
+                    TokenUsageCoverage.NOT_REPORTED, List.of("input"));
+        }
+
+        @Test
+        @DisplayName("comes to the none-found step when every chosen harness fails its check")
+        void shouldFallBackWhenEveryHarnessFails() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_HARNESS_ALL_FAILED)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                var probe = step(client, auth, "check");
+                assertEquals("harness.probe", probe.get("state"));
+                var checks = JsonTree.asArray(probe.get("checks"));
+                assertEquals(2, checks.size());
+                for (var element : checks) {
+                    assertEquals("fail", JsonTree.string(JsonTree.asObject(element), "result"));
+                }
+
+                var none = step(client, auth, "continue");
+                assertEquals("harness.none", none.get("state"));
+                assertEquals("No harness can be used", none.get("summary"));
+                assertEquals("harness.none", step(client, auth, "later").get("state"));
+            }
+        }
+
+        @Test
+        @DisplayName("holds a required consent answered no and goes on without an optional one")
+        void shouldRefuseEachConsent() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_REFUSALS)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                assertEquals("harness.consent", step(client, auth, "no").get("state"));
+                assertEquals("harness.choose", step(client, auth, "yes").get("state"));
+                assertEquals("catalogue.consent", step(client, auth, "choose").get("state"));
+                assertEquals("catalogue.consent", step(client, auth, "no").get("state"));
+                assertEquals("catalogue.select", step(client, auth, "no_advice").get("state"));
+                assertEquals("store.consent", step(client, auth, "set").get("state"));
+                assertEquals("store.consent", step(client, auth, "no").get("state"));
+                assertEquals("store.check", step(client, auth, "yes").get("state"));
+                assertEquals("providers.consent", step(client, auth, "continue").get("state"));
+                assertEquals("providers.consent", step(client, auth, "no").get("state"));
+                assertEquals("providers.select", step(client, auth, "yes").get("state"));
+                assertEquals("defaults.review", step(client, auth, "set").get("state"));
+                assertEquals("onboard.completed", step(client, auth, "accept").get("state"));
+            }
+        }
+
+        @Test
+        @DisplayName("adds and verifies a harness the binary does not know, failing the usage stage")
+        void shouldAddAnUnknownHarness() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_UNKNOWN_HARNESS)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                var add = step(client, auth, "add");
+                assertEquals("harness.add", add.get("state"));
+                assertEquals("aider", add.get("client_id"));
+                assertEquals("opencode", add.get("start_from"));
+
+                var consent = step(client, auth, "submit");
+                assertEquals("harness.add-consent", consent.get("state"));
+                assertEquals(ConsentKind.VERIFY_HARNESS_PROFILE.wireValue(), consent.get("kind"));
+
+                assertEquals("harness.add", step(client, auth, "no").get("state"));
+                assertEquals("harness.add-consent", step(client, auth, "submit").get("state"));
+
+                var verified = step(client, auth, "yes");
+                assertEquals("harness.verify-profile", verified.get("state"));
+                var verification = HarnessVerification.fromMap(JsonTree.asObject(verified.get("verification")));
+                assertFalse(verification.passed());
+                assertEquals(HarnessVerificationStage.ISOLATION, verification.firstFailure().orElseThrow());
+                assertNotNull(verification.usage());
+                assertEquals(List.of("cache_write"), verification.usage().missingFigures());
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a documents-mode change against an older revision and applies it again")
+        void shouldRefuseAStaleSettingsChange() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS_CONFLICT)) {
+                assertEquals("settings.choose", runtime.currentStateName());
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var applied = client.send(HttpRequest.json("PUT", "/api/v1/machine/settings",
+                        "{\"key\":\"documents_mode\",\"value\":\"copy\",\"revision\":4}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, applied.status());
+
+                var stale = client.send(HttpRequest.json("PUT", "/api/v1/machine/settings",
+                        "{\"key\":\"documents_mode\",\"value\":\"move\",\"revision\":4}")
+                        .withHeader("Authorization", auth));
+                assertEquals(409, stale.status());
+                var conflict = MachineSettingsUpdateResult.fromJson(new String(stale.body(), StandardCharsets.UTF_8));
+                assertTrue(conflict.conflict());
+                assertEquals("copy", conflict.currentValue());
+
+                var again = client.send(HttpRequest.json("PUT", "/api/v1/machine/settings",
+                        "{\"key\":\"documents_mode\",\"value\":\"move\",\"revision\":5}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, again.status());
+                var reread = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings")
+                                .withHeader("Authorization", auth)).body(), StandardCharsets.UTF_8));
+                assertEquals(DocumentsMode.MOVE, reread.documentsMode());
+            }
+        }
+
+        private static void assertTokenReport(String scenario, String harnessId, TokenUsageCoverage coverage,
+                List<String> missingFigures) throws Exception {
+            try (var runtime = MockRuntime.start(scenario)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var res = client.send(HttpRequest.get("/api/v1/onboarding/state").withHeader("Authorization", auth));
+                assertEquals(200, res.status());
+                var state = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
+                var harness = findHarness(state, harnessId);
+
+                assertEquals(coverage, harness.tokenUsage());
+                assertNotNull(harness.usage());
+                assertEquals(coverage, harness.usage().coverage());
+                assertEquals(missingFigures, harness.usage().missingFigures());
+            }
+        }
+
+        private static HarnessScanResult findHarness(Map<String, Object> state, String harnessId) throws Exception {
+            var array = JsonTree.asArray(state.get("harnesses"));
+            assertNotNull(array, "the state must list the scanned harnesses");
+            for (var element : array) {
+                var harness = HarnessScanResult.fromMap(JsonTree.asObject(element));
+                if (harnessId.equals(harness.harnessId())) {
+                    return harness;
+                }
+            }
+            throw new AssertionError("harness not found in the scan: " + harnessId);
         }
     }
 

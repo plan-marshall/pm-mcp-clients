@@ -35,6 +35,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param tokenUsage     what the harness and version report of their token usage
  * @param missingFigures the figures that are not reported when the coverage is partial
  * @param isDefault      {@code true} when this harness is the default of the run
+ * @param usage          the per-figure usage report, or {@code null} while it is not known
  */
 public record HarnessScanResult(
         String harnessId,
@@ -46,7 +47,8 @@ public record HarnessScanResult(
         boolean workerEligible,
         TokenUsageCoverage tokenUsage,
         List<String> missingFigures,
-        boolean isDefault
+        boolean isDefault,
+        @Nullable HarnessUsageReport usage
 ) {
     public HarnessScanResult {
         Objects.requireNonNull(harnessId, "harnessId");
@@ -79,6 +81,9 @@ public record HarnessScanResult(
         }
         if (isDefault) {
             map.put("default", true);
+        }
+        if (usage != null) {
+            map.put("usage", usage.toMap());
         }
         return map;
     }
@@ -118,6 +123,11 @@ public record HarnessScanResult(
                 }
             }
         }
+        HarnessUsageReport usage = null;
+        var usageMap = JsonTree.asObject(map.get("usage"));
+        if (usageMap != null) {
+            usage = HarnessUsageReport.fromMap(usageMap);
+        }
         return new HarnessScanResult(
                 harnessId,
                 name != null ? name : harnessId,
@@ -128,7 +138,8 @@ public record HarnessScanResult(
                 Boolean.TRUE.equals(JsonTree.bool(map, "worker_eligible")),
                 TokenUsageCoverage.fromWire(JsonTree.string(map, "token_usage")),
                 missing,
-                Boolean.TRUE.equals(JsonTree.bool(map, "default")));
+                Boolean.TRUE.equals(JsonTree.bool(map, "default")),
+                usage);
     }
 
     /**
