@@ -294,6 +294,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
+    private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CREDENTIAL_PREFIX = "credential:";
     private static final String CONST_CLAUDE = "claude";
@@ -1344,7 +1345,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (map.get("onboard") instanceof Map<?, ?> onboard
-                && ("onboard.completed".equals(onboard.get(KEY_STATE))
+                && (STATE_ONBOARD_COMPLETED.equals(onboard.get(KEY_STATE))
                 || Boolean.TRUE.equals(onboard.get("completed")))) {
             return true;
         }
@@ -4355,7 +4356,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var current = MachineOnboardingState.aspectOf(stateId);
         var upTo = current != null ? current.step() - 1 : 0;
-        if ("onboard.completed".equals(stateId) || stateId.startsWith("settings.")) {
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
             upTo = 7;
         }
         if (upTo >= 1) {
@@ -4386,7 +4387,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (stateId == null) {
             return 0;
         }
-        if ("onboard.completed".equals(stateId) || stateId.startsWith("settings.")) {
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
             return 7;
         }
         var aspect = MachineOnboardingState.aspectOf(stateId);

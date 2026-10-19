@@ -135,6 +135,38 @@ export async function checkUrlHashForCode(): Promise<boolean> {
   return false;
 }
 
+/** Reads whether the machine is onboarded, and its name, from a status response. */
+function onboardedOf(status: StatusResponse): boolean {
+  if (typeof status.onboarded === 'boolean') {
+    return status.onboarded;
+  }
+  if (typeof status.machine === 'object' && status.machine) {
+    return Boolean(status.machine.onboarded);
+  }
+  return false;
+}
+
+function machineNameOf(status: StatusResponse): string {
+  if (typeof status.machine === 'string') {
+    return status.machine;
+  }
+  return status.machine?.name || 'local-machine';
+}
+
+/**
+ * The route the app opens on for a paired browser: where the address bar points, the onboarding
+ * while the machine is not onboarded, and the entry resolved to where the app left off.
+ */
+function landingRoute(requested: AppRoute | null, onboarded: boolean): AppRoute {
+  if (requested === 'entry') {
+    return onboarded ? 'workspace' : 'onboarding';
+  }
+  if (!onboarded) {
+    return requested === 'pair' ? 'pair' : 'onboarding';
+  }
+  return requested ?? 'workspace';
+}
+
 export async function initRuntime(): Promise<void> {
   if (typeof window !== 'undefined' && !hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
@@ -185,28 +217,11 @@ export async function initRuntime(): Promise<void> {
 
   try {
     const status: StatusResponse = await apiClient.getStatus();
-    const onboarded =
-      status.onboarded ??
-      (typeof status.machine === 'object' && status.machine ? status.machine.onboarded : false) ??
-      false;
-    const machineName =
-      typeof status.machine === 'string' ? status.machine : status.machine?.name || 'local-machine';
-
-    // An un-onboarded machine shows the onboarding on every route but the pairing page.
-    let initialRoute: AppRoute;
-    if (requested === 'entry') {
-      // The entry is not a page of its own once the browser is paired: it opens where the app
-      // left off.
-      initialRoute = onboarded ? 'workspace' : 'onboarding';
-    } else if (!onboarded) {
-      initialRoute = requested === 'pair' ? 'pair' : 'onboarding';
-    } else {
-      initialRoute = requested ?? 'workspace';
-    }
+    const onboarded = onboardedOf(status);
+    const machineName = machineNameOf(status);
 
     // If there is a current state reported in status, store it
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
-    const activeStep = deriveStepFromState(currentState?.state);
 
     runtimeStore.update((s) => ({
       ...s,
@@ -215,9 +230,9 @@ export async function initRuntime(): Promise<void> {
       isOnboarded: onboarded,
       deviceLabel: label,
       machineName,
-      currentRoute: initialRoute,
+      currentRoute: landingRoute(requested, onboarded),
       currentState,
-      activeStep,
+      activeStep: deriveStepFromState(currentState?.state),
       isOffline: false,
       isRevoked: false,
     }));
@@ -278,7 +293,7 @@ export async function refreshDecisionsCount(): Promise<void> {
   }
 }
 
-const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
+const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
 
 /**
  * Records that the network listener this browser reached the machine over was closed.
@@ -288,8 +303,7 @@ const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
  * that says why, with its pairing kept.
  */
 function markListenerClosed(): void {
-  const onLoopback =
-    typeof window === 'undefined' || loopbackHosts.includes(window.location.hostname);
+  const onLoopback = typeof window === 'undefined' || loopbackHosts.has(window.location.hostname);
   runtimeStore.update((s) => ({
     ...s,
     isListenerClosed: true,
@@ -297,49 +311,54 @@ function markListenerClosed(): void {
   }));
 }
 
-export function handleRuntimeEvent(event: string, data: unknown): void {
-  if (event === 'stream.closed') {
-    const closed = (data || {}) as { reason?: string };
-    if (closed.reason === 'listener_closed') {
-      markListenerClosed();
-    }
+/** A listener change for the LAN listener: closed marks this browser, any other state clears it. */
+function handleListenerChanged(data: unknown): void {
+  const changed = (data || {}) as { state?: string; kind?: string };
+  if (changed.kind !== 'lan') {
     return;
   }
-  if (event === 'listener.changed') {
-    const changed = (data || {}) as { state?: string; kind?: string };
-    if (changed.kind === 'lan' && changed.state === 'closed') {
-      markListenerClosed();
-    } else if (changed.kind === 'lan') {
-      runtimeStore.update((s) => ({ ...s, isListenerClosed: false }));
-    }
+  if (changed.state === 'closed') {
+    markListenerClosed();
+  } else {
+    runtimeStore.update((s) => ({ ...s, isListenerClosed: false }));
+  }
+}
+
+/** A state the runtime moved to: the current state, the step, and the `onboarded` flag. */
+function handleStateTransition(data: unknown): void {
+  const stateData = data as StateRepresentation;
+  if (!stateData?.state) {
     return;
   }
-  if (event === 'state_transition' || event === 'check') {
-    const stateData = data as StateRepresentation;
-    if (stateData?.state) {
-      const activeStep = deriveStepFromState(stateData.state);
-      runtimeStore.update((s) => ({
-        ...s,
-        currentState: stateData,
-        activeStep,
-        isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
-      }));
-    }
-  } else if (event === 'report.sent') {
-    const reportData = (data || {}) as { subject?: string; plan?: string };
-    const notice = reportData.subject || 'A new report has arrived';
+  runtimeStore.update((s) => ({
+    ...s,
+    currentState: stateData,
+    activeStep: deriveStepFromState(stateData.state),
+    isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
+  }));
+}
+
+/** A new or read report: the unread count, and the quiet notice of an arrival. */
+function handleReportEvent(event: string, data: unknown): void {
+  if (event === 'report.sent') {
+    const reportData = (data || {}) as { subject?: string };
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: s.unreadReportsCount + 1,
-      quietReportNotice: notice,
+      quietReportNotice: reportData.subject || 'A new report has arrived',
     }));
-  } else if (event === 'report.read') {
+  } else {
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: Math.max(0, s.unreadReportsCount - 1),
     }));
-  } else if (event === 'decision.opened') {
-    const dec = (data || {}) as { title?: string; question?: string; id?: string };
+  }
+}
+
+/** A new or closed decision: the open count, and the quiet notice of an arrival. */
+function handleDecisionEvent(event: string, data: unknown): void {
+  if (event === 'decision.opened') {
+    const dec = (data || {}) as { title?: string; question?: string };
     const notice = dec.title || dec.question || 'A new decision requires attention';
     runtimeStore.update((s) => ({
       ...s,
@@ -347,46 +366,57 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
       newDecisionArrivalNotice: notice,
       quietDecisionNotice: notice,
     }));
-  } else if (event === 'decision.answered' || event === 'decision.closed') {
+  } else {
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: Math.max(0, s.openDecisionsCount - 1),
     }));
-  } else if (event === 'runtime.draining') {
-    const drainData = (data || {}) as {
-      count?: number;
-      what?: string;
-      who?: string;
-      since?: string;
-    };
+  }
+}
+
+/** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
+function handleLifecycleEvent(event: string, data: unknown): void {
+  if (event === 'runtime.draining') {
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
-      drainInfo: drainData,
+      drainInfo: (data || {}) as RuntimeState['drainInfo'],
     }));
   } else if (event === 'drain.withdrawn') {
-    runtimeStore.update((s) => ({
-      ...s,
-      isDraining: false,
-      drainInfo: null,
-    }));
-  } else if (event === 'runtime.stopped') {
-    const stoppedData = (data || {}) as { command?: string; who?: string; time?: string };
+    runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+  } else {
     runtimeStore.update((s) => ({
       ...s,
       isDraining: false,
       isStopped: true,
-      stoppedInfo: stoppedData,
+      stoppedInfo: (data || {}) as RuntimeState['stoppedInfo'],
     }));
-  } else if (
-    event === 'project.changed' ||
-    event === 'project.released' ||
-    event === 'project.enrolled'
-  ) {
-    runtimeStore.update((s) => ({
-      ...s,
-      projectEventNotice: `${event}_${Date.now()}`,
-    }));
+  }
+}
+
+const STATE_TRANSITION_EVENTS = new Set(['state_transition', 'check']);
+const REPORT_EVENTS = new Set(['report.sent', 'report.read']);
+const DECISION_EVENTS = new Set(['decision.opened', 'decision.answered', 'decision.closed']);
+const LIFECYCLE_EVENTS = new Set(['runtime.draining', 'drain.withdrawn', 'runtime.stopped']);
+const PROJECT_EVENTS = new Set(['project.changed', 'project.released', 'project.enrolled']);
+
+export function handleRuntimeEvent(event: string, data: unknown): void {
+  if (event === 'stream.closed') {
+    if ((data as { reason?: string })?.reason === 'listener_closed') {
+      markListenerClosed();
+    }
+  } else if (event === 'listener.changed') {
+    handleListenerChanged(data);
+  } else if (STATE_TRANSITION_EVENTS.has(event)) {
+    handleStateTransition(data);
+  } else if (REPORT_EVENTS.has(event)) {
+    handleReportEvent(event, data);
+  } else if (DECISION_EVENTS.has(event)) {
+    handleDecisionEvent(event, data);
+  } else if (LIFECYCLE_EVENTS.has(event)) {
+    handleLifecycleEvent(event, data);
+  } else if (PROJECT_EVENTS.has(event)) {
+    runtimeStore.update((s) => ({ ...s, projectEventNotice: `${event}_${Date.now()}` }));
   } else if (event === 'onboarding.step_completed') {
     void loadOnboardingState();
   } else if (event === 'machine.settings_changed') {

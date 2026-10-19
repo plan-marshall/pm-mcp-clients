@@ -13,7 +13,7 @@ const MESSAGES_DIR = path.resolve(__dirname, '../../../../pm-api/src/main/resour
 function decodePropertiesValue(value: string): string {
   // Java properties escape non-ASCII as \uXXXX.
   return value.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) =>
-    String.fromCharCode(parseInt(hex, 16)),
+    String.fromCodePoint(Number.parseInt(hex, 16)),
   );
 }
 

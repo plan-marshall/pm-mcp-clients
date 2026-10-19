@@ -53,7 +53,10 @@ const PATH_ROUTES: ReadonlyArray<{ path: string; route: AppRoute }> = [
  * @returns the route, or `null` when the path names none of the app's routes
  */
 export function routeForPath(pathname: string): AppRoute | null {
-  const normalised = pathname.replace(/\/+$/, '') || '/';
+  let normalised = pathname || '/';
+  while (normalised.length > 1 && normalised.endsWith('/')) {
+    normalised = normalised.slice(0, -1);
+  }
   for (const entry of PATH_ROUTES) {
     if (entry.path === normalised) {
       return entry.route;
