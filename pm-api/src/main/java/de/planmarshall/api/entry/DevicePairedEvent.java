@@ -14,6 +14,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -61,6 +64,16 @@ public record DevicePairedEvent(String deviceId, String label, String pairedFrom
     }
 
     /**
+     * Writes this event to a streaming generator.
+     *
+     * @param generator the generator
+     * @throws IOException on write failure
+     */
+    public void writeTo(JsonGenerator generator) throws IOException {
+        JsonTree.writeValue(generator, toMap());
+    }
+
+    /**
      * Parses a device-paired event from a JSON tree map.
      *
      * @param map the input map
@@ -86,6 +99,21 @@ public record DevicePairedEvent(String deviceId, String label, String pairedFrom
      */
     public static DevicePairedEvent fromJson(String json) throws IOException {
         var obj = JsonTree.asObject(JsonTree.parse(json));
+        if (obj == null) {
+            throw new JsonFormatException("Expected JSON object for DevicePairedEvent");
+        }
+        return fromMap(obj);
+    }
+
+    /**
+     * Reads one device-paired event from a streaming parser positioned at its first token.
+     *
+     * @param parser the parser
+     * @return the parsed event
+     * @throws IOException on parse failure
+     */
+    public static DevicePairedEvent readFrom(JsonParser parser) throws IOException {
+        var obj = JsonTree.asObject(JsonTree.readValue(parser));
         if (obj == null) {
             throw new JsonFormatException("Expected JSON object for DevicePairedEvent");
         }

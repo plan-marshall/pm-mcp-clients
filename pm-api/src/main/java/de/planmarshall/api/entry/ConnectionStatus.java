@@ -15,6 +15,9 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -78,6 +81,16 @@ public record ConnectionStatus(
     }
 
     /**
+     * Writes this connection status to a streaming generator.
+     *
+     * @param generator the generator
+     * @throws IOException on write failure
+     */
+    public void writeTo(JsonGenerator generator) throws IOException {
+        JsonTree.writeValue(generator, toMap());
+    }
+
+    /**
      * Parses a connection status from a JSON tree map.
      *
      * @param map the input map
@@ -105,6 +118,21 @@ public record ConnectionStatus(
      */
     public static ConnectionStatus fromJson(String json) throws IOException {
         var obj = JsonTree.asObject(JsonTree.parse(json));
+        if (obj == null) {
+            throw new JsonFormatException("Expected JSON object for ConnectionStatus");
+        }
+        return fromMap(obj);
+    }
+
+    /**
+     * Reads one connection status from a streaming parser positioned at its first token.
+     *
+     * @param parser the parser
+     * @return the connection status
+     * @throws IOException on parse failure
+     */
+    public static ConnectionStatus readFrom(JsonParser parser) throws IOException {
+        var obj = JsonTree.asObject(JsonTree.readValue(parser));
         if (obj == null) {
             throw new JsonFormatException("Expected JSON object for ConnectionStatus");
         }

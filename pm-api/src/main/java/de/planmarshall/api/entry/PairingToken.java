@@ -14,6 +14,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -60,6 +63,16 @@ public record PairingToken(String code, String url, long expiresInSeconds) {
     }
 
     /**
+     * Writes this token to a streaming generator.
+     *
+     * @param generator the generator
+     * @throws IOException on write failure
+     */
+    public void writeTo(JsonGenerator generator) throws IOException {
+        JsonTree.writeValue(generator, toMap());
+    }
+
+    /**
      * Parses a pairing token from a JSON tree map.
      *
      * @param map the input map
@@ -86,6 +99,21 @@ public record PairingToken(String code, String url, long expiresInSeconds) {
      */
     public static PairingToken fromJson(String json) throws IOException {
         var obj = JsonTree.asObject(JsonTree.parse(json));
+        if (obj == null) {
+            throw new JsonFormatException("Expected JSON object for PairingToken");
+        }
+        return fromMap(obj);
+    }
+
+    /**
+     * Reads one pairing token from a streaming parser positioned at its first token.
+     *
+     * @param parser the parser
+     * @return the pairing token
+     * @throws IOException on parse failure
+     */
+    public static PairingToken readFrom(JsonParser parser) throws IOException {
+        var obj = JsonTree.asObject(JsonTree.readValue(parser));
         if (obj == null) {
             throw new JsonFormatException("Expected JSON object for PairingToken");
         }
