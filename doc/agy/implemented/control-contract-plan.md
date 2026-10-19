@@ -1,8 +1,8 @@
 # Implementation Plan: `control-contract` (Controlling Work: Contract and Mock Runtime)
 
-This implementation plan governs the implementation of the `control-contract` work package (`doc/plans/control-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
+This implementation plan governs the implementation of the `control-contract` work package (`doc/plans/implemented/control-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
 
-It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
+It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -18,7 +18,7 @@ The goal is to implement the client-side contract for controlling work (plans an
 7. **Mock Runtime Scenarios (`control-<case>`)**: Extensive scenarios covering pause/resume, hold resolution, decomposition review, chat dialogues, conflict resolution, and token coverage.
 
 ### Target Work Package
-- Specification: `doc/plans/control-contract.adoc`.
+- Specification: `doc/plans/implemented/control-contract.adoc`.
 - Use Cases: `UC-CTL-1` through `UC-CTL-5`, `UC-STA-6`, `UC-PLN-5`.
 - Specifications: Runtime Model § Pausing and Starting a Plan, § The Epic as a Resource, § Ended Work, § Event Catalogue; State Catalogue § Cancelling and Abandoning Archive, § Holds and Their Acts, § Chatting with the Planning Role, § Decomposition, § Review; Model Work § The Decomposition Is Reviewed, § The Epic Is Told, § An Epic's Actions, § An Epic Runs by Itself, § An Epic's Findings and Watches, § The Review; Workflow DSL § Plan Overrides; CLI & Security § Concurrent Changes of a Setting; Client Profiles § Tokens, Not Money.
 - Design: `doc/design/shared/work-actions.adoc`, `doc/design/shared/epic-view.adoc`, `doc/design/shared/starting-work.adoc#decomposition`.
@@ -41,15 +41,15 @@ This plan executes concurrently in Wave 8 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-control-contract` on branch `feat/control-contract`.
-- [ ] 2. Domain skills & engineering personas loaded:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-control-contract` on branch `feat/control-contract`.
+- [x] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `persona-module-tester` for Java 25 records and Jackson streaming codecs.
   - `persona-security-expert` for hold integrity boundaries, revision conflict guards, and untrusted chat content.
   - `persona-integration-tester` for mock runtime scenarios and HTTP/SSE validation.
   - `persona-code-reviewer` for review bot resolution.
-- [ ] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/control-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/control-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/control-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/control-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/control-contract-plan-report.md` by orchestrator session.
@@ -71,7 +71,7 @@ This plan executes concurrently in Wave 8 alongside:
 ## 5. Phased Technical Recipe
 
 ### Phase 1: Trace Matrix & Specification Alignment
-- Map `doc/plans/control-contract.adoc` to:
+- Map `doc/plans/implemented/control-contract.adoc` to:
   - `UC-CTL-1..5`: Pause points, hold resolution, plan settings, epic controls.
   - Holds: closed kinds (`stalled`, `condition`, `integrity_pause`, `held`, `landing_failed`).
   - Chat: dialogue turns, read-backs, transcript preservation.

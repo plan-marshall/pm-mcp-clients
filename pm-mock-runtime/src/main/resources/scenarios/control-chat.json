@@ -1,0 +1,49 @@
+{
+  "format_version": 1,
+  "name": "control-chat",
+  "description": "Controlling work: a chat with the planning role about a plan and about an epic, its transcript, its one read-back proposal, accept and reject, and a chat about ended work",
+  "start": "control-chat.start",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {},
+  "states": {
+    "control-chat.start": {
+      "representation": {
+        "scope": "workspace",
+        "state": "control-chat.start",
+        "summary": "Controlling work \u00b7 chatting with the planning role"
+      },
+      "links": {
+        "plan_chat": {
+          "method": "GET",
+          "href": "/api/v1/plans/fix-relay/chat",
+          "next": "control-chat.start"
+        },
+        "epic_chat": {
+          "method": "GET",
+          "href": "/api/v1/epics/relay-hardening/chat",
+          "next": "control-chat.start"
+        },
+        "ended_chat": {
+          "method": "GET",
+          "href": "/api/v1/plans/docs-typo/chat",
+          "next": "control-chat.start"
+        },
+        "turn": {
+          "method": "POST",
+          "href": "/api/v1/plans/fix-relay/chat/turns",
+          "next": "control-chat.start"
+        },
+        "accept": {
+          "method": "POST",
+          "href": "/api/v1/plans/fix-relay/chat/proposal/accept",
+          "next": "control-chat.start"
+        },
+        "reject": {
+          "method": "POST",
+          "href": "/api/v1/plans/fix-relay/chat/proposal/reject",
+          "next": "control-chat.start"
+        }
+      }
+    }
+  }
+}

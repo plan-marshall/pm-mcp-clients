@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Map;
 
 
@@ -24,9 +25,18 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.control.ActionAvailability;
+import de.planmarshall.api.control.ArchiveCheck;
+import de.planmarshall.api.control.ChatReadBackResource;
+import de.planmarshall.api.control.ChatState;
+import de.planmarshall.api.control.DecompositionResource;
+import de.planmarshall.api.control.EpicResource;
+import de.planmarshall.api.control.EpicWaitReason;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
+import de.planmarshall.api.control.ReviewDisposition;
+import de.planmarshall.api.control.ReviewResource;
+import de.planmarshall.api.control.TokenFigure;
 import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
@@ -262,6 +272,245 @@ class ControlScenarioTest {
             var res = client.send(HttpRequest.json("POST", "/api/v1/plans/unknown-plan/actions/pause", "{}")
                     .withHeader(AUTH_HEADER, auth));
             assertEquals(404, res.status());
+        }
+    }
+
+    @Test
+    @DisplayName("serves the epic as a resource with its rows, waits, archive check, and tokens")
+    void shouldServeEpicResource() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_EPIC)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/epics/relay-hardening").withHeader(AUTH_HEADER, auth));
+            assertEquals(200, res.status());
+            var epic = EpicResource.fromJson(new String(res.body()));
+            assertEquals("relay-hardening", epic.epicId());
+            assertEquals("pm-mcp-clients", epic.projectId());
+            assertEquals("running", epic.state());
+            assertTrue(epic.autoStart());
+            assertEquals(3, epic.scope());
+            assertEquals(2, epic.workstreams().size());
+
+            var ws2 = epic.workstreams().get(1);
+            assertEquals("WS-2", ws2.id());
+            assertEquals(EpicWaitReason.DEPENDENCY, ws2.rows().get(1).waits());
+            assertEquals("relay-auth-v2", ws2.rows().get(1).waitPlanId());
+            var docs = ws2.rows().get(2);
+            assertEquals(EpicWaitReason.OVERLAP, docs.waits());
+            assertEquals("relay-auth-v2", docs.waitPlanId());
+            assertEquals(1, docs.overlapFiles().size());
+
+            // the archive check fails on the open findings and carries the kept ones
+            var checkRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/archive-check")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, checkRes.status());
+            var check = ArchiveCheck.fromJson(new String(checkRes.body()));
+            assertFalse(check.passed());
+            assertEquals(3, check.carriedFindings());
+            assertEquals(5, check.carriedWatches());
+            assertFalse(check.completionReviewFirst());
+            assertEquals("review-findings", check.lines().get(2).action());
+
+            // a manual epic runs its completion review first
+            var manualRes = client.send(HttpRequest.get("/api/v1/epics/relay-docs-epic/archive-check")
+                    .withHeader(AUTH_HEADER, auth));
+            assertTrue(ArchiveCheck.fromJson(new String(manualRes.body())).completionReviewFirst());
+        }
+    }
+
+    @Test
+    @DisplayName("serves the epic's tokens as a floor, per plan and for its own tasks")
+    void shouldServeTokens() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_TOKENS)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var epicRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/tokens")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, epicRes.status());
+            var tokens = JsonTree.asObject(JsonTree.parse(epicRes.body()));
+            assertEquals(Boolean.FALSE, tokens.get("not_measured"));
+            var figure = TokenFigure.fromMap(JsonTree.object(tokens, "total"));
+            assertEquals(3_860_000L, figure.total());
+            assertTrue(figure.floor());
+            assertEquals(1, figure.notMeasuredTasks());
+
+            var planRes = client.send(HttpRequest.get("/api/v1/plans/relay-reconnect-backoff/tokens")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, planRes.status());
+            assertEquals(1_400_000L, TokenFigure.fromJson(new String(planRes.body())).total());
+
+            // an epic whose model calls were not measured at all reports not_measured, never 0
+            var unmeasuredRes = client.send(HttpRequest.get("/api/v1/epics/relay-docs-epic/tokens")
+                    .withHeader(AUTH_HEADER, auth));
+            var unmeasured = JsonTree.asObject(JsonTree.parse(unmeasuredRes.body()));
+            assertEquals(Boolean.TRUE, unmeasured.get("not_measured"));
+            assertFalse(TokenFigure.fromMap(JsonTree.object(unmeasured, "total")).measured());
+        }
+    }
+
+    @Test
+    @DisplayName("serves the decomposition draft with its workstreams and plans")
+    void shouldServeControlDecomposition() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_DECOMPOSITION)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/decomposition")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, res.status());
+            var decomposition = DecompositionResource.fromJson(new String(res.body()));
+            assertEquals("relay-hardening", decomposition.epicId());
+            assertEquals(2, decomposition.workstreams().size());
+            assertEquals(4, decomposition.planCount());
+            assertEquals("relay-reconnect-backoff", decomposition.workstreams().getFirst().plans().getFirst().planId());
+            assertEquals(List.of("pm-relay/src/reconnect"),
+                    decomposition.workstreams().getFirst().plans().getFirst().surface());
+        }
+    }
+
+    @Test
+    @DisplayName("serves a chat with the planning role, its proposal, and a chat about ended work")
+    void shouldServeChat() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_CHAT)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/plans/fix-relay/chat").withHeader(AUTH_HEADER, auth));
+            assertEquals(200, res.status());
+            var chat = ChatReadBackResource.fromJson(new String(res.body()));
+            assertEquals("replan", chat.role());
+            assertEquals("plan", chat.scope());
+            assertEquals(ChatState.READ_BACK, chat.chatState());
+            assertTrue(chat.hasProposal());
+            assertEquals(2, chat.turns().size());
+
+            // rejecting the proposal drops it and moves the chat on
+            var rejectRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/reject", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, rejectRes.status());
+            var rejected = ChatReadBackResource.fromJson(new String(rejectRes.body()));
+            assertFalse(rejected.hasProposal());
+            assertEquals(ChatState.TURN, rejected.chatState());
+
+            // nothing is left to apply after a reject
+            var acceptAfterReject = client.send(HttpRequest.json("POST",
+                    "/api/v1/plans/fix-relay/chat/proposal/accept", "{}").withHeader(AUTH_HEADER, auth));
+            assertEquals(409, acceptAfterReject.status());
+
+            // the epic's chat is routed to decompose
+            var epicRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/chat").withHeader(AUTH_HEADER, auth));
+            assertEquals("decompose", ChatReadBackResource.fromJson(new String(epicRes.body())).role());
+
+            // a chat about ended work is read-only, about the archive
+            var endedRes = client.send(HttpRequest.get("/api/v1/plans/docs-typo/chat").withHeader(AUTH_HEADER, auth));
+            var ended = ChatReadBackResource.fromJson(new String(endedRes.body()));
+            assertEquals("archive", ended.scope());
+            assertFalse(ended.hasProposal());
+        }
+    }
+
+    @Test
+    @DisplayName("serves the findings and watches review with every disposition")
+    void shouldServeReview() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_REVIEW)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review?register=findings")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, res.status());
+            var review = ReviewResource.fromJson(new String(res.body()));
+            assertEquals("findings", review.register());
+            assertEquals(2, review.decided());
+            assertEquals(3, review.total());
+            assertEquals(1, review.openItems().size());
+            assertEquals(ReviewDisposition.OPEN, review.item("F-0004").disposition());
+            assertTrue(review.item("F-0005").isUntrusted());
+            assertEquals(ReviewDisposition.DROPPED, review.item("F-0006").disposition());
+
+            var watchesRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review?register=watches")
+                    .withHeader(AUTH_HEADER, auth));
+            var watches = ReviewResource.fromJson(new String(watchesRes.body()));
+            assertEquals("watches", watches.register());
+            assertEquals(2, watches.items().size());
+        }
+    }
+
+    @Test
+    @DisplayName("applies a chat proposal once and refuses a second, then carries the chat on with a turn")
+    void shouldChatTurnAndProposal() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_CHAT)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var acceptRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, acceptRes.status());
+            var accepted = ChatReadBackResource.fromJson(new String(acceptRes.body()));
+            assertEquals(ChatState.APPLY, accepted.chatState());
+            assertFalse(accepted.hasProposal());
+
+            // there is nothing left to apply, so the second accept is refused
+            var second = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(409, second.status());
+
+            var turnRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/turns",
+                    JsonTree.write(Map.of("text", "Make the test cover the SSE transport too.")))
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, turnRes.status());
+            var turned = ChatReadBackResource.fromJson(new String(turnRes.body()));
+            assertEquals(ChatState.TURN, turned.chatState());
+            assertEquals(4, turned.turns().size());
+            assertTrue(turned.turns().get(2).isOperator());
+        }
+    }
+
+    @Test
+    @DisplayName("answers 404 for a control resource of an unknown subject")
+    void shouldAnswer404ForUnknownControlResource() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            for (var path : List.of(
+                    "/api/v1/epics/unknown-epic",
+                    "/api/v1/epics/unknown-epic/tokens",
+                    "/api/v1/epics/unknown-epic/archive-check",
+                    "/api/v1/epics/unknown-epic/decomposition",
+                    "/api/v1/epics/unknown-epic/review",
+                    "/api/v1/plans/unknown-plan/tokens",
+                    "/api/v1/plans/unknown-plan/chat")) {
+                var res = client.send(HttpRequest.get(path).withHeader(AUTH_HEADER, auth));
+                assertEquals(404, res.status(), path);
+            }
+
+            var turn = client.send(HttpRequest.json("POST", "/api/v1/plans/unknown-plan/chat/turns", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(404, turn.status());
+            var proposal = client.send(HttpRequest.json("POST",
+                    "/api/v1/plans/unknown-plan/chat/proposal/reject", "{}").withHeader(AUTH_HEADER, auth));
+            assertEquals(404, proposal.status());
+        }
+    }
+
+    @Test
+    @DisplayName("defaults a review to the findings register and honours a later query parameter")
+    void shouldDefaultReviewRegister() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var defaulted = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, defaulted.status());
+            assertEquals("findings", ReviewResource.fromJson(new String(defaulted.body())).register());
+
+            var second = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review?limit=1&register=watches")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals("watches", ReviewResource.fromJson(new String(second.body())).register());
         }
     }
 }

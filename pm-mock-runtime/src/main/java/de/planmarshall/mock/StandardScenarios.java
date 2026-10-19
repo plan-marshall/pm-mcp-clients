@@ -214,6 +214,47 @@ public final class StandardScenarios {
     public static final String CONTROL = "control";
 
     /**
+     * Pausing and resuming a plan at its point (UC-CTL-1).
+     */
+    public static final String CONTROL_PAUSE = "control-pause";
+
+    /**
+     * The five closed hold kinds and the acts that resolve them (UC-CTL-4).
+     */
+    public static final String CONTROL_HOLDS = "control-holds";
+
+    /**
+     * A plan's settings and their revision guard (UC-CTL-5).
+     */
+    public static final String CONTROL_SETTINGS = "control-settings";
+
+    /**
+     * The epic as a resource with its rows, waits, automatic mode, archive check, and tokens
+     * (UC-CTL-2, UC-CTL-3).
+     */
+    public static final String CONTROL_EPIC = "control-epic";
+
+    /**
+     * The decomposition draft as the control contract shows it (UC-STA-6).
+     */
+    public static final String CONTROL_DECOMPOSITION = "control-decomposition";
+
+    /**
+     * A chat with the planning role about a plan, an epic, and ended work.
+     */
+    public static final String CONTROL_CHAT = "control-chat";
+
+    /**
+     * The findings and watches review with every disposition (UC-CTL-5).
+     */
+    public static final String CONTROL_REVIEW = "control-review";
+
+    /**
+     * An epic's tokens: a floor with its coverage, and not measured at all.
+     */
+    public static final String CONTROL_TOKENS = "control-tokens";
+
+    /**
      * Starting work: a plan from sources, an epic's start, a recipe with its parameters, and the
      * draft intake (UC-STA-1..5).
      */
@@ -268,6 +309,8 @@ public final class StandardScenarios {
                     WEB_PAIRING, ENTRY),
             ENTRY_CASES,
             List.of(PAIRED_DEVICES, RUNNING_WORK, REPORTS, DECISIONS, SYSTEM, PROJECTS, PLAN_VIEW, CONTROL,
+                    CONTROL_PAUSE, CONTROL_HOLDS, CONTROL_SETTINGS, CONTROL_EPIC, CONTROL_DECOMPOSITION,
+                    CONTROL_CHAT, CONTROL_REVIEW, CONTROL_TOKENS,
                     START, LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
                     OPERATOR_INTERACTION))
             .flatMap(List::stream)
