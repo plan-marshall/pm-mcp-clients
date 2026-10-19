@@ -36,6 +36,7 @@ import de.planmarshall.api.interaction.OperatorScopeKind;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.start.AdoptionFailureReason;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.api.start.RecipePlanId;
 import de.planmarshall.api.start.ScreeningVerdict;
 import de.planmarshall.api.start.SourceFailureCause;
 import de.planmarshall.api.start.SourceKind;
@@ -316,6 +317,13 @@ class StartContractTest {
         void recipeParameters() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_RECIPE)) {
                 var auth = "Bearer " + runtime.token();
+                var recipeState = fetch(runtime, "ent-3f9a2c41");
+                assertEquals(StartState.RECIPE, recipeState.state());
+                assertFalse(recipeState.recipes().isEmpty());
+                assertNotNull(recipeState.link("sources"), "a recipe choice exposes the source-only alternate");
+                assertFalse(recipeState.operator().facts().containsKey("no_recipe_reason"),
+                        "the project offers recipes, so the no-recipe reason is absent");
+
                 var chosen = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/links/choose:code-review", "{}")
                         .withHeader("Authorization", auth));
@@ -329,6 +337,30 @@ class StartContractTest {
                         .withHeader("Authorization", auth));
                 assertEquals(200, set.status());
                 assertEquals(StartState.READY, StartStateResource.fromJson(set.bodyText()).state());
+            }
+        }
+
+        @Test
+        @DisplayName("choosing another recipe derives its plan id anew")
+        void recipeSwitchClearsTheId() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_RECIPE)) {
+                var auth = "Bearer " + runtime.token();
+                var first = linkState(runtime, "choose:code-review");
+                var firstId = first.entry().planId();
+                assertNotNull(firstId);
+                assertTrue(RecipePlanId.isRecipePlanId(firstId));
+
+                var back = linkState(runtime, "back");
+                assertEquals(StartState.SOURCES, back.state());
+                assertNull(back.entry().recipe(), "leaving the recipe workflow unbinds the recipe");
+
+                var recipe = linkState(runtime, "recipe");
+                assertEquals(StartState.RECIPE, recipe.state());
+                var second = linkState(runtime, "choose:no-modules");
+                assertNotNull(second.entry().planId());
+                assertTrue(RecipePlanId.isRecipePlanId(second.entry().planId()));
+                assertFalse(second.entry().planId().startsWith("recipe-code-review-"),
+                        "the id derives from the recipe now chosen");
             }
         }
 
@@ -404,6 +436,14 @@ class StartContractTest {
                 assertEquals(404, unknownProject.status());
             }
         }
+    }
+
+    private static StartStateResource linkState(MockRuntime runtime, String link) throws Exception {
+        var response = client(runtime).send(HttpRequest.json("POST",
+                "/api/v1/entries/ent-3f9a2c41/links/" + link, "{}")
+                .withHeader("Authorization", "Bearer " + runtime.token()));
+        assertEquals(200, response.status(), response.bodyText());
+        return StartStateResource.fromJson(response.bodyText());
     }
 
     private static void addSource(MockRuntime runtime, String link, String body) throws Exception {

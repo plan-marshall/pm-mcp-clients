@@ -344,7 +344,9 @@ public record StartStateResource(
         if (!recipes.isEmpty()) {
             facts.put("recipe_count", Integer.toString(recipes.size()));
         }
-        if (entry.kind() == EntryKind.PLAN && recipes.isEmpty()) {
+        var recipeChoice = entry.state() == StartState.CHOOSE || entry.state() == StartState.RECIPE
+                || entry.state() == StartState.RECIPE_CHOOSE;
+        if (entry.kind() == EntryKind.PLAN && recipeChoice && recipes.isEmpty()) {
             facts.put("no_recipe_reason", Map.of("key", "start.choose.no_recipe",
                     "args", Map.of("project", entry.projectId())));
         }
@@ -437,8 +439,7 @@ public record StartStateResource(
         var links = new ArrayList<OperatorLink>();
         recipes.stream().map(recipe -> "choose:" + recipe.key())
                 .forEach(id -> links.add(link(id, OperatorLinkRelation.NEXT, base(entry) + id, false)));
-        links.add(link(StartStateResource.LINK_RECIPE, OperatorLinkRelation.ALT,
-                base(entry) + StartStateResource.LINK_RECIPE, false));
+        links.add(link(LINK_SOURCES, OperatorLinkRelation.ALT, base(entry) + LINK_SOURCES, false));
         return links;
     }
 

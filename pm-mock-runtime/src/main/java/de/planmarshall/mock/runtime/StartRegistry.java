@@ -592,12 +592,12 @@ final class StartRegistry {
             addSourceAct(entry, linkId.substring(ADD_PREFIX.length()), body);
         } else {
             switch (linkId) {
-                case StartStateResource.LINK_SOURCES -> entry.state = STATE_SOURCES;
+                case StartStateResource.LINK_SOURCES -> leaveRecipe(entry);
                 case StartStateResource.LINK_RECIPE ->
                     entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
                 case "chat" -> openChat(entry);
                 case StartStateResource.LINK_START -> continueToReady(entry);
-                case "back" -> entry.state = STATE_SOURCES;
+                case "back" -> leaveRecipe(entry);
                 case "create" -> create(entry, body);
                 case "set" -> setParameters(entry, body);
                 case "retry" -> retryAdoption(entry);
@@ -980,6 +980,14 @@ final class StartRegistry {
         entry.state = STATE_READY;
     }
 
+    private static void leaveRecipe(StartEntry entry) {
+        entry.recipe = null;
+        entry.recipeKey = null;
+        entry.planId = null;
+        entry.parameters = List.of();
+        entry.state = STATE_SOURCES;
+    }
+
     private void openChat(StartEntry entry) {
         if (entry.chat == null) {
             var role = entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE;
@@ -995,6 +1003,9 @@ final class StartRegistry {
     private void chooseRecipe(StartEntry entry, String recipeKey) throws ActRefused {
         var recipe = entry.recipes.stream().filter(candidate -> candidate.key().equals(recipeKey)).findFirst()
                 .orElseThrow(() -> new ActRefused("act_not_available", "No recipe with the key " + recipeKey));
+        if (!recipeKey.equals(entry.recipeKey)) {
+            entry.planId = null;
+        }
         entry.recipeKey = recipeKey;
         entry.recipe = recipe;
         entry.parameters = recipe.parameters();
@@ -1199,8 +1210,7 @@ final class StartRegistry {
         return StartStateResource.of(resource, STATE_READY.equals(effective) ? ready : null, chat,
                 STATE_REFUSED.equals(effective) ? refusalOf(entry) : null,
                 STATE_EPIC_ADOPT_FAILED.equals(effective) ? entry.adoptionFailure : null,
-                STATE_RECIPE.equals(effective) || STATE_RECIPE_CHOOSE.equals(effective) ? entry.recipes
-                        : List.of());
+                entry.recipes);
     }
 
     private String effectiveState(StartEntry entry) {
