@@ -99,8 +99,32 @@ public final class TerminalTestDriver implements AutoCloseable {
      */
     public TerminalTestDriver project(Map<String, String> environment, Path userHome) {
         this.context = new OperatorContext(environment, userHome, true,
-                            ClientEnvironment.capture(environment), () -> terminal, NO_BROWSER);
+                            ClientEnvironment.capture(environment), this::sharedTerminal, NO_BROWSER);
         return this;
+    }
+
+    /**
+     * A dialogue that opens its own terminal for one prompt closes it again; production builds a
+     * fresh terminal for that call, but a transcript has exactly one, shared with the console. This
+     * returns a view of the transcript terminal whose {@code close} is a no-op, so a nested prompt
+     * does not end the transcript, while every other call is forwarded to it.
+     *
+     * @return the shared terminal, without a closing effect
+     */
+    private Terminal sharedTerminal() {
+        return (Terminal) java.lang.reflect.Proxy.newProxyInstance(
+                            Terminal.class.getClassLoader(), new Class<?>[]{Terminal.class},
+                            (proxy, method, args) -> {
+                                if ("close".equals(method.getName())) {
+                                    terminal.writer().flush();
+                                    return null;
+                                }
+                                try {
+                                    return method.invoke(terminal, args);
+                                } catch (java.lang.reflect.InvocationTargetException e) {
+                                    throw e.getCause();
+                                }
+                            });
     }
 
     /**

@@ -46,8 +46,15 @@ public final class EntryFlow {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
 
-    private static final List<String> STEP_NAMES = List.of(
-                        "Language", "Harnesses", "Models", "Roles", "Credentials", "Providers", "Plans");
+    private static final List<String> STEP_KEYS = List.of(
+                        "onboard.step.language", "onboard.step.harnesses", "onboard.step.models",
+                        "onboard.step.roles", "onboard.step.credentials", "onboard.step.providers",
+                        "onboard.step.plans");
+    private static final List<String> STEP_WHAT_KEYS = List.of(
+                        "operator.entry.step.what.language", "operator.entry.step.what.harnesses",
+                        "operator.entry.step.what.models", "operator.entry.step.what.roles",
+                        "operator.entry.step.what.credentials", "operator.entry.step.what.providers",
+                        "operator.entry.step.what.plans");
 
     private final OperatorContext context;
 
@@ -95,10 +102,11 @@ public final class EntryFlow {
         var status = StatusCommand.fetch(runtime);
         var version = status.get("version") != null ? String.valueOf(status.get("version")) : PmVersion.current();
 
+        var locale = context.clientEnvironment().locale();
         if (wasAlive) {
-            out.println("✓ Runtime running (pm-mcpd " + version + ")");
+            out.println(MessageCatalogue.format(locale, "operator.entry.runtime_running", Map.of("version", version)));
         } else {
-            out.println("✓ Runtime started (pm-mcpd " + version + ")");
+            out.println(MessageCatalogue.format(locale, "operator.entry.runtime_started", Map.of("version", version)));
         }
         out.flush();
 
@@ -116,42 +124,44 @@ public final class EntryFlow {
     private EntryResult runUnonboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, LineReader reader, boolean isSsh, int webPort) throws IOException {
         int completedStep = getCompletedOnboardStep(status);
+        var locale = context.clientEnvironment().locale();
         out.println();
         if (completedStep == 0) {
-            out.println("plan-marshall is running. This machine is not set up yet.");
+            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.title", Map.of()));
             out.println();
-            out.println("  Seven steps. Nothing on this machine is looked at, run, or changed until");
-            out.println("  you say so in that step. You can stop at any point; Enter at the prompt,");
-            out.println("  or the web app, continues where you stopped.");
+            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.intro", Map.of()));
             out.println();
-            out.println("    1  Language     the language of plan-marshall and of the models' texts");
-            out.println("    2  Harnesses    the coding agents the server works with, one of them the default");
-            out.println("    3  Models       the models plans may use on each coding agent");
-            out.println("    4  Roles        a coding agent and a model for every role");
-            out.println("    5  Credentials  where this machine keeps its tokens");
-            out.println("    6  Providers    the git hosts, CI and analysis services this machine uses");
-            out.println("    7  Plans        how plans run unless a project says otherwise");
+            for (int step = 1; step <= STEP_KEYS.size(); step++) {
+                var name = MessageCatalogue.format(locale, STEP_KEYS.get(step - 1), Map.of());
+                out.println(MessageCatalogue.format(locale, "operator.entry.step_line", Map.of(
+                                    "number", step,
+                                    "name", name + " ".repeat(Math.max(1, 13 - name.length())),
+                                    "what", MessageCatalogue.format(locale, STEP_WHAT_KEYS.get(step - 1), Map.of()))));
+            }
             out.println();
         } else {
-            out.printf("plan-marshall is running. This machine is set up up to step %d of 7; it%n", completedStep);
             int nextStep = Math.min(completedStep + 1, 7);
-            out.printf("stopped at [%d/7] %s.%n", nextStep, getStepName(nextStep));
+            out.println(MessageCatalogue.format(locale, "operator.entry.stopped_at", Map.of(
+                                "done", completedStep, "total", 7,
+                                "step", "[" + nextStep + "/7] " + getStepName(nextStep))));
             out.println();
         }
         out.flush();
 
-        String prompt;
-        if (isSsh) {
-            prompt = "Where do you want to set it up?   h) here, in the terminal [Enter]   w) in the web app   ?   › ";
+        String promptKey;
+        if (completedStep == 0) {
+            promptKey = isSsh ? "operator.entry.where_prompt_ssh" : "operator.entry.where_prompt";
         } else {
-            prompt = "Where do you want to set it up?   w) in the web app [Enter]   h) here, in the terminal   ?   › ";
+            promptKey = isSsh ? "operator.entry.where_prompt_resume_ssh" : "operator.entry.where_prompt_resume";
         }
+        var prompt = MessageCatalogue.format(locale, promptKey, Map.of());
 
         String choice;
         try {
             choice = reader.readLine(prompt);
         } catch (EndOfFileException | UserInterruptException _) {
-            return new EntryResult(status, List.of(ConsolePrompt.formatMachineSetupBadge(completedStep, 7)), null, null);
+            return new EntryResult(status, List.of(ConsolePrompt.formatMachineSetupBadge(
+                            context.clientEnvironment().locale(), completedStep, 7)), null, null);
         }
         if (choice == null || choice.isBlank()) {
             choice = isSsh ? "h" : "w";
@@ -160,7 +170,7 @@ public final class EntryFlow {
         }
 
         var badges = new ArrayList<String>();
-        badges.add(ConsolePrompt.formatMachineSetupBadge(completedStep, 7));
+        badges.add(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, 7));
 
         if (choice.startsWith("w")) {
             ensureLoopbackListener(runtime, webPort);
@@ -170,21 +180,22 @@ public final class EntryFlow {
             } else {
                 printSshWaysIn(out, webPort, pairing.code());
             }
-            out.println("  The web app opens at the setup of this machine.");
+            out.println(MessageCatalogue.format(locale, "operator.entry.web_opens_setup", Map.of()));
             out.flush();
             return new EntryResult(status, badges, pairing.code(), pairing.url());
         } else {
             out.println();
-            out.println("Set up this machine for plan-marshall");
+            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
             out.flush();
             String beginChoice = null;
             try {
-                beginChoice = reader.readLine("Begin with step 1? [Enter]   a) decide everything for me   ?   › ");
+                beginChoice = reader.readLine(MessageCatalogue.format(locale,
+                                    "operator.console.setup.begin_prompt", Map.of()));
             } catch (EndOfFileException | UserInterruptException _) {
                 // abort setup on interrupt/EOF
             }
             if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
-                out.println("Left the setup before step 1. Nothing was sent. Enter continues the setup.");
+                out.println(MessageCatalogue.format(locale, "operator.entry.left_before_start", Map.of()));
                 out.flush();
             }
             return new EntryResult(status, badges, null, null);
@@ -197,18 +208,23 @@ public final class EntryFlow {
         var badges = extractWaitingBadges(status);
 
         EntryResult result;
+        var locale = context.clientEnvironment().locale();
         if (isSsh) {
-            out.printf("✓ Web access on %s%d%n", LOOPBACK_URL_PREFIX, webPort);
+            out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
+                                Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
             var pairing = issuePairingCode(runtime, webPort);
             printSshWaysIn(out, webPort, pairing.code());
             result = new EntryResult(status, badges, pairing.code(), pairing.url());
         } else {
             var pairedDevice = findPairedBrowser(runtime);
             if (pairedDevice != null) {
-                out.printf("✓ Web app: %s%d   (paired: %s)%n", LOOPBACK_URL_PREFIX, webPort, pairedDevice);
+                out.println(MessageCatalogue.format(locale, "operator.entry.web_app_paired",
+                                    Map.of("url", LOOPBACK_URL_PREFIX + webPort,
+                                                        "label", TerminalSanitizer.sanitizeLine(pairedDevice))));
                 result = new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort);
             } else {
-                out.printf("✓ Web access on %s%d%n", LOOPBACK_URL_PREFIX, webPort);
+                out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
+                                    Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
                 var pairing = issuePairingCode(runtime, webPort);
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
                 result = new EntryResult(status, badges, pairing.code(), pairing.url());
@@ -229,7 +245,7 @@ public final class EntryFlow {
                     var arrivalLine = MessageCatalogue.format("report.arrival.line",
                                         Map.of("count", page.unreadCount(), "since", since));
                     var hint = MessageCatalogue.get("operator.reports.arrival_hint");
-                    out.println("▪ " + arrivalLine + " · " + hint);
+                    out.println("\u25aa " + arrivalLine + " \u00b7 " + hint);
                 }
             }
         } catch (IOException _) {
@@ -238,35 +254,44 @@ public final class EntryFlow {
     }
 
     private void tryOpenBrowser(PrintWriter out, String url, String code, int port) {
+        var locale = context.clientEnvironment().locale();
         var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
         try {
             context.openBrowser(URI.create(url));
-            out.println("✓ Browser opened with a pairing code, valid for 10 minutes");
-            out.printf("    URL    %s%n", url);
-            out.printf("    Code   %s   valid until %s%n", code, validUntil);
+            out.println(MessageCatalogue.format(locale, "operator.entry.browser_opened", Map.of("minutes", 10)));
+            out.println(MessageCatalogue.format(locale, "operator.entry.browser_url", Map.of("url", url)));
+            out.println(MessageCatalogue.format(locale, "operator.entry.browser_code",
+                                Map.of("code", code, "time", validUntil)));
         }
         /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (Exception e) {
-            out.printf("– No browser opened: %s%n", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+            out.println(MessageCatalogue.format(locale, "operator.entry.no_browser",
+                                Map.of("reason", TerminalSanitizer.sanitizeLine(e.getMessage() != null
+                                                    ? e.getMessage() : e.getClass().getSimpleName()))));
             printWaysIn(out, port, code);
         }
     }
 
     private void printSshWaysIn(PrintWriter out, int port, String code) {
-        out.println("– SSH session: no browser opened here");
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.entry.ssh_session", Map.of()));
         printWaysIn(out, port, code);
     }
 
     private void printWaysIn(PrintWriter out, int port, String code) {
+        var locale = context.clientEnvironment().locale();
         var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
         var user = context.environment().getOrDefault("USER", System.getProperty("user.name", "user"));
         var host = getHostname();
-        out.println("  Ways in, from your own computer");
-        out.printf("    1. Forward the port (VS Code and JetBrains do this on their own):%n");
-        out.printf("       ssh -L %d:127.0.0.1:%d %s@%s%n", port, port, user, host);
-        out.printf("    2. Open:%n");
-        out.printf("       %s%d/pair#code=%s%n", LOOPBACK_URL_PREFIX, port, code);
-        out.printf("    Code %s, valid until %s%n", code, validUntil);
+        out.println(MessageCatalogue.format(locale, "operator.entry.ways_in", Map.of()));
+        out.println(MessageCatalogue.format(locale, "operator.entry.forward", Map.of()));
+        out.println(MessageCatalogue.format(locale, "operator.entry.ssh_command",
+                            Map.of("port", port, "user", user, "host", host)));
+        out.println(MessageCatalogue.format(locale, "operator.entry.open", Map.of()));
+        out.println(MessageCatalogue.format(locale, "operator.entry.open_url",
+                            Map.of("url", LOOPBACK_URL_PREFIX + port + "/pair#code=" + code)));
+        out.println(MessageCatalogue.format(locale, "operator.entry.code",
+                            Map.of("code", code, "time", validUntil)));
     }
 
     /**
@@ -382,10 +407,14 @@ public final class EntryFlow {
     }
 
     static String getStepName(int step) {
-        if (step >= 1 && step <= STEP_NAMES.size()) {
-            return STEP_NAMES.get(step - 1);
+        return getStepName("en", step);
+    }
+
+    static String getStepName(String locale, int step) {
+        if (step >= 1 && step <= STEP_KEYS.size()) {
+            return MessageCatalogue.format(locale, STEP_KEYS.get(step - 1), Map.of());
         }
-        return "Step " + step;
+        return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
     }
 
     static int getWebPort(Map<String, Object> status) {

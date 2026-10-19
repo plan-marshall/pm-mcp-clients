@@ -108,6 +108,30 @@ final class TranscriptDialogues {
         }
     }
 
+    /**
+     * @return the console with the machine settings and the paired devices typed at its prompt
+     * @throws Exception if the runtime or the console fails
+     */
+    static Dialogue consoleSettings() throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.ONBOARDING).build());
+             var driver = TerminalTestDriver.create()) {
+            MockMachine.recordLiveRuntime(runtime);
+            driver.project(environment(runtime), runtime.base().getParent());
+            driver.typeLine("config");
+            driver.typeLine("q");
+            driver.typeLine("web devices");
+            driver.typeLine("config consents");
+            driver.typeLine("exit");
+
+            var exitCode = new PmConsole(driver.context()).run();
+            if (exitCode != 0) {
+                throw new IllegalStateException("console exited with " + exitCode);
+            }
+            return new Dialogue("console-settings", driver.render(), runtime.base());
+        }
+    }
+
     private static Map<String, String> environment(MockRuntime runtime) {
         var environment = new HashMap<>(runtime.environment());
         environment.put("USER", "operator");
