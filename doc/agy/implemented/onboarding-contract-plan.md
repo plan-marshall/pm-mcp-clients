@@ -41,16 +41,16 @@ This plan executes concurrently in Wave 8 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-onboarding-contract` on branch `feat/onboarding-contract`.
-- [ ] 2. Domain skills & engineering personas loaded:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-onboarding-contract` on branch `feat/onboarding-contract`.
+- [x] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `persona-module-tester` for Java 25 records and Jackson streaming codecs.
   - `persona-security-expert` for consent validation, credential protection, and conflict resolution.
   - `persona-integration-tester` for mock runtime scenarios and HTTP/SSE validation.
   - `persona-code-reviewer` for review bot resolution.
-- [ ] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/onboarding-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/onboarding-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/onboarding-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/onboarding-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/onboarding-contract-plan-report.md` by orchestrator session.
 

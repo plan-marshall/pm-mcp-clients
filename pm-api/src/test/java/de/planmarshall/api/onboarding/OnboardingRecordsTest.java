@@ -11,11 +11,16 @@ package de.planmarshall.api.onboarding;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
@@ -109,7 +114,7 @@ class OnboardingRecordsTest {
         void shouldRoundTripPartial() throws Exception {
             var harness = new HarnessScanResult("opencode", "OpenCode", "/opt/homebrew/bin/opencode",
                     "1.9.0", true, true, true, TokenUsageCoverage.PARTIAL,
-                    List.of("cache write"), true);
+                    List.of("cache write"), true, null);
 
             var parsed = HarnessScanResult.fromJson(harness.toJson());
 
@@ -293,6 +298,196 @@ class OnboardingRecordsTest {
             var settings = new MachineSettingsChangedEvent("documents_mode", "copy", 8, "terminal");
             assertEquals("machine.settings_changed", MachineSettingsChangedEvent.EVENT_NAME);
             assertEquals(settings, MachineSettingsChangedEvent.fromJson(settings.toJson()));
+        }
+    }
+
+    @Nested
+    @DisplayName("Automatic onboarding result")
+    class AutoResultTests {
+
+        @Test
+        @DisplayName("round-trips an item and its closed list of reasons")
+        void shouldRoundTripItem() throws Exception {
+            var item = new AutoResultItem(OnboardingAspect.HARNESSES,
+                    "Claude Code 2.4.1 (default), OpenCode 1.9.0", AutoResultReason.ALL_SUPPORTED);
+
+            var parsed = AutoResultItem.fromJson(item.toJson());
+
+            assertEquals(item, parsed);
+            assertEquals("onboard.auto.reason.all_supported", parsed.reason().titleKey());
+            assertEquals(List.of(item), AutoResultItem.listFromJson("[" + item.toJson() + "]"));
+        }
+
+        @Test
+        @DisplayName("is a closed list of four reasons and refuses an unknown one")
+        void shouldBeClosedList() {
+            assertEquals(4, AutoResultReason.values().length);
+            assertEquals(AutoResultReason.DETECTED, AutoResultReason.fromWire("detected"));
+            assertEquals(AutoResultReason.ASKED, AutoResultReason.fromWire("ASKED"));
+            assertNull(AutoResultReason.fromWire("nope"));
+            assertNull(AutoResultReason.fromWire(""));
+            assertThrows(IllegalArgumentException.class, () -> AutoResultReason.parse("nope"));
+        }
+    }
+
+    @Nested
+    @DisplayName("HarnessUsageReport")
+    class HarnessUsageReportTests {
+
+        @Test
+        @DisplayName("round-trips a complete report with a not-applicable figure")
+        void shouldRoundTripComplete() throws Exception {
+            var report = new HarnessUsageReport(TokenUsageCoverage.COMPLETE, Map.of(
+                    UsageFigure.INPUT, UsageFigureStatus.REPORTED,
+                    UsageFigure.CACHE_READ, UsageFigureStatus.REPORTED,
+                    UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_APPLICABLE,
+                    UsageFigure.OUTPUT, UsageFigureStatus.REPORTED));
+
+            var parsed = HarnessUsageReport.fromJson(report.toJson());
+
+            assertEquals(report, parsed);
+            assertTrue(parsed.missingFigures().isEmpty());
+            assertEquals(UsageFigureStatus.NOT_APPLICABLE, parsed.statusOf(UsageFigure.CACHE_WRITE));
+            assertNull(parsed.statusOf(UsageFigure.REASONING));
+        }
+
+        @Test
+        @DisplayName("round-trips a partial report that names what is missing, in catalogue order")
+        void shouldRoundTripPartial() throws Exception {
+            var report = new HarnessUsageReport(TokenUsageCoverage.PARTIAL, Map.of(
+                    UsageFigure.INPUT, UsageFigureStatus.REPORTED,
+                    UsageFigure.CACHE_READ, UsageFigureStatus.NOT_REPORTED,
+                    UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_REPORTED,
+                    UsageFigure.OUTPUT, UsageFigureStatus.REPORTED));
+
+            var parsed = HarnessUsageReport.fromJson(report.toJson());
+
+            assertEquals(report, parsed);
+            assertEquals(List.of("cache_read", "cache_write"), parsed.missingFigures());
+        }
+
+        @Test
+        @DisplayName("round-trips a not-reported report")
+        void shouldRoundTripNotReported() throws Exception {
+            var report = new HarnessUsageReport(TokenUsageCoverage.NOT_REPORTED, Map.of(
+                    UsageFigure.INPUT, UsageFigureStatus.NOT_REPORTED,
+                    UsageFigure.OUTPUT, UsageFigureStatus.NOT_REPORTED));
+
+            assertEquals(report, HarnessUsageReport.fromJson(report.toJson()));
+            assertFalse(report.missingFigures().isEmpty());
+        }
+
+        @Test
+        @DisplayName("fails closed on an inconsistent summary and an unknown wire value")
+        void shouldFailClosed() {
+            assertThrows(IllegalArgumentException.class, () -> new HarnessUsageReport(
+                    TokenUsageCoverage.COMPLETE, Map.of(UsageFigure.INPUT, UsageFigureStatus.NOT_REPORTED)));
+            assertThrows(IllegalArgumentException.class, () -> new HarnessUsageReport(
+                    TokenUsageCoverage.PARTIAL, Map.of(UsageFigure.INPUT, UsageFigureStatus.REPORTED)));
+            assertThrows(IOException.class, () -> HarnessUsageReport.fromJson(
+                    "{\"coverage\":\"complete\",\"figures\":{\"colour\":\"reported\"}}"));
+            assertThrows(IOException.class, () -> HarnessUsageReport.fromJson(
+                    "{\"coverage\":\"complete\",\"figures\":{\"input\":\"maybe\"}}"));
+        }
+
+        @Test
+        @DisplayName("is a closed list of figures and statuses")
+        void shouldBeClosedLists() {
+            assertEquals(5, UsageFigure.values().length);
+            assertEquals(3, UsageFigureStatus.values().length);
+            assertEquals(UsageFigure.CACHE_WRITE, UsageFigure.fromWire("cache_write"));
+            assertNull(UsageFigure.fromWire("colour"));
+            assertEquals(UsageFigureStatus.NOT_APPLICABLE, UsageFigureStatus.fromWire("not_applicable"));
+            assertNull(UsageFigureStatus.fromWire("maybe"));
+            assertThrows(IllegalArgumentException.class, () -> UsageFigure.parse("colour"));
+            assertThrows(IllegalArgumentException.class, () -> UsageFigureStatus.parse("maybe"));
+        }
+    }
+
+    @Nested
+    @DisplayName("HarnessVerification")
+    class HarnessVerificationTests {
+
+        @Test
+        @DisplayName("round-trips the stages and the usage stage's result")
+        void shouldRoundTrip() throws Exception {
+            var verification = new HarnessVerification(Map.of(
+                            HarnessVerificationStage.IDENTITY, VerificationStageStatus.PASSED,
+                            HarnessVerificationStage.DETECTION, VerificationStageStatus.PASSED,
+                            HarnessVerificationStage.LAUNCH, VerificationStageStatus.PASSED,
+                            HarnessVerificationStage.ISOLATION, VerificationStageStatus.FAILED),
+                    new HarnessUsageReport(TokenUsageCoverage.PARTIAL,
+                            Map.of(UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_REPORTED)));
+
+            var parsed = HarnessVerification.fromJson(verification.toJson());
+
+            assertEquals(verification, parsed);
+            assertEquals(Optional.of(HarnessVerificationStage.ISOLATION), parsed.firstFailure());
+            assertFalse(parsed.passed());
+            assertEquals(VerificationStageStatus.NOT_RUN, parsed.statusOf(HarnessVerificationStage.LIMITS));
+        }
+
+        @Test
+        @DisplayName("reports a pass only when every stage of the catalogue passed")
+        void shouldReportPass() {
+            var stages = new EnumMap<HarnessVerificationStage, VerificationStageStatus>(
+                    HarnessVerificationStage.class);
+            for (var stage : HarnessVerificationStage.values()) {
+                stages.put(stage, VerificationStageStatus.PASSED);
+            }
+            var verification = new HarnessVerification(stages, null);
+            assertTrue(verification.passed());
+            assertTrue(verification.firstFailure().isEmpty());
+
+            var partial = new HarnessVerification(
+                    Map.of(HarnessVerificationStage.IDENTITY, VerificationStageStatus.PASSED), null);
+            assertFalse(partial.passed(), "a verification whose later stages did not run has not passed");
+        }
+
+        @Test
+        @DisplayName("is a closed list of stages and statuses")
+        void shouldBeClosedLists() {
+            assertEquals(9, HarnessVerificationStage.values().length);
+            assertEquals(3, VerificationStageStatus.values().length);
+            assertEquals(HarnessVerificationStage.USAGE, HarnessVerificationStage.fromWire("usage"));
+            assertNull(HarnessVerificationStage.fromWire("magic"));
+            assertEquals(VerificationStageStatus.NOT_RUN, VerificationStageStatus.fromWire("not_run"));
+            assertThrows(IllegalArgumentException.class, () -> HarnessVerificationStage.parse("magic"));
+            assertThrows(IllegalArgumentException.class, () -> VerificationStageStatus.parse("maybe"));
+        }
+    }
+
+    @Nested
+    @DisplayName("HarnessScanResult with usage")
+    class HarnessScanResultUsageTests {
+
+        @Test
+        @DisplayName("round-trips the per-figure usage report of a harness")
+        void shouldRoundTripUsage() throws Exception {
+            var usage = new HarnessUsageReport(TokenUsageCoverage.PARTIAL,
+                    Map.of(UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_REPORTED));
+            var harness = new HarnessScanResult("opencode", "OpenCode", "/opt/homebrew/bin/opencode",
+                    "1.9.0", true, true, true, TokenUsageCoverage.PARTIAL, List.of("cache_write"), true, usage);
+
+            var parsed = HarnessScanResult.fromJson(harness.toJson());
+
+            assertEquals(harness, parsed);
+            assertNotNull(parsed.usage());
+            assertEquals(List.of("cache_write"), parsed.usage().missingFigures());
+        }
+
+        @Test
+        @DisplayName("refuses a top-level token usage that disagrees with the usage report")
+        void shouldRefuseConflictingUsage() {
+            var usage = new HarnessUsageReport(TokenUsageCoverage.PARTIAL,
+                    Map.of(UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_REPORTED));
+
+            assertThrows(IllegalArgumentException.class, () -> new HarnessScanResult(
+                    "claude", "Claude Code", null, null, true, true, true,
+                    TokenUsageCoverage.COMPLETE, List.of(), true, usage));
+            assertThrows(IllegalArgumentException.class, () -> new HarnessScanResult(
+                    "claude", "Claude Code", null, null, true, true, true,
+                    TokenUsageCoverage.PARTIAL, List.of("cache_read"), true, usage));
         }
     }
 

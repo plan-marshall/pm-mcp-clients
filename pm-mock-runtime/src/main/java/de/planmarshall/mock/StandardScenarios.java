@@ -47,6 +47,46 @@ public final class StandardScenarios {
     public static final String ONBOARDING = "onboarding";
 
     /**
+     * The harness scan where every enrolled harness reports its token usage completely (UC-ONB-4).
+     */
+    public static final String ONBOARDING_HARNESS_TOKENS_COMPLETE = "onboarding-harness-tokens-complete";
+
+    /**
+     * The harness scan where a harness reports its token usage only in part, naming the missing
+     * figures (UC-ONB-4).
+     */
+    public static final String ONBOARDING_HARNESS_TOKENS_PARTIAL = "onboarding-harness-tokens-partial";
+
+    /**
+     * The harness scan where every chosen harness reports nothing of its token usage (UC-ONB-4).
+     */
+    public static final String ONBOARDING_HARNESS_TOKENS_NOT_REPORTED = "onboarding-harness-tokens-not-reported";
+
+    /**
+     * The harness scan where every chosen harness fails its check, so the step comes to the same
+     * place as none found (UC-ONB-4).
+     */
+    public static final String ONBOARDING_HARNESS_ALL_FAILED = "onboarding-harness-all-failed";
+
+    /**
+     * Each consent of the guided run answered no: a required consent stays, an optional one goes on
+     * without it (UC-ONB-1..9).
+     */
+    public static final String ONBOARDING_REFUSALS = "onboarding-refusals";
+
+    /**
+     * A harness the binary does not know, added under Advanced, run to verify its draft profile, and
+     * whose usage stage fails on a figure the draft names (UC-ONB-4).
+     */
+    public static final String ONBOARDING_UNKNOWN_HARNESS = "onboarding-unknown-harness";
+
+    /**
+     * The machine settings where the documents mode is changed in two clients at once: the second
+     * change is refused with {@code conflict} and applied again (UC-ONB-10).
+     */
+    public static final String ONBOARDING_SETTINGS_CONFLICT = "onboarding-settings-conflict";
+
+    /**
      * Browser pairing flow demonstrating pairing code exchange and subsequent authenticated web
      * client requests.
      */
@@ -193,6 +233,13 @@ public final class StandardScenarios {
             ONBOARDING_HAPPY,
             ONBOARDING_HARNESS_NOT_LOGGED_IN,
             ONBOARDING,
+            ONBOARDING_HARNESS_TOKENS_COMPLETE,
+            ONBOARDING_HARNESS_TOKENS_PARTIAL,
+            ONBOARDING_HARNESS_TOKENS_NOT_REPORTED,
+            ONBOARDING_HARNESS_ALL_FAILED,
+            ONBOARDING_REFUSALS,
+            ONBOARDING_UNKNOWN_HARNESS,
+            ONBOARDING_SETTINGS_CONFLICT,
             WEB_PAIRING,
             ENTRY,
             PAIRED_DEVICES,
