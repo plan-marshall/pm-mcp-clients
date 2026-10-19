@@ -26,9 +26,16 @@ const FORGES: ReadonlyArray<{ host: RegExp; forge: string }> = [
  *
  * @param reference a URL, or a bare number when `repository` is given
  * @param repository the project's own repository, for a bare number
+ * @param forge the forge's display name, for a bare number
+ * @param baseUrl the forge's base URL, for a bare number
  * @returns the reference's parts, or `null` where it names none
  */
-export function readForgeReference(reference: string, repository = ''): ForgeReference | null {
+export function readForgeReference(
+  reference: string,
+  repository = '',
+  forge = 'GitHub',
+  baseUrl = 'https://github.com',
+): ForgeReference | null {
   const trimmed = reference.trim();
   if (!trimmed) {
     return null;
@@ -39,10 +46,10 @@ export function readForgeReference(reference: string, repository = ''): ForgeRef
       return null;
     }
     return {
-      forge: 'GitHub',
+      forge,
       repository,
       number: bare[1],
-      url: `https://github.com/${repository}/issues/${bare[1]}`,
+      url: `${baseUrl}/${repository}/issues/${bare[1]}`,
     };
   }
   let url: URL;
@@ -72,6 +79,57 @@ export function readForgeReference(reference: string, repository = ''): ForgeRef
   };
 }
 
+/** The forge and repository a git remote names. */
+export interface RemoteInfo {
+  forge: string;
+  repository: string;
+  baseUrl: string;
+}
+
+/**
+ * Reads the forge of a remote URL.
+ *
+ * @param remote the remote URL
+ * @returns the forge and repository, or `null` where the remote names none
+ */
+export function remoteInfo(remote: string): RemoteInfo | null {
+  const trimmed = remote.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const scp = /^[^@\s]+@([^:\s]+):([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(trimmed);
+  if (scp?.[1] && scp[2] && scp[3]) {
+    const forge = FORGES.find((candidate) => candidate.host.test(scp[1]));
+    if (!forge) {
+      return null;
+    }
+    return {
+      forge: forge.forge,
+      repository: `${scp[2]}/${scp[3]}`,
+      baseUrl: `https://${scp[1]}`,
+    };
+  }
+  try {
+    const url = new URL(trimmed);
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.length < 2) {
+      return null;
+    }
+    const known = FORGES.find((candidate) => candidate.host.test(url.hostname));
+    if (!known) {
+      return null;
+    }
+    const repository = `${parts[0]}/${parts[1]}`;
+    return {
+      forge: known.forge,
+      repository: repository.endsWith('.git') ? repository.slice(0, -4) : repository,
+      baseUrl: `${url.protocol}//${url.host}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Reads the `owner/repo` of a git remote, whichever transport it uses.
  *
@@ -79,25 +137,7 @@ export function readForgeReference(reference: string, repository = ''): ForgeRef
  * @returns the repository, or the empty string where the remote names none
  */
 export function repositoryFromRemote(remote: string): string {
-  const trimmed = remote.trim();
-  if (!trimmed) {
-    return '';
-  }
-  const scp = /^[^@\s]+@[^:\s]+:([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(trimmed);
-  if (scp?.[1] && scp[2]) {
-    return `${scp[1]}/${scp[2]}`;
-  }
-  try {
-    const url = new URL(trimmed);
-    const parts = url.pathname.split('/').filter(Boolean);
-    if (parts.length < 2) {
-      return '';
-    }
-    const repository = `${parts[0]}/${parts[1]}`;
-    return repository.endsWith('.git') ? repository.slice(0, -4) : repository;
-  } catch {
-    return '';
-  }
+  return remoteInfo(remote)?.repository ?? '';
 }
 
 /**

@@ -32,6 +32,17 @@ describe('reading an issue or pull-request reference', () => {
     expect(readForgeReference('#212', 'plan-marshall/pm-mcp-clients')?.number).toBe('212');
   });
 
+  it('reads a bare number on the forge of a non-GitHub remote', () => {
+    expect(
+      readForgeReference('123', 'forgejo/forgejo', 'Codeberg', 'https://codeberg.org'),
+    ).toEqual({
+      forge: 'Codeberg',
+      repository: 'forgejo/forgejo',
+      number: '123',
+      url: 'https://codeberg.org/forgejo/forgejo/issues/123',
+    });
+  });
+
   it('names no reference for an unknown forge or a plain word', () => {
     expect(readForgeReference('https://example.com/a/b/issues/1')).toBeNull();
     expect(readForgeReference('not a reference')).toBeNull();

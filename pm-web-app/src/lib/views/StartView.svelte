@@ -22,7 +22,7 @@
   import RecipeReadyView from './RecipeReadyView.svelte';
   import EpicAdoptView from './EpicAdoptView.svelte';
   import DecompositionReviewView from './DecompositionReviewView.svelte';
-  import { readForgeReference, repositoryFromRemote } from '../start/sourceLabels';
+  import { remoteInfo, readForgeReference, type RemoteInfo } from '../start/sourceLabels';
 
   export let projectId: string | null = null;
   export let entryId: string | null = null;
@@ -36,7 +36,7 @@
 
   let projects: ProjectSummary[] = [];
 
-  let projectRepository = '';
+  let projectRemote: RemoteInfo | null = null;
 
   let descriptionText = '';
   let showPreview = false;
@@ -164,7 +164,7 @@
    * grant question compare against `owner/repo`, not the project id.
    */
   async function resolveProjectRepository(generation: number, project: string): Promise<void> {
-    projectRepository = '';
+    projectRemote = null;
     if (!project) return;
     try {
       const explorer = await apiClient.getProjectExplorer();
@@ -172,10 +172,10 @@
       const enrolled = [...explorer.favourites, ...explorer.recent, ...explorer.all_projects].find(
         (candidate) => candidate.project_id === project,
       );
-      projectRepository = repositoryFromRemote(enrolled?.remote_url ?? '');
+      projectRemote = remoteInfo(enrolled?.remote_url ?? '');
     } catch {
       if (generation === entryGeneration) {
-        projectRepository = '';
+        projectRemote = null;
       }
     }
   }
@@ -353,9 +353,18 @@
     await act(`documents_mode:${mode}${suffix}`);
   }
 
+  function referenceOf(reference: string): ReturnType<typeof readForgeReference> {
+    return readForgeReference(
+      reference,
+      projectRemote?.repository ?? '',
+      projectRemote?.forge ?? 'GitHub',
+      projectRemote?.baseUrl ?? 'https://github.com',
+    );
+  }
+
   function submitIssue(): void {
     issueError = '';
-    const parsed = readForgeReference(issueReference, projectRepository);
+    const parsed = referenceOf(issueReference);
     if (!parsed) {
       issueError = $t('start.cause.unknown_forge');
       return;
@@ -374,8 +383,8 @@
    * @returns whether it is the project's own repository
    */
   function isOwnRepository(repository: string): boolean {
-    if (projectRepository) {
-      return repository === projectRepository;
+    if (projectRemote?.repository) {
+      return repository === projectRemote.repository;
     }
     return repository.split('/').pop() === currentProject;
   }
@@ -398,7 +407,7 @@
 
   async function submitPullRequest(): Promise<void> {
     prError = '';
-    const parsed = readForgeReference(prReference, projectRepository);
+    const parsed = referenceOf(prReference);
     if (!parsed) {
       prError = $t('start.cause.unknown_forge');
       return;
@@ -952,7 +961,7 @@
                 <input type="text" data-testid="issue-input" bind:value={issueReference} />
               </label>
               {#if issueReference.trim()}
-                {@const parsed = readForgeReference(issueReference, projectRepository)}
+                {@const parsed = referenceOf(issueReference)}
                 {#if parsed}
                   <p class="start-view__hint" data-testid="issue-forge">
                     {parsed.forge} · {parsed.repository}
