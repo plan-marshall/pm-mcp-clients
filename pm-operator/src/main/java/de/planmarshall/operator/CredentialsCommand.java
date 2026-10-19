@@ -67,11 +67,11 @@ public final class CredentialsCommand implements Callable<Integer> {
 
     /** The kind of the entry, for {@code set}; {@code null} keeps the entry's own. */
     @Nullable
-    String kind;
+    String entryKind;
 
     /** The project scope, or {@code null} for the machine. */
     @Nullable
-    String project;
+    String projectScope;
 
     CredentialsCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
@@ -169,11 +169,11 @@ public final class CredentialsCommand implements Callable<Integer> {
             var body = new LinkedHashMap<String, Object>();
             body.put(MODE, mode);
             body.put(SECRET, new String(secret));
-            if (kind != null && !kind.isBlank()) {
-                body.put("kind", kind);
+            if (entryKind != null && !entryKind.isBlank()) {
+                body.put(KIND, entryKind);
             }
-            if (project != null && !project.isBlank()) {
-                body.put("project", project);
+            if (projectScope != null && !projectScope.isBlank()) {
+                body.put(PROJECT, projectScope);
             }
             var response = context.runtime(true).send(
                                 HttpRequest.json("PUT", path(key), JsonTree.write(body)));
@@ -220,7 +220,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         }
     }
 
-    private boolean confirm(Terminal terminal) throws IOException {
+    private boolean confirm(Terminal terminal) {
         var reader = LineReaderBuilder.builder().terminal(terminal).build();
         try {
             var line = reader.readLine(MessageCatalogue.format(locale(),
@@ -299,8 +299,8 @@ public final class CredentialsCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var command = new CredentialsCommand(context);
-            command.kind = kind;
-            command.project = project;
+            command.entryKind = kind;
+            command.projectScope = project;
             var status = command.readStatus(out, key);
             command.printHeader(out, key, "set", status);
             if (kind != null && !kind.isBlank()) {

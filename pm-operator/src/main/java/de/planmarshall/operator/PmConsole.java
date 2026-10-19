@@ -186,11 +186,28 @@ public final class PmConsole {
         for (var badge : badges) {
             var lower = badge.toLowerCase(Locale.ROOT);
             if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
-                var digits = badge.replaceAll("^[^0-9]*([0-9]+).*$", "$1");
-                total += digits.matches("[0-9]+") ? Integer.parseInt(digits) : 1;
+                total += leadingCount(badge);
             }
         }
         return total;
+    }
+
+    private static int leadingCount(String badge) {
+        int start = -1;
+        for (int i = 0; i < badge.length(); i++) {
+            if (Character.isDigit(badge.charAt(i))) {
+                start = i;
+                break;
+            }
+        }
+        if (start < 0) {
+            return 1;
+        }
+        int end = start;
+        while (end < badge.length() && Character.isDigit(badge.charAt(end))) {
+            end++;
+        }
+        return Integer.parseInt(badge.substring(start, end));
     }
 
     private void handleEmptyEnter(PrintWriter out, LineReader reader) {
