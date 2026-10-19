@@ -344,7 +344,6 @@ class StartContractTest {
         @DisplayName("choosing another recipe derives its plan id anew")
         void recipeSwitchClearsTheId() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_RECIPE)) {
-                var auth = "Bearer " + runtime.token();
                 var first = linkState(runtime, "choose:code-review");
                 var firstId = first.entry().planId();
                 assertNotNull(firstId);

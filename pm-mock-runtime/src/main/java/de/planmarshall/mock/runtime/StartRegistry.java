@@ -147,7 +147,6 @@ final class StartRegistry {
     private static final String STATE_REFUSED = StartState.REFUSED.wireValue();
     private static final String STATE_EPIC_ADOPT = StartState.EPIC_ADOPT.wireValue();
     private static final String STATE_EPIC_ADOPT_FAILED = StartState.EPIC_ADOPT_FAILED.wireValue();
-    private static final String STATE_RECIPE_CHOOSE = StartState.RECIPE_CHOOSE.wireValue();
     private static final String STATE_RECIPE_PARAMETERS = StartState.RECIPE_PARAMETERS.wireValue();
     private static final String LANDING_FILES = "landing.files";
     private static final String LANDING_PULL_REQUEST = "landing.pull-request";
