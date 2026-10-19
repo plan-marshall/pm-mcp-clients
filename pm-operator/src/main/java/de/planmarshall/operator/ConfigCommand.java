@@ -204,10 +204,15 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     private void openAspect(PrintWriter out, String locale, MachineSettingsRecord settings) throws IOException {
+        int aspectCount = settings.aspects().size();
+        int credentialCount = settings.credentials().size();
+        boolean consentsListed = !settings.consents().isEmpty();
+        int consentsIndex = aspectCount + credentialCount + 1;
+        int documentsIndex = consentsIndex + (consentsListed ? 1 : 0);
         try (var terminal = context.createTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.open_prompt",
-                                Map.of("range", "1-" + (settings.aspects().size() + settings.credentials().size() + 2)))
+                                Map.of("range", "1-" + documentsIndex))
                                 + "   q) " + MessageCatalogue.format(locale, "operator.devices.leave", Map.of())
                                 + "   ?   \u203a ");
             if (line == null || "q".equalsIgnoreCase(line.trim()) || line.isBlank()) {
@@ -219,16 +224,17 @@ public final class ConfigCommand implements Callable<Integer> {
             } catch (NumberFormatException _) {
                 return;
             }
-            int aspectCount = settings.aspects().size();
             if (choice >= 1 && choice <= aspectCount) {
-                var command = ASPECT_COMMANDS.get(choice - 1);
-                PmOperator.execute(context, out, out, "config", command);
-            } else if (choice > aspectCount && choice <= aspectCount + settings.credentials().size()) {
+                PmOperator.execute(context, out, out, "config", ASPECT_COMMANDS.get(choice - 1));
+            } else if (choice > aspectCount && choice <= aspectCount + credentialCount) {
                 var credential = settings.credentials().get(choice - aspectCount - 1);
                 PmOperator.execute(context, out, out, "credentials", "rotate", credential.key());
-            } else {
+            } else if (consentsListed && choice == consentsIndex) {
                 PmOperator.execute(context, out, out, "config", "consents");
+            } else if (choice == documentsIndex) {
+                PmOperator.execute(context, out, out, "config", "documents");
             }
+            // Any other number opens nothing: the prompt lists what exists.
         }
     }
 
