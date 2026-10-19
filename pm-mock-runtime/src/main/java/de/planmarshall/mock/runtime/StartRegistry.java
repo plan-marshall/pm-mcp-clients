@@ -475,7 +475,8 @@ final class StartRegistry {
         var role = ChatRole.fromValue(JsonTree.string(chat, KEY_ROLE));
         var chatState = new StartChat(CHAT_PREFIX + entry.entryId, defaultRole(entry, role));
         chatState.transcriptPath = PENDING_DIRECTORY + entry.entryId + PATH_SEPARATOR + CHAT_DIRECTORY;
-        chatState.turns.addAll(objects(chat.get(KEY_TURNS)).stream()
+        var turns = objects(chat == null ? null : chat.get(KEY_TURNS));
+        chatState.turns.addAll(turns.stream()
                 .filter(object -> JsonTree.string(object, KEY_ROLE) != null
                         && JsonTree.string(object, KEY_TEXT) != null)
                 .map(StartRegistry::turnFrom)
@@ -1201,7 +1202,7 @@ final class StartRegistry {
     }
 
     private StartReadyResource readyOf(StartEntry entry, @Nullable String planId) {
-        var id = planId != null ? planId : slug(entry.title != null ? entry.title : DEFAULT_WORK);
+        var id = idOf(entry, planId);
         if (entry.kind.epic()) {
             return new StartReadyResource(entry.title, id, true, true, null, List.of(), entry.landing, false,
                     projectAutoStart.getOrDefault(entry.projectId, true),
@@ -1213,6 +1214,14 @@ final class StartRegistry {
                 .noneMatch(source -> source.kind() == SourceKind.PULL_REQUEST);
         return new StartReadyResource(entry.title, id, idEditable, entry.recipe == null, entry.recipe,
                 entry.parameters, entry.landing, false, null, null, null, null);
+    }
+
+    private static String idOf(StartEntry entry, @Nullable String planId) {
+        if (planId != null) {
+            return planId;
+        }
+        var title = entry.title != null ? entry.title : DEFAULT_WORK;
+        return slug(title);
     }
 
     private @Nullable StartChatResource chatOf(StartEntry entry) {
@@ -1385,7 +1394,7 @@ final class StartRegistry {
         var trimmed = text.strip();
         var newline = trimmed.indexOf('\n');
         var line = newline >= 0 ? trimmed.substring(0, newline).strip() : trimmed;
-        return line.isBlank() ? "A description" : line;
+        return line.isBlank() ? DESCRIPTION_REFERENCE : line;
     }
 
     private static String slug(String text) {
@@ -1402,7 +1411,7 @@ final class StartRegistry {
                 pendingDash = true;
             }
         }
-        return builder.isEmpty() ? "started-work" : builder.toString();
+        return builder.isEmpty() ? DEFAULT_WORK : builder.toString();
     }
 
     private static List<Map<String, Object>> objects(@Nullable Object raw) {

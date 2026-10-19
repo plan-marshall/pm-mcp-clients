@@ -247,6 +247,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_ENTRY_CHAT_END = "/chat/end";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL = SEGMENT_ENTRY_CHAT + "/proposal/";
     private static final String ACTION_ACCEPT = "accept";
+    private static final String ACTION_RETRY = "retry";
+    private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = SEGMENT_ENTRY_CHAT_PROPOSAL + "reject";
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
@@ -1687,12 +1689,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "H-0001", "relay-cursor-order", "plan", "integrity_pause",
                     "the plan's store file references.json changed outside the runtime",
                     0, null, "references.json", 4812L, "3f9a6b2cc21e", 5034L, "b70d41aa9a44",
-                    List.of("retry", ACTION_ACCEPT, "abort"), null));
+                    List.of(ACTION_RETRY, ACTION_ACCEPT, ACTION_ABORT), null));
             controlHolds.put(holdKey("relay-docs", "H-0002"), new HoldRecord(
                     "H-0002", "relay-docs", "plan", "held",
                     "waits: overlap with relay-auth-v2 (2 files)",
                     1, Instant.parse(CONST_TIME_10_14), null, null, null, null, null,
-                    List.of("retry", "end_plan"), null));
+                    List.of(ACTION_RETRY, "end_plan"), null));
 
             controlSettingsRevisions.put(CONST_FIX_RELAY, 7);
             var values = new LinkedHashMap<String, PlanSettingsValue>();
@@ -3388,7 +3390,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("GET".equals(method) && path.endsWith("/chat")) {
+        if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
             var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
             handleGetChat(response, controlSubjectId(path, prefix, "/chat"));
             return true;
@@ -3588,11 +3590,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             var act = resolution.act();
-            var ending = "abort".equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
-            var released = ACTION_ACCEPT.equals(act) || "retry".equals(act) || "grant".equals(act)
+            var ending = ACTION_ABORT.equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
+            var released = ACTION_ACCEPT.equals(act) || ACTION_RETRY.equals(act) || "grant".equals(act)
                     || "add_credential".equals(act) || "raise_budget".equals(act)
                     || "give_up_removal".equals(act) || "recycle".equals(act);
-            if ("integrity_pause".equals(hold.kind()) && "retry".equals(act)) {
+            if ("integrity_pause".equals(hold.kind()) && ACTION_RETRY.equals(act)) {
                 released = false;
             }
             HoldResolutionResult result;
@@ -3605,7 +3607,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
                         PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
                         resolution.reason() != null ? resolution.reason()
-                                : ("abort".equals(act) ? "Integrity pause aborted" : "Ended by operator")).toMap());
+                                : (ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator")).toMap());
                 result = new HoldResolutionResult(holdId, true, null, planId);
             } else if (released) {
                 controlHolds.remove(holdKey(planId, holdId));
