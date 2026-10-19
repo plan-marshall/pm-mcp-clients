@@ -171,8 +171,8 @@ describe('ListenerOffView', () => {
   it('says the machine is not reachable and that the pairing stays', () => {
     arrange({
       isListenerClosed: true,
+      listenerClosedAt: '2026-10-19T14:32:00Z',
       currentRoute: 'listener-off',
-      revokedInfo: { revoked_at: '14:32' },
     });
 
     render(ListenerOffView);

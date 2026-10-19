@@ -35,6 +35,8 @@ export interface RuntimeState {
   isOffline: boolean;
   /** The network listener this browser reached the machine over was turned off. */
   isListenerClosed: boolean;
+  /** When that listener was turned off, for the page that waits for it. */
+  listenerClosedAt?: string | null;
   isDraining: boolean;
   drainInfo?: { count?: number; what?: string; who?: string; since?: string } | null;
   isStopped: boolean;
@@ -69,6 +71,7 @@ const initialState: RuntimeState = {
   revokedInfo: null,
   isOffline: false,
   isListenerClosed: false,
+  listenerClosedAt: null,
   isDraining: false,
   drainInfo: null,
   isStopped: false,
@@ -304,9 +307,11 @@ const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
  */
 function markListenerClosed(): void {
   const onLoopback = typeof window === 'undefined' || loopbackHosts.has(window.location.hostname);
+  const closedAt = new Date().toISOString();
   runtimeStore.update((s) => ({
     ...s,
     isListenerClosed: true,
+    listenerClosedAt: s.listenerClosedAt ?? closedAt,
     currentRoute: onLoopback ? s.currentRoute : 'listener-off',
   }));
 }
@@ -320,7 +325,7 @@ function handleListenerChanged(data: unknown): void {
   if (changed.state === 'closed') {
     markListenerClosed();
   } else {
-    runtimeStore.update((s) => ({ ...s, isListenerClosed: false }));
+    runtimeStore.update((s) => ({ ...s, isListenerClosed: false, listenerClosedAt: null }));
   }
 }
 
@@ -470,10 +475,35 @@ export function navigateTo(route: AppRoute): void {
     ...s,
     currentRoute: route,
   }));
-  if (typeof window !== 'undefined' && window.history) {
-    const path = pathForRoute(route);
-    if (path && window.location.pathname !== path) {
-      window.history.pushState({ route }, '', path);
+  const path = pathForRoute(route);
+  if (path) {
+    void syncUrl(path, false);
+  }
+}
+
+/**
+ * Puts a path in the address bar without reloading the view.
+ *
+ * SvelteKit's router is preferred, so its state stays in step; a bare browser without a running
+ * router (the unit tests) falls back to the history API.
+ *
+ * @param path the path to show
+ * @param replace `true` to replace the current entry instead of pushing one
+ */
+export async function syncUrl(path: string, replace: boolean): Promise<void> {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  if (window.location.pathname === path && !replace) {
+    return;
+  }
+  try {
+    const { goto } = await import('$app/navigation');
+    await goto(path, { replace, noScroll: true, keepFocus: true });
+  } catch {
+    if (window.location.pathname !== path) {
+      const method = replace ? 'replaceState' : 'pushState';
+      window.history[method]({ path }, '', path);
     }
   }
 }
@@ -542,29 +572,44 @@ export async function stepOnboarding(link: string): Promise<void> {
 }
 
 /**
+ * The outcome of storing a rotated or replaced token.
+ */
+export interface StoreCredentialResult {
+  /** `true` when the secret was stored. */
+  ok: boolean;
+  /** The reason a store failed, for the message; empty when it succeeded. */
+  cause: string;
+  /** `true` when the secret was stored but its kind could not be recorded. */
+  kindFailed: boolean;
+}
+
+/**
  * Records the token of a credential, either rotated in place or replaced by a new entry.
  *
  * @param key the credential key, e.g. `github`
  * @param secret the new secret; it is written once and never read back
  * @param kind the kind of a replaced entry, or `null` to keep the recorded kind
- * @returns `true` when the runtime stored it
+ * @returns what happened, so the screen can name it
  */
 export async function storeCredential(
   key: string,
   secret: string,
   kind: string | null = null,
-): Promise<boolean> {
+): Promise<StoreCredentialResult> {
   const revision = get(runtimeStore).machineSettings?.revision ?? 0;
   try {
     await apiClient.setCredential(key, secret);
-    if (kind) {
-      await apiClient.updateMachineSetting(`credential:${key}`, kind, revision);
-    }
-    await loadMachineSettings();
-    return true;
-  } catch {
-    return false;
+  } catch (err) {
+    return { ok: false, cause: (err as Error)?.message ?? '', kindFailed: false };
   }
+  // The secret is stored; a kind change that fails does not undo it.
+  if (kind) {
+    const result = await apiClient.updateMachineSetting(`credential:${key}`, kind, revision);
+    await loadMachineSettings();
+    return { ok: true, cause: '', kindFailed: !result?.applied };
+  }
+  await loadMachineSettings();
+  return { ok: true, cause: '', kindFailed: false };
 }
 
 export async function startOnboardingAuto(): Promise<void> {

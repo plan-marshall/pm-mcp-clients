@@ -37,14 +37,9 @@ const ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
 };
 
 /** Routes that are reachable by path alone, without a selected plan or epic. */
-const PATH_ROUTES: ReadonlyArray<{ path: string; route: AppRoute }> = [
-  { path: '/settings/machine', route: 'machine-settings' },
-  { path: '/settings', route: 'settings' },
-  { path: '/onboarding', route: 'onboarding' },
-  { path: '/entry', route: 'entry' },
-  { path: '/pair', route: 'pair' },
-  { path: '/projects', route: 'projects' },
-];
+const PATH_ROUTES: ReadonlyArray<{ path: string; route: AppRoute }> = (
+  Object.entries(ROUTE_PATHS) as Array<[AppRoute, string]>
+).map(([route, path]) => ({ path, route }));
 
 /**
  * Resolves the route a path names.

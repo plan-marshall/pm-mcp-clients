@@ -31,6 +31,7 @@
   let cleanupRemindDays = 3;
   let conflict: ConflictState | null = null;
   let rotating: MachineCredentialStatus | null = null;
+  let rotatingMode: 'rotate' | 'replace' = 'rotate';
   let rotatingSecret = '';
   let rotatingKind = '';
   let isSavingToken = false;
@@ -71,7 +72,7 @@
       return;
     }
     if (!result) {
-      error = $t('web.settings.credentials.store_unavailable');
+      error = $t('web.settings.update_failed');
       return;
     }
     notice = $t('web.settings.saved');
@@ -94,11 +95,10 @@
     await applySetting(key, wanted);
   }
 
-  /** Keeps the other client's value and closes the dialogue. */
+  /** Keeps the other client's value and closes the dialogue, without writing anything. */
   async function keepCurrentValue(): Promise<void> {
     conflict = null;
-    await loadMachineSettings();
-    notice = $t('web.settings.saved');
+    applyLocal(await loadMachineSettings());
   }
 
   async function withdraw(consent: ConsentRecord): Promise<void> {
@@ -116,8 +116,9 @@
     notice = $t('web.settings.consents.withdrawn');
   }
 
-  function startRotate(credential: MachineCredentialStatus): void {
+  function startRotate(credential: MachineCredentialStatus, mode: 'rotate' | 'replace'): void {
     rotating = credential;
+    rotatingMode = mode;
     rotatingSecret = '';
     rotatingKind = credential.kind;
     tokenNotice = '';
@@ -133,14 +134,21 @@
     if (!rotating || !rotatingSecret || isSavingToken) return;
     isSavingToken = true;
     tokenError = '';
-    const ok = await storeCredential(rotating.key, rotatingSecret, rotatingKind);
+    // A rotation keeps the recorded kind; a replacement records the chosen one.
+    const kind = rotatingMode === 'replace' ? rotatingKind : null;
+    const result = await storeCredential(rotating.key, rotatingSecret, kind);
     isSavingToken = false;
-    if (ok) {
+    if (result.ok) {
       tokenNotice = $t('web.settings.credentials.rotated', { key: rotating.key });
       rotatingSecret = '';
       rotating = null;
+      if (result.kindFailed) {
+        tokenError = $t('web.settings.update_failed');
+      }
     } else {
-      tokenError = $t('web.settings.credentials.failed', { cause: '' });
+      tokenError = $t('web.settings.credentials.failed', {
+        cause: result.cause || $t('web.settings.update_failed'),
+      });
     }
   }
 
@@ -329,14 +337,14 @@
               </span>
               <Button
                 variant="ghost"
-                on:click={() => startRotate(credential)}
+                on:click={() => startRotate(credential, 'rotate')}
                 data-testid={`rotate-${credential.key}`}
               >
                 {$t('web.settings.credentials.rotate')}
               </Button>
               <Button
                 variant="ghost"
-                on:click={() => startRotate(credential)}
+                on:click={() => startRotate(credential, 'replace')}
                 data-testid={`replace-${credential.key}`}
               >
                 {$t('web.settings.credentials.replace')}
@@ -366,7 +374,12 @@
     <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="rotate-modal">
       <div class="modal-card">
         <h2 class="modal-title">
-          {$t('web.settings.credentials.rotate_title', { key: rotating.key })}
+          {$t(
+            rotatingMode === 'replace'
+              ? 'web.settings.credentials.replace_title'
+              : 'web.settings.credentials.rotate_title',
+            { key: rotating.key },
+          )}
         </h2>
         <dl class="rotate-details">
           <div class="rotate-details__row">
@@ -376,12 +389,37 @@
                 provider: rotating.provider,
               })}
             </dt>
-            <dd>{$t('web.settings.credentials.rotate_explain')}</dd>
+            <dd>
+              {$t(
+                rotatingMode === 'replace'
+                  ? 'web.settings.credentials.replace_explain'
+                  : 'web.settings.credentials.rotate_explain',
+              )}
+            </dd>
           </div>
-          <div class="rotate-details__row">
-            <dt>{$t('web.settings.credentials.kind')}</dt>
-            <dd>{rotating.kind}</dd>
-          </div>
+          {#if rotatingMode === 'replace'}
+            <div class="rotate-details__row">
+              <dt>
+                <label class="rotate-label" for="replace-kind">
+                  {$t('web.settings.credentials.kind')}
+                </label>
+              </dt>
+              <dd>
+                <input
+                  id="replace-kind"
+                  type="text"
+                  class="rotate-input"
+                  bind:value={rotatingKind}
+                  data-testid="replace-kind"
+                />
+              </dd>
+            </div>
+          {:else}
+            <div class="rotate-details__row">
+              <dt>{$t('web.settings.credentials.kind')}</dt>
+              <dd>{rotating.kind}</dd>
+            </div>
+          {/if}
           <div class="rotate-details__row">
             <dt>
               {$t('web.settings.credentials.now', {

@@ -233,7 +233,13 @@
         <div class="state-card" role="alert">
           <h1 class="state-card__title">{$t('onboard.error.no_state')}</h1>
           <div class="state-card__actions">
-            <Button variant="secondary" on:click={() => void loadOnboardingState()}>
+            <Button
+              variant="secondary"
+              on:click={async () => {
+                const state = await loadOnboardingState();
+                loadFailed = state === null && $runtimeStore.isPaired;
+              }}
+            >
               {$t('onboard.error.retry')}
             </Button>
           </div>

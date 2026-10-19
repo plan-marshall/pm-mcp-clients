@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import { runtimeStore, initRuntime } from '../stores/runtime';
@@ -7,13 +8,32 @@
    * The page of a device whose network listener was turned off.
    *
    * The device stays paired, so its secret is not deleted: the page says why it cannot reach the
-   * machine and connects again by itself once the listener is on.
+   * machine and connects again by itself once the listener is on (checked on a quiet timer, with
+   * the button for an immediate try).
    */
-  let isReconnecting = false;
+  const RETRY_MS = 15_000;
 
-  $: closedAt = $runtimeStore.revokedInfo?.revoked_at ?? '';
+  let isReconnecting = false;
+  let retry: ReturnType<typeof setInterval> | null = null;
+  let isMounted = true;
+
+  onMount(() => {
+    isMounted = true;
+    retry = setInterval(() => void reconnect(), RETRY_MS);
+  });
+
+  onDestroy(() => {
+    isMounted = false;
+    if (retry) {
+      clearInterval(retry);
+      retry = null;
+    }
+  });
+
+  $: closedAt = $runtimeStore.listenerClosedAt ?? '';
 
   async function reconnect(): Promise<void> {
+    if (isReconnecting || !isMounted) return;
     isReconnecting = true;
     try {
       await initRuntime();
@@ -30,7 +50,10 @@
     {#if closedAt}
       <p class="listener-off__reason">
         {$t('web.entry.lan_off.reason', {
-          time: closedAt,
+          time: new Date(closedAt).toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
           command: 'pm-operator web lan',
         })}
       </p>

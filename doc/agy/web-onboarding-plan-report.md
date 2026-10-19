@@ -1,8 +1,8 @@
 # Completion Report: `web-onboarding` (Onboarding and Start in the Web App)
 
-Governed by [`doc/agy/runbook.md`](../runbook.md). The plan is archived at
-[`doc/agy/implemented/web-onboarding-plan.md`](web-onboarding-plan.md); the work package at
-[`doc/plans/implemented/web-onboarding.adoc`](../../plans/implemented/web-onboarding.adoc).
+Governed by [`doc/agy/runbook.md`](runbook.md). The plan is archived at
+[`doc/agy/implemented/web-onboarding-plan.md`](implemented/web-onboarding-plan.md); the work package at
+[`doc/plans/implemented/web-onboarding.adoc`](../plans/implemented/web-onboarding.adoc).
 
 ## Executive Summary
 

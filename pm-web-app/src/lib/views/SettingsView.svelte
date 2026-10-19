@@ -5,6 +5,7 @@
   import LanListenerModal from '../components/LanListenerModal.svelte';
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
+  import { currentLocale } from '../i18n';
   import { runtimeStore, navigateTo } from '../stores/runtime';
 
   /**
@@ -177,10 +178,7 @@
     if (!rawDate) return '';
     const date = new Date(rawDate);
     if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleDateString($runtimeStore.machineName ? undefined : 'en', {
-      day: 'numeric',
-      month: 'short',
-    });
+    return date.toLocaleDateString($currentLocale, { day: 'numeric', month: 'short' });
   }
 
   /**
@@ -191,7 +189,7 @@
     if (!rawDate) return '';
     const date = new Date(rawDate);
     if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleString(undefined, {
+    return date.toLocaleString($currentLocale, {
       day: 'numeric',
       month: 'short',
       hour: '2-digit',

@@ -154,7 +154,7 @@
       </div>
       {#if planDefaults.posture}
         <div class="defaults-list__row">
-          <dt>{$t('onboard.defaults.review.method')}</dt>
+          <dt>{$t('onboard.defaults.review.posture')}</dt>
           <dd class="mono">{planDefaults.posture}</dd>
         </div>
       {/if}
