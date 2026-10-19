@@ -88,7 +88,7 @@ packs carry the same keys.
 | Suite | Result |
 |---|---|
 | `pm-api` unit tests | 619 tests, 0 failures, 0 errors |
-| `pm-operator` unit tests | 564 tests, 0 failures, 0 errors |
+| `pm-operator` unit tests | 574 tests, 0 failures, 0 errors |
 | `pm-mock-runtime` unit tests | 307 tests, 0 failures, 0 errors |
 | `pm-exec` / `pm-relay` | 87 / 25 tests, 0 failures (3 pre-existing skips in `pm-exec`) |
 | Whole reactor `./mvnw verify -Ppre-commit` | `BUILD SUCCESS` (4 min 57 s) |

@@ -748,11 +748,11 @@ final class StartDialogue {
 
     private void printMissing(StartPrompt.MissingInputException missing) {
         prompt.line("start.no_input.need", Map.of(
-                            "state", missing.state(),
+                            KEY_STATE, missing.state(),
                             "need", missing.need()));
         if (missing.entryId() != null) {
             prompt.raw(JsonTree.write(Map.of(
-                                "state", missing.state(),
+                                KEY_STATE, missing.state(),
                                 "need", missing.need(),
                                 "entry", missing.entryId())));
         }

@@ -119,7 +119,7 @@ final class StartRenderer {
         if (ready == null) {
             return;
         }
-        prompt.raw(step(step, total) + " " + text("start.step.ready", Map.of()) + " \u00b7 "
+        prompt.raw(step(step, total) + " " + text("start.step.ready", Map.of()) + MIDDLE_DOT
                             + text("start.ready.heading", Map.of("kind", entry.kind().wireValue())));
         for (var source : entry.sources()) {
             var label = kindLabel(source.kind());
