@@ -59,11 +59,19 @@ Every feature, refactoring, or bug fix must follow this sequential lifecycle:
 
 ```
 [1. Worktree Creation] -> [2. Incremental Build & Impl] -> [3. Report & Plan Archival]
-                                                                     |
+      (Orchestrator)                  (Worker)                         (Worker)
+                                                                           |
 [8. Post-Landing Verify] <- [7. Sync & Cleanup] <- [6. Review Window] <- [5. Push & PR] <- [4. Pre-Commit Verification]
+      (Orchestrator)              (Worker)             (Worker)            (Worker)                 (Worker)
 ```
 
-### Step 1: Isolated Git Worktree Lifecycle
+### Session Roles & Boundaries
+
+- **Orchestrator Session**: Prepares Step 1 (worktree creation, checking off Step 1 in plan, initial branch push) and completes Step 8 (post-landing 4-dimension verification, moving report to `doc/agy/verified/`, updating indexes). The orchestrator never implements production code directly.
+- **Worker Session**: Executes Steps 2 through 7 inside its dedicated worktree. The worker reads `doc/agy/<topic>-plan.md` directly for its Scope, Persona Matrix, and Phased Technical Recipe—the orchestrator does not duplicate these into the launch prompt.
+- **Plan Session Boundary**: The worker must ONLY author the completion report at `doc/agy/<topic>-plan-report.md` and move the plan to `doc/agy/implemented/<topic>-plan.md`. The worker **never** moves reports to `doc/agy/verified/` (strictly reserved for Step 8 by the orchestrator).
+
+### Step 1: Isolated Git Worktree Lifecycle (Orchestrator Responsibility)
 
 Never implement directly on `main` within the repository root workspace.
 
@@ -77,6 +85,13 @@ Never implement directly on `main` within the repository root workspace.
    ```
    - Standard branch prefixes: `feat/`, `fix/`, `docs/`, `refactor/`, `test/`, `chore/`.
    - Work exclusively inside the created worktree directory.
+3. Check off Step 1 (`- [x] 1. Isolated worktree...`) in `doc/agy/<topic>-plan.md`, commit with co-author trailer, and push branch to origin:
+   ```bash
+   git commit -am "chore(plan): check off step 1 in <topic>-plan.md
+
+   Co-Authored-By: plan-marshall <noreply@cuioss.de>"
+   git push -u origin <branch-type>/<topic-name>
+   ```
 
 ### Step 2: Incremental Implementation & Plan Tracking
 
@@ -147,10 +162,12 @@ Before committing changes, determine the nature of the changes:
 
 ### Step 5: Commit & Pull Request Creation
 
-1. Commit with Conventional Commits format:
+1. Commit with Conventional Commits format and the mandatory co-author trailer:
    ```bash
    git add <modified-files>
-   git commit -m "<type>(<scope>): <clear, concise description>"
+   git commit -m "<type>(<scope>): <clear, concise description>
+
+   Co-Authored-By: plan-marshall <noreply@cuioss.de>"
    ```
 2. Push topic branch to origin:
    ```bash
@@ -160,11 +177,15 @@ Before committing changes, determine the nature of the changes:
    ```bash
    gh pr create --title "<type>(<scope>): <clear summary>" --body "<Detailed description of changes, rationale, and impacted components>"
    ```
-   - *Tip*: If fast-path review is authorized or for bot review bypass, add `--label "skip-bot-review"`.
+
+   > [!IMPORTANT]
+   > **The `skip-bot-review` Invariant**:
+   > - **Worker / Implementation PRs**: **NEVER** apply `--label "skip-bot-review"`. All worker PRs modifying code, tests, build configurations, resources, or mock scenarios must undergo full automated reviews by all review bots (CodeRabbit, Sourcery, cuioss-review-bot) and SonarCloud analysis. All findings must be resolved or refuted via `persona-code-reviewer`.
+   > - **Orchestrator Housekeeping PRs**: The label `--label "skip-bot-review"` is **STRICTLY RESERVED** for pure documentation/housekeeping PRs submitted by the orchestrator session (e.g., archiving verified completion reports, updating plan indexes, or landing runbook updates).
 
 ### Step 6: Review Window & 100% Findings Resolution
 
-There is a **zero-tolerance policy** for unaddressed automated findings or skipped review bots (unless `skip-bot-review` is explicitly authorized).
+There is a **zero-tolerance policy** for unaddressed automated findings or skipped review bots on worker implementation PRs. Workers must NEVER use `skip-bot-review` to bypass review bots.
 
 1. **Mandatory 5-Minute Wait**:
    Immediately after opening a PR (or after pushing any subsequent fix commit), schedule a 300-second timer using the `schedule` tool:
@@ -291,7 +312,7 @@ Generated classpath and configuration files must never be written directly to li
 
 ## 4. Plan Template Checklist
 
-Include this standardized checklist at the start of any new plan (`doc/agy/*-plan.md`):
+Include this standardized checklist in any new plan (`doc/agy/*-plan.md`):
 
 ```markdown
 ### Workflow Checklist (conforming to `doc/agy/runbook.md`)
@@ -302,9 +323,38 @@ Include this standardized checklist at the start of any new plan (`doc/agy/*-pla
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests.
-- [ ] 4. Final completion report written (`doc/agy/<topic>-plan-report.md`) and initial plan moved to `doc/agy/implemented/<topic>-plan.md`.
+- [ ] 3. Incremental implementation with tests following the phased technical recipe.
+- [ ] 4. Final completion report written (`doc/agy/<topic>-plan-report.md`), initial plan moved to `doc/agy/implemented/<topic>-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
 - [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
-- [ ] 6. PR opened (with `--label "skip-bot-review"` if authorized), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/<topic>-plan-report.md` by orchestrator session.
 ```
+
+---
+
+## 5. Canonical Worker Launch Prompt Standard
+
+Because every implementation plan (`doc/agy/<topic>-plan.md`) already defines its scope, isolation boundaries, persona matrix, and phased recipe, orchestrators launch workers using this concise canonical prompt:
+
+```markdown
+You are an autonomous senior developer agent executing the implementation plan in an isolated git worktree.
+
+### Worktree & Plan
+- Working Directory: `/Users/oliver/git/worktrees/<worktree-name>`
+- Branch: `<branch-name>`
+- Plan: `doc/agy/<topic>-plan.md`
+- Governed by: `doc/agy/runbook.md`
+
+### Instructions
+1. Step 1 is already complete. Read `doc/agy/<topic>-plan.md` and execute Steps 2 through 7.
+2. Adopt the cognitive personas and domain skills designated in Section 4 of the plan.
+3. Follow the 5-Phase Technical Recipe in Section 5 of the plan, with all tests passing locally.
+4. Pass pre-commit gate before committing (`./mvnw verify -Ppre-commit`).
+5. Author completion report `doc/agy/<topic>-plan-report.md`, move plan to `doc/agy/implemented/`, and update `doc/plans/README.adoc`. Do NOT move report to `verified/` (Step 8 is reserved for orchestrator).
+6. Open PR against `main`. Invariant: NEVER apply `--label "skip-bot-review"`. Resolve 100% of automated review bot findings via `persona-code-reviewer`.
+7. Enqueue in merge queue and land on `main`.
+8. All commits must include:
+   Co-Authored-By: plan-marshall <noreply@cuioss.de>
+```
+
