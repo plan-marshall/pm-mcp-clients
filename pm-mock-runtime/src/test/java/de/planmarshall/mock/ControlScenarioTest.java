@@ -432,4 +432,75 @@ class ControlScenarioTest {
             assertEquals(2, watches.items().size());
         }
     }
+
+    @Test
+    @DisplayName("carries a chat on with a turn and applies its proposal")
+    void shouldChatTurnAndProposal() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_CHAT)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var turnRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/turns",
+                    JsonTree.write(Map.of("text", "Make the test cover the SSE transport too.")))
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, turnRes.status());
+            var turned = ChatReadBackResource.fromJson(new String(turnRes.body()));
+            assertEquals(ChatState.TURN, turned.chatState());
+            assertEquals(4, turned.turns().size());
+            assertTrue(turned.turns().get(2).isOperator());
+
+            var acceptRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, acceptRes.status());
+            var accepted = ChatReadBackResource.fromJson(new String(acceptRes.body()));
+            assertEquals(ChatState.APPLY, accepted.chatState());
+            assertFalse(accepted.hasProposal());
+        }
+    }
+
+    @Test
+    @DisplayName("answers 404 for a control resource of an unknown subject")
+    void shouldAnswer404ForUnknownControlResource() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            for (var path : List.of(
+                    "/api/v1/epics/unknown-epic",
+                    "/api/v1/epics/unknown-epic/tokens",
+                    "/api/v1/epics/unknown-epic/archive-check",
+                    "/api/v1/epics/unknown-epic/decomposition",
+                    "/api/v1/epics/unknown-epic/review",
+                    "/api/v1/plans/unknown-plan/tokens",
+                    "/api/v1/plans/unknown-plan/chat")) {
+                var res = client.send(HttpRequest.get(path).withHeader(AUTH_HEADER, auth));
+                assertEquals(404, res.status(), path);
+            }
+
+            var turn = client.send(HttpRequest.json("POST", "/api/v1/plans/unknown-plan/chat/turns", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(404, turn.status());
+            var proposal = client.send(HttpRequest.json("POST",
+                    "/api/v1/plans/unknown-plan/chat/proposal/reject", "{}").withHeader(AUTH_HEADER, auth));
+            assertEquals(404, proposal.status());
+        }
+    }
+
+    @Test
+    @DisplayName("defaults a review to the findings register and honours a later query parameter")
+    void shouldDefaultReviewRegister() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var defaulted = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, defaulted.status());
+            assertEquals("findings", ReviewResource.fromJson(new String(defaulted.body())).register());
+
+            var second = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review?limit=1&register=watches")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals("watches", ReviewResource.fromJson(new String(second.body())).register());
+        }
+    }
 }

@@ -197,6 +197,27 @@ class ControlResourcesTest {
     }
 
     @Test
+    @DisplayName("answers the derived states of the resources")
+    void derivedStates() throws Exception {
+        var shipped = new WorkRow("p", "p", "shipped", null, null, List.of(), 211, null, null,
+                List.of(), List.of(), List.of());
+        var staged = new WorkRow("q", "q", "staged", "none", null, List.of(), null, null, null,
+                List.of(), List.of(), List.of());
+        assertTrue(shipped.isLocked());
+        assertFalse(staged.isLocked());
+
+        var epic = new EpicResource("e", "prj", "prj", null, "running", true, 0, 3, 1, null,
+                List.of(new EpicWorkstream("WS-1", "one", true, List.of(staged, shipped))),
+                List.of(), 0, new RegisterSummary(0, 0, 0), new RegisterSummary(0, 0, 0),
+                new EpicTokens(TokenFigure.notMeasured(), TokenFigure.notMeasured(), List.of()), List.of());
+        assertEquals(1, epic.stagedCount());
+        assertEquals(0, epic.tokens().notMeasuredCount());
+
+        var review = new ReviewResource("r", "e", "findings", List.of(), 0, 0, "open", null, null);
+        assertNull(review.item("missing"));
+    }
+
+    @Test
     @DisplayName("rejects malformed JSON for every new resource")
     void rejectsMalformed() {
         assertThrows(JsonFormatException.class, () -> EpicResource.fromJson("[]"));
