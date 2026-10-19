@@ -8,7 +8,8 @@
  * the root of this repository.
  */
 /**
- * Data contracts and event representations of the entry: pairing, the loopback and LAN
- * listeners, the connection status, and the events both clients observe (UC-ENT-1).
+ * Data contracts and event representations of the entry: the runtime status the clients read, the
+ * loopback and LAN listeners, pairing, the paired devices, the web credential entry, and the events
+ * both clients observe (UC-ENT-1, UC-ENT-2, UC-ONB-8).
  */
 package de.planmarshall.api.entry;

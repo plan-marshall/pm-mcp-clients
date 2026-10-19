@@ -1,0 +1,54 @@
+{
+  "format_version": 1,
+  "name": "entry-lan-conflict",
+  "description": "The network listener could not open because its port is occupied on a local address: the open is refused web_listener_conflict and the loopback listener stays open (UC-ENT-1, 03-web-server.adoc#web-listener-bind)",
+  "start": "entry.lan-conflict",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.0",
+        "machine": "mock-machine",
+        "onboarded": true,
+        "onboard": {
+          "state": "onboard.completed",
+          "step": 7,
+          "steps": 7,
+          "completed": true
+        },
+        "web": {
+          "enabled": true,
+          "lan": false,
+          "port": 7420,
+          "lan_port": 7421,
+          "open": true
+        },
+        "paired_devices_count": 0
+      }
+    },
+    "GET /api/v1/web/devices": {
+      "representation": {
+        "devices": []
+      }
+    },
+    "PUT /api/v1/web/listeners/lan": {
+      "status": 409,
+      "representation": {
+        "error": "web_listener_conflict",
+        "message": "Port 7421 is in use on 192.168.1.20; stop the program that uses it or choose another port"
+      }
+    }
+  },
+  "states": {
+    "entry.lan-conflict": {
+      "representation": {
+        "scope": "machine",
+        "state": "entry.lan-conflict",
+        "summary": "The network listener did not open: port 7421 is in use on 192.168.1.20",
+        "loopback": "http://127.0.0.1:7420"
+      },
+      "links": {}
+    }
+  }
+}

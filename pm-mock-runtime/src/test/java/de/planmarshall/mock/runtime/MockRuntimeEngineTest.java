@@ -216,15 +216,20 @@ class MockRuntimeEngineTest {
         assertEquals("test-secret", res1.json().get("device_secret"));
         assertEquals("mock-device-1", res1.json().get("device_id"));
 
-        // 2. Pairing with matching code in query parameter (case and dash insensitive)
-        var res2 = send("POST", "/pair?code=kxqbmrtn", Map.of(), new byte[0], true);
+        // 2. A fresh code in the query parameter (case and dash insensitive); the redeemed code is single use
+        var pairings = send("POST", "/api/v1/web/pairings",
+                Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        assertEquals(201, pairings.status());
+        var freshCode = String.valueOf(pairings.json().get("code"));
+        var res2 = send("POST", "/pair?code=" + freshCode.toLowerCase().replace("-", ""),
+                Map.of(), new byte[0], true);
         assertEquals(200, res2.status());
         assertEquals("test-secret", res2.json().get("device_secret"));
 
         // 3. Pairing with mismatched code -> 400
         var res3 = send("POST", "/pair?code=wrong", Map.of(), new byte[0], true);
         assertEquals(400, res3.status());
-        assertEquals("invalid_code", res3.json().get("error"));
+        assertEquals("pairing_invalid", res3.json().get("error"));
     }
 
     @Test

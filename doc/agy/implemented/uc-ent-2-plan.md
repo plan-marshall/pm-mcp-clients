@@ -13,7 +13,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.md`]
 | **Use Case** | [`plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2`](file:///Users/oliver/git/plan-marshall-documentation/doc/use-cases/02-entry.adoc) |
 | **Specifications** | [`03-web-server.adoc#devices`](file:///Users/oliver/git/plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc), [`01-processes-and-transport.adoc#local-api`](file:///Users/oliver/git/plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc), [`06-event-catalogue.adoc`](file:///Users/oliver/git/plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc) |
 | **Local Client Design** | Shared: [`doc/design/shared/paired-devices.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/design/shared/paired-devices.adoc)<br>CLI: [`doc/design/terminal-client/08-transcripts-later.adoc#t-devices`](file:///Users/oliver/git/pm-mcp-clients/doc/design/terminal-client/08-transcripts-later.adoc)<br>Web: [`doc/design/web-app/machine-settings.adoc#devices`](file:///Users/oliver/git/pm-mcp-clients/doc/design/web-app/machine-settings.adoc) |
-| **Roadmap Package** | [`doc/plans/entry-contract.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/plans/entry-contract.adoc) |
+| **Roadmap Package** | [`doc/plans/implemented/entry-contract.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/plans/implemented/entry-contract.adoc) |
 | **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](file:///Users/oliver/git/pm-mcp-clients/doc/meta/implement_use-cases.md) |
 | **Operational SOP** | [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md) |
 

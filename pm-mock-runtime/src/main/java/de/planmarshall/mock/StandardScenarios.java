@@ -10,6 +10,7 @@
 package de.planmarshall.mock;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 
 import lombok.experimental.UtilityClass;
@@ -103,6 +104,77 @@ public final class StandardScenarios {
      * and network listener toggling.
      */
     public static final String PAIRED_DEVICES = "paired-devices";
+
+    /**
+     * The entry on a machine that has not been onboarded: the onboarding has not started
+     * (UC-ENT-1, {@code entry.check-onboarded}).
+     */
+    public static final String ENTRY_UNONBOARDED = "entry-unonboarded";
+
+    /**
+     * The entry with the onboarding running, offered in the terminal and in the web app
+     * (UC-ENT-1, {@code entry.where-to-onboard}).
+     */
+    public static final String ENTRY_ONBOARDING = "entry-onboarding";
+
+    /**
+     * The entry on an onboarded machine whose browser is paired already: no code, the loopback
+     * URL printed (UC-ENT-1, {@code entry.browser}).
+     */
+    public static final String ENTRY_PAIRED_BROWSER = "entry-paired-browser";
+
+    /**
+     * The entry in an SSH session: the ways in to copy, a code even when a browser of the machine
+     * is paired (UC-ENT-1, {@code entry.show}).
+     */
+    public static final String ENTRY_SSH_SESSION = "entry-ssh-session";
+
+    /**
+     * The entry after a redemption: the redeemed code is single use and the next one is fresh
+     * (UC-ENT-1, {@code entry.wait}, 03-web-server.adoc#fresh-code).
+     */
+    public static final String ENTRY_FRESH_CODE = "entry-fresh-code";
+
+    /**
+     * The network listener could not open because its port is occupied; the open is refused
+     * {@code web_listener_conflict} and the loopback listener stays open
+     * (UC-ENT-1, 03-web-server.adoc#web-listener-bind).
+     */
+    public static final String ENTRY_LAN_CONFLICT = "entry-lan-conflict";
+
+    /**
+     * A credential entered on the network listener is refused {@code loopback_only}
+     * (UC-ONB-8, 03-web-server.adoc#web-credentials).
+     */
+    public static final String ENTRY_LAN_CREDENTIALS = "entry-lan-credentials";
+
+    /**
+     * The paired devices renamed, revoked, and revoked as all others; the list is served with the
+     * {@code paired_by} of every device (UC-ENT-2, 03-web-server.adoc#devices).
+     */
+    public static final String ENTRY_DEVICE_LIFECYCLE = "entry-device-lifecycle";
+
+    /**
+     * A revoked device's stream ends with {@code stream.closed} and the reason {@code device_revoked},
+     * and the LAN listener's close ends its streams with {@code listener_closed}
+     * (UC-ENT-2, 06-event-catalogue.adoc#stream.closed).
+     */
+    public static final String ENTRY_STREAM_CLOSE = "entry-stream-close";
+
+    /**
+     * The cases of the entry, one scenario per case of the use cases UC-ENT-1, UC-ENT-2, and
+     * UC-ONB-8, in the order of the flow.
+     */
+    public static final List<String> ENTRY_CASES = List.of(
+            ENTRY_UNONBOARDED,
+            ENTRY_ONBOARDING,
+            ENTRY_PAIRED_BROWSER,
+            ENTRY_SSH_SESSION,
+            ENTRY_FRESH_CODE,
+            ENTRY_LAN_CONFLICT,
+            ENTRY_LAN_CREDENTIALS,
+            ENTRY_DEVICE_LIFECYCLE,
+            ENTRY_STREAM_CLOSE);
 
     /**
      * Overview of running work across projects, plans, and epics with ended work archive (UC-PLN-4).
@@ -226,44 +298,21 @@ public final class StandardScenarios {
     public static final String OPERATOR_INTERACTION = "operator-interaction";
 
     /**
-     * Unmodifiable list of all delivered standard scenario names.
+     * Unmodifiable list of all delivered standard scenario names. The entry cases are derived from
+     * {@link #ENTRY_CASES}, so a new case is listed here by construction.
      */
-    public static final List<String> ALL = List.of(
-            STATUS_ONLY,
-            ONBOARDING_HAPPY,
-            ONBOARDING_HARNESS_NOT_LOGGED_IN,
-            ONBOARDING,
-            ONBOARDING_HARNESS_TOKENS_COMPLETE,
-            ONBOARDING_HARNESS_TOKENS_PARTIAL,
-            ONBOARDING_HARNESS_TOKENS_NOT_REPORTED,
-            ONBOARDING_HARNESS_ALL_FAILED,
-            ONBOARDING_REFUSALS,
-            ONBOARDING_UNKNOWN_HARNESS,
-            ONBOARDING_SETTINGS_CONFLICT,
-            WEB_PAIRING,
-            ENTRY,
-            PAIRED_DEVICES,
-            RUNNING_WORK,
-            REPORTS,
-            DECISIONS,
-            SYSTEM,
-            PROJECTS,
-            PLAN_VIEW,
-            CONTROL,
-            CONTROL_PAUSE,
-            CONTROL_HOLDS,
-            CONTROL_SETTINGS,
-            CONTROL_EPIC,
-            CONTROL_DECOMPOSITION,
-            CONTROL_CHAT,
-            CONTROL_REVIEW,
-            CONTROL_TOKENS,
-            START,
-            LESSON_SOURCE,
-            GIT_SOURCES,
-            DECOMPOSITION,
-            DESIGNER,
-            ENROLMENT,
-            OPERATOR_INTERACTION
-    );
+    public static final List<String> ALL = Stream.of(
+            List.of(STATUS_ONLY, ONBOARDING_HAPPY, ONBOARDING_HARNESS_NOT_LOGGED_IN, ONBOARDING,
+                    ONBOARDING_HARNESS_TOKENS_COMPLETE, ONBOARDING_HARNESS_TOKENS_PARTIAL,
+                    ONBOARDING_HARNESS_TOKENS_NOT_REPORTED, ONBOARDING_HARNESS_ALL_FAILED,
+                    ONBOARDING_REFUSALS, ONBOARDING_UNKNOWN_HARNESS, ONBOARDING_SETTINGS_CONFLICT,
+                    WEB_PAIRING, ENTRY),
+            ENTRY_CASES,
+            List.of(PAIRED_DEVICES, RUNNING_WORK, REPORTS, DECISIONS, SYSTEM, PROJECTS, PLAN_VIEW, CONTROL,
+                    CONTROL_PAUSE, CONTROL_HOLDS, CONTROL_SETTINGS, CONTROL_EPIC, CONTROL_DECOMPOSITION,
+                    CONTROL_CHAT, CONTROL_REVIEW, CONTROL_TOKENS,
+                    START, LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
+                    OPERATOR_INTERACTION))
+            .flatMap(List::stream)
+            .toList();
 }
