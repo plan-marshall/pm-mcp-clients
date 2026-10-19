@@ -362,17 +362,15 @@ public final class PmConsole {
         if (event.data() == null || event.data().isBlank()) {
             return;
         }
+        Map<String, Object> eventMap;
         try {
-            var parsed = JsonTree.parse(event.data());
-            if (parsed instanceof Map<?, ?> map) {
-                @SuppressWarnings("unchecked")
-                var eventMap = (Map<String, Object>) map;
-                applyConsoleEvent(event.event(), eventMap, reader);
-            }
+            eventMap = JsonTree.asObject(JsonTree.parse(event.data()));
+        } catch (IOException _) {
+            // invalid json in the event stream: drop this event, keep the stream
+            return;
         }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (IOException | RuntimeException _) {
-            // invalid json or an unexpected field shape: drop this event, keep the stream
+        if (eventMap != null) {
+            applyConsoleEvent(event.event(), eventMap, reader);
         }
     }
 
@@ -402,8 +400,8 @@ public final class PmConsole {
                 issueFreshCodeAbove(reader);
             }
         } else if ("fresh_code".equals(type)) {
-            activePairingCode = (String) eventMap.get("code");
-            activePairingUrl = (String) eventMap.get("url");
+            activePairingCode = JsonTree.string(eventMap, "code");
+            activePairingUrl = JsonTree.string(eventMap, "url");
         }
     }
 

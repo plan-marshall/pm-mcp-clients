@@ -299,13 +299,13 @@ public final class ConsoleNotice {
             case "question", "decision" -> formatQuestion(locale,
                                 TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("id", "Q-???"))),
                                 TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault(SCOPE, "plan"))),
-                                (String) event.get("summary"),
-                                (String) event.get("text"),
-                                (String) event.get("recommendation"));
+                                stringOf(event, "summary"),
+                                stringOf(event, "text"),
+                                stringOf(event, "recommendation"));
             case "waiver_request" -> formatWaiverRequest(locale,
                                 TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("id", "WR-?"))),
                                 TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault(SCOPE, "plan"))),
-                                (String) event.get("gate"));
+                                stringOf(event, "gate"));
             case "paired" -> formatPairedNotice(locale,
                                 String.valueOf(event.getOrDefault("label", "unknown")));
             case "fresh_code" -> formatFreshCodeNotice(locale,
@@ -346,11 +346,11 @@ public final class ConsoleNotice {
                                 Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitize(scope)));
         }
         var id = String.valueOf(event.getOrDefault("id", ""));
-        var subject = (String) event.get(SUBJECT);
+        var subject = stringOf(event, SUBJECT);
         var leaf = extractLeaf(event);
 
         if (subject == null || subject.isBlank()) {
-            subject = (String) event.get("summary");
+            subject = stringOf(event, "summary");
         }
         if (subject == null || subject.isBlank()) {
             subject = MessageCatalogue.format(locale, "operator.console.notice.report_new", Map.of());
@@ -365,8 +365,13 @@ public final class ConsoleNotice {
                             Map.of("leaf", safeLeaf, SUBJECT, safeSubject, "id", TerminalSanitizer.sanitize(id)));
     }
 
+    private static @Nullable String stringOf(Map<String, Object> event, String key) {
+        var value = event.get(key);
+        return value instanceof String text ? text : null;
+    }
+
     private static String extractLeaf(Map<String, Object> event) {
-        var from = (String) event.get("from");
+        var from = stringOf(event, "from");
         if (from != null && !from.isBlank()) {
             if (from.contains(">")) {
                 return from.substring(from.lastIndexOf('>') + 1).trim();

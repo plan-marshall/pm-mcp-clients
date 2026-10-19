@@ -340,7 +340,7 @@ public final class EntryFlow {
             // fallback
         }
         var fallbackCode = "KXQB-MRTN";
-        return new PairingCode(fallbackCode, LOOPBACK_URL_PREFIX + port + "/pair#code=" + fallbackCode);
+        return new PairingCode(fallbackCode, LOOPBACK_URL_PREFIX + port + PAIR_CODE + fallbackCode);
     }
 
     /**
