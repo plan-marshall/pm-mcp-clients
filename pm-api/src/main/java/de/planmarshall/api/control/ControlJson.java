@@ -26,31 +26,40 @@ import de.planmarshall.api.json.JsonTree;
 final class ControlJson {
 
     /**
-     * Reads a JSON array of scalars as a list of strings.
+     * Reads a JSON array of scalars as a list of strings. An absent value yields an empty list, but
+     * a present value that is not an array fails closed.
      *
      * @param raw the raw tree value
      * @return the strings, never {@code null}
+     * @throws IOException if a present value is not an array
      */
-    static List<String> readStrings(Object raw) {
+    static List<String> readStrings(Object raw) throws IOException {
+        if (raw == null) {
+            return List.of();
+        }
         var array = JsonTree.asArray(raw);
         if (array == null) {
-            return List.of();
+            throw new JsonFormatException("Expected an array in a control record");
         }
         return array.stream().filter(Objects::nonNull).map(String::valueOf).toList();
     }
 
     /**
-     * Reads a JSON array of objects as a list of maps. A value that is not an array yields an empty
-     * list, but a non-object element fails closed instead of being dropped silently.
+     * Reads a JSON array of objects as a list of maps. An absent value yields an empty list, but a
+     * present value that is not an array, or an element that is not an object, fails closed instead
+     * of being dropped silently.
      *
      * @param raw the raw tree value
      * @return the object maps, never {@code null}
-     * @throws IOException if an element is not an object
+     * @throws IOException if a present value is not an array or an element is not an object
      */
     static List<Map<String, Object>> readObjects(Object raw) throws IOException {
+        if (raw == null) {
+            return List.of();
+        }
         var array = JsonTree.asArray(raw);
         if (array == null) {
-            return List.of();
+            throw new JsonFormatException("Expected an array in a control record");
         }
         var objects = new ArrayList<Map<String, Object>>();
         for (var item : array) {

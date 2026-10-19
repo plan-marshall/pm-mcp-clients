@@ -231,6 +231,11 @@ class ControlResourcesTest {
         // a non-object nested element fails closed instead of being dropped
         assertThrows(JsonFormatException.class,
                 () -> ArchiveCheck.fromJson("{\"epic_id\":\"e\",\"lines\":[false]}"));
+        // a present non-array value fails closed instead of becoming an empty list
+        assertThrows(JsonFormatException.class,
+                () -> ArchiveCheck.fromJson("{\"epic_id\":\"e\",\"lines\":\"x\"}"));
+        assertThrows(JsonFormatException.class,
+                () -> WorkRow.fromJson("{\"plan_id\":\"p\",\"deliverables\":\"x\"}"));
         assertThrows(JsonFormatException.class,
                 () -> ReviewItemResource.fromJson("{\"item_id\":\"F\",\"state\":\"fixed\"}"));
     }
