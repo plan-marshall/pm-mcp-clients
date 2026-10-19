@@ -155,6 +155,7 @@ final class StartRegistry {
     private static final String ROLE_DECOMPOSE = ChatRole.DECOMPOSE.value();
     private static final String PREFIX_ENTRY = "ent-";
     private static final String CHAT_PREFIX = "chat-";
+    private static final String ADD_PREFIX = "add_";
     private static final String CHAT_DIRECTORY = "chat";
     private static final String PATH_SEPARATOR = "/";
     private static final String PENDING_DIRECTORY = "pending/";
@@ -253,7 +254,6 @@ final class StartRegistry {
         private boolean localChanges;
         private final Map<SourceKind, Map<String, Object>> addOutcomes = new LinkedHashMap<>();
         private boolean created;
-        private boolean abandoned;
 
         StartEntry(String entryId, EntryKind kind, String projectId, String state) {
             this.entryId = entryId;
@@ -500,7 +500,7 @@ final class StartRegistry {
         if (!projectLandings.containsKey(projectId)) {
             return null;
         }
-        var entry = new StartEntry(nextEntryId(), request.kind(), projectId, STATE_SOURCES);
+        var entry = new StartEntry(nextEntryId(), request.kind(), projectId, openingState(request, projectId));
         entry.title = request.title();
         entry.objective = request.objective();
         entry.landing = projectLandings.get(projectId);
@@ -531,6 +531,9 @@ final class StartRegistry {
      * @return the opened entry, or {@code null} for an unknown project
      */
     synchronized @Nullable StartStateResource openFollowUp(String projectId, String description) {
+        if (!projectLandings.containsKey(projectId)) {
+            return null;
+        }
         var entry = new StartEntry(nextEntryId(), EntryKind.PLAN, projectId, STATE_SOURCES);
         entry.title = firstLine(description);
         entry.objective = description;
@@ -570,6 +573,9 @@ final class StartRegistry {
         if (entry == null) {
             return null;
         }
+        if ("abandon".equals(linkId)) {
+            return abandon(entry);
+        }
         if (linkId.startsWith("remove:")) {
             removeSource(entry, linkId.substring("remove:".length()));
         } else if (linkId.startsWith("retry:")) {
@@ -582,18 +588,15 @@ final class StartRegistry {
             chooseRecipe(entry, linkId.substring("choose:".length()));
         } else if (linkId.startsWith("documents_mode:")) {
             documentsMode(entry, linkId.substring("documents_mode:".length()));
+        } else if (linkId.startsWith(ADD_PREFIX)) {
+            addSourceAct(entry, linkId.substring(ADD_PREFIX.length()), body);
         } else {
             switch (linkId) {
-                case KEY_SOURCES -> entry.state = STATE_SOURCES;
-                case "recipe" -> entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
-                case "add_description" -> addDescription(entry, body);
-                case "add_documents" -> addDocuments(entry);
-                case "add_issue" -> addSource(entry, SourceKind.ISSUE);
-                case "add_lesson" -> addSource(entry, SourceKind.LESSON);
-                case "add_local_changes" -> addSource(entry, SourceKind.LOCAL_CHANGES);
-                case "add_pr" -> addSource(entry, SourceKind.PULL_REQUEST);
+                case StartStateResource.LINK_SOURCES -> entry.state = STATE_SOURCES;
+                case StartStateResource.LINK_RECIPE ->
+                    entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
                 case "chat" -> openChat(entry);
-                case KEY_START -> continueToReady(entry);
+                case StartStateResource.LINK_START -> continueToReady(entry);
                 case "back" -> entry.state = STATE_SOURCES;
                 case "create" -> create(entry, body);
                 case "set" -> setParameters(entry, body);
@@ -602,7 +605,6 @@ final class StartRegistry {
                     entry.adoptable = List.of();
                     entry.state = STATE_SOURCES;
                 }
-                case "abandon" -> abandon(entry);
                 default -> throw new ActRefused("act_not_available", "The entry does not offer " + linkId);
             }
         }
@@ -739,8 +741,15 @@ final class StartRegistry {
                 .filter(object -> JsonTree.string(object, KEY_NAME) != null
                         && JsonTree.string(object, KEY_PATH) != null)
                 .map(this::confinedFileFrom).toList();
-        var parent = relative.isEmpty() ? null : ".";
-        return new ConfinedFileListResource(projectId, root, relative, parent, files, false);
+        return new ConfinedFileListResource(projectId, root, relative, parentOf(relative), files, false);
+    }
+
+    private static @Nullable String parentOf(String relative) {
+        if (relative.isEmpty()) {
+            return null;
+        }
+        var slash = relative.lastIndexOf(PATH_SEPARATOR);
+        return slash > 0 ? relative.substring(0, slash) : ".";
     }
 
     private ConfinedFile confinedFileFrom(Map<String, Object> object) {
@@ -786,6 +795,33 @@ final class StartRegistry {
 
     // ---------------------------------------------------------------------------------------------
     // Acts
+
+    private String openingState(EntryOpenRequest request, String projectId) {
+        if (request.kind().epic() || request.recipeKey() != null) {
+            return STATE_SOURCES;
+        }
+        return projectRecipes.getOrDefault(projectId, List.of()).isEmpty() ? STATE_SOURCES : STATE_RECIPE;
+    }
+
+    private void addSourceAct(StartEntry entry, String kindWire, Map<String, Object> body) throws ActRefused {
+        var kind = SourceKind.fromWireOrNull(kindWire);
+        if (kind == null) {
+            throw new ActRefused("act_not_available", "No source kind carries the value " + kindWire);
+        }
+        var present = entry.sources.stream().map(SourceResource::kind)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        var offered = SourceKind.offered(entry.kind, present, entry.lessonsAvailable, entry.localChanges,
+                !LANDING_FILES.equals(entry.landing));
+        if (!offered.contains(kind)) {
+            throw new ActRefused("act_not_available", "The start does not offer the kind " + kindWire
+                    + " in its current list");
+        }
+        switch (kind) {
+            case DESCRIPTION -> addDescription(entry, body);
+            case DOCUMENTS -> addDocuments(entry);
+            default -> addSource(entry, kind);
+        }
+    }
 
     private void addDescription(StartEntry entry, Map<String, Object> body) {
         var text = JsonTree.string(body, KEY_TEXT);
@@ -1001,7 +1037,7 @@ final class StartRegistry {
 
     private String createdId(StartEntry entry, @Nullable String requestedPlanId) {
         if (entry.recipe != null) {
-            return RecipePlanId.derive(entry.recipeKey, LocalDateTime.now(ZoneOffset.UTC));
+            return planIdOf(entry);
         }
         if (requestedPlanId != null && !requestedPlanId.isBlank()) {
             return requestedPlanId.strip();
@@ -1013,16 +1049,18 @@ final class StartRegistry {
         return slug(title);
     }
 
-    private void abandon(StartEntry entry) {
+    private StartStateResource abandon(StartEntry entry) {
         if (entry.chat != null) {
             entry.chat.state = ChatState.END;
             entry.chat.proposal = null;
             entry.chat.transcript = StartTranscriptState.DELETED;
             entry.chat.transcriptPath = null;
         }
-        entry.abandoned = true;
         broadcaster.accept(new StartEvent(EVENT_ENTRY_ABANDONED, Map.of(KEY_ENTRY_ID, entry.entryId,
                 KEY_PROJECT_ID, entry.projectId)));
+        var representation = representation(entry);
+        entries.remove(entry.entryId);
+        return representation;
     }
 
     private void adopt(StartEntry entry, String epicId) throws ActRefused {
@@ -1053,9 +1091,6 @@ final class StartRegistry {
     // Derivation
 
     private void refresh(StartEntry entry) {
-        if (entry.abandoned) {
-            entry.state = STATE_REFUSED;
-        }
         entry.canContinue = canContinue(entry);
         entry.offers.clear();
         var present = entry.sources.stream().map(SourceResource::kind)
@@ -1193,7 +1228,8 @@ final class StartRegistry {
             return entry.planId;
         }
         if (entry.recipe != null) {
-            return RecipePlanId.derive(entry.recipeKey, LocalDateTime.of(2026, 10, 19, 14, 5, 0));
+            entry.planId = RecipePlanId.derive(entry.recipeKey, LocalDateTime.now(ZoneOffset.UTC));
+            return entry.planId;
         }
         if (entry.title != null) {
             return slug(entry.title);

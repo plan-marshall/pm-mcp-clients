@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "name": "start-refused",
-  "description": "A start refused at start.refused with its reason (machine_not_onboarded, project_not_ready) (UC-STA-1)",
+  "description": "A start refused at start.refused because its project is not ready, with the need and the action that fixes it (UC-STA-1)",
   "start": "start.refused",
   "pairing_code": "STRT-CMTR",
   "routes": {
@@ -27,12 +27,13 @@
           {
             "project_id": "pm-mcp-clients",
             "display_name": "pm-mcp-clients",
-            "readiness": "ready",
+            "readiness": "setup_needs",
             "active_plans_count": 0,
             "active_epics_count": 0,
-            "needs_operator_count": 0,
-            "setup_needs_operator": false,
-            "last_activity_at": "2026-10-16T15:36:00Z"
+            "needs_operator_count": 1,
+            "setup_needs_operator": true,
+            "last_activity_at": "2026-10-16T15:36:00Z",
+            "setup_need": "credential sonar"
           },
           {
             "project_id": "pm-mcp-core",

@@ -227,20 +227,14 @@ class StartScenarioTest {
     @Test
     @DisplayName("every start case scenario loads and is registered")
     void allStartScenariosLoad() {
-        var cases = List.of(StandardScenarios.START, StandardScenarios.START_SOURCES,
-                StandardScenarios.START_DOCUMENTS, StandardScenarios.START_ISSUE_FAILED,
-                StandardScenarios.START_UNSCREENED, StandardScenarios.START_LESSON,
-                StandardScenarios.START_RATE_LIMITED, StandardScenarios.START_LOCAL_CHANGES,
-                StandardScenarios.START_PULL_REQUEST, StandardScenarios.START_EPIC,
-                StandardScenarios.START_EPIC_ADOPT, StandardScenarios.START_REFUSED,
-                StandardScenarios.START_RECIPE, StandardScenarios.START_ENTRY_CONTINUE,
-                StandardScenarios.START_CHAT, StandardScenarios.START_FOLLOW_UP);
+        var cases = StandardScenarios.ALL.stream()
+                .filter(name -> StandardScenarios.START.equals(name) || name.startsWith("start-"))
+                .toList();
+        assertEquals(16, cases.size(), "the start and start-<case> scenarios");
 
         for (var name : cases) {
-            assertTrue(StandardScenarios.ALL.contains(name), name + " must be registered");
             var scenario = ScenarioLoader.load(name);
             assertEquals(name, scenario.name());
-            assertNotNull(scenario.startCase(), name + " carries its start fixtures");
             assertFalse(scenario.startCase().isEmpty(), name + " carries its start fixtures");
         }
     }
@@ -265,8 +259,15 @@ class StartScenarioTest {
 
                 var created = StartStateResource.fromJson(opened.bodyText());
                 assertTrue(created.entryId().startsWith("ent-"));
-                assertEquals(StartState.SOURCES, created.state());
+                assertEquals(StartState.RECIPE, created.state(),
+                        "a plan whose project offers recipes first chooses between sources and a recipe");
                 assertEquals("pm-mcp-clients", created.entry().projectId());
+
+                var sources = client.send(HttpRequest.json("POST",
+                        "/api/v1/entries/" + created.entryId() + "/links/sources", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, sources.status());
+                assertEquals(StartState.SOURCES, StartStateResource.fromJson(sources.bodyText()).state());
 
                 // the entry is addressed at the top level, never under its project
                 var fetched = client.send(HttpRequest.get("/api/v1/entries/" + created.entryId())
@@ -509,9 +510,8 @@ class StartScenarioTest {
                 var added = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/links/add_local_changes", "{}")
                         .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(200, added.status());
-                var withLocal = source(StartStateResource.fromJson(added.bodyText()), "src-local-1");
-                assertEquals(SourceKind.LOCAL_CHANGES, withLocal.kind());
+                assertEquals(409, added.status(),
+                        "the action is refused, not only the offer: landing.files cannot land local changes");
             }
         }
 
@@ -519,7 +519,7 @@ class StartScenarioTest {
         @DisplayName("start-pull-request serves a fork's changed files as untrusted")
         void pullRequestScenario() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_PULL_REQUEST)) {
-                addAndAssert(runtime, "add_pr", "src-pr-1", SourceKind.PULL_REQUEST);
+                addAndAssert(runtime, "add_pull_request", "src-pr-1", SourceKind.PULL_REQUEST);
                 var pr = source(fetch(runtime, "ent-3f9a2c41"), "src-pr-1");
                 assertEquals(SourceTrust.UNTRUSTED, pr.trust());
                 assertEquals(2, pr.changedFiles().size());

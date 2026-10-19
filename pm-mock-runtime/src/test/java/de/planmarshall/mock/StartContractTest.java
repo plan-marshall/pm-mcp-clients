@@ -36,13 +36,16 @@ import de.planmarshall.api.interaction.OperatorScopeKind;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.start.AdoptionFailureReason;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.api.start.ScreeningVerdict;
 import de.planmarshall.api.start.SourceFailureCause;
 import de.planmarshall.api.start.SourceKind;
 import de.planmarshall.api.start.SourceKindOffer;
 import de.planmarshall.api.start.SourceState;
+import de.planmarshall.api.start.SourceTrust;
 import de.planmarshall.api.start.StartChatResource;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
+import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("Start contract over the mock runtime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -126,7 +129,7 @@ class StartContractTest {
         void pullRequestFilesStayUntrusted() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_PULL_REQUEST)) {
                 var added = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/links/add_pr", "{}")
+                        "/api/v1/entries/ent-3f9a2c41/links/add_pull_request", "{}")
                         .withHeader("Authorization", "Bearer " + runtime.token()));
                 assertEquals(200, added.status());
 
@@ -159,13 +162,20 @@ class StartContractTest {
         }
 
         @Test
-        @DisplayName("the local changes are withheld under landing.files, with the project's setting named")
+        @DisplayName("the local changes are withheld under landing.files, and the act is refused")
         void localChangesUnderLandingFiles() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_LOCAL_CHANGES)) {
                 var state = fetch(runtime, "ent-3f9a2c41");
                 assertTrue(state.entry().kindOffers().stream()
                         .filter(offer -> offer.kind() == SourceKind.LOCAL_CHANGES)
                         .noneMatch(SourceKindOffer::available));
+                assertTrue(state.entry().sources().isEmpty());
+
+                var refused = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/add_local_changes", "{}")
+                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(409, refused.status(), "the withheld kind is not added by its act");
+                assertTrue(fetch(runtime, "ent-3f9a2c41").entry().sources().isEmpty());
             }
         }
     }
@@ -428,14 +438,30 @@ class StartContractTest {
     }
 
     @Test
-    @DisplayName("the mock scenario fixtures name the same closed values as the contract")
+    @DisplayName("every start scenario's fixture names only members of the closed contract catalogues")
     void fixturesUseTheContract() throws Exception {
-        for (var name : List.of(StandardScenarios.START_SOURCES, StandardScenarios.START_CHAT,
-                StandardScenarios.START_EPIC_ADOPT)) {
-            try (var runtime = MockRuntime.start(name)) {
-                var response = client(runtime).send(HttpRequest.get("/api/v1/recipes")
-                        .withHeader("Authorization", "Bearer " + runtime.token()));
-                assertEquals(200, response.status());
+        for (var name : StandardScenarios.ALL.stream()
+                .filter(candidate -> StandardScenarios.START.equals(candidate) || candidate.startsWith("start-"))
+                .toList()) {
+            var startCase = ScenarioLoader.load(name).startCase();
+            assertNotNull(StartState.fromWire((String) startCase.get("state")), name);
+            assertNotNull(EntryKind.fromWire((String) startCase.get("kind")), name);
+            for (var source : (List<?>) startCase.getOrDefault("sources", List.of())) {
+                var map = (Map<?, ?>) source;
+                SourceKind.fromWire((String) map.get("kind"));
+                SourceState.fromWire((String) map.get("state"));
+                var verdict = (String) map.get("verdict");
+                if (verdict != null) {
+                    ScreeningVerdict.fromWire(verdict);
+                }
+                var trust = (String) map.get("trust");
+                if (trust != null) {
+                    SourceTrust.fromWire(trust);
+                }
+                var failure = (Map<?, ?>) map.get("failure");
+                if (failure != null) {
+                    SourceFailureCause.fromWire((String) failure.get("cause"));
+                }
             }
         }
     }

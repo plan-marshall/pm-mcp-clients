@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "name": "start-sources",
-  "description": "A plan from one description; a plan from a description, documents, and an issue of another repository on Codeberg with its grant; an issue not found and tried again; a flagged issue accepted and one removed; an issue whose grant is refused (UC-STA-1, UC-STA-4)",
+  "description": "A plan from one description, and a plan from a description, documents, and an issue of another repository on Codeberg with its grant (UC-STA-1, UC-STA-4)",
   "start": "start.sources",
   "pairing_code": "STRT-CMTR",
   "routes": {

@@ -261,9 +261,8 @@ public final class StandardScenarios {
     public static final String START = "start";
 
     /**
-     * A plan from one description, a plan from a description, documents, and an issue of another
-     * repository, an issue not found and tried again, a flagged issue accepted and one removed, and
-     * an issue whose grant is refused (UC-STA-1, UC-STA-4).
+     * A plan from one description, and a plan from a description, documents, and an issue of another
+     * repository on Codeberg with its grant (UC-STA-1, UC-STA-4).
      */
     public static final String START_SOURCES = "start-sources";
 
@@ -320,7 +319,8 @@ public final class StandardScenarios {
     public static final String START_EPIC_ADOPT = "start-epic-adopt";
 
     /**
-     * A start refused at {@code start.refused} with its reason (UC-STA-1).
+     * A start refused at {@code start.refused} because its project is not ready, with the need and
+     * the action that fixes it (UC-STA-1).
      */
     public static final String START_REFUSED = "start-refused";
 
@@ -337,9 +337,8 @@ public final class StandardScenarios {
     public static final String START_ENTRY_CONTINUE = "start-entry-continue";
 
     /**
-     * The start chat: a question only, an addition accepted, a rewrite rejected, an epic's entry, a
-     * description-only entry, a chat disabled while an issue is not yet screened, and a create and an
-     * abandon each while a chat is still open (UC-STA-1, UC-CTL-1).
+     * The start chat of a plan's entry: a description-only entry with Chat available at once, a
+     * question only, and an addition to the description accepted (UC-STA-1, UC-CTL-1).
      */
     public static final String START_CHAT = "start-chat";
 

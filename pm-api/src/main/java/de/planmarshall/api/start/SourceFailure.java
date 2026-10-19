@@ -10,6 +10,7 @@
 package de.planmarshall.api.start;
 
 import java.io.IOException;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -149,7 +150,7 @@ public record SourceFailure(
         try {
             return new SourceFailure(cause, JsonTree.string(map, FIELD_DETAIL),
                     reset != null ? Instant.ofEpochSecond(reset) : null);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | DateTimeException e) {
             throw new JsonFormatException("Invalid SourceFailure: " + e.getMessage(), e);
         }
     }

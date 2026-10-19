@@ -172,7 +172,7 @@ public record StartStateResource(
         Objects.requireNonNull(entry, FIELD_ENTRY);
         var facts = factsOf(entry, ready, refusal, failure, recipes);
         var items = itemsOf(entry);
-        var links = linksOf(entry, chat);
+        var links = linksOf(entry, chat, recipes);
         var scope = new OperatorScope(OperatorScopeKind.ENTRY, entry.entryId(), entry.projectId(), null);
         var operator = new OperatorStateResource(scope, entry.state().wireValue(), null, "operator_wait", null,
                 null, null, List.of(), facts, List.of(), items, null, links);
@@ -344,6 +344,10 @@ public record StartStateResource(
         if (!recipes.isEmpty()) {
             facts.put("recipe_count", Integer.toString(recipes.size()));
         }
+        if (entry.kind() == EntryKind.PLAN && recipes.isEmpty()) {
+            facts.put("no_recipe_reason", Map.of("key", "start.choose.no_recipe",
+                    "args", Map.of("project", entry.projectId())));
+        }
         return facts;
     }
 
@@ -382,13 +386,14 @@ public record StartStateResource(
         return new OperatorItem(source.sourceId(), facts, List.of());
     }
 
-    private static List<OperatorLink> linksOf(EntryResource entry, @Nullable StartChatResource chat) {
+    private static List<OperatorLink> linksOf(EntryResource entry, @Nullable StartChatResource chat,
+                                              List<RecipeRef> recipes) {
         return switch (entry.state()) {
             case CHOOSE -> chooseLinks(entry);
             case SOURCES -> sourcesLinks(entry, chat);
             case READY -> readyLinks(entry);
-            case RECIPE -> List.of(backLink(entry));
-            case RECIPE_CHOOSE -> recipeChooseLinks(entry);
+            case RECIPE -> recipeChooseLinks(entry, recipes);
+            case RECIPE_CHOOSE -> recipeChooseLinks(entry, recipes);
             case RECIPE_PARAMETERS -> recipeParameterLinks(entry);
             case RECIPE_CREATE, RECIPE_STEP_CREATE -> List.of(createLink(entry));
             case REFUSED -> refusedLinks(entry);
@@ -428,13 +433,12 @@ public record StartStateResource(
                 abandonLink(entry));
     }
 
-    private static List<OperatorLink> recipeChooseLinks(EntryResource entry) {
+    private static List<OperatorLink> recipeChooseLinks(EntryResource entry, List<RecipeRef> recipes) {
         var links = new ArrayList<OperatorLink>();
-        if (entry.recipe() != null) {
-            var id = "choose:" + entry.recipe().key();
-            links.add(link(id, OperatorLinkRelation.NEXT, base(entry) + id, false));
-        }
-        links.add(backLink(entry));
+        recipes.stream().map(recipe -> "choose:" + recipe.key())
+                .forEach(id -> links.add(link(id, OperatorLinkRelation.NEXT, base(entry) + id, false)));
+        links.add(link(StartStateResource.LINK_RECIPE, OperatorLinkRelation.ALT,
+                base(entry) + StartStateResource.LINK_RECIPE, false));
         return links;
     }
 

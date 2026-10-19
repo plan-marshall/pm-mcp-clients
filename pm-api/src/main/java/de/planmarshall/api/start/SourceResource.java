@@ -91,9 +91,6 @@ public record SourceResource(
             FIELD_VERDICT, FIELD_FAILURE, FIELD_SPANS, FIELD_DISPOSITION, FIELD_DISPOSITION_REASON,
             FIELD_CHANGED_FILES, FIELD_DIGEST);
 
-    /** The kinds that come from outside the machine and are screened once stored. */
-    private static final Set<SourceKind> EXTERNAL = Set.of(SourceKind.ISSUE, SourceKind.PULL_REQUEST);
-
     public SourceResource {
         Objects.requireNonNull(sourceId, FIELD_SOURCE_ID);
         Objects.requireNonNull(kind, FIELD_KIND);
@@ -108,7 +105,11 @@ public record SourceResource(
         if (disposition != null && disposition.recordsReason() && trust != SourceTrust.UNTRUSTED) {
             throw new IllegalArgumentException("A source accepted while unscreened keeps the untrusted mark");
         }
-        if (EXTERNAL.contains(kind) && disposition == null && verdict == null
+        if (verdict != null && verdict.needsAcceptance() && trust != SourceTrust.UNTRUSTED) {
+            throw new IllegalArgumentException(
+                    "A flagged or unscreened source keeps the untrusted mark: " + verdict.wireValue());
+        }
+        if (kind.external() && disposition == null && verdict == null
                 && (state == SourceState.STORED || state == SourceState.FLAGGED || state == SourceState.UNSCREENED)) {
             throw new IllegalArgumentException("An external source stored without acceptance names its verdict");
         }

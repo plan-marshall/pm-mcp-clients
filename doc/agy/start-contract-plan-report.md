@@ -51,8 +51,8 @@ Concretely, the package delivers:
   transcript, and the one proposal; a create ends an open chat before the transcript moves, an
   abandon deletes it, and `FollowUpProposalResource` carries the follow-up plan of a chat about
   ended work.
-- **Sixteen `start-<case>` scenarios** driven by a new `start_case` scenario fixture, each asserted
-  through `StartScenarioTest`/`StartContractTest`.
+- **Fifteen `start-<case>` scenarios** plus the reworked `start.json`, driven by a new
+  `start_case` scenario fixture and each asserted through `StartScenarioTest`/`StartContractTest`.
 
 ---
 
@@ -106,7 +106,7 @@ Modified: `SourceKind` (combination rules and tolerant/closed resolution), `pack
 
 | File | Change |
 |---|---|
-| `scenarios/start*.json` | `start.json` reworked to carry a `start_case` fixture and an operator-interaction state representation; sixteen new `start-<case>` scenarios (`start-sources`, `start-documents`, `start-issue-failed`, `start-unscreened`, `start-lesson`, `start-rate-limited`, `start-local-changes`, `start-pull-request`, `start-epic`, `start-epic-adopt`, `start-refused`, `start-recipe`, `start-entry-continue`, `start-chat`, `start-follow-up`) |
+| `scenarios/start*.json` | `start.json` reworked to carry a `start_case` fixture and an operator-interaction state representation; fifteen new `start-<case>` scenarios (`start-sources`, `start-documents`, `start-issue-failed`, `start-unscreened`, `start-lesson`, `start-rate-limited`, `start-local-changes`, `start-pull-request`, `start-epic`, `start-epic-adopt`, `start-refused`, `start-recipe`, `start-entry-continue`, `start-chat`, `start-follow-up`) |
 | `StandardScenarios.java` | The constants of every new scenario, registered in `ALL` |
 | `scenario/Scenario.java`, `ScenarioLoader.java` | An optional `start_case` fixture block |
 | `runtime/StartRegistry.java` (new) | The live starts of the mock runtime: entries, sources, chats, recipes, ended-work chats, the confined file listing, and the act handling, seeded from the scenario fixture and derived through the `pm-api` records |
@@ -149,6 +149,9 @@ receives. `StandardScenariosTest` proves `ALL` lists exactly the declared consta
   drive prefix, a NUL, a traversal, or a real path that leaves the root is refused; the home root is
   loopback-only.
 - **An entry never expires** — no time limit, no sweep; a second read returns it unchanged.
+- **Abandoning deletes the entry** — the act returns the entry's last representation with the
+  transcript marked deleted and the entry is removed; it is never mapped to `start.refused`, which
+  the contract reserves for the setup gate.
 - **Mock runtime completeness** — the new scenarios load and are served, and a test per scenario
   asserts the representation a client receives.
 - **No uncatalogued user-facing text** — four new keys were added to both the English and German

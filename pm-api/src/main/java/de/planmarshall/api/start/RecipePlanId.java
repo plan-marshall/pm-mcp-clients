@@ -43,8 +43,8 @@ public final class RecipePlanId {
      * @return {@code recipe-{recipe_key}-{yyyy-mm-dd-hh-mm-ss}}
      */
     public static String derive(String recipeKey, LocalDateTime at) {
-        if (recipeKey == null || recipeKey.isBlank()) {
-            throw new IllegalArgumentException("A recipe key is required to derive its plan id");
+        if (!matchesKey(recipeKey)) {
+            throw new IllegalArgumentException("A valid recipe key is required to derive its plan id: " + recipeKey);
         }
         var utc = at == null ? LocalDateTime.now(ZoneOffset.UTC) : at;
         return PREFIX + recipeKey + "-" + TIMESTAMP.format(utc);

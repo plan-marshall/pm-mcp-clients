@@ -335,12 +335,16 @@ class StartContractTest {
                     "a short recipe key is still a valid id");
             assertTrue(RecipePlanId.isRecipePlanId(
                     RecipePlanId.derive("a", LocalDateTime.of(2026, 10, 12, 14, 5, 0))));
+            assertTrue(RecipePlanId.isRecipePlanId(
+                    RecipePlanId.derive("lint", LocalDateTime.of(2026, 10, 12, 14, 5, 0))));
             assertFalse(RecipePlanId.isRecipePlanId("coverage-2026-10-12-14-05-00"));
             assertFalse(RecipePlanId.isRecipePlanId("recipe-Coverage-2026-10-12-14-05-00"));
             assertFalse(RecipePlanId.isRecipePlanId("recipe-coverage-2026-13-12-14-05-00"));
             assertFalse(RecipePlanId.isRecipePlanId(null));
             var at = LocalDateTime.now();
             assertThrows(IllegalArgumentException.class, () -> RecipePlanId.derive(null, at));
+            assertThrows(IllegalArgumentException.class, () -> RecipePlanId.derive("Coverage", at));
+            assertThrows(IllegalArgumentException.class, () -> RecipePlanId.derive("", at));
         }
 
         @Test

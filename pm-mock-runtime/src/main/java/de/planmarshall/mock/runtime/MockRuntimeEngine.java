@@ -811,7 +811,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleProcessRoutes(request, response)
                 || handleDecompositionRoutes(request, response)
                 || handleGitSourceRoutes(request, response)
-                || handleStartRoutes(request, response)
+                || handleStartRoutes(request, response, isWeb)
                 || handleLessonSourceRoutes(request, response)
                 || handleControlRoutes(request, response);
     }
@@ -2441,10 +2441,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return ids;
     }
 
-    private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+    private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
         var path = request.path();
         if (handleStartEntryRoutes(request, response)
-                || handleStartProjectRoutes(request, response)
+                || handleStartProjectRoutes(request, response, isWeb)
                 || handleStartEndedRoutes(request, response)) {
             return true;
         }
@@ -2469,7 +2470,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return false;
     }
 
-    private boolean handleStartProjectRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+    private boolean handleStartProjectRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
         var path = request.path();
         if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
             return false;
@@ -2477,7 +2479,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if ("GET".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_FILES)) {
             var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
                     path.length() - SEGMENT_PROJECT_FILES.length());
-            handleProjectFiles(request, response, projectId, false);
+            handleProjectFiles(request, response, projectId, isWeb);
             return true;
         }
         if ("POST".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
@@ -2496,25 +2498,40 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
         if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
-            handleEndedChat(response, endedSubjectId(path, SEGMENT_ENTRY_CHAT.length()));
+            var subjectId = endedSubjectId(path.substring(PATH_ENDED.length()),
+                    SEGMENT_ENTRY_CHAT.length());
+            if (subjectId == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
+                        "No ended work is named"));
+                return true;
+            }
+            handleEndedChat(response, subjectId);
             return true;
         }
         if ("POST".equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
             var rest = path.substring(PATH_ENDED.length());
             var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
-            var projectId = rest.substring(0, marker);
-            var subjectId = rest.substring(marker + SEGMENT_ENDED_CHAT.length(),
-                    rest.length() - SEGMENT_ENDED_CHAT_ACCEPT.length());
+            var projectId = marker > 0 ? rest.substring(0, marker) : null;
+            var subjectId = endedSubjectId(rest, SEGMENT_ENDED_CHAT_ACCEPT.length());
+            if (projectId == null || subjectId == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
+                        "No ended work is named"));
+                return true;
+            }
             handleAcceptFollowUp(response, projectId, subjectId);
             return true;
         }
         return false;
     }
 
-    private static String endedSubjectId(String path, int suffixLength) {
-        var rest = path.substring(PATH_ENDED.length());
+    private static @Nullable String endedSubjectId(String rest, int suffixLength) {
         var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
-        return rest.substring(marker + SEGMENT_ENDED_CHAT.length(), rest.length() - suffixLength);
+        var start = marker + SEGMENT_ENDED_CHAT.length();
+        var end = rest.length() - suffixLength;
+        if (marker <= 0 || end <= start) {
+            return null;
+        }
+        return rest.substring(start, end);
     }
 
     /**
@@ -3392,7 +3409,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
             var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-            handleGetChat(response, controlSubjectId(path, prefix, "/chat"));
+            handleGetChat(response, controlSubjectId(path, prefix, SEGMENT_ENTRY_CHAT));
             return true;
         }
 
@@ -3604,10 +3621,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 controlPlanPausePoints.remove(planId);
                 broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
                         hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
+                var endReason = resolution.reason();
+                if (endReason == null) {
+                    endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
+                }
                 broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
-                        PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
-                        resolution.reason() != null ? resolution.reason()
-                                : (ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator")).toMap());
+                        PlanControlEvent.EVENT_CANCELLED, planId, "ended", null, endReason).toMap());
                 result = new HoldResolutionResult(holdId, true, null, planId);
             } else if (released) {
                 controlHolds.remove(holdKey(planId, holdId));
