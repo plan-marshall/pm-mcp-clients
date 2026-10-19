@@ -51,8 +51,8 @@ This plan executes concurrently in Wave 8 alongside:
 - [x] 4. Final completion report written (`doc/agy/onboarding-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/onboarding-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [x] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/onboarding-contract-plan-report.md` by orchestrator session.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/onboarding-contract-plan-report.md` by orchestrator session.
 
 ---
 
