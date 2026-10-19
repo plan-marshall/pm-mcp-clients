@@ -65,7 +65,7 @@ This plan executes concurrently in Wave 10 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-start` on branch `feat/web-start`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-start` on branch `feat/web-start`.
 - [ ] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `pm-dev-frontend-javascript` for Svelte components, state store, and file picker.
   - `pm-dev-frontend-css` for responsive layout, chat panel side-sheet, and light/dark theme styling.
