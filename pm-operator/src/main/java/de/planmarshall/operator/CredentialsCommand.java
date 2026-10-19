@@ -217,6 +217,10 @@ public final class CredentialsCommand implements Callable<Integer> {
             out.println(MessageCatalogue.format(locale, "operator.credentials.verify_title", Map.of("key", key)));
             out.println(MessageCatalogue.format(locale, "operator.credentials.verified", Map.of("key", key)));
             out.flush();
+        } else {
+            out.println(MessageCatalogue.format(locale, "operator.credentials.verify_failed",
+                                Map.of("key", key, STATUS, response.status())));
+            out.flush();
         }
     }
 
