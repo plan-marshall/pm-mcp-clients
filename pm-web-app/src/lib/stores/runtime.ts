@@ -157,15 +157,17 @@ function machineNameOf(status: StatusResponse): string {
 }
 
 /**
- * The route the app opens on for a paired browser: where the address bar points, the onboarding
- * while the machine is not onboarded, and the entry resolved to where the app left off.
+ * The route the app opens on for a paired browser.
+ *
+ * A paired browser never lands on the pairing page or the entry: the design says it opens its
+ * start view there (the onboarding while the machine is not onboarded, else where it left off).
  */
 function landingRoute(requested: AppRoute | null, onboarded: boolean): AppRoute {
-  if (requested === 'entry') {
+  if (requested === 'pair' || requested === 'entry') {
     return onboarded ? 'workspace' : 'onboarding';
   }
   if (!onboarded) {
-    return requested === 'pair' ? 'pair' : 'onboarding';
+    return 'onboarding';
   }
   return requested ?? 'workspace';
 }
@@ -387,7 +389,7 @@ function handleLifecycleEvent(event: string, data: unknown): void {
       isDraining: true,
       drainInfo: (data || {}) as RuntimeState['drainInfo'],
     }));
-  } else if (event === 'drain.withdrawn') {
+  } else if (event === 'runtime.drain_withdrawn') {
     runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
   } else {
     runtimeStore.update((s) => ({
@@ -402,7 +404,11 @@ function handleLifecycleEvent(event: string, data: unknown): void {
 const STATE_TRANSITION_EVENTS = new Set(['state_transition', 'check']);
 const REPORT_EVENTS = new Set(['report.sent', 'report.read']);
 const DECISION_EVENTS = new Set(['decision.opened', 'decision.answered', 'decision.closed']);
-const LIFECYCLE_EVENTS = new Set(['runtime.draining', 'drain.withdrawn', 'runtime.stopped']);
+const LIFECYCLE_EVENTS = new Set([
+  'runtime.draining',
+  'runtime.drain_withdrawn',
+  'runtime.stopping',
+]);
 const PROJECT_EVENTS = new Set(['project.changed', 'project.released', 'project.enrolled']);
 
 export function handleRuntimeEvent(event: string, data: unknown): void {

@@ -37,7 +37,7 @@
       if (
         event === 'system.metrics' ||
         event === 'runtime.draining' ||
-        event === 'drain.withdrawn'
+        event === 'runtime.drain_withdrawn'
       ) {
         void loadSnapshot(false);
       }

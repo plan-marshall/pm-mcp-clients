@@ -33,10 +33,8 @@
   <ListenerOffView />
 {:else if !$runtimeStore.isPaired}
   <PairingView />
-{:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding' && $runtimeStore.currentRoute !== 'pair' && $runtimeStore.currentRoute !== 'entry'}
+{:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding'}
   <OnboardingView />
-{:else if $runtimeStore.currentRoute === 'pair' || $runtimeStore.currentRoute === 'entry'}
-  <PairingView />
 {:else if $runtimeStore.currentRoute === 'onboarding'}
   <OnboardingView />
 {:else if $runtimeStore.currentRoute === 'projects'}
