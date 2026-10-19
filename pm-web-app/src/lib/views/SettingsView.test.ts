@@ -38,6 +38,8 @@ describe('SettingsView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 1,
     });
 
@@ -122,7 +124,7 @@ describe('SettingsView component', () => {
     await fireEvent.click(screen.getByTestId('revoke-others-button'));
 
     expect(screen.getByTestId('revoke-modal')).toBeInTheDocument();
-    expect(screen.getByText(/Revoke all 1 other paired device\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 device other than this one/i)).toBeInTheDocument();
 
     await fireEvent.click(screen.getByTestId('revoke-confirm-button'));
 

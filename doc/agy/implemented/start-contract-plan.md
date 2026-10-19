@@ -1,8 +1,8 @@
 # Implementation Plan: `start-contract` (Starting Work: Contract and Mock Runtime)
 
-This implementation plan governs the execution of the `start-contract` work package (`doc/plans/start-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
+This implementation plan governs the execution of the `start-contract` work package (`doc/plans/implemented/start-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
 
-It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
+It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -37,7 +37,7 @@ The goal is to implement the client-side contract for starting work (plans, epic
    - Full suite of scenarios in `pm-mock-runtime` covering all plan/epic/recipe/source permutations, failures, rate limits, untrusted accepts, and chat transcripts.
 
 ### Target Work Package & References
-- Specification: `doc/plans/start-contract.adoc`.
+- Specification: `doc/plans/implemented/start-contract.adoc`.
 - Use Cases: `UC-STA-1` through `UC-STA-5`, `UC-STA-7` through `UC-STA-9`, `UC-CTL-1` (the chat).
 - Specifications: State Catalogue § Starting from the Clients, § Recipe Choice, § Source Units, § Chatting with the Planning Role; Model Work § Untrusted Text Screening; Runtime Model § Local API, § Event Catalogue, § Mock Runtime.
 - Design: `doc/design/shared/starting-work.adoc`, `doc/design/shared/work-actions.adoc#chat-ended`.
@@ -60,15 +60,15 @@ This plan executes concurrently in Wave 9 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-start-contract` on branch `feat/start-contract`.
-- [ ] 2. Domain skills & engineering personas loaded:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-start-contract` on branch `feat/start-contract`.
+- [x] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `pm-dev-java:java-core` for Java 25 records and Jackson streaming codecs.
   - `persona-security-expert` & `pm-dev-java:java-security` for source trust boundaries, untrusted PR file flags, and rate-limit safety.
   - `persona-integration-tester` for mock runtime routes, SSE events, and scenario test coverage.
   - `persona-code-reviewer` for review bot resolution.
-- [ ] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/start-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/start-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/start-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/start-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/start-contract-plan-report.md` by orchestrator session.
@@ -90,7 +90,7 @@ This plan executes concurrently in Wave 9 alongside:
 ## 5. Phased Technical Recipe
 
 ### Phase 1: Trace Matrix & Specification Alignment
-- Map `doc/plans/start-contract.adoc` to:
+- Map `doc/plans/implemented/start-contract.adoc` to:
   - Entry lifecycle states: `choose`, `sources`, `ready`, `refused`, `adopt`, `recipe`.
   - Source types and failure causes: `not_granted`, `no_credential`, `rate_limited` (`resets_at`).
   - Screening states: flagged with spans, unscreened with fallback actions (`try_again`, `remove`, `accept_untrusted`).

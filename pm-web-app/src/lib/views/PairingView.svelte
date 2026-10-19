@@ -1,18 +1,39 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
-  import { pairBrowser, runtimeStore } from '../stores/runtime';
+  import PairingQr from '../components/PairingQr.svelte';
+  import { apiClient, type ConnectionStatus } from '../api/client';
+  import { pairBrowser, runtimeStore, navigateTo } from '../stores/runtime';
 
   let codeInput = '';
   let isPairing = false;
   let errorMessage = '';
-  let copiedCmd: string | null = null;
+  let copiedCommand: string | null = null;
+  let status: ConnectionStatus | null = null;
 
-  $: isCodeValid = codeInput.replace(/[^A-Za-z0-9]/g, '').length >= 8;
-
+  const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
   const cmdLocal = 'pm-operator web open --pair';
   const cmdRemote = 'pm-operator web pair';
+
+  $: isLoopback = typeof window !== 'undefined' && loopbackHosts.includes(window.location.hostname);
+  $: isCodeValid = codeInput.replace(/[^A-Za-z0-9]/g, '').length >= 8;
+  $: pairingUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/pair#code=${codeInput.replace(/[^A-Za-z0-9]/g, '').toUpperCase()}`
+      : '';
+
+  onMount(async () => {
+    // The fingerprint and the listener state are shown on the network listener only.
+    if (!isLoopback) {
+      try {
+        status = await apiClient.getConnectionStatus();
+      } catch {
+        status = null;
+      }
+    }
+  });
 
   async function submitPairing(codeToPair: string) {
     if (!codeToPair || isPairing) return;
@@ -21,6 +42,7 @@
 
     try {
       await pairBrowser(codeToPair);
+      navigateTo($runtimeStore.currentRoute);
     } catch {
       errorMessage = $t('web.pair.page.invalid');
     } finally {
@@ -36,17 +58,17 @@
   async function copyToClipboard(text: string, id: string) {
     try {
       await navigator.clipboard.writeText(text);
-      copiedCmd = id;
+      copiedCommand = id;
       setTimeout(() => {
-        copiedCmd = null;
+        copiedCommand = null;
       }, 2000);
     } catch {
-      // Fallback
+      // A refused clipboard leaves the text selectable.
     }
   }
 </script>
 
-<div class="pair-card">
+<div class="pair-card" data-testid="pairing-view">
   {#if $runtimeStore.isRevoked}
     <div class="revoked-banner" role="alert">
       <h2 class="revoked-banner__title">{$t('web.revoked.page.title')}</h2>
@@ -68,7 +90,7 @@
     </div>
 
     {#if errorMessage}
-      <div class="alert alert--danger" role="alert">
+      <div class="alert alert--danger" role="alert" data-testid="pairing-error">
         {errorMessage}
       </div>
     {/if}
@@ -82,7 +104,7 @@
           id="pairing-code"
           type="text"
           class="form-input mono"
-          placeholder="KXQB-MRTN"
+          placeholder={$t('web.pair.page.code_placeholder')}
           maxlength="12"
           autocomplete="off"
           autocorrect="off"
@@ -92,13 +114,21 @@
         />
       </div>
 
+      {#if !isLoopback && status?.lan_fingerprint}
+        <div class="fingerprint" data-testid="pairing-fingerprint">
+          <span class="fingerprint__label">{$t('web.pair.page.fingerprint')}</span>
+          <code class="fingerprint__value">{status.lan_fingerprint}</code>
+          <span class="fingerprint__hint">{$t('web.pair.page.fingerprint_hint')}</span>
+        </div>
+      {/if}
+
       <div class="pair-card__help">
         <p class="pair-card__help-title">{$t('web.pair.page.get_code')}</p>
         <div class="cmd-row">
           <span class="cmd-row__desc">{$t('web.pair.page.this_machine')}</span>
           <code class="cmd-row__code">{cmdLocal}</code>
           <Button type="button" variant="ghost" on:click={() => copyToClipboard(cmdLocal, 'local')}>
-            {copiedCmd === 'local' ? $t('web.common.copied') : $t('web.common.copy')}
+            {copiedCommand === 'local' ? $t('web.common.copied') : $t('web.common.copy')}
           </Button>
         </div>
         <div class="cmd-row">
@@ -109,10 +139,17 @@
             variant="ghost"
             on:click={() => copyToClipboard(cmdRemote, 'remote')}
           >
-            {copiedCmd === 'remote' ? $t('web.common.copied') : $t('web.common.copy')}
+            {copiedCommand === 'remote' ? $t('web.common.copied') : $t('web.common.copy')}
           </Button>
         </div>
       </div>
+
+      {#if !isLoopback && isCodeValid}
+        <div class="pair-card__qr">
+          <PairingQr value={pairingUrl} label={$t('web.pair.qr.label')} />
+          <p class="pair-card__qr-hint">{$t('web.pair.qr.hint')}</p>
+        </div>
+      {/if}
 
       <div class="pair-card__footer">
         <Button type="submit" variant="primary" disabled={!isCodeValid} loading={isPairing}>
@@ -125,7 +162,7 @@
 
 <style>
   .pair-card {
-    max-width: 600px;
+    max-width: 38rem;
     width: 100%;
     margin: var(--space-10) auto;
     background-color: var(--color-bg-surface);
@@ -209,6 +246,33 @@
     color: var(--color-text-primary);
   }
 
+  .fingerprint {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    background-color: var(--color-bg-subtle);
+    border-radius: var(--radius-md);
+  }
+
+  .fingerprint__label {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .fingerprint__value {
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+  }
+
+  .fingerprint__hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
   .pair-card__help {
     margin-bottom: var(--space-6);
     padding: var(--space-4);
@@ -225,7 +289,7 @@
 
   .cmd-row {
     display: grid;
-    grid-template-columns: 140px 1fr auto;
+    grid-template-columns: 10rem 1fr auto;
     align-items: center;
     gap: var(--space-3);
     margin-bottom: var(--space-2);
@@ -249,6 +313,19 @@
     white-space: nowrap;
   }
 
+  .pair-card__qr {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin-bottom: var(--space-6);
+  }
+
+  .pair-card__qr-hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
   .pair-card__footer {
     display: flex;
     justify-content: flex-end;
@@ -270,12 +347,34 @@
     color: var(--color-text-secondary);
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 768px) {
+    .pair-card {
+      margin: var(--space-4) auto;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+    }
+
+    .pair-card__header,
+    .pair-card__form {
+      padding-left: var(--space-4);
+      padding-right: var(--space-4);
+    }
+
     .cmd-row {
       grid-template-columns: 1fr auto;
     }
+
     .cmd-row__desc {
       grid-column: 1 / -1;
+    }
+
+    .pair-card__footer {
+      justify-content: stretch;
+    }
+
+    .pair-card__footer :global(.btn) {
+      width: 100%;
     }
   }
 </style>

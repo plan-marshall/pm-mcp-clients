@@ -60,6 +60,8 @@ describe('EpicView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       isDraining: false,
       isStopped: false,
       activeStep: 1,

@@ -24,8 +24,13 @@ test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
 
   test('opens the network access modal from settings and shows the fingerprint', async ({
     page,
+    request,
   }) => {
-    await page.getByRole('button', { name: /Settings/i }).click();
+    // The machine settings are reached once the machine is onboarded.
+    await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'entry-device-lifecycle' },
+    });
+    await page.goto('/settings');
     await expect(page.locator('.settings-view')).toBeVisible();
 
     await page.getByTestId('lan-details-button').click();
@@ -37,8 +42,11 @@ test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
     await expect(page.getByTestId('lan-turn-off-button')).toBeVisible();
   });
 
-  test('offers the credential entry on the loopback connection', async ({ page }) => {
-    await page.getByRole('button', { name: /Settings/i }).click();
+  test('offers the credential entry on the loopback connection', async ({ page, request }) => {
+    await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'entry-device-lifecycle' },
+    });
+    await page.goto('/settings');
     await expect(page.getByTestId('credentials-section')).toBeVisible();
     await expect(page.getByTestId('credential-entry')).toBeVisible();
     await expect(page.getByTestId('credential-form')).toBeVisible();

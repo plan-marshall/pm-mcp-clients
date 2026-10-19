@@ -1,12 +1,29 @@
 <script lang="ts">
   import '../styles/tokens.css';
   import '../styles/base.css';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import { t, setLocale, currentLocale, initI18n } from '../lib/i18n';
-  import { runtimeStore, initRuntime, navigateTo } from '../lib/stores/runtime';
+  import {
+    runtimeStore,
+    initRuntime,
+    navigateTo,
+    adoptRouteFromLocation,
+    syncUrl,
+  } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
+  import { pathForRoute, type AppRoute } from '../lib/routes';
   import Spinner from '../lib/components/Spinner.svelte';
   import ConnectionStatusBanner from '../lib/components/ConnectionStatusBanner.svelte';
+  import PairingView from '../lib/views/PairingView.svelte';
+  import OnboardingView from '../lib/views/OnboardingView.svelte';
+  import ListenerOffView from '../lib/views/ListenerOffView.svelte';
+  import RevokedView from '../lib/views/RevokedView.svelte';
+  import StartWorkModal from '../lib/components/StartWorkModal.svelte';
+  import LessonSourceModal from '../lib/components/LessonSourceModal.svelte';
+  import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
+  import { startModalStore, closeStartWork } from '../lib/stores/start';
+  import { lessonSourceModalStore, closeLessonSource } from '../lib/stores/lessonSource';
+  import { gitSourceModalStore, closeGitSource } from '../lib/stores/gitSource';
 
   interface Props {
     children?: import('svelte').Snippet;
@@ -23,6 +40,12 @@
     }
     document.documentElement.setAttribute('data-theme', theme);
 
+    // The address bar is the route: a reload, a bookmark, or the browser's back returns here.
+    adoptRouteFromLocation();
+    const onPop = () => adoptRouteFromLocation();
+    window.addEventListener('popstate', onPop);
+    onDestroy(() => window.removeEventListener('popstate', onPop));
+
     // Initialize i18n concurrently with a timeout so a slow catalogue load doesn't block startup
     const i18nPromise = Promise.race([
       initI18n(),
@@ -30,6 +53,24 @@
     ]);
     await Promise.all([i18nPromise, initRuntime()]);
   });
+
+  // The address bar follows the route the store selects, so a reload opens the same page.
+  // It never rewrites a URL that still carries a pairing code in its fragment: that code is
+  // redeemed first, and only then does the app move on.
+  $effect(() => {
+    if ($runtimeStore.isInitialized) {
+      syncPath($runtimeStore.currentRoute);
+    }
+  });
+
+  function syncPath(route: AppRoute): void {
+    if (typeof window === 'undefined') return;
+    // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
+    // first, and only then does the app move on.
+    if (window.location.hash.includes('code=')) return;
+    const path = pathForRoute(route) ?? '/';
+    void syncUrl(path, true);
+  }
 
   function toggleTheme() {
     theme = theme === 'light' ? 'dark' : 'light';
@@ -226,13 +267,45 @@
   {/if}
 
   <main class="app-body">
-    {@render children?.()}
+    {#if $runtimeStore.isRevoked}
+      <RevokedView />
+    {:else if !$runtimeStore.isPaired}
+      <PairingView />
+    {:else if $runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'}
+      <ListenerOffView />
+    {:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding'}
+      <OnboardingView />
+    {:else}
+      {@render children?.()}
+    {/if}
   </main>
   <div class="sr-only" aria-live="polite">
     {$runtimeStore.quietReportNotice || ''}
     {$runtimeStore.quietDecisionNotice || ''}
   </div>
 {/if}
+
+<StartWorkModal
+  open={$startModalStore.open}
+  projectId={$startModalStore.projectId}
+  kind={$startModalStore.kind}
+  onClose={closeStartWork}
+  onStarted={() => {}}
+/>
+
+<LessonSourceModal
+  open={$lessonSourceModalStore.open}
+  projectId={$lessonSourceModalStore.projectId}
+  onClose={closeLessonSource}
+  onStarted={() => {}}
+/>
+
+<GitSourceIntakeModal
+  open={$gitSourceModalStore.open}
+  projectId={$gitSourceModalStore.projectId}
+  onClose={closeGitSource}
+  onCompleted={() => {}}
+/>
 
 <style>
   .app-loading {
@@ -263,6 +336,8 @@
 
   .app-header {
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
     justify-content: space-between;
     align-items: center;
     padding: var(--space-3) var(--space-6);
@@ -297,6 +372,7 @@
 
   .app-header__actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }

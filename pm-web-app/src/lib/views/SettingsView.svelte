@@ -5,32 +5,26 @@
   import LanListenerModal from '../components/LanListenerModal.svelte';
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
+  import { currentLocale } from '../i18n';
   import { runtimeStore, navigateTo } from '../stores/runtime';
 
+  /**
+   * The paired devices of the machine (UC-ENT-2): the list, renaming one inline, revoking one,
+   * revoking all others, and the network listener with its warning view.
+   */
   let devices: PairedDevice[] = [];
   let isLoading = false;
-  let loadError = '';
+  let loadError = false;
   let actionError = '';
   let listenerNotice = '';
   let renamingId: string | null = null;
   let renameValue = '';
   let lanListenerOn = true;
   let lanModalOpen = false;
-
-  // Revocation modal state
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
-
-  const aspects = [
-    { id: 'harnesses', title: 'Harnesses', desc: 'Coding agents and CLI harnesses' },
-    { id: 'models', title: 'Models', desc: 'Allowed model tiers and defaults' },
-    { id: 'roles', title: 'Roles', desc: 'Role assignments and qualification' },
-    { id: 'credentials', title: 'Credentials', desc: 'Credential store backend' },
-    { id: 'providers', title: 'Providers', desc: 'Git, CI and analysis services' },
-    { id: 'plans', title: 'Plans', desc: 'Plan defaults and landing method' },
-  ];
 
   onMount(() => {
     isMounted = true;
@@ -66,7 +60,7 @@
 
   async function loadData() {
     isLoading = true;
-    loadError = '';
+    loadError = false;
     try {
       const [devList, status] = await Promise.all([
         apiClient.getDevices(),
@@ -79,7 +73,7 @@
       }
     } catch {
       if (!isMounted) return;
-      loadError = 'Failed to load paired devices.';
+      loadError = true;
       devices = [];
     } finally {
       if (isMounted) {
@@ -111,7 +105,7 @@
       );
       renamingId = null;
     } catch {
-      actionError = 'Failed to rename device. Please try again.';
+      actionError = $t('web.settings.devices.rename_failed');
     }
   }
 
@@ -134,7 +128,7 @@
         devices = devices.filter((d) => isThisBrowser(d));
         pendingRevokeTarget = null;
       } catch {
-        actionError = 'Failed to revoke other devices. Please try again.';
+        actionError = $t('web.settings.devices.revoke_failed');
       }
       return;
     }
@@ -152,12 +146,16 @@
           isPaired: false,
           isRevoked: true,
           revokedReason: 'device_revoked',
-          revokedInfo: { reason: 'device_revoked', revoked_by: 'this browser', details: 'Revoked' },
+          revokedInfo: {
+            reason: 'device_revoked',
+            revoked_by: $runtimeStore.deviceLabel,
+            details: $t('web.settings.devices.revoked_this'),
+          },
           currentRoute: 'revoked',
         }));
       }
     } catch {
-      actionError = 'Failed to revoke device. Please try again.';
+      actionError = $t('web.settings.devices.revoke_failed');
     }
   }
 
@@ -166,86 +164,41 @@
     try {
       await apiClient.turnOffLanListener();
       lanListenerOn = false;
-      listenerNotice =
-        $t('devices.listener_off.done') ||
-        'The network listener is off; the devices on the network stay paired and work again once it is on.';
+      listenerNotice = $t('devices.listener_off.done');
     } catch {
-      actionError = 'Failed to turn off network listener.';
+      actionError = $t('web.settings.devices.listener_off_failed');
     }
   }
 
-  function formatPaired(rawDate?: string, from?: string): string {
-    const fromStr = from === 'network' ? 'from network' : 'from loopback';
-    if (!rawDate) return `paired recently ${fromStr}`;
-    try {
-      const d = new Date(rawDate);
-      const day = d.getUTCDate();
-      const months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      const month = months[d.getUTCMonth()];
-      return `paired ${day} ${month} ${fromStr}`;
-    } catch {
-      return `paired ${rawDate} ${fromStr}`;
-    }
+  /**
+   * @param rawDate an ISO timestamp
+   * @returns the day and month, in the interface language
+   */
+  function formatDate(rawDate?: string): string {
+    if (!rawDate) return '';
+    const date = new Date(rawDate);
+    if (Number.isNaN(date.getTime())) return rawDate;
+    return date.toLocaleDateString($currentLocale, { day: 'numeric', month: 'short' });
   }
 
-  function formatLastUsed(rawDate?: string): string {
-    if (!rawDate) return 'just now';
-    try {
-      const d = new Date(rawDate);
-      if (isNaN(d.getTime())) return rawDate;
-      const now = Date.now();
-      const diffMs = now - d.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      if (diffDays === 0 && diffMs >= 0) {
-        const hours = String(d.getUTCHours()).padStart(2, '0');
-        const mins = String(d.getUTCMinutes()).padStart(2, '0');
-        return `today ${hours}:${mins}`;
-      }
-      if (diffDays >= 1 && diffDays < 7) {
-        return `${diffDays} d ago`;
-      }
-      const weeks = Math.floor(diffDays / 7);
-      if (weeks >= 1 && weeks < 8) {
-        return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
-      }
-      const day = d.getUTCDate();
-      const months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      const month = months[d.getUTCMonth()];
-      const hours = String(d.getUTCHours()).padStart(2, '0');
-      const mins = String(d.getUTCMinutes()).padStart(2, '0');
-      return `${day} ${month} ${hours}:${mins}`;
-    } catch {
-      return rawDate;
-    }
+  /**
+   * @param rawDate an ISO timestamp
+   * @returns the day, month and time, in the interface language
+   */
+  function formatDateTime(rawDate?: string): string {
+    if (!rawDate) return '';
+    const date = new Date(rawDate);
+    if (Number.isNaN(date.getTime())) return rawDate;
+    return date.toLocaleString($currentLocale, {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   $: otherDevicesCount = devices.filter((d) => !isThisBrowser(d)).length;
+  $: thisLabel = devices.find((d) => isThisBrowser(d))?.label ?? $runtimeStore.deviceLabel;
 </script>
 
 <div class="settings-view" data-testid="settings-view">
@@ -265,33 +218,11 @@
     </div>
   </div>
 
-  <section class="settings-section">
-    <h2 class="settings-section__title">{$t('web.settings.aspects')}</h2>
-    <div class="aspects-grid">
-      {#each aspects as aspect}
-        <div class="aspect-card" data-aspect={aspect.id}>
-          <div class="aspect-card__info">
-            <h3 class="aspect-card__title">{aspect.title}</h3>
-            <p class="aspect-card__desc">{aspect.desc}</p>
-          </div>
-          <Button
-            variant="secondary"
-            aria-label={`Configure ${aspect.title}`}
-            on:click={() => navigateTo('onboarding')}
-          >
-            Configure
-          </Button>
-        </div>
-      {/each}
-    </div>
-  </section>
-
   <section class="settings-section" data-testid="paired-devices-section">
     <div class="section-header">
       <div>
-        <h2 class="settings-section__title">
-          {$t('devices.list.title')} · {$t('devices.list.subtitle')}
-        </h2>
+        <h2 class="settings-section__title">{$t('devices.list.title')}</h2>
+        <p class="settings-section__subtitle">{$t('devices.list.subtitle')}</p>
       </div>
       {#if otherDevicesCount > 0}
         <Button
@@ -309,23 +240,23 @@
         <p class="error-text" role="alert">{actionError}</p>
       {/if}
       {#if isLoading}
-        <p class="loading-text">Loading devices…</p>
+        <p class="loading-text">{$t('web.settings.devices.loading')}</p>
       {:else if loadError}
-        <p class="empty-text error-text">{loadError}</p>
+        <p class="empty-text error-text">{$t('web.settings.devices.load_failed')}</p>
       {:else if devices.length === 0}
         <p class="empty-text" data-testid="empty-devices">{$t('devices.list.empty')}</p>
       {:else}
         <table class="devices-table" data-testid="devices-table">
           <thead>
             <tr>
-              <th>Device</th>
-              <th>Paired</th>
-              <th>Last Used</th>
-              <th>Action</th>
+              <th>{$t('web.settings.devices.column_device')}</th>
+              <th>{$t('web.settings.devices.column_paired')}</th>
+              <th>{$t('web.settings.devices.column_last_used')}</th>
+              <th>{$t('web.settings.devices.column_action')}</th>
             </tr>
           </thead>
           <tbody>
-            {#each devices as device, idx}
+            {#each devices as device}
               <tr data-testid={`device-row-${device.device_id}`}>
                 <td>
                   {#if renamingId === device.device_id}
@@ -335,16 +266,18 @@
                         bind:value={renameValue}
                         class="rename-input"
                         data-testid={`rename-input-${device.device_id}`}
-                        aria-label="New device label"
+                        aria-label={$t('web.settings.devices.new_label')}
                       />
                       <Button
                         variant="primary"
                         on:click={() => saveRename(device.device_id)}
                         data-testid={`save-rename-${device.device_id}`}
                       >
-                        Save
+                        {$t('web.common.save')}
                       </Button>
-                      <Button variant="ghost" on:click={() => (renamingId = null)}>Cancel</Button>
+                      <Button variant="ghost" on:click={() => (renamingId = null)}>
+                        {$t('web.settings.devices.cancel')}
+                      </Button>
                     </div>
                   {:else}
                     <strong class="device-label">{device.label}</strong>
@@ -356,9 +289,14 @@
                   {/if}
                 </td>
                 <td class="text-secondary">
-                  {formatPaired(device.created_at, device.paired_from)}
+                  {$t('devices.list.paired', { date: formatDate(device.created_at) })}
+                  {#if device.paired_from}
+                    · {$t('devices.list.from', { from: device.paired_from })}
+                  {/if}
                 </td>
-                <td class="text-secondary">{formatLastUsed(device.last_used_at)}</td>
+                <td class="text-secondary">
+                  {$t('devices.list.last_used', { time: formatDateTime(device.last_used_at) })}
+                </td>
                 <td>
                   <div class="device-actions">
                     <Button
@@ -384,10 +322,11 @@
       {/if}
     </div>
 
-    <!-- Network listener info & control -->
+    <p class="terminal-note">{$t('devices.list.terminal_note')}</p>
+
     <div class="listener-bar" data-testid="listener-bar">
       <span class="listener-status" data-testid="listener-status">
-        Network listener: <strong>{lanListenerOn ? 'on' : 'off'}</strong>.
+        {$t('devices.list.listener', { state: lanListenerOn ? 'on' : 'off' })}.
       </span>
       <div class="listener-actions">
         <Button
@@ -411,10 +350,12 @@
 
   <section class="settings-section" data-testid="credentials-section">
     <h2 class="settings-section__title">{$t('onboard.step.credentials')}</h2>
-    <CredentialEntry credentialKey="github" label="GitHub" />
+    <CredentialEntry
+      credentialKey="github"
+      label={$t('web.settings.credentials.provider.github')}
+    />
   </section>
 
-  <!-- Revocation Confirmation Modal -->
   {#if lanModalOpen}
     <LanListenerModal onClose={() => (lanModalOpen = false)} onChanged={loadData} />
   {/if}
@@ -423,14 +364,14 @@
     <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="revoke-modal">
       <div class="modal-card">
         {#if pendingRevokeTarget === 'others'}
-          <h3 class="modal-title">
-            Revoke all {otherDevicesCount} other paired {otherDevicesCount === 1
-              ? 'device'
-              : 'devices'}?
-          </h3>
+          <h2 class="modal-title">
+            {$t('devices.revoke.others_title', {
+              count: otherDevicesCount,
+              label: thisLabel ?? '',
+            })}
+          </h2>
           <p class="modal-explain">
-            {$runtimeStore.deviceLabel || 'This browser'} stays paired; every other browser is signed
-            out.
+            {$t('devices.revoke.explain', { label: thisLabel ?? '' })}
           </p>
           <div class="modal-actions">
             <Button variant="ghost" on:click={cancelRevoke} data-testid="revoke-cancel-button">
@@ -443,9 +384,9 @@
         {:else}
           {@const targetDev = pendingRevokeTarget}
           {@const isCurrent = isThisBrowser(targetDev)}
-          <h3 class="modal-title">
+          <h2 class="modal-title">
             {$t('devices.revoke.title', { label: targetDev.label })}
-          </h3>
+          </h2>
           <p class="modal-explain">
             {#if isCurrent}
               {$t('devices.revoke.this_one')}
@@ -469,13 +410,15 @@
 
 <style>
   .settings-view {
-    max-width: 1000px;
+    max-width: 64rem;
     margin: 0 auto;
     padding: var(--space-8) var(--space-4);
   }
 
   .settings-view__header {
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-8);
@@ -499,6 +442,8 @@
 
   .section-header {
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-4);
@@ -510,38 +455,16 @@
     color: var(--color-text-primary);
   }
 
-  .aspects-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--space-4);
-  }
-
-  .aspect-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: var(--space-4);
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .aspect-card__title {
-    font-size: var(--text-base);
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .aspect-card__desc {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
+  .settings-section__subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
   }
 
   .devices-card {
     background-color: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    overflow: hidden;
+    overflow-x: auto;
   }
 
   .devices-table {
@@ -569,6 +492,7 @@
 
   .device-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 
@@ -589,6 +513,7 @@
 
   .rename-inline {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
@@ -602,8 +527,16 @@
     color: var(--color-text-primary);
   }
 
+  .terminal-note {
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
   .listener-bar {
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     align-items: center;
     justify-content: space-between;
     margin-top: var(--space-4);
@@ -620,6 +553,7 @@
 
   .listener-actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
@@ -649,17 +583,14 @@
     color: var(--color-text-secondary);
   }
 
-  /* Modal */
   .modal-backdrop {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    inset: 0;
     background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: var(--space-4);
     z-index: 100;
   }
 
@@ -668,9 +599,9 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    max-width: 32rem;
+    width: 100%;
+    box-shadow: var(--shadow-md);
   }
 
   .modal-title {
@@ -689,7 +620,26 @@
 
   .modal-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: var(--space-3);
+  }
+
+  @media (max-width: 768px) {
+    .settings-view {
+      padding: var(--space-4) var(--space-3);
+    }
+
+    .devices-table th:nth-child(2),
+    .devices-table td:nth-child(2),
+    .devices-table th:nth-child(3),
+    .devices-table td:nth-child(3) {
+      display: none;
+    }
+
+    .modal-actions {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
   }
 </style>

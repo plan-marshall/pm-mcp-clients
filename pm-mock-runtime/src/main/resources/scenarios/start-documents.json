@@ -1,0 +1,211 @@
+{
+  "format_version": 1,
+  "name": "start-documents",
+  "description": "Documents copied and moved, a directory, a file tracked by git, and a file refused (UC-STA-3)",
+  "start": "start.sources",
+  "pairing_code": "STRT-CMTR",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/projects": {
+      "representation": {
+        "projects": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "pm-mcp-clients",
+            "readiness": "ready",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:36:00Z"
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "pm-mcp-core",
+            "readiness": "ready",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-15T09:00:00Z"
+          },
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "readiness": "setup_needs",
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "needs_operator_count": 1,
+            "setup_needs_operator": true,
+            "setup_need": "credential sonar",
+            "last_activity_at": "2026-10-14T12:00:00Z"
+          }
+        ]
+      }
+    }
+  },
+  "start_case": {
+    "project_id": "pm-mcp-clients",
+    "kind": "plan",
+    "state": "start.sources",
+    "entry_id": "ent-3f9a2c41",
+    "landing": "landing.pull-request",
+    "documents_mode": "ask",
+    "lessons_available": true,
+    "local_changes": true,
+    "epic_auto_start": true,
+    "epic_auto_start_origin": "machine",
+    "parallelization_scope": 1,
+    "overlap_max_files": 0,
+    "title": "Start a plan in pm-mcp-clients",
+    "sources": [
+      {
+        "source_id": "src-docs-1",
+        "kind": "documents",
+        "reference": "doc/concepts",
+        "state": "moved",
+        "trust": "trusted"
+      },
+      {
+        "source_id": "src-docs-2",
+        "kind": "documents",
+        "reference": "doc/notes.adoc",
+        "state": "copied",
+        "trust": "trusted"
+      },
+      {
+        "source_id": "src-docs-3",
+        "kind": "documents",
+        "reference": "12 files: 9 adoc, 3 svg",
+        "state": "moved",
+        "trust": "trusted"
+      },
+      {
+        "source_id": "src-docs-4",
+        "kind": "documents",
+        "reference": "doc/secret.key",
+        "state": "failed",
+        "trust": "trusted",
+        "failure": {
+          "cause": "not_readable",
+          "detail": "doc/secret.key"
+        }
+      },
+      {
+        "source_id": "src-docs-5",
+        "kind": "documents",
+        "reference": "doc/linked-out.adoc",
+        "state": "failed",
+        "trust": "trusted",
+        "failure": {
+          "cause": "link_outside",
+          "detail": "doc/linked-out.adoc"
+        }
+      }
+    ],
+    "recipes": [
+      {
+        "key": "agentfile-hygiene",
+        "name": "agentfile-hygiene",
+        "description": "classify and clean the agent files against the rubric",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": []
+      },
+      {
+        "key": "code-review",
+        "name": "code-review",
+        "description": "a structural and quality review of the current footprint",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "depth",
+            "value": "standard",
+            "options": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "audit",
+        "name": "audit",
+        "description": "audit the code against a request",
+        "origin": "project",
+        "takes_request": true,
+        "parameters": [
+          {
+            "name": "modules",
+            "value": "all 9",
+            "options": [
+              "all 9"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "no-modules",
+        "name": "no-modules",
+        "description": "a recipe whose parameter has no option",
+        "origin": "project",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "modules",
+            "options": [],
+            "proposed": false,
+            "available": false,
+            "reason": "none the recipe can work on"
+          }
+        ]
+      }
+    ],
+    "add_outcomes": {
+      "documents": {
+        "source_id": "src-docs-1",
+        "kind": "documents",
+        "reference": "doc/concepts",
+        "state": "moved",
+        "trust": "trusted"
+      }
+    }
+  },
+  "states": {
+    "start.sources": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "start.sources",
+          "kind": "operator_wait"
+        },
+        "links": []
+      },
+      "links": {}
+    }
+  }
+}

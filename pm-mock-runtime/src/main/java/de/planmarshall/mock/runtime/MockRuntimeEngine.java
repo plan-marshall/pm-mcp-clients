@@ -164,6 +164,8 @@ import de.planmarshall.api.source.lesson.LessonPremiseEvidence;
 import de.planmarshall.api.source.lesson.LessonRetirementNotice;
 import de.planmarshall.api.source.lesson.PremiseEvidenceKind;
 import de.planmarshall.api.source.lesson.UnclaimedLessonSummary;
+import de.planmarshall.api.start.ConfinedRoot;
+import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.start.IntakeDraft;
 import de.planmarshall.api.start.PlanStartResult;
 import de.planmarshall.api.start.RecipeParameter;
@@ -237,7 +239,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_PLAN_MARSHALL = "plan-marshall";
     private static final String STEP_IDENTITY = "Identity";
     private static final String SUFFIX_ABANDON = "/abandon";
+    private static final String PATH_ENTRIES_PREFIX = "/api/v1/entries/";
+    private static final String SEGMENT_EVENTS = "/events";
+    private static final String SEGMENT_LINKS = "/links/";
+    private static final String SEGMENT_ENTRY_CHAT = "/chat";
+    private static final String SEGMENT_ENTRY_CHAT_TURNS = SEGMENT_ENTRY_CHAT + "/turns";
+    private static final String SEGMENT_ENTRY_CHAT_END = "/chat/end";
+    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL = SEGMENT_ENTRY_CHAT + "/proposal/";
+    private static final String ACTION_ACCEPT = "accept";
+    private static final String ACTION_RETRY = "retry";
+    private static final String ACTION_ABORT = "abort";
+    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
+    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = SEGMENT_ENTRY_CHAT_PROPOSAL + "reject";
+    private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
+    private static final String SEGMENT_PROJECT_FILES = "/files";
+    private static final String PATH_ENDED = "/api/v1/projects/";
+    private static final String SEGMENT_ENDED_CHAT = "/ended/";
+    private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
     private static final String ERR_PROJECT_NOT_FOUND = "project_not_found";
+    private static final String ERR_SCOPE_NOT_FOUND = "scope_not_found";
     private static final String EVENT_PROJECT_CHANGED = "project.changed";
     private static final String KEY_PROJECT_ID = "project_id";
     private static final String KEY_EVENT = "event";
@@ -283,6 +303,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_METHOD = "method";
     private static final String KEY_LINKS = "links";
     private static final String KEY_HREF = "href";
+    private static final String KEY_TEXT = "text";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
@@ -294,6 +315,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
+    private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CREDENTIAL_PREFIX = "credential:";
     private static final String CONST_CLAUDE = "claude";
@@ -431,6 +453,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<BeingAddedProject> beingAddedProjects = new ArrayList<>();
     private final Object storeLock = new Object();
     private final Map<String, MockStore> mockStores = new LinkedHashMap<>();
+    private final StartRegistry startRegistry;
     private final Object startLock = new Object();
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
@@ -486,6 +509,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
+        this.startRegistry = new StartRegistry(event -> broadcastEvent(event.name(), event.data()));
         setScenario(scenario);
     }
 
@@ -751,7 +775,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 4. SSE event stream subscription
-        if ("GET".equals(request.method()) && ("/api/v1/events".equals(path) || path.endsWith("/events"))) {
+        if ("GET".equals(request.method())
+                && ("/api/v1/events".equals(path) || path.endsWith(SEGMENT_EVENTS))) {
             handleEventStream(response);
             return;
         }
@@ -787,7 +812,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleProcessRoutes(request, response)
                 || handleDecompositionRoutes(request, response)
                 || handleGitSourceRoutes(request, response)
-                || handleStartRoutes(request, response)
+                || handleStartRoutes(request, response, isWeb)
                 || handleLessonSourceRoutes(request, response)
                 || handleControlRoutes(request, response);
     }
@@ -1344,7 +1369,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (map.get("onboard") instanceof Map<?, ?> onboard
-                && ("onboard.completed".equals(onboard.get(KEY_STATE))
+                && (STATE_ONBOARD_COMPLETED.equals(onboard.get(KEY_STATE))
                 || Boolean.TRUE.equals(onboard.get("completed")))) {
             return true;
         }
@@ -1665,12 +1690,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "H-0001", "relay-cursor-order", "plan", "integrity_pause",
                     "the plan's store file references.json changed outside the runtime",
                     0, null, "references.json", 4812L, "3f9a6b2cc21e", 5034L, "b70d41aa9a44",
-                    List.of("retry", "accept", "abort"), null));
+                    List.of(ACTION_RETRY, ACTION_ACCEPT, ACTION_ABORT), null));
             controlHolds.put(holdKey("relay-docs", "H-0002"), new HoldRecord(
                     "H-0002", "relay-docs", "plan", "held",
                     "waits: overlap with relay-auth-v2 (2 files)",
                     1, Instant.parse(CONST_TIME_10_14), null, null, null, null, null,
-                    List.of("retry", "end_plan"), null));
+                    List.of(ACTION_RETRY, "end_plan"), null));
 
             controlSettingsRevisions.put(CONST_FIX_RELAY, 7);
             var values = new LinkedHashMap<String, PlanSettingsValue>();
@@ -1837,6 +1862,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             localChangePreviews.clear();
             capturedProjects.clear();
         }
+        startRegistry.init(currentScenario.get());
     }
 
     private void initDefaultLessonSource() {
@@ -2416,8 +2442,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return ids;
     }
 
-    private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+    private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
         var path = request.path();
+        if (handleStartEntryRoutes(request, response)
+                || handleStartProjectRoutes(request, response, isWeb)
+                || handleStartEndedRoutes(request, response)) {
+            return true;
+        }
         if ("GET".equals(request.method()) && PATH_RECIPES.equals(path)) {
             handleListRecipes(response);
             return true;
@@ -2437,6 +2469,298 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         return false;
+    }
+
+    private boolean handleStartProjectRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        var path = request.path();
+        if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
+            return false;
+        }
+        if ("GET".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_FILES)) {
+            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_PROJECT_FILES.length());
+            handleProjectFiles(request, response, projectId, isWeb);
+            return true;
+        }
+        if ("POST".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
+            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_PROJECT_ENTRIES.length());
+            handleOpenEntry(request, response, projectId);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleStartEndedRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        var method = request.method();
+        if (!path.startsWith(PATH_ENDED) || !path.contains(SEGMENT_ENDED_CHAT)) {
+            return false;
+        }
+        if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
+            var subjectId = endedSubjectId(path.substring(PATH_ENDED.length()),
+                    SEGMENT_ENTRY_CHAT.length());
+            if (subjectId == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
+                        "No ended work is named"));
+                return true;
+            }
+            handleEndedChat(response, subjectId);
+            return true;
+        }
+        if ("POST".equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
+            var rest = path.substring(PATH_ENDED.length());
+            var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
+            var projectId = marker > 0 ? rest.substring(0, marker) : null;
+            var subjectId = endedSubjectId(rest, SEGMENT_ENDED_CHAT_ACCEPT.length());
+            if (projectId == null || subjectId == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
+                        "No ended work is named"));
+                return true;
+            }
+            handleAcceptFollowUp(response, projectId, subjectId);
+            return true;
+        }
+        return false;
+    }
+
+    private static @Nullable String endedSubjectId(String rest, int suffixLength) {
+        var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
+        var start = marker + SEGMENT_ENDED_CHAT.length();
+        var end = rest.length() - suffixLength;
+        if (marker <= 0 || end <= start) {
+            return null;
+        }
+        return rest.substring(start, end);
+    }
+
+    /**
+     * Serves the top-level entry routes (UC-STA-1..5): the entry itself, its events, the operator
+     * acts of its states, its chat, and the confined file listing. An entry is addressed by its id
+     * once opened; only the opening request names the project.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return {@code true} if the request was answered here
+     * @throws IOException on write failure
+     */
+    private boolean handleStartEntryRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if (!path.startsWith(PATH_ENTRIES_PREFIX)) {
+            return false;
+        }
+        var rest = path.substring(PATH_ENTRIES_PREFIX.length());
+        if (rest.isEmpty() || rest.endsWith(SEGMENT_EVENTS)) {
+            return false;
+        }
+        if (handleEntryChatRoutes(request, response, rest)) {
+            return true;
+        }
+        var entryId = rest;
+        String act = null;
+        var marker = rest.indexOf(SEGMENT_LINKS);
+        if (marker > 0) {
+            entryId = rest.substring(0, marker);
+            act = rest.substring(marker + SEGMENT_LINKS.length());
+        }
+        if (entryId.isEmpty() || entryId.contains("/")) {
+            return false;
+        }
+        if ("GET".equals(request.method()) && act == null) {
+            var state = startRegistry.find(entryId);
+            if (state == null) {
+                sendEntryNotFound(response, entryId);
+                return true;
+            }
+            response.json(200, state.toMap());
+            return true;
+        }
+        if ("POST".equals(request.method()) && act != null) {
+            handleEntryAct(request, response, entryId, act);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleEntryChatRoutes(MockHttpRequest request, MockHttpResponse response, String rest)
+            throws IOException {
+        if (!"POST".equals(request.method())) {
+            return false;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
+            handleEntryChatTurn(request, response, rest, SEGMENT_ENTRY_CHAT_TURNS);
+            return true;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_END)) {
+            handleEntryChatEnd(response, rest, SEGMENT_ENTRY_CHAT_END);
+            return true;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT)) {
+            handleEntryChatProposal(response, rest, SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT, true);
+            return true;
+        }
+        if (rest.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT)) {
+            handleEntryChatProposal(response, rest, SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT, false);
+            return true;
+        }
+        return false;
+    }
+
+    private void handleEntryChatEnd(MockHttpResponse response, String rest, String suffix) throws IOException {
+        var state = startRegistry.endChat(rest.substring(0, rest.length() - suffix.length()));
+        if (state == null) {
+            sendEntryNotFound(response, rest.substring(0, rest.length() - suffix.length()));
+            return;
+        }
+        response.json(200, state.toMap());
+    }
+
+    private void handleOpenEntry(MockHttpRequest request, MockHttpResponse response, String projectId)
+            throws IOException {
+        if (!gateAllows(projectId, response)) {
+            return;
+        }
+        EntryOpenRequest parsed;
+        try {
+            var bodyMap = readBodyObject(request);
+            bodyMap.putIfAbsent(KEY_PROJECT_ID, projectId);
+            bodyMap.remove(KEY_PROJECT_ID);
+            parsed = EntryOpenRequest.fromMap(bodyMap);
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException _) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST,
+                    KEY_MESSAGE, "The opening request could not be read"));
+            return;
+        }
+        var state = startRegistry.open(projectId, parsed);
+        if (state == null) {
+            sendProjectNotFound(response, projectId);
+            return;
+        }
+        broadcastEvent("entry.opened", Map.of("entry_id", state.entryId(), KEY_PROJECT_ID, projectId,
+                "kind", parsed.kind().wireValue()));
+        response.json(201, state.toMap());
+    }
+
+    private void handleEntryAct(MockHttpRequest request, MockHttpResponse response, String entryId, String act)
+            throws IOException {
+        try {
+            var state = startRegistry.act(entryId, act, readBodyObject(request));
+            if (state == null) {
+                sendEntryNotFound(response, entryId);
+                return;
+            }
+            response.json(200, state.toMap());
+        } catch (StartRegistry.ActRefused refused) {
+            var status = switch (refused.error()) {
+                case ERR_INVALID_REQUEST, "invalid_arguments" -> 400;
+                case "loopback_only", ERR_CLI_ONLY -> 403;
+                case ERR_SCOPE_NOT_FOUND -> 404;
+                default -> 409;
+            };
+            response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail(),
+                    KEY_STATE, entryId));
+        }
+    }
+
+    private void handleEntryChatTurn(MockHttpRequest request, MockHttpResponse response, String rest,
+            String suffix) throws IOException {
+        var entryId = rest.substring(0, rest.length() - suffix.length());
+        var text = JsonTree.string(readBodyObject(request), KEY_TEXT);
+        if (text == null || text.isBlank()) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE, "A chat turn carries its text"));
+            return;
+        }
+        try {
+            var state = startRegistry.chatTurn(entryId, text);
+            if (state == null) {
+                sendEntryNotFound(response, entryId);
+                return;
+            }
+            response.json(200, state.toMap());
+        } catch (StartRegistry.ActRefused refused) {
+            response.json(409, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
+        }
+    }
+
+    private void handleEntryChatProposal(MockHttpResponse response, String rest, String suffix, boolean accept)
+            throws IOException {
+        var entryId = rest.substring(0, rest.length() - suffix.length());
+        try {
+            var state = startRegistry.chatProposal(entryId, accept);
+            if (state == null) {
+                sendEntryNotFound(response, entryId);
+                return;
+            }
+            response.json(200, state.toMap());
+        } catch (StartRegistry.ActRefused refused) {
+            response.json(409, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
+        }
+    }
+
+    private void handleProjectFiles(MockHttpRequest request, MockHttpResponse response, String projectId,
+            boolean isWeb) throws IOException {
+        var rootWire = queryParameter(request, "root");
+        var root = ConfinedRoot.fromWireOrNull(rootWire != null ? rootWire : ConfinedRoot.CHECKOUT.wireValue());
+        if (root == null) {
+            response.json(400, Map.of(KEY_ERROR, ERR_INVALID_REQUEST, KEY_MESSAGE,
+                    "Unknown root: " + rootWire));
+            return;
+        }
+        try {
+            var listing = startRegistry.listFiles(projectId, root, queryParameter(request, "path"), isWeb);
+            if (listing == null) {
+                sendProjectNotFound(response, projectId);
+                return;
+            }
+            response.json(200, listing.toMap());
+        } catch (StartRegistry.ActRefused refused) {
+            var status = "loopback_only".equals(refused.error()) ? 403 : 400;
+            response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
+        }
+    }
+
+    private void handleEndedChat(MockHttpResponse response, String subjectId) throws IOException {
+        var chat = startRegistry.endedChat(subjectId);
+        if (chat == null) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
+                    "No ended work with the id " + subjectId));
+            return;
+        }
+        response.json(200, chat.toMap());
+    }
+
+    private void handleAcceptFollowUp(MockHttpResponse response, String projectId, String subjectId)
+            throws IOException {
+        var state = startRegistry.acceptFollowUp(projectId, subjectId);
+        if (state == null) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE,
+                    "No ended work with the id " + subjectId));
+            return;
+        }
+        response.json(201, state.toMap());
+    }
+
+    private static @Nullable String queryParameter(MockHttpRequest request, String name) {
+        var query = request.query();
+        if (query == null) {
+            return null;
+        }
+        for (var part : query.split("&")) {
+            var eq = part.indexOf('=');
+            if (eq < 0) {
+                continue;
+            }
+            if (name.equals(part.substring(0, eq))) {
+                return URLDecoder.decode(part.substring(eq + 1), StandardCharsets.UTF_8);
+            }
+        }
+        return null;
+    }
+
+    private static void sendEntryNotFound(MockHttpResponse response, String entryId) throws IOException {
+        response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "No entry with the id " + entryId));
     }
 
     private static String projectIdOf(String path, String suffix) {
@@ -2461,7 +2785,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleListRecipes(MockHttpResponse response) throws IOException {
-        response.json(200, Map.of(KEY_RECIPES, defaultRecipes().stream().map(RecipeRef::toMap).toList()));
+        var recipes = startRegistry.recipes(CONST_PM_MCP_CLIENTS);
+        if (recipes.isEmpty()) {
+            recipes = defaultRecipes();
+        }
+        response.json(200, Map.of(KEY_RECIPES, recipes.stream().map(RecipeRef::toMap).toList()));
     }
 
     private static List<RecipeRef> defaultRecipes() {
@@ -3080,21 +3408,22 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("GET".equals(method) && path.endsWith("/chat")) {
+        if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
             var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-            handleGetChat(response, controlSubjectId(path, prefix, "/chat"));
+            handleGetChat(response, controlSubjectId(path, prefix, SEGMENT_ENTRY_CHAT));
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && path.endsWith("/chat/turns")) {
-            handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX, "/chat/turns"));
+        if (isPlan && "POST".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
+            handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX,
+                    SEGMENT_ENTRY_CHAT_TURNS));
             return true;
         }
 
         if (isPlan && "POST".equals(method) && (path.endsWith("/chat/proposal/accept")
-                || path.endsWith("/chat/proposal/reject"))) {
-            var accept = path.endsWith("/chat/proposal/accept");
-            var suffix = accept ? "/chat/proposal/accept" : "/chat/proposal/reject";
+                || path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT))) {
+            var accept = path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT);
+            var suffix = accept ? SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT : SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT;
             handleChatProposal(response, controlSubjectId(path, PATH_PLANS_PREFIX, suffix), accept);
             return true;
         }
@@ -3279,11 +3608,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             var act = resolution.act();
-            var ending = "abort".equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
-            var released = "accept".equals(act) || "retry".equals(act) || "grant".equals(act)
+            var ending = ACTION_ABORT.equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
+            var released = ACTION_ACCEPT.equals(act) || ACTION_RETRY.equals(act) || "grant".equals(act)
                     || "add_credential".equals(act) || "raise_budget".equals(act)
                     || "give_up_removal".equals(act) || "recycle".equals(act);
-            if ("integrity_pause".equals(hold.kind()) && "retry".equals(act)) {
+            if ("integrity_pause".equals(hold.kind()) && ACTION_RETRY.equals(act)) {
                 released = false;
             }
             HoldResolutionResult result;
@@ -3293,10 +3622,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 controlPlanPausePoints.remove(planId);
                 broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
                         hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
+                var endReason = resolution.reason();
+                if (endReason == null) {
+                    endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
+                }
                 broadcastEvent(PlanControlEvent.EVENT_CANCELLED, new PlanControlEvent(
-                        PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
-                        resolution.reason() != null ? resolution.reason()
-                                : ("abort".equals(act) ? "Integrity pause aborted" : "Ended by operator")).toMap());
+                        PlanControlEvent.EVENT_CANCELLED, planId, "ended", null, endReason).toMap());
                 result = new HoldResolutionResult(holdId, true, null, planId);
             } else if (released) {
                 controlHolds.remove(holdKey(planId, holdId));
@@ -4337,14 +4668,56 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put(KEY_STATE, stateId);
         body.put("completed_steps", completedStepsFor(stateId));
         body.put("auto", onboardingAuto);
+        body.put("step_summaries", stepSummariesFor(stateId));
         return body;
+    }
+
+    /**
+     * The summary the runtime reports for each done step: the recorded value of an aspect the
+     * onboarding has already passed, keyed by the step number (1 to 7).
+     *
+     * @param stateId the current state
+     * @return the summaries of the done steps
+     */
+    private Map<String, String> stepSummariesFor(@Nullable String stateId) {
+        var summaries = new LinkedHashMap<String, String>();
+        if (stateId == null) {
+            return summaries;
+        }
+        var current = MachineOnboardingState.aspectOf(stateId);
+        var upTo = current != null ? current.step() - 1 : 0;
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
+            upTo = 7;
+        }
+        if (upTo >= 1) {
+            summaries.put("1", "Deutsch, models English");
+        }
+        if (upTo >= 2) {
+            summaries.put("2", "Claude Code 2.4.1 (default), OpenCode 1.9.0");
+        }
+        if (upTo >= 3) {
+            summaries.put("3", "3 models on 2 harnesses");
+        }
+        if (upTo >= 4) {
+            summaries.put("4", "36 roles assigned");
+        }
+        if (upTo >= 5) {
+            summaries.put("5", "macOS Keychain");
+        }
+        if (upTo >= 6) {
+            summaries.put("6", "GitHub (gh)");
+        }
+        if (upTo >= 7) {
+            summaries.put("7", "Pull Request \u00b7 Test first \u00b7 key points");
+        }
+        return summaries;
     }
 
     private static int completedStepsFor(@Nullable String stateId) {
         if (stateId == null) {
             return 0;
         }
-        if ("onboard.completed".equals(stateId) || stateId.startsWith("settings.")) {
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
             return 7;
         }
         var aspect = MachineOnboardingState.aspectOf(stateId);
@@ -4958,7 +5331,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (StandardScenarios.PROJECTS.equals(currentScenario.get().name())
                 && path.startsWith("/api/v1/projects/")
                 && !path.endsWith("/ended")
-                && !path.endsWith("/events")) {
+                && !path.endsWith(SEGMENT_EVENTS)
+                && !path.endsWith(SEGMENT_PROJECT_FILES)
+                && !path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
             var prjId = path.substring("/api/v1/projects/".length());
             if (!prjId.contains("/")) {
                 handleGetSingleProject(response, prjId);
@@ -5014,8 +5389,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleAbandonProjectOnboarding(response, onbId);
             return true;
         }
-        if (path.startsWith("/api/v1/entries/") && path.endsWith(SUFFIX_ABANDON)) {
-            var entId = path.substring("/api/v1/entries/".length(), path.length() - SUFFIX_ABANDON.length());
+        if (path.startsWith(PATH_ENTRIES_PREFIX) && path.endsWith(SUFFIX_ABANDON)) {
+            var entId = path.substring(PATH_ENTRIES_PREFIX.length(), path.length() - SUFFIX_ABANDON.length());
             handleAbandonProjectOnboarding(response, entId);
             return true;
         }

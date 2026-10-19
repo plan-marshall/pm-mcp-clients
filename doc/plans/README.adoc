@@ -117,9 +117,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/web-design.adoc[`web-design`]; link:implemented/mock-runtime.adoc[`mock-runtime`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |Milestone 11, pulled forward; epic clients
 
-|link:web-onboarding.adoc[`web-onboarding`]
+|link:implemented/web-onboarding.adoc[`web-onboarding`]
 |Onboarding and start in the web app
-|`open`
+|`done`
 |link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:implemented/entry-contract.adoc[`entry-contract`]
 |epic clients
 
@@ -174,7 +174,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/web-projects.adoc[`web-projects`]
 |Projects in the web app
 |`done`
-|link:implemented/project-contract.adoc[`project-contract`]; link:web-onboarding.adoc[`web-onboarding`]
+|link:implemented/project-contract.adoc[`project-contract`]; link:implemented/web-onboarding.adoc[`web-onboarding`]
 |epic clients
 
 |link:implemented/process-contract.adoc[`process-contract`]
@@ -213,22 +213,22 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
 |epic clients
 
-|link:start-contract.adoc[`start-contract`]
+|link:implemented/start-contract.adoc[`start-contract`]
 |Starting work: contract and mock runtime
-|`open`
+|`done`
 |link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
 |link:cli-start.adoc[`cli-start`]
 |Starting work in the terminal
 |`open`
-|link:start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
+|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
 |epic clients
 
 |link:web-start.adoc[`web-start`]
 |Starting work in the web app
 |`open`
-|link:start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]
+|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]
 |epic clients
 
 |link:implemented/overview-contract.adoc[`overview-contract`]
