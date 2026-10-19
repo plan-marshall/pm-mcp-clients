@@ -127,6 +127,10 @@
         if (destroyed || generation !== entryGeneration || requestedEntryId !== entryId) return;
         loadedEntryId = requestedEntryId;
         apply(resource);
+        const project = resource.start.entry?.project_id ?? '';
+        if (project) {
+          runtimeStore.update((current) => ({ ...current, startProjectId: project }));
+        }
         subscribeEntry(requestedEntryId);
       } else if (projectId) {
         const opened = await apiClient.openEntry(projectId, { kind });
@@ -143,7 +147,7 @@
         if (destroyed || generation !== entryGeneration) return;
         projects = overview.projects ?? [];
       }
-      await resolveProjectRepository(generation);
+      await resolveProjectRepository(generation, state?.entry?.project_id ?? projectId ?? '');
     } catch (e) {
       if (generation === entryGeneration) {
         loadError = messageOf(e);
@@ -159,8 +163,8 @@
    * Reads the project's forge repository from the explorer, so a bare issue number and the
    * grant question compare against `owner/repo`, not the project id.
    */
-  async function resolveProjectRepository(generation: number): Promise<void> {
-    const project = currentProject;
+  async function resolveProjectRepository(generation: number, project: string): Promise<void> {
+    projectRepository = '';
     if (!project) return;
     try {
       const explorer = await apiClient.getProjectExplorer();
@@ -170,7 +174,9 @@
       );
       projectRepository = repositoryFromRemote(enrolled?.remote_url ?? '');
     } catch {
-      projectRepository = '';
+      if (generation === entryGeneration) {
+        projectRepository = '';
+      }
     }
   }
 
