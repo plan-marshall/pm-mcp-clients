@@ -1,0 +1,72 @@
+{
+  "format_version": 1,
+  "name": "entry-onboarding",
+  "description": "The entry with the machine's onboarding running: stopped at a later step, offered in the terminal and in the web app (UC-ENT-1, entry.where-to-onboard)",
+  "start": "entry.where-to-onboard",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "onboarding",
+        "version": "0.9.0",
+        "machine": "mock-machine",
+        "onboarded": false,
+        "onboard": {
+          "state": "harness.choose",
+          "step": 2,
+          "steps": 7,
+          "completed_steps": 2,
+          "completed": false
+        },
+        "web": {
+          "enabled": true,
+          "lan": false,
+          "port": 7420,
+          "lan_port": 7421,
+          "open": true
+        },
+        "paired_devices_count": 0
+      }
+    },
+    "GET /api/v1/web/devices": {
+      "representation": {
+        "devices": []
+      }
+    }
+  },
+  "states": {
+    "entry.where-to-onboard": {
+      "representation": {
+        "scope": "machine",
+        "state": "entry.where-to-onboard",
+        "summary": "This machine is set up up to step 2 of 7; it stopped at [3/7] Models"
+      },
+      "links": {
+        "terminal": {
+          "next": "onboard.mode",
+          "href": "/api/v1/onboarding/state"
+        },
+        "web": {
+          "next": "entry.web-app",
+          "href": "/api/v1/web/pairings"
+        }
+      }
+    },
+    "onboard.mode": {
+      "representation": {
+        "scope": "machine",
+        "state": "onboard.mode",
+        "summary": "Set up this machine for plan-marshall"
+      },
+      "links": {}
+    },
+    "entry.web-app": {
+      "representation": {
+        "scope": "machine",
+        "state": "entry.web-app",
+        "summary": "The web app opens at the setup of this machine"
+      },
+      "links": {}
+    }
+  }
+}

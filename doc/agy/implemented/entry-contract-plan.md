@@ -1,8 +1,8 @@
 # Implementation Plan: `entry-contract` (Entry: Contract and Mock Runtime)
 
-This implementation plan governs the implementation of the `entry-contract` work package (`doc/plans/entry-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
+This implementation plan governs the implementation of the `entry-contract` work package (`doc/plans/implemented/entry-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
 
-It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
+It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -15,7 +15,7 @@ The goal is to implement the client-side contract for machine entry, pairing, ne
 4. **Mock Runtime Scenarios (`entry-<case>`)**: Un-onboarded machine, active onboarding, paired browser, SSH session, fresh pairing code, LAN listener conflict, device lifecycle, and stream termination.
 
 ### Target Work Package
-- Specification: `doc/plans/entry-contract.adoc`.
+- Specification: `doc/plans/implemented/entry-contract.adoc`.
 - Use Cases: `UC-ENT-1`, `UC-ENT-2`, `UC-ONB-8`.
 - Specifications: CLI & Security § The Terminal Client as the Entry, § Loopback and LAN Listeners Side by Side, § Host Validation, § Pairing Protocol, § Credentials in the Web App, § Devices in Both Clients; Runtime Model § Local API, § Event Catalogue.
 - Design: `doc/design/terminal-client/05-transcripts-entry.adoc#t-entry`, `doc/design/shared/paired-devices.adoc`.
@@ -38,15 +38,15 @@ This plan executes concurrently in Wave 8 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-entry-contract` on branch `feat/entry-contract`.
-- [ ] 2. Domain skills & engineering personas loaded:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-entry-contract` on branch `feat/entry-contract`.
+- [x] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `persona-module-tester` for Java 25 records and Jackson streaming codecs.
   - `persona-security-expert` for loopback trust boundary, pairing tokens, and device revocation.
   - `persona-integration-tester` for mock runtime scenarios and HTTP/SSE validation.
   - `persona-code-reviewer` for review bot resolution.
-- [ ] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/entry-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/entry-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/entry-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/entry-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/entry-contract-plan-report.md` by orchestrator session.
@@ -68,7 +68,7 @@ This plan executes concurrently in Wave 8 alongside:
 ## 5. Phased Technical Recipe
 
 ### Phase 1: Trace Matrix & Specification Alignment
-- Map `doc/plans/entry-contract.adoc` to:
+- Map `doc/plans/implemented/entry-contract.adoc` to:
   - `UC-ENT-1`: Terminal client entry, listener discovery, pairing initiation.
   - `UC-ENT-2`: Paired devices list, rename, revoke, revoke-others.
   - `UC-ONB-8`: Loopback-only secret input, LAN listener rejection.

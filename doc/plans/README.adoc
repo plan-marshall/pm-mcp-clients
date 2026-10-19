@@ -108,7 +108,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-onboarding.adoc[`cli-onboarding`]
 |The console `pm-operator`: entry and onboarding
 |`open`
-|link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
+|link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:implemented/entry-contract.adoc[`entry-contract`]
 |epic clients
 
 |link:implemented/web-app-foundation.adoc[`web-app-foundation`]
@@ -120,7 +120,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:web-onboarding.adoc[`web-onboarding`]
 |Onboarding and start in the web app
 |`open`
-|link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:entry-contract.adoc[`entry-contract`]
+|link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:implemented/entry-contract.adoc[`entry-contract`]
 |epic clients
 
 |link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
@@ -141,9 +141,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
 |epic clients
 
-|link:entry-contract.adoc[`entry-contract`]
+|link:implemented/entry-contract.adoc[`entry-contract`]
 |Entry: contract and mock runtime
-|`open`
+|`done`
 |link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 

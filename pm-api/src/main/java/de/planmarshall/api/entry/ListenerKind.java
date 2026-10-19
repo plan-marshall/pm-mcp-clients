@@ -9,6 +9,8 @@
  */
 package de.planmarshall.api.entry;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -40,16 +42,40 @@ public enum ListenerKind {
      * Resolves a wire value to its listener kind.
      *
      * @param value the wire value ({@code loopback} or {@code lan}, case-insensitive)
-     * @return the listener kind
-     * @throws IllegalArgumentException if the value names no listener
+     * @return the listener kind, or {@code null} when the value names none
      */
-    public static ListenerKind fromWire(String value) {
-        Objects.requireNonNull(value, "value");
+    public static ListenerKind fromWireOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
         for (var kind : values()) {
             if (kind.wireValue.equalsIgnoreCase(value.trim())) {
                 return kind;
             }
         }
-        throw new IllegalArgumentException("Unknown listener kind: " + value);
+        return null;
+    }
+
+    /**
+     * Resolves a wire value to its listener kind.
+     *
+     * @param value the wire value ({@code loopback} or {@code lan}, case-insensitive)
+     * @return the listener kind
+     * @throws IllegalArgumentException if the value names no listener
+     */
+    public static ListenerKind fromWire(String value) {
+        Objects.requireNonNull(value, "value");
+        var kind = fromWireOrNull(value);
+        if (kind == null) {
+            throw new IllegalArgumentException("Unknown listener kind: " + value);
+        }
+        return kind;
+    }
+
+    /**
+     * @return the wire values of the closed list, in declaration order
+     */
+    public static List<String> wireValues() {
+        return Arrays.stream(values()).map(ListenerKind::wireValue).toList();
     }
 }

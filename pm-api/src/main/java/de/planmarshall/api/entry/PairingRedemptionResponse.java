@@ -14,6 +14,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
@@ -68,6 +71,16 @@ public record PairingRedemptionResponse(
     }
 
     /**
+     * Writes this response to a streaming generator.
+     *
+     * @param generator the generator
+     * @throws IOException on write failure
+     */
+    public void writeTo(JsonGenerator generator) throws IOException {
+        JsonTree.writeValue(generator, toMap());
+    }
+
+    /**
      * Parses a redemption response from a JSON tree map.
      *
      * @param map the input map
@@ -94,6 +107,21 @@ public record PairingRedemptionResponse(
      */
     public static PairingRedemptionResponse fromJson(String json) throws IOException {
         var obj = JsonTree.asObject(JsonTree.parse(json));
+        if (obj == null) {
+            throw new JsonFormatException("Expected JSON object for PairingRedemptionResponse");
+        }
+        return fromMap(obj);
+    }
+
+    /**
+     * Reads one redemption response from a streaming parser positioned at its first token.
+     *
+     * @param parser the parser
+     * @return the redemption response
+     * @throws IOException on parse failure
+     */
+    public static PairingRedemptionResponse readFrom(JsonParser parser) throws IOException {
+        var obj = JsonTree.asObject(JsonTree.readValue(parser));
         if (obj == null) {
             throw new JsonFormatException("Expected JSON object for PairingRedemptionResponse");
         }
