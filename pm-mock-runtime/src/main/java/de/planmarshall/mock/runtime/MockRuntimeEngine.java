@@ -248,6 +248,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final int DEFAULT_LAN_PORT = 7421;
     private static final String KEY_LANDING = "landing";
     private static final String KEY_METHOD = "method";
+    private static final String KEY_LINKS = "links";
+    private static final String KEY_HREF = "href";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
@@ -365,6 +367,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
+    /**
+     * The operator links offered by the states entered so far, as {@code METHOD href} to the state id
+     * that offered it. A request that matches no link of the current state but one of these, offered by
+     * a state left meanwhile, is an act against a state left meanwhile, answered {@code act_not_available}
+     * (409) as the real runtime answers it.
+     */
+    private final Map<String, String> offeredOperatorLinks = new ConcurrentHashMap<>();
     private final DesignerRegistry designer = new DesignerRegistry();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
@@ -453,6 +462,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private synchronized void setScenario(Scenario scenario) {
         this.currentScenario.set(scenario);
+        offeredOperatorLinks.clear();
         initDefaultDevices();
         initDefaultReports();
         initDefaultDecisions();
@@ -472,6 +482,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Resets the active scenario back to its start state.
      */
     public synchronized void reset() {
+        offeredOperatorLinks.clear();
         initDefaultDevices();
         initDefaultReports();
         initDefaultDecisions();
@@ -527,6 +538,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
+        recordOfferedOperatorLinks(stateDef, nextStateId);
+
         // Schedule events
         for (var eventDef : stateDef.events()) {
             var task = scheduler.schedule(() -> broadcastEvent(eventDef.event(), eventDef.data()),
@@ -553,6 +566,37 @@ public final class MockRuntimeEngine implements AutoCloseable {
             task.cancel(false);
         }
         pendingTasks.clear();
+    }
+
+    /**
+     * Records the operator links a state offers, so that an act against a later state's stale link is
+     * refused {@code act_not_available} like the real runtime refuses it. Only a state whose
+     * representation carries an operator {@code links} array contributes; the legacy scenarios whose
+     * representations name no operator link keep answering {@code mock_no_route}.
+     *
+     * @param stateDef the state entered
+     * @param stateId  the id of the state entered
+     */
+    private void recordOfferedOperatorLinks(StateDefinition stateDef, String stateId) {
+        var representation = JsonTree.asObject(stateDef.representation());
+        if (representation == null) {
+            return;
+        }
+        var links = JsonTree.asArray(representation.get(KEY_LINKS));
+        if (links == null) {
+            return;
+        }
+        for (var element : links) {
+            var link = JsonTree.asObject(element);
+            if (link == null) {
+                continue;
+            }
+            var method = JsonTree.string(link, KEY_METHOD);
+            var href = JsonTree.string(link, KEY_HREF);
+            if (method != null && href != null) {
+                offeredOperatorLinks.put(method.toUpperCase() + " " + href, stateId);
+            }
+        }
     }
 
     /**
@@ -596,6 +640,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         // 2. Authentication check
         if (!isAuthorized(request, response, isWeb)) {
+            return;
+        }
+
+        // 2b. An act against a state left meanwhile is refused before any dynamic route serves it.
+        if (handleStaleOperatorLink(request, response)) {
             return;
         }
 
@@ -721,12 +770,56 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         synchronized (this) {
+            if (!Objects.equals(this.currentStateId.get(), activeStateId)) {
+                var stale = new LinkedHashMap<String, Object>();
+                stale.put(KEY_ERROR, "act_not_available");
+                stale.put(KEY_MESSAGE, "The state '" + activeStateId + "' was left meanwhile");
+                stale.put(KEY_STATE, this.currentStateId.get());
+                response.json(409, stale);
+                return true;
+            }
             transitionTo(linkDef.next());
             state = currentScenario.get().state(this.currentStateId.get());
         }
 
         var nextRep = state != null ? state.representation() : Map.of();
         response.json(linkDef.status(), nextRep);
+        return true;
+    }
+
+    /**
+     * Answers an act against a state left meanwhile. A request that is not offered by the current
+     * state but was offered by an earlier state of this scenario is refused {@code act_not_available};
+     * a request the current state offers (for example with another method) is left to the normal
+     * routing, and a request never offered falls through to {@code mock_no_route}.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return {@code true} if the request was answered here
+     * @throws IOException on write failure
+     */
+    private boolean handleStaleOperatorLink(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String activeStateId;
+        StateDefinition state;
+        synchronized (this) {
+            activeStateId = this.currentStateId.get();
+            state = currentScenario.get().state(activeStateId);
+        }
+
+        var requestKey = request.method().toUpperCase() + " " + request.path();
+        var offeredBy = offeredOperatorLinks.get(requestKey);
+        if (offeredBy == null || offeredBy.equals(activeStateId)) {
+            return false;
+        }
+        if (state != null && findMatchingLink(request, state) != null) {
+            return false;
+        }
+
+        var body = new LinkedHashMap<String, Object>();
+        body.put(KEY_ERROR, "act_not_available");
+        body.put(KEY_MESSAGE, requestKey + " belongs to the state '" + offeredBy + "' left meanwhile");
+        body.put(KEY_STATE, activeStateId);
+        response.json(409, body);
         return true;
     }
 
@@ -775,7 +868,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!(state.representation() instanceof Map<?, ?> repMap)) {
             return false;
         }
-        if (checkLinkGroup(repMap.get("links"), linkName, path)) {
+        if (checkLinkGroup(repMap.get(KEY_LINKS), linkName, path)) {
             return true;
         }
         return checkLinkGroup(repMap.get("_links"), linkName, path);
@@ -786,7 +879,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
         var targetObj = links.get(linkName);
-        if (targetObj instanceof Map<?, ?> targetMap && path.equals(targetMap.get("href"))) {
+        if (targetObj instanceof Map<?, ?> targetMap && path.equals(targetMap.get(KEY_HREF))) {
             return true;
         }
         return path.equals(String.valueOf(targetObj));
@@ -3453,8 +3546,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleEventStream(MockHttpResponse response) throws IOException {
-        var stream = response.events(200);
-        activeStreams.add(stream);
+        var stream = response.events(200, activeStreams::add);
         try {
             stream.sendComment("connected to mock runtime");
         } catch (IOException _) {
@@ -3475,8 +3567,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleTaskActivityEventStream(MockHttpResponse response) throws IOException {
-        var stream = response.events(200);
-        activeStreams.add(stream);
+        var stream = response.events(200, activeStreams::add);
         try {
             stream.sendComment("connected to mock runtime");
             stream.sendJson("task.activity", Map.of(
@@ -3721,12 +3812,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             for (var entry : state.links().entrySet()) {
                 var link = entry.getValue();
                 var target = new LinkedHashMap<String, Object>();
-                target.put("href", link.href() != null ? link.href() : "/api/v1/onboarding/step");
+                target.put(KEY_HREF, link.href() != null ? link.href() : "/api/v1/onboarding/step");
                 target.put(KEY_METHOD, link.method());
                 target.put("next", link.next());
                 links.put(entry.getKey(), target);
             }
-            body.put("links", links);
+            body.put(KEY_LINKS, links);
         }
         body.put(KEY_STATE, stateId);
         body.put("completed_steps", completedStepsFor(stateId));

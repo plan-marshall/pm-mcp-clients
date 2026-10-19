@@ -15,6 +15,7 @@ import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -211,6 +212,70 @@ public class JsonTree {
     @SuppressWarnings("unchecked")
     public static Map<String, Object> asObject(Object tree) {
         return tree instanceof Map<?, ?> map ? (Map<String, Object>) map : null;
+    }
+
+    /**
+     * Deep-copies a JSON tree value into an immutable form: a map into an unmodifiable
+     * {@link LinkedHashMap}, a list into an unmodifiable {@link List}, every other value unchanged. A
+     * member whose value is {@code null} is kept (unlike {@link Map#copyOf}), so a valid JSON object
+     * with a {@code null} member survives a round-trip. A caller can therefore freeze a decoded tree
+     * without losing declared nulls or leaking the mutable nested maps and lists.
+     *
+     * @param value the tree value, may be {@code null}
+     * @return the immutable deep copy
+     */
+    public static Object immutableCopy(Object value) {
+        return switch (value) {
+            case null -> null;
+            case Map<?, ?> map -> {
+                var copy = new LinkedHashMap<String, Object>();
+                for (var entry : map.entrySet()) {
+                    copy.put(String.valueOf(entry.getKey()), immutableCopy(entry.getValue()));
+                }
+                yield Collections.unmodifiableMap(copy);
+            }
+            case List<?> list -> {
+                var copy = new ArrayList<Object>(list.size());
+                for (var element : list) {
+                    copy.add(immutableCopy(element));
+                }
+                yield Collections.unmodifiableList(copy);
+            }
+            default -> value;
+        };
+    }
+
+    /**
+     * @param map a tree object, may be {@code null}
+     * @return the immutable deep copy, empty if the input is {@code null}
+     */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> immutableMap(Map<String, Object> map) {
+        if (map == null) {
+            return Map.of();
+        }
+        return (Map<String, Object>) immutableCopy(map);
+    }
+
+    /**
+     * Reads a member that, when present and non-null, must be a JSON object.
+     *
+     * @param object the object, may be {@code null}
+     * @param name   the member name
+     * @param type   the type name for the refusal message
+     * @return the member as an immutable object map, or {@code null} when absent or {@code null}
+     * @throws IOException if the member is present, non-null, and not a JSON object
+     */
+    public static Map<String, Object> objectOrNull(Map<String, Object> object, String name, String type)
+            throws IOException {
+        if (object == null || !object.containsKey(name) || object.get(name) == null) {
+            return null;
+        }
+        var member = asObject(object.get(name));
+        if (member == null) {
+            throw new JsonFormatException("Member " + name + " must be an object in " + type);
+        }
+        return member;
     }
 
     /**

@@ -22,6 +22,7 @@ public final class MockEventStream implements AutoCloseable {
 
     private final OutputStream out;
     private volatile boolean closed;
+    private long lastEventId;
 
     MockEventStream(OutputStream out) {
         this.out = out;
@@ -39,6 +40,7 @@ public final class MockEventStream implements AutoCloseable {
             throw new IOException("Event stream is closed");
         }
         var sb = new StringBuilder();
+        sb.append("id: ").append(++lastEventId).append('\n');
         if (event != null && !event.isBlank()) {
             sb.append("event: ").append(event).append('\n');
         }

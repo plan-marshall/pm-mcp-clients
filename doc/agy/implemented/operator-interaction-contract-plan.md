@@ -1,8 +1,8 @@
 # Implementation Plan: `operator-interaction-contract` (What Every Operator Interaction Shares: Contract and Mock Runtime)
 
-This implementation plan governs the implementation of the `operator-interaction-contract` work package (`doc/plans/operator-interaction-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
+This implementation plan governs the implementation of the `operator-interaction-contract` work package (`doc/plans/implemented/operator-interaction-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
 
-It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
+It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -59,16 +59,16 @@ This plan executes concurrently in Wave 7 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/operator-interaction-contract /Users/oliver/git/worktrees/pm-mcp-clients-operator-interaction-contract main`).
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 1. Isolated worktree created on topic branch off latest `main` (`git worktree add -b feat/operator-interaction-contract /Users/oliver/git/worktrees/pm-mcp-clients-operator-interaction-contract main`).
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for Java 25 records and Jackson streaming codecs
   - `persona-security-expert` for closed enumerations, input sanitization, and fail-closed parser boundaries
   - `persona-documenter` for documentation, ADRs, and roadmap updates
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/operator-interaction-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/operator-interaction-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (NEVER use `skip-bot-review`), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/operator-interaction-contract-plan-report.md`), initial plan moved to `doc/agy/implemented/operator-interaction-contract-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 6. PR opened (NEVER use `skip-bot-review`), 5-minute review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/operator-interaction-contract-plan-report.md` by orchestrator session.
 
