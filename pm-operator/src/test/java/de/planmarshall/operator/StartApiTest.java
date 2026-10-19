@@ -38,7 +38,6 @@ import org.junit.jupiter.api.Test;
 class StartApiTest {
 
     private static final String PROJECT = "/api/v1/projects/pm-mcp-clients";
-    private static final String ENTRY = "/api/v1/entries/ent-1";
     private static final String DECOMPOSITION = PROJECT + "/epics/relay-hardening/decomposition";
 
     private RuntimeFixture fixture;

@@ -133,7 +133,7 @@ final class StartRenderer {
 
     private void renderReadyValues(StartReadyResource ready) {
         if (!ready.parameters().isEmpty()) {
-            var params = new StringJoiner(" \u00b7 ");
+            var params = new StringJoiner(MIDDLE_DOT);
             for (var parameter : ready.parameters()) {
                 params.add(text("start.ready.param_value", Map.of("name", tenant(parameter.name()),
                                     KEY_VALUE, tenant(parameter.value()))));

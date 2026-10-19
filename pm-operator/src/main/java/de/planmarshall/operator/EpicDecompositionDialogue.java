@@ -298,7 +298,7 @@ final class EpicDecompositionDialogue {
             parts.add(text("decomposition.locked", Map.of()));
         } else if (!StagedPlanRecord.STATUS_STAGED.equals(plan.status())
                             && !StagedPlanRecord.STATUS_COMMITTED.equals(plan.status())) {
-            parts.add(text("decomposition.change", Map.of("change", plan.status())));
+            parts.add(text("decomposition.change", Map.of("change", clean(plan.status()))));
         }
         return parts.isEmpty() ? "" : "  " + String.join(" \u00b7 ", parts);
     }

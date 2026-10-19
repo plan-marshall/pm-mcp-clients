@@ -37,7 +37,7 @@ class StartAnswersTest {
                             () -> assertEquals("pm-mcp-clients", answers.project),
                             () -> assertEquals("code-review", answers.recipeKey),
                             () -> assertEquals("quick", answers.parameters.get("depth")),
-                            () -> assertEquals(StartAnswers.STDIN, "-"));
+                            () -> assertEquals("-", StartAnswers.STDIN));
     }
 
     @Test
