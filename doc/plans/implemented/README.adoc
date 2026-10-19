@@ -138,6 +138,11 @@ This directory archives work packages that have been implemented, verified, and 
 |`TranscriptTerminal`, `ScriptedInput`, `TerminalTestDriver`, `TranscriptNormalizer`, `TranscriptAssert`, and `UnifiedDiff` in the test scope of `pm-operator`; the `status`, `web pair`, and console `.transcript` fixtures; `StatusDialogueTranscriptTest`, `WebPairDialogueTranscriptTest`, `ConsoleDialogueTranscriptTest`, `TranscriptDialogueIT`, and `NativeTranscriptIT`; JLine 4 and the native-image catalogue resource in `pm-operator/pom.xml`; the test-scoped mock-runtime dependency in the root POM guard
 |epic clients
 
+|link:web-onboarding.adoc[`web-onboarding`]
+|Onboarding and start in the web app
+|The routes `/onboarding`, `/entry`, `/pair`, `/settings/machine`; the onboarding screens per reported state with read-only done-step summaries; the pairing page with its QR presentation and the LAN fingerprint; the machine settings with the 409 conflict dialogue, the consents, the documents mode, the token rotation, and the paired devices; the listener-off page; the catalogue guard test and the scenario view tests against `pm-mock-runtime`
+|epic clients; UC-ONB-1..10, UC-ENT-1, UC-ENT-2
+
 |link:onboarding-contract.adoc[`onboarding-contract`]
 |Onboarding: contract and mock runtime
 |The `de.planmarshall.api.onboarding` package completed with the per-figure harness usage report (`HarnessUsageReport`, `UsageFigure`, `UsageFigureStatus`), the draft-profile verification (`HarnessVerification`, `HarnessVerificationStage`, `VerificationStageStatus`), the automatic run's reasons and item schema (`AutoResultReason`, `AutoResultItem`), the `usage` field on `HarnessScanResult`, and the case scenarios of `pm-mock-runtime` (`onboarding-harness-tokens-*`, `onboarding-harness-all-failed`, `onboarding-refusals`, `onboarding-unknown-harness`, `onboarding-settings-conflict`) with the credential rotation in `MockRuntimeEngine`

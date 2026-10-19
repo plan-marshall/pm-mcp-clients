@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
-Status: `DRAFT`. The design of the web app, the specification its implementation follows (work packages link:../../plans/implemented/web-app-foundation.adoc[`web-app-foundation`] and link:../../plans/web-onboarding.adoc[`web-onboarding`]); the work package link:../../plans/implemented/web-design.adoc[`web-design`] works it out. Its parts:
+Status: `DRAFT`. The design of the web app, the specification its implementation follows (work packages link:../../plans/implemented/web-app-foundation.adoc[`web-app-foundation`] and link:../../plans/implemented/web-onboarding.adoc[`web-onboarding`]); the work package link:../../plans/implemented/web-design.adoc[`web-design`] works it out. Its parts:
 
 * link:entry.adoc[Entry]: the pairing page, the page a revoked device lands on, the page of a device whose network listener was turned off, and where the app opens after pairing.
 * link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].

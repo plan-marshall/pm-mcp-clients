@@ -8,6 +8,9 @@ import {
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
 } from '../api/client';
+import { pathForRoute, routeForPath, type AppRoute } from '../routes';
+
+export type { AppRoute };
 
 export interface RevokedInfo {
   reason?: string;
@@ -22,23 +25,7 @@ export interface RuntimeState {
   isOnboarded: boolean;
   deviceLabel: string;
   machineName: string;
-  currentRoute:
-    | 'pair'
-    | 'onboarding'
-    | 'workspace'
-    | 'settings'
-    | 'designer'
-    | 'revoked'
-    | 'overview'
-    | 'reports'
-    | 'decisions'
-    | 'system'
-    | 'cleanup'
-    | 'projects'
-    | 'plan'
-    | 'epic'
-    | 'decomposition'
-    | 'machine-settings';
+  currentRoute: AppRoute;
   currentState: StateRepresentation | null;
   onboarding?: OnboardingState | null;
   machineSettings?: MachineSettingsRecord | null;
@@ -46,11 +33,17 @@ export interface RuntimeState {
   revokedReason: string;
   revokedInfo?: RevokedInfo | null;
   isOffline: boolean;
+  /** The network listener this browser reached the machine over was turned off. */
+  isListenerClosed: boolean;
+  /** When that listener was turned off, for the page that waits for it. */
+  listenerClosedAt?: string | null;
   isDraining: boolean;
   drainInfo?: { count?: number; what?: string; who?: string; since?: string } | null;
   isStopped: boolean;
   stoppedInfo?: { command?: string; who?: string; time?: string } | null;
   activeStep: number;
+  /** The steps the runtime reports as done, 1-based. */
+  completedSteps: number;
   unreadReportsCount: number;
   unreadReportsArrivalNotice?: string | null;
   quietReportNotice?: string | null;
@@ -77,11 +70,14 @@ const initialState: RuntimeState = {
   revokedReason: '',
   revokedInfo: null,
   isOffline: false,
+  isListenerClosed: false,
+  listenerClosedAt: null,
   isDraining: false,
   drainInfo: null,
   isStopped: false,
   stoppedInfo: null,
   activeStep: 1,
+  completedSteps: 0,
   unreadReportsCount: 0,
   unreadReportsArrivalNotice: null,
   quietReportNotice: null,
@@ -98,7 +94,7 @@ const initialState: RuntimeState = {
 
 export const runtimeStore = writable<RuntimeState>(initialState);
 
-function deriveStepFromState(stateId?: string): number {
+export function deriveStepFromState(stateId?: string): number {
   if (!stateId) return 1;
   if (stateId.startsWith('onboard.mode') || stateId.startsWith('onboard.entry')) return 1;
   if (stateId.startsWith('language.')) return 1;
@@ -142,6 +138,40 @@ export async function checkUrlHashForCode(): Promise<boolean> {
   return false;
 }
 
+/** Reads whether the machine is onboarded, and its name, from a status response. */
+function onboardedOf(status: StatusResponse): boolean {
+  if (typeof status.onboarded === 'boolean') {
+    return status.onboarded;
+  }
+  if (typeof status.machine === 'object' && status.machine) {
+    return Boolean(status.machine.onboarded);
+  }
+  return false;
+}
+
+function machineNameOf(status: StatusResponse): string {
+  if (typeof status.machine === 'string') {
+    return status.machine;
+  }
+  return status.machine?.name || 'local-machine';
+}
+
+/**
+ * The route the app opens on for a paired browser.
+ *
+ * A paired browser never lands on the pairing page or the entry: the design says it opens its
+ * start view there (the onboarding while the machine is not onboarded, else where it left off).
+ */
+function landingRoute(requested: AppRoute | null, onboarded: boolean): AppRoute {
+  if (requested === 'pair' || requested === 'entry') {
+    return onboarded ? 'workspace' : 'onboarding';
+  }
+  if (!onboarded) {
+    return 'onboarding';
+  }
+  return requested ?? 'workspace';
+}
+
 export async function initRuntime(): Promise<void> {
   if (typeof window !== 'undefined' && !hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
@@ -178,6 +208,7 @@ export async function initRuntime(): Promise<void> {
 
   const isPaired = apiClient.isPaired();
   const label = apiClient.getLabel() || '';
+  const requested = routeForPath(typeof window !== 'undefined' ? window.location.pathname : '/');
 
   if (!isPaired) {
     runtimeStore.update((s) => ({
@@ -191,18 +222,11 @@ export async function initRuntime(): Promise<void> {
 
   try {
     const status: StatusResponse = await apiClient.getStatus();
-    const onboarded =
-      status.onboarded ??
-      (typeof status.machine === 'object' && status.machine ? status.machine.onboarded : false) ??
-      false;
-    const machineName =
-      typeof status.machine === 'string' ? status.machine : status.machine?.name || 'local-machine';
-
-    const initialRoute: RuntimeState['currentRoute'] = onboarded ? 'workspace' : 'onboarding';
+    const onboarded = onboardedOf(status);
+    const machineName = machineNameOf(status);
 
     // If there is a current state reported in status, store it
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
-    const activeStep = deriveStepFromState(currentState?.state);
 
     runtimeStore.update((s) => ({
       ...s,
@@ -211,9 +235,9 @@ export async function initRuntime(): Promise<void> {
       isOnboarded: onboarded,
       deviceLabel: label,
       machineName,
-      currentRoute: initialRoute,
+      currentRoute: landingRoute(requested, onboarded),
       currentState,
-      activeStep,
+      activeStep: deriveStepFromState(currentState?.state),
       isOffline: false,
       isRevoked: false,
     }));
@@ -274,33 +298,74 @@ export async function refreshDecisionsCount(): Promise<void> {
   }
 }
 
-export function handleRuntimeEvent(event: string, data: unknown): void {
-  if (event === 'state_transition' || event === 'check') {
-    const stateData = data as StateRepresentation;
-    if (stateData?.state) {
-      const activeStep = deriveStepFromState(stateData.state);
-      runtimeStore.update((s) => ({
-        ...s,
-        currentState: stateData,
-        activeStep,
-        isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
-      }));
-    }
-  } else if (event === 'report.sent') {
-    const reportData = (data || {}) as { subject?: string; plan?: string };
-    const notice = reportData.subject || 'A new report has arrived';
+const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
+
+/**
+ * Records that the network listener this browser reached the machine over was closed.
+ *
+ * A browser on the loopback listener keeps working, so it stays where it is and only the
+ * connection banner changes; a browser on the network loses its access and lands on the page
+ * that says why, with its pairing kept.
+ */
+function markListenerClosed(): void {
+  const onLoopback = typeof window === 'undefined' || loopbackHosts.has(window.location.hostname);
+  const closedAt = new Date().toISOString();
+  runtimeStore.update((s) => ({
+    ...s,
+    isListenerClosed: true,
+    listenerClosedAt: s.listenerClosedAt ?? closedAt,
+    currentRoute: onLoopback ? s.currentRoute : 'listener-off',
+  }));
+}
+
+/** A listener change for the LAN listener: closed marks this browser, any other state clears it. */
+function handleListenerChanged(data: unknown): void {
+  const changed = (data || {}) as { state?: string; kind?: string };
+  if (changed.kind !== 'lan') {
+    return;
+  }
+  if (changed.state === 'closed') {
+    markListenerClosed();
+  } else {
+    runtimeStore.update((s) => ({ ...s, isListenerClosed: false, listenerClosedAt: null }));
+  }
+}
+
+/** A state the runtime moved to: the current state, the step, and the `onboarded` flag. */
+function handleStateTransition(data: unknown): void {
+  const stateData = data as StateRepresentation;
+  if (!stateData?.state) {
+    return;
+  }
+  runtimeStore.update((s) => ({
+    ...s,
+    currentState: stateData,
+    activeStep: deriveStepFromState(stateData.state),
+    isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
+  }));
+}
+
+/** A new or read report: the unread count, and the quiet notice of an arrival. */
+function handleReportEvent(event: string, data: unknown): void {
+  if (event === 'report.sent') {
+    const reportData = (data || {}) as { subject?: string };
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: s.unreadReportsCount + 1,
-      quietReportNotice: notice,
+      quietReportNotice: reportData.subject || 'A new report has arrived',
     }));
-  } else if (event === 'report.read') {
+  } else {
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: Math.max(0, s.unreadReportsCount - 1),
     }));
-  } else if (event === 'decision.opened') {
-    const dec = (data || {}) as { title?: string; question?: string; id?: string };
+  }
+}
+
+/** A new or closed decision: the open count, and the quiet notice of an arrival. */
+function handleDecisionEvent(event: string, data: unknown): void {
+  if (event === 'decision.opened') {
+    const dec = (data || {}) as { title?: string; question?: string };
     const notice = dec.title || dec.question || 'A new decision requires attention';
     runtimeStore.update((s) => ({
       ...s,
@@ -308,42 +373,61 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
       newDecisionArrivalNotice: notice,
       quietDecisionNotice: notice,
     }));
-  } else if (event === 'decision.answered' || event === 'decision.closed') {
+  } else {
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: Math.max(0, s.openDecisionsCount - 1),
     }));
-  } else if (event === 'runtime.draining') {
-    const drainData = (data || {}) as {
-      count?: number;
-      what?: string;
-      who?: string;
-      since?: string;
-    };
+  }
+}
+
+/** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
+function handleLifecycleEvent(event: string, data: unknown): void {
+  if (event === 'runtime.draining') {
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
-      drainInfo: drainData,
+      drainInfo: (data || {}) as RuntimeState['drainInfo'],
     }));
-  } else if (event === 'drain.withdrawn') {
-    runtimeStore.update((s) => ({
-      ...s,
-      isDraining: false,
-      drainInfo: null,
-    }));
-  } else if (event === 'runtime.stopped') {
-    const stoppedData = (data || {}) as { command?: string; who?: string; time?: string };
+  } else if (event === 'runtime.drain_withdrawn') {
+    runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+  } else {
     runtimeStore.update((s) => ({
       ...s,
       isDraining: false,
       isStopped: true,
-      stoppedInfo: stoppedData,
+      stoppedInfo: (data || {}) as RuntimeState['stoppedInfo'],
     }));
-  } else if (event === 'project.changed' || event === 'project.released' || event === 'project.enrolled') {
-    runtimeStore.update((s) => ({
-      ...s,
-      projectEventNotice: `${event}_${Date.now()}`,
-    }));
+  }
+}
+
+const STATE_TRANSITION_EVENTS = new Set(['state_transition', 'check']);
+const REPORT_EVENTS = new Set(['report.sent', 'report.read']);
+const DECISION_EVENTS = new Set(['decision.opened', 'decision.answered', 'decision.closed']);
+const LIFECYCLE_EVENTS = new Set([
+  'runtime.draining',
+  'runtime.drain_withdrawn',
+  'runtime.stopping',
+]);
+const PROJECT_EVENTS = new Set(['project.changed', 'project.released', 'project.enrolled']);
+
+export function handleRuntimeEvent(event: string, data: unknown): void {
+  if (event === 'stream.closed') {
+    if ((data as { reason?: string })?.reason === 'listener_closed') {
+      markListenerClosed();
+    }
+  } else if (event === 'listener.changed') {
+    handleListenerChanged(data);
+  } else if (STATE_TRANSITION_EVENTS.has(event)) {
+    handleStateTransition(data);
+  } else if (REPORT_EVENTS.has(event)) {
+    handleReportEvent(event, data);
+  } else if (DECISION_EVENTS.has(event)) {
+    handleDecisionEvent(event, data);
+  } else if (LIFECYCLE_EVENTS.has(event)) {
+    handleLifecycleEvent(event, data);
+  } else if (PROJECT_EVENTS.has(event)) {
+    runtimeStore.update((s) => ({ ...s, projectEventNotice: `${event}_${Date.now()}` }));
   } else if (event === 'onboarding.step_completed') {
     void loadOnboardingState();
   } else if (event === 'machine.settings_changed') {
@@ -353,7 +437,9 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
 
 export async function pairBrowser(code: string): Promise<void> {
   const res = await apiClient.pair(code);
-  const status = await apiClient.getStatus().catch(() => ({ status: 'ready', onboarded: false }));
+  const status: StatusResponse = await apiClient
+    .getStatus()
+    .catch(() => ({ status: 'ready', onboarded: false }) as StatusResponse);
   const onboarded =
     status.onboarded ??
     (typeof status.machine === 'object' && status.machine ? status.machine.onboarded : false) ??
@@ -372,7 +458,6 @@ export async function pairBrowser(code: string): Promise<void> {
     currentRoute: onboarded ? 'workspace' : 'onboarding',
     isOffline: false,
   }));
-
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
@@ -391,22 +476,86 @@ export async function executeLink(link: HypermediaLink | string, body?: unknown)
   }
 }
 
-export function navigateTo(route: RuntimeState['currentRoute']): void {
+export function navigateTo(route: AppRoute): void {
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
   }));
+  const path = pathForRoute(route);
+  if (path) {
+    void syncUrl(path, false);
+  }
+}
+
+/**
+ * Puts a path in the address bar without reloading the view.
+ *
+ * SvelteKit's router is preferred, so its state stays in step; a bare browser without a running
+ * router (the unit tests) falls back to the history API.
+ *
+ * @param path the path to show
+ * @param replace `true` to replace the current entry instead of pushing one
+ */
+export async function syncUrl(path: string, replace: boolean): Promise<void> {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  if (window.location.pathname === path && !replace) {
+    return;
+  }
+  try {
+    const { goto } = await import('$app/navigation');
+    await goto(path, { replace, noScroll: true, keepFocus: true });
+  } catch {
+    if (window.location.pathname !== path) {
+      const method = replace ? 'replaceState' : 'pushState';
+      window.history[method]({ path }, '', path);
+    }
+  }
+}
+
+/**
+ * Takes the route the address bar names, if it names one of the app's routes.
+ *
+ * @returns the route taken, or `null` when the path names none
+ */
+export function adoptRouteFromLocation(): AppRoute | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const route = routeForPath(window.location.pathname);
+  if (route) {
+    runtimeStore.update((s) => ({ ...s, currentRoute: route }));
+  }
+  return route;
 }
 
 function applyOnboardingState(state: OnboardingState): void {
   const activeStep = deriveStepFromState(state.state);
+  const completed =
+    typeof state.completed_steps === 'number' ? state.completed_steps : Math.max(0, activeStep - 1);
   runtimeStore.update((s) => ({
     ...s,
     onboarding: state,
     currentState: state as unknown as StateRepresentation,
     activeStep,
+    completedSteps: completed,
     isOnboarded: state.state === 'onboard.completed' ? true : s.isOnboarded,
   }));
+}
+
+/**
+ * The steps the runtime reports as done, 1-based, for the step bar.
+ *
+ * @param completedSteps how many aspects the runtime reports as completed
+ * @returns the step numbers, in order
+ */
+export function completedStepNumbers(completedSteps: number): number[] {
+  const numbers: number[] = [];
+  for (let step = 1; step <= Math.min(completedSteps, 7); step++) {
+    numbers.push(step);
+  }
+  return numbers;
 }
 
 export async function loadOnboardingState(): Promise<OnboardingState | null> {
@@ -426,6 +575,63 @@ export async function stepOnboarding(link: string): Promise<void> {
   } catch {
     // A refused step leaves the state as it is.
   }
+}
+
+/** A caught value as a message: what an `Error` says, or the value itself. */
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return typeof err === 'string' ? err : '';
+}
+
+/**
+ * The outcome of storing a rotated or replaced token.
+ */
+export interface StoreCredentialResult {
+  /** `true` when the secret was stored. */
+  ok: boolean;
+  /** The reason a store failed, for the message; empty when it succeeded. */
+  cause: string;
+  /** `true` when the secret was stored but its kind could not be recorded. */
+  kindFailed: boolean;
+  /** `true` when the secret was stored but the settings could not be read back. */
+  refreshFailed: boolean;
+}
+
+/**
+ * Records the token of a credential, either rotated in place or replaced by a new entry.
+ *
+ * @param key the credential key, e.g. `github`
+ * @param secret the new secret; it is written once and never read back
+ * @param kind the kind of a replaced entry, or `null` to keep the recorded kind
+ * @returns what happened, so the screen can name it
+ */
+export async function storeCredential(
+  key: string,
+  secret: string,
+  kind: string | null = null,
+): Promise<StoreCredentialResult> {
+  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+  try {
+    await apiClient.setCredential(key, secret);
+  } catch (err) {
+    return { ok: false, cause: errorMessage(err), kindFailed: false, refreshFailed: false };
+  }
+  // The secret is stored; a kind change that fails does not undo it.
+  if (kind) {
+    let applied = false;
+    try {
+      const result = await apiClient.updateMachineSetting(`credential:${key}`, kind, revision);
+      applied = Boolean(result?.applied);
+    } catch {
+      applied = false;
+    }
+    const refreshed = await loadMachineSettings();
+    return { ok: true, cause: '', kindFailed: !applied, refreshFailed: refreshed === null };
+  }
+  const refreshed = await loadMachineSettings();
+  return { ok: true, cause: '', kindFailed: false, refreshFailed: refreshed === null };
 }
 
 export async function startOnboardingAuto(): Promise<void> {

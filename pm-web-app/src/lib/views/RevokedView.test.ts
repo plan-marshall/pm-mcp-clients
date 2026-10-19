@@ -22,6 +22,8 @@ describe('RevokedView component', () => {
         revoked_at: 'today at 14:10',
       },
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 1,
     });
   });

@@ -3,20 +3,30 @@
   import { t } from '../i18n';
   import { apiClient, type ConnectionStatus } from '../api/client';
 
+  /**
+   * The connection of this browser to the machine: the listener it reached, and how many devices
+   * can act on the machine.
+   *
+   * The status is read on mount, on a listener change, and on a heartbeat, so a machine that went
+   * away or came back is seen without a reload.
+   */
   const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
+  const HEARTBEAT_MS = 30_000;
 
   let status: ConnectionStatus | null = null;
   let unsubscribe: (() => void) | null = null;
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
   let isMounted = true;
 
   onMount(() => {
     isMounted = true;
     void load();
     unsubscribe = apiClient.subscribeEvents((event) => {
-      if (event === 'listener.changed') {
+      if (event === 'listener.changed' || event === 'device.paired' || event === 'device.revoked') {
         void load();
       }
     });
+    heartbeat = setInterval(() => void load(), HEARTBEAT_MS);
   });
 
   onDestroy(() => {
@@ -24,6 +34,10 @@
     if (unsubscribe) {
       unsubscribe();
       unsubscribe = null;
+    }
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = null;
     }
   });
 

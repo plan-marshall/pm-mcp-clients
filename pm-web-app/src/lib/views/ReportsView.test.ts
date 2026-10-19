@@ -56,6 +56,8 @@ describe('ReportsView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 1,
       unreadReportsCount: 3,
       unreadReportsArrivalNotice: null,

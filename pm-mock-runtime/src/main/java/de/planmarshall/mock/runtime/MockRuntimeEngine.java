@@ -294,6 +294,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
+    private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CREDENTIAL_PREFIX = "credential:";
     private static final String CONST_CLAUDE = "claude";
@@ -1344,7 +1345,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (map.get("onboard") instanceof Map<?, ?> onboard
-                && ("onboard.completed".equals(onboard.get(KEY_STATE))
+                && (STATE_ONBOARD_COMPLETED.equals(onboard.get(KEY_STATE))
                 || Boolean.TRUE.equals(onboard.get("completed")))) {
             return true;
         }
@@ -4337,14 +4338,56 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put(KEY_STATE, stateId);
         body.put("completed_steps", completedStepsFor(stateId));
         body.put("auto", onboardingAuto);
+        body.put("step_summaries", stepSummariesFor(stateId));
         return body;
+    }
+
+    /**
+     * The summary the runtime reports for each done step: the recorded value of an aspect the
+     * onboarding has already passed, keyed by the step number (1 to 7).
+     *
+     * @param stateId the current state
+     * @return the summaries of the done steps
+     */
+    private Map<String, String> stepSummariesFor(@Nullable String stateId) {
+        var summaries = new LinkedHashMap<String, String>();
+        if (stateId == null) {
+            return summaries;
+        }
+        var current = MachineOnboardingState.aspectOf(stateId);
+        var upTo = current != null ? current.step() - 1 : 0;
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
+            upTo = 7;
+        }
+        if (upTo >= 1) {
+            summaries.put("1", "Deutsch, models English");
+        }
+        if (upTo >= 2) {
+            summaries.put("2", "Claude Code 2.4.1 (default), OpenCode 1.9.0");
+        }
+        if (upTo >= 3) {
+            summaries.put("3", "3 models on 2 harnesses");
+        }
+        if (upTo >= 4) {
+            summaries.put("4", "36 roles assigned");
+        }
+        if (upTo >= 5) {
+            summaries.put("5", "macOS Keychain");
+        }
+        if (upTo >= 6) {
+            summaries.put("6", "GitHub (gh)");
+        }
+        if (upTo >= 7) {
+            summaries.put("7", "Pull Request \u00b7 Test first \u00b7 key points");
+        }
+        return summaries;
     }
 
     private static int completedStepsFor(@Nullable String stateId) {
         if (stateId == null) {
             return 0;
         }
-        if ("onboard.completed".equals(stateId) || stateId.startsWith("settings.")) {
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
             return 7;
         }
         var aspect = MachineOnboardingState.aspectOf(stateId);

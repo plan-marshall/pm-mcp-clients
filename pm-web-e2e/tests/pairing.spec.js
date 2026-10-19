@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Web Client Pairing Flow', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, request }) => {
+    // A pairing code is single use, so each test starts from a fresh scenario.
+    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'web-pairing' },
+    });
+    expect(res.ok()).toBeTruthy();
+
     // Clear localStorage to ensure clean state
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
@@ -37,8 +43,9 @@ test.describe('Web Client Pairing Flow', () => {
   test('automatically pairs when URL contains fragment #code=...', async ({ page }) => {
     await page.goto('/#code=KXQB-MRTN');
 
-    // Should automatically pair and strip fragment
-    await expect(page).toHaveURL(/\/$/);
+    // Should automatically pair, strip the fragment, and open the app's route.
+    await expect(page).not.toHaveURL(/#code=/);
+    await expect(page).toHaveURL(/\/(onboarding|workspace|projects)$/);
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
   });
 });

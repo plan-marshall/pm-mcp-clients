@@ -125,6 +125,8 @@ describe('SystemView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       isDraining: false,
       drainInfo: null,
       isStopped: false,
