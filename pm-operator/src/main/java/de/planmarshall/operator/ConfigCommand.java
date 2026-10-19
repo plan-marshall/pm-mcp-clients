@@ -96,9 +96,9 @@ public final class ConfigCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var settings = readSettingsQuiet();
         if (settings == null) {
-            printLegacyConfig(out, locale);
+            var code = printLegacyConfig(out, locale);
             out.flush();
-            return 0;
+            return code;
         }
         printSettings(out, locale, settings);
         if (context.isInteractiveTerminal()) {
@@ -120,12 +120,12 @@ public final class ConfigCommand implements Callable<Integer> {
         }
     }
 
-    private void printLegacyConfig(PrintWriter out, String locale) throws IOException {
+    private int printLegacyConfig(PrintWriter out, String locale) throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(CONFIG_PATH));
         if (response.status() != 200) {
             out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed",
                                 Map.of(STATUS, response.status())));
-            return;
+            return PmOperator.EXIT_FAILURE;
         }
         out.println(MessageCatalogue.format(locale, "operator.config.machine_settings", Map.of()));
         var json = JsonTree.parse(response.body());
@@ -137,6 +137,7 @@ public final class ConfigCommand implements Callable<Integer> {
         } else {
             out.println(response.bodyText());
         }
+        return 0;
     }
 
     private @Nullable MachineSettingsRecord readSettings(PrintWriter out, String locale) throws IOException {

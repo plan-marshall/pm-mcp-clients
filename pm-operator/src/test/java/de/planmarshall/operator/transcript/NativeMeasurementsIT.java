@@ -122,11 +122,14 @@ class NativeMeasurementsIT {
     private static String boundedConsoleRun(Path executable, Map<String, String> environment, Path directory)
                         throws Exception {
         // The console stays in the foreground, so it keeps the controlling terminal the operator
-        // gate checks; a background sleeper stops it after the window. The trailing || true keeps
-        // the shell's status at zero, because the console was stopped, not finished.
+        // gate checks. An inner shell writes its own pid to a file and execs the console, so the
+        // sleeper signals exactly that process and nothing else; the trailing || true keeps the
+        // status at zero, because the console was stopped, not finished.
         var path = executable.toAbsolutePath().toString();
-        var script = "( sleep " + PROMPT_WINDOW_SECONDS + "; pkill -TERM -f '" + path + "' ) & "
-                            + path + " || true";
+        var pidFile = Files.createTempFile("pm-console", ".pid");
+        pidFile.toFile().deleteOnExit();
+        var script = "( sleep " + PROMPT_WINDOW_SECONDS + "; kill -TERM \"$(cat " + pidFile + ")\" 2>/dev/null ) & "
+                            + "sh -c \"echo \\$\\$ > " + pidFile + "; exec " + path + "\" || true";
         return PseudoTerminal.run(List.of("/bin/sh", "-c", script), environment, directory);
     }
 

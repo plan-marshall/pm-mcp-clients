@@ -118,18 +118,52 @@ class LiteralTextGuardTest {
         }
         // Drop the escapes (a control character, a unicode escape, an octal escape) and the format
         // specifiers; what remains is the words the operator would read.
-        var words = literal
-                            .replaceAll("%[-#+ 0,(]*\\d*[a-zA-Z%]", "")
-                            .replaceAll("\\\\u[0-9a-fA-F]{4}|\\\\[0-7]{1,3}|\\\\.", "");
-        if (!words.matches(".*[A-Za-z].*")) {
-            // no words at all: a symbol, a control sequence, a format specifier
+        var words = new StringBuilder();
+        for (int i = 0; i < literal.length(); i++) {
+            char c = literal.charAt(i);
+            if (c == '\\') {
+                i += escapeLength(literal, i);
+            } else if (c == '%') {
+                i += formatLength(literal, i);
+            } else {
+                words.append(c);
+            }
+        }
+        boolean hasLetter = false;
+        for (int j = 0; j < words.length(); j++) {
+            hasLetter = hasLetter || Character.isLetter(words.charAt(j));
+        }
+        if (!hasLetter) {
             return false;
         }
-        // A value the runtime defines, a command name, an option, a URL, or a JSON field: no spaces,
-        // no sentence punctuation.
-        return words.indexOf(' ') >= 0 || words.indexOf('\t') >= 0 || words.indexOf('.') >= 0
-                            || words.indexOf('!') >= 0 || words.indexOf('?') >= 0
-                            || words.indexOf(':') >= 0 || words.indexOf(';') >= 0;
+        var text = words.toString();
+        return text.indexOf(' ') >= 0 || text.indexOf('\t') >= 0 || text.indexOf('.') >= 0
+                            || text.indexOf('!') >= 0 || text.indexOf('?') >= 0
+                            || text.indexOf(':') >= 0 || text.indexOf(';') >= 0;
+    }
+
+    private static int escapeLength(String literal, int backslash) {
+        if (backslash + 1 >= literal.length()) {
+            return 0;
+        }
+        if (literal.charAt(backslash + 1) == 'u') {
+            return Math.min(5, literal.length() - backslash - 1);
+        }
+        return 1;
+    }
+
+    private static int formatLength(String literal, int percent) {
+        int i = percent + 1;
+        while (i < literal.length() && "-#+ 0,(".indexOf(literal.charAt(i)) >= 0) {
+            i++;
+        }
+        while (i < literal.length() && (Character.isDigit(literal.charAt(i)) || literal.charAt(i) == '.')) {
+            i++;
+        }
+        if (i < literal.length() && Character.isLetter(literal.charAt(i))) {
+            i++;
+        }
+        return i - percent - 1;
     }
 
     private static List<Path> guardedSources() throws IOException {

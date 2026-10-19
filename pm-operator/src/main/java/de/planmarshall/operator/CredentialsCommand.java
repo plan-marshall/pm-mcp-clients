@@ -15,8 +15,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -52,6 +54,8 @@ public final class CredentialsCommand implements Callable<Integer> {
 
     static final String PATH = "/api/v1/credentials/";
     private static final String SECRET = "secret";
+    private static final String KIND = "kind";
+    private static final String PROJECT = "project";
     private static final String STATUS = "status";
     private static final String MODE = "mode";
     private static final String ROTATE = "rotate";
@@ -60,6 +64,14 @@ public final class CredentialsCommand implements Callable<Integer> {
 
     @Spec
     CommandSpec spec = CommandSpec.create();
+
+    /** The kind of the entry, for {@code set}; {@code null} keeps the entry's own. */
+    @Nullable
+    String kind;
+
+    /** The project scope, or {@code null} for the machine. */
+    @Nullable
+    String project;
 
     CredentialsCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
@@ -135,8 +147,9 @@ public final class CredentialsCommand implements Callable<Integer> {
     private int store(PrintWriter out, String key, String mode, boolean yes) throws IOException {
         var locale = locale();
         char[] secret;
+        Terminal terminal = context.createTerminal();
         try {
-            secret = SecretReader.read(context.createTerminal(), out, locale);
+            secret = SecretReader.read(terminal, out, locale);
         } catch (IOException | UserInterruptException e) {
             out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
                                 Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
@@ -150,12 +163,18 @@ public final class CredentialsCommand implements Callable<Integer> {
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
-            if (!yes && !confirm()) {
+            if (!yes && !confirm(terminal)) {
                 return 0;
             }
             var body = new LinkedHashMap<String, Object>();
             body.put(MODE, mode);
             body.put(SECRET, new String(secret));
+            if (kind != null && !kind.isBlank()) {
+                body.put("kind", kind);
+            }
+            if (project != null && !project.isBlank()) {
+                body.put("project", project);
+            }
             var response = context.runtime(true).send(
                                 HttpRequest.json("PUT", path(key), JsonTree.write(body)));
             return reportStored(out, key, response);
@@ -182,17 +201,33 @@ public final class CredentialsCommand implements Callable<Integer> {
         }
         out.println(MessageCatalogue.format(locale, "operator.credentials.stored",
                             Map.of("key", key, "count", dropped)));
-        out.println(MessageCatalogue.format(locale, "operator.credentials.verify_title", Map.of("key", key)));
-        out.println(MessageCatalogue.format(locale, "operator.credentials.verified", Map.of("key", key)));
         out.flush();
+        verifyProviders(out, locale, key);
         return 0;
     }
 
-    private boolean confirm() throws IOException {
-        try (var terminal = context.createTerminal()) {
-            var reader = LineReaderBuilder.builder().terminal(terminal).build();
-            var line = reader.readLine(MessageCatalogue.format(locale(), "operator.credentials.store_confirm", Map.of()));
+    /**
+     * Checks the providers that use the key, and says so only when the check actually ran: a
+     * stored token is not reported as verified on the strength of the store alone.
+     */
+    private void verifyProviders(PrintWriter out, String locale, String key) throws IOException {
+        var response = context.runtime(true).send(
+                            HttpRequest.json("POST", "/api/v1/config/providers", "{\"verify\":true}"));
+        if (response.status() == 200) {
+            out.println(MessageCatalogue.format(locale, "operator.credentials.verify_title", Map.of("key", key)));
+            out.println(MessageCatalogue.format(locale, "operator.credentials.verified", Map.of("key", key)));
+            out.flush();
+        }
+    }
+
+    private boolean confirm(Terminal terminal) throws IOException {
+        var reader = LineReaderBuilder.builder().terminal(terminal).build();
+        try {
+            var line = reader.readLine(MessageCatalogue.format(locale(),
+                                "operator.credentials.store_confirm", Map.of()));
             return line == null || !"b".equalsIgnoreCase(line.trim());
+        } catch (UserInterruptException | EndOfFileException _) {
+            return false;
         }
     }
 
@@ -264,6 +299,8 @@ public final class CredentialsCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var command = new CredentialsCommand(context);
+            command.kind = kind;
+            command.project = project;
             var status = command.readStatus(out, key);
             command.printHeader(out, key, "set", status);
             if (kind != null && !kind.isBlank()) {

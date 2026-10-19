@@ -100,7 +100,7 @@ class PmConsoleBehaviourTest {
         var code = new PmConsole(context(rendered, "\u0004\u0004")).run();
         assertEquals(0, code);
         var text = rendered.toString(StandardCharsets.UTF_8);
-        assertTrue(text.contains("question stays open"), text);
+        assertTrue(text.contains("2 questions stay open"), text);
         assertTrue(text.contains("exit or Ctrl+D again leaves"), text);
     }
 

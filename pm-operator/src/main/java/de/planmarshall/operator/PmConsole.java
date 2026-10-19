@@ -182,7 +182,15 @@ public final class PmConsole {
     }
 
     private int questionCount() {
-        return hasOpenQuestions() ? 1 : 0;
+        int total = 0;
+        for (var badge : badges) {
+            var lower = badge.toLowerCase(Locale.ROOT);
+            if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
+                var digits = badge.replaceAll("^[^0-9]*([0-9]+).*$", "$1");
+                total += digits.matches("[0-9]+") ? Integer.parseInt(digits) : 1;
+            }
+        }
+        return total;
     }
 
     private void handleEmptyEnter(PrintWriter out, LineReader reader) {
@@ -345,8 +353,9 @@ public final class PmConsole {
                 applyConsoleEvent(event.event(), eventMap, reader);
             }
         }
-        catch (IOException _) {
-            // invalid json in event stream
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (IOException | RuntimeException _) {
+            // invalid json or an unexpected field shape: drop this event, keep the stream
         }
     }
 

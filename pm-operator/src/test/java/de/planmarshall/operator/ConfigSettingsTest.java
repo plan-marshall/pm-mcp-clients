@@ -117,7 +117,6 @@ class ConfigSettingsTest {
     @Test
     @DisplayName("a step of the settings opens its aspect")
     void opensAspect() throws Exception {
-        settings(200);
         fixture.start((request, response) -> {
             if ("/api/v1/machine/settings".equals(request.target())) {
                 response.json(200, SETTINGS);
@@ -224,7 +223,7 @@ class ConfigSettingsTest {
     void settingsFailure() throws Exception {
         fixture.start((request, response) -> response.send(500, null, ""));
         var code = run(context(""), "config");
-        assertEquals(0, code);
+        assertEquals(PmOperator.EXIT_FAILURE, code);
         assertTrue(out.toString().contains("Unable to load settings: HTTP 500"), out.toString());
     }
 }

@@ -78,6 +78,8 @@ class CredentialsCommandTest {
                 response.json(200, "{\"derived_tokens_dropped\":2}");
             } else if ("/api/v1/credentials/github".equals(request.target()) && "DELETE".equals(request.method())) {
                 response.send(204, null, "");
+            } else if ("/api/v1/config/providers".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
             } else {
                 response.send(404, null, "");
             }

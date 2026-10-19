@@ -297,22 +297,22 @@ public final class ConsoleNotice {
         var type = String.valueOf(event.getOrDefault("type", event.getOrDefault("event", "")));
         return switch (type) {
             case "question", "decision" -> formatQuestion(locale,
-                                String.valueOf(event.getOrDefault("id", "Q-???")),
-                                String.valueOf(event.getOrDefault(SCOPE, "plan")),
+                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("id", "Q-???"))),
+                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault(SCOPE, "plan"))),
                                 (String) event.get("summary"),
                                 (String) event.get("text"),
                                 (String) event.get("recommendation"));
             case "waiver_request" -> formatWaiverRequest(locale,
-                                String.valueOf(event.getOrDefault("id", "WR-?")),
-                                String.valueOf(event.getOrDefault(SCOPE, "plan")),
+                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("id", "WR-?"))),
+                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault(SCOPE, "plan"))),
                                 (String) event.get("gate"));
             case "paired" -> formatPairedNotice(locale,
                                 String.valueOf(event.getOrDefault("label", "unknown")));
             case "fresh_code" -> formatFreshCodeNotice(locale,
-                                String.valueOf(event.get("code")),
-                                String.valueOf(event.getOrDefault("valid_until", "")),
+                                TerminalSanitizer.sanitize(String.valueOf(event.get("code"))),
+                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("valid_until", ""))),
                                 String.valueOf(event.getOrDefault("url", "")));
-            case "operator_wait", "integrity_pause", "stalled", "condition", "held", "landing_failed", "findings", "setup" ->
+            case "operator_wait", "integrity_pause", "stalled", CONDITION, "held", "landing_failed", "findings", "setup" ->
                 formatHoldNotice(locale,
                                     type,
                                     String.valueOf(event.getOrDefault(SCOPE, "")),
