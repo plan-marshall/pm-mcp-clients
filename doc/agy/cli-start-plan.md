@@ -61,7 +61,7 @@ This plan executes concurrently in Wave 10 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-start` on branch `feat/cli-start`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-start` on branch `feat/cli-start`.
 - [ ] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `pm-dev-java:java-core` for Picocli verbs, dynamic line rendering, and chat loop.
   - `persona-security-expert` & `pm-dev-java:java-security` for terminal text sanitization, path traversal guards, and untrusted source display.
