@@ -4471,7 +4471,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (this) {
             stateId = this.currentStateId.get();
             scenarioName = this.currentScenario.get().name();
-            var code = this.currentScenario.get().pairingCode();
+            // The live code, never the scenario's static one: after a redemption the scenario
+            // code is consumed, and a freshly issued code replaces it.
+            var code = this.currentPairingCode;
             pairingCode = code != null ? code : "";
             state = currentScenario.get().state(stateId);
         }
@@ -4944,6 +4946,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** @return the current state id */
     public String currentStateId() {
         return currentStateId.get();
+    }
+
+    /**
+     * @return the pairing code the web listener accepts right now, or {@code null} after it was
+     *         consumed and until a fresh one is issued
+     */
+    public String pairingCode() {
+        return currentPairingCode;
     }
 
     /** @return the accepted runtime token */

@@ -14,14 +14,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 mkdir -p "$SCRIPT_DIR/target"
 PID_FILE="$SCRIPT_DIR/target/pm-web-app.pid"
+PORT_FILE="$SCRIPT_DIR/target/pm-web-app.port"
 LOG_FILE="$SCRIPT_DIR/target/pm-web-app.log"
 NODE_MODULES="$SCRIPT_DIR/node_modules"
 
 # Also clean up legacy dot-file if present
 rm -f "$SCRIPT_DIR/.pm-web-app.pid" 2>/dev/null || true
 
-print_paired_url_if_available() {
-    local pairing_code=""
+# The port the running server listens on; 5173 unless overridden.
+web_port_from_args() {
     local web_port=5173
     local expect_port=false
     for arg in "$@"; do
@@ -34,6 +35,13 @@ print_paired_url_if_available() {
             web_port="${arg#--port=}"
         fi
     done
+    printf '%s' "$web_port"
+}
+
+print_paired_url_if_available() {
+    local pairing_code=""
+    local web_port
+    web_port="$(web_port_from_args "$@")"
 
     # 1. Query live /mock/state first (reflects active scenario even after dynamic switch)
     local mock_state
@@ -67,9 +75,17 @@ print_paired_url_if_available() {
 if [ -f "$PID_FILE" ]; then
     EXISTING_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
     if [ -n "$EXISTING_PID" ] && kill -0 "$EXISTING_PID" 2>/dev/null; then
+        local_port="$(web_port_from_args "$@")"
+        if [ -f "$PORT_FILE" ]; then
+            saved_port="$(cat "$PORT_FILE" 2>/dev/null || true)"
+            case "$saved_port" in
+                ''|*[!0-9]*) ;;
+                *) local_port="$saved_port" ;;
+            esac
+        fi
         echo "pm-web-app is already running (PID: $EXISTING_PID)."
-        echo "Local:   http://localhost:5173"
-        print_paired_url_if_available "$@"
+        echo "Local:   http://localhost:$local_port"
+        print_paired_url_if_available --port "$local_port"
         echo "Logs:    $LOG_FILE"
         echo "To stop: $SCRIPT_DIR/stop.sh"
         exit 0
@@ -80,18 +96,22 @@ fi
 
 # 2. Smart build check (incremental, no clean)
 BUILD_NEEDED=false
-if [ ! -d "$NODE_MODULES" ]; then
+if [ ! -d "$NODE_MODULES" ] || [ ! -f "$NODE_MODULES/vite/bin/vite.js" ]; then
     BUILD_NEEDED=true
 else
-    # Check if package.json is newer than node_modules
-    PACKAGE_JSON="$SCRIPT_DIR/package.json"
-    if [ -f "$PACKAGE_JSON" ]; then
-        PKG_MTIME="$(stat -f "%m" "$PACKAGE_JSON" 2>/dev/null || stat -c "%Y" "$PACKAGE_JSON" 2>/dev/null || echo 0)"
-        NM_MTIME="$(stat -f "%m" "$NODE_MODULES" 2>/dev/null || stat -c "%Y" "$NODE_MODULES" 2>/dev/null || echo 0)"
-        if [ "${PKG_MTIME:-0}" -gt "${NM_MTIME:-0}" ]; then
-            BUILD_NEEDED=true
+    # Any file that changes the dependency tree or the Vite setup is newer than node_modules
+    # (npm updates that directory on install).
+    NM_MTIME="$(stat -f "%m" "$NODE_MODULES" 2>/dev/null || stat -c "%Y" "$NODE_MODULES" 2>/dev/null || echo 0)"
+    for watched in package.json package-lock.json vite.config.ts pom.xml; do
+        watched_file="$SCRIPT_DIR/$watched"
+        if [ -f "$watched_file" ]; then
+            FILE_MTIME="$(stat -f "%m" "$watched_file" 2>/dev/null || stat -c "%Y" "$watched_file" 2>/dev/null || echo 0)"
+            if [ "${FILE_MTIME:-0}" -gt "${NM_MTIME:-0}" ]; then
+                BUILD_NEEDED=true
+                break
+            fi
         fi
-    fi
+    done
 fi
 
 if [ "$BUILD_NEEDED" = true ]; then
@@ -126,6 +146,15 @@ while [ $# -gt 0 ]; do
             FOREGROUND=true
             shift
             ;;
+        -p)
+            # Vite only knows the long form: translate it instead of forwarding an unknown option.
+            if [ $# -lt 2 ]; then
+                echo "Error: -p requires a port." >&2
+                exit 1
+            fi
+            PASSED_ARGS+=(--port "$2")
+            shift 2
+            ;;
         *)
             PASSED_ARGS+=("$1")
             shift
@@ -133,20 +162,23 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+WEB_PORT="$(web_port_from_args ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"})"
+
 cd "$SCRIPT_DIR"
 
 if [ "$FOREGROUND" = true ]; then
     echo "Starting pm-web-app in foreground..."
-    echo "Local:   http://localhost:5173"
-    print_paired_url_if_available ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
+    echo "Local:   http://localhost:$WEB_PORT"
+    print_paired_url_if_available --port "$WEB_PORT"
     echo "$$" > "$PID_FILE"
-    trap 'rm -f "$PID_FILE"' EXIT INT TERM
+    echo "$WEB_PORT" > "$PORT_FILE"
+    trap 'rm -f "$PID_FILE" "$PORT_FILE"' EXIT INT TERM
     exec "$NODE_BIN" "$VITE_BIN" ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
 else
-    # Check if port 5173 is already in use
-    EXISTING_PORT_PID="$(lsof -ti :5173 2>/dev/null || true)"
+    # Check if the requested port is already in use
+    EXISTING_PORT_PID="$(lsof -ti ":$WEB_PORT" 2>/dev/null || true)"
     if [ -n "$EXISTING_PORT_PID" ]; then
-        echo "Port 5173 is already in use by process $EXISTING_PORT_PID."
+        echo "Port $WEB_PORT is already in use by process $EXISTING_PORT_PID."
         echo "To stop: $SCRIPT_DIR/stop.sh"
         exit 1
     fi
@@ -187,9 +219,10 @@ fs.writeFileSync(process.argv[1], String(child.pid));
         sleep 0.5
     done
 
+    echo "$WEB_PORT" > "$PORT_FILE"
     echo "pm-web-app started successfully (PID: $PID)."
-    echo "Local:   http://localhost:5173"
-    print_paired_url_if_available ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
+    echo "Local:   http://localhost:$WEB_PORT"
+    print_paired_url_if_available --port "$WEB_PORT"
     echo "Logs:    $LOG_FILE"
     echo "To stop: $SCRIPT_DIR/stop.sh"
 fi

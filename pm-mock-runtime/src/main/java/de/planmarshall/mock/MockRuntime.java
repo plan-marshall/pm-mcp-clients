@@ -329,10 +329,11 @@ public final class MockRuntime implements AutoCloseable {
     }
 
     /**
-     * @return the accepted pairing code for web clients
+     * @return the pairing code the web listener accepts right now, or {@code null} after it was
+     *         consumed and until a fresh one is issued
      */
     public String pairingCode() {
-        return engine.currentScenario().pairingCode();
+        return engine.pairingCode();
     }
 
     /**
