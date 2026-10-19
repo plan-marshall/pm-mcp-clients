@@ -595,6 +595,8 @@ export interface StoreCredentialResult {
   cause: string;
   /** `true` when the secret was stored but its kind could not be recorded. */
   kindFailed: boolean;
+  /** `true` when the secret was stored but the settings could not be read back. */
+  refreshFailed: boolean;
 }
 
 /**
@@ -614,7 +616,7 @@ export async function storeCredential(
   try {
     await apiClient.setCredential(key, secret);
   } catch (err) {
-    return { ok: false, cause: errorMessage(err), kindFailed: false };
+    return { ok: false, cause: errorMessage(err), kindFailed: false, refreshFailed: false };
   }
   // The secret is stored; a kind change that fails does not undo it.
   if (kind) {
@@ -625,11 +627,11 @@ export async function storeCredential(
     } catch {
       applied = false;
     }
-    await loadMachineSettings();
-    return { ok: true, cause: '', kindFailed: !applied };
+    const refreshed = await loadMachineSettings();
+    return { ok: true, cause: '', kindFailed: !applied, refreshFailed: refreshed === null };
   }
-  await loadMachineSettings();
-  return { ok: true, cause: '', kindFailed: false };
+  const refreshed = await loadMachineSettings();
+  return { ok: true, cause: '', kindFailed: false, refreshFailed: refreshed === null };
 }
 
 export async function startOnboardingAuto(): Promise<void> {

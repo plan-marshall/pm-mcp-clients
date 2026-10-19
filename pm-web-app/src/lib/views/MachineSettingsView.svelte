@@ -151,7 +151,7 @@
       tokenNotice = $t('web.settings.credentials.rotated', { key: rotating.key });
       rotatingSecret = '';
       rotating = null;
-      if (result.kindFailed) {
+      if (result.kindFailed || result.refreshFailed) {
         tokenError = $t('web.settings.update_failed');
       }
     } else {
