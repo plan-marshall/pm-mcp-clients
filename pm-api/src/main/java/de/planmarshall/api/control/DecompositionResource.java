@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
@@ -97,7 +96,7 @@ public record DecompositionResource(
         }
         var revision = ControlJson.optLong(map, "revision");
         return new DecompositionResource(epicId, state, revision != null ? revision : 0L,
-                readWorkstreams(map.get("workstreams")), readChecks(map.get("checks")));
+                readWorkstreams(map), readChecks(map));
     }
 
     /**
@@ -113,17 +112,17 @@ public record DecompositionResource(
         return fromMap(obj);
     }
 
-    private static List<DecompositionWorkstream> readWorkstreams(@Nullable Object raw) throws IOException {
+    private static List<DecompositionWorkstream> readWorkstreams(Map<String, Object> map) throws IOException {
         var workstreams = new ArrayList<DecompositionWorkstream>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "workstreams")) {
             workstreams.add(DecompositionWorkstream.fromMap(object));
         }
         return workstreams;
     }
 
-    private static List<DecompositionCheck> readChecks(@Nullable Object raw) throws IOException {
+    private static List<DecompositionCheck> readChecks(Map<String, Object> map) throws IOException {
         var checks = new ArrayList<DecompositionCheck>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "checks")) {
             checks.add(DecompositionCheck.fromMap(object));
         }
         return checks;

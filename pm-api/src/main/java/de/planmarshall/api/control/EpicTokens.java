@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
@@ -89,7 +88,7 @@ public record EpicTokens(
         if (total == null) {
             throw new JsonFormatException("Missing total in EpicTokens");
         }
-        return new EpicTokens(TokenFigure.fromMap(total), own(map), readPlans(map.get("plans")));
+        return new EpicTokens(TokenFigure.fromMap(total), own(map), readPlans(map));
     }
 
     /**
@@ -110,9 +109,9 @@ public record EpicTokens(
         return own != null ? TokenFigure.fromMap(own) : TokenFigure.notMeasured();
     }
 
-    private static List<PlanTokenFigure> readPlans(@Nullable Object raw) throws IOException {
+    private static List<PlanTokenFigure> readPlans(Map<String, Object> map) throws IOException {
         var plans = new ArrayList<PlanTokenFigure>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "plans")) {
             plans.add(PlanTokenFigure.fromMap(object));
         }
         return plans;

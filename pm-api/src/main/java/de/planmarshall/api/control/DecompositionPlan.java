@@ -98,9 +98,9 @@ public record DecompositionPlan(
                 planId,
                 JsonTree.string(map, "title"),
                 JsonTree.string(map, "objective"),
-                ControlJson.readStrings(map.get("deliverables")),
-                ControlJson.readStrings(map.get("surface")),
-                ControlJson.readStrings(map.get("dependencies")),
+                ControlJson.readStrings(map, "deliverables"),
+                ControlJson.readStrings(map, "surface"),
+                ControlJson.readStrings(map, "dependencies"),
                 order != null ? order : 0,
                 JsonTree.string(map, "change"),
                 ControlJson.bool(map, "locked"));

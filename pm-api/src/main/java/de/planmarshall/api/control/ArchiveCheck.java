@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
@@ -88,7 +87,7 @@ public record ArchiveCheck(
         }
         var carriedFindings = ControlJson.optInteger(map, "carried_findings");
         var carriedWatches = ControlJson.optInteger(map, "carried_watches");
-        return new ArchiveCheck(epicId, readLines(map.get("lines")),
+        return new ArchiveCheck(epicId, readLines(map),
                 carriedFindings != null ? carriedFindings : 0,
                 carriedWatches != null ? carriedWatches : 0,
                 ControlJson.bool(map, "completion_review_first"));
@@ -107,9 +106,9 @@ public record ArchiveCheck(
         return fromMap(obj);
     }
 
-    private static List<ArchiveCheckLine> readLines(@Nullable Object raw) throws IOException {
+    private static List<ArchiveCheckLine> readLines(Map<String, Object> map) throws IOException {
         var lines = new ArrayList<ArchiveCheckLine>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "lines")) {
             lines.add(ArchiveCheckLine.fromMap(object));
         }
         return lines;

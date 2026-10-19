@@ -121,7 +121,7 @@ public record ReviewResource(
         var drafted = JsonTree.asObject(map.get("drafted_plan"));
         var readBack = JsonTree.asObject(map.get("read_back"));
         return new ReviewResource(reviewId, epicId, JsonTree.string(map, "register"),
-                readItems(map.get("items")), decided != null ? decided : 0, total != null ? total : 0,
+                readItems(map), decided != null ? decided : 0, total != null ? total : 0,
                 JsonTree.string(map, "state"),
                 drafted != null ? DraftedPlan.fromMap(drafted) : null,
                 readBack != null ? ReviewReadBackResource.fromMap(readBack) : null);
@@ -140,9 +140,9 @@ public record ReviewResource(
         return fromMap(obj);
     }
 
-    private static List<ReviewItemResource> readItems(@Nullable Object raw) throws IOException {
+    private static List<ReviewItemResource> readItems(Map<String, Object> map) throws IOException {
         var items = new ArrayList<ReviewItemResource>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "items")) {
             items.add(ReviewItemResource.fromMap(object));
         }
         return items;

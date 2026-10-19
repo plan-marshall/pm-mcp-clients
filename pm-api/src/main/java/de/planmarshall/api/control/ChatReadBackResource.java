@@ -126,7 +126,7 @@ public record ChatReadBackResource(
         var proposal = JsonTree.asObject(map.get("proposal"));
         return new ChatReadBackResource(chatId, subjectId, JsonTree.string(map, "subject_kind"),
                 JsonTree.string(map, "role"), JsonTree.string(map, "scope"), JsonTree.string(map, "state"),
-                readTurns(map.get("turns")),
+                readTurns(map),
                 proposal != null ? ChatProposalResource.fromMap(proposal) : null);
     }
 
@@ -143,9 +143,9 @@ public record ChatReadBackResource(
         return fromMap(obj);
     }
 
-    private static List<ChatTurnResource> readTurns(@Nullable Object raw) throws IOException {
+    private static List<ChatTurnResource> readTurns(Map<String, Object> map) throws IOException {
         var turns = new ArrayList<ChatTurnResource>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "turns")) {
             turns.add(ChatTurnResource.fromMap(object));
         }
         return turns;

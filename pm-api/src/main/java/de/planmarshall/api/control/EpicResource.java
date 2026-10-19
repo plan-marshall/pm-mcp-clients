@@ -163,13 +163,13 @@ public record EpicResource(
                 integer(map, "scope"),
                 integer(map, "running"),
                 JsonTree.string(map, "terminal_reason"),
-                readWorkstreams(map.get("workstreams")),
-                ControlJson.readStrings(map.get("sources")),
+                readWorkstreams(map),
+                ControlJson.readStrings(map, "sources"),
                 integer(map, "landings"),
                 summary(map.get("findings")),
                 summary(map.get("watches")),
                 tokens(map.get("tokens")),
-                readEvents(map.get("events")));
+                readEvents(map));
     }
 
     /**
@@ -201,17 +201,17 @@ public record EpicResource(
                 : new EpicTokens(TokenFigure.notMeasured(), TokenFigure.notMeasured(), List.of());
     }
 
-    private static List<EpicWorkstream> readWorkstreams(@Nullable Object raw) throws IOException {
+    private static List<EpicWorkstream> readWorkstreams(Map<String, Object> map) throws IOException {
         var workstreams = new ArrayList<EpicWorkstream>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "workstreams")) {
             workstreams.add(EpicWorkstream.fromMap(object));
         }
         return workstreams;
     }
 
-    private static List<EpicEvent> readEvents(@Nullable Object raw) throws IOException {
+    private static List<EpicEvent> readEvents(Map<String, Object> map) throws IOException {
         var events = new ArrayList<EpicEvent>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "events")) {
             events.add(EpicEvent.fromMap(object));
         }
         return events;

@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
@@ -73,7 +72,7 @@ public record EpicWorkstream(
         if (id == null || name == null) {
             throw new JsonFormatException("Missing required fields for EpicWorkstream: id, name");
         }
-        return new EpicWorkstream(id, name, ControlJson.bool(map, "open"), readRows(map.get("rows")));
+        return new EpicWorkstream(id, name, ControlJson.bool(map, "open"), readRows(map));
     }
 
     /**
@@ -89,9 +88,9 @@ public record EpicWorkstream(
         return fromMap(obj);
     }
 
-    private static List<WorkRow> readRows(@Nullable Object raw) throws IOException {
+    private static List<WorkRow> readRows(Map<String, Object> map) throws IOException {
         var rows = new ArrayList<WorkRow>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "rows")) {
             rows.add(WorkRow.fromMap(object));
         }
         return rows;

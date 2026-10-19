@@ -144,13 +144,13 @@ public record WorkRow(
                 JsonTree.string(map, "status"),
                 JsonTree.string(map, "wait_reason"),
                 JsonTree.string(map, "wait_plan_id"),
-                ControlJson.readStrings(map.get("overlap_files")),
+                ControlJson.readStrings(map, "overlap_files"),
                 ControlJson.optInteger(map, "pull_request_number"),
                 JsonTree.string(map, "change"),
                 JsonTree.string(map, "objective"),
-                ControlJson.readStrings(map.get("deliverables")),
-                ControlJson.readStrings(map.get("surface")),
-                ControlJson.readStrings(map.get("dependencies")));
+                ControlJson.readStrings(map, "deliverables"),
+                ControlJson.readStrings(map, "surface"),
+                ControlJson.readStrings(map, "dependencies"));
     }
 
     /**

@@ -78,9 +78,9 @@ public record DraftedPlan(
             throw new JsonFormatException("Missing plan_id in DraftedPlan");
         }
         return new DraftedPlan(planId, JsonTree.string(map, "objective"),
-                ControlJson.readStrings(map.get("deliverables")),
-                ControlJson.readStrings(map.get("surface")),
-                ControlJson.readStrings(map.get("dependencies")));
+                ControlJson.readStrings(map, "deliverables"),
+                ControlJson.readStrings(map, "surface"),
+                ControlJson.readStrings(map, "dependencies"));
     }
 
     /**

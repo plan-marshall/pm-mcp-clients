@@ -109,7 +109,7 @@ public record ReviewItemResource(
             throw new JsonFormatException("Unknown state in ReviewItemResource: " + state);
         }
         return new ReviewItemResource(itemId, JsonTree.string(map, "register"),
-                JsonTree.string(map, "statement"), ControlJson.readStrings(map.get("rules")),
+                JsonTree.string(map, "statement"), ControlJson.readStrings(map, "rules"),
                 JsonTree.string(map, "origin"), JsonTree.string(map, "trust"),
                 state, JsonTree.string(map, "proposal"));
     }

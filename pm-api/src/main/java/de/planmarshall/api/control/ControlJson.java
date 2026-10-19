@@ -26,50 +26,67 @@ import de.planmarshall.api.json.JsonTree;
 final class ControlJson {
 
     /**
-     * Reads a JSON array of scalars as a list of strings. An absent value yields an empty list, but
-     * a present value that is not an array fails closed.
+     * Reads the named field of a record as a list of strings. An absent field yields an empty list;
+     * a present {@code null}, a non-array value, or a structured element fails closed.
      *
-     * @param raw the raw tree value
+     * @param record the record's map
+     * @param key    the field key
      * @return the strings, never {@code null}
-     * @throws IOException if a present value is not an array
+     * @throws IOException if a present value is not a scalar array
      */
-    static List<String> readStrings(Object raw) throws IOException {
-        if (raw == null) {
+    static List<String> readStrings(Map<String, Object> record, String key) throws IOException {
+        if (!record.containsKey(key)) {
             return List.of();
         }
-        var array = JsonTree.asArray(raw);
-        if (array == null) {
-            throw new JsonFormatException("Expected an array in a control record");
+        return strings(record.get(key), key);
+    }
+
+    /**
+     * Reads the named field of a record as a list of objects. An absent field yields an empty list;
+     * a present {@code null}, a non-array value, or an element that is not an object fails closed
+     * instead of being dropped silently.
+     *
+     * @param record the record's map
+     * @param key    the field key
+     * @return the object maps, never {@code null}
+     * @throws IOException if a present value is not an object array
+     */
+    static List<Map<String, Object>> readObjects(Map<String, Object> record, String key) throws IOException {
+        if (!record.containsKey(key)) {
+            return List.of();
+        }
+        return objects(record.get(key), key);
+    }
+
+    private static List<String> strings(Object raw, String key) throws IOException {
+        var array = array(raw, key);
+        for (var item : array) {
+            if (item instanceof Map<?, ?> || item instanceof List<?>) {
+                throw new JsonFormatException("Expected scalars for " + key);
+            }
         }
         return array.stream().filter(Objects::nonNull).map(String::valueOf).toList();
     }
 
-    /**
-     * Reads a JSON array of objects as a list of maps. An absent value yields an empty list, but a
-     * present value that is not an array, or an element that is not an object, fails closed instead
-     * of being dropped silently.
-     *
-     * @param raw the raw tree value
-     * @return the object maps, never {@code null}
-     * @throws IOException if a present value is not an array or an element is not an object
-     */
-    static List<Map<String, Object>> readObjects(Object raw) throws IOException {
-        if (raw == null) {
-            return List.of();
-        }
-        var array = JsonTree.asArray(raw);
-        if (array == null) {
-            throw new JsonFormatException("Expected an array in a control record");
-        }
+    private static List<Map<String, Object>> objects(Object raw, String key) throws IOException {
+        var array = array(raw, key);
         var objects = new ArrayList<Map<String, Object>>();
         for (var item : array) {
             var object = JsonTree.asObject(item);
             if (object == null) {
-                throw new JsonFormatException("Expected an object in a control array");
+                throw new JsonFormatException("Expected an object in " + key);
             }
             objects.add(object);
         }
         return objects;
+    }
+
+    private static List<Object> array(Object raw, String key) throws IOException {
+        var array = raw != null ? JsonTree.asArray(raw) : null;
+        if (array == null) {
+            throw new JsonFormatException("Expected an array for " + key);
+        }
+        return array;
     }
 
     /**

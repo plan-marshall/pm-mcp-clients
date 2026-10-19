@@ -79,7 +79,7 @@ public record DecompositionWorkstream(
         }
         var order = ControlJson.optInteger(map, "order");
         return new DecompositionWorkstream(id, name, JsonTree.string(map, "description"),
-                order != null ? order : 0, readPlans(map.get("plans")));
+                order != null ? order : 0, readPlans(map));
     }
 
     /**
@@ -95,9 +95,9 @@ public record DecompositionWorkstream(
         return fromMap(obj);
     }
 
-    private static List<DecompositionPlan> readPlans(@Nullable Object raw) throws IOException {
+    private static List<DecompositionPlan> readPlans(Map<String, Object> map) throws IOException {
         var plans = new ArrayList<DecompositionPlan>();
-        for (var object : ControlJson.readObjects(raw)) {
+        for (var object : ControlJson.readObjects(map, "plans")) {
             plans.add(DecompositionPlan.fromMap(object));
         }
         return plans;

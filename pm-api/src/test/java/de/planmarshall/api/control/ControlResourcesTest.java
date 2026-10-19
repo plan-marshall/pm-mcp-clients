@@ -234,6 +234,14 @@ class ControlResourcesTest {
         // a present non-array value fails closed instead of becoming an empty list
         assertThrows(JsonFormatException.class,
                 () -> ArchiveCheck.fromJson("{\"epic_id\":\"e\",\"lines\":\"x\"}"));
+        // a present explicit null fails closed, so an archive check cannot pass vacuously
+        assertThrows(JsonFormatException.class,
+                () -> ArchiveCheck.fromJson("{\"epic_id\":\"e\",\"lines\":null}"));
+        // a structured element in a scalar array fails closed instead of being coerced to text
+        assertThrows(JsonFormatException.class,
+                () -> ReviewItemResource.fromJson("{\"item_id\":\"F\",\"rules\":[{}]}"));
+        assertThrows(JsonFormatException.class,
+                () -> WorkRow.fromJson("{\"plan_id\":\"p\",\"deliverables\":[{}]}"));
         assertThrows(JsonFormatException.class,
                 () -> WorkRow.fromJson("{\"plan_id\":\"p\",\"deliverables\":\"x\"}"));
         assertThrows(JsonFormatException.class,
