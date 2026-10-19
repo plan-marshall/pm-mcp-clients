@@ -60,7 +60,7 @@ This plan executes concurrently in Wave 9 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-start-contract` on branch `feat/start-contract`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-start-contract` on branch `feat/start-contract`.
 - [ ] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `pm-dev-java:java-core` for Java 25 records and Jackson streaming codecs.
   - `persona-security-expert` & `pm-dev-java:java-security` for source trust boundaries, untrusted PR file flags, and rate-limit safety.
