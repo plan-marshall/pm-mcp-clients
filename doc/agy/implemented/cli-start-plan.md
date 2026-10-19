@@ -1,6 +1,6 @@
 # Implementation Plan: `cli-start` (Starting Work in the Terminal)
 
-This implementation plan governs the execution of the `cli-start` work package (`doc/plans/cli-start.adoc`, epic clients) in `pm-operator`.
+This implementation plan governs the execution of the `cli-start` work package (`doc/plans/implemented/cli-start.adoc`, epic clients) in `pm-operator`.
 
 It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
 
@@ -37,7 +37,7 @@ The goal is to implement terminal starting verbs (`plan add`, `epic add`, `recip
    - Transcript test suites covering every scenario of `start-contract` in JVM and native modes using `cli-test-infra`.
 
 ### Target Work Package & References
-- Specification: `doc/plans/cli-start.adoc`.
+- Specification: `doc/plans/implemented/cli-start.adoc`.
 - Use Cases: `UC-STA-1` through `UC-STA-9`, State Catalogue § Chatting with the Planning Role.
 - Specifications: `start-contract.adoc`, `control-contract.adoc` (decomposition & chat).
 - Design: `doc/design/shared/starting-work.adoc`, `starting-work-texts.adoc`, `starting-work-sources-texts.adoc`, `doc/design/terminal-client/18-starting.adoc`.
