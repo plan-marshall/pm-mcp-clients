@@ -52,7 +52,7 @@ const PATH_ROUTES: ReadonlyArray<{ path: string; route: AppRoute }> = [
  * @param pathname the browser path, e.g. `/settings/machine`
  * @returns the route, or `null` when the path names none of the app's routes
  */
-export function routeForPath(pathname: string): AppRoute | null {
+export function routeForPath(pathname = '/'): AppRoute | null {
   const trimmed = pathname || '/';
   let end = trimmed.length;
   while (end > 1 && trimmed.codePointAt(end - 1) === 47 /* '/' */) {
