@@ -53,7 +53,6 @@ final class StartDialogue {
     private static final int EXIT_OK = 0;
 
     private static final String KEY_KIND = "kind";
-    private static final String KEY_KEY = "key";
     private static final String KEY_PROJECT = "project";
     private static final String KEY_REASON = "reason";
     private static final String KEY_TITLE = "title";
@@ -63,10 +62,17 @@ final class StartDialogue {
     private static final String KEY_PARAMETERS = "parameters";
     private static final String KEY_PLAN_ID = "plan_id";
     private static final String KEY_INDEX = "index";
+    private static final String KEY_ORIGIN = "origin";
+    private static final String KEY_STATE_SOURCES = "start.sources";
+    private static final String KEY_STATE_READY = "start.ready";
+    private static final String KEY_STATE_RECIPE_PARAMETERS = "recipe.parameters";
+    private static final String KEY_STATE_ADOPT = "start-epic.adopt";
+    private static final String KEY_STATE_ADOPT_FAILED = "start-epic.adopt-failed";
+    private static final String KEY_DOCUMENTS = "start.source.documents";
+    private static final String KEY_ADOPT_PROMPT = "start.adopt.prompt";
 
-    private final OperatorContext context;
-    private final PrintWriter out;
     private final EntryKind kind;
+    private final Map<String, String> environment;
     private final StartAnswers answers;
     private final StartApi api;
     private final StartPrompt prompt;
@@ -81,16 +87,15 @@ final class StartDialogue {
     private boolean adopted;
     private @Nullable String titleOverride;
     private @Nullable String idOverride;
-    private StartStateResource state;
+    private @Nullable StartStateResource state;
 
-    private StartDialogue(OperatorContext context, PrintWriter out, EntryKind kind, StartAnswers answers)
-                        throws IOException {
-        this.context = Objects.requireNonNull(context, "context");
-        this.out = Objects.requireNonNull(out, "out");
+    private StartDialogue(OperatorContext context, PrintWriter out, EntryKind kind, StartAnswers answers) {
         this.kind = Objects.requireNonNull(kind, "kind");
+        this.environment = Map.copyOf(context.environment());
         this.answers = Objects.requireNonNull(answers, "answers");
-        this.api = new StartApi(context);
-        this.prompt = new StartPrompt(context, out, context.clientEnvironment().locale(), answers.noInput);
+        this.api = new StartApi(Objects.requireNonNull(context, "context"));
+        this.prompt = new StartPrompt(context, Objects.requireNonNull(out, "out"),
+                            context.clientEnvironment().locale(), answers.noInput);
         this.renderer = new StartRenderer(prompt);
     }
 
@@ -142,7 +147,8 @@ final class StartDialogue {
 
     private int loop() throws IOException {
         while (true) {
-            switch (state.state()) {
+            var current = Objects.requireNonNull(state, "state");
+            switch (current.state()) {
                 case CHOOSE, SOURCES -> sources();
                 case READY -> {
                     if (adopted) {
@@ -156,17 +162,16 @@ final class StartDialogue {
                 case RECIPE, RECIPE_CHOOSE -> recipeChoice();
                 case RECIPE_PARAMETERS -> recipeParameters();
                 case RECIPE_CREATE, RECIPE_STEP_CREATE -> {
-                    if (create()) {
-                        return EXIT_OK;
-                    }
+                    create();
+                    return EXIT_OK;
                 }
                 case EPIC_ADOPT -> adoption();
                 case EPIC_ADOPT_FAILED -> adoptionFailed();
                 case REFUSED -> {
-                    renderer.refused(Objects.requireNonNull(state.refusal(), "refusal"));
+                    renderer.refused(Objects.requireNonNull(current.refusal(), "refusal"));
                     return EXIT_FAILURE;
                 }
-                default -> throw new IllegalStateException("unknown start state: " + state.state());
+                default -> throw new IllegalStateException("unknown start state: " + current.state());
             }
         }
     }
@@ -208,12 +213,12 @@ final class StartDialogue {
                 continueToReady();
                 return;
             }
-            StartPrompt.missing("start.sources", text("start.need.source", Map.of()),
+            StartPrompt.missing(KEY_STATE_SOURCES, text("start.need.source", Map.of()),
                                 entry.entryId());
             return;
         }
         renderer.sources(state, 1, totalSteps(), project, fromWorkingDirectory);
-        var answer = prompt.askRaw(text("start.sources.key_prompt", Map.of()), "start.sources",
+        var answer = prompt.askRaw(text("start.sources.key_prompt", Map.of()), KEY_STATE_SOURCES,
                             text("start.sources.key_prompt", Map.of()), entry.entryId());
         handleSourceKey(answer);
     }
@@ -234,9 +239,7 @@ final class StartDialogue {
             case "p" -> addExternal(SourceKind.PULL_REQUEST, "start.pr.field");
             case "h" -> openChat();
             case "x" -> removeSource();
-            case "q" -> {
-                throw new StartPrompt.StartLeftException();
-            }
+            case "q" -> throw new StartPrompt.StartLeftException();
             default -> prompt.line("start.help.sources", Map.of());
         }
     }
@@ -248,7 +251,7 @@ final class StartDialogue {
         prompt.raw(text("start.source.description", Map.of()) + " " + text("start.description.ends", Map.of()));
         var text = new StringBuilder();
         while (true) {
-            var line = prompt.askRaw("", "start.sources", text("start.source.description", Map.of()),
+            var line = prompt.askRaw("", KEY_STATE_SOURCES, text("start.source.description", Map.of()),
                                 entry().entryId());
             if (line.isEmpty()) {
                 break;
@@ -265,8 +268,8 @@ final class StartDialogue {
         if (!offered(SourceKind.DOCUMENTS)) {
             return;
         }
-        var path = prompt.askRaw(text("start.source.documents", Map.of()), "start.sources",
-                            text("start.source.documents", Map.of()), entry().entryId());
+        var path = prompt.askRaw(text(KEY_DOCUMENTS, Map.of()), KEY_STATE_SOURCES,
+                            text(KEY_DOCUMENTS, Map.of()), entry().entryId());
         if (!path.isEmpty()) {
             addSource(new SourceIntent(SourceKind.DOCUMENTS, path));
         }
@@ -276,7 +279,7 @@ final class StartDialogue {
         if (!offered(sourceKind)) {
             return;
         }
-        var value = prompt.askRaw(text(questionKey, Map.of()), "start.sources",
+        var value = prompt.askRaw(text(questionKey, Map.of()), KEY_STATE_SOURCES,
                             text(questionKey, Map.of()), entry().entryId());
         if (!value.isEmpty()) {
             addSource(new SourceIntent(sourceKind, value));
@@ -289,8 +292,8 @@ final class StartDialogue {
             if (!prompt.asks()) {
                 mode = "copy";
             } else {
-                var answer = prompt.askRaw(text("start.documents.mode.prompt", Map.of()), "start.sources",
-                                    text("start.source.documents", Map.of()), entry().entryId());
+                var answer = prompt.askRaw(text("start.documents.mode.prompt", Map.of()), KEY_STATE_SOURCES,
+                                    text(KEY_DOCUMENTS, Map.of()), entry().entryId());
                 mode = switch (answer.toLowerCase(Locale.ROOT)) {
                     case "2", "move", "m" -> "move";
                     case "a", "always" -> "copy_always";
@@ -305,15 +308,15 @@ final class StartDialogue {
         renderer.sourceLine(source);
         var options = pendingOptions(source);
         if (!prompt.asks()) {
-            StartPrompt.missing("start.sources", options, entry().entryId());
+            StartPrompt.missing(KEY_STATE_SOURCES, options, entry().entryId());
             return;
         }
-        var answer = prompt.askRaw(options, "start.sources", options, entry().entryId());
+        var answer = prompt.askRaw(options, KEY_STATE_SOURCES, options, entry().entryId());
         switch (answer.toLowerCase(Locale.ROOT)) {
             case "t" -> state = act("retry:" + source.sourceId(), Map.of());
             case "r" -> state = act("remove:" + source.sourceId(), Map.of());
             case "u", "a" -> {
-                var reason = prompt.askReason("start.sources", text("start.source.reason", Map.of()),
+                var reason = prompt.askReason(KEY_STATE_SOURCES, text("start.source.reason", Map.of()),
                                     entry().entryId());
                 state = act("accept:" + source.sourceId(), Map.of(KEY_REASON, reason));
             }
@@ -347,7 +350,7 @@ final class StartDialogue {
             return;
         }
         var answer = prompt.askRaw(text("start.sources.remove_which",
-                            Map.of("count", entry().sources().size())), "start.sources",
+                            Map.of("count", entry().sources().size())), KEY_STATE_SOURCES,
                             text("start.sources.remove_one", Map.of()), entry().entryId());
         try {
             var index = Integer.parseInt(answer);
@@ -399,23 +402,27 @@ final class StartDialogue {
         var entry = entry();
         renderer.ready(state, 2, totalSteps());
         if (!prompt.asks()) {
-            return create();
+            create();
+            return true;
         }
         var answer = prompt.askRaw(text("start.ready.prompt", Map.of(KEY_KIND, kind.wireValue())),
-                            "start.ready", text("start.ready.prompt", Map.of(KEY_KIND, kind.wireValue())),
+                            KEY_STATE_READY, text("start.ready.prompt", Map.of(KEY_KIND, kind.wireValue())),
                             entry.entryId());
+        if (answer.isEmpty()) {
+            create();
+            return true;
+        }
         if ("e".equalsIgnoreCase(answer)) {
             editReady(entry);
-            return false;
         }
-        return create();
+        return false;
     }
 
     private void editReady(EntryResource entry) {
         var title = prompt.askRaw(text("start.ready.title_row", Map.of(KEY_TITLE, "",
-                            "origin", text("start.ready.title_origin", Map.of()))), "start.ready",
+                            KEY_ORIGIN, text("start.ready.title_origin", Map.of()))), KEY_STATE_READY,
                             text("start.ready.title_row", Map.of(KEY_TITLE, "",
-                                                "origin", text("start.ready.title_origin", Map.of()))),
+                                                KEY_ORIGIN, text("start.ready.title_origin", Map.of()))),
                             entry.entryId());
         if (!title.isEmpty()) {
             titleOverride = title;
@@ -423,9 +430,9 @@ final class StartDialogue {
         var ready = state.ready();
         if (ready != null && ready.idEditable()) {
             var id = prompt.askRaw(text("start.ready.id_row", Map.of("id", ready.planId(),
-                                "origin", text("start.ready.id_origin_free", Map.of()))), "start.ready",
+                                KEY_ORIGIN, text("start.ready.id_origin_free", Map.of()))), KEY_STATE_READY,
                                 text("start.ready.id_row", Map.of("id", ready.planId(),
-                                                    "origin", text("start.ready.id_origin_free", Map.of()))),
+                                                    KEY_ORIGIN, text("start.ready.id_origin_free", Map.of()))),
                                 entry.entryId());
             if (!id.isEmpty()) {
                 idOverride = id;
@@ -433,7 +440,7 @@ final class StartDialogue {
         }
     }
 
-    private boolean create() throws IOException {
+    private void create() throws IOException {
         var body = new LinkedHashMap<String, Object>();
         var title = titleOverride != null ? titleOverride : answers.title;
         var id = idOverride != null ? idOverride : answers.id;
@@ -452,7 +459,6 @@ final class StartDialogue {
         if (kind.epic() && name != null) {
             new EpicDecompositionDialogue(api, prompt, project, name, answers.instruction).run();
         }
-        return true;
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -502,7 +508,7 @@ final class StartDialogue {
         var parameters = resolvedParameters(recipe);
         renderer.parameters(recipe, parameters);
         if (parameters.stream().anyMatch(parameter -> !parameter.available())) {
-            var answer = prompt.askRaw(text("start.source.prompt", Map.of()), "recipe.parameters",
+            var answer = prompt.askRaw(text("start.source.prompt", Map.of()), KEY_STATE_RECIPE_PARAMETERS,
                                 text("start.recipe.no_option", Map.of("parameter", "", "reason", "")),
                                 entry.entryId());
             if ("b".equalsIgnoreCase(answer)) {
@@ -512,7 +518,7 @@ final class StartDialogue {
         }
         if (prompt.asks()) {
             var answer = prompt.askRaw(text("start.recipe.set", Map.of("range",
-                                "1-" + parameters.size())), "recipe.parameters",
+                                "1-" + parameters.size())), KEY_STATE_RECIPE_PARAMETERS,
                                 text("start.recipe.parameters.title", Map.of("recipe", recipe.key())),
                                 entry.entryId());
             if ("b".equalsIgnoreCase(answer)) {
@@ -560,7 +566,7 @@ final class StartDialogue {
                 var value = prompt.askRaw(text("start.recipe.param_plain", Map.of(KEY_INDEX, index,
                                     "name", parameter.name(), "value", parameter.value() != null
                                                         ? parameter.value() : "")),
-                                    "recipe.parameters", text("start.recipe.parameters.title", Map.of()),
+                                    KEY_STATE_RECIPE_PARAMETERS, text("start.recipe.parameters.title", Map.of()),
                                     entry().entryId());
                 if (!value.isEmpty()) {
                     parameterValues.put(parameter.name(), value);
@@ -581,12 +587,12 @@ final class StartDialogue {
             return;
         }
         if (!prompt.asks()) {
-            StartPrompt.missing("start-epic.adopt", text("start.adopt.prompt", Map.of()), entry.entryId());
+            StartPrompt.missing(KEY_STATE_ADOPT, text(KEY_ADOPT_PROMPT, Map.of()), entry.entryId());
             return;
         }
         renderer.adoption(entry);
-        var answer = prompt.askRaw(text("start.adopt.prompt", Map.of()), "start-epic.adopt",
-                            text("start.adopt.prompt", Map.of()), entry.entryId());
+        var answer = prompt.askRaw(text(KEY_ADOPT_PROMPT, Map.of()), KEY_STATE_ADOPT,
+                            text(KEY_ADOPT_PROMPT, Map.of()), entry.entryId());
         if ("n".equalsIgnoreCase(answer)) {
             state = act("new", Map.of());
             return;
@@ -609,6 +615,7 @@ final class StartDialogue {
         try {
             state = api.act(entryId, "adopt:" + epicId, Map.of());
         } catch (StartApi.StartActException _) {
+            answers.adopt = null;
             state = api.fetch(entryId);
             return;
         }
@@ -620,15 +627,21 @@ final class StartDialogue {
         var failure = Objects.requireNonNull(state.adoptionFailure(), "adoption failure");
         renderer.adoptionFailure(failure);
         if (!prompt.asks()) {
-            StartPrompt.missing("start-epic.adopt-failed", text("start.adopt.failed.retry", Map.of()),
+            StartPrompt.missing(KEY_STATE_ADOPT_FAILED, text("start.adopt.failed.retry", Map.of()),
                                 entry().entryId());
             return;
         }
-        var answer = prompt.askRaw(text("start.adopt.prompt", Map.of()), "start-epic.adopt-failed",
+        var answer = prompt.askRaw(text(KEY_ADOPT_PROMPT, Map.of()), KEY_STATE_ADOPT_FAILED,
                             text("start.adopt.failed.retry", Map.of()), entry().entryId());
         switch (answer.toLowerCase(Locale.ROOT)) {
-            case "t" -> state = act("retry", Map.of());
-            case "b" -> state = act("back", Map.of());
+            case "t" -> {
+                answers.adopt = null;
+                state = act("retry", Map.of());
+            }
+            case "b" -> {
+                answers.adopt = null;
+                state = act("back", Map.of());
+            }
             case "x" -> {
                 state = act("abandon", Map.of());
                 prompt.line("start.entry.abandoned", Map.of());
@@ -685,6 +698,10 @@ final class StartDialogue {
     private String resolveProject() throws IOException {
         if (answers.project != null && !answers.project.isBlank() && !".".equals(answers.project)) {
             return answers.project;
+        }
+        var configured = environment.get("PM_PROJECT");
+        if (configured != null && !configured.isBlank()) {
+            return configured;
         }
         var ids = api.projects();
         var directory = Path.of("").toAbsolutePath().getFileName();
@@ -757,7 +774,8 @@ final class StartDialogue {
     }
 
     private String text(String key, Map<String, ?> args) {
-        return MessageCatalogue.format(prompt.locale(), key, args);
+        return MessageCatalogue.format(prompt.locale(), Objects.requireNonNull(key, "key"),
+                            Objects.requireNonNull(args, "args"));
     }
 
     /** One source the verb carries, applied in the order the command line names them. */

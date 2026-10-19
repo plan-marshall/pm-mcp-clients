@@ -42,11 +42,7 @@ final class StartApi {
     private static final String CHAT_PROPOSAL_REJECT = "/chat/proposal/reject";
     private static final String RECIPES = "/api/v1/recipes";
     private static final String DECOMPOSITION = "/decomposition";
-    private static final String DECOMPOSITION_CHECK = "/decomposition/check";
-    private static final String DECOMPOSITION_INSTRUCT = "/decomposition/instruct";
-    private static final String DECOMPOSITION_COMMIT = "/decomposition/commit";
     private static final String KEY_MESSAGE = "message";
-    private static final String KEY_ERROR = "error";
     private static final String KEY_RECIPES = "recipes";
     private static final String KEY_TEXT = "text";
 
@@ -163,8 +159,7 @@ final class StartApi {
             return List.of();
         }
         var parsed = JsonTree.parse(response.bodyText());
-        var raw = parsed instanceof Map<?, ?> map && map.get("projects") != null
-                            ? JsonTree.asArray(map.get("projects"))
+        var raw = parsed instanceof Map<?, ?> map ? JsonTree.asArray(map.get("projects"))
                             : JsonTree.asArray(parsed);
         if (raw == null) {
             return List.of();
@@ -189,7 +184,7 @@ final class StartApi {
     List<RecipeRef> recipes() throws IOException {
         var response = send(HttpRequest.get(RECIPES));
         if (response.status() != 200) {
-            throw new OperatorRefusedException("recipes", response);
+            throw new OperatorRefusedException(KEY_RECIPES, response);
         }
         var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
         var raw = map == null ? null : JsonTree.asArray(map.get(KEY_RECIPES));

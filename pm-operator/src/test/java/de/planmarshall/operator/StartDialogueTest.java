@@ -228,8 +228,8 @@ class StartDialogueTest {
     @DisplayName("an interactive epic start agrees the decomposition and commits the cut")
     void epicDecompositionAgrees() throws Exception {
         var rendered = run(StandardScenarios.START_EPIC,
-                            "d\nHarden the relay\n\n\n\n3\ne\n"
-                                                + "Keep it out of pm-api: the exchange belongs into pm-relay.\n\n\n",
+                            String.join("\n", "d", "Harden the relay", "", "", "", "3", "e",
+                                                "Keep it out of pm-api: the exchange belongs into pm-relay.", "", "", ""),
                             "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
         assertAll(
                             () -> assertTrue(rendered.contains("relay-hardening has started"), rendered),
@@ -248,6 +248,161 @@ class StartDialogueTest {
                             () -> assertTrue(rendered.contains("Comments are read with the issue"), rendered),
                             () -> assertTrue(rendered.contains("description stored"), rendered),
                             () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("plan add maps --lesson and --move")
+    void planAddLessonAndMove() throws Exception {
+        var rendered = run(StandardScenarios.START_SOURCES, null,
+                            "plan", "add", "--project", PROJECT, "--lesson", "L-1",
+                            "--document", "doc.md", "--move", "--no-input");
+        assertAll(
+                            () -> assertTrue(rendered.contains("Lesson"), rendered),
+                            () -> assertTrue(rendered.contains("moved"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("the list asks copy or move, removes one source, and starts")
+    void documentsModeAndRemove() throws Exception {
+        var rendered = run(StandardScenarios.START_SOURCES,
+                            "f\ndoc.md\n2\nx\n1\nd\nA change\n\n\n\n",
+                            "plan", "add", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("moved"), rendered),
+                            () -> assertTrue(rendered.contains("A change"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("a rate-limited source is retried explicitly and the plan starts")
+    void rateLimitedRetry() throws Exception {
+        var rendered = run(StandardScenarios.START_RATE_LIMITED, "t\nr\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
+        assertAll(
+                            () -> assertTrue(rendered.contains("rate limited until"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("a failed source is removed and a flagged one accepted with a reason")
+    void failedAndFlaggedSources() throws Exception {
+        var rendered = run(StandardScenarios.START_ISSUE_FAILED,
+                            "r\nu\nread as data\nr\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
+        assertAll(
+                            () -> assertTrue(rendered.contains("flagged"), rendered),
+                            () -> assertTrue(rendered.contains("read as data"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("the ready step edits the title and the id before starting")
+    void readyEdit() throws Exception {
+        var rendered = run(StandardScenarios.START_SOURCES,
+                            "d\nA change\n\n\ne\nMy Title\nmy-id\n\n",
+                            "plan", "add", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("My Title"), rendered),
+                            () -> assertTrue(rendered.contains("my-id has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("a recipe is chosen and its parameter changed before starting")
+    void recipeChoiceAndParameter() throws Exception {
+        var rendered = run(StandardScenarios.START_SOURCES, "2\n1=quick\n\n",
+                            "recipe", "run", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("code-review"), rendered),
+                            () -> assertTrue(rendered.contains("quick"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("an epic adopts the offered ledger from the list")
+    void epicAdoptionFromList() throws Exception {
+        var rendered = run(StandardScenarios.START_EPIC_ADOPT, "1\n",
+                            "epic", "add", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("relay-hardening adopted from the ledger"), rendered),
+                            () -> assertTrue(rendered.contains("Follow it"), rendered));
+    }
+
+    @Test
+    @DisplayName("an epic starts new instead of adopting")
+    void epicAdoptionStartsNew() throws Exception {
+        var rendered = run(StandardScenarios.START_EPIC_ADOPT, "n\nq\n",
+                            "epic", "add", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("What does the epic start from?"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a failed adoption can be tried again")
+    void epicAdoptionRetry() throws Exception {
+        var rendered = run(StandardScenarios.START_EPIC_ADOPT, "t\nq\n",
+                            "epic", "add", "--project", PROJECT, "--entry", "ent-7a2e4f01",
+                            "--adopt", "storage-migration");
+        assertAll(
+                            () -> assertTrue(rendered.contains("cannot be adopted"), rendered),
+                            () -> assertTrue(rendered.contains("adopt relay-hardening"), rendered));
+    }
+
+    @Test
+    @DisplayName("a rejected chat proposal is not stored")
+    void chatProposalRejected() throws Exception {
+        var rendered = run(StandardScenarios.START_CHAT,
+                            "h\nWhat about comments?\nr\n\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41");
+        assertAll(
+                            () -> assertTrue(rendered.contains("An addition to the description"), rendered),
+                            () -> assertTrue(rendered.contains("The chat has ended"), rendered),
+                            () -> assertTrue(rendered.contains("has started"), rendered));
+    }
+
+    @Test
+    @DisplayName("the decomposition can be drafted again and left")
+    void decompositionDraftAgain() throws Exception {
+        var rendered = run(StandardScenarios.START_EPIC,
+                            String.join("\n", "d", "Harden the relay", "", "", "", "r", "split the token work", "q"),
+                            "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
+        assertAll(
+                            () -> assertTrue(rendered.contains("draft"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("the decomposition can add a plan and be left")
+    void decompositionAddPlan() throws Exception {
+        var rendered = run(StandardScenarios.START_EPIC,
+                            String.join("\n", "d", "Harden the relay", "", "", "", "+", "Add a docs plan", "q"),
+                            "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
+        assertAll(
+                            () -> assertTrue(rendered.contains("relay-docs"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("an instructed decomposition can be instructed again and discarded")
+    void decompositionInstructAgainAndDiscard() throws Exception {
+        var rendered = run(StandardScenarios.START_EPIC,
+                            String.join("\n", "d", "Harden the relay", "", "", "", "3", "e",
+                                                "Keep it out of pm-api", "i", "Move the token work", "x", "q"),
+                            "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
+        assertAll(
+                            () -> assertTrue(rendered.contains("old against new"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a recipe whose parameter has no option can only go back")
+    void recipeBlockedParameter() throws Exception {
+        var rendered = run(StandardScenarios.START_SOURCES, "b\nq\n",
+                            "recipe", "run", "no-modules", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("none the recipe can work on"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
     }
 
     private static String run(String scenario, String input, String... args) throws Exception {

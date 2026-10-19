@@ -51,6 +51,9 @@ final class EpicDecompositionDialogue {
     private static final String KEY_NONE = "decomposition.none";
     private static final String KEY_WORKSTREAM = "decomposition.workstream_label";
     private static final String STATE_ID = "start.step.decomposition";
+    private static final String KEY_COUNT = "count";
+    private static final String KEY_CHECKS = "checks";
+    private static final String KEY_PLAN = "plan";
 
     private final StartApi api;
     private final StartPrompt prompt;
@@ -107,36 +110,39 @@ final class EpicDecompositionDialogue {
             var answer = prompt.askRaw(options(current), STATE_ID,
                                 text("decomposition.agree", Map.of()), epicId);
             if (answer.isEmpty()) {
-                var checked = api.checkDecomposition(project, epicId);
+                var checked = agree();
                 if (checked == null) {
                     return 0;
                 }
-                if (checked.everyCheckPasses() && api.commit(project, epicId) != null) {
-                    prompt.raw(text(KEY_DONE, Map.of("epic", clean(epicId),
-                                        "workstreams", checked.workstreams().size(),
-                                        "plans", checked.stagedPlanCount())));
-                    return 0;
-                }
                 current = checked;
-                continue;
-            }
-            if ("q".equalsIgnoreCase(answer)) {
+            } else if ("q".equalsIgnoreCase(answer)) {
                 prompt.raw(text(KEY_LEFT, Map.of("epic", clean(epicId))));
                 return 0;
-            }
-            if ("r".equalsIgnoreCase(answer)) {
+            } else if ("r".equalsIgnoreCase(answer)) {
                 current = rewrite(current);
-                continue;
-            }
-            if ("+".equalsIgnoreCase(answer)) {
+            } else if ("+".equalsIgnoreCase(answer)) {
                 current = add(current);
-                continue;
-            }
-            var target = planAt(current, answer);
-            if (target != null) {
-                current = openPlan(current, target);
+            } else {
+                var target = planAt(current, answer);
+                if (target != null) {
+                    current = openPlan(current, target);
+                }
             }
         }
+    }
+
+    private @Nullable EpicDecomposition agree() throws IOException {
+        var checked = api.checkDecomposition(project, epicId);
+        if (checked == null) {
+            return null;
+        }
+        if (checked.everyCheckPasses() && api.commit(project, epicId) != null) {
+            prompt.raw(text(KEY_DONE, Map.of("epic", clean(epicId),
+                                "workstreams", checked.workstreams().size(),
+                                "plans", checked.stagedPlanCount())));
+            return null;
+        }
+        return checked;
     }
 
     private EpicDecomposition rewrite(EpicDecomposition before) throws IOException {
@@ -172,17 +178,35 @@ final class EpicDecompositionDialogue {
     }
 
     private EpicDecomposition edit(EpicDecomposition before, StagedPlanRecord plan) throws IOException {
+        var after = instructEdit(before, plan);
+        var answer = readBackDecision();
+        while ("i".equalsIgnoreCase(answer)) {
+            after = instructEdit(after, plan);
+            answer = readBackDecision();
+        }
+        if ("x".equalsIgnoreCase(answer)) {
+            prompt.raw(text("start.decomposition.discarded", Map.of()));
+            var reloaded = api.decomposition(project, epicId);
+            return reloaded != null ? reloaded : before;
+        }
+        return after;
+    }
+
+    private EpicDecomposition instructEdit(EpicDecomposition before, StagedPlanRecord plan) throws IOException {
         var words = askWords("start.decomposition.instruct.title",
-                            Map.of("plan", clean(plan.planId())));
+                            Map.of(KEY_PLAN, clean(plan.planId())));
         if (words.isEmpty()) {
             return before;
         }
         var after = api.instruct(project, epicId,
                             new DecompositionInstructRequest(plan.planId(), words, InstructAction.EDIT));
         prompt.raw(readBack(before, after, plan.planId()));
-        var answer = prompt.askRaw(text(KEY_READ_BACK_ACCEPT, Map.of()), STATE_ID,
+        return after;
+    }
+
+    private String readBackDecision() {
+        return prompt.askRaw(text(KEY_READ_BACK_ACCEPT, Map.of()), STATE_ID,
                             text("decomposition.accept", Map.of()), epicId);
-        return "x".equalsIgnoreCase(answer) ? before : after;
     }
 
     private String askWords(String key, Map<String, ?> args) {
@@ -210,8 +234,8 @@ final class EpicDecompositionDialogue {
 
     private String options(EpicDecomposition cut) {
         var checks = cut.everyCheckPasses() ? text(KEY_CHECKED, Map.of())
-                            : text(KEY_CHECKS_FAIL, Map.of("count", cut.findings().size()));
-        return text(KEY_PROMPT, Map.of("count", cut.stagedPlanCount(), "checks", checks));
+                            : text(KEY_CHECKS_FAIL, Map.of(KEY_COUNT, cut.findings().size()));
+        return text(KEY_PROMPT, Map.of(KEY_COUNT, cut.stagedPlanCount(), KEY_CHECKS, checks));
     }
 
     private String checkLine(EpicDecomposition cut) {
@@ -220,7 +244,7 @@ final class EpicDecompositionDialogue {
         }
         var lines = new ArrayList<String>();
         cut.findings().forEach(finding -> lines.add("  \u2717 " + clean(finding.message())));
-        lines.add("  " + text(KEY_CHECKS_FAIL, Map.of("count", cut.findings().size())));
+        lines.add("  " + text(KEY_CHECKS_FAIL, Map.of(KEY_COUNT, cut.findings().size())));
         return String.join("\n", lines);
     }
 

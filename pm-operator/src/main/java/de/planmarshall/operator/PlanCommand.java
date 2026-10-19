@@ -495,8 +495,8 @@ public final class PlanCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var answers = new StartAnswers()
-                                .project(common.project)
-                                .description(common.description);
+                                .withProject(common.project)
+                                .withDescription(common.description);
             answers.title = common.title;
             answers.id = common.id;
             answers.documents.addAll(documents);

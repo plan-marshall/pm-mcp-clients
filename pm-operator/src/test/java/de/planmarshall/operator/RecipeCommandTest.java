@@ -86,7 +86,7 @@ class RecipeCommandTest {
     @DisplayName("recipe run with an explicit project starts the recipe")
     void runDefaultProject() throws Exception {
         var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
-                            "recipe", "run", "code-review", "--project", "pm-mcp-clients", "--no-input");
+                            "recipe", "run", "code-review", "--no-input");
         assertEquals(0, outcome.code(), outcome.rendered());
         assertTrue(outcome.rendered().contains("has started"), outcome.rendered());
     }

@@ -105,9 +105,9 @@ public final class RecipeCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var answers = new StartAnswers()
-                                .project(project)
-                                .description(description)
-                                .recipe(recipeKey);
+                                .withProject(project)
+                                .withDescription(description)
+                                .withRecipe(recipeKey);
             answers.recipeCommand = true;
             answers.title = title;
             answers.parameters.putAll(params);

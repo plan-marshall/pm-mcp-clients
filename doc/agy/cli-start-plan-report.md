@@ -88,7 +88,7 @@ packs carry the same keys.
 | Suite | Result |
 |---|---|
 | `pm-api` unit tests | 619 tests, 0 failures, 0 errors |
-| `pm-operator` unit tests | 543 tests, 0 failures, 0 errors |
+| `pm-operator` unit tests | 560 tests, 0 failures, 0 errors |
 | `pm-mock-runtime` unit tests | 307 tests, 0 failures, 0 errors |
 | `pm-exec` / `pm-relay` | 87 / 25 tests, 0 failures (3 pre-existing skips in `pm-exec`) |
 | Whole reactor `./mvnw verify -Ppre-commit` | `BUILD SUCCESS` (4 min 57 s) |
@@ -155,6 +155,8 @@ $ ./mvnw verify -Ppre-commit
   model the post-parameter source step, so the dialogue applies the source arguments while the entry
   is still at `start.sources` and then chooses the recipe and resolves its parameters; the resulting
   ready step is the same.
+- **A discarded decomposition edit re-reads the draft.** The control contract offers `instruct` but no discard operation; the client therefore re-reads the server's draft after *Discard* and says so, so the operator never agrees a stale view. A contractual discard/proposal endpoint would close the gap.
+- **The project may be named by `PM_PROJECT`.** Without `--project`, the dialogue uses `PM_PROJECT` when set, then the working directory's project, then the only enrolled project; `--project ?` remains the explicit list.
 - **Native coverage is the shell form.** The interactive native transcript would need a pseudo
   terminal that feeds a script; the existing `PseudoTerminal` helper sends no input. The native
   `plan add --no-input` transcript is added and compares with the JVM-recorded file.

@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.StringJoiner;
 import org.jspecify.annotations.Nullable;
 
@@ -49,13 +50,18 @@ final class StartRenderer {
     private static final String GLYPH_WORKING = "\u25b6";
     private static final String GLYPH_ATTENTION = "!";
     private static final String GLYPH_FAILED = "\u2717";
-    private static final String GLYPH_WAITING = "\u2026";
     private static final String SEPARATOR = "   ";
     private static final String KEY_CREDENTIAL = "credential";
     private static final String KEY_FORGE = "forge";
     private static final String KEY_TIME = "time";
     private static final String KEY_SIZE = "size";
     private static final String KEY_CAUSE = "cause";
+    private static final String KEY_ORIGIN = "origin";
+    private static final String KEY_VALUE = "value";
+    private static final String KEY_INDEX = "index";
+    private static final String KEY_REASON = "reason";
+    private static final String KEY_PROJECT = "project";
+    private static final String MIDDLE_DOT = " \u00b7 ";
 
     private final StartPrompt prompt;
 
@@ -80,7 +86,7 @@ final class StartRenderer {
         prompt.raw(step(step, total) + " " + text("start.step.sources", Map.of()) + " \u00b7 "
                             + text("start.sources.title", Map.of("kind", entry.kind().wireValue()))
                             + SEPARATOR + text(fromCwd ? "start.sources.project" : "start.sources.project_only",
-                            Map.of("project", sanitize(project))));
+                            Map.of(KEY_PROJECT, sanitize(project))));
         for (var source : entry.sources()) {
             sourceLine(source);
         }
@@ -118,29 +124,29 @@ final class StartRenderer {
         for (var source : entry.sources()) {
             var label = kindLabel(source.kind());
             var value = source.title() != null ? source.title() : source.reference();
-            prompt.raw("  " + text("start.ready.row", Map.of("label", label, "value", sanitize(value))));
+            prompt.raw("  " + text("start.ready.row", Map.of("label", label, KEY_VALUE, sanitize(value))));
         }
-        renderReadyValues(entry, ready);
+        renderReadyValues(ready);
         renderEpicValues(ready);
         prompt.raw("  " + text("start.ready.prompt", Map.of("kind", entry.kind().wireValue())));
     }
 
-    private void renderReadyValues(EntryResource entry, StartReadyResource ready) {
+    private void renderReadyValues(StartReadyResource ready) {
         if (!ready.parameters().isEmpty()) {
             var params = new StringJoiner(" \u00b7 ");
             for (var parameter : ready.parameters()) {
                 params.add(text("start.ready.param_value", Map.of("name", tenant(parameter.name()),
-                                    "value", tenant(parameter.value()))));
+                                    KEY_VALUE, tenant(parameter.value()))));
             }
             prompt.raw("  " + text("start.ready.recipe_parameters", Map.of("params", params.toString())));
         }
         if (ready.title() != null) {
             prompt.raw("  " + text("start.ready.title_row", Map.of("title", sanitize(ready.title()),
-                                "origin", text("start.ready.title_origin", Map.of()))));
+                                KEY_ORIGIN, text("start.ready.title_origin", Map.of()))));
         }
         if (ready.planId() != null) {
             prompt.raw("  " + text("start.ready.id_row", Map.of("id", sanitize(ready.planId()),
-                                "origin", idOrigin(ready))));
+                                KEY_ORIGIN, idOrigin(ready))));
         }
     }
 
@@ -156,8 +162,8 @@ final class StartRenderer {
             return;
         }
         var mode = Boolean.TRUE.equals(ready.epicAutoStart()) ? "on" : "off";
-        var origin = ready.epicAutoStartOrigin() == ConfigOrigin.PROJECT ? "project" : "machine";
-        prompt.raw("  " + text("start.ready.epic_auto", Map.of("mode", mode, "origin", origin)));
+        var origin = ready.epicAutoStartOrigin() == ConfigOrigin.PROJECT ? KEY_PROJECT : "machine";
+        prompt.raw("  " + text("start.ready.epic_auto", Map.of("mode", mode, KEY_ORIGIN, origin)));
     }
 
     /**
@@ -170,18 +176,18 @@ final class StartRenderer {
         var index = 1;
         for (var recipe : recipes) {
             prompt.raw("  " + text("start.recipe.option", Map.of(
-                                "index", index,
+                                KEY_INDEX, index,
                                 "key", sanitize(recipe.key()),
                                 "description", sanitize(recipe.description()),
-                                "origin", origin(recipe))));
+                                KEY_ORIGIN, origin(recipe))));
             index++;
         }
     }
 
     private String origin(RecipeRef recipe) {
         return switch (recipe.origin()) {
-            case "domain" -> text("start.recipe.origin_domain", Map.of("origin", sanitize(recipe.origin())));
-            case "project" -> text("start.recipe.origin_project", Map.of());
+            case "domain" -> text("start.recipe.origin_domain", Map.of(KEY_ORIGIN, sanitize(recipe.origin())));
+            case KEY_PROJECT -> text("start.recipe.origin_project", Map.of());
             default -> text("start.recipe.origin_machine", Map.of());
         };
     }
@@ -194,34 +200,33 @@ final class StartRenderer {
      */
     void parameters(RecipeRef recipe, List<RecipeParameter> parameters) {
         prompt.raw(text("start.recipe.parameters.title", Map.of("recipe", sanitize(recipe.key()))));
-        var index = 1;
-        for (var parameter : parameters) {
-            if (!parameter.available()) {
-                prompt.raw("  " + text("start.recipe.param_unavailable", Map.of(
-                                    "index", index,
-                                    "name", sanitize(parameter.name()),
-                                    "reason", sanitize(parameter.reason() != null ? parameter.reason()
-                                    : text("start.recipe.no_module", Map.of())))));
-            } else {
-                var options = parameter.proposed()
-                                    ? text("start.recipe.param_proposed", Map.of())
-                                    : "";
-                var lineKey = parameter.proposed() ? "start.recipe.param" : "start.recipe.param_plain";
-                prompt.raw("  " + text(lineKey, Map.of(
-                                    "index", index,
-                                    "name", sanitize(parameter.name()),
-                                    "value", sanitize(parameter.value() != null ? parameter.value() : ""),
-                                    "options", options)));
-                if (!parameter.options().isEmpty()) {
-                    prompt.raw("  " + text("start.recipe.param_options",
-                                        Map.of("options", String.join(" \u00b7 ",
-                                                            parameter.options().stream().map(StartRenderer::sanitize).toList()))));
-                }
-            }
-            index++;
+        for (int index = 1; index <= parameters.size(); index++) {
+            renderParameter(index, parameters.get(index - 1));
         }
-        var range = "1-" + parameters.size();
-        prompt.raw("  " + text("start.recipe.parameters_prompt", Map.of("range", range)));
+        prompt.raw("  " + text("start.recipe.parameters_prompt", Map.of("range", "1-" + parameters.size())));
+    }
+
+    private void renderParameter(int index, RecipeParameter parameter) {
+        if (!parameter.available()) {
+            prompt.raw("  " + text("start.recipe.param_unavailable", Map.of(
+                                KEY_INDEX, index,
+                                "name", sanitize(parameter.name()),
+                                KEY_REASON, sanitize(parameter.reason() != null ? parameter.reason()
+                                : text("start.recipe.no_module", Map.of())))));
+            return;
+        }
+        var options = parameter.proposed() ? text("start.recipe.param_proposed", Map.of()) : "";
+        var lineKey = parameter.proposed() ? "start.recipe.param" : "start.recipe.param_plain";
+        prompt.raw("  " + text(lineKey, Map.of(
+                            KEY_INDEX, index,
+                            "name", sanitize(parameter.name()),
+                            KEY_VALUE, sanitize(parameter.value() != null ? parameter.value() : ""),
+                            "options", options)));
+        if (!parameter.options().isEmpty()) {
+            prompt.raw("  " + text("start.recipe.param_options",
+                                Map.of("options", String.join(MIDDLE_DOT,
+                                                    parameter.options().stream().map(StartRenderer::sanitize).toList()))));
+        }
     }
 
     /**
@@ -234,7 +239,7 @@ final class StartRenderer {
         var index = 1;
         for (var epic : entry.adoptableEpics()) {
             prompt.raw("  " + text("start.adopt.line", Map.of("epic", sanitize(epic.epicId()),
-                                "project", sanitize(entry.projectId()))));
+                                KEY_PROJECT, sanitize(entry.projectId()))));
             prompt.raw("  " + text("start.adopt.option", Map.of("key", index, "epic", sanitize(epic.epicId()))));
             index++;
         }
@@ -250,7 +255,7 @@ final class StartRenderer {
     void adoptionFailure(AdoptionFailure failure) {
         var reason = text("start.epic.adopt.failed", Map.of(
                             "epic", sanitize(failure.epicId()),
-                            "reason", failure.reason().wireValue(),
+                            KEY_REASON, failure.reason().wireValue(),
                             "file", sanitize(failure.file() != null ? failure.file() : ""),
                             "detail", sanitize(failure.detail() != null ? failure.detail() : "")));
         prompt.raw(reason);
@@ -267,7 +272,7 @@ final class StartRenderer {
     void refused(StartRefusal refusal) {
         var message = refusal.reason() == StartRefusalReason.MACHINE_NOT_ONBOARDED
                             ? text("start.gate.machine", Map.of("need", tenant(refusal.need())))
-                            : text("start.gate.project", Map.of("project", tenant(refusal.projectId()),
+                            : text("start.gate.project", Map.of(KEY_PROJECT, tenant(refusal.projectId()),
                             "need", tenant(refusal.need())));
         prompt.raw(text("start.refused.message", Map.of("message", message)));
         prompt.raw(text("start.refused.action", Map.of("action", text(refusal.actionKey(), Map.of()))));
@@ -300,11 +305,11 @@ final class StartRenderer {
             prompt.raw("  " + text("start.source.flagged_title", Map.of()));
             for (var span : source.spans()) {
                 prompt.raw(text("start.source.span", Map.of("text", spanText(span),
-                                    "reason", sanitize(span.reason()))));
+                                    KEY_REASON, sanitize(span.reason()))));
             }
         }
         if (source.failure() != null) {
-            prompt.raw(text("start.source.failure", Map.of("cause", cause(source.failure()))));
+            prompt.raw(text("start.source.failure", Map.of(KEY_CAUSE, cause(Objects.requireNonNull(source.failure(), "failure")))));
         }
     }
 
@@ -408,7 +413,8 @@ final class StartRenderer {
     }
 
     private String text(String key, Map<String, ?> args) {
-        return MessageCatalogue.format(prompt.locale(), key, args);
+        return MessageCatalogue.format(prompt.locale(), Objects.requireNonNull(key, "key"),
+                            Objects.requireNonNull(args, "args"));
     }
 
     private static String sanitize(@Nullable String value) {

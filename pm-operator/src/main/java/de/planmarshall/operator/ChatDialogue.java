@@ -18,7 +18,6 @@ import de.planmarshall.api.control.ChatProposalResource;
 import de.planmarshall.api.control.ChatTurnResource;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
-import de.planmarshall.api.start.EntryResource;
 import de.planmarshall.api.start.StartChatResource;
 import de.planmarshall.api.start.StartStateResource;
 
@@ -66,9 +65,9 @@ final class ChatDialogue {
             return state;
         }
         var chat = state.chat();
-        prompt.raw(heading(entry, chat));
+        prompt.raw(heading(chat));
         renderTurns(chat.turns());
-        var current = state;
+        StartStateResource current;
         while (true) {
             var answer = prompt.askInline(text("start.chat.prompt", Map.of()), "start.sources",
                                 text("start.chat.open", Map.of()), entry.entryId());
@@ -87,13 +86,13 @@ final class ChatDialogue {
             if (updated != null) {
                 renderTurns(updated.turns());
                 if (updated.proposal() != null) {
-                    current = readBack(current, updated.proposal());
+                    readBack(current, Objects.requireNonNull(updated.proposal()));
                 }
             }
         }
     }
 
-    private StartStateResource readBack(StartStateResource state, ChatProposalResource proposal)
+    private void readBack(StartStateResource state, ChatProposalResource proposal)
                         throws IOException {
         prompt.raw(text("start.chat.proposal", Map.of("summary",
                             TerminalSanitizer.sanitizeLine(proposal.summary()))));
@@ -107,7 +106,10 @@ final class ChatDialogue {
         }
         var answer = prompt.askRaw(text("start.chat.accept_prompt", Map.of()), "start.sources",
                             text("start.chat.open", Map.of()), state.entryId());
-        var accept = !"r".equalsIgnoreCase(answer);
+        var accept = answer.isEmpty() || "y".equalsIgnoreCase(answer) || "a".equalsIgnoreCase(answer);
+        if (!accept && !"r".equalsIgnoreCase(answer)) {
+            return;
+        }
         try {
             var updated = api.chatProposal(state.entryId(), accept);
             if (accept) {
@@ -117,14 +119,12 @@ final class ChatDialogue {
             if (chat != null) {
                 renderTurns(chat.turns());
             }
-            return updated;
         } catch (StartApi.StartActException e) {
             prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
-            return state;
         }
     }
 
-    private String heading(EntryResource entry, StartChatResource chat) {
+    private String heading(StartChatResource chat) {
         var subject = text("start.chat.subject_new", Map.of("kind", kind.wireValue(), "project", project));
         return text("start.chat.heading", Map.of("subject", subject,
                             "role", TerminalSanitizer.sanitizeLine(chat.role().value())));

@@ -42,6 +42,7 @@ final class StartTestSupport {
             var environment = new HashMap<>(runtime.environment());
             environment.put("LANG", "en_US.UTF-8");
             environment.put("USER", "operator");
+            environment.put("PM_PROJECT", "pm-mcp-clients");
             driver.project(environment, runtime.base().getParent());
             if (input == null) {
                 driver.endOfInput();

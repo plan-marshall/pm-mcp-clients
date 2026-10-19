@@ -84,7 +84,7 @@ final class StartAnswers {
      * @param value the value of {@code --description}
      * @return this builder
      */
-    StartAnswers description(@Nullable String value) {
+    StartAnswers withDescription(@Nullable String value) {
         this.description = value;
         return this;
     }
@@ -93,7 +93,7 @@ final class StartAnswers {
      * @param value the project id
      * @return this builder
      */
-    StartAnswers project(@Nullable String value) {
+    StartAnswers withProject(@Nullable String value) {
         this.project = value;
         return this;
     }
@@ -102,7 +102,7 @@ final class StartAnswers {
      * @param value the recipe key
      * @return this builder
      */
-    StartAnswers recipe(@Nullable String value) {
+    StartAnswers withRecipe(@Nullable String value) {
         this.recipeKey = value;
         return this;
     }
