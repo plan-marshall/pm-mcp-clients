@@ -64,8 +64,8 @@ This plan executes concurrently in Wave 9 alongside:
   - `persona-code-reviewer` for review bot resolution.
 - [x] 3. Incremental implementation following the 5-Phase technical recipe with local tests passing.
 - [x] 4. Final completion report written (`doc/agy/cli-onboarding-plan-report.md`), initial plan moved to `doc/agy/implemented/cli-onboarding-plan.md`, and package marked done in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — post-landing verification moves it).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-onboarding-plan-report.md` by orchestrator session.
 
