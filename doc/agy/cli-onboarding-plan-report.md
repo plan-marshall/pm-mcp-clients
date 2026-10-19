@@ -99,15 +99,16 @@ dialogue remains for a follow-up. See §6 for the precise remainder.
 
 ## 3. Test & Verification Results
 
-- **`pm-operator` unit tests**: 481, failures 0. `TerminalSanitizer` 12, `LiteralTextGuard` 2,
+- **`pm-operator` unit tests**: 524, failures 0. `TerminalSanitizer` 12, `LiteralTextGuard` 2,
   `ConsolePrompt` 11, `ConsoleNotice` 7, `PmConsole` 6, `ConfigCommand` 16, `WebCommand.DevicesCommand` 13.
 - **`pm-operator` transcript dialogues** (JVM): status, web pair, console-status, and the new
   console-settings dialogue, each compared with its recorded transcript.
 - **Integration-test profile**: `TranscriptDialogueIT` runs the same transcripts under
   `-Pintegration-tests`; `NativeTranscriptIT` and `NativeMeasurementsIT` run against
   `target/pm-operator` when it was built with `-Pnative` and are skipped without it.
-- **Full reactor**: `./mvnw -o test` — 1421 tests, failures 0, errors 0 (3 skipped, the
-  pre-existing platform-conditional ones).
+- **Full reactor**: `./mvnw -o test` — 1464 tests, failures 0, errors 0 (3 skipped, the
+  pre-existing platform-conditional ones): 570 (pm-api) + 87 (pm-mock-runtime) + 25 (pm-exec) +
+  258 (pm-relay) + 524 (pm-operator).
 - **Catalogue key parity**: `MessageCatalogueTest` asserts the English and German packs have
   exactly the same keys; the new keys are covered by it.
 - **Language integrity**: `LiteralTextGuardTest` scans the console, entry, settings, devices, and
@@ -134,9 +135,14 @@ dialogue remains for a follow-up. See §6 for the precise remainder.
 ## 5. Build & Quality Evidence
 
 ```
-./mvnw -o test            → BUILD SUCCESS, 1421 tests, 0 failures
+./mvnw -o test             → BUILD SUCCESS, 1464 tests, 0 failures
 ./mvnw verify -Ppre-commit → BUILD SUCCESS (OpenRewrite, license, Checkstyle, Enforcer, Javadoc, tests)
 ```
+
+SonarCloud on PR #110 — quality gate **OK**: new coverage 80.6 % (≥ 80), duplicated lines
+1.1 % (≤ 3), reliability/security/maintainability ratings 1, security hotspots reviewed 100 %.
+All CodeRabbit findings are answered in their threads; the remaining Sonar code smells are the
+OpenRewrite suppression markers the repository's recipes insert (`java:S1135`), not defects.
 
 Native (GraalVM CE 25):
 
