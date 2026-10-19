@@ -119,7 +119,7 @@ class LiteralTextGuardTest {
         // Drop the escapes (a control character, a unicode escape, an octal escape) and the format
         // specifiers; what remains is the words the operator would read.
         var words = literal
-                            .replaceAll("%[-#+ 0,(]*\\d*(?:\\.\\d+)?[a-zA-Z%]", "")
+                            .replaceAll("%[-#+ 0,(]*\\d*[a-zA-Z%]", "")
                             .replaceAll("\\\\u[0-9a-fA-F]{4}|\\\\[0-7]{1,3}|\\\\.", "");
         if (!words.matches(".*[A-Za-z].*")) {
             // no words at all: a symbol, a control sequence, a format specifier
@@ -127,7 +127,9 @@ class LiteralTextGuardTest {
         }
         // A value the runtime defines, a command name, an option, a URL, or a JSON field: no spaces,
         // no sentence punctuation.
-        return words.matches(".*\\s.*") || words.matches(".*[.!?:;].*");
+        return words.indexOf(' ') >= 0 || words.indexOf('\t') >= 0 || words.indexOf('.') >= 0
+                            || words.indexOf('!') >= 0 || words.indexOf('?') >= 0
+                            || words.indexOf(':') >= 0 || words.indexOf(';') >= 0;
     }
 
     private static List<Path> guardedSources() throws IOException {

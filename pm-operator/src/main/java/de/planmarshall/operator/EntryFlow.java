@@ -45,6 +45,8 @@ public final class EntryFlow {
     static final int DEFAULT_WEB_PORT = 7420;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
+    private static final String VERSION = "version";
+    private static final String PAIR_CODE = "/pair#code=";
 
     private static final List<String> STEP_KEYS = List.of(
                         "onboard.step.language", "onboard.step.harnesses", "onboard.step.models",
@@ -100,7 +102,7 @@ public final class EntryFlow {
 
         var runtime = context.runtime(true);
         var status = StatusCommand.fetch(runtime);
-        var version = status.get("version") != null ? String.valueOf(status.get("version")) : PmVersion.current();
+        var version = status.get(VERSION) != null ? String.valueOf(status.get(VERSION)) : PmVersion.current();
 
         var locale = context.clientEnvironment().locale();
         if (wasAlive) {

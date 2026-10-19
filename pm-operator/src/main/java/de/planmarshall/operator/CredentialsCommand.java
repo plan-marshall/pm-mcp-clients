@@ -52,6 +52,7 @@ public final class CredentialsCommand implements Callable<Integer> {
 
     static final String PATH = "/api/v1/credentials/";
     private static final String SECRET = "secret";
+    private static final String STATUS = "status";
     private static final String MODE = "mode";
     private static final String ROTATE = "rotate";
 
@@ -98,7 +99,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         if (status == null) {
             return false;
         }
-        var wire = JsonTree.string(status, "status");
+        var wire = JsonTree.string(status, STATUS);
         return "present".equalsIgnoreCase(wire) || "verified".equalsIgnoreCase(wire)
                             || "unverified".equalsIgnoreCase(wire) || "expiring".equalsIgnoreCase(wire);
     }
@@ -149,7 +150,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
-            if (!yes && !confirm(out)) {
+            if (!yes && !confirm()) {
                 return 0;
             }
             var body = new LinkedHashMap<String, Object>();
@@ -187,7 +188,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         return 0;
     }
 
-    private boolean confirm(PrintWriter out) throws IOException {
+    private boolean confirm() throws IOException {
         try (var terminal = context.createTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var line = reader.readLine(MessageCatalogue.format(locale(), "operator.credentials.store_confirm", Map.of()));

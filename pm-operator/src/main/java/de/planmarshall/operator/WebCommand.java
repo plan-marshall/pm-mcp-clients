@@ -60,6 +60,8 @@ public final class WebCommand implements Callable<Integer> {
     static final int DEFAULT_PORT = 7420;
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LABEL = "label";
+    private static final String STATUS = "status";
+    private static final String INDEX = "index";
     private static final String LOOPBACK = "loopback";
 
     private static String localeFor(OperatorContext context) {
@@ -318,7 +320,7 @@ public final class WebCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.devices.renamed", Map.of(LABEL, cleanLabel)));
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.devices.rename_failed",
-                                    Map.of("status", response.status())));
+                                    Map.of(STATUS, response.status())));
             }
         }
 
@@ -342,12 +344,12 @@ public final class WebCommand implements Callable<Integer> {
                 printRevocation(out, locale, response.body());
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.devices.revoke_failed",
-                                    Map.of("status", response.status())));
+                                    Map.of(STATUS, response.status())));
             }
         }
 
         private void printRevocation(PrintWriter out, String locale, byte[] body) {
-            var label = (String) null;
+            String label = null;
             int revokedCount = 1;
             try {
                 var json = JsonTree.asObject(JsonTree.parse(body));
@@ -378,7 +380,7 @@ public final class WebCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_done", Map.of()));
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_failed",
-                                    Map.of("status", response.status())));
+                                    Map.of(STATUS, response.status())));
             }
         }
 
@@ -387,7 +389,7 @@ public final class WebCommand implements Callable<Integer> {
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
             if (response.status() != 200) {
                 out.println(MessageCatalogue.format(locale, "operator.devices.list_failed",
-                                    Map.of("status", response.status())));
+                                    Map.of(STATUS, response.status())));
                 return;
             }
 
@@ -464,7 +466,7 @@ public final class WebCommand implements Callable<Integer> {
             var item = list.get(num - 1);
             var devInfo = extractDeviceInfo(item, num);
             out.println(MessageCatalogue.format(locale, "operator.devices.selected",
-                                Map.of("index", num, LABEL, devInfo.label())));
+                                Map.of(INDEX, num, LABEL, devInfo.label())));
             out.flush();
             var actLine = reader.readLine(MessageCatalogue.format(locale,
                                 "operator.devices.rename_or_revoke_prompt", Map.of()));
@@ -538,11 +540,11 @@ public final class WebCommand implements Callable<Integer> {
                 var lastUsed = formatLastUsed(dev.get("last_used_at"));
 
                 out.println(MessageCatalogue.format(locale, "operator.devices.row",
-                                    Map.of("index", idx, LABEL, labelVal, "date", pairedDate,
+                                    Map.of(INDEX, idx, LABEL, labelVal, "date", pairedDate,
                                                         "from", fromStr, "last_used", lastUsed)));
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.devices.row_plain",
-                                    Map.of("index", idx, LABEL, TerminalSanitizer.sanitizeLine(String.valueOf(item)))));
+                                    Map.of(INDEX, idx, LABEL, TerminalSanitizer.sanitizeLine(String.valueOf(item)))));
             }
         }
 

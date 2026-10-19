@@ -96,6 +96,7 @@ class NativeMeasurementsIT {
                                 verbTimes, providerName());
             Files.createDirectories(Path.of("target"));
             Files.writeString(Path.of("target", "native-measurements.txt"), report, StandardCharsets.UTF_8);
+            /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/
             /*~~(TODO: Use CuiLogger. Suppress: // cui-rewrite:disable CuiLoggerStandardsRecipe)~~>*/System.out.println(report);
 
             assertTrue(sizeBytes > 0, "the binary has a footprint");

@@ -67,13 +67,10 @@ public final class TerminalSanitizer {
                 i = skipOsc(text, i + 1);
             } else if (isStringIntroducer8Bit(c)) {
                 i = skipString(text, i + 1);
-            } else if (c == LF || c == TAB) {
+            } else if (c == LF || c == TAB || !Character.isISOControl(c)) {
                 out.append(c);
-                i++;
-            } else if (Character.isISOControl(c)) {
                 i++;
             } else {
-                out.append(c);
                 i++;
             }
         }

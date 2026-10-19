@@ -32,6 +32,11 @@ public final class ConsoleNotice {
     private static final String DASH = "\u2013 ";
     private static final String QUIET = "\u25aa ";
     private static final String SCOPE = "scope";
+    private static final String OPTION = "option";
+    private static final String REASON = "reason";
+    private static final String CONDITION = "condition";
+    private static final String COUNT = "count";
+    private static final String SUBJECT = "subject";
     private static final String KEY_PROJECT = "project";
     private static final String DETAIL = "detail";
 
@@ -93,7 +98,7 @@ public final class ConsoleNotice {
         }
         if (recommendation != null && !recommendation.isBlank()) {
             sb.append(MessageCatalogue.format(locale, "operator.console.question.recommended",
-                                Map.of("option", TerminalSanitizer.sanitize(recommendation)))).append('\n');
+                                Map.of(OPTION, TerminalSanitizer.sanitize(recommendation)))).append('\n');
         }
         sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of("id", id)));
         return sb.toString();
@@ -126,10 +131,10 @@ public final class ConsoleNotice {
         var sb = new StringBuilder(BULLET);
         if (gate != null && !gate.isBlank()) {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request",
-                                Map.of("id", id, "scope", scope, "gate", TerminalSanitizer.sanitize(gate))));
+                                Map.of("id", id, SCOPE, scope, "gate", TerminalSanitizer.sanitize(gate))));
         } else {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request_plain",
-                                Map.of("id", id, "scope", scope)));
+                                Map.of("id", id, SCOPE, scope)));
         }
         sb.append('\n');
         sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of("id", id)));
@@ -163,15 +168,15 @@ public final class ConsoleNotice {
             case "operator_wait" -> MessageCatalogue.format(locale, "operator.console.notice.operator_wait",
                                 Map.of("name", scope, "what", safeDetail));
             case "integrity_pause" -> MessageCatalogue.format(locale, "operator.console.notice.integrity_pause",
-                                Map.of("plan", scope, "reason", safeDetail));
+                                Map.of("plan", scope, REASON, safeDetail));
             case "stalled" -> MessageCatalogue.format(locale, "operator.console.notice.stalled",
-                                Map.of("plan", scope, "reason", safeDetail));
+                                Map.of("plan", scope, REASON, safeDetail));
             case "condition" -> MessageCatalogue.format(locale, "operator.console.notice.condition",
-                                Map.of("plan", scope, "condition", safeDetail));
+                                Map.of("plan", scope, CONDITION, safeDetail));
             case "held" -> MessageCatalogue.format(locale, "operator.console.notice.held",
                                 Map.of("epic", scope, DETAIL, safeDetail));
             case "landing_failed" -> MessageCatalogue.format(locale, "operator.console.notice.landing_failed",
-                                Map.of("epic", scope, "reason", safeDetail));
+                                Map.of("epic", scope, REASON, safeDetail));
             case "findings" -> MessageCatalogue.format(locale, "operator.console.notice.findings",
                                 Map.of("epic", scope, DETAIL, safeDetail));
             case "setup" -> MessageCatalogue.format(locale, "operator.console.notice.setup",
@@ -262,10 +267,10 @@ public final class ConsoleNotice {
         if (device != null && !device.isBlank()) {
             return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere",
                                 Map.of("id", id, "channel", channel, "device", TerminalSanitizer.sanitize(device),
-                                                    "option", safeAnswer));
+                                                    OPTION, safeAnswer));
         }
         return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere_plain",
-                            Map.of("id", id, "channel", channel, "option", safeAnswer));
+                            Map.of("id", id, "channel", channel, OPTION, safeAnswer));
     }
 
     /**
@@ -338,10 +343,10 @@ public final class ConsoleNotice {
         if (event.containsKey("count") && event.get("count") instanceof Number num && num.intValue() > 1) {
             var scope = String.valueOf(event.getOrDefault(SCOPE, event.getOrDefault(KEY_PROJECT, "plan-marshall")));
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.reports_many",
-                                Map.of("count", num.intValue(), SCOPE, TerminalSanitizer.sanitize(scope)));
+                                Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitize(scope)));
         }
         var id = String.valueOf(event.getOrDefault("id", ""));
-        var subject = (String) event.get("subject");
+        var subject = (String) event.get(SUBJECT);
         var leaf = extractLeaf(event);
 
         if (subject == null || subject.isBlank()) {
@@ -354,10 +359,10 @@ public final class ConsoleNotice {
         var safeSubject = TerminalSanitizer.sanitize(subject);
         if (id.isBlank()) {
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.report_line",
-                                Map.of("leaf", safeLeaf, "subject", safeSubject));
+                                Map.of("leaf", safeLeaf, SUBJECT, safeSubject));
         }
         return QUIET + MessageCatalogue.format(locale, "operator.console.notice.report_line_open",
-                            Map.of("leaf", safeLeaf, "subject", safeSubject, "id", TerminalSanitizer.sanitize(id)));
+                            Map.of("leaf", safeLeaf, SUBJECT, safeSubject, "id", TerminalSanitizer.sanitize(id)));
     }
 
     private static String extractLeaf(Map<String, Object> event) {

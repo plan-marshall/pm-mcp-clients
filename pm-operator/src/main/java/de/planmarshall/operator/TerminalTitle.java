@@ -9,7 +9,6 @@
  */
 package de.planmarshall.operator;
 
-import java.io.IOException;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
@@ -33,9 +32,8 @@ public final class TerminalTitle {
      *
      * @param terminal the terminal whose window title is set
      * @param title    the raw title, may be {@code null}
-     * @throws IOException if the title cannot be written
      */
-    public static void set(Terminal terminal, @Nullable String title) throws IOException {
+    public static void set(Terminal terminal, @Nullable String title) {
         terminal.writer().write(OSC_SET_TITLE + TerminalSanitizer.sanitizeTitle(title) + BEL);
         terminal.writer().flush();
     }

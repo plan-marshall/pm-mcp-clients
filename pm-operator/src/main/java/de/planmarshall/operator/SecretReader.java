@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Map;
 import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
+import org.jline.utils.NonBlockingReader;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
@@ -48,52 +49,76 @@ public final class SecretReader {
      * @throws UserInterruptException if the operator presses {@code Ctrl+C} while typing
      */
     public static char[] read(Terminal terminal, PrintWriter out, String locale) throws IOException {
-        var prompt = MessageCatalogue.format(locale, "operator.credentials.secret_prompt", Map.of());
-        out.print(prompt);
+        out.print(MessageCatalogue.format(locale, "operator.credentials.secret_prompt", Map.of()));
         out.flush();
-        var buffer = new char[64];
-        int length = 0;
+        var buffer = new Buffer();
         var originalAttributes = terminal.getAttributes();
         terminal.enterRawMode();
         try {
-            var reader = terminal.reader();
-            while (true) {
-                int c = reader.read();
-                if (c < 0) {
-                    break;
-                }
-                if (c == '\r' || c == '\n') {
-                    break;
-                }
-                if (c == CTRL_C) {
-                    Arrays.fill(buffer, '\0');
-                    throw new UserInterruptException("secret entry cancelled");
-                }
-                if (c == BACKSPACE || c == DELETE) {
-                    if (length > 0) {
-                        buffer[--length] = '\0';
-                        out.print("\b \b");
-                        out.flush();
-                    }
-                    continue;
-                }
-                if (c >= 32) {
-                    if (length == buffer.length) {
-                        buffer = Arrays.copyOf(buffer, buffer.length * 2);
-                    }
-                    buffer[length++] = (char) c;
-                    out.print('*');
-                    out.flush();
-                }
-            }
+            fill(terminal.reader(), out, buffer);
+        } catch (UserInterruptException e) {
+            buffer.clear();
+            throw e;
         } finally {
             terminal.setAttributes(originalAttributes);
         }
         out.println();
         out.flush();
-        var secret = Arrays.copyOf(buffer, length);
-        Arrays.fill(buffer, '\0');
-        return secret;
+        return buffer.take();
+    }
+
+    private static void fill(NonBlockingReader reader, PrintWriter out, Buffer buffer)
+                        throws IOException {
+        boolean done = false;
+        while (!done) {
+            int c = reader.read();
+            if (c < 0 || c == '\r' || c == '\n') {
+                done = true;
+            } else if (c == CTRL_C) {
+                throw new UserInterruptException("secret entry cancelled");
+            } else if ((c == BACKSPACE || c == DELETE) && buffer.length() > 0) {
+                buffer.backspace();
+                out.print("\b \b");
+                out.flush();
+            } else if (c >= 32) {
+                buffer.add((char) c);
+                out.print('*');
+                out.flush();
+            }
+        }
+    }
+
+    /** A growable secret buffer that is cleared after the request. */
+    private static final class Buffer {
+
+        private char[] data = new char[64];
+        private int length;
+
+        void add(char c) {
+            if (length == data.length) {
+                data = Arrays.copyOf(data, data.length * 2);
+            }
+            data[length++] = c;
+        }
+
+        void backspace() {
+            data[--length] = '\0';
+        }
+
+        int length() {
+            return length;
+        }
+
+        char[] take() {
+            var secret = Arrays.copyOf(data, length);
+            clear();
+            return secret;
+        }
+
+        void clear() {
+            Arrays.fill(data, '\0');
+            length = 0;
+        }
     }
 
     /**

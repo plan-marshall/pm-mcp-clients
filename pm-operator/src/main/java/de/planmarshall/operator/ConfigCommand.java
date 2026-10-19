@@ -55,15 +55,25 @@ import picocli.CommandLine.Spec;
                                         ConfigCommand.DocumentsCommand.class
                     })
 @OperatorVerb
+@SuppressWarnings("java:S1075")
 public final class ConfigCommand implements Callable<Integer> {
 
     static final String CONFIG_PATH = "/api/v1/config";
     static final String MACHINE_SETTINGS_PATH = "/api/v1/machine/settings";
     private static final String ROLES = "roles";
+    private static final String CONFIG_VERB = "config";
+    private static final String DOCUMENTS = "documents";
+    private static final String CREDENTIALS = "credentials";
+    private static final String STATUS = "status";
+    private static final String VALUE = "value";
+    private static final String INDEX = "index";
+    private static final String RANGE = "range";
+    private static final String ASPECT = "aspect";
+    private static final String SETTINGS_FAILED = "operator.settings.list_failed";
     private static final String ONBOARD_SETTINGS = "onboard.settings.";
     private static final String OPERATOR_SETTINGS = "operator.settings.";
     private static final List<String> ASPECT_COMMANDS = List.of(
-                        "language", "harnesses", "models", ROLES, "credentials", "providers", "plan-defaults");
+                        "language", "harnesses", "models", ROLES, CREDENTIALS, "providers", "plan-defaults");
 
     static final List<String> ASPECT_OWNED_KEYS = List.of(
                         "language.", "credentials.store", "providers.", "plan_defaults.",
@@ -114,7 +124,7 @@ public final class ConfigCommand implements Callable<Integer> {
         var response = context.runtime(true).send(HttpRequest.get(CONFIG_PATH));
         if (response.status() != 200) {
             out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed",
-                                Map.of("status", response.status())));
+                                Map.of(STATUS, response.status())));
             return;
         }
         out.println(MessageCatalogue.format(locale, "operator.config.machine_settings", Map.of()));
@@ -122,7 +132,7 @@ public final class ConfigCommand implements Callable<Integer> {
         if (json instanceof Map<?, ?> map) {
             for (var entry : map.entrySet()) {
                 out.println(MessageCatalogue.format(locale, "operator.config.machine_settings_row",
-                                    Map.of("key", entry.getKey(), "value", entry.getValue())));
+                                    Map.of("key", entry.getKey(), VALUE, entry.getValue())));
             }
         } else {
             out.println(response.bodyText());
@@ -132,16 +142,16 @@ public final class ConfigCommand implements Callable<Integer> {
     private @Nullable MachineSettingsRecord readSettings(PrintWriter out, String locale) throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
         if (response.status() != 200) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
-                                Map.of("status", response.status())));
+            out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
+                                Map.of(STATUS, response.status())));
             out.flush();
             return null;
         }
         try {
             return MachineSettingsRecord.fromJson(response.bodyText());
         } catch (IOException _) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
-                                Map.of("status", response.status())));
+            out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
+                                Map.of(STATUS, response.status())));
             out.flush();
             return null;
         }
@@ -155,7 +165,7 @@ public final class ConfigCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format(locale, "operator.settings.aspects.title", Map.of()));
         for (var aspect : settings.aspects()) {
             out.println(MessageCatalogue.format(locale, "operator.settings.aspects.row", Map.of(
-                                "index", index++,
+                                INDEX, index++,
                                 "name", MessageCatalogue.format(locale, aspect.aspect().stepNameKey(), Map.of()),
                                 "summary", TerminalSanitizer.sanitizeLine(aspect.summary()))));
         }
@@ -163,7 +173,7 @@ public final class ConfigCommand implements Callable<Integer> {
             out.println(MessageCatalogue.format(locale, "operator.settings.tokens.title", Map.of()));
             for (var credential : settings.credentials()) {
                 out.println(MessageCatalogue.format(locale, "operator.settings.tokens.row", Map.of(
-                                    "index", index++, "key", credential.key(), "provider", credential.provider(),
+                                    INDEX, index++, "key", credential.key(), "provider", credential.provider(),
                                     "kind", credential.kind(), "expiry", expiryText(locale, credential))));
             }
         }
@@ -171,19 +181,19 @@ public final class ConfigCommand implements Callable<Integer> {
             out.println(MessageCatalogue.format(locale, "operator.settings.consents.title", Map.of()));
             for (var consent : settings.consents()) {
                 out.println(MessageCatalogue.format(locale, "operator.settings.consents.row", Map.of(
-                                    "index", index++,
+                                    INDEX, index++,
                                     "title", MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
                                     "kind", consent.kind().wireValue())));
             }
         }
         out.println(MessageCatalogue.format(locale, "operator.settings.documents.title", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.settings.documents.row", Map.of(
-                            "index", index++, "name", MessageCatalogue.format(locale,
+                            INDEX, index++, "name", MessageCatalogue.format(locale,
                                                 ONBOARD_SETTINGS + "documents." + settings.documentsMode().wireValue(),
                                                 Map.of()),
-                            "value", settings.documentsMode().wireValue())));
+                            VALUE, settings.documentsMode().wireValue())));
         out.println(MessageCatalogue.format(locale, "operator.settings.open_prompt",
-                            Map.of("range", "1-" + (index - 1))));
+                            Map.of(RANGE, "1-" + (index - 1))));
     }
 
     private static String expiryText(String locale, MachineCredentialStatus credential) {
@@ -212,7 +222,7 @@ public final class ConfigCommand implements Callable<Integer> {
         try (var terminal = context.createTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.open_prompt",
-                                Map.of("range", "1-" + documentsIndex))
+                                Map.of(RANGE, "1-" + documentsIndex))
                                 + "   q) " + MessageCatalogue.format(locale, "operator.devices.leave", Map.of())
                                 + "   ?   \u203a ");
             if (line == null || "q".equalsIgnoreCase(line.trim()) || line.isBlank()) {
@@ -225,14 +235,14 @@ public final class ConfigCommand implements Callable<Integer> {
                 return;
             }
             if (choice >= 1 && choice <= aspectCount) {
-                PmOperator.execute(context, out, out, "config", ASPECT_COMMANDS.get(choice - 1));
+                PmOperator.execute(context, out, out, CONFIG_VERB, ASPECT_COMMANDS.get(choice - 1));
             } else if (choice > aspectCount && choice <= aspectCount + credentialCount) {
                 var credential = settings.credentials().get(choice - aspectCount - 1);
-                PmOperator.execute(context, out, out, "credentials", "rotate", credential.key());
+                PmOperator.execute(context, out, out, CREDENTIALS, "rotate", credential.key());
             } else if (consentsListed && choice == consentsIndex) {
-                PmOperator.execute(context, out, out, "config", "consents");
+                PmOperator.execute(context, out, out, CONFIG_VERB, "consents");
             } else if (choice == documentsIndex) {
-                PmOperator.execute(context, out, out, "config", "documents");
+                PmOperator.execute(context, out, out, CONFIG_VERB, DOCUMENTS);
             }
             // Any other number opens nothing: the prompt lists what exists.
         }
@@ -251,14 +261,14 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     static String getOwningAspect(@Nullable String key) {
-        if (key == null) return "config";
+        if (key == null) return CONFIG_VERB;
         if (key.startsWith("language.")) return "language";
-        if (key.startsWith("credentials.")) return "credentials";
+        if (key.startsWith("credentials.")) return CREDENTIALS;
         if (key.startsWith("providers.")) return "providers";
         if (key.startsWith("plan_defaults.")) return "plan-defaults";
-        if (key.startsWith("sources.documents_mode")) return "documents";
+        if (key.startsWith("sources.documents_mode")) return DOCUMENTS;
         if (key.startsWith(ROLES)) return ROLES;
-        return "config";
+        return CONFIG_VERB;
     }
 
     @Command(name = "show", description = "Shows effective configuration values.")
@@ -298,7 +308,7 @@ public final class ConfigCommand implements Callable<Integer> {
             if (response.status() == 200) {
                 out.println(response.bodyText());
             } else {
-                out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed", Map.of("status", response.status())));
+                out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed", Map.of(STATUS, response.status())));
             }
             out.flush();
             return 0;
@@ -338,25 +348,25 @@ public final class ConfigCommand implements Callable<Integer> {
                 var aspect = getOwningAspect(key);
                 var err = spec.commandLine().getErr();
                 err.println(MessageCatalogue.format(locale, "operator.config.set_refused",
-                                    Map.of("key", key, "aspect", aspect)));
+                                    Map.of("key", key, ASPECT, aspect)));
                 err.flush();
                 return 1;
             }
             var body = new LinkedHashMap<String, Object>();
             body.put("key", key);
-            body.put("value", value);
+            body.put(VALUE, value);
             if (project != null) body.put("project", project);
             if (plan != null) body.put("plan", plan);
 
             var response = context.runtime(true).send(HttpRequest.json("PUT", CONFIG_PATH, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
-                out.println(MessageCatalogue.format(locale, "operator.config.set_done", Map.of("key", key, "value", value)));
+                out.println(MessageCatalogue.format(locale, "operator.config.set_done", Map.of("key", key, VALUE, value)));
                 out.flush();
                 return 0;
             }
             var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.set_failed", Map.of("key", key, "status", response.status())));
+            err.println(MessageCatalogue.format(locale, "operator.config.set_failed", Map.of("key", key, STATUS, response.status())));
             err.flush();
             return 1;
         }
@@ -394,7 +404,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 0;
             }
             var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.unset_failed", Map.of("key", key, "status", response.status())));
+            err.println(MessageCatalogue.format(locale, "operator.config.unset_failed", Map.of("key", key, STATUS, response.status())));
             err.flush();
             return 1;
         }
@@ -434,7 +444,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 0;
             }
             var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.language_failed", Map.of("status", response.status())));
+            err.println(MessageCatalogue.format(locale, "operator.config.language_failed", Map.of(STATUS, response.status())));
             err.flush();
             return 1;
         }
@@ -499,7 +509,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 0;
             }
             var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "operator.config.update_failed", Map.of("aspect", "harnesses", "status", response.status())));
+            err.println(MessageCatalogue.format(locale, "operator.config.update_failed", Map.of(ASPECT, "harnesses", STATUS, response.status())));
             err.flush();
             return 1;
         }
@@ -707,15 +717,15 @@ public final class ConfigCommand implements Callable<Integer> {
                 if (landing != null) {
                     out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults.landing_row",
                                         Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.landing", Map.of()),
-                                                            "value", landing)));
+                                                            VALUE, landing)));
                 }
                 if (method != null) {
                     out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults.method_row",
-                                        Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.method", Map.of()), "value", method)));
+                                        Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.method", Map.of()), VALUE, method)));
                 }
                 if (asking != null) {
                     out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults.asking_row",
-                                        Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.asking", Map.of()), "value", asking)));
+                                        Map.of("name", MessageCatalogue.format(locale, "operator.config.plan_defaults.asking", Map.of()), VALUE, asking)));
                 }
                 out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults_recorded", Map.of()));
                 out.flush();
@@ -783,7 +793,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 int idx = 1;
                 for (var c : list) {
                     out.println(MessageCatalogue.format(locale, "operator.config.consents_row",
-                                        Map.of("index", idx++, "title", TerminalSanitizer.sanitizeLine(String.valueOf(c)))));
+                                        Map.of(INDEX, idx++, "title", TerminalSanitizer.sanitizeLine(String.valueOf(c)))));
                 }
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.config.consents_none", Map.of()));
@@ -797,7 +807,7 @@ public final class ConfigCommand implements Callable<Integer> {
             int idx = 1;
             for (var consent : consents) {
                 out.println(MessageCatalogue.format(locale, "operator.consents.row", Map.of(
-                                    "index", idx++, "title", MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
+                                    INDEX, idx++, "title", MessageCatalogue.format(locale, consent.titleKey(), Map.of()),
                                     "kind", consent.kind().wireValue())));
                 out.println(MessageCatalogue.format(locale, "operator.consents.row_detail", Map.of(
                                     "when", consent.grantedAt() != null ? consent.grantedAt() : "",
@@ -838,12 +848,12 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 409) {
-                out.println(MessageCatalogue.format(locale, "operator.settings.kept", Map.of("value", "")));
+                out.println(MessageCatalogue.format(locale, "operator.settings.kept", Map.of(VALUE, "")));
                 out.flush();
                 return 0;
             }
-            out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
-                                Map.of("status", response.status())));
+            out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
+                                Map.of(STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }
@@ -861,7 +871,7 @@ public final class ConfigCommand implements Callable<Integer> {
             try (var terminal = context.createTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(terminal).build();
                 var line = reader.readLine(MessageCatalogue.format(locale, "operator.consents.withdraw_prompt",
-                                    Map.of("range", "1-" + settings.consents().size()))
+                                    Map.of(RANGE, "1-" + settings.consents().size()))
                                     + "   q) " + MessageCatalogue.format(locale, "operator.consents.quit", Map.of())
                                     + "   ?   \u203a ");
                 if (line == null || line.isBlank() || "q".equalsIgnoreCase(line.trim())) {
@@ -977,7 +987,7 @@ public final class ConfigCommand implements Callable<Integer> {
             if (response.status() == 409) {
                 var conflict = MachineSettingsUpdateResult.fromJson(response.bodyText());
                 out.println(MessageCatalogue.format(locale, "web.settings.conflict.refused",
-                                    Map.of("value", Objects.toString(conflict.currentValue(), ""))));
+                                    Map.of(VALUE, Objects.toString(conflict.currentValue(), ""))));
                 out.flush();
                 if (yes || (context.isInteractiveTerminal() && confirmRetry(locale))) {
                     var retry = new MachineSettingsUpdateRequest("documents_mode", value, conflict.revision());
@@ -994,7 +1004,7 @@ public final class ConfigCommand implements Callable<Integer> {
                 return 0;
             }
             out.println(MessageCatalogue.format(locale, "operator.config.update_failed",
-                                Map.of("aspect", "documents", "status", response.status())));
+                                Map.of(ASPECT, DOCUMENTS, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }

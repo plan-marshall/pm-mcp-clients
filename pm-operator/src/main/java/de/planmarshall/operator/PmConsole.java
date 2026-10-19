@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -52,7 +53,6 @@ import de.planmarshall.api.message.MessageCatalogue;
 public final class PmConsole {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
-    private static final String LOCALE_KEY = "locale";
 
     private final OperatorContext context;
     private final AtomicBoolean running = new AtomicBoolean(true);
@@ -85,7 +85,6 @@ public final class PmConsole {
     public int run() throws IOException {
         var terminal = context.createTerminal();
         var out = new PrintWriter(terminal.writer(), true);
-        var locale = locale();
 
         var historyFile = context.stateDirectory().historyFile();
         try {
@@ -130,40 +129,46 @@ public final class PmConsole {
     private void runRepl(PrintWriter out, LineReader reader) {
         var locale = locale();
         while (running.get()) {
-            var prompt = ConsolePrompt.format(locale, badges, reconnecting.get());
-            String line;
+            var line = readCommand(reader, out, locale);
+            if (line == null) {
+                break;
+            }
+            if (line.isEmpty()) {
+                handleEmptyEnter(out, reader);
+            } else if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
+                break;
+            } else {
+                dispatchCommand(line, out, reader);
+            }
+        }
+    }
+
+    /**
+     * Reads one line at the prompt and answers the interrupt keys: {@code Ctrl+C} on an empty line
+     * prints the hint, {@code Ctrl+D} names the questions that stay open once before it leaves.
+     *
+     * @return the trimmed line, or {@code null} when the console is to leave
+     */
+    private @Nullable String readCommand(LineReader reader, PrintWriter out, String locale) {
+        while (running.get()) {
             try {
-                line = reader.readLine(prompt);
+                var line = reader.readLine(ConsolePrompt.format(locale, badges, reconnecting.get()));
+                return line == null ? null : line.trim();
             } catch (UserInterruptException e) {
-                // Ctrl+C: a typed line is cleared (the reader does that); an empty line prints the hint.
                 if (e.getPartialLine() == null || e.getPartialLine().isEmpty()) {
                     out.println(MessageCatalogue.format(locale, "operator.console.ctrl_c_hint", Map.of()));
                     out.flush();
                 }
-                continue;
             } catch (EndOfFileException e) {
-                // Ctrl+D: leave the console, but name the questions that stay open first.
-                if (hasOpenQuestions() && controlDCounter.getAndIncrement() == 0) {
-                    out.println(MessageCatalogue.format(locale, "operator.console.exit_open",
-                                        Map.of("count", questionCount())));
-                    out.flush();
-                    continue;
+                if (!hasOpenQuestions() || controlDCounter.getAndIncrement() > 0) {
+                    return null;
                 }
-                break;
+                out.println(MessageCatalogue.format(locale, "operator.console.exit_open",
+                                    Map.of("count", questionCount())));
+                out.flush();
             }
-            if (line == null) {
-                break;
-            }
-            line = line.trim();
-            if (line.isEmpty()) {
-                handleEmptyEnter(out, reader);
-                continue;
-            }
-            if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
-                break;
-            }
-            dispatchCommand(line, out, reader);
         }
+        return null;
     }
 
     private boolean hasOpenQuestions() {
@@ -340,8 +345,7 @@ public final class PmConsole {
                 applyConsoleEvent(event.event(), eventMap, reader);
             }
         }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        catch (IOException _) {
             // invalid json in event stream
         }
     }
@@ -396,15 +400,6 @@ public final class PmConsole {
         }
     }
 
-    private static String sanitizeScope(String scope) {
-        if (scope.startsWith("epic")) {
-            return "epic";
-        }
-        if (scope.startsWith("project") || scope.startsWith("setup")) {
-            return "project";
-        }
-        return "plan";
-    }
 
     /**
      * Asks for a fresh pairing code after a redemption and reports it above the prompt, so the
@@ -435,11 +430,7 @@ public final class PmConsole {
         if (!badges.isEmpty()) {
             title.append(" [").append(String.join(" \u00b7 ", badges)).append(']');
         }
-        try {
-            TerminalTitle.set(terminal, title.toString());
-        } catch (IOException _) {
-            // a terminal without a title is fine
-        }
+        TerminalTitle.set(terminal, title.toString());
     }
 
     /**
@@ -487,8 +478,7 @@ public final class PmConsole {
         try {
             return InetAddress.getLocalHost().getHostName();
         }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception e) {
+        catch (UnknownHostException _) {
             return "localhost";
         }
     }
