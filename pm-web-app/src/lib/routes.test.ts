@@ -59,4 +59,9 @@ describe('the routes of the app', () => {
     expect(routeForPath('/entries')).toBeNull();
     expect(routeForPath('/entries/a/b')).toBeNull();
   });
+
+  it('names no start for a malformed escape instead of throwing', () => {
+    expect(routeForPath('/entries/%E0')).toBeNull();
+    expect(routeForPath('/projects/%E0/start')).toBeNull();
+  });
 });

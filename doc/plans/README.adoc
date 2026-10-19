@@ -228,7 +228,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/web-start.adoc[`web-start`]
 |Starting work in the web app
 |`done`
-|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]
+|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]; link:cli-start.adoc[`cli-start`] (the same scenarios in the terminal)
 |epic clients
 
 |link:implemented/overview-contract.adoc[`overview-contract`]

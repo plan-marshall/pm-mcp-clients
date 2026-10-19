@@ -70,6 +70,20 @@ function normalise(pathname: string): string {
 }
 
 /**
+ * Decodes one path segment, returning `null` for a malformed escape.
+ *
+ * @param segment the encoded segment
+ * @returns the decoded segment, or `null` when it cannot be decoded
+ */
+function decodeSegment(segment: string): string | null {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Resolves a path to its route and, for a start, the project and the entry it names.
  *
  * The start paths are `/start` (the project is chosen there), `/projects/{id}/start` (a new
@@ -91,11 +105,13 @@ export function matchPath(pathname = '/'): PathMatch | null {
   }
   const projectStart = /^\/projects\/([^/]+)\/start$/.exec(trimmed);
   if (projectStart?.[1]) {
-    return { route: 'start', projectId: decodeURIComponent(projectStart[1]) };
+    const projectId = decodeSegment(projectStart[1]);
+    return projectId ? { route: 'start', projectId } : null;
   }
   const entryPath = /^\/entries\/([^/]+)$/.exec(trimmed);
   if (entryPath?.[1]) {
-    return { route: 'start', entryId: decodeURIComponent(entryPath[1]) };
+    const entryId = decodeSegment(entryPath[1]);
+    return entryId ? { route: 'start', entryId } : null;
   }
   return null;
 }

@@ -161,6 +161,15 @@ export interface ProjectDetailResponse {
   plans: ActivePlanSummary[];
   epics: ActiveEpicSummary[];
   alongside_landings: AlongsideLanding[];
+  /** The open starts of the project, when the runtime reports them. */
+  open_entries?: OpenEntrySummary[];
+}
+
+/** An open start, as the project's actions name it. */
+export interface OpenEntrySummary {
+  entry_id: string;
+  kind: StartKind;
+  source_count: number;
 }
 
 export interface ProcessTokens {

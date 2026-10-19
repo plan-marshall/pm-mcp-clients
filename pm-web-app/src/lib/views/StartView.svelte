@@ -22,7 +22,7 @@
   import RecipeReadyView from './RecipeReadyView.svelte';
   import EpicAdoptView from './EpicAdoptView.svelte';
   import DecompositionReviewView from './DecompositionReviewView.svelte';
-  import { readForgeReference } from '../start/sourceLabels';
+  import { readForgeReference, repositoryFromRemote } from '../start/sourceLabels';
 
   export let projectId: string | null = null;
   export let entryId: string | null = null;
@@ -35,6 +35,8 @@
   let actionError = '';
 
   let projects: ProjectSummary[] = [];
+
+  let projectRepository = '';
 
   let descriptionText = '';
   let showPreview = false;
@@ -86,6 +88,7 @@
 
   let lastState = '';
   let unsubscribeEntry: (() => void) | null = null;
+  let destroyed = false;
 
   $: entry = state?.entry ?? null;
   $: ready = state?.ready ?? null;
@@ -98,7 +101,9 @@
   });
 
   onDestroy(() => {
+    destroyed = true;
     unsubscribeEntry?.();
+    unsubscribeEntry = null;
   });
 
   async function load(): Promise<void> {
@@ -106,10 +111,13 @@
     loadError = '';
     try {
       if (entryId) {
-        apply(await apiClient.getEntry(entryId));
+        const resource = await apiClient.getEntry(entryId);
+        if (destroyed) return;
+        apply(resource);
         subscribeEntry(entryId);
       } else if (projectId) {
         const opened = await apiClient.openEntry(projectId, { kind });
+        if (destroyed) return;
         apply(opened);
         const id = opened.start.entry?.entry_id;
         if (id) {
@@ -117,8 +125,11 @@
           subscribeEntry(id);
         }
       } else {
-        projects = (await apiClient.getProjects()).projects ?? [];
+        const overview = await apiClient.getProjects();
+        if (destroyed) return;
+        projects = overview.projects ?? [];
       }
+      await resolveProjectRepository();
     } catch (e) {
       loadError = messageOf(e);
     } finally {
@@ -126,7 +137,27 @@
     }
   }
 
+  /**
+   * Reads the project's forge repository from the explorer, so a bare issue number and the
+   * grant question compare against `owner/repo`, not the project id.
+   */
+  async function resolveProjectRepository(): Promise<void> {
+    const project = currentProject;
+    if (!project) return;
+    try {
+      const explorer = await apiClient.getProjectExplorer();
+      if (destroyed) return;
+      const enrolled = [...explorer.favourites, ...explorer.recent, ...explorer.all_projects].find(
+        (candidate) => candidate.project_id === project,
+      );
+      projectRepository = repositoryFromRemote(enrolled?.remote_url ?? '');
+    } catch {
+      projectRepository = '';
+    }
+  }
+
   function subscribeEntry(id: string): void {
+    if (destroyed) return;
     unsubscribeEntry?.();
     unsubscribeEntry = apiClient.subscribeEntryEvents(id, (event) => {
       if (event === 'entry.changed' || event === 'source.changed' || event === 'chat.turn') {
@@ -203,14 +234,13 @@
     }
   }
 
-  async function openProject(id: string): Promise<void> {
-    projectId = id;
+  function openProject(id: string): void {
+    // AppRouter re-keys StartView on the project; the new instance opens the entry.
     runtimeStore.update((current) => ({
       ...current,
       startProjectId: id,
       startEntryId: null,
     }));
-    await load();
   }
 
   function addSource(sourceKind: string): void {
@@ -285,18 +315,29 @@
 
   function submitIssue(): void {
     issueError = '';
-    const parsed = readForgeReference(issueReference, currentProject);
+    const parsed = readForgeReference(issueReference, projectRepository);
     if (!parsed) {
       issueError = $t('start.cause.unknown_forge');
       return;
     }
-    if (parsed.repository !== currentProject) {
+    if (!isOwnRepository(parsed.repository)) {
       grantRepository = parsed.repository;
       grantReference = parsed.url;
       grantOpen = true;
       return;
     }
     void addIssue(parsed.url);
+  }
+
+  /**
+   * @param repository the `owner/repo` of a reference
+   * @returns whether it is the project's own repository
+   */
+  function isOwnRepository(repository: string): boolean {
+    if (projectRepository) {
+      return repository === projectRepository;
+    }
+    return repository.split('/').pop() === currentProject;
   }
 
   async function addIssue(reference: string): Promise<void> {
@@ -317,7 +358,7 @@
 
   async function submitPullRequest(): Promise<void> {
     prError = '';
-    const parsed = readForgeReference(prReference, currentProject);
+    const parsed = readForgeReference(prReference, projectRepository);
     if (!parsed) {
       prError = $t('start.cause.unknown_forge');
       return;
@@ -469,7 +510,11 @@
     }
   }
 
-  async function instructDecomposition(planId: string | null, instruction: string): Promise<void> {
+  async function instructDecomposition(
+    planId: string | null,
+    instruction: string,
+    action: 'edit' | 'add' | 'rewrite' = planId ? 'edit' : 'add',
+  ): Promise<void> {
     busy = true;
     decompositionError = '';
     try {
@@ -480,7 +525,7 @@
       const result = await apiClient.instructDecomposition(currentProject, createdId, {
         plan_id: planId,
         instruction,
-        action: planId ? 'edit' : 'add',
+        action,
       });
       decomposition = result;
       const after = result.workstreams
@@ -494,17 +539,6 @@
     } finally {
       busy = false;
     }
-  }
-
-  function dropPlan(planId: string): void {
-    if (!decomposition) return;
-    decomposition = {
-      ...decomposition,
-      workstreams: decomposition.workstreams.map((stream) => ({
-        ...stream,
-        staged_plans: stream.staged_plans.filter((plan) => plan.plan_id !== planId),
-      })),
-    };
   }
 
   function discardReadBack(): void {
@@ -627,7 +661,6 @@
           readBack={decompositionReadBack}
           {busy}
           onKeep={() => {}}
-          onDrop={dropPlan}
           onInstruct={instructDecomposition}
           onAccept={() => (decompositionReadBack = null)}
           onInstructAgain={() => {
@@ -639,7 +672,7 @@
             }
           }}
           onDiscard={discardReadBack}
-          onDraftAgain={(instruction) => void instructDecomposition(null, instruction)}
+          onDraftAgain={(instruction) => void instructDecomposition(null, instruction, 'rewrite')}
           onAgree={commitDecomposition}
           onChat={() => (chatOpen = true)}
         />
@@ -767,6 +800,10 @@
           readyTouched = true;
           readyTitle = value;
         }}
+        onId={(value) => {
+          readyTouched = true;
+          readyId = value;
+        }}
         onStart={create}
       />
       {#if ready?.landing && ready.landing === 'landing.files'}
@@ -837,7 +874,7 @@
                 <input type="text" data-testid="issue-input" bind:value={issueReference} />
               </label>
               {#if issueReference.trim()}
-                {@const parsed = readForgeReference(issueReference, currentProject)}
+                {@const parsed = readForgeReference(issueReference, projectRepository)}
                 {#if parsed}
                   <p class="start-view__hint" data-testid="issue-forge">
                     {parsed.forge} · {parsed.repository}

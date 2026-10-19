@@ -27,11 +27,11 @@
     if (!open || !projectId) return;
     const key = `${projectId}|${root}|${path}`;
     if (key === loadedKey) return;
+    loadedKey = key;
     loading = true;
     error = '';
     try {
       listing = await apiClient.listProjectFiles(projectId, root, path);
-      loadedKey = key;
       selected = [];
     } catch (e) {
       error = e instanceof Error ? e.message : '';
@@ -115,7 +115,7 @@
           data-testid="picker-root-checkout"
           on:click={() => chooseRoot('checkout')}
         >
-          {$t('start.documents.add')}
+          {$t('start.documents.root_checkout')}
         </button>
         <button
           type="button"
@@ -127,7 +127,7 @@
           title={!loopback ? $t('start.documents.loopback_only') : undefined}
           on:click={() => chooseRoot('home')}
         >
-          {$t('start.source.documents')}
+          {$t('start.documents.root_home')}
         </button>
       </div>
 
@@ -143,6 +143,17 @@
         </p>
       {:else if error}
         <p class="file-picker__error" data-testid="picker-error">{error}</p>
+        <button
+          type="button"
+          class="file-picker__up"
+          data-testid="picker-retry"
+          on:click={() => {
+            loadedKey = '';
+            void load();
+          }}
+        >
+          {$t('start.source.retry')}
+        </button>
       {:else}
         <ul class="file-picker__list">
           {#each listing?.entries ?? [] as entry (entry.path)}

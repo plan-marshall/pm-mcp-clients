@@ -15,6 +15,7 @@
   export let epicAutoStartOrigin: string | null = null;
   export let busy = false;
   export let onTitle: (value: string) => void = () => {};
+  export let onId: (value: string) => void = () => {};
   export let onParameter: (name: string, value: string) => void = () => {};
   export let onContinue: () => void = () => {};
   export let onStart: () => void = () => {};
@@ -113,6 +114,7 @@
         value={planId}
         readonly={!idEditable}
         disabled={busy}
+        on:input={(event) => onId(event.currentTarget.value)}
       />
       {#if idFromTitle}
         <span class="recipe-ready__hint">{$t('start.ready.id_from_title')}</span>

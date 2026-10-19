@@ -21,6 +21,24 @@ function arrangeOpen(repr: ReturnType<typeof sources>): void {
   vi.spyOn(apiClient, 'openEntry').mockResolvedValue(repr);
   vi.spyOn(apiClient, 'getEntry').mockResolvedValue(repr);
   vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
+  vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+    favourites: [],
+    recent: [],
+    all_projects: [
+      {
+        project_id: PROJECT,
+        display_name: PROJECT,
+        remote_url: 'https://github.com/plan-marshall/pm-mcp-clients.git',
+        readiness: 'ready',
+        needs_operator_count: 0,
+        active_plans_count: 0,
+        active_epics_count: 0,
+        is_favourite: false,
+        is_released: false,
+      },
+    ],
+    being_added: [],
+  });
 }
 
 function readyRepresentation(overrides: Record<string, unknown> = {}) {
@@ -55,6 +73,7 @@ describe('start-sources: a plan from a description and from an issue of another 
       }),
     );
     add.mockResolvedValueOnce(readyRepresentation());
+    add.mockResolvedValue(readyRepresentation());
 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
 
@@ -78,6 +97,15 @@ describe('start-sources: a plan from a description and from an issue of another 
     expect(screen.getByTestId('ready-title')).toHaveValue('Add a Codeberg provider for issues');
     expect(screen.getByTestId('ready-id')).toHaveValue('codeberg-provider-issues');
     expect(screen.getByTestId('ready-sources')).toHaveTextContent('Description');
+
+    await fireEvent.input(screen.getByTestId('ready-id'), {
+      target: { value: 'codeberg-provider' },
+    });
+    await fireEvent.click(screen.getByTestId('ready-start'));
+    expect(add).toHaveBeenLastCalledWith('ent-3f9a2c41', 'create', {
+      title: 'Add a Codeberg provider for issues',
+      plan_id: 'codeberg-provider',
+    });
   });
 
   it('asks for the grant of another repository and fails the source when it is refused', async () => {
@@ -892,6 +920,12 @@ describe('start-entry-continue: an entry left and continued', () => {
     });
     vi.spyOn(apiClient, 'getEntry').mockResolvedValue(open);
     vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      favourites: [],
+      recent: [],
+      all_projects: [],
+      being_added: [],
+    });
     const openEntry = vi.spyOn(apiClient, 'openEntry');
     vi.spyOn(apiClient, 'actEntry').mockResolvedValue(readyRepresentation());
 

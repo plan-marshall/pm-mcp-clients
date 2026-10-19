@@ -15,7 +15,6 @@
   } | null = null;
   export let busy = false;
   export let onKeep: (planId: string) => void = () => {};
-  export let onDrop: (planId: string) => void = () => {};
   export let onInstruct: (planId: string | null, instruction: string) => void = () => {};
   export let onAccept: () => void = () => {};
   export let onInstructAgain: () => void = () => {};
@@ -57,10 +56,11 @@
     return failures.some((finding) => finding.affected_plans.includes(planId));
   }
 
-  function findingText(finding: DecompositionCheckFinding): string {
+  function findingText(finding: DecompositionCheckFinding, planId: string): string {
     if (finding.rule === 'surface_overlap' && finding.affected_plans.length >= 2) {
+      const other = finding.affected_plans.find((candidate) => candidate !== planId) ?? '';
       return $t('start.decomposition.overlap', {
-        plan: finding.affected_plans[1],
+        plan: other,
         paths: finding.message,
       });
     }
@@ -144,7 +144,7 @@
                     data-testid={`plan-conflict-${plan.plan_id}`}
                   >
                     {#each failures.filter( (finding) => finding.affected_plans.includes(plan.plan_id) ) as finding}
-                      {findingText(finding)}
+                      {findingText(finding, plan.plan_id)}
                     {/each}
                   </span>
                 {/if}
@@ -168,14 +168,6 @@
                     }}
                   >
                     {$t('start.decomposition.edit')}
-                  </button>
-                  <button
-                    type="button"
-                    data-testid={`plan-drop-${plan.plan_id}`}
-                    disabled={busy}
-                    on:click={() => onDrop(plan.plan_id)}
-                  >
-                    {$t('start.decomposition.drop')}
                   </button>
                 </span>
               </li>

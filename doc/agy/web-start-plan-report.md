@@ -49,6 +49,7 @@ every new screen for literal copy.
 | `src/routes/projects/[id]/start/+page.svelte` | `/projects/{id}/start` page. |
 | `src/routes/entries/[id]/+page.svelte` | `/entries/{id}` page. |
 | `src/routes/+layout.svelte` | Removes the superseded start modal mount; the address bar keeps the start path. |
+| `src/lib/views/OverviewView.svelte` | Renders *Continue starting* for every open entry a project detail reports. |
 
 ### `pm-web-app` — Components and views
 
@@ -112,10 +113,15 @@ records, states, and offers.
   unit test remain in the tree for callers that instantiate a dialogue directly, but the app mounts
   `StartView`; the layout no longer mounts the modal.
 - Resumption is addressed by `/entries/{id}`: an entry opened by either client is rendered from its
-  current state. The mock runtime's `ProjectDetailResponse` carries no open-entry summary, so the
-  project explorer does not yet render a *Continue starting* action; the entry remains reachable by
-  its URL and from the client that opened it.
-- The decomposition review reuses `control-contract`'s decomposition endpoints; the start's chat
-  panel is the shared component the later `web-actions`/`web-plan-view` work can mount unchanged.
+  current state. The overview renders *Continue starting* for every open entry a project detail
+  reports (`open_entries`); the mock runtime does not yet carry that optional summary, so the
+  action appears as soon as the runtime reports it.
+- The decomposition review reuses `control-contract`'s decomposition endpoints. It offers Keep,
+  Edit, Add, instructions, read-back, draft-again (`rewrite`), and agree/commit; a persisted *Drop*
+  is not offered because the contract's `InstructAction` has no drop verb. The shared start chat is
+  the component the later `web-actions`/`web-plan-view` work can mount unchanged.
+- The package's Done When names both clients. The web view tests are complete here; the terminal
+  half of the same scenarios is the sibling Wave 10 `cli-start` package, still open, and the
+  package index now records it as a dependency rather than claiming terminal parity from this PR.
 - No file in `pm-api`, `pm-operator`, or `pm-mock-runtime` was modified; the package consumed the
   contract read-only, as its boundary requires.

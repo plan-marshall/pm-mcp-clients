@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { formatString } from '../i18n';
-import { failureMessage, readForgeReference, repositoryOf, resetTime } from './sourceLabels';
+import {
+  failureMessage,
+  readForgeReference,
+  repositoryFromRemote,
+  repositoryOf,
+  resetTime,
+} from './sourceLabels';
 
 describe('reading an issue or pull-request reference', () => {
   it('recognises the forges this machine knows', () => {
@@ -37,6 +43,19 @@ describe('reading an issue or pull-request reference', () => {
       'forgejo/forgejo',
     );
     expect(repositoryOf('nonsense')).toBe('');
+  });
+
+  it('reads the repository of a git remote in either transport', () => {
+    expect(repositoryFromRemote('https://github.com/plan-marshall/pm-mcp-clients.git')).toBe(
+      'plan-marshall/pm-mcp-clients',
+    );
+    expect(repositoryFromRemote('git@github.com:plan-marshall/pm-mcp-clients.git')).toBe(
+      'plan-marshall/pm-mcp-clients',
+    );
+    expect(repositoryFromRemote('ssh://git@codeberg.org/forgejo/forgejo.git')).toBe(
+      'forgejo/forgejo',
+    );
+    expect(repositoryFromRemote('')).toBe('');
   });
 });
 

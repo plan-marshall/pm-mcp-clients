@@ -73,6 +73,34 @@ export function readForgeReference(reference: string, repository = ''): ForgeRef
 }
 
 /**
+ * Reads the `owner/repo` of a git remote, whichever transport it uses.
+ *
+ * @param remote the remote URL, e.g. `git@github.com:owner/repo.git`
+ * @returns the repository, or the empty string where the remote names none
+ */
+export function repositoryFromRemote(remote: string): string {
+  const trimmed = remote.trim();
+  if (!trimmed) {
+    return '';
+  }
+  const scp = /^[^@\s]+@[^:\s]+:([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(trimmed);
+  if (scp?.[1] && scp[2]) {
+    return `${scp[1]}/${scp[2]}`;
+  }
+  try {
+    const url = new URL(trimmed);
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.length < 2) {
+      return '';
+    }
+    const repository = `${parts[0]}/${parts[1]}`;
+    return repository.endsWith('.git') ? repository.slice(0, -4) : repository;
+  } catch {
+    return '';
+  }
+}
+
+/**
  * @param reference the reference the operator typed
  * @param projectRepository the project's own repository
  * @returns the repository a reference names, or `''` where it names none

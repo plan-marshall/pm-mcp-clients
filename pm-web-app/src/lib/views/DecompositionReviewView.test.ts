@@ -62,7 +62,7 @@ describe('the decomposition review', () => {
     expect(screen.getByTestId('plan-surface-relay-auth-v2')).toHaveTextContent('pm-api/src/cursor');
     expect(screen.getByTestId('decomposition-checks')).toHaveTextContent('1 check fails');
     expect(screen.getByTestId('plan-conflict-relay-auth-v2')).toHaveTextContent(
-      'surface overlaps relay-auth-v2 (pm-api/src/cursor)',
+      'surface overlaps relay-cursor-order (pm-api/src/cursor)',
     );
     expect(screen.getByTestId('agree-commit')).toBeDisabled();
   });
@@ -109,13 +109,5 @@ describe('the decomposition review', () => {
     expect(screen.getByTestId('decomposition-checks')).toHaveTextContent('every check passes');
     await fireEvent.click(screen.getByTestId('agree-commit'));
     expect(agree).toHaveBeenCalled();
-  });
-
-  it('drops a plan through its drop action', async () => {
-    const drop = vi.fn();
-    render(DecompositionReviewView, { props: { decomposition: cut(), onDrop: drop } });
-
-    await fireEvent.click(screen.getByTestId('plan-drop-relay-auth-v2'));
-    expect(drop).toHaveBeenCalledWith('relay-auth-v2');
   });
 });
