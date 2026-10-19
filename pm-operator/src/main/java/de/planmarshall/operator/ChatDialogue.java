@@ -64,7 +64,7 @@ final class ChatDialogue {
         if (entry == null || state.chat() == null) {
             return state;
         }
-        var chat = state.chat();
+        var chat = Objects.requireNonNull(state.chat(), "chat");
         prompt.raw(heading(chat));
         renderTurns(chat.turns());
         StartStateResource current;

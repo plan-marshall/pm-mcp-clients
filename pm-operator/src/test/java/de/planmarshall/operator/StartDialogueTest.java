@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -403,6 +404,58 @@ class StartDialogueTest {
         assertAll(
                             () -> assertTrue(rendered.contains("none the recipe can work on"), rendered),
                             () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a description read from standard input starts the plan")
+    void descriptionFromStdin() throws Exception {
+        var original = System.in;
+        try {
+            System.setIn(new ByteArrayInputStream("From standard input\n".getBytes(
+                                StandardCharsets.UTF_8)));
+            var rendered = run(StandardScenarios.START_SOURCES, null,
+                                "plan", "add", "--project", PROJECT, "--description", "-", "--no-input");
+            assertAll(
+                                () -> assertTrue(rendered.contains("From standard input"), rendered),
+                                () -> assertTrue(rendered.contains("has started"), rendered));
+        } finally {
+            System.setIn(original);
+        }
+    }
+
+    @Test
+    @DisplayName("chat is announced as unavailable while no source is stored")
+    void chatUnavailable() throws Exception {
+        var rendered = run(StandardScenarios.START_SOURCES, "h\nq\n",
+                            "plan", "add", "--project", PROJECT);
+        assertAll(
+                            () -> assertTrue(rendered.contains("Chat is not available yet"), rendered),
+                            () -> assertTrue(rendered.contains("Left the start"), rendered));
+    }
+
+    @Test
+    @DisplayName("a failed adoption can go back to the offer")
+    void epicAdoptionBack() throws Exception {
+        var rendered = run(StandardScenarios.START_EPIC_ADOPT, "b\nq\n",
+                            "epic", "add", "--project", PROJECT, "--entry", "ent-7a2e4f01",
+                            "--adopt", "storage-migration");
+        assertAll(
+                            () -> assertTrue(rendered.contains("cannot be adopted"), rendered),
+                            () -> assertTrue(rendered.contains("adopt relay-hardening"), rendered));
+    }
+
+    @Test
+    @DisplayName("a staged plan can be kept or dropped without changing the cut")
+    void decompositionKeepAndDrop() throws Exception {
+        var kept = run(StandardScenarios.START_EPIC,
+                            String.join("\n", "d", "Harden the relay", "", "", "", "3", "k", "q"),
+                            "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
+        var dropped = run(StandardScenarios.START_EPIC,
+                            String.join("\n", "d", "Harden the relay", "", "", "", "3", "d", "q"),
+                            "epic", "add", "--project", PROJECT, "--title", "Relay hardening");
+        assertAll(
+                            () -> assertTrue(kept.contains("relay-auth-v2"), kept),
+                            () -> assertTrue(dropped.contains("relay-auth-v2"), dropped));
     }
 
     private static String run(String scenario, String input, String... args) throws Exception {

@@ -159,8 +159,7 @@ final class StartApi {
             return List.of();
         }
         var parsed = JsonTree.parse(response.bodyText());
-        var raw = parsed instanceof Map<?, ?> map ? JsonTree.asArray(map.get("projects"))
-                            : JsonTree.asArray(parsed);
+        var raw = JsonTree.asArray(parsed instanceof Map<?, ?> map ? map.get("projects") : parsed);
         if (raw == null) {
             return List.of();
         }

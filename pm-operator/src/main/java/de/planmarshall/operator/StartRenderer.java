@@ -83,7 +83,7 @@ final class StartRenderer {
      */
     void sources(StartStateResource state, int step, int total, String project, boolean fromCwd) {
         var entry = requireEntry(state);
-        prompt.raw(step(step, total) + " " + text("start.step.sources", Map.of()) + " \u00b7 "
+        prompt.raw(step(step, total) + " " + text("start.step.sources", Map.of()) + MIDDLE_DOT
                             + text("start.sources.title", Map.of("kind", entry.kind().wireValue()))
                             + SEPARATOR + text(fromCwd ? "start.sources.project" : "start.sources.project_only",
                             Map.of(KEY_PROJECT, sanitize(project))));
@@ -363,8 +363,9 @@ final class StartRenderer {
         }
         var seenReasons = new LinkedHashSet<String>();
         for (var offer : entry.kindOffers()) {
-            if (!offer.available() && offer.reasonKey() != null) {
-                var reason = text(offer.reasonKey(), offer.reasonArgs());
+            var reasonKey = offer.reasonKey();
+            if (!offer.available() && reasonKey != null) {
+                var reason = text(reasonKey, offer.reasonArgs());
                 if (seenReasons.add(reason)) {
                     prompt.raw("  " + reason);
                 }

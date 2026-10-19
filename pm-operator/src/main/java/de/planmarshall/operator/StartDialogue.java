@@ -63,6 +63,7 @@ final class StartDialogue {
     private static final String KEY_PLAN_ID = "plan_id";
     private static final String KEY_INDEX = "index";
     private static final String KEY_ORIGIN = "origin";
+    private static final String KEY_STATE = "state";
     private static final String KEY_STATE_SOURCES = "start.sources";
     private static final String KEY_STATE_READY = "start.ready";
     private static final String KEY_STATE_RECIPE_PARAMETERS = "recipe.parameters";
@@ -147,7 +148,7 @@ final class StartDialogue {
 
     private int loop() throws IOException {
         while (true) {
-            var current = Objects.requireNonNull(state, "state");
+            var current = Objects.requireNonNull(state, KEY_STATE);
             switch (current.state()) {
                 case CHOOSE, SOURCES -> sources();
                 case READY -> {
@@ -365,8 +366,9 @@ final class StartDialogue {
     private void addSource(SourceIntent intent) throws IOException {
         var offer = offer(intent.kind());
         if (offer == null || !offer.available()) {
-            if (offer != null && offer.reasonKey() != null) {
-                prompt.raw(text(offer.reasonKey(), offer.reasonArgs()));
+            var reasonKey = offer != null ? offer.reasonKey() : null;
+            if (reasonKey != null) {
+                prompt.raw(text(reasonKey, offer.reasonArgs()));
             }
             return;
         }
@@ -509,7 +511,7 @@ final class StartDialogue {
         renderer.parameters(recipe, parameters);
         if (parameters.stream().anyMatch(parameter -> !parameter.available())) {
             var answer = prompt.askRaw(text("start.source.prompt", Map.of()), KEY_STATE_RECIPE_PARAMETERS,
-                                text("start.recipe.no_option", Map.of("parameter", "", "reason", "")),
+                                text("start.recipe.no_option", Map.of("parameter", "", KEY_REASON, "")),
                                 entry.entryId());
             if ("b".equalsIgnoreCase(answer)) {
                 state = act("back", Map.of());
@@ -659,9 +661,8 @@ final class StartDialogue {
     private void openChat() throws IOException {
         var entry = entry();
         if (!entry.chatAvailable()) {
-            var reason = entry.chatDisabledReason() != null
-                                ? text(entry.chatDisabledReason(), Map.of(KEY_KIND, kind.wireValue()))
-                                : "";
+            var disabled = entry.chatDisabledReason();
+            var reason = disabled != null ? text(disabled, Map.of(KEY_KIND, kind.wireValue())) : "";
             prompt.line("start.chat.waits_title", Map.of(KEY_REASON, reason));
             return;
         }
