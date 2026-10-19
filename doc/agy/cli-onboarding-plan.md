@@ -56,7 +56,7 @@ This plan executes concurrently in Wave 9 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-onboarding` on branch `feat/cli-onboarding`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-onboarding` on branch `feat/cli-onboarding`.
 - [ ] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `persona-module-tester` for Picocli verbs, JLine 4 line editor, and transcript tests.
   - `persona-security-expert` for terminal escape sequence sanitization and credential key masking.
