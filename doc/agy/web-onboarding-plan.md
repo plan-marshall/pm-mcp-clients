@@ -60,7 +60,7 @@ This plan executes concurrently in Wave 9 alongside:
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-onboarding` on branch `feat/web-onboarding`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-onboarding` on branch `feat/web-onboarding`.
 - [ ] 2. Domain skills & engineering personas loaded:
   - `persona-implementer` & `pm-dev-frontend-javascript` for Svelte/HTML5/CSS component implementation.
   - `pm-dev-frontend-jest-testing` & `persona-module-tester` for component and view testing.
