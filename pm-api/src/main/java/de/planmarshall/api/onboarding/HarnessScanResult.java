@@ -35,6 +35,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param tokenUsage     what the harness and version report of their token usage
  * @param missingFigures the figures that are not reported when the coverage is partial
  * @param isDefault      {@code true} when this harness is the default of the run
+ * @param usage          the per-figure usage report, or {@code null} while it is not known
  */
 public record HarnessScanResult(
         String harnessId,
@@ -46,13 +47,19 @@ public record HarnessScanResult(
         boolean workerEligible,
         TokenUsageCoverage tokenUsage,
         List<String> missingFigures,
-        boolean isDefault
+        boolean isDefault,
+        @Nullable HarnessUsageReport usage
 ) {
     public HarnessScanResult {
         Objects.requireNonNull(harnessId, "harnessId");
         Objects.requireNonNull(name, "name");
         tokenUsage = tokenUsage != null ? tokenUsage : TokenUsageCoverage.NOT_REPORTED;
         missingFigures = missingFigures != null ? List.copyOf(missingFigures) : List.of();
+        if (usage != null && (tokenUsage != usage.coverage()
+                || !missingFigures.equals(usage.missingFigures()))) {
+            throw new IllegalArgumentException(
+                    "HarnessScanResult token usage does not match its usage report");
+        }
     }
 
     /**
@@ -79,6 +86,9 @@ public record HarnessScanResult(
         }
         if (isDefault) {
             map.put("default", true);
+        }
+        if (usage != null) {
+            map.put("usage", usage.toMap());
         }
         return map;
     }
@@ -109,6 +119,15 @@ public record HarnessScanResult(
             throw new JsonFormatException("Missing harness_id in HarnessScanResult");
         }
         var name = JsonTree.string(map, "name");
+        HarnessUsageReport usage = null;
+        var usageMap = JsonTree.asObject(map.get("usage"));
+        if (usageMap != null) {
+            usage = HarnessUsageReport.fromMap(usageMap);
+        }
+        var tokenUsage = TokenUsageCoverage.fromWire(JsonTree.string(map, "token_usage"));
+        if (tokenUsage == null && usage != null) {
+            tokenUsage = usage.coverage();
+        }
         var missing = new ArrayList<String>();
         var list = JsonTree.asArray(map.get("missing_figures"));
         if (list != null) {
@@ -118,6 +137,9 @@ public record HarnessScanResult(
                 }
             }
         }
+        if (missing.isEmpty() && usage != null) {
+            missing = new ArrayList<>(usage.missingFigures());
+        }
         return new HarnessScanResult(
                 harnessId,
                 name != null ? name : harnessId,
@@ -126,9 +148,10 @@ public record HarnessScanResult(
                 Boolean.TRUE.equals(JsonTree.bool(map, "found")),
                 Boolean.TRUE.equals(JsonTree.bool(map, "supported")),
                 Boolean.TRUE.equals(JsonTree.bool(map, "worker_eligible")),
-                TokenUsageCoverage.fromWire(JsonTree.string(map, "token_usage")),
+                tokenUsage,
                 missing,
-                Boolean.TRUE.equals(JsonTree.bool(map, "default")));
+                Boolean.TRUE.equals(JsonTree.bool(map, "default")),
+                usage);
     }
 
     /**
