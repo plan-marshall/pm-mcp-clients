@@ -74,11 +74,11 @@
             "identity": "passed",
             "detection": "passed",
             "launch": "passed",
-            "isolation": "failed",
-            "classes": "not_run",
-            "limits": "not_run",
-            "paths": "not_run",
-            "faults": "not_run",
+            "isolation": "passed",
+            "classes": "passed",
+            "limits": "passed",
+            "paths": "passed",
+            "faults": "passed",
             "usage": "failed"
           },
           "usage": {

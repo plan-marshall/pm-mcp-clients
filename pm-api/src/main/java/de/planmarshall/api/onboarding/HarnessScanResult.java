@@ -55,6 +55,11 @@ public record HarnessScanResult(
         Objects.requireNonNull(name, "name");
         tokenUsage = tokenUsage != null ? tokenUsage : TokenUsageCoverage.NOT_REPORTED;
         missingFigures = missingFigures != null ? List.copyOf(missingFigures) : List.of();
+        if (usage != null && (tokenUsage != usage.coverage()
+                || !missingFigures.equals(usage.missingFigures()))) {
+            throw new IllegalArgumentException(
+                    "HarnessScanResult token usage does not match its usage report");
+        }
     }
 
     /**
@@ -114,6 +119,15 @@ public record HarnessScanResult(
             throw new JsonFormatException("Missing harness_id in HarnessScanResult");
         }
         var name = JsonTree.string(map, "name");
+        HarnessUsageReport usage = null;
+        var usageMap = JsonTree.asObject(map.get("usage"));
+        if (usageMap != null) {
+            usage = HarnessUsageReport.fromMap(usageMap);
+        }
+        var tokenUsage = TokenUsageCoverage.fromWire(JsonTree.string(map, "token_usage"));
+        if (tokenUsage == null && usage != null) {
+            tokenUsage = usage.coverage();
+        }
         var missing = new ArrayList<String>();
         var list = JsonTree.asArray(map.get("missing_figures"));
         if (list != null) {
@@ -123,10 +137,8 @@ public record HarnessScanResult(
                 }
             }
         }
-        HarnessUsageReport usage = null;
-        var usageMap = JsonTree.asObject(map.get("usage"));
-        if (usageMap != null) {
-            usage = HarnessUsageReport.fromMap(usageMap);
+        if (missing.isEmpty() && usage != null) {
+            missing = new ArrayList<>(usage.missingFigures());
         }
         return new HarnessScanResult(
                 harnessId,
@@ -136,7 +148,7 @@ public record HarnessScanResult(
                 Boolean.TRUE.equals(JsonTree.bool(map, "found")),
                 Boolean.TRUE.equals(JsonTree.bool(map, "supported")),
                 Boolean.TRUE.equals(JsonTree.bool(map, "worker_eligible")),
-                TokenUsageCoverage.fromWire(JsonTree.string(map, "token_usage")),
+                tokenUsage,
                 missing,
                 Boolean.TRUE.equals(JsonTree.bool(map, "default")),
                 usage);

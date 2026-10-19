@@ -10,6 +10,7 @@
 package de.planmarshall.api.onboarding;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -65,11 +66,11 @@ public record HarnessVerification(
     }
 
     /**
-     * @return {@code true} when at least one stage ran and every named stage passed
+     * @return {@code true} when every stage of the catalogue passed
      */
     public boolean passed() {
-        return !stages.isEmpty() && stages.values().stream()
-                .allMatch(status -> status == VerificationStageStatus.PASSED);
+        return Arrays.stream(HarnessVerificationStage.values())
+                .allMatch(stage -> statusOf(stage) == VerificationStageStatus.PASSED);
     }
 
     /**

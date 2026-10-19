@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -427,13 +428,20 @@ class OnboardingRecordsTest {
         }
 
         @Test
-        @DisplayName("reports a pass when every named stage passed")
+        @DisplayName("reports a pass only when every stage of the catalogue passed")
         void shouldReportPass() {
-            var verification = new HarnessVerification(Map.of(
-                    HarnessVerificationStage.IDENTITY, VerificationStageStatus.PASSED,
-                    HarnessVerificationStage.USAGE, VerificationStageStatus.PASSED), null);
+            var stages = new EnumMap<HarnessVerificationStage, VerificationStageStatus>(
+                    HarnessVerificationStage.class);
+            for (var stage : HarnessVerificationStage.values()) {
+                stages.put(stage, VerificationStageStatus.PASSED);
+            }
+            var verification = new HarnessVerification(stages, null);
             assertTrue(verification.passed());
             assertTrue(verification.firstFailure().isEmpty());
+
+            var partial = new HarnessVerification(
+                    Map.of(HarnessVerificationStage.IDENTITY, VerificationStageStatus.PASSED), null);
+            assertFalse(partial.passed(), "a verification whose later stages did not run has not passed");
         }
 
         @Test
@@ -466,6 +474,20 @@ class OnboardingRecordsTest {
             assertEquals(harness, parsed);
             assertNotNull(parsed.usage());
             assertEquals(List.of("cache_write"), parsed.usage().missingFigures());
+        }
+
+        @Test
+        @DisplayName("refuses a top-level token usage that disagrees with the usage report")
+        void shouldRefuseConflictingUsage() {
+            var usage = new HarnessUsageReport(TokenUsageCoverage.PARTIAL,
+                    Map.of(UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_REPORTED));
+
+            assertThrows(IllegalArgumentException.class, () -> new HarnessScanResult(
+                    "claude", "Claude Code", null, null, true, true, true,
+                    TokenUsageCoverage.COMPLETE, List.of(), true, usage));
+            assertThrows(IllegalArgumentException.class, () -> new HarnessScanResult(
+                    "claude", "Claude Code", null, null, true, true, true,
+                    TokenUsageCoverage.PARTIAL, List.of("cache_read"), true, usage));
         }
     }
 

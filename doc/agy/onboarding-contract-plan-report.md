@@ -1,7 +1,7 @@
 # Completion Report: `onboarding-contract` (Onboarding: Contract and Mock Runtime)
 
-Companion to the execution plan [`onboarding-contract-plan.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/implemented/onboarding-contract-plan.md),
-worked under [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md).
+Companion to the execution plan [`onboarding-contract-plan.md`](implemented/onboarding-contract-plan.md),
+worked under [`doc/agy/runbook.md`](runbook.md).
 Branch: `feat/onboarding-contract`; worktree: `/Users/oliver/git/worktrees/pm-mcp-clients-onboarding-contract`.
 
 ---
@@ -13,7 +13,7 @@ This work package completes the client-side contract of machine onboarding and m
 `pm-mock-runtime` (`UC-ONB-1` to `UC-ONB-10`). The onboarding state machine, the closed list of
 consent kinds, the harness scan, the model catalogue, the role assignment, the plan defaults, and the
 revision-guarded machine settings already existed from an earlier package; this package delivers the
-remainder the work package ([`doc/plans/onboarding-contract.adoc`](file:///Users/oliver/git/pm-mcp-clients/doc/plans/implemented/onboarding-contract.adoc)) names:
+remainder the work package ([`doc/plans/onboarding-contract.adoc`](../plans/implemented/onboarding-contract.adoc)) names:
 
 - **Tokens, not money — the harness usage report.** The harness scan now carries, per harness and
   version, the figures it reports (`input`, `cache_read`, `cache_write`, `output`, `reasoning`), each
@@ -129,9 +129,20 @@ declared constants.
 
 ```
 $ ./mvnw verify -Ppre-commit
-# see the CI run of the pull request (OpenRewrite, license headers, Checkstyle, Enforcer,
-# Javadoc, and the full unit suite across the reactor)
+[INFO] Reactor Summary for pm-mcp-clients 0.1.0-SNAPSHOT:
+[INFO] pm-api ............................................. SUCCESS [01:00 min]
+[INFO] pm-exec ............................................ SUCCESS [ 12.408 s]
+[INFO] pm-relay ........................................... SUCCESS [ 13.544 s]
+[INFO] pm-mock-runtime .................................... SUCCESS [ 40.293 s]
+[INFO] pm-operator ........................................ SUCCESS [01:06 min]
+[INFO] pm-web-app ......................................... SUCCESS [ 41.008 s]
+[INFO] pm-web-e2e ........................................ SUCCESS [ 12.727 s]
+[INFO] BUILD SUCCESS
 ```
+
+No OpenRewrite, license-header, or import-order rewrite was produced, so the committed state is the
+verified state. On the pull request, the Maven build (JDK 25 and 26), the integration-tests suite,
+the `cuioss-review-bot` review, and the SonarCloud analysis all pass.
 
 ---
 

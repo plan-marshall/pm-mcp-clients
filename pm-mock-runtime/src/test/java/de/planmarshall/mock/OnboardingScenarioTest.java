@@ -424,7 +424,7 @@ class OnboardingScenarioTest {
                 assertEquals("harness.verify-profile", verified.get("state"));
                 var verification = HarnessVerification.fromMap(JsonTree.asObject(verified.get("verification")));
                 assertFalse(verification.passed());
-                assertEquals(HarnessVerificationStage.ISOLATION, verification.firstFailure().orElseThrow());
+                assertEquals(HarnessVerificationStage.USAGE, verification.firstFailure().orElseThrow());
                 assertNotNull(verification.usage());
                 assertEquals(List.of("cache_write"), verification.usage().missingFigures());
             }
