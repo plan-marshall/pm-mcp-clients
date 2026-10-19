@@ -103,7 +103,11 @@ public record ListenerChangedEvent(ListenerKind listener, ListenerState state, i
         if (port == null) {
             throw new JsonFormatException("Missing port in ListenerChangedEvent");
         }
-        return new ListenerChangedEvent(listener, state, port);
+        try {
+            return new ListenerChangedEvent(listener, state, port);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid ListenerChangedEvent: " + e.getMessage(), e);
+        }
     }
 
     /**

@@ -118,12 +118,16 @@ public record ListenerResource(
         if (state == null) {
             throw new JsonFormatException("Missing or unknown state in ListenerResource");
         }
-        return new ListenerResource(
-                listener,
-                state,
-                JsonTree.integer(map, FIELD_PORT),
-                JsonTree.string(map, FIELD_URL),
-                JsonTree.string(map, FIELD_FINGERPRINT));
+        try {
+            return new ListenerResource(
+                    listener,
+                    state,
+                    JsonTree.integer(map, FIELD_PORT),
+                    JsonTree.string(map, FIELD_URL),
+                    JsonTree.string(map, FIELD_FINGERPRINT));
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid ListenerResource: " + e.getMessage(), e);
+        }
     }
 
     /**

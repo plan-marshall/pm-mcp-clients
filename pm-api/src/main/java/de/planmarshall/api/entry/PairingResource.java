@@ -109,10 +109,14 @@ public record PairingResource(PairingCode code, String url, long expiresInSecond
             throw new JsonFormatException("Invalid pairing code in PairingResource: " + code);
         }
         var expires = JsonTree.integer(map, FIELD_EXPIRES);
-        return new PairingResource(
-                pairingCode,
-                url,
-                expires != null ? expires : DEFAULT_LIFETIME_SECONDS);
+        try {
+            return new PairingResource(
+                    pairingCode,
+                    url,
+                    expires != null ? expires : DEFAULT_LIFETIME_SECONDS);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid PairingResource: " + e.getMessage(), e);
+        }
     }
 
     /**

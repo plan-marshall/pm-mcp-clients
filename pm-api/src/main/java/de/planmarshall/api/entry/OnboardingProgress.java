@@ -112,8 +112,9 @@ public record OnboardingProgress(
      *
      * @param map the input map
      * @return the progress
+     * @throws IOException if a member violates the record's contract
      */
-    public static OnboardingProgress fromMap(Map<String, Object> map) {
+    public static OnboardingProgress fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var state = JsonTree.string(map, FIELD_STATE);
         var step = JsonTree.integer(map, FIELD_STEP);
@@ -123,11 +124,15 @@ public record OnboardingProgress(
         var steps = JsonTree.integer(map, FIELD_STEPS);
         var completed = Boolean.TRUE.equals(JsonTree.bool(map, FIELD_COMPLETED))
                 || COMPLETED_STATE.equals(state);
-        return new OnboardingProgress(
-                state,
-                step != null ? step : (completed ? DEFAULT_STEPS : 0),
-                steps != null ? steps : DEFAULT_STEPS,
-                completed);
+        try {
+            return new OnboardingProgress(
+                    state,
+                    step != null ? step : (completed ? DEFAULT_STEPS : 0),
+                    steps != null ? steps : DEFAULT_STEPS,
+                    completed);
+        } catch (IllegalArgumentException e) {
+            throw new JsonFormatException("Invalid OnboardingProgress: " + e.getMessage(), e);
+        }
     }
 
     /**

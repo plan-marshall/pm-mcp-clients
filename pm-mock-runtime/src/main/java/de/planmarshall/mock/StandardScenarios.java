@@ -10,6 +10,7 @@
 package de.planmarshall.mock;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 
 import lombok.experimental.UtilityClass;
@@ -216,38 +217,16 @@ public final class StandardScenarios {
     public static final String OPERATOR_INTERACTION = "operator-interaction";
 
     /**
-     * Unmodifiable list of all delivered standard scenario names.
+     * Unmodifiable list of all delivered standard scenario names. The entry cases are derived from
+     * {@link #ENTRY_CASES}, so a new case is listed here by construction.
      */
-    public static final List<String> ALL = List.of(
-            STATUS_ONLY,
-            ONBOARDING_HAPPY,
-            ONBOARDING_HARNESS_NOT_LOGGED_IN,
-            ONBOARDING,
-            WEB_PAIRING,
-            ENTRY,
-            ENTRY_UNONBOARDED,
-            ENTRY_ONBOARDING,
-            ENTRY_PAIRED_BROWSER,
-            ENTRY_SSH_SESSION,
-            ENTRY_FRESH_CODE,
-            ENTRY_LAN_CONFLICT,
-            ENTRY_LAN_CREDENTIALS,
-            ENTRY_DEVICE_LIFECYCLE,
-            ENTRY_STREAM_CLOSE,
-            PAIRED_DEVICES,
-            RUNNING_WORK,
-            REPORTS,
-            DECISIONS,
-            SYSTEM,
-            PROJECTS,
-            PLAN_VIEW,
-            CONTROL,
-            START,
-            LESSON_SOURCE,
-            GIT_SOURCES,
-            DECOMPOSITION,
-            DESIGNER,
-            ENROLMENT,
-            OPERATOR_INTERACTION
-    );
+    public static final List<String> ALL = Stream.of(
+            List.of(STATUS_ONLY, ONBOARDING_HAPPY, ONBOARDING_HARNESS_NOT_LOGGED_IN, ONBOARDING, WEB_PAIRING,
+                    ENTRY),
+            ENTRY_CASES,
+            List.of(PAIRED_DEVICES, RUNNING_WORK, REPORTS, DECISIONS, SYSTEM, PROJECTS, PLAN_VIEW, CONTROL,
+                    START, LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
+                    OPERATOR_INTERACTION))
+            .flatMap(List::stream)
+            .toList();
 }

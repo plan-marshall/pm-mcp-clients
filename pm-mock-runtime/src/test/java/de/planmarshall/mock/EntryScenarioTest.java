@@ -20,6 +20,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import de.planmarshall.api.entry.ConnectionStatus;
 import de.planmarshall.api.entry.DeviceListResource;
@@ -62,17 +63,7 @@ class EntryScenarioTest {
     }
 
     @ParameterizedTest(name = "{0}")
-    @ValueSource(strings = {
-            "entry-unonboarded",
-            "entry-onboarding",
-            "entry-paired-browser",
-            "entry-ssh-session",
-            "entry-fresh-code",
-            "entry-lan-conflict",
-            "entry-lan-credentials",
-            "entry-device-lifecycle",
-            "entry-stream-close"
-    })
+    @MethodSource("entryCases")
     @DisplayName("loads every entry case scenario and serves its runtime status")
     void shouldLoadEveryCaseScenario(String scenario) throws Exception {
         try (var runtime = MockRuntime.start(scenario)) {
@@ -345,7 +336,7 @@ class EntryScenarioTest {
 
             assertEquals(3, devices.size());
             assertEquals("open", devices.devices().getFirst().pairedBy());
-            assertEquals("network", devices.devices().get(1).pairedFrom());
+            assertEquals("lan", devices.devices().get(1).pairedFrom());
             assertEquals("entry", devices.devices().get(1).pairedBy());
         }
     }
@@ -371,7 +362,7 @@ class EntryScenarioTest {
                 var renamedEvent = DeviceRenamedEvent.fromJson(renamed.data());
                 assertEquals("dev-2", renamedEvent.deviceId());
                 assertEquals("iPad Oliver", renamedEvent.label());
-                assertEquals("network", renamedEvent.pairedFrom());
+                assertEquals("lan", renamedEvent.pairedFrom());
 
                 var revokeResp = client.send(new HttpRequest("DELETE", "/api/v1/web/devices/dev-3",
                         Map.of("Authorization", auth), null));
@@ -464,6 +455,10 @@ class EntryScenarioTest {
             var status = ConnectionStatus.fromJson(new String(statusRes.body(), StandardCharsets.UTF_8));
             assertTrue(status.lanEnabled());
         }
+    }
+
+    private static List<String> entryCases() {
+        return StandardScenarios.ENTRY_CASES;
     }
 
     private static ListenerResource lanListener(RuntimeEntryResource entry) {

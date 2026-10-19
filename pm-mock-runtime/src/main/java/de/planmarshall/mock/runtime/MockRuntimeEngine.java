@@ -1376,13 +1376,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handlePutDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path, boolean isWeb) throws IOException {
         if (PATH_LAN_LISTENER.equals(path)) {
+            if (isWeb) {
+                response.json(403, cliOnly("Opening the network listener"));
+                return true;
+            }
             var override = currentScenario.get().route("PUT", path);
             if (override != null) {
                 handleRouteWithDynamicStatus(override, path, response);
-                return true;
-            }
-            if (isWeb) {
-                response.json(403, cliOnly("Opening the network listener"));
+                if (override.status() == 409) {
+                    broadcastListenerChanged(ListenerState.PORT_OCCUPIED, extractLanPort(request));
+                }
                 return true;
             }
             handleOpenLanListener(request, response);
@@ -3544,6 +3547,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
             copy.put("listeners", listenerMaps());
+            synchronized (devicesLock) {
+                copy.put("paired_devices_count", pairedDevices.size());
+            }
             if (drainingBy != null) {
                 copy.put("draining_by", drainingBy);
                 copy.put("can_withdraw", canWithdrawStop);
