@@ -276,6 +276,18 @@ class IntentContractTest {
                             noTexts, null));
             assertThrows(IllegalArgumentException.class,
                     () -> new OutlineResource("p", 1, "summary", one, orphans, noTexts, noTexts, null));
+            var orphanedDeliverable = new DeliverableRecord(1, "t", "g", List.of(), List.of(7),
+                    List.of(), null);
+            var selfDependent = new DeliverableRecord(1, "t", "g", List.of(), List.of(1),
+                    List.of(), null);
+            var orphaned = List.of(orphanedDeliverable);
+            var self = List.of(selfDependent);
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OutlineResource("p", 1, "summary", orphaned, noDependencies, noTexts, noTexts,
+                            null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OutlineResource("p", 1, "summary", self, noDependencies, noTexts, noTexts,
+                            null));
         }
 
         @Test

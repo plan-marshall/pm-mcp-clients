@@ -44,7 +44,7 @@ No sibling `pm-api` package is modified. `pm-operator` and `pm-web-app` are unto
 
 | File | Purpose |
 |---|---|
-| `IntentContractTest.java` | 19 tests: catalogue resolution and refusal, derived properties, round-trip of every record through map/JSON/streaming codecs, and fail-closed parsing (unknown fields, unknown enums, missing reasons, duplicate ids, orphan dependencies, missing evidence, invalid buckets, non-object JSON). |
+| `IntentContractTest.java` | 20 tests: catalogue resolution and refusal, derived properties, round-trip of every record through map/JSON/streaming codecs, and fail-closed parsing (unknown fields, unknown enums, missing reasons, duplicate ids, orphan dependencies, missing evidence, invalid buckets, non-object JSON). |
 
 ### `pm-mock-runtime`
 
@@ -56,7 +56,7 @@ No sibling `pm-api` package is modified. `pm-operator` and `pm-web-app` are unto
 | `resources/scenarios/intent-outline.json` | Outline with three deliverables, affected files, dependency, justified added dependency, interfaces, key links, and a missing key link. |
 | `resources/scenarios/intent-epic.json` | Epic intent with four done-when checks (met/not met/pending), evidence, non-goals, unspecified aspects, and two plans' criteria. |
 | `resources/scenarios/intent-oversize.json` | Four token buckets and a proposed multiple that flags 7 of 20 tasks (35 %). |
-| `IntentScenarioTest.java` | 8 tests: scenario registration, plan intent (including a dynamic plan id and scenario-scoped 404s), outline, epic intent, `over_size` (including a dynamic project id), and direct fixture shape validation. |
+| `IntentScenarioTest.java` | 9 tests: scenario registration, plan intent (including a dynamic plan id and scenario-scoped 404s), outline, epic intent, `over_size` (including a dynamic project id), and direct fixture shape validation. |
 
 ### Plan and roadmap maintenance
 
@@ -71,8 +71,8 @@ No sibling `pm-api` package is modified. `pm-operator` and `pm-web-app` are unto
 
 | Suite | Result |
 |---|---|
-| `IntentContractTest` (`pm-api`) | 19 tests, 0 failures, 0 errors |
-| `IntentScenarioTest` (`pm-mock-runtime`) | 8 tests, 0 failures, 0 errors |
+| `IntentContractTest` (`pm-api`) | 20 tests, 0 failures, 0 errors |
+| `IntentScenarioTest` (`pm-mock-runtime`) | 9 tests, 0 failures, 0 errors |
 | `StandardScenariosTest` (`pm-mock-runtime`) | Passed with the four new registered scenarios |
 | `./mvnw test -pl pm-api,pm-mock-runtime -am` | All tests passed |
 | `./mvnw verify -Ppre-commit` | `BUILD SUCCESS` (all eight reactor modules; 6 min 47 s) |

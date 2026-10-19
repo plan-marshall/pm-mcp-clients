@@ -4064,35 +4064,46 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
         var path = request.path();
-        if (path.startsWith(PATH_PLANS_PREFIX) && path.endsWith(SUFFIX_INTENT)) {
+        if (hasIdBetween(path, PATH_PLANS_PREFIX, SUFFIX_INTENT)) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_INTENT.length());
-            return !planId.isEmpty() && !planId.contains("/")
+            return !planId.contains("/")
                     && serveIntentFixture(response, FIXTURE_PLAN_INTENT, PlanIntentResource::fromMap,
                     PlanIntentResource.FIELD_PLAN_ID, planId);
         }
-        if (path.startsWith(PATH_PLANS_PREFIX) && path.endsWith(SUFFIX_OUTLINE)) {
+        if (hasIdBetween(path, PATH_PLANS_PREFIX, SUFFIX_OUTLINE)) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_OUTLINE.length());
-            return !planId.isEmpty() && !planId.contains("/")
+            return !planId.contains("/")
                     && serveIntentFixture(response, FIXTURE_PLAN_OUTLINE, OutlineResource::fromMap,
                     OutlineResource.FIELD_PLAN_ID, planId);
         }
-        if (path.startsWith(PATH_EPICS_PREFIX) && path.endsWith(SUFFIX_INTENT)) {
+        if (hasIdBetween(path, PATH_EPICS_PREFIX, SUFFIX_INTENT)) {
             var sub = path.substring(PATH_EPICS_PREFIX.length());
             var epicId = sub.substring(0, sub.length() - SUFFIX_INTENT.length());
-            return !epicId.isEmpty() && !epicId.contains("/")
+            return !epicId.contains("/")
                     && serveIntentFixture(response, FIXTURE_EPIC_INTENT, EpicIntentResource::fromMap,
                     EpicIntentResource.FIELD_EPIC_ID, epicId);
         }
-        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_METRICS_OVERSIZE)) {
+        if (hasIdBetween(path, PREFIX_PROJECTS, SEGMENT_METRICS_OVERSIZE)) {
             var sub = path.substring(PREFIX_PROJECTS.length());
             var projectId = sub.substring(0, sub.length() - SEGMENT_METRICS_OVERSIZE.length());
-            return !projectId.isEmpty() && !projectId.contains("/")
+            return !projectId.contains("/")
                     && serveIntentFixture(response, FIXTURE_OVERSIZE, OverSizeDistributionResource::fromMap,
                     OverSizeDistributionResource.FIELD_PROJECT_ID, projectId);
         }
         return false;
+    }
+
+    /**
+     * @param path   the request path
+     * @param prefix the fixed prefix
+     * @param suffix the fixed suffix
+     * @return {@code true} if the path carries at least one character between prefix and suffix
+     */
+    private static boolean hasIdBetween(String path, String prefix, String suffix) {
+        return path.startsWith(prefix) && path.endsWith(suffix)
+                && path.length() > prefix.length() + suffix.length();
     }
 
     private boolean serveIntentFixture(MockHttpResponse response, String fixturePath, FixtureReader reader,

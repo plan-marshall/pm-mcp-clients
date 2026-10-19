@@ -12,7 +12,9 @@ Status and dependencies:: in the link:../README.adoc#packages[index], the only p
 
 The engine records a plan's intent and outline as structured records and checks them, and an epic states its intent
 before it is cut. The clients show none of it yet. This package designs it first (the design documents, `DRAFT`
-until the operator agrees), then builds it in both clients.
+until the operator agrees), then builds the contracts both clients bind to. The terminal and web views that render
+them are the follow-on Wave 11 packages; this package delivers the design, the `pm-api` records and codecs, and the
+`pm-mock-runtime` scenarios and routes they bind to.
 
 * *The plan's intent record* in the plan view: the goal, the criteria in EARS form each with the deliverables that
   satisfy it, the non-goals, the operator's decisions apart from the model's own calls (and the builder check's),
@@ -35,6 +37,7 @@ until the operator agrees), then builds it in both clients.
 
 == Done When
 
-The design documents named under _Where_ show every element of _What_ for both clients, agreed by the operator;
-then both clients show them against the mock runtime's scenarios of a plan with an intent record, an outline record,
-a self-review with a `not_verified` criterion, and an epic with its intent through its completion review.
+The design documents named under _Where_ show every element of _What_ for both clients, agreed by the operator; the
+`pm-api` contracts and the `pm-mock-runtime` scenarios carry every element of _What_ and are covered by contract and
+scenario tests. The terminal and web views that show them are the Wave 11 packages, which bind to these contracts
+rather than changing them.

@@ -122,6 +122,19 @@ class IntentScenarioTest {
                 assertEquals(404, get(outline, "/api/v1/plans/fix-relay/intent").status());
             }
         }
+
+        @Test
+        @DisplayName("a path without an id is answered mock_no_route, not a runtime error")
+        void pathWithoutId() throws Exception {
+            try (var intent = MockRuntime.start(StandardScenarios.INTENT_PLAN)) {
+                assertEquals(404, get(intent, "/api/v1/plans/intent").status());
+                assertEquals(404, get(intent, "/api/v1/plans/outline").status());
+                assertEquals(404, get(intent, "/api/v1/epics/intent").status());
+            }
+            try (var oversize = MockRuntime.start(StandardScenarios.INTENT_OVERSIZE)) {
+                assertEquals(404, get(oversize, "/api/v1/projects/metrics/oversize").status());
+            }
+        }
     }
 
     @Nested

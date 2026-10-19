@@ -82,9 +82,21 @@ public record OutlineResource(
         }
         deliverables = requireDeliverables(deliverables);
         var numbers = new HashSet<>(deliverables.stream().map(DeliverableRecord::number).toList());
+        validateDependencies(deliverables, numbers);
         addedDependencies = requireDependencies(addedDependencies, numbers);
         interfaces = copyTexts(interfaces, FIELD_INTERFACES);
         keyLinks = copyTexts(keyLinks, FIELD_KEY_LINKS);
+    }
+
+    private static void validateDependencies(List<DeliverableRecord> deliverables, Set<Integer> numbers) {
+        for (var deliverable : deliverables) {
+            for (var dependency : deliverable.dependsOn()) {
+                if (!numbers.contains(dependency) || dependency == deliverable.number()) {
+                    throw new IllegalArgumentException("deliverable " + deliverable.number()
+                            + " depends on no other deliverable of the outline: " + dependency);
+                }
+            }
+        }
     }
 
     private static List<DeliverableRecord> requireDeliverables(List<DeliverableRecord> value) {
