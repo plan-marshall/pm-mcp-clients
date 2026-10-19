@@ -52,6 +52,8 @@ import picocli.CommandLine.Command;
                                         SystemCommand.class,
                                         CleanupCommand.class,
                                         EnrolCommand.class,
+                                        EnrolHarnessCommand.class,
+                                        RolesCommand.class,
                                         UnenrolCommand.class,
                                         AcceptEditCommand.class
                     })

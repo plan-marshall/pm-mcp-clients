@@ -76,7 +76,26 @@ class EnrolCatalogueTest {
                 "enrolment.accept.not_found",
                 "enrolment.accept.refused",
                 "enrolment.accept.refused.stale",
-                "enrolment.accept.failed"
+                "enrolment.accept.failed",
+                "enrolment.harness.title",
+                "enrolment.harness.metric",
+                "enrolment.harness.recorded",
+                "enrolment.harness.detected",
+                "enrolment.harness.path",
+                "enrolment.harness.version",
+                "enrolment.harness.sha256",
+                "enrolment.harness.not_recorded",
+                "enrolment.harness.confirm",
+                "enrolment.harness.confirm_required",
+                "enrolment.harness.declined",
+                "enrolment.harness.done",
+                "enrolment.harness.updated",
+                "enrolment.harness.not_found",
+                "enrolment.harness.probe_failed",
+                "enrolment.harness.unsupported_client",
+                "enrolment.harness.version_unsupported",
+                "enrolment.harness.invalid",
+                "enrolment.harness.failed"
         };
 
         for (String key : requiredKeys) {
@@ -102,5 +121,13 @@ class EnrolCatalogueTest {
 
         var deBytes = MessageCatalogue.format("de", "enrolment.accept.bytes", Map.of("size", "1.512"));
         assertEquals("1.512 Bytes", deBytes);
+
+        var enHarness = MessageCatalogue.format("en", "enrolment.harness.done",
+                Map.of("client", "claude", "path", "/usr/local/bin/claude", "version", "2.4.1"));
+        assertEquals("✓ Harness claude enrolled: /usr/local/bin/claude (2.4.1)", enHarness);
+
+        var deHarness = MessageCatalogue.format("de", "enrolment.harness.updated",
+                Map.of("client", "claude", "path", "/usr/local/bin/claude", "version", "2.4.1"));
+        assertEquals("✓ Harness claude neu aufgezeichnet: /usr/local/bin/claude (2.4.1)", deHarness);
     }
 }

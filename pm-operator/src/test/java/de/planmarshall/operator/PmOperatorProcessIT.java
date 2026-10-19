@@ -175,6 +175,8 @@ class PmOperatorProcessIT {
         for (var signal : HOST_SIGNALS.entrySet()) {
             assertHostRefusal(signal.getKey(), signal.getValue(), "reports");
             assertHostRefusal(signal.getKey(), signal.getValue(), "plan", "fix-relay");
+            assertHostRefusal(signal.getKey(), signal.getValue(), "enrol-harness", "claude");
+            assertHostRefusal(signal.getKey(), signal.getValue(), "roles", "list");
         }
     }
 
@@ -593,6 +595,37 @@ class PmOperatorProcessIT {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        }
+    }
+
+    @Test
+    @DisplayName("enrol-harness refuses execution without an interactive terminal (PM-SEC-3)")
+    void enrolHarnessRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        try (var process = operator(environment(), "enrol-harness", "claude", "--yes")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertEquals(0, process.stdout().length, "the verb wrote nothing to stdout");
+        }
+    }
+
+    @Test
+    @DisplayName("roles refuses execution without an interactive terminal (PM-SEC-3)")
+    void rolesRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        for (var verb : List.of(
+                            List.of("roles", "list"),
+                            List.of("roles", "show", "implementer"),
+                            List.of("roles", "qualify", "implementer", "--yes"))) {
+            var args = verb.toArray(String[]::new);
+            try (var process = operator(environment(), args)) {
+                assertEquals(4, process.awaitExit(WAIT), verb.toString());
+                var stderr = process.stderr();
+                assertTrue(stderr.contains("operator refused: interactive terminal required"),
+                                    verb + " stderr: " + stderr);
+                assertEquals(0, process.stdout().length, verb + " wrote nothing to stdout");
+            }
         }
     }
 }
