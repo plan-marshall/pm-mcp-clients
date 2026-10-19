@@ -98,7 +98,12 @@
   /** Keeps the other client's value and closes the dialogue, without writing anything. */
   async function keepCurrentValue(): Promise<void> {
     conflict = null;
-    applyLocal(await loadMachineSettings());
+    const reloaded = await loadMachineSettings();
+    if (!reloaded) {
+      error = $t('web.settings.update_failed');
+      return;
+    }
+    applyLocal(reloaded);
   }
 
   async function withdraw(consent: ConsentRecord): Promise<void> {
@@ -111,6 +116,10 @@
         currentValue: result.current_value ?? '',
         wantedValue: '',
       };
+      return;
+    }
+    if (!result) {
+      error = $t('web.settings.update_failed');
       return;
     }
     notice = $t('web.settings.consents.withdrawn');

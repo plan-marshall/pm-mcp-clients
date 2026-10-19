@@ -11,7 +11,7 @@
     syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
-  import { pathForRoute } from '../lib/routes';
+  import { pathForRoute, type AppRoute } from '../lib/routes';
   import Spinner from '../lib/components/Spinner.svelte';
   import ConnectionStatusBanner from '../lib/components/ConnectionStatusBanner.svelte';
   import PairingView from '../lib/views/PairingView.svelte';
@@ -63,12 +63,12 @@
     }
   });
 
-  function syncPath(route: string): void {
+  function syncPath(route: AppRoute): void {
     if (typeof window === 'undefined') return;
     // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
     // first, and only then does the app move on.
     if (window.location.hash.includes('code=')) return;
-    const path = pathForRoute(route as AppRoute) ?? '/';
+    const path = pathForRoute(route) ?? '/';
     void syncUrl(path, true);
   }
 

@@ -577,6 +577,14 @@ export async function stepOnboarding(link: string): Promise<void> {
   }
 }
 
+/** A caught value as a message: what an `Error` says, or the value itself. */
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return typeof err === 'string' ? err : '';
+}
+
 /**
  * The outcome of storing a rotated or replaced token.
  */
@@ -606,13 +614,19 @@ export async function storeCredential(
   try {
     await apiClient.setCredential(key, secret);
   } catch (err) {
-    return { ok: false, cause: (err as Error)?.message ?? '', kindFailed: false };
+    return { ok: false, cause: errorMessage(err), kindFailed: false };
   }
   // The secret is stored; a kind change that fails does not undo it.
   if (kind) {
-    const result = await apiClient.updateMachineSetting(`credential:${key}`, kind, revision);
+    let applied = false;
+    try {
+      const result = await apiClient.updateMachineSetting(`credential:${key}`, kind, revision);
+      applied = Boolean(result?.applied);
+    } catch {
+      applied = false;
+    }
     await loadMachineSettings();
-    return { ok: true, cause: '', kindFailed: !result?.applied };
+    return { ok: true, cause: '', kindFailed: !applied };
   }
   await loadMachineSettings();
   return { ok: true, cause: '', kindFailed: false };
