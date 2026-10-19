@@ -13,7 +13,7 @@
     type EndedWorkPage,
   } from '../api/client';
   import { openPlanView, openEpicView } from '../stores/runtime';
-  import { openStartWork } from '../stores/start';
+  import { openStartWork, openStartEntry } from '../stores/start';
   import { openGitSource } from '../stores/gitSource';
 
   let projects: ProjectSummary[] = [];
@@ -488,10 +488,16 @@
               {$t('overview.ended.open')}
             </Button>
 
-            <Button
-              variant="primary"
-              on:click={() => openStartWork(selectedProjectId!, 'plan')}
-            >
+            {#each detail?.open_entries ?? [] as entry (entry.entry_id)}
+              <Button
+                variant="secondary"
+                on:click={() => openStartEntry(entry.entry_id, selectedProjectId!)}
+              >
+                {$t('start.entry.continue', { count: entry.source_count })}
+              </Button>
+            {/each}
+
+            <Button variant="primary" on:click={() => openStartWork(selectedProjectId!, 'plan')}>
               {$t('start.ready.start_plan')}
             </Button>
             <Button variant="secondary" on:click={() => openStartWork(selectedProjectId!, 'epic')}>

@@ -18,10 +18,8 @@
   import OnboardingView from '../lib/views/OnboardingView.svelte';
   import ListenerOffView from '../lib/views/ListenerOffView.svelte';
   import RevokedView from '../lib/views/RevokedView.svelte';
-  import StartWorkModal from '../lib/components/StartWorkModal.svelte';
   import LessonSourceModal from '../lib/components/LessonSourceModal.svelte';
   import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
-  import { startModalStore, closeStartWork } from '../lib/stores/start';
   import { lessonSourceModalStore, closeLessonSource } from '../lib/stores/lessonSource';
   import { gitSourceModalStore, closeGitSource } from '../lib/stores/gitSource';
 
@@ -68,7 +66,11 @@
     // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
     // first, and only then does the app move on.
     if (window.location.hash.includes('code=')) return;
-    const path = pathForRoute(route) ?? '/';
+    const path =
+      pathForRoute(route, {
+        projectId: $runtimeStore.startProjectId ?? undefined,
+        entryId: $runtimeStore.startEntryId ?? undefined,
+      }) ?? '/';
     void syncUrl(path, true);
   }
 
@@ -284,14 +286,6 @@
     {$runtimeStore.quietDecisionNotice || ''}
   </div>
 {/if}
-
-<StartWorkModal
-  open={$startModalStore.open}
-  projectId={$startModalStore.projectId}
-  kind={$startModalStore.kind}
-  onClose={closeStartWork}
-  onStarted={() => {}}
-/>
 
 <LessonSourceModal
   open={$lessonSourceModalStore.open}

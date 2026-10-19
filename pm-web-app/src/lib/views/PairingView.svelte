@@ -39,6 +39,7 @@
     if (!codeToPair || isPairing) return;
     isPairing = true;
     errorMessage = '';
+    runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
 
     try {
       await pairBrowser(codeToPair);
@@ -89,9 +90,9 @@
       <p class="pair-card__intro">{$t('web.pair.page.intro')}</p>
     </div>
 
-    {#if errorMessage}
+    {#if errorMessage || $runtimeStore.pairingFailed}
       <div class="alert alert--danger" role="alert" data-testid="pairing-error">
-        {errorMessage}
+        {errorMessage || $t('web.pair.page.invalid')}
       </div>
     {/if}
 

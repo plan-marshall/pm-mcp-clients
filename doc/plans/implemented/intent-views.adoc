@@ -1,0 +1,43 @@
+= Intent, outline, and their checks in both clients
+:nofooter:
+
+link:../README.adoc[Work packages of `pm-mcp-clients`] » `intent-views`
+
+[horizontal]
+Serves:: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]; roadmap Milestones 8, 10, 11, and 12
+Where:: the design (`doc/design/shared/plan-view.adoc`, `epic-view.adoc`, `starting-work.adoc`, `decisions.adoc`, `completion-report.adoc`, and their terminal and web parts); then the views of both clients
+Status and dependencies:: in the link:../README.adoc#packages[index], the only place that states them
+
+== What
+
+The engine records a plan's intent and outline as structured records and checks them, and an epic states its intent
+before it is cut. The clients show none of it yet. This package designs it first (the design documents, `DRAFT`
+until the operator agrees), then builds the contracts both clients bind to. The terminal and web views that render
+them are the follow-on Wave 11 packages; this package delivers the design, the `pm-api` records and codecs, and the
+`pm-mock-runtime` scenarios and routes they bind to.
+
+* *The plan's intent record* in the plan view: the goal, the criteria in EARS form each with the deliverables that
+  satisfy it, the non-goals, the operator's decisions apart from the model's own calls (and the builder check's),
+  the open questions, the deferred items; after the self-review each criterion met, not met, or not verified with its
+  reason; the builder check's open questions; a round of clarification answered with every recommendation, marked.
+* *The outline record*: deliverables with their affected files and intents, the criteria they satisfy, the justified
+  added dependencies, interfaces and key links where declared; a missing key link from the verification sweep.
+* *The epic's intent* in the epic view and in the decomposition's review: destination, done-when checks (after the
+  completion review each met or not, with its evidence), non-goals, what is not yet specified, each plan's
+  done-when; editing them in the review like a plan.
+* *The spread of `over_size`*: where a role's `over_size` multiple is changed, the distribution of the tokens per plan
+  task against its predicted size, with the share of past tasks the new multiple would have flagged.
+* *Not in the clients*: the records are rendered by the server for the pull request; the clients show the records
+  through the local API, never the rendered Markdown.
+
+== Trace
+
+* Requirements: link:../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-10[PM-WF-10] (intent record, outline record, builder check), link:../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-13[PM-WF-13] (results per criterion), link:../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-15[PM-WF-15] (epic intent), link:../../../../plan-marshall-documentation/doc/requirements/16-model-work.adoc#PM-WORK-7[PM-WORK-7] (`over_size`)
+* Specification: link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows § The Intent Record], link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#builder-check[§ Builder Check], link:../../../../pm-mcp-core/doc/specification/store-schemas/06-task-and-references.adoc#outline-record-store[Store Schemas § Outline Record], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-intent[Model Work § Epic Intent]
+
+== Done When
+
+The design documents named under _Where_ show every element of _What_ for both clients, agreed by the operator; the
+`pm-api` contracts and the `pm-mock-runtime` scenarios carry every element of _What_ and are covered by contract and
+scenario tests. The terminal and web views that show them are the Wave 11 packages, which bind to these contracts
+rather than changing them.

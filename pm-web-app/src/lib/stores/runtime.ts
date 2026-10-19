@@ -8,7 +8,7 @@ import {
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
 } from '../api/client';
-import { pathForRoute, routeForPath, type AppRoute } from '../routes';
+import { matchPath, pathForRoute, type AppRoute, type StartPath } from '../routes';
 
 export type { AppRoute };
 
@@ -32,6 +32,8 @@ export interface RuntimeState {
   isRevoked: boolean;
   revokedReason: string;
   revokedInfo?: RevokedInfo | null;
+  /** A code in the address bar was refused; the pairing page shows why. */
+  pairingFailed?: boolean;
   isOffline: boolean;
   /** The network listener this browser reached the machine over was turned off. */
   isListenerClosed: boolean;
@@ -56,6 +58,12 @@ export interface RuntimeState {
   selectedEpicId?: string | null;
   selectedProjectId?: string | null;
   selectedTaskId?: string | null;
+  /** The project of the open start, when it has not opened an entry yet. */
+  startProjectId?: string | null;
+  /** The entry of the open start, once the runtime has opened it. */
+  startEntryId?: string | null;
+  /** Whether the open start is a plan's or an epic's. */
+  startKind?: 'plan' | 'epic';
 }
 
 const initialState: RuntimeState = {
@@ -69,6 +77,7 @@ const initialState: RuntimeState = {
   isRevoked: false,
   revokedReason: '',
   revokedInfo: null,
+  pairingFailed: false,
   isOffline: false,
   isListenerClosed: false,
   listenerClosedAt: null,
@@ -90,6 +99,9 @@ const initialState: RuntimeState = {
   selectedEpicId: null,
   selectedProjectId: null,
   selectedTaskId: null,
+  startProjectId: null,
+  startEntryId: null,
+  startKind: 'plan',
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -126,12 +138,16 @@ export async function checkUrlHashForCode(): Promise<boolean> {
     const match = /code=([^&]+)/.exec(window.location.hash);
     if (match?.[1]) {
       const extracted = decodeURIComponent(match[1]);
-      history.replaceState(null, '', window.location.pathname);
       try {
         await pairBrowser(extracted);
+        // Redeemed: drop the fragment so a reload does not replay a single-use code.
+        history.replaceState(null, '', window.location.pathname);
+        runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
         return true;
       } catch {
-        // Fall through
+        // Keep the fragment: a premature rewrite loses the code and makes the refusal look like
+        // a plain redirect to /pair. The pairing page shows that the code was refused.
+        runtimeStore.update((s) => ({ ...s, pairingFailed: true }));
       }
     }
   }
@@ -208,7 +224,7 @@ export async function initRuntime(): Promise<void> {
 
   const isPaired = apiClient.isPaired();
   const label = apiClient.getLabel() || '';
-  const requested = routeForPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
 
   if (!isPaired) {
     runtimeStore.update((s) => ({
@@ -235,7 +251,9 @@ export async function initRuntime(): Promise<void> {
       isOnboarded: onboarded,
       deviceLabel: label,
       machineName,
-      currentRoute: landingRoute(requested, onboarded),
+      currentRoute: landingRoute(requested?.route ?? null, onboarded),
+      startProjectId: requested?.projectId ?? null,
+      startEntryId: requested?.entryId ?? null,
       currentState,
       activeStep: deriveStepFromState(currentState?.state),
       isOffline: false,
@@ -476,12 +494,18 @@ export async function executeLink(link: HypermediaLink | string, body?: unknown)
   }
 }
 
-export function navigateTo(route: AppRoute): void {
+export function navigateTo(route: AppRoute, start?: StartPath): void {
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
+    ...(route === 'start'
+      ? {
+          startProjectId: start?.projectId ?? s.startProjectId ?? null,
+          startEntryId: start?.entryId ?? null,
+        }
+      : {}),
   }));
-  const path = pathForRoute(route);
+  const path = pathForRoute(route, start);
   if (path) {
     void syncUrl(path, false);
   }
@@ -523,11 +547,16 @@ export function adoptRouteFromLocation(): AppRoute | null {
   if (typeof window === 'undefined') {
     return null;
   }
-  const route = routeForPath(window.location.pathname);
-  if (route) {
-    runtimeStore.update((s) => ({ ...s, currentRoute: route }));
+  const match = matchPath(window.location.pathname);
+  if (match) {
+    runtimeStore.update((s) => ({
+      ...s,
+      currentRoute: match.route,
+      startProjectId: match.projectId ?? s.startProjectId ?? null,
+      startEntryId: match.entryId ?? s.startEntryId ?? null,
+    }));
   }
-  return route;
+  return match?.route ?? null;
 }
 
 function applyOnboardingState(state: OnboardingState): void {

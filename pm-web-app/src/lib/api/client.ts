@@ -161,6 +161,15 @@ export interface ProjectDetailResponse {
   plans: ActivePlanSummary[];
   epics: ActiveEpicSummary[];
   alongside_landings: AlongsideLanding[];
+  /** The open starts of the project, when the runtime reports them. */
+  open_entries?: OpenEntrySummary[];
+}
+
+/** An open start, as the project's actions name it. */
+export interface OpenEntrySummary {
+  entry_id: string;
+  kind: StartKind;
+  source_count: number;
 }
 
 export interface ProcessTokens {
@@ -943,6 +952,199 @@ export interface PlanStartResult {
   auto_start?: boolean;
 }
 
+export type StartKind = 'plan' | 'epic';
+
+export type SourceState =
+  | 'checking'
+  | 'fetching'
+  | 'screening'
+  | 'stored'
+  | 'copied'
+  | 'moved'
+  | 'flagged'
+  | 'unscreened'
+  | 'failed';
+
+export type SourceTrust = 'trusted' | 'untrusted';
+
+export type ScreeningOutcome = 'clean' | 'flagged' | 'unscreened';
+
+export type UnscreenedDisposition = 'try_again' | 'remove' | 'accept_untrusted';
+
+export interface StartSourceFailure {
+  cause: string;
+  detail?: string | null;
+  /** Epoch seconds, present exactly for a rate limit. */
+  resets_at?: number | null;
+}
+
+export interface ScreeningSpan {
+  start: number;
+  end: number;
+  text: string;
+  reason: string;
+}
+
+export interface StartSource {
+  source_id: string;
+  kind: string;
+  reference: string;
+  title?: string | null;
+  state: SourceState;
+  trust: SourceTrust;
+  verdict?: ScreeningOutcome | null;
+  failure?: StartSourceFailure | null;
+  spans?: ScreeningSpan[];
+  disposition?: UnscreenedDisposition | null;
+  disposition_reason?: string | null;
+  changed_files?: ChangedFile[];
+  digest?: string | null;
+}
+
+export interface SourceKindOffer {
+  kind: string;
+  available: boolean;
+  reason_key?: string | null;
+  reason_args?: Record<string, string | number>;
+}
+
+export interface AdoptableEpic {
+  epic_id: string;
+  title: string;
+}
+
+export type AdoptionFailureReason = 'ledger_unreadable' | 'ledger_invalid' | 'ledger_terminal';
+
+export interface AdoptionFailure {
+  epic_id: string;
+  reason: AdoptionFailureReason;
+  file?: string | null;
+  detail?: string | null;
+}
+
+export interface StartEntryResource {
+  entry_id: string;
+  kind: StartKind;
+  project_id: string;
+  /** One of the `start.*` states, e.g. `start.sources` or `start.ready`. */
+  state: string;
+  title?: string | null;
+  plan_id?: string | null;
+  sources: StartSource[];
+  kind_offers: SourceKindOffer[];
+  can_continue: boolean;
+  chat_available: boolean;
+  chat_disabled_reason?: string | null;
+  recipe?: RecipeRef | null;
+  adoptable_epics?: AdoptableEpic[];
+  adoption_failure?: AdoptionFailure | null;
+}
+
+export interface StartReadyResource {
+  title?: string | null;
+  plan_id: string;
+  id_editable: boolean;
+  id_from_title: boolean;
+  recipe?: RecipeRef | null;
+  parameters: RecipeParameter[];
+  landing?: string | null;
+  landing_asked: boolean;
+  epic_auto_start?: boolean | null;
+  epic_auto_start_origin?: string | null;
+  parallelization_scope?: number | null;
+  overlap_max_files?: number | null;
+}
+
+export interface ChatTurn {
+  role: string;
+  text: string;
+  at: string;
+  untrusted: boolean;
+}
+
+export interface ChatProposal {
+  summary: string;
+  before?: string | null;
+  after: string;
+  applies?: string | null;
+}
+
+export interface StartChatResource {
+  entry_id: string;
+  role: string;
+  scope: string;
+  available: boolean;
+  disabled_reason_key?: string | null;
+  chat_id?: string | null;
+  state?: string | null;
+  turns: ChatTurn[];
+  proposal?: ChatProposal | null;
+  transcript: string;
+  transcript_path?: string | null;
+}
+
+export interface StartRefusal {
+  reason: 'machine_not_onboarded' | 'project_not_ready';
+  project_id?: string | null;
+  need?: string | null;
+  action_key: string;
+  action_href: string;
+}
+
+/** The `start` member of the entry's representation: every screen of the start. */
+export interface StartState {
+  entry?: StartEntryResource;
+  ready?: StartReadyResource;
+  chat?: StartChatResource;
+  refusal?: StartRefusal;
+  adoption_failure?: AdoptionFailure;
+  recipes?: RecipeRef[];
+}
+
+export interface StartStateResource {
+  scope?: unknown;
+  state?: unknown;
+  links?: unknown;
+  start: StartState;
+}
+
+export interface EntryOpenRequest {
+  kind: StartKind;
+  objective?: string;
+  title?: string;
+  recipe_key?: string;
+  from_epic?: string;
+}
+
+export interface ConfinedFile {
+  name: string;
+  path: string;
+  directory: boolean;
+  size: number;
+  readable: boolean;
+  refusal?: StartSourceFailure | null;
+}
+
+export interface ConfinedFileList {
+  project_id: string;
+  root: 'checkout' | 'home';
+  path: string;
+  parent?: string | null;
+  entries: ConfinedFile[];
+  truncated: boolean;
+}
+
+export interface FollowUpProposal {
+  subject_id: string;
+  subject_kind: StartKind;
+  role: string;
+  scope: string;
+  available: boolean;
+  disabled_reason_key?: string | null;
+  proposal?: ChatProposal | null;
+}
+
+
 export interface RecipeParameter {
   name: string;
   value?: string;
@@ -1068,8 +1270,6 @@ export interface RateLimitStatus {
   reset_at?: string;
   limited: boolean;
 }
-
-export type ScreeningOutcome = 'clean' | 'flagged' | 'unscreened';
 
 export interface PullRequestObservation {
   url: string;
@@ -1250,6 +1450,160 @@ export class ApiClient {
     const query = projectId ? `?project=${encodeURIComponent(projectId)}` : '';
     const res = await this.request<{ recipes: RecipeRef[] }>('GET', `/api/v1/recipes${query}`);
     return res.recipes ?? [];
+  }
+
+  /**
+   * Opens an entry under its project, addressed by its id from then on.
+   *
+   * @param projectId the project the entry starts in
+   * @param request the kind of work and what the operator already said
+   * @returns the entry's representation
+   */
+  public async openEntry(
+    projectId: string,
+    request: EntryOpenRequest,
+  ): Promise<StartStateResource> {
+    return this.request<StartStateResource>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/entries`,
+      request,
+    );
+  }
+
+  /**
+   * @param entryId the entry's id
+   * @returns the entry's current representation
+   */
+  public async getEntry(entryId: string): Promise<StartStateResource> {
+    return this.request<StartStateResource>(
+      'GET',
+      `/api/v1/entries/${encodeURIComponent(entryId)}`,
+    );
+  }
+
+  /**
+   * Applies one of the entry's acts, such as adding a source or continuing to the ready step.
+   *
+   * The act's id is part of the runtime's contract (`add_description`, `remove:{source}`,
+   * `documents_mode:copy`, `choose:{recipe}`, `chat`, `create`); it is sent verbatim.
+   *
+   * @param entryId the entry's id
+   * @param act the act's link id
+   * @param body the act's body
+   * @returns the entry's new representation
+   */
+  public async actEntry(
+    entryId: string,
+    act: string,
+    body: Record<string, unknown> = {},
+  ): Promise<StartStateResource> {
+    return this.request<StartStateResource>(
+      'POST',
+      `/api/v1/entries/${encodeURIComponent(entryId)}/links/${act}`,
+      body,
+    );
+  }
+
+  /**
+   * @param entryId the entry's id
+   * @param text the operator's message
+   * @returns the entry's new representation, with the role's answer and a proposal where it has one
+   */
+  public async chatTurn(entryId: string, text: string): Promise<StartStateResource> {
+    return this.request<StartStateResource>(
+      'POST',
+      `/api/v1/entries/${encodeURIComponent(entryId)}/chat/turns`,
+      { text },
+    );
+  }
+
+  /**
+   * Ends the entry's chat before the work is created or the entry is abandoned.
+   *
+   * @param entryId the entry's id
+   * @returns the entry's new representation, with the transcript complete
+   */
+  public async endEntryChat(entryId: string): Promise<StartStateResource> {
+    return this.request<StartStateResource>(
+      'POST',
+      `/api/v1/entries/${encodeURIComponent(entryId)}/chat/end`,
+      {},
+    );
+  }
+
+  /**
+   * Accepts or rejects the chat's proposal.
+   *
+   * @param entryId the entry's id
+   * @param accept `true` to store the proposed description, `false` to discard it
+   * @returns the entry's new representation
+   */
+  public async answerChatProposal(
+    entryId: string,
+    accept: boolean,
+  ): Promise<StartStateResource> {
+    const suffix = accept ? 'accept' : 'reject';
+    return this.request<StartStateResource>(
+      'POST',
+      `/api/v1/entries/${encodeURIComponent(entryId)}/chat/proposal/${suffix}`,
+      {},
+    );
+  }
+
+  /**
+   * Lists the files the picker may show, confined to the checkout or the operator's home.
+   *
+   * @param projectId the project
+   * @param root the root to list
+   * @param path the directory relative to the root, empty for the root itself
+   * @returns the listing
+   */
+  public async listProjectFiles(
+    projectId: string,
+    root: 'checkout' | 'home' = 'checkout',
+    path = '',
+  ): Promise<ConfinedFileList> {
+    const query = new URLSearchParams({ root });
+    if (path) {
+      query.set('path', path);
+    }
+    return this.request<ConfinedFileList>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/files?${query.toString()}`,
+    );
+  }
+
+  /**
+   * @param subjectId an ended plan or epic
+   * @returns the follow-up chat the ended work offers, or `null` where it offers none
+   */
+  public async getEndedChat(subjectId: string): Promise<FollowUpProposal | null> {
+    try {
+      return await this.request<FollowUpProposal>(
+        'GET',
+        `/api/v1/ended/${encodeURIComponent(subjectId)}/chat`,
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Opens the follow-up entry of an accepted proposal.
+   *
+   * @param projectId the project the follow-up starts in
+   * @param subjectId the ended plan or epic
+   * @returns the opened entry
+   */
+  public async acceptFollowUp(
+    projectId: string,
+    subjectId: string,
+  ): Promise<StartStateResource> {
+    return this.request<StartStateResource>(
+      'POST',
+      `/api/v1/ended/${encodeURIComponent(subjectId)}/chat/accept`,
+      { project_id: projectId },
+    );
   }
 
   public async startPlan(request: StartPlanRequest): Promise<PlanStartResult> {
@@ -1984,6 +2338,43 @@ export class ApiClient {
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
   ): () => void {
+    return this.subscribeStream('/api/v1/events', onEvent, signal);
+  }
+
+  /**
+   * Subscribes to the events of one open entry: the source progress while it is gathered and
+   * screened, and the chat's turns.
+   *
+   * @param entryId the entry's id
+   * @param onEvent the callback per event
+   * @param signal an optional abort signal
+   * @returns the unsubscribe function
+   */
+  public subscribeEntryEvents(
+    entryId: string,
+    onEvent: (event: string, data: unknown) => void,
+    signal?: AbortSignal,
+  ): () => void {
+    return this.subscribeStream(
+      `/api/v1/entries/${encodeURIComponent(entryId)}/events`,
+      onEvent,
+      signal,
+    );
+  }
+
+  /**
+   * The one server-sent-events reader of the client.
+   *
+   * @param path the stream's path
+   * @param onEvent the callback per event
+   * @param signal an optional abort signal
+   * @returns the unsubscribe function
+   */
+  private subscribeStream(
+    path: string,
+    onEvent: (event: string, data: unknown) => void,
+    signal?: AbortSignal,
+  ): () => void {
     let active = true;
     let currentReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     const internalController = new AbortController();
@@ -2010,7 +2401,7 @@ export class ApiClient {
       if (!secret || !active || internalController.signal.aborted) return;
 
       try {
-        const res = await fetch(`${this.baseUrl}/api/v1/events`, {
+        const res = await fetch(`${this.baseUrl}${path}`, {
           headers: {
             Authorization: `Bearer ${secret}`,
           },

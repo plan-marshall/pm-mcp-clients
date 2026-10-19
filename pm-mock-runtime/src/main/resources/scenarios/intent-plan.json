@@ -1,0 +1,147 @@
+{
+  "format_version": 1,
+  "name": "intent-plan",
+  "description": "A plan with an intent record, its self-review with a not_verified criterion, and a builder check (UC-PLN-1, UC-PLN-2, PM-WF-10, PM-WF-13)",
+  "start": "intent.plan",
+  "pairing_code": "INTN-PLNT",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/plans/fix-relay/intent": {
+      "representation": {
+        "plan_id": "fix-relay",
+        "revision": 3,
+        "goal": "Make the relay reconnect without losing queued events.",
+        "criteria": [
+          {
+            "id": "AC-001",
+            "text": "When a relay connection drops, the relay shall reconnect within five seconds.",
+            "satisfies": [1, 2],
+            "status": "met",
+            "status_reason": "The reconnection and backoff tests pass."
+          },
+          {
+            "id": "AC-002",
+            "text": "While the relay reconnects, the queue shall keep every accepted event.",
+            "satisfies": [2, 3],
+            "status": "met"
+          },
+          {
+            "id": "AC-003",
+            "text": "The relay shall report the number of reconnects it performed.",
+            "satisfies": [3],
+            "status": "not_verified",
+            "status_reason": "The mock harness does not expose the reconnect counter."
+          },
+          {
+            "id": "AC-004",
+            "text": "The old relay endpoint shall keep serving existing clients.",
+            "satisfies": [1],
+            "status": "not_met",
+            "status_reason": "The compatibility test still fails for the legacy event shape."
+          }
+        ],
+        "non_goals": [
+          "Change the on-disk queue format.",
+          "Support more than one relay per machine."
+        ],
+        "decisions": [
+          {
+            "id": "DC-001",
+            "text": "Retry with exponential backoff.",
+            "decider": "operator",
+            "options_weighed": ["fixed interval", "exponential backoff"],
+            "question_id": "Q-007"
+          },
+          {
+            "id": "DC-002",
+            "text": "The quorum set the backoff ceiling at five minutes.",
+            "decider": "quorum",
+            "options_weighed": ["30 seconds", "5 minutes"],
+            "question_id": "Q-008"
+          },
+          {
+            "id": "DC-003",
+            "text": "The transport stays HTTP/2.",
+            "decider": "model",
+            "options_weighed": ["HTTP/1.1", "HTTP/2"]
+          },
+          {
+            "id": "DC-004",
+            "text": "The existing queue already persists each accepted event.",
+            "decider": "fact",
+            "options_weighed": []
+          }
+        ],
+        "open_questions": [
+          "Does the relay need IPv6 support?"
+        ],
+        "deferred": [
+          {
+            "id": "DF-001",
+            "text": "Add reconnect metrics to the status resource.",
+            "reason": "No metrics endpoint is in this plan's scope."
+          }
+        ],
+        "builder_check": {
+          "resolution": "pending",
+          "questions": [
+            {
+              "id": "BQ-001",
+              "text": "Which timeout applies when the queue is full during a reconnect?",
+              "sort": "operator",
+              "recommended": true,
+              "state": "open"
+            },
+            {
+              "id": "BQ-002",
+              "text": "Use the existing retry helper from cui-http.",
+              "sort": "minor",
+              "recommended": false,
+              "state": "open"
+            },
+            {
+              "id": "BQ-003",
+              "text": "AC-002 answers the event-retention question.",
+              "sort": "answered",
+              "recommended": false,
+              "state": "answered",
+              "answer": "AC-002"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "states": {
+    "intent.plan": {
+      "representation": {
+        "scope": {
+          "kind": "plan",
+          "id": "fix-relay",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "intent.plan",
+          "kind": "operator_wait"
+        },
+        "links": []
+      },
+      "links": {}
+    }
+  }
+}

@@ -1,0 +1,289 @@
+= Design: Intent and Outline
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » Intent and Outline
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]_
+
+_Relies on: link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record], link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#builder-check[Phase Workflows, Builder Check], link:../../../../pm-mcp-core/doc/specification/store-schemas/06-task-and-references.adoc#outline-record-store[Store Schemas, Outline Record], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-intent[Model Work, Epic Intent], link:../../../../pm-mcp-core/doc/specification/model-work/03-supervision-and-recycling.adoc#worker-off-track[Model Work, A Worker Off Track]_
+
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
+
+A plan says what it intends before it starts and how it will get there before it executes. An epic says where it ends before it is cut into plans. The clients show both as structured records, never as the Markdown the server renders for a pull request: the goal and its criteria, the outline's deliverables and files, the builder's remaining questions, the epic's done-when checks, and the distribution behind a changed `over_size` multiple.
+
+[#records]
+== The Records, Not the Rendered Markdown
+
+The server keeps the plan's intent record (`intent.json`), its outline record (`outline.json`), the epic's intent (`epic.json#intent`), and the measured task sizes behind `over_size`. It renders a request for the pull request and an outline for the repository; the clients never read those renderings and never parse Markdown. They read the records through the local API and show the fields below. A field the record does not carry is left out; a client never fills a gap with a guess.
+
+Every text of a record may come from a model or a source. Both clients show it as text only: the terminal removes control sequences (link:../terminal-client/04-console.adoc#output-safety[Output Safety]), the web app renders no raw HTML. The operator's own words reach a model only quoted, as data.
+
+[#intent]
+== The Plan's Intent
+
+The plan view opens the intent record one step from its head, beside the process and the completion report (link:plan-view.adoc[Plan View]). The record is shown in one order, top to bottom.
+
+[#intent-head]
+=== The Head
+
+----
+  Intent · fix-relay · revision 3
+  Goal   Make the relay reconnect without losing queued events.
+  4 criteria · 2 met · 1 not met · 1 not verified
+----
+
+* *The plan*: its id and title, one step from the plan view, and the record's revision. The revision is shown because an operator may hold an older reading; the runtime serves the accepted record and its history, and the client shows the accepted one.
+* *The goal*: one sentence.
+* *The counts*: the criteria by verdict, so the state of the self-review is visible before the list is read. Before the review, the counts are absent and the line says `not reviewed yet`.
+
+[#criteria]
+=== The Criteria
+
+[cols="1,3,1",options="header"]
+|===
+|Element |Shown as |Source
+
+|Id
+|`AC-001`, in the record's order
+|`criteria[].id`
+
+|Criterion
+|the EARS sentence, verbatim
+|`criteria[].text`
+
+|Deliverables
+|the outline deliverables that satisfy it, by number and title, each one step from the outline
+|`criteria[].satisfies`
+
+|Verdict
+|`met`, `not met`, `not verified`, or `not reviewed yet`
+|`criteria[].status`
+
+|Reason
+|the reviewer's sentence, for `not met` and `not verified`
+|`criteria[].status_reason`
+|===
+
+A criterion is in EARS form: a condition (`When`, `While`, `If`, `Where`) and the response the system shall give, or the ubiquitous form `The <system> shall <response>`. The server checks the form; the client shows the sentence as it stands and never rewrites it. An EARS criterion that cannot be restated as a condition and a response is where two criteria contradict each other, and the builder check always asks the operator about it (<<builder>>).
+
+* *The criterion is the unit of judgment*: the deliverable list under it is a mapping, not a verdict. A deliverable that is done does not make a criterion met, and a criterion the plan could not verify is shown as such even when every deliverable is done.
+* *The mapping is bidirectional*: a criterion names its deliverables, and the outline's deliverable names the criteria it satisfies (<<outline>>). The client checks nothing; when the two disagree, it shows each record as the runtime serves it, because a disagreement is a record defect the operator must see, not one a client may hide by joining.
+* *A criterion without a deliverable* is shown with `no deliverable yet`; it is not hidden. A deliverable without a criterion is shown under the outline with `satisfies no criterion`.
+
+[#verdicts]
+=== The Self-Review's Verdicts
+
+[cols="1,1,3",options="header"]
+|===
+|Verdict |Client word |Means
+
+|`met`
+|met
+|the criterion's verification passed; a reason may accompany it but is not required
+
+|`not_met`
+|not met
+|the verification failed; the reason says what failed, and the criterion stays visible as unmet
+
+|`not_verified`
+|not verified
+|the plan could not verify it; the reason says why, and the plan states honestly that it does not know
+
+|absent
+|not reviewed yet
+|the self-review has not run; no verdict is invented and no deliverable's state stands in for one
+|===
+
+The verdict and its reason belong together. The server refuses a `not_met` or `not_verified` without a reason, and a reason without a verdict; the client shows the pair as one line, so an unexplained miss cannot appear. A `not_verified` criterion is never rendered as a warning that blocks work: it is evidence for the operator, and the completion report carries it on.
+
+[#non-goals]
+=== Non-Goals
+
+The non-goals are shown as a list, each with its id (`NG-n`) and its sentence. They are not a footnote: every one of them is a claim the plan does not make, and the outline's deliverables are read against them. At least one is required.
+
+[#decisions]
+=== Decisions and Who Took Them
+
+[cols="1,1,3",options="header"]
+|===
+|Decider |Shown as |Where it stands
+
+|`operator`
+|`you decided`
+|with the answered question (`Q-n`) one step away, in the decision's record
+
+|`quorum`
+|`a quorum decided`
+|with the answered question and the vote's support where the decision carries it
+
+|`model`
+|`the model's call`
+|apart from the operator's decisions, never styled like them
+
+|`fact`
+|`settled by a fact`
+|with the evidence the record names (a path or a `pm://` URI)
+|===
+
+The separation is the point of the list. An operator reads first what they or a quorum decided, then what the model chose on its own; the model's calls are not recommendations and carry no vote. A decision with an ADR relation (`follows` or `contradicts`) names the ADR, and a `contradicts` decision is always the operator's.
+
+* *Options weighed*: shown with the decision where the record carries them, in the record's order, never sorted to recommend one.
+* *No question for a model call*: a model or fact decision names none; the server refuses one that does.
+
+[#open-deferred]
+=== Open Questions and Deferred Items
+
+* *Open questions*: the questions the plan still carries, each as a sentence. They are not decisions and offer no answer in the intent view; they say where the record is incomplete.
+* *Deferred items*: an id (`DF-n`), the item, and its reason. A deferred item is shown with its reason, never as a bare omission, and the plan does not claim it.
+
+[#builder]
+== The Builder Check
+
+Before a deep-lane plan leaves refine, a builder reads the record as someone who must build from it and cannot ask, and submits every question it would still need answered. The check adds evidence and never holds a plan.
+
+[cols="1,1,3",options="header"]
+|===
+|Sort |Shown as |Means
+
+|`answered`
+|`answered by the record`
+|the record answers it; the entry names the item (`AC-n`, `DC-n`, …)
+
+|`minor`
+|`the builder's call`
+|the builder would decide it itself; the server records it as a model decision from the builder check
+
+|`operator`
+|`needs you`
+|only the operator can answer it; the builder's recommendation is marked where it gave one
+|===
+
+* *The recommendation*: an operator question may carry the builder's recommendation, shown with the question as `recommended: <answer>`. It is marked as the builder's, never as the operator's, and it preselects nothing.
+* *The resolution state*: `open`, `answered`, or `deferred`. An `operator` question that could not be asked within the relaunch stays open and is shown with the outline review, not as a failure of the plan; an answered question shows the operator's answer beside it. A deferred question says the plan continues without it.
+* *The check's state*: `pending` while questions wait, `answered` once resolved, and `not_run` with the plan's reason where the check could not run. `not_run` is shown as evidence, never as a pass and never as a hold.
+
+[#outline]
+== The Outline Record
+
+The outline is the plan's answer to how it will satisfy the intent. It is opened from the plan view beside the intent, and each deliverable is read against the criteria it names.
+
+[#deliverables]
+=== The Deliverables
+
+[cols="1,3,1",options="header"]
+|===
+|Element |Shown as |Source
+
+|Number and title
+|`1 · Reconnect the relay`
+|`deliverables[].number`, `title`
+
+|Intent gloss
+|one sentence of what it does
+|`deliverables[].intent_gloss`
+
+|Affected files
+|each path with its intent (`read`, `write-new`, `write-replace`, `write-conditional`, `delete`), one per line
+|`deliverables[].affected_files[]`
+
+|Depends on
+|the numbers of the deliverables that must land first
+|`deliverables[].depends_on`
+
+|Satisfies
+|the criteria it satisfies, by id, each one step from the intent
+|`deliverables[].satisfies`
+
+|Verification
+|how the deliverable is verified, where declared
+|`deliverables[].verification`
+|===
+
+* *The file intent is not a promise of a diff*: `read` means the deliverable only reads the file, a `write-*` intent is a change, and `write-conditional` names the gate that changes it. A client never turns a path into a link to a file it has not been given.
+* *A dependency* is shown by number and title, and a dependency on a deliverable the record does not carry is shown as `missing deliverable <n>`; the client does not hide it. The server refuses a dependency cycle and an added dependency that names no deliverable.
+* *A deliverable's title and gloss are the plan's, not a task's*: derived tasks copy the gloss, and the outline view stays the place where the operator judges the deliverable itself.
+
+[#dependencies]
+=== Justified Added Dependencies
+
+A dependency the plan adds is never shown as an unqualified coordinate. Each row shows the coordinates, the version where the record names one, the deliverable that adds it, and the justification. An addition the plan did not inherit is therefore one the operator can judge, and a missing justification is a record defect the server refuses.
+
+[#links]
+=== Interfaces and Key Links
+
+* *Interfaces*: the interfaces the outline declares, as the record names them.
+* *Key links*: the links between components the plan relies on.
+* *A missing key link*: the verification sweep may report a link it could not confirm. It is shown beside the declared links as `missing: <link>` and is never dropped into the prose; the operator sees what the sweep could not establish. The client does not compute the sweep's result.
+
+[#epic]
+== The Epic's Intent
+
+An epic states where it ends before it is cut into plans. The epic view and the decomposition's review show the same record (link:epic-view.adoc[Epic View]; link:starting-work.adoc[Starting Work]).
+
+[#epic-destination]
+=== Destination and Done-When
+
+* *Destination*: one sentence, where the epic ends. Everything the epic stages is read against it.
+* *Done-when*: three to six checks the operator can run on the result, each with its verdict and evidence. `Every plan of the epic closed` is no check; a check names an observable result.
+* *The completion review*: after the epic is through, each check is `met` or `not met` with its evidence (a path or a `pm://` URI), and the review is shown with the checks. A check is never judged from a plan row's status: the evidence is what decides.
+* *Before the review*: a check is `pending`; no verdict is invented and the done-when list does not become a progress bar.
+
+[#epic-rest]
+=== Non-Goals, the Unspecified, and Each Plan's Criterion
+
+* *Non-goals*: what the epic deliberately leaves out, at least one. Every plan inherits them as required claims of its intent, so a plan cannot silently take on what the epic excluded.
+* *Not yet specified*: questions that can be stated precisely but are not yet answered. They are shown as questions, not as missing fields, and the decomposition stays open on them rather than guessing.
+* *Each plan's done-when*: the staged rows' observable criteria, with the plan's title. They are shown with the epic's intent because the cut is judged against them; the plan's own intent record carries the same criterion as a source claim.
+* *Editing*: in the decomposition's review the operator edits the epic intent and the rows like a plan's record, with the checks' results beside them. The agreed draft writes the intent to the ledger; a later decomposition the operator agrees is the only other writer.
+
+[#oversize]
+== The `over_size` Distribution
+
+A role's `over_size` multiple is the number of times its predicted task cost a worker may spend before the server judges it off track. The compiled multiple is `3 ×`; a role artifact may lower it, never raise it, and the operator changes it for a role. Changing it is a decision about past work as much as future work, so the settings view shows the measured distribution.
+
+[#buckets]
+=== The Buckets
+
+Each bucket holds the tasks whose spent tokens fall between two multiples of their own predicted cost, and how many of them the proposed multiple would have flagged:
+
+----
+  implement · over_size 3x → 2x
+  0-1x   8 tasks
+  1-2x   5 tasks
+  2-3x   3 tasks  · 3 flagged
+  3x+    4 tasks  · 4 flagged
+  20 tasks · 7 flagged · 35 %
+----
+
+* *A multiple of the prediction, not a token count*: the bounds are multiples of each task's own `predicted_cost_tokens`, because that prediction is the reference of the signal. The absolute token count is not comparable across tasks.
+* *The flagged share*: the sum of the flagged tasks over all tasks, shown as a count and a percentage. The client never recomputes a bucket or a share from raw tokens; it shows the runtime's distribution.
+* *The proposed multiple*: shown beside the one in force, with the direction (`3x → 2x` lowers the multiple and flags more). The chart marks the buckets the proposal changes, and the line says what the change would have done.
+* *An empty bucket* is left out; the distribution never invents a zero bar to look complete. A task outside the last bucket is shown in an open-ended `Nx and more` bucket.
+
+[#clients]
+== In the Clients
+
+[#terminal]
+=== The Terminal
+
+The terminal shows each record as a section of the plan or epic view, not as a separate dialogue: the head, then the criteria with their verdicts, the non-goals, the decisions grouped by decider, the open questions and deferred items, the builder check, and the outline's deliverables. A deliverable opens its files and criteria in the same frame; a criterion opens its deliverables. The width is the terminal's, so the affected files and the evidence go on their own lines under the row that owns them, and a long sentence wraps without a horizontal scroll.
+
+[#web]
+=== The Web App
+
+The web app shows the same order in the plan or epic detail: the intent as a card with the goal and the criterion list, a verdict chip per criterion (`met`, `not met`, `not verified`, `not reviewed yet`) with the reason one expansion away, the decisions grouped by decider with the operator's and the quorum's first, the builder check's open questions beside the outline review, and the outline's deliverables as rows with their files, dependencies, and criteria. The `over_size` distribution is a small bar chart in the role's settings, with the counts and the flagged share in text, so it is readable without colour and at phone width.
+
+[#live]
+=== Live and One Step Away
+
+Both clients update the records with the plan's state: a new revision of the intent or outline is shown as the accepted record, with `the record changed` once, and an open decision or builder question keeps its place. Every referenced element (a deliverable, a criterion, a plan's done-when, the decision that answered a question) is one step away; a client never flattens the records into prose that loses the way back.
+
+[#not]
+== What the Clients Do Not Do
+
+* They do not read the rendered `request.md`, `outline.md`, or the pull-request body; the records are the source.
+* They do not derive a criterion's verdict from a deliverable's state, a done-when's verdict from a plan's row, or a flagged share from raw tokens.
+* They do not fill a missing field with a guess, hide a `not_verified` criterion, or show a model's call as a recommendation or a decision of the operator.
+* They do not compute the builder check's routing or the verification sweep's missing key link; the runtime states both.

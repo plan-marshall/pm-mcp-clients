@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pathForRoute, routeForPath } from './routes';
+import { matchPath, pathForRoute, routeForPath } from './routes';
 
 describe('the routes of the app', () => {
   it('resolves the onboarding, the entry and the machine settings by path', () => {
@@ -31,5 +31,37 @@ describe('the routes of the app', () => {
   it('gives no path to a route the store selects', () => {
     expect(pathForRoute('plan')).toBeNull();
     expect(pathForRoute('epic')).toBeNull();
+  });
+
+  it('resolves the start paths and the project and entry they name', () => {
+    expect(matchPath('/start')).toEqual({ route: 'start' });
+    expect(matchPath('/projects/pm-mcp-clients/start')).toEqual({
+      route: 'start',
+      projectId: 'pm-mcp-clients',
+    });
+    expect(matchPath('/entries/ent-3f9a2c41')).toEqual({
+      route: 'start',
+      entryId: 'ent-3f9a2c41',
+    });
+    expect(routeForPath('/start/')).toBe('start');
+  });
+
+  it('gives the start its project and entry path', () => {
+    expect(pathForRoute('start')).toBe('/start');
+    expect(pathForRoute('start', { projectId: 'pm-mcp-clients' })).toBe(
+      '/projects/pm-mcp-clients/start',
+    );
+    expect(pathForRoute('start', { entryId: 'ent-3f9a2c41' })).toBe('/entries/ent-3f9a2c41');
+  });
+
+  it('names no start for a path that only looks like one', () => {
+    expect(routeForPath('/projects/pm-mcp-clients')).toBeNull();
+    expect(routeForPath('/entries')).toBeNull();
+    expect(routeForPath('/entries/a/b')).toBeNull();
+  });
+
+  it('names no start for a malformed escape instead of throwing', () => {
+    expect(routeForPath('/entries/%E0')).toBeNull();
+    expect(routeForPath('/projects/%E0/start')).toBeNull();
   });
 });
