@@ -486,6 +486,6 @@ class OverviewCommandTest {
         assertEquals("Clean Text", OutputSafety.stripControlSequences("Clean Text"));
         assertEquals("Red Alert", OutputSafety.stripControlSequences("\u001B[31mRed Alert\u001B[0m"));
         assertEquals("Title Content", OutputSafety.stripControlSequences("\u001B]0;Window Title\u0007Title Content"));
-        assertEquals("No\nLine\rBreaks", OutputSafety.stripControlSequences("No\nLine\rBreaks"));
+        assertEquals("No\nLineBreaks", OutputSafety.stripControlSequences("No\nLine\rBreaks"));
     }
 }

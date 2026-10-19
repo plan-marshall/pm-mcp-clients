@@ -35,6 +35,7 @@ import picocli.CommandLine.Command;
                                         DrainCommand.class,
                                         OnboardCommand.class,
                                         ConfigCommand.class,
+                                        CredentialsCommand.class,
                                         SettingsCommand.class,
                                         ProjectCommand.class,
                                         ProjectsCommand.class,

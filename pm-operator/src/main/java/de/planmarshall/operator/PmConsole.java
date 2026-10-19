@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -19,25 +20,35 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jline.reader.impl.completer.StringsCompleter;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 
 /**
  * The operator's interactive console REPL (04-console.adoc#console).
  * Manages badged prompts, pushed runtime events via {@code LineReader.printAbove(...)},
  * history persistence, and built-in navigation/control verbs.
+ *
+ * <p>The prompt, the badges, and every notice come from the message catalogue, and every text the
+ * runtime supplies passes through {@link TerminalSanitizer} before it is rendered or placed in the
+ * window title. The window title is set with {@link TerminalTitle}, which neutralizes the text it
+ * is given; a text that reaches the console therefore cannot move the cursor, write the clipboard,
+ * or fake a prompt.
  */
 public final class PmConsole {
 
@@ -46,17 +57,23 @@ public final class PmConsole {
     private final OperatorContext context;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
+    private final AtomicInteger controlDCounter = new AtomicInteger();
     private final List<String> badges = new CopyOnWriteArrayList<>();
 
     private volatile @Nullable String activePairingCode;
     private volatile @Nullable String activePairingUrl;
     private volatile int webPort = EntryFlow.DEFAULT_WEB_PORT;
+    private volatile boolean notify = true;
 
     /**
      * @param context the operator context
      */
     public PmConsole(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
+    }
+
+    private String locale() {
+        return context.clientEnvironment().locale();
     }
 
     /**
@@ -78,7 +95,7 @@ public final class PmConsole {
 
         var completer = new StringsCompleter(
                             "exit", "quit", "help", "status", "plans", "plan", "epic", "questions", "answer",
-                            "web", "runtime", "config", "projects", "project", "client", "drain"
+                            "web", "runtime", "config", "credentials", "projects", "project", "client", "drain"
         );
 
         var reader = LineReaderBuilder.builder()
@@ -94,6 +111,7 @@ public final class PmConsole {
         activePairingUrl = entryResult.activeUrl();
         webPort = EntryFlow.getWebPort(entryResult.status());
         badges.addAll(entryResult.initialBadges());
+        updateWindowTitle(terminal);
 
         Thread sseThread = startEventListener(reader);
 
@@ -109,60 +127,126 @@ public final class PmConsole {
     }
 
     private void runRepl(PrintWriter out, LineReader reader) {
+        var locale = locale();
         while (running.get()) {
-            var prompt = ConsolePrompt.format(badges, reconnecting.get());
-            String line;
-            try {
-                line = reader.readLine(prompt);
-            } catch (UserInterruptException e) {
-                // Ctrl+C: cancel current line and redisplay prompt
-                continue;
-            } catch (EndOfFileException e) {
-                // Ctrl+D: exit console
-                break;
-            }
+            var line = readCommand(reader, out, locale);
             if (line == null) {
                 break;
             }
-            line = line.trim();
             if (line.isEmpty()) {
                 handleEmptyEnter(out, reader);
-                continue;
-            }
-            if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
+            } else if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
                 break;
+            } else {
+                dispatchCommand(line, out, reader);
             }
-            dispatchCommand(line, out, reader);
         }
     }
 
+    /**
+     * Reads one line at the prompt and answers the interrupt keys: {@code Ctrl+C} on an empty line
+     * prints the hint, {@code Ctrl+D} names the questions that stay open once before it leaves.
+     *
+     * @return the trimmed line, or {@code null} when the console is to leave
+     */
+    private @Nullable String readCommand(LineReader reader, PrintWriter out, String locale) {
+        while (running.get()) {
+            try {
+                var line = reader.readLine(ConsolePrompt.format(locale, badges, reconnecting.get()));
+                return line == null ? null : line.trim();
+            } catch (UserInterruptException e) {
+                if (e.getPartialLine() == null || e.getPartialLine().isEmpty()) {
+                    out.println(MessageCatalogue.format(locale, "operator.console.ctrl_c_hint", Map.of()));
+                    out.flush();
+                }
+            } catch (EndOfFileException e) {
+                if (!hasOpenQuestions() || controlDCounter.getAndIncrement() > 0) {
+                    return null;
+                }
+                out.println(MessageCatalogue.format(locale, "operator.console.exit_open",
+                                    Map.of("count", questionCount())));
+                out.flush();
+            }
+        }
+        return null;
+    }
+
+    private boolean hasOpenQuestions() {
+        for (var badge : badges) {
+            var lower = badge.toLowerCase(Locale.ROOT);
+            if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int questionCount() {
+        int total = 0;
+        for (var badge : badges) {
+            var lower = badge.toLowerCase(Locale.ROOT);
+            if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
+                total += leadingCount(badge);
+            }
+        }
+        return total;
+    }
+
+    private static int leadingCount(String badge) {
+        int start = -1;
+        for (int i = 0; i < badge.length(); i++) {
+            if (Character.isDigit(badge.charAt(i))) {
+                start = i;
+                break;
+            }
+        }
+        if (start < 0) {
+            return 1;
+        }
+        int end = start;
+        while (end < badge.length() && Character.isDigit(badge.charAt(end))) {
+            end++;
+        }
+        return Integer.parseInt(badge.substring(start, end));
+    }
+
     private void handleEmptyEnter(PrintWriter out, LineReader reader) {
+        var locale = locale();
         boolean hasSetup = false;
         for (var b : badges) {
-            if (b.startsWith("setup")) {
+            if (b.startsWith("setup") || b.startsWith("Einrichtung")) {
                 hasSetup = true;
                 break;
             }
         }
         if (hasSetup) {
-            out.println("Set up this machine for plan-marshall");
+            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
             out.flush();
             String beginChoice = null;
             try {
-                beginChoice = reader.readLine("Begin with step 1? [Enter]   a) decide everything for me   ?   › ");
+                beginChoice = reader.readLine(MessageCatalogue.format(locale,
+                                    "operator.console.setup.begin_prompt", Map.of()));
             } catch (EndOfFileException | UserInterruptException _) {
                 // abort continuation on interrupt/EOF
             }
             if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
-                out.println("Left the setup before step 1. Nothing was sent. Enter continues the setup.");
+                out.println(MessageCatalogue.format(locale, "operator.console.setup.left", Map.of()));
                 out.flush();
             }
         }
     }
 
     private void dispatchCommand(String line, PrintWriter out, LineReader reader) {
+        var locale = locale();
         var parts = line.split("\\s+");
         var verb = parts[0];
+
+        if (verb.matches("\\d+")) {
+            out.println(MessageCatalogue.format(locale, "operator.console.number_not_a_command",
+                                Map.of("input", verb)));
+            out.flush();
+            return;
+        }
 
         switch (verb) {
             case "help" -> printHelp(out, parts);
@@ -211,39 +295,35 @@ public final class PmConsole {
         var base64 = Base64.getEncoder().encodeToString(sshCmd.getBytes(StandardCharsets.UTF_8));
         out.print("\033]52;c;" + base64 + "\007");
         out.flush();
-        out.println("✓ Copied, if your terminal allows it; the text is above.");
+        out.println(MessageCatalogue.format(locale(), "operator.console.copy_done", Map.of()));
     }
 
     private void issueNewPairingCode(PrintWriter out) {
+        var locale = locale();
         try {
             var pairing = new EntryFlow(context).issuePairingCode(context.runtime(true), webPort);
             activePairingCode = pairing.code();
             activePairingUrl = pairing.url();
             var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
-            out.printf("✓ New code: %s, valid until %s. The previous code no longer works.%n",
-                                pairing.code(), validUntil);
-            out.printf("  %s%n", pairing.url());
+            out.println(MessageCatalogue.format(locale, "operator.console.new_code",
+                                Map.of("code", pairing.code(), "time", validUntil)));
+            out.println(MessageCatalogue.format(locale, "operator.console.url_indent",
+                                Map.of("url", pairing.url())));
         } catch (IOException e) {
-            out.println("✗ Failed to issue new pairing code: " + e.getMessage());
+            out.println(MessageCatalogue.format(locale, "operator.console.code_failed",
+                                Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
         }
     }
 
-
     private void printHelp(PrintWriter out, String[] parts) {
+        var locale = locale();
         if (parts.length >= 2) {
-            out.println("Help for " + parts[1] + ": run 'pm-operator " + parts[1] + " --help'");
+            out.println(MessageCatalogue.format(locale, "operator.console.help.for", Map.of("verb", parts[1])));
             return;
         }
-        out.println("Commands:");
-        out.println("  plans                  overview of running, held, and paused plans");
-        out.println("  plan <id>              details and actions of a plan");
-        out.println("  epic <id>              details and actions of an epic");
-        out.println("  questions              open questions and waiver requests");
-        out.println("  answer <id> [<opt>]    answer a question or waiver request");
-        out.println("  status                 runtime and listener status");
-        out.println("  web [pair|qr|copy]     web app pairing and access");
-        out.println("  exit                   leave the console");
-        out.println("Any operator verb (runtime, config, projects, client, etc.) can be typed here.");
+        out.println(MessageCatalogue.format(locale, "operator.console.help.title", Map.of()));
+        out.println(MessageCatalogue.format(locale, "operator.console.help.body", Map.of()));
+        out.println(MessageCatalogue.format(locale, "operator.console.help.more", Map.of()));
     }
 
     private Thread startEventListener(LineReader reader) {
@@ -282,17 +362,15 @@ public final class PmConsole {
         if (event.data() == null || event.data().isBlank()) {
             return;
         }
+        Map<String, Object> eventMap;
         try {
-            var parsed = JsonTree.parse(event.data());
-            if (parsed instanceof Map<?, ?> map) {
-                @SuppressWarnings("unchecked")
-                var eventMap = (Map<String, Object>) map;
-                applyConsoleEvent(event.event(), eventMap, reader);
-            }
+            eventMap = JsonTree.asObject(JsonTree.parse(event.data()));
+        } catch (IOException _) {
+            // invalid json in the event stream: drop this event, keep the stream
+            return;
         }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
-            // invalid json in event stream
+        if (eventMap != null) {
+            applyConsoleEvent(event.event(), eventMap, reader);
         }
     }
 
@@ -306,23 +384,40 @@ public final class PmConsole {
      * @param reader    the line reader the notices are printed above
      */
     void applyConsoleEvent(@Nullable String eventName, Map<String, Object> eventMap, LineReader reader) {
-        var notice = ConsoleNotice.fromEventMap(eventMap);
+        var locale = locale();
+        var notice = ConsoleNotice.fromEventMap(locale, eventMap);
         if (notice != null) {
             reader.printAbove(notice);
+            notifyOperator(reader.getTerminal(), eventMap);
         }
         var name = eventName != null ? eventName : "";
         var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
         if ("device.paired".equals(name) || "paired".equals(type)) {
             var label = JsonTree.string(eventMap, "label");
-            reader.printAbove("✓ Paired: " + (label != null ? label : "local"));
+            reader.printAbove(MessageCatalogue.format(locale, "operator.console.paired",
+                                Map.of("label", TerminalSanitizer.sanitize(label != null ? label : "local"))));
             if ("device.paired".equals(name)) {
                 issueFreshCodeAbove(reader);
             }
         } else if ("fresh_code".equals(type)) {
-            activePairingCode = (String) eventMap.get("code");
-            activePairingUrl = (String) eventMap.get("url");
+            activePairingCode = JsonTree.string(eventMap, "code");
+            activePairingUrl = JsonTree.string(eventMap, "url");
         }
     }
+
+    private void notifyOperator(Terminal terminal, Map<String, Object> eventMap) {
+        if (!notify) {
+            return;
+        }
+        var kind = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        var scope = String.valueOf(eventMap.getOrDefault("scope", ""));
+        var payload = MessageCatalogue.format(locale(), "operator.console.notification.line",
+                            Map.of("scope", TerminalSanitizer.sanitize(scope),
+                                                "kind", TerminalSanitizer.sanitize(kind)));
+        terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
+        terminal.writer().flush();
+    }
+
 
     /**
      * Asks for a fresh pairing code after a redemption and reports it above the prompt, so the
@@ -332,17 +427,28 @@ public final class PmConsole {
      * @param reader the line reader the notice is printed above
      */
     private void issueFreshCodeAbove(LineReader reader) {
+        var locale = locale();
         try {
             var pairing = new EntryFlow(context).issuePairingCode(context.runtime(true), webPort);
             activePairingCode = pairing.code();
             activePairingUrl = pairing.url();
             var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
-            reader.printAbove("✓ New code: " + pairing.code() + ", valid until " + validUntil
-                                + ". The previous code no longer works.");
-            reader.printAbove("  " + pairing.url());
+            reader.printAbove(MessageCatalogue.format(locale, "operator.console.new_code_above",
+                                Map.of("code", pairing.code(), "time", validUntil)));
+            reader.printAbove(MessageCatalogue.format(locale, "operator.console.url_indent",
+                                Map.of("url", pairing.url())));
         } catch (IOException e) {
-            reader.printAbove("✗ Failed to issue a fresh pairing code: " + e.getMessage());
+            reader.printAbove(MessageCatalogue.format(locale, "operator.console.code_failed_fresh",
+                                Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
         }
+    }
+
+    private void updateWindowTitle(Terminal terminal) {
+        var title = new StringBuilder("pm-operator");
+        if (!badges.isEmpty()) {
+            title.append(" [").append(String.join(" \u00b7 ", badges)).append(']');
+        }
+        TerminalTitle.set(terminal, title.toString());
     }
 
     /**
@@ -390,8 +496,7 @@ public final class PmConsole {
         try {
             return InetAddress.getLocalHost().getHostName();
         }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception e) {
+        catch (UnknownHostException _) {
             return "localhost";
         }
     }

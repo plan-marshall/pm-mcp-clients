@@ -145,10 +145,11 @@ public final class SettingsCommand implements Callable<Integer> {
                                 Map.of("revision", settings.revision())));
             for (var aspect : settings.aspects()) {
                 var name = MessageCatalogue.format(locale, aspect.aspect().stepNameKey(), Map.of());
-                out.printf("  %d. %s: %s%n", aspect.aspect().step(), name, aspect.summary());
+                out.printf("  %d. %s: %s%n", aspect.aspect().step(), name,
+                                    TerminalSanitizer.sanitizeLine(aspect.summary()));
             }
             if (settings.consents().isEmpty()) {
-                out.println("  " + MessageCatalogue.get("web.settings.consents.none"));
+                out.println("  " + MessageCatalogue.format(locale, "web.settings.consents.none", Map.of()));
             } else {
                 out.println("  " + MessageCatalogue.format(locale, "web.settings.consents.title", Map.of()));
                 for (var consent : settings.consents()) {
@@ -159,21 +160,22 @@ public final class SettingsCommand implements Callable<Integer> {
 
         private int apply(PrintWriter out, MachineSettingsUpdateRequest request, int revision)
                             throws IOException {
+            var locale = context.clientEnvironment().locale();
             var response = context.runtime(true).send(
                                 HttpRequest.json("PUT", MACHINE_PATH, request.toJson()));
             if (response.status() == 200) {
                 var result = MachineSettingsUpdateResult.fromJson(response.bodyText());
                 if (request.key().startsWith("consent:")) {
-                    out.println("  " + MessageCatalogue.get("operator.onboard.settings.consent_withdrawn"));
+                    out.println("  " + MessageCatalogue.format(locale, "operator.onboard.settings.consent_withdrawn", Map.of()));
                 } else {
-                    out.println("  " + MessageCatalogue.get("operator.onboard.settings.saved"));
+                    out.println("  " + MessageCatalogue.format(locale, "operator.onboard.settings.saved", Map.of()));
                 }
                 out.flush();
                 return result.revision();
             }
             if (response.status() == 409) {
                 var conflict = MachineSettingsUpdateResult.fromJson(response.bodyText());
-                out.println("  " + MessageCatalogue.format("operator.onboard.settings.conflict",
+                out.println("  " + MessageCatalogue.format(locale, "operator.onboard.settings.conflict",
                                     Map.of("value", Objects.toString(conflict.currentValue(), ""))));
                 out.flush();
                 if (yes) {

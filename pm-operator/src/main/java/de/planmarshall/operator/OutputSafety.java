@@ -13,7 +13,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Output safety utility stripping ANSI control sequences and non-printable characters
- * to prevent terminal injection.
+ * to prevent terminal injection. The rule itself lives in {@link TerminalSanitizer}; this is the
+ * name the notice and device rendering paths use.
  */
 public final class OutputSafety {
 
@@ -28,6 +29,6 @@ public final class OutputSafety {
      * @return sanitized string safe for terminal rendering
      */
     public static String stripControlSequences(@Nullable String text) {
-        return ConsoleNotice.stripControlSequences(text);
+        return TerminalSanitizer.sanitize(text);
     }
 }

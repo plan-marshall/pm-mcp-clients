@@ -485,17 +485,17 @@ class PmOperatorTest {
             });
 
             assertEquals(0, run("web", "devices", "revoke", "dev-1"));
-            assertTrue(out.toString().contains("✓ Revoked paired device(s)"));
+            assertTrue(out.toString().contains("✓ Revoked: dev-1"));
             assertEquals("/api/v1/web/devices/dev-1", server.awaitRequest(Duration.ofSeconds(1)).target());
 
             out.getBuffer().setLength(0);
             assertEquals(0, run("web", "devices", "revoke", "--others"));
-            assertTrue(out.toString().contains("✓ Revoked paired device(s)"));
+            assertTrue(out.toString().contains("✓ Revoked 1 device. No browser is paired"));
             assertEquals("/api/v1/web/devices?scope=others", server.awaitRequest(Duration.ofSeconds(1)).target());
 
             out.getBuffer().setLength(0);
             assertEquals(0, run("web", "devices", "revoke", "--all"));
-            assertTrue(out.toString().contains("✓ Revoked paired device(s)"));
+            assertTrue(out.toString().contains("✓ Revoked 1 device. No browser is paired"));
             assertEquals("/api/v1/web/devices?scope=all", server.awaitRequest(Duration.ofSeconds(1)).target());
         }
 
@@ -518,7 +518,7 @@ class PmOperatorTest {
             });
 
             assertEquals(0, run("web", "devices", "listener-off"));
-            assertTrue(out.toString().contains("✓ Network listener turned off (loopback remains open)"));
+            assertTrue(out.toString().contains("✓ The network listener is off"));
             assertTrue(server.awaitRequest(Duration.ofSeconds(1)).bodyText().contains("\"lan\":false"));
         }
     }

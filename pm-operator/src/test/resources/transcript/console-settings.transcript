@@ -1,0 +1,38 @@
+✓ Runtime running (pm-mcpd 0.1.0-SNAPSHOT)
+
+plan-marshall is running. This machine is not set up yet.
+
+  Seven steps. Nothing on this machine is looked at, run, or changed until
+  you say so in that step. You can stop at any point; Enter at the prompt,
+  or the web app, continues where you stopped.
+
+    1  Language     the language of plan-marshall and of the models' texts
+    2  Harnesses    the coding agents the server works with, one of them the default
+    3  Models       the models plans may use on each coding agent
+    4  Roles        a coding agent and a model for every role
+    5  Credentials  where this machine keeps its tokens
+    6  Providers    the git hosts, CI and analysis services this machine uses
+    7  Plans        how plans run unless a project says otherwise
+
+Where do you want to set it up?   w) in the web app [Enter]   h) here, in the te rminal   ?   › config
+
+Set up this machine for plan-marshall
+Begin with step 1? [Enter]   a) decide everything for me   ?   › q
+Left the setup before step 1. Nothing was sent. Enter continues the setup.
+pm [setup 0/7] › web devices
+Paired devices · The browsers that can act on this machine
+    1) Firefox on mbp-oliver   paired 12 May from loopback   last used <ago>
+    2) Safari on iPad   paired 20 May from network   last used <ago>
+    3) Chrome on build-box   paired 2 Jun from loopback   last used <ago>
+
+  The console needs no pairing and is not listed. Network listener: on.
+pm [setup 0/7] › config consents
+The consents you said not to ask again
+    1) look for harnesses    scan_harnesses
+         <timestamp> · terminal
+    2) check whether a harness is logged in    probe_harness_login
+         <timestamp> · Firefox
+
+A withdrawn consent is asked again the next time its action runs.
+Withdraw: 1-2   q) leave   ?   › exit
+pm [setup 0/7] ›

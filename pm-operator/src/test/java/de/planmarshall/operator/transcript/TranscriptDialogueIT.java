@@ -40,4 +40,10 @@ class TranscriptDialogueIT {
     void consoleDialogue() throws Exception {
         TranscriptDialogues.consoleStatus().assertRecorded();
     }
+
+    @Test
+    @DisplayName("console settings dialogue matches its transcript")
+    void consoleSettingsDialogue() throws Exception {
+        TranscriptDialogues.consoleSettings().assertRecorded();
+    }
 }
