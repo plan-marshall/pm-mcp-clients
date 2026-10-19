@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -167,7 +168,7 @@ public final class PmConsole {
 
     private boolean hasOpenQuestions() {
         for (var badge : badges) {
-            var lower = badge.toLowerCase(java.util.Locale.ROOT);
+            var lower = badge.toLowerCase(Locale.ROOT);
             if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
                 return true;
             }
@@ -388,7 +389,9 @@ public final class PmConsole {
         try {
             terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
             terminal.writer().flush();
-        } catch (RuntimeException _) {
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (RuntimeException _) {
             // a terminal without a notification channel is fine
         }
     }

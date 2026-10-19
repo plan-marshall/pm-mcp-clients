@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Map;
 import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
 
@@ -100,7 +101,7 @@ public final class SecretReader {
      *
      * @param secret the buffer to clear, may be {@code null}
      */
-    public static void dispose(char @org.jspecify.annotations.Nullable [] secret) {
+    public static void dispose(char @Nullable [] secret) {
         if (secret != null) {
             Arrays.fill(secret, '\0');
         }

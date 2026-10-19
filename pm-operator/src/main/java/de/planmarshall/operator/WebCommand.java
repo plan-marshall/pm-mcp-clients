@@ -417,12 +417,12 @@ public final class WebCommand implements Callable<Integer> {
                 var prompt = MessageCatalogue.format(locale, "operator.devices.act_prompt",
                                     Map.of("range", "1-" + list.size()))
                                     + MessageCatalogue.format(locale, "operator.devices.act_options",
-                                                        Map.of("others", MessageCatalogue.format(locale,
+                                    Map.of("others", MessageCatalogue.format(locale,
                                                                             "operator.devices.others", Map.of()),
-                                                                            "listener_off", MessageCatalogue.format(locale,
-                                                                                                "operator.devices.listener_off", Map.of()),
-                                                                            "leave", MessageCatalogue.format(locale,
-                                                                                                "operator.devices.leave", Map.of())));
+                                                        "listener_off", MessageCatalogue.format(locale,
+                                                                            "operator.devices.listener_off", Map.of()),
+                                                        "leave", MessageCatalogue.format(locale,
+                                                                            "operator.devices.leave", Map.of())));
                 var line = reader.readLine(prompt);
                 if (line != null) {
                     processInteractiveChoice(runtime, out, reader, list, line.trim());

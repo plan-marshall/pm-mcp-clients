@@ -68,7 +68,7 @@ class LiteralTextGuardTest {
 
     @Test
     @DisplayName("no user-facing string is written in the guarded sources")
-    void noLiteralUserFacingText() throws IOException {
+    void noLiteralUserFacingText() throws Exception {
         var violations = new ArrayList<String>();
         for (var source : guardedSources()) {
             var lines = Files.readAllLines(source, StandardCharsets.UTF_8);

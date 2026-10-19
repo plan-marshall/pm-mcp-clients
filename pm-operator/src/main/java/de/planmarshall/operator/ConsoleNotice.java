@@ -229,7 +229,7 @@ public final class ConsoleNotice {
         return CHECK + MessageCatalogue.format(locale, "operator.console.new_code",
                             Map.of("code", code, "time", validUntil))
                             + "\n" + MessageCatalogue.format(locale, "operator.console.url_indent",
-                                                Map.of("url", TerminalSanitizer.sanitize(url)));
+                            Map.of("url", TerminalSanitizer.sanitize(url)));
     }
 
     /**

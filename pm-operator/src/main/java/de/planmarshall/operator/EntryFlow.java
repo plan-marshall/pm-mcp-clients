@@ -161,7 +161,7 @@ public final class EntryFlow {
             choice = reader.readLine(prompt);
         } catch (EndOfFileException | UserInterruptException _) {
             return new EntryResult(status, List.of(ConsolePrompt.formatMachineSetupBadge(
-                            context.clientEnvironment().locale(), completedStep, 7)), null, null);
+                                context.clientEnvironment().locale(), completedStep, 7)), null, null);
         }
         if (choice == null || choice.isBlank()) {
             choice = isSsh ? "h" : "w";

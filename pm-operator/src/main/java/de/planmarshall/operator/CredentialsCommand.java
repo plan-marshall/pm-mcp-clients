@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
@@ -112,7 +113,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
                             ? "onboard.settings.credential.rotate" : "onboard.settings.credential.replace", Map.of()));
         out.println(MessageCatalogue.format(locale, ROTATE.equals(mode)
-                            ? "onboard.settings.credential.rotate_value" : "onboard.settings.credential.replace_value",
+                                                ? "onboard.settings.credential.rotate_value" : "onboard.settings.credential.replace_value",
                             Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.credentials.now", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.credentials.store_hint",
@@ -188,7 +189,7 @@ public final class CredentialsCommand implements Callable<Integer> {
 
     private boolean confirm(PrintWriter out) throws IOException {
         try (var terminal = context.createTerminal()) {
-            var reader = org.jline.reader.LineReaderBuilder.builder().terminal(terminal).build();
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var line = reader.readLine(MessageCatalogue.format(locale(), "operator.credentials.store_confirm", Map.of()));
             return line == null || !"b".equalsIgnoreCase(line.trim());
         }
