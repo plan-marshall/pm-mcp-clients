@@ -1,0 +1,111 @@
+{
+  "format_version": 1,
+  "name": "intent-outline",
+  "description": "A plan's outline record with deliverables, affected files, criteria, justified dependencies, and a missing key link (UC-PLN-1, PM-WF-10)",
+  "start": "intent.outline",
+  "pairing_code": "INTN-OTLN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/plans/fix-relay/outline": {
+      "representation": {
+        "plan_id": "fix-relay",
+        "revision": 2,
+        "summary": "Reconnect the relay with backoff and keep the queue durable.",
+        "deliverables": [
+          {
+            "number": 1,
+            "title": "Reconnect the relay",
+            "intent_gloss": "Reconnect with exponential backoff.",
+            "affected_files": [
+              {
+                "path": "pm-relay/src/main/java/de/planmarshall/relay/RelayConnection.java",
+                "intent": "write-replace"
+              },
+              {
+                "path": "pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java",
+                "intent": "write-new"
+              }
+            ],
+            "depends_on": [],
+            "satisfies": ["AC-001", "AC-004"],
+            "verification": "RelayConnectionTest covers reconnect and legacy event shapes."
+          },
+          {
+            "number": 2,
+            "title": "Keep the queue durable",
+            "intent_gloss": "Persist every accepted event before acknowledging it.",
+            "affected_files": [
+              {
+                "path": "pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java",
+                "intent": "write-new"
+              },
+              {
+                "path": "pm-relay/src/test/java/de/planmarshall/relay/EventQueueTest.java",
+                "intent": "write-new"
+              }
+            ],
+            "depends_on": [1],
+            "satisfies": ["AC-002"],
+            "verification": "EventQueueTest restarts the queue with a full buffer."
+          },
+          {
+            "number": 3,
+            "title": "Expose the reconnect count",
+            "intent_gloss": "Report reconnects on the status resource.",
+            "affected_files": [
+              {
+                "path": "pm-relay/src/main/java/de/planmarshall/relay/RelayStatus.java",
+                "intent": "write-conditional"
+              }
+            ],
+            "depends_on": [1],
+            "satisfies": ["AC-003"]
+          }
+        ],
+        "added_dependencies": [
+          {
+            "name": "de.cuioss:cui-http",
+            "version": "2.1.0",
+            "justification": "The retry adapter carries the backoff policy.",
+            "deliverable": 1
+          }
+        ],
+        "interfaces": ["RelayConnection", "EventQueue"],
+        "key_links": ["RelayConnection -> EventQueue"],
+        "missing_key_link": "EventQueue -> RelayStatus"
+      }
+    }
+  },
+  "states": {
+    "intent.outline": {
+      "representation": {
+        "scope": {
+          "kind": "plan",
+          "id": "fix-relay",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "intent.outline",
+          "kind": "operator_wait"
+        },
+        "links": []
+      },
+      "links": {}
+    }
+  }
+}
