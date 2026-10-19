@@ -21,7 +21,6 @@ import org.jspecify.annotations.Nullable;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
-import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.interaction.OperatorItem;
 import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorLinkRelation;
@@ -30,6 +29,7 @@ import de.planmarshall.api.interaction.OperatorScopeKind;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.source.git.ChangedFile;
 
 /**
  * The representation of an entry's state for both clients (State Catalogue, Starting from the
@@ -117,6 +117,20 @@ public record StartStateResource(
 
     /** The link id that opens the chat. */
     public static final String LINK_CHAT = "chat";
+
+    private static final String ITEM_SOURCE_ID = "source_id";
+    private static final String ITEM_KIND = "kind";
+    private static final String ITEM_REFERENCE = "reference";
+    private static final String ITEM_STATE = "state";
+    private static final String ITEM_TRUST = "trust";
+    private static final String ITEM_TITLE = "title";
+    private static final String ITEM_VERDICT = "verdict";
+    private static final String ITEM_FAILURE = "failure";
+    private static final String ITEM_SPANS = "spans";
+    private static final String ITEM_DISPOSITION = "disposition";
+    private static final String ITEM_DISPOSITION_REASON = "disposition_reason";
+    private static final String ITEM_CHANGED_FILES = "changed_files";
+    private static final String TYPE = "StartStateResource";
 
     private static final Set<String> KNOWN_FIELDS = Set.of(
             OperatorStateResource.FIELD_SCOPE, OperatorStateResource.FIELD_STATE, OperatorStateResource.FIELD_PROGRESS,
@@ -239,22 +253,19 @@ public record StartStateResource(
      */
     public static StartStateResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        StartJson.requireOnlyKnown(map, KNOWN_FIELDS, "StartStateResource");
+        StartJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
         var operator = OperatorStateResource.fromMap(operatorFields(map));
-        var start = JsonTree.objectOrNull(map, FIELD_START, "StartStateResource");
+        var start = JsonTree.objectOrNull(map, FIELD_START, TYPE);
         if (start != null) {
-            StartJson.requireOnlyKnown(start, KNOWN_START_FIELDS, "StartStateResource.start");
+            StartJson.requireOnlyKnown(start, KNOWN_START_FIELDS, TYPE + ".start");
         }
         var startFields = start != null ? start : Map.<String, Object>of();
-        var entryMap = JsonTree.objectOrNull(startFields, FIELD_ENTRY, "StartStateResource");
-        var readyMap = JsonTree.objectOrNull(startFields, FIELD_READY, "StartStateResource");
-        var chatMap = JsonTree.objectOrNull(startFields, FIELD_CHAT, "StartStateResource");
-        var refusalMap = JsonTree.objectOrNull(startFields, FIELD_REFUSAL, "StartStateResource");
-        var failureMap = JsonTree.objectOrNull(startFields, FIELD_ADOPTION_FAILURE, "StartStateResource");
-        var recipes = new ArrayList<RecipeRef>();
-        for (var object : StartJson.readObjects(startFields, FIELD_RECIPES)) {
-            recipes.add(RecipeRef.fromMap(object));
-        }
+        var entryMap = JsonTree.objectOrNull(startFields, FIELD_ENTRY, TYPE);
+        var readyMap = JsonTree.objectOrNull(startFields, FIELD_READY, TYPE);
+        var chatMap = JsonTree.objectOrNull(startFields, FIELD_CHAT, TYPE);
+        var refusalMap = JsonTree.objectOrNull(startFields, FIELD_REFUSAL, TYPE);
+        var failureMap = JsonTree.objectOrNull(startFields, FIELD_ADOPTION_FAILURE, TYPE);
+        var recipes = StartJson.readEach(StartJson.readObjects(startFields, FIELD_RECIPES), RecipeRef::fromMap);
         try {
             return new StartStateResource(operator, entryMap != null ? EntryResource.fromMap(entryMap) : null,
                     readyMap != null ? StartReadyResource.fromMap(readyMap) : null,
@@ -337,126 +348,147 @@ public record StartStateResource(
     }
 
     private static List<OperatorItem> itemsOf(EntryResource entry) {
-        var items = new ArrayList<OperatorItem>();
-        for (var source : entry.sources()) {
-            var facts = new LinkedHashMap<String, Object>();
-            facts.put("source_id", source.sourceId());
-            facts.put("kind", source.kind().wireValue());
-            facts.put("reference", source.reference());
-            facts.put("state", source.state().wireValue());
-            facts.put("trust", source.trust().wireValue());
-            if (source.title() != null) {
-                facts.put("title", source.title());
-            }
-            if (source.verdict() != null) {
-                facts.put("verdict", source.verdict().wireValue());
-            }
-            if (source.failure() != null) {
-                facts.put("failure", source.failure().toMap());
-            }
-            if (!source.spans().isEmpty()) {
-                facts.put("spans", source.spans().stream().map(ScreeningSpan::toMap).toList());
-            }
-            if (source.disposition() != null) {
-                facts.put("disposition", source.disposition().wireValue());
-            }
-            if (source.dispositionReason() != null) {
-                facts.put("disposition_reason", source.dispositionReason());
-            }
-            if (!source.changedFiles().isEmpty()) {
-                facts.put("changed_files", source.changedFiles().stream()
-                        .map(file -> file.toMap()).toList());
-            }
-            items.add(new OperatorItem(source.sourceId(), facts, List.of()));
+        return entry.sources().stream().map(StartStateResource::itemOf).toList();
+    }
+
+    private static OperatorItem itemOf(SourceResource source) {
+        var facts = new LinkedHashMap<String, Object>();
+        facts.put(ITEM_SOURCE_ID, source.sourceId());
+        facts.put(ITEM_KIND, source.kind().wireValue());
+        facts.put(ITEM_REFERENCE, source.reference());
+        facts.put(ITEM_STATE, source.state().wireValue());
+        facts.put(ITEM_TRUST, source.trust().wireValue());
+        if (source.title() != null) {
+            facts.put(ITEM_TITLE, source.title());
         }
-        return items;
+        if (source.verdict() != null) {
+            facts.put(ITEM_VERDICT, source.verdict().wireValue());
+        }
+        if (source.failure() != null) {
+            facts.put(ITEM_FAILURE, source.failure().toMap());
+        }
+        if (!source.spans().isEmpty()) {
+            facts.put(ITEM_SPANS, source.spans().stream().map(ScreeningSpan::toMap).toList());
+        }
+        if (source.disposition() != null) {
+            facts.put(ITEM_DISPOSITION, source.disposition().wireValue());
+        }
+        if (source.dispositionReason() != null) {
+            facts.put(ITEM_DISPOSITION_REASON, source.dispositionReason());
+        }
+        if (!source.changedFiles().isEmpty()) {
+            facts.put(ITEM_CHANGED_FILES, source.changedFiles().stream().map(ChangedFile::toMap).toList());
+        }
+        return new OperatorItem(source.sourceId(), facts, List.of());
     }
 
     private static List<OperatorLink> linksOf(EntryResource entry, @Nullable StartChatResource chat) {
+        return switch (entry.state()) {
+            case CHOOSE -> chooseLinks(entry);
+            case SOURCES -> sourcesLinks(entry, chat);
+            case READY -> readyLinks(entry);
+            case RECIPE -> List.of(backLink(entry));
+            case RECIPE_CHOOSE -> recipeChooseLinks(entry);
+            case RECIPE_PARAMETERS -> recipeParameterLinks(entry);
+            case RECIPE_CREATE, RECIPE_STEP_CREATE -> List.of(createLink(entry));
+            case REFUSED -> refusedLinks(entry);
+            case EPIC_ADOPT -> epicAdoptLinks(entry);
+            case EPIC_ADOPT_FAILED -> epicAdoptFailedLinks(entry);
+        };
+    }
+
+    private static List<OperatorLink> chooseLinks(EntryResource entry) {
+        return List.of(
+                link(LINK_SOURCES, OperatorLinkRelation.NEXT, base(entry) + LINK_SOURCES, true),
+                entry.recipe() != null
+                        ? link(LINK_RECIPE, OperatorLinkRelation.ALT, base(entry) + LINK_RECIPE, false)
+                        : link(LINK_RECIPE, OperatorLinkRelation.ALT, base(entry) + LINK_RECIPE, false),
+                abandonLink(entry));
+    }
+
+    private static List<OperatorLink> sourcesLinks(EntryResource entry, @Nullable StartChatResource chat) {
         var links = new ArrayList<OperatorLink>();
-        var base = "/api/v1/entries/" + entry.entryId() + "/links/";
-        switch (entry.state()) {
-            case CHOOSE -> {
-                links.add(link(LINK_SOURCES, OperatorLinkRelation.NEXT, base + LINK_SOURCES, true, null));
-                if (entry.recipe() != null) {
-                    links.add(link(LINK_RECIPE, OperatorLinkRelation.ALT, base + LINK_RECIPE, false, null));
-                } else {
-                    links.add(new OperatorLink(LINK_RECIPE, OperatorLinkRelation.ALT, OperatorLink.METHOD_POST,
-                            base + LINK_RECIPE, Map.of(), false, null));
-                }
-                links.add(link(LINK_ABANDON, OperatorLinkRelation.ABORT, base + LINK_ABANDON, false, null));
-            }
-            case SOURCES -> {
-                for (var offer : entry.kindOffers()) {
-                    if (offer.available()) {
-                        links.add(link("add_" + offer.kind().wireValue(), OperatorLinkRelation.NEXT,
-                                base + "add_" + offer.kind().wireValue(), false, null));
-                    }
-                }
-                for (var source : entry.sources()) {
-                    links.add(link("remove:" + source.sourceId(), OperatorLinkRelation.ABORT,
-                            base + "remove:" + source.sourceId(), false, null));
-                }
-                if (chat != null) {
-                    links.add(new OperatorLink(LINK_CHAT, OperatorLinkRelation.CONSULT, OperatorLink.METHOD_POST,
-                            base + LINK_CHAT, Map.of(), false, null));
-                }
-                links.add(new OperatorLink(LINK_START, OperatorLinkRelation.NEXT, OperatorLink.METHOD_POST,
-                        base + LINK_START, Map.of(), entry.canContinue(), null));
-                links.add(link(LINK_ABANDON, OperatorLinkRelation.ABORT, base + LINK_ABANDON, false, null));
-            }
-            case READY -> {
-                links.add(link(LINK_CREATE, OperatorLinkRelation.NEXT, base + LINK_CREATE, true, null));
-                links.add(link(LINK_BACK, OperatorLinkRelation.ALT, base + LINK_BACK, false, null));
-                links.add(link(LINK_ABANDON, OperatorLinkRelation.ABORT, base + LINK_ABANDON, false, null));
-            }
-            case RECIPE -> links.add(link(LINK_BACK, OperatorLinkRelation.ALT, base + LINK_BACK, false, null));
-            case RECIPE_CHOOSE -> {
-                for (var recipe : entry.recipe() != null ? List.of(entry.recipe()) : List.<RecipeRef>of()) {
-                    links.add(link("choose:" + recipe.key(), OperatorLinkRelation.NEXT,
-                            base + "choose:" + recipe.key(), false, null));
-                }
-                links.add(link(LINK_BACK, OperatorLinkRelation.ALT, base + LINK_BACK, false, null));
-            }
-            case RECIPE_PARAMETERS -> {
-                links.add(link("set", OperatorLinkRelation.SUBMIT, base + "set", true, null));
-                links.add(link(LINK_BACK, OperatorLinkRelation.ALT, base + LINK_BACK, false, null));
-            }
-            case RECIPE_CREATE, RECIPE_STEP_CREATE ->
-                links.add(link(LINK_CREATE, OperatorLinkRelation.NEXT, base + LINK_CREATE, true, null));
-            case REFUSED -> {
-                if (entry.kind().epic()) {
-                    links.add(link(LINK_BACK, OperatorLinkRelation.ALT, base + LINK_BACK, false, null));
-                }
-                links.add(link(LINK_ABANDON, OperatorLinkRelation.ABORT, base + LINK_ABANDON, false, null));
-            }
-            case EPIC_ADOPT -> {
-                for (var epic : entry.adoptableEpics()) {
-                    links.add(link("adopt:" + epic.epicId(), OperatorLinkRelation.NEXT,
-                            base + "adopt:" + epic.epicId(), false, null));
-                }
-                links.add(link(LINK_NEW, OperatorLinkRelation.ALT, base + LINK_NEW, false, null));
-                links.add(link(LINK_ABANDON, OperatorLinkRelation.ABORT, base + LINK_ABANDON, false, null));
-            }
-            case EPIC_ADOPT_FAILED -> {
-                links.add(link(LINK_RETRY, OperatorLinkRelation.RETRY, base + LINK_RETRY, true, null));
-                links.add(link(LINK_BACK, OperatorLinkRelation.ALT, base + LINK_BACK, false, null));
-                links.add(link(LINK_ABANDON, OperatorLinkRelation.ABORT, base + LINK_ABANDON, false, null));
-            }
+        entry.kindOffers().stream().filter(SourceKindOffer::available).forEach(offer -> {
+            var id = "add_" + offer.kind().wireValue();
+            links.add(link(id, OperatorLinkRelation.NEXT, base(entry) + id, false));
+        });
+        entry.sources().stream().map(source -> "remove:" + source.sourceId())
+                .forEach(id -> links.add(link(id, OperatorLinkRelation.ABORT, base(entry) + id, false)));
+        if (chat != null) {
+            links.add(link(LINK_CHAT, OperatorLinkRelation.CONSULT, base(entry) + LINK_CHAT, false));
         }
+        links.add(new OperatorLink(LINK_START, OperatorLinkRelation.NEXT, OperatorLink.METHOD_POST,
+                base(entry) + LINK_START, Map.of(), entry.canContinue(), null));
+        links.add(abandonLink(entry));
         return links;
     }
 
-    private static OperatorLink link(String id, OperatorLinkRelation relation, String href, boolean preselected,
-                                     @Nullable String confirm) {
-        return new OperatorLink(id, relation, OperatorLink.METHOD_POST, href, Map.of(), preselected, confirm);
+    private static List<OperatorLink> readyLinks(EntryResource entry) {
+        return List.of(
+                link(LINK_CREATE, OperatorLinkRelation.NEXT, base(entry) + LINK_CREATE, true),
+                backLink(entry),
+                abandonLink(entry));
     }
 
-    /**
-     * @param value a configuration origin
-     * @return the wire value, or {@code null}
-     */
-    public static @Nullable String originWire(@Nullable ConfigOrigin value) {
-        return value != null ? value.wire() : null;
+    private static List<OperatorLink> recipeChooseLinks(EntryResource entry) {
+        var links = new ArrayList<OperatorLink>();
+        if (entry.recipe() != null) {
+            var id = "choose:" + entry.recipe().key();
+            links.add(link(id, OperatorLinkRelation.NEXT, base(entry) + id, false));
+        }
+        links.add(backLink(entry));
+        return links;
     }
+
+    private static List<OperatorLink> recipeParameterLinks(EntryResource entry) {
+        return List.of(
+                link("set", OperatorLinkRelation.SUBMIT, base(entry) + "set", true),
+                backLink(entry));
+    }
+
+    private static List<OperatorLink> refusedLinks(EntryResource entry) {
+        var links = new ArrayList<OperatorLink>();
+        if (entry.kind().epic()) {
+            links.add(backLink(entry));
+        }
+        links.add(abandonLink(entry));
+        return links;
+    }
+
+    private static List<OperatorLink> epicAdoptLinks(EntryResource entry) {
+        var links = new ArrayList<OperatorLink>();
+        entry.adoptableEpics().stream().map(epic -> "adopt:" + epic.epicId())
+                .forEach(id -> links.add(link(id, OperatorLinkRelation.NEXT, base(entry) + id, false)));
+        links.add(link(LINK_NEW, OperatorLinkRelation.ALT, base(entry) + LINK_NEW, false));
+        links.add(abandonLink(entry));
+        return links;
+    }
+
+    private static List<OperatorLink> epicAdoptFailedLinks(EntryResource entry) {
+        return List.of(
+                link(LINK_RETRY, OperatorLinkRelation.RETRY, base(entry) + LINK_RETRY, true),
+                backLink(entry),
+                abandonLink(entry));
+    }
+
+    private static OperatorLink createLink(EntryResource entry) {
+        return link(LINK_CREATE, OperatorLinkRelation.NEXT, base(entry) + LINK_CREATE, true);
+    }
+
+    private static OperatorLink backLink(EntryResource entry) {
+        return link(LINK_BACK, OperatorLinkRelation.ALT, base(entry) + LINK_BACK, false);
+    }
+
+    private static OperatorLink abandonLink(EntryResource entry) {
+        return link(LINK_ABANDON, OperatorLinkRelation.ABORT, base(entry) + LINK_ABANDON, false);
+    }
+
+    private static String base(EntryResource entry) {
+        return "/api/v1/entries/" + entry.entryId() + "/links/";
+    }
+
+    private static OperatorLink link(String id, OperatorLinkRelation relation, String href, boolean preselected) {
+        return new OperatorLink(id, relation, OperatorLink.METHOD_POST, href, Map.of(), preselected, null);
+    }
+
 }

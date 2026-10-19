@@ -34,9 +34,11 @@ import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorScopeKind;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.start.AdoptionFailureReason;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.SourceFailureCause;
 import de.planmarshall.api.start.SourceKind;
+import de.planmarshall.api.start.SourceKindOffer;
 import de.planmarshall.api.start.SourceState;
 import de.planmarshall.api.start.StartChatResource;
 import de.planmarshall.api.start.StartState;
@@ -149,7 +151,6 @@ class StartContractTest {
         void entryNeverExpires() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_ENTRY_CONTINUE)) {
                 var first = fetch(runtime, "ent-3f9a2c41");
-                Thread.sleep(50);
                 var second = fetch(runtime, "ent-3f9a2c41");
                 assertEquals(first.entry().sourceCount(), second.entry().sourceCount());
                 assertEquals(StartState.SOURCES, second.state());
@@ -162,9 +163,9 @@ class StartContractTest {
         void localChangesUnderLandingFiles() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_LOCAL_CHANGES)) {
                 var state = fetch(runtime, "ent-3f9a2c41");
-                assertFalse(state.entry().kindOffers().stream()
+                assertTrue(state.entry().kindOffers().stream()
                         .filter(offer -> offer.kind() == SourceKind.LOCAL_CHANGES)
-                        .anyMatch(offer -> offer.available()));
+                        .noneMatch(SourceKindOffer::available));
             }
         }
     }
@@ -249,6 +250,159 @@ class StartContractTest {
         }
     }
 
+    @Nested
+    @DisplayName("The operator's acts")
+    class Acts {
+
+        @Test
+        @DisplayName("a description is added, and the documents mode is asked with copy preselected")
+        void descriptionAndDocumentsMode() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_LOCAL_CHANGES)) {
+                var auth = "Bearer " + runtime.token();
+                var added = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/add_description",
+                        JsonTree.write(Map.of("text", "Bring the Codeberg provider in")))
+                        .withHeader("Authorization", auth));
+                assertEquals(200, added.status());
+                assertEquals(1, StartStateResource.fromJson(added.bodyText()).entry().sourceCount());
+
+                var documents = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/add_documents", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, documents.status());
+                var withDocuments = StartStateResource.fromJson(documents.bodyText());
+                assertEquals(SourceState.CHECKING, withDocuments.entry().sources().getLast().state(),
+                        "the machine's mode is ask, so the copy-or-move choice is the operator's");
+
+                var copy = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/documents_mode:copy_always", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, copy.status());
+                var afterCopy = StartStateResource.fromJson(copy.bodyText());
+                assertEquals(SourceState.COPIED, afterCopy.entry().sources().getLast().state());
+            }
+        }
+
+        @Test
+        @DisplayName("a source that offers no retry is refused, and an acceptance needs a reason")
+        void refusedActs() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_SOURCES)) {
+                var auth = "Bearer " + runtime.token();
+                var noRetry = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/retry:src-nope", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(409, noRetry.status());
+
+                addSource(runtime, "add_issue", "{}");
+                var noReason = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/accept:src-1", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(409, noReason.status());
+            }
+        }
+
+        @Test
+        @DisplayName("a recipe's parameters are set and the recipe is chosen")
+        void recipeParameters() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_RECIPE)) {
+                var auth = "Bearer " + runtime.token();
+                var chosen = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/choose:code-review", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, chosen.status());
+                assertEquals(StartState.RECIPE_PARAMETERS,
+                        StartStateResource.fromJson(chosen.bodyText()).state());
+
+                var set = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-3f9a2c41/links/set",
+                        JsonTree.write(Map.of("parameters", Map.of("depth", "quick"))))
+                        .withHeader("Authorization", auth));
+                assertEquals(200, set.status());
+                assertEquals(StartState.READY, StartStateResource.fromJson(set.bodyText()).state());
+            }
+        }
+
+        @Test
+        @DisplayName("an epic's adoptable ledger is adopted, and a new epic is asked for otherwise")
+        void epicActs() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_EPIC_ADOPT)) {
+                var auth = "Bearer " + runtime.token();
+                var refused = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-7a2e4f01/links/adopt:storage-migration", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(409, refused.status(), "the ledger cannot be adopted");
+                var failed = fetch(runtime, "ent-7a2e4f01");
+                assertEquals(StartState.EPIC_ADOPT_FAILED, failed.state());
+                assertEquals(AdoptionFailureReason.LEDGER_UNREADABLE, failed.adoptionFailure().reason());
+                assertNotNull(failed.link("retry"));
+
+                var retried = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-7a2e4f01/links/retry", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, retried.status());
+                assertEquals(StartState.EPIC_ADOPT, StartStateResource.fromJson(retried.bodyText()).state());
+
+                var adopted = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-7a2e4f01/links/adopt:relay-hardening", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, adopted.status());
+                assertEquals("relay-hardening",
+                        StartStateResource.fromJson(adopted.bodyText()).entry().planId());
+            }
+        }
+
+        @Test
+        @DisplayName("a new epic is started instead of adopting a ledger")
+        void newEpicInsteadOfAdopting() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_EPIC_ADOPT)) {
+                var newEpic = client(runtime).send(HttpRequest.json("POST",
+                        "/api/v1/entries/ent-7a2e4f01/links/new", "{}")
+                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(200, newEpic.status());
+                var state = StartStateResource.fromJson(newEpic.bodyText());
+                assertEquals(StartState.SOURCES, state.state());
+                assertTrue(state.entry().adoptableEpics().isEmpty());
+            }
+        }
+
+        @Test
+        @DisplayName("a refused gate leaves nothing behind and a recipe start offers no chat")
+        void refusalAndRecipe() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_REFUSED)) {
+                var state = fetch(runtime, "ent-3f9a2c41");
+                assertNotNull(state.refusal());
+                assertTrue(state.entry().sources().isEmpty());
+            }
+            try (var runtime = MockRuntime.start(StandardScenarios.START_RECIPE)) {
+                assertNull(fetch(runtime, "ent-3f9a2c41").chat());
+            }
+        }
+
+        @Test
+        @DisplayName("the picker serves the home root and refuses an unknown root and project")
+        void pickerRefusals() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.START_SOURCES)) {
+                var auth = "Bearer " + runtime.token();
+                var unknownRoot = client(runtime).send(HttpRequest.get(
+                        "/api/v1/projects/pm-mcp-clients/files?root=sandbox")
+                        .withHeader("Authorization", auth));
+                assertEquals(400, unknownRoot.status());
+
+                var unknownProject = client(runtime).send(HttpRequest.get(
+                        "/api/v1/projects/no-such-project/files?root=checkout")
+                        .withHeader("Authorization", auth));
+                assertEquals(404, unknownProject.status());
+            }
+        }
+    }
+
+    private static void addSource(MockRuntime runtime, String link, String body) throws Exception {
+        var response = client(runtime).send(HttpRequest.json("POST",
+                "/api/v1/entries/ent-3f9a2c41/links/" + link, body)
+                .withHeader("Authorization", "Bearer " + runtime.token()));
+        assertEquals(200, response.status(), response.bodyText());
+    }
+
     private static UnixSocketHttpClient client(MockRuntime runtime) {
         return new UnixSocketHttpClient(runtime.socketPath());
     }
@@ -284,7 +438,5 @@ class StartContractTest {
                 assertEquals(200, response.status());
             }
         }
-        var unused = Map.of();
-        assertTrue(unused.isEmpty());
     }
 }

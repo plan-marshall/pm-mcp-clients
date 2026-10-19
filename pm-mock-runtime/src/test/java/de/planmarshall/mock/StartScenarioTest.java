@@ -34,6 +34,7 @@ import de.planmarshall.api.control.ChatScope;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.source.git.ChangedFile;
 import de.planmarshall.api.start.ConfinedFileListResource;
 import de.planmarshall.api.start.ConfinedRoot;
 import de.planmarshall.api.start.EntryKind;
@@ -518,14 +519,12 @@ class StartScenarioTest {
         @DisplayName("start-pull-request serves a fork's changed files as untrusted")
         void pullRequestScenario() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.START_PULL_REQUEST)) {
-                var state = fetch(runtime, "ent-3f9a2c41");
-
                 addAndAssert(runtime, "add_pr", "src-pr-1", SourceKind.PULL_REQUEST);
                 var pr = source(fetch(runtime, "ent-3f9a2c41"), "src-pr-1");
                 assertEquals(SourceTrust.UNTRUSTED, pr.trust());
                 assertEquals(2, pr.changedFiles().size());
                 assertEquals(2, pr.untrustedChangedFiles());
-                assertTrue(pr.changedFiles().stream().noneMatch(file -> file.operatorAuthored()));
+                assertTrue(pr.changedFiles().stream().noneMatch(ChangedFile::operatorAuthored));
             }
         }
     }
@@ -923,7 +922,7 @@ class StartScenarioTest {
 
     @Test
     @DisplayName("the start scenarios' entry ids are the ones their fixtures name")
-    void scenarioEntryIds() throws Exception {
+    void scenarioEntryIds() {
         var scenario = ScenarioLoader.load(StandardScenarios.START_CHAT);
         assertEquals("ent-3f9a2c41", scenario.startCase().get("entry_id"));
         assertEquals("plan", scenario.startCase().get("kind"));

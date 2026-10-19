@@ -12,6 +12,7 @@ package de.planmarshall.api.start;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,7 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -209,8 +209,9 @@ class StartContractTest {
             assertEquals(1, source.untrustedChangedFiles());
             assertEquals(source, SourceResource.fromJson(source.toJson()));
 
-            assertThrows(IllegalArgumentException.class, () -> SourceResource.pullRequest("src-pr", "214", null,
-                    List.of(new ChangedFile("src/main/java/A.java", 1, 0, false, false))));
+            var untrustedNotMarked = List.of(new ChangedFile("src/main/java/A.java", 1, 0, false, false));
+            assertThrows(IllegalArgumentException.class,
+                    () -> SourceResource.pullRequest("src-pr", "214", null, untrustedNotMarked));
         }
 
         @Test
@@ -328,6 +329,11 @@ class StartContractTest {
             assertEquals("recipe-coverage-2026-10-12-14-05-00", id);
             assertTrue(RecipePlanId.isRecipePlanId(id));
             assertTrue(RecipePlanId.isRecipePlanId("recipe-code-review-2026-10-12-14-05-00"));
+            assertTrue(RecipePlanId.isRecipePlanId(
+                            RecipePlanId.derive("audit", LocalDateTime.of(2026, 10, 12, 14, 5, 0))),
+                    "a short recipe key is still a valid id");
+            assertTrue(RecipePlanId.isRecipePlanId(
+                    RecipePlanId.derive("a", LocalDateTime.of(2026, 10, 12, 14, 5, 0))));
             assertFalse(RecipePlanId.isRecipePlanId("coverage-2026-10-12-14-05-00"));
             assertFalse(RecipePlanId.isRecipePlanId("recipe-Coverage-2026-10-12-14-05-00"));
             assertFalse(RecipePlanId.isRecipePlanId("recipe-coverage-2026-13-12-14-05-00"));
@@ -407,8 +413,9 @@ class StartContractTest {
             assertEquals(2, listing.fileCount(), "both entries are files, one of them refused");
             assertFalse(refused.pickable());
             assertTrue(file.pickable());
+            var refusalCause = SourceFailure.of(SourceFailureCause.NOT_READABLE);
             assertThrows(IllegalArgumentException.class,
-                    () -> new ConfinedFile("x", "x", false, 1, true, SourceFailure.of(SourceFailureCause.NOT_READABLE)));
+                    () -> new ConfinedFile("x", "x", false, 1, true, refusalCause));
         }
 
         @Test
@@ -550,10 +557,10 @@ class StartContractTest {
             assertEquals(StartState.SOURCES, state.state());
             assertEquals(OperatorScopeKind.ENTRY, state.operator().scope().kind());
             assertEquals("ent-1", state.entryId());
-            assertTrue(state.link(StartStateResource.LINK_START) != null);
-            assertTrue(state.link(StartStateResource.LINK_CHAT) != null);
-            assertTrue(state.link("add_documents") != null);
-            assertEquals(true, entryOperatorFields(state.toMap()).size() > 0);
+            assertNotNull(state.link(StartStateResource.LINK_START));
+            assertNotNull(state.link(StartStateResource.LINK_CHAT));
+            assertNotNull(state.link("add_documents"));
+            assertFalse(entryOperatorFields(state.toMap()).isEmpty());
 
             var roundTrip = StartStateResource.fromJson(state.toJson());
             assertEquals(state.toJson(), roundTrip.toJson());
@@ -571,8 +578,8 @@ class StartContractTest {
             var state = StartStateResource.of(epicEntry, ready, null, null, null, List.of());
 
             assertEquals(ready, state.ready());
-            assertTrue(state.link(StartStateResource.LINK_CREATE) != null);
-            assertTrue(state.link(StartStateResource.LINK_BACK) != null);
+            assertNotNull(state.link(StartStateResource.LINK_CREATE));
+            assertNotNull(state.link(StartStateResource.LINK_BACK));
 
             assertThrows(IllegalArgumentException.class, () -> StartStateResource.of(sourcesEntry(), ready,
                     null, null, null, List.of()));
@@ -595,7 +602,7 @@ class StartContractTest {
                     StartState.RECIPE_PARAMETERS, null, null, List.of(), List.of(), false, false,
                     StartStateResource.CHAT_ROLE_UNQUALIFIED, recipe, List.of(), null);
             var parameterState = StartStateResource.of(parameters, null, null, null, null, List.of(recipe));
-            assertTrue(parameterState.link("set") != null);
+            assertNotNull(parameterState.link("set"));
         }
 
         @Test
@@ -700,7 +707,7 @@ class StartContractTest {
     @DisplayName("a collector of the closed lists keeps their catalogue order")
     void catalogueOrder() {
         assertEquals(List.of("description", "documents", "issue", "lesson", "local_changes", "pull_request"),
-                SourceKind.wireValues().stream().collect(Collectors.toList()));
+                List.copyOf(SourceKind.wireValues()));
         assertNull(SourceKind.fromWireOrNull(null));
     }
 }

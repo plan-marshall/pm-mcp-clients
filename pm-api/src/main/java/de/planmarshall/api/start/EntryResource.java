@@ -10,7 +10,6 @@
 package de.planmarshall.api.start;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +80,8 @@ public record EntryResource(
     public static final String FIELD_RECIPE = "recipe";
     public static final String FIELD_ADOPTABLE_EPICS = "adoptable_epics";
     public static final String FIELD_ADOPTION_FAILURE = "adoption_failure";
+
+    private static final String TYPE = "EntryResource";
 
     private static final Set<String> KNOWN_FIELDS = Set.of(
             FIELD_ENTRY_ID, FIELD_KIND, FIELD_PROJECT_ID, FIELD_STATE, FIELD_TITLE, FIELD_PLAN_ID,
@@ -179,7 +180,7 @@ public record EntryResource(
      */
     public static EntryResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        StartJson.requireOnlyKnown(map, KNOWN_FIELDS, "EntryResource");
+        StartJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
         var entryId = JsonTree.string(map, FIELD_ENTRY_ID);
         var projectId = JsonTree.string(map, FIELD_PROJECT_ID);
         if (entryId == null || projectId == null) {
@@ -195,8 +196,8 @@ public record EntryResource(
             throw new JsonFormatException(
                     "Unknown " + FIELD_STATE + " in EntryResource: " + JsonTree.string(map, FIELD_STATE));
         }
-        var recipeMap = JsonTree.objectOrNull(map, FIELD_RECIPE, "EntryResource");
-        var failureMap = JsonTree.objectOrNull(map, FIELD_ADOPTION_FAILURE, "EntryResource");
+        var recipeMap = JsonTree.objectOrNull(map, FIELD_RECIPE, TYPE);
+        var failureMap = JsonTree.objectOrNull(map, FIELD_ADOPTION_FAILURE, TYPE);
         try {
             return new EntryResource(entryId, kind, projectId, state, JsonTree.string(map, FIELD_TITLE),
                     JsonTree.string(map, FIELD_PLAN_ID), readSources(map), readOffers(map),
@@ -239,26 +240,14 @@ public record EntryResource(
     }
 
     private static List<SourceResource> readSources(Map<String, Object> map) throws IOException {
-        var sources = new ArrayList<SourceResource>();
-        for (var object : StartJson.readObjects(map, FIELD_SOURCES)) {
-            sources.add(SourceResource.fromMap(object));
-        }
-        return sources;
+        return StartJson.readEach(StartJson.readObjects(map, FIELD_SOURCES), SourceResource::fromMap);
     }
 
     private static List<AdoptableEpic> readAdoptable(Map<String, Object> map) throws IOException {
-        var epics = new ArrayList<AdoptableEpic>();
-        for (var object : StartJson.readObjects(map, FIELD_ADOPTABLE_EPICS)) {
-            epics.add(AdoptableEpic.fromMap(object));
-        }
-        return epics;
+        return StartJson.readEach(StartJson.readObjects(map, FIELD_ADOPTABLE_EPICS), AdoptableEpic::fromMap);
     }
 
     private static List<SourceKindOffer> readOffers(Map<String, Object> map) throws IOException {
-        var offers = new ArrayList<SourceKindOffer>();
-        for (var object : StartJson.readObjects(map, FIELD_KIND_OFFERS)) {
-            offers.add(SourceKindOffer.fromMap(object));
-        }
-        return offers;
+        return StartJson.readEach(StartJson.readObjects(map, FIELD_KIND_OFFERS), SourceKindOffer::fromMap);
     }
 }

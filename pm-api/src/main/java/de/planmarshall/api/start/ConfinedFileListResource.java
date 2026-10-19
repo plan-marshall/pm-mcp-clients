@@ -10,7 +10,6 @@
 package de.planmarshall.api.start;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,10 +123,7 @@ public record ConfinedFileListResource(
             throw new JsonFormatException("Unknown " + FIELD_ROOT + " in ConfinedFileListResource: "
                     + JsonTree.string(map, FIELD_ROOT));
         }
-        var entries = new ArrayList<ConfinedFile>();
-        for (var object : StartJson.readObjects(map, FIELD_ENTRIES)) {
-            entries.add(ConfinedFile.fromMap(object));
-        }
+        var entries = StartJson.readEach(StartJson.readObjects(map, FIELD_ENTRIES), ConfinedFile::fromMap);
         return new ConfinedFileListResource(projectId, root, JsonTree.string(map, FIELD_PATH),
                 JsonTree.string(map, FIELD_PARENT), entries, StartJson.bool(map, FIELD_TRUNCATED));
     }

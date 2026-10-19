@@ -9,7 +9,6 @@
  */
 package de.planmarshall.api.start;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -105,37 +104,28 @@ public enum SourceKind {
     public static List<SourceKind> offered(EntryKind entryKind, Set<SourceKind> existing,
                                            boolean lessonsAvailable, boolean localChanges, boolean landingCommits) {
         var present = existing == null ? Set.<SourceKind>of() : existing;
-        var alone = present.contains(LOCAL_CHANGES) || present.contains(PULL_REQUEST);
-        var offered = new ArrayList<SourceKind>();
-        for (var kind : values()) {
-            if (!kind.offeredToEpic() && entryKind.epic()) {
-                continue;
-            }
-            if (present.contains(kind) && kind != DESCRIPTION) {
-                continue;
-            }
-            if (kind == DESCRIPTION || kind == DOCUMENTS) {
-                offered.add(kind);
-                continue;
-            }
-            if (alone) {
-                continue;
-            }
-            if (kind == ISSUE && present.contains(LESSON)) {
-                continue;
-            }
-            if (kind == LESSON && (!lessonsAvailable || present.contains(ISSUE))) {
-                continue;
-            }
-            if (kind == LOCAL_CHANGES && (!localChanges || !landingCommits)) {
-                continue;
-            }
-            if (ALONE_KINDS.contains(kind) && !onlyDescriptionsAndDocuments(present)) {
-                continue;
-            }
-            offered.add(kind);
+        return Arrays.stream(values())
+                .filter(kind -> kind.offeredToEpic() || !entryKind.epic())
+                .filter(kind -> !present.contains(kind) || kind == DESCRIPTION)
+                .filter(kind -> combinable(kind, present, lessonsAvailable, localChanges, landingCommits))
+                .toList();
+    }
+
+    private static boolean combinable(SourceKind kind, Set<SourceKind> present, boolean lessonsAvailable,
+                                      boolean localChanges, boolean landingCommits) {
+        if (kind == DESCRIPTION || kind == DOCUMENTS) {
+            return true;
         }
-        return List.copyOf(offered);
+        if (present.contains(LOCAL_CHANGES) || present.contains(PULL_REQUEST)) {
+            return false;
+        }
+        return switch (kind) {
+            case ISSUE -> !present.contains(LESSON);
+            case LESSON -> lessonsAvailable && !present.contains(ISSUE);
+            case LOCAL_CHANGES -> localChanges && landingCommits && onlyDescriptionsAndDocuments(present);
+            case PULL_REQUEST -> onlyDescriptionsAndDocuments(present);
+            default -> false;
+        };
     }
 
     /**

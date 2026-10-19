@@ -10,7 +10,6 @@
 package de.planmarshall.api.start;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,27 +102,9 @@ public record SourceResource(
         Objects.requireNonNull(trust, FIELD_TRUST);
         spans = spans == null ? List.of() : List.copyOf(spans);
         changedFiles = changedFiles == null ? List.of() : List.copyOf(changedFiles);
-        if (failure != null && !state.failed() && verdict == null) {
-            throw new IllegalArgumentException(
-                    "Only a failed source or a screening verdict carries a failure: " + state.wireValue());
-        }
-        if (failure != null && verdict == ScreeningVerdict.CLEAN) {
-            throw new IllegalArgumentException("A clean source carries no cause");
-        }
-        if (state.failed() && failure == null) {
-            throw new IllegalArgumentException("A failed source names its cause");
-        }
-        if (!spans.isEmpty() && verdict != ScreeningVerdict.FLAGGED) {
-            throw new IllegalArgumentException("Only a flagged source carries flagged spans");
-        }
-        if (verdict == ScreeningVerdict.FLAGGED && state != SourceState.FLAGGED && state != SourceState.STORED
-                && state != SourceState.COPIED && state != SourceState.MOVED) {
-            throw new IllegalArgumentException("A flagged source is flagged, stored, or accepted: " + state.wireValue());
-        }
-        if (disposition != null && disposition.recordsReason()
-                && (dispositionReason == null || dispositionReason.isBlank())) {
-            throw new IllegalArgumentException("accept_untrusted records the operator's reason");
-        }
+        requireFailureFitsState(state, verdict, failure);
+        requireVerdictFitsState(state, verdict, spans);
+        requireDispositionRecordsItsReason(disposition, dispositionReason);
         if (disposition != null && disposition.recordsReason() && trust != SourceTrust.UNTRUSTED) {
             throw new IllegalArgumentException("A source accepted while unscreened keeps the untrusted mark");
         }
@@ -136,6 +117,40 @@ public record SourceResource(
                 throw new IllegalArgumentException(
                         "A pull request's changed file is untrusted unless the operator authored it: " + file.path());
             }
+        }
+    }
+
+    private static void requireFailureFitsState(SourceState state, @Nullable ScreeningVerdict verdict,
+                                                @Nullable SourceFailure failure) {
+        if (failure != null && !state.failed() && verdict == null) {
+            throw new IllegalArgumentException(
+                    "Only a failed source or a screening verdict carries a failure: " + state.wireValue());
+        }
+        if (failure != null && verdict == ScreeningVerdict.CLEAN) {
+            throw new IllegalArgumentException("A clean source carries no cause");
+        }
+        if (state.failed() && failure == null) {
+            throw new IllegalArgumentException("A failed source names its cause");
+        }
+    }
+
+    private static void requireVerdictFitsState(SourceState state, @Nullable ScreeningVerdict verdict,
+                                                List<ScreeningSpan> spans) {
+        if (!spans.isEmpty() && verdict != ScreeningVerdict.FLAGGED) {
+            throw new IllegalArgumentException("Only a flagged source carries flagged spans");
+        }
+        if (verdict == ScreeningVerdict.FLAGGED && state != SourceState.FLAGGED
+                && state != SourceState.STORED && state != SourceState.COPIED && state != SourceState.MOVED) {
+            throw new IllegalArgumentException(
+                    "A flagged source is flagged, stored, or accepted: " + state.wireValue());
+        }
+    }
+
+    private static void requireDispositionRecordsItsReason(@Nullable UnscreenedDisposition disposition,
+                                                           @Nullable String dispositionReason) {
+        if (disposition != null && disposition.recordsReason()
+                && (dispositionReason == null || dispositionReason.isBlank())) {
+            throw new IllegalArgumentException("accept_untrusted records the operator's reason");
         }
     }
 
@@ -313,18 +328,10 @@ public record SourceResource(
     }
 
     private static List<ScreeningSpan> readSpans(Map<String, Object> map) throws IOException {
-        var spans = new ArrayList<ScreeningSpan>();
-        for (var object : StartJson.readObjects(map, FIELD_SPANS)) {
-            spans.add(ScreeningSpan.fromMap(object));
-        }
-        return spans;
+        return StartJson.readEach(StartJson.readObjects(map, FIELD_SPANS), ScreeningSpan::fromMap);
     }
 
     private static List<ChangedFile> readChangedFiles(Map<String, Object> map) throws IOException {
-        var files = new ArrayList<ChangedFile>();
-        for (var object : StartJson.readObjects(map, FIELD_CHANGED_FILES)) {
-            files.add(ChangedFile.fromMap(object));
-        }
-        return files;
+        return StartJson.readEach(StartJson.readObjects(map, FIELD_CHANGED_FILES), ChangedFile::fromMap);
     }
 }

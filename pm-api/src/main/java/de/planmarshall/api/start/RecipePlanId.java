@@ -59,8 +59,8 @@ public final class RecipePlanId {
             return false;
         }
         var rest = planId.substring(PREFIX.length());
-        // the timestamp is the last 19 characters (yyyy-mm-dd-hh-mm-ss)
-        if (rest.length() < PREFIX.length() + 19) {
+        // the shortest id is one key character, the hyphen, and the 19-character timestamp
+        if (rest.length() < 1 + 1 + 19) {
             return false;
         }
         var split = rest.length() - 19;
@@ -69,15 +69,15 @@ public final class RecipePlanId {
         }
         var key = rest.substring(0, split - 1);
         var timestamp = rest.substring(split);
-        if (!matchesKey(key)) {
-            return false;
-        }
+        return matchesKey(key) && matchesTimestamp(timestamp);
+    }
+
+    private static boolean matchesTimestamp(String timestamp) {
         try {
             LocalDateTime.parse(timestamp, TIMESTAMP);
             return true;
-        }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (RuntimeException _) {
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (RuntimeException _) {
             return false;
         }
     }
@@ -101,13 +101,17 @@ public final class RecipePlanId {
                     return false;
                 }
                 previousDash = true;
-            } else if (c >= 'a' && c <= 'z' || c >= '0' && c <= '9') {
+            } else if (isLowerLetterOrDigit(c)) {
                 previousDash = false;
             } else {
                 return false;
             }
         }
         return true;
+    }
+
+    private static boolean isLowerLetterOrDigit(char c) {
+        return c >= 'a' && c <= 'z' || c >= '0' && c <= '9';
     }
 
     /**

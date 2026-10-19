@@ -10,7 +10,6 @@
 package de.planmarshall.api.start;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -208,10 +207,8 @@ public record StartReadyResource(
             throw new JsonFormatException("Missing required field for StartReadyResource: plan_id");
         }
         var recipeMap = JsonTree.objectOrNull(map, FIELD_RECIPE, "StartReadyResource");
-        var parameters = new ArrayList<RecipeParameter>();
-        for (var object : StartJson.readObjects(map, FIELD_PARAMETERS)) {
-            parameters.add(RecipeParameter.fromMap(object));
-        }
+        var parameters = StartJson.readEach(StartJson.readObjects(map, FIELD_PARAMETERS),
+                RecipeParameter::fromMap);
         var originWire = JsonTree.string(map, FIELD_EPIC_AUTO_START_ORIGIN);
         var origin = originWire != null ? ConfigOrigin.fromWireOrNull(originWire) : null;
         if (originWire != null && origin == null) {

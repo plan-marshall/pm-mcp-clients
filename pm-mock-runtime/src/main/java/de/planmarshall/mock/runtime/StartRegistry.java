@@ -14,14 +14,15 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 
 import org.jspecify.annotations.Nullable;
@@ -84,6 +85,7 @@ import de.planmarshall.mock.scenario.Scenario;
  */
 final class StartRegistry {
 
+    private static final String KEY_KEY = "key";
     private static final String KEY_KIND = "kind";
     private static final String KEY_ENTRY_ID = "entry_id";
     private static final String KEY_STATE = "state";
@@ -141,7 +143,6 @@ final class StartRegistry {
     private static final String KEY_RECIPE_KEY = "recipe_key";
     private static final String KEY_PARAMETERS = "parameters";
 
-    private static final String STATE_CHOOSE = StartState.CHOOSE.wireValue();
     private static final String STATE_SOURCES = StartState.SOURCES.wireValue();
     private static final String STATE_READY = StartState.READY.wireValue();
     private static final String STATE_RECIPE = StartState.RECIPE.wireValue();
@@ -150,13 +151,46 @@ final class StartRegistry {
     private static final String STATE_EPIC_ADOPT_FAILED = StartState.EPIC_ADOPT_FAILED.wireValue();
     private static final String STATE_RECIPE_CHOOSE = StartState.RECIPE_CHOOSE.wireValue();
     private static final String STATE_RECIPE_PARAMETERS = StartState.RECIPE_PARAMETERS.wireValue();
-    private static final String STATE_RECIPE_STEP_CREATE = StartState.RECIPE_STEP_CREATE.wireValue();
     private static final String LANDING_FILES = "landing.files";
     private static final String LANDING_PULL_REQUEST = "landing.pull-request";
     private static final String ROLE_REFINE = ChatRole.REFINE.value();
     private static final String ROLE_DECOMPOSE = ChatRole.DECOMPOSE.value();
-    private static final String ROLE_REPLAN = ChatRole.REPLAN.value();
     private static final String PREFIX_ENTRY = "ent-";
+    private static final String CHAT_PREFIX = "chat-";
+    private static final String CHAT_DIRECTORY = "chat";
+    private static final String PENDING_DIRECTORY = "pending/";
+    private static final String PLANS_DIRECTORY = "plans/";
+    private static final String EPICS_DIRECTORY = "epics/";
+    private static final String EVENT_EPIC_STARTED = "epic.started";
+    private static final String EVENT_PLAN_STARTED = "plan.started";
+    private static final String EVENT_ENTRY_ABANDONED = "entry.abandoned";
+    private static final String KEY_AT = "at";
+    private static final String KEY_UNTRUSTED = "untrusted";
+    private static final String KEY_OPERATOR_AUTHORED = "operator_authored";
+    private static final String KEY_ADDITIONS = "additions";
+    private static final String KEY_DELETIONS = "deletions";
+    private static final String KEY_PLAN_ID = "plan_id";
+    private static final String KEY_EPIC_ID = "epic_id";
+    private static final String KEY_START = "start";
+    private static final String KEY_END = "end";
+    private static final String KEY_OPTIONS = "options";
+    private static final String KEY_ORIGIN = "origin";
+    private static final String KEY_TAKES_REQUEST = "takes_request";
+    private static final String KEY_PROPOSED = "proposed";
+    private static final String KEY_VALUE = "value";
+    private static final String KEY_CAUSE = "cause";
+    private static final long DEFAULT_RESET_EPOCH = 1_792_507_200L;
+    private static final String KEY_PLAN_SLUG = "plan_slug";
+    private static final String TYPE = "start_case";
+    private static final String DESCRIPTION_REFERENCE = "A description";
+    private static final String DEFAULT_DOCUMENT = "doc/concepts/forgejo.adoc";
+    private static final String DOC_DIRECTORY = "doc/concepts";
+    private static final String C_NOT_READABLE = "not_readable";
+    private static final String C_LINK_OUTSIDE = "link_outside";
+    private static final String DEFAULT_ISSUE = "https://codeberg.org/forgejo/forgejo/issues/4711";
+    private static final String DEFAULT_PULL_REQUEST = "https://github.com/plan-marshall/pm-mcp-clients/pull/214";
+    private static final String DEFAULT_WORK = "started-work";
+    private static final String DEFAULT_TITLE = "A description";
 
     /** The callback a start uses to tell its clients of an event. */
     private final Consumer<StartEvent> broadcaster;
@@ -217,12 +251,10 @@ final class StartRegistry {
         private AdoptionFailure pendingAdoptionFailure;
         private List<AdoptableEpic> adoptable = List.of();
         private List<RecipeRef> recipes = List.of();
-        private String fromEpic;
         private String landing;
         private boolean lessonsAvailable;
         private boolean localChanges;
         private final Map<SourceKind, Map<String, Object>> addOutcomes = new LinkedHashMap<>();
-        private FollowUp followUp;
         private boolean created;
         private boolean abandoned;
 
@@ -245,18 +277,11 @@ final class StartRegistry {
         private ChatProposalResource proposal;
         private StartTranscriptState transcript = StartTranscriptState.WITH_ENTRY;
         private String transcriptPath;
-        private String proposalKind;
 
         StartChat(String chatId, ChatRole role) {
             this.chatId = chatId;
             this.role = role;
         }
-    }
-
-    /**
-     * A follow-up proposal of a chat about ended work.
-     */
-    private record FollowUp(String subjectId, EntryKind subjectKind, String description) {
     }
 
     /**
@@ -311,55 +336,45 @@ final class StartRegistry {
         projectScope.put(projectId, scope != null && scope > 0 ? scope : 1);
         var overlap = JsonTree.integer(fixture, KEY_OVERLAP_MAX_FILES);
         projectOverlap.put(projectId, overlap != null && overlap >= 0 ? overlap : 0);
-        var recipes = new ArrayList<RecipeRef>();
-        for (var object : objects(fixture.get(KEY_RECIPES))) {
-            recipes.add(recipeFrom(object));
-        }
-        projectRecipes.put(projectId, List.copyOf(recipes));
-        for (var object : objects(fixture.get(KEY_ADOPTABLE_EPICS))) {
-            adoptableEpics.add(adoptableFrom(object));
-        }
+        projectRecipes.put(projectId, objects(fixture.get(KEY_RECIPES)).stream()
+                .map(StartRegistry::recipeFrom).toList());
+        adoptableEpics.addAll(objects(fixture.get(KEY_ADOPTABLE_EPICS)).stream()
+                .map(StartRegistry::adoptableFrom).toList());
     }
 
     private static RecipeRef recipeFrom(Map<String, Object> map) {
-        var parameters = new ArrayList<RecipeParameter>();
-        for (var parameter : objects(map.get(KEY_PARAMETERS))) {
-            var name = JsonTree.string(parameter, KEY_NAME);
-            if (name == null) {
-                continue;
-            }
-            var options = new ArrayList<String>();
-            var rawOptions = JsonTree.asArray(parameter.get("options"));
-            if (rawOptions != null) {
-                for (var option : rawOptions) {
-                    if (option != null) {
-                        options.add(String.valueOf(option));
-                    }
-                }
-            }
-            parameters.add(new RecipeParameter(name, JsonTree.string(parameter, "value"), options,
-                    Boolean.TRUE.equals(JsonTree.bool(parameter, "proposed")),
-                    !Boolean.FALSE.equals(JsonTree.bool(parameter, "available")),
-                    JsonTree.string(parameter, KEY_REASON)));
-        }
-        return new RecipeRef(JsonTree.string(map, "key"), JsonTree.string(map, "name"),
-                JsonTree.string(map, KEY_DESCRIPTION), JsonTree.string(map, "origin"),
-                Boolean.TRUE.equals(JsonTree.bool(map, "takes_request")), parameters);
+        var parameters = objects(map.get(KEY_PARAMETERS)).stream()
+                .filter(parameter -> JsonTree.string(parameter, KEY_NAME) != null)
+                .map(StartRegistry::parameterFrom).toList();
+        return new RecipeRef(JsonTree.string(map, KEY_KEY), JsonTree.string(map, KEY_NAME),
+                JsonTree.string(map, KEY_DESCRIPTION), JsonTree.string(map, KEY_ORIGIN),
+                Boolean.TRUE.equals(JsonTree.bool(map, KEY_TAKES_REQUEST)), parameters);
+    }
+
+    private static RecipeParameter parameterFrom(Map<String, Object> parameter) {
+        var rawOptions = JsonTree.asArray(parameter.get(KEY_OPTIONS));
+        var options = rawOptions == null ? List.<String>of()
+                : rawOptions.stream().filter(option -> option != null).map(String::valueOf).toList();
+        return new RecipeParameter(JsonTree.string(parameter, KEY_NAME), JsonTree.string(parameter, KEY_VALUE),
+                options, Boolean.TRUE.equals(JsonTree.bool(parameter, KEY_PROPOSED)),
+                !Boolean.FALSE.equals(JsonTree.bool(parameter, KEY_AVAILABLE)),
+                JsonTree.string(parameter, KEY_REASON));
     }
 
     private static AdoptableEpic adoptableFrom(Map<String, Object> map) {
-        return new AdoptableEpic(JsonTree.string(map, "epic_id"), JsonTree.string(map, KEY_TITLE));
+        return new AdoptableEpic(JsonTree.string(map, KEY_EPIC_ID), JsonTree.string(map, KEY_TITLE));
     }
 
     private void seedEndedWork(Map<String, Object> fixture) {
-        for (var object : objects(fixture.get(KEY_ENDED_WORK))) {
-            var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
-            var kind = EntryKind.fromWireOrNull(JsonTree.string(object, KEY_SUBJECT_KIND));
-            if (subjectId != null && kind != null) {
-                endedWork.put(subjectId, new EndedWork(subjectId, kind,
-                        JsonTree.string(object, KEY_DESCRIPTION)));
-            }
-        }
+        objects(fixture.get(KEY_ENDED_WORK)).stream()
+                .filter(object -> JsonTree.string(object, KEY_SUBJECT_ID) != null
+                        && EntryKind.fromWireOrNull(JsonTree.string(object, KEY_SUBJECT_KIND)) != null)
+                .forEach(object -> {
+                    var subjectId = JsonTree.string(object, KEY_SUBJECT_ID);
+                    endedWork.put(subjectId, new EndedWork(subjectId,
+                            EntryKind.fromWire(JsonTree.string(object, KEY_SUBJECT_KIND)),
+                            JsonTree.string(object, KEY_DESCRIPTION)));
+                });
     }
 
     private void seedEntry(Map<String, Object> fixture) throws ActRefused {
@@ -373,7 +388,6 @@ final class StartRegistry {
         var entry = new StartEntry(entryId != null ? entryId : nextEntryId(), kind, projectId, state);
         entry.title = JsonTree.string(fixture, KEY_TITLE);
         entry.objective = JsonTree.string(fixture, KEY_OBJECTIVE);
-        entry.fromEpic = JsonTree.string(fixture, KEY_FROM_EPIC);
         entry.landing = projectLandings.getOrDefault(projectId, LANDING_PULL_REQUEST);
         var lessons = JsonTree.bool(fixture, KEY_LESSONS_AVAILABLE);
         entry.lessonsAvailable = lessons == null || lessons;
@@ -381,6 +395,17 @@ final class StartRegistry {
         entry.localChanges = local == null || local;
         entry.recipes = projectRecipes.getOrDefault(projectId, List.of());
         entry.adoptable = kind.epic() ? List.copyOf(adoptableEpics) : List.of();
+        seedEntryRefusal(entry, fixture, projectId);
+        seedEntryRecipe(entry, fixture);
+        seedEntryOutcomes(entry, fixture, kind);
+        entry.sources.addAll(objects(fixture.get(KEY_SOURCES)).stream()
+                .map(source -> sourceFromQuietly(source)).toList());
+        seedEntryChat(entry, fixture);
+        refresh(entry);
+        entries.put(entry.entryId, entry);
+    }
+
+    private void seedEntryRefusal(StartEntry entry, Map<String, Object> fixture, String projectId) {
         var refusal = JsonTree.object(fixture, KEY_REFUSAL);
         if (refusal != null) {
             entry.refusal = refusalFrom(refusal, projectId);
@@ -389,45 +414,46 @@ final class StartRegistry {
         if (failure != null) {
             entry.pendingAdoptionFailure = adoptionFailureFrom(failure);
         }
+    }
+
+    private void seedEntryRecipe(StartEntry entry, Map<String, Object> fixture) {
         var recipeKey = JsonTree.string(fixture, KEY_RECIPE_KEY);
         if (recipeKey != null) {
             entry.recipeKey = recipeKey;
             entry.recipe = entry.recipes.stream().filter(recipe -> recipe.key().equals(recipeKey))
                     .findFirst().orElse(null);
         }
+    }
+
+    private void seedEntryOutcomes(StartEntry entry, Map<String, Object> fixture, EntryKind kind) {
         var outcomes = JsonTree.object(fixture, KEY_ADD_OUTCOMES);
-        if (outcomes != null) {
-            for (var kindValue : SourceKind.values()) {
-                var outcome = JsonTree.object(outcomes, kindValue.wireValue());
-                if (outcome != null) {
-                    entry.addOutcomes.put(kindValue, outcome);
-                }
+        if (outcomes == null) {
+            return;
+        }
+        Arrays.stream(SourceKind.values()).forEach(kindValue -> {
+            var outcome = JsonTree.object(outcomes, kindValue.wireValue());
+            if (outcome != null) {
+                entry.addOutcomes.put(kindValue, outcome);
             }
-        }
-        for (var object : objects(fixture.get(KEY_SOURCES))) {
-            entry.sources.add(sourceFrom(object));
-        }
+        });
+    }
+
+    private void seedEntryChat(StartEntry entry, Map<String, Object> fixture) {
         var chat = JsonTree.object(fixture, KEY_CHAT);
         if (chat != null) {
             seedChat(entry, chat);
-        } else {
-            entry.chatAvailable = false;
-            entry.chatDisabledReason = StartStateResource.CHAT_ROLE_UNQUALIFIED;
+            return;
         }
-        var followUp = JsonTree.object(fixture, KEY_FOLLOW_UP);
-        if (followUp != null) {
-            var subjectId = JsonTree.string(followUp, KEY_SUBJECT_ID);
-            var subjectKind = EntryKind.fromWireOrNull(JsonTree.string(followUp, KEY_SUBJECT_KIND));
-            var description = JsonTree.string(followUp, KEY_DESCRIPTION);
-            if (subjectId != null && subjectKind != null && description != null) {
-                entry.followUp = new FollowUp(subjectId, subjectKind, description);
-                entry.sources.add(new SourceResource("src-desc-1", SourceKind.DESCRIPTION,
-                        firstLine(description), null, SourceState.STORED, SourceTrust.TRUSTED, null, null,
-                        List.of(), null, null, List.of(), null));
-            }
+        entry.chatAvailable = false;
+        entry.chatDisabledReason = StartStateResource.CHAT_ROLE_UNQUALIFIED;
+    }
+
+    private SourceResource sourceFromQuietly(Map<String, Object> map) {
+        try {
+            return sourceFrom(map);
+        } catch (ActRefused e) {
+            throw new IllegalStateException("Invalid start source fixture: " + e.detail(), e);
         }
-        refresh(entry);
-        entries.put(entry.entryId, entry);
     }
 
     private void seedChat(StartEntry entry, Map<String, Object> chat) {
@@ -435,18 +461,19 @@ final class StartRegistry {
         entry.chatAvailable = available == null || available;
         entry.chatDisabledReason = entry.chatAvailable ? null : JsonTree.string(chat, KEY_DISABLED_REASON);
         var role = ChatRole.fromValue(JsonTree.string(chat, KEY_ROLE));
-        var chatState = new StartChat("chat-" + entry.entryId, role != null ? role
-                : entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE);
-        chatState.transcriptPath = "pending/" + entry.entryId + "/chat";
-        for (var object : objects(chat.get(KEY_TURNS))) {
-            chatState.turns.add(new ChatTurnResource(JsonTree.string(object, "role"),
-                    JsonTree.string(object, KEY_TEXT), JsonTree.string(object, "at"),
-                    Boolean.TRUE.equals(JsonTree.bool(object, "untrusted"))));
-        }
+        var chatState = new StartChat(CHAT_PREFIX + entry.entryId,
+                role != null ? role : entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE);
+        chatState.transcriptPath = PENDING_DIRECTORY + entry.entryId + "/" + CHAT_DIRECTORY;
+        chatState.turns.addAll(objects(chat.get(KEY_TURNS)).stream()
+                .filter(object -> JsonTree.string(object, KEY_ROLE) != null
+                        && JsonTree.string(object, KEY_TEXT) != null)
+                .map(object -> new ChatTurnResource(JsonTree.string(object, KEY_ROLE),
+                        JsonTree.string(object, KEY_TEXT), JsonTree.string(object, KEY_AT),
+                        Boolean.TRUE.equals(JsonTree.bool(object, KEY_UNTRUSTED))))
+                .toList());
         var proposal = JsonTree.object(chat, KEY_PROPOSAL);
         if (proposal != null) {
             chatState.proposal = proposalFrom(proposal);
-            chatState.proposalKind = JsonTree.string(proposal, KEY_KIND);
             chatState.state = ChatState.READ_BACK;
         }
         entry.chat = chatState;
@@ -466,7 +493,6 @@ final class StartRegistry {
         var entry = new StartEntry(nextEntryId(), request.kind(), projectId, STATE_SOURCES);
         entry.title = request.title();
         entry.objective = request.objective();
-        entry.fromEpic = request.fromEpic();
         entry.landing = projectLandings.get(projectId);
         entry.lessonsAvailable = true;
         entry.localChanges = true;
@@ -491,13 +517,10 @@ final class StartRegistry {
      * Opens a plan's entry from an accepted follow-up proposal.
      *
      * @param projectId   the project
-     * @param subjectId   the ended plan or epic
-     * @param subjectKind its kind
-     * @param description the accepted description
+     * @param description the accepted description, naming the ended plan or epic
      * @return the opened entry, or {@code null} for an unknown project
      */
-    synchronized @Nullable StartStateResource openFollowUp(String projectId, String subjectId,
-            EntryKind subjectKind, String description) {
+    synchronized @Nullable StartStateResource openFollowUp(String projectId, String description) {
         var entry = new StartEntry(nextEntryId(), EntryKind.PLAN, projectId, STATE_SOURCES);
         entry.title = firstLine(description);
         entry.objective = description;
@@ -506,7 +529,6 @@ final class StartRegistry {
         entry.localChanges = true;
         entry.recipes = projectRecipes.getOrDefault(projectId, List.of());
         entry.chatAvailable = true;
-        entry.followUp = new FollowUp(subjectId, subjectKind, description);
         entry.sources.add(new SourceResource("src-desc-1", SourceKind.DESCRIPTION, firstLine(description), null,
                 SourceState.STORED, SourceTrust.TRUSTED, null, null, List.of(), null, null, List.of(), null));
         refresh(entry);
@@ -645,7 +667,6 @@ final class StartRegistry {
             entry.chat.state = ChatState.TURN;
         }
         entry.chat.proposal = null;
-        entry.chat.proposalKind = null;
         refresh(entry);
         return representation(entry);
     }
@@ -675,7 +696,7 @@ final class StartRegistry {
         if (ended == null) {
             return null;
         }
-        return openFollowUp(projectId, subjectId, ended.kind(), ended.description());
+        return openFollowUp(projectId, ended.description());
     }
 
     /**
@@ -704,21 +725,29 @@ final class StartRegistry {
                 throw new ActRefused("invalid_arguments", e.getMessage());
             }
         }
-        var entries = new ArrayList<ConfinedFile>();
-        for (var object : objects(confinedFixture().get(relative))) {
-            var name = JsonTree.string(object, KEY_NAME);
-            var entryPath = JsonTree.string(object, KEY_PATH);
-            if (name == null || entryPath == null) {
-                continue;
-            }
-            var refusalMap = JsonTree.object(object, KEY_REFUSAL_FILE);
-            entries.add(new ConfinedFile(name, entryPath, Boolean.TRUE.equals(JsonTree.bool(object, KEY_DIRECTORY)),
-                    longOrZero(JsonTree.number(object, KEY_SIZE)),
-                    !Boolean.FALSE.equals(JsonTree.bool(object, KEY_READABLE)),
-                    refusalMap != null ? failureFrom(refusalMap) : null));
+        var files = objects(confinedFixture().get(relative)).stream()
+                .filter(object -> JsonTree.string(object, KEY_NAME) != null
+                        && JsonTree.string(object, KEY_PATH) != null)
+                .map(this::confinedFileFrom).toList();
+        var parent = relative.isEmpty() ? null : ".";
+        return new ConfinedFileListResource(projectId, root, relative, parent, files, false);
+    }
+
+    private ConfinedFile confinedFileFrom(Map<String, Object> object) {
+        var refusalMap = JsonTree.object(object, KEY_REFUSAL_FILE);
+        return new ConfinedFile(JsonTree.string(object, KEY_NAME), JsonTree.string(object, KEY_PATH),
+                Boolean.TRUE.equals(JsonTree.bool(object, KEY_DIRECTORY)),
+                longOrZero(JsonTree.number(object, KEY_SIZE)),
+                !Boolean.FALSE.equals(JsonTree.bool(object, KEY_READABLE)),
+                refusalMap != null ? failureFromOrNull(refusalMap) : null);
+    }
+
+    private @Nullable SourceFailure failureFromOrNull(Map<String, Object> map) {
+        try {
+            return failureFrom(map);
+        } catch (ActRefused e) {
+            throw new IllegalStateException("Invalid start case failure: " + e.detail(), e);
         }
-        return new ConfinedFileListResource(projectId, root, relative, relative.isEmpty() ? null : ".",
-                entries, false);
     }
 
     /**
@@ -745,14 +774,6 @@ final class StartRegistry {
         return projectLandings.getOrDefault(projectId, LANDING_PULL_REQUEST);
     }
 
-    /**
-     * @param projectId the project
-     * @return the machine's documents mode in force
-     */
-    synchronized String documentsMode(String projectId) {
-        return documentsMode;
-    }
-
     // ---------------------------------------------------------------------------------------------
     // Acts
 
@@ -762,7 +783,7 @@ final class StartRegistry {
             text = entry.objective;
         }
         if (text == null || text.isBlank()) {
-            text = "A description";
+            text = DEFAULT_TITLE;
         }
         storeDescription(entry, text);
     }
@@ -787,14 +808,14 @@ final class StartRegistry {
         }
         if (DocumentsMode.ASK.wireValue().equals(documentsMode)) {
             entry.documentsModeAsked = true;
-            entry.sources.add(new SourceResource(nextSourceId(), SourceKind.DOCUMENTS,
-                    "doc/concepts/forgejo.adoc", null, SourceState.CHECKING, SourceTrust.TRUSTED, null, null,
+            entry.sources.add(new SourceResource(nextSourceId(), SourceKind.DOCUMENTS, DEFAULT_DOCUMENT, null,
+                    SourceState.CHECKING, SourceTrust.TRUSTED, null, null,
                     List.of(), null, null, List.of(), null));
             return;
         }
         var moved = DocumentsMode.MOVE.wireValue().equals(documentsMode);
-        entry.sources.add(new SourceResource(nextSourceId(), SourceKind.DOCUMENTS,
-                "doc/concepts/forgejo.adoc", null, moved ? SourceState.MOVED : SourceState.COPIED,
+        entry.sources.add(new SourceResource(nextSourceId(), SourceKind.DOCUMENTS, DEFAULT_DOCUMENT, null,
+                moved ? SourceState.MOVED : SourceState.COPIED,
                 SourceTrust.TRUSTED, null, null, List.of(), null, null, List.of(), null));
     }
 
@@ -830,18 +851,17 @@ final class StartRegistry {
             entry.sources.add(sourceFrom(outcome));
             return;
         }
-        entry.sources.add(defaultSource(entry, kind));
+        entry.sources.add(defaultSource(kind));
     }
 
-    private SourceResource defaultSource(StartEntry entry, SourceKind kind) {
+    private SourceResource defaultSource(SourceKind kind) {
         var id = nextSourceId();
         return switch (kind) {
-            case ISSUE -> new SourceResource(id, kind,
-                    "https://codeberg.org/forgejo/forgejo/issues/4711", "Issue comments API", SourceState.STORED,
+            case ISSUE -> new SourceResource(id, kind, DEFAULT_ISSUE, "Issue comments API", SourceState.STORED,
                     SourceTrust.TRUSTED, ScreeningVerdict.CLEAN, null, List.of(), null, null, List.of(),
                     "sha256:issue");
-            case PULL_REQUEST -> SourceResource.pullRequest(id,
-                    "https://github.com/plan-marshall/pm-mcp-clients/pull/214", "Add the Codeberg provider",
+            case PULL_REQUEST -> SourceResource.pullRequest(id, DEFAULT_PULL_REQUEST,
+                    "Add the Codeberg provider",
                     List.of(new ChangedFile("src/main/java/de/planmarshall/api/start/SourceResource.java", 42, 0,
                             true, false)));
             case LESSON -> new SourceResource(id, kind, "les-0007", "Retire lessons when a plan lands",
@@ -851,7 +871,7 @@ final class StartRegistry {
                     SourceTrust.TRUSTED, null, null, List.of(), null, null,
                     List.of(new ChangedFile("pm-api/src/main/java/A.java", 4, 1, false, true),
                             new ChangedFile("pm-api/src/main/java/B.java", 2, 0, false, true)), "sha256:local");
-            case DOCUMENTS, DESCRIPTION -> new SourceResource(id, kind, "doc/concepts/forgejo.adoc", null,
+            case DOCUMENTS, DESCRIPTION -> new SourceResource(id, kind, DEFAULT_DOCUMENT, null,
                     SourceState.STORED, SourceTrust.TRUSTED, null, null, List.of(), null, null, List.of(), null);
         };
     }
@@ -861,6 +881,9 @@ final class StartRegistry {
     }
 
     private void retrySource(StartEntry entry, String sourceId) throws ActRefused {
+        if (entry.sources.stream().noneMatch(source -> source.sourceId().equals(sourceId))) {
+            throw new ActRefused("act_not_available", "No source with the id " + sourceId);
+        }
         var replaced = new ArrayList<SourceResource>();
         for (var source : entry.sources) {
             if (!source.sourceId().equals(sourceId)) {
@@ -886,7 +909,7 @@ final class StartRegistry {
         if (target.state() != SourceState.FLAGGED && target.state() != SourceState.UNSCREENED) {
             throw new ActRefused("act_not_available", "Only a flagged or unscreened source is accepted");
         }
-        var reason = JsonTree.string(body, "reason");
+        var reason = JsonTree.string(body, KEY_REASON);
         if (reason == null || reason.isBlank()) {
             throw new ActRefused("invalid_arguments", "An acceptance records the operator's reason");
         }
@@ -915,7 +938,7 @@ final class StartRegistry {
         if (entry.chat == null) {
             var role = entry.kind.epic() ? ChatRole.DECOMPOSE : ChatRole.REFINE;
             entry.chat = new StartChat("chat-" + entry.entryId + "-" + (++chatCounter), role);
-            entry.chat.transcriptPath = "pending/" + entry.entryId + "/chat";
+            entry.chat.transcriptPath = PENDING_DIRECTORY + entry.entryId + "/" + CHAT_DIRECTORY;
             entry.chat.turns.add(new ChatTurnResource(ChatRole.REFINE == role ? ROLE_REFINE : ROLE_DECOMPOSE,
                     "What did you understand, and what is unclear?", now(), false));
         }
@@ -949,27 +972,35 @@ final class StartRegistry {
         if (title != null && !title.isBlank()) {
             entry.title = title.strip();
         }
-        var planId = JsonTree.string(body, "plan_id");
-        var recipeBound = entry.recipe != null;
-        if (recipeBound) {
-            entry.planId = RecipePlanId.derive(entry.recipeKey, LocalDateTime.now(ZoneOffset.UTC));
-        } else if (planId != null && !planId.isBlank()) {
-            entry.planId = planId.strip();
-        } else if (entry.planId == null) {
-            entry.planId = slug(entry.title != null ? entry.title : "started-work");
-        }
+        entry.planId = createdId(entry, JsonTree.string(body, KEY_PLAN_ID));
         if (entry.chat != null) {
             entry.chat.state = ChatState.END;
             entry.chat.proposal = null;
             entry.chat.transcript = StartTranscriptState.MOVED;
-            entry.chat.transcriptPath = (entry.kind.epic() ? "epics/" : "plans/") + entry.planId + "/chat";
+            entry.chat.transcriptPath = (entry.kind.epic() ? EPICS_DIRECTORY : PLANS_DIRECTORY)
+                    + entry.planId + "/" + CHAT_DIRECTORY;
         }
         entry.created = true;
         entry.state = STATE_READY;
-        broadcaster.accept(new StartEvent(entry.kind.epic() ? "epic.started" : "plan.started", Map.of(
-                entry.kind.epic() ? "epic_id" : "plan_id", entry.planId,
-                KEY_PROJECT_ID, entry.projectId,
-                KEY_TITLE, entry.title != null ? entry.title : "")));
+        var idKey = entry.kind.epic() ? KEY_EPIC_ID : KEY_PLAN_ID;
+        var event = entry.kind.epic() ? EVENT_EPIC_STARTED : EVENT_PLAN_STARTED;
+        var name = entry.title != null ? entry.title : "";
+        broadcaster.accept(new StartEvent(event, Map.of(idKey, entry.planId, KEY_PROJECT_ID,
+                entry.projectId, KEY_TITLE, name)));
+    }
+
+    private String createdId(StartEntry entry, @Nullable String requestedPlanId) {
+        if (entry.recipe != null) {
+            return RecipePlanId.derive(entry.recipeKey, LocalDateTime.now(ZoneOffset.UTC));
+        }
+        if (requestedPlanId != null && !requestedPlanId.isBlank()) {
+            return requestedPlanId.strip();
+        }
+        if (entry.planId != null) {
+            return entry.planId;
+        }
+        var title = entry.title != null ? entry.title : DEFAULT_WORK;
+        return slug(title);
     }
 
     private void abandon(StartEntry entry) {
@@ -980,7 +1011,7 @@ final class StartRegistry {
             entry.chat.transcriptPath = null;
         }
         entry.abandoned = true;
-        broadcaster.accept(new StartEvent("entry.abandoned", Map.of("entry_id", entry.entryId,
+        broadcaster.accept(new StartEvent(EVENT_ENTRY_ABANDONED, Map.of(KEY_ENTRY_ID, entry.entryId,
                 KEY_PROJECT_ID, entry.projectId)));
     }
 
@@ -999,7 +1030,7 @@ final class StartRegistry {
         entry.title = entry.adoptable.stream().filter(epic -> epic.epicId().equals(epicId))
                 .map(AdoptableEpic::title).findFirst().orElse(epicId);
         entry.created = true;
-        broadcaster.accept(new StartEvent("epic.started", Map.of("epic_id", epicId,
+        broadcaster.accept(new StartEvent(EVENT_EPIC_STARTED, Map.of(KEY_EPIC_ID, epicId,
                 KEY_PROJECT_ID, entry.projectId, KEY_TITLE, entry.title)));
     }
 
@@ -1017,34 +1048,15 @@ final class StartRegistry {
         }
         entry.canContinue = canContinue(entry);
         entry.offers.clear();
-        var present = new LinkedHashSet<SourceKind>();
-        for (var source : entry.sources) {
-            present.add(source.kind());
-        }
+        var present = entry.sources.stream().map(SourceResource::kind)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         var offered = SourceKind.offered(entry.kind, present, entry.lessonsAvailable, entry.localChanges,
                 !LANDING_FILES.equals(entry.landing));
-        for (var kind : SourceKind.values()) {
-            if (entry.kind.epic() && !kind.offeredToEpic()) {
-                continue;
-            }
-            if (offered.contains(kind)) {
-                entry.offers.add(SourceKindOffer.available(kind));
-            } else if (present.contains(kind) && kind != SourceKind.DESCRIPTION) {
-                continue;
-            } else {
-                entry.offers.add(SourceKindOffer.refused(kind, refusalKey(entry, kind, present),
-                        refusalArgs(entry, kind)));
-            }
-        }
-        if (entry.recipe != null) {
-            // a recipe's start offers no chat at all
-            entry.chatAvailable = false;
-            entry.chatDisabledReason = null;
-        } else {
-            var chatReady = chatReady(entry);
-            entry.chatAvailable = chatReady;
-            entry.chatDisabledReason = chatReady ? null : "start.chat.waits";
-        }
+        Arrays.stream(SourceKind.values())
+                .filter(kind -> !entry.kind.epic() || kind.offeredToEpic())
+                .filter(kind -> kind == SourceKind.DESCRIPTION || !present.contains(kind))
+                .forEach(kind -> entry.offers.add(offerOf(entry, kind, offered)));
+        refreshChat(entry);
         if (entry.recipe == null && entry.recipeKey != null) {
             entry.recipe = entry.recipes.stream().filter(recipe -> recipe.key().equals(entry.recipeKey))
                     .findFirst().orElse(null);
@@ -1054,7 +1066,26 @@ final class StartRegistry {
         }
     }
 
-    private static String refusalKey(StartEntry entry, SourceKind kind, Set<SourceKind> present) {
+    private static SourceKindOffer offerOf(StartEntry entry, SourceKind kind, List<SourceKind> offered) {
+        if (offered.contains(kind)) {
+            return SourceKindOffer.available(kind);
+        }
+        return SourceKindOffer.refused(kind, refusalKey(entry, kind), refusalArgs(entry, kind));
+    }
+
+    private static void refreshChat(StartEntry entry) {
+        if (entry.recipe != null) {
+            // a recipe's start offers no chat at all
+            entry.chatAvailable = false;
+            entry.chatDisabledReason = null;
+            return;
+        }
+        var chatReady = chatReady(entry);
+        entry.chatAvailable = chatReady;
+        entry.chatDisabledReason = chatReady ? null : "start.chat.waits";
+    }
+
+    private static String refusalKey(StartEntry entry, SourceKind kind) {
         if (kind == SourceKind.LOCAL_CHANGES && LANDING_FILES.equals(entry.landing)) {
             return SourceKindOffer.REASON_LOCAL_CHANGES_LANDING;
         }
@@ -1120,13 +1151,11 @@ final class StartRegistry {
                 planId, List.copyOf(entry.sources), List.copyOf(entry.offers), entry.canContinue,
                 entry.chatAvailable, entry.chatDisabledReason, entry.recipe,
                 entry.kind.epic() ? entry.adoptable : List.of(), entry.adoptionFailure);
-        var state = StartStateResource.of(resource, STATE_READY.equals(effective) ? ready : null,
-                chat,
+        return StartStateResource.of(resource, STATE_READY.equals(effective) ? ready : null, chat,
                 STATE_REFUSED.equals(effective) ? refusalOf(entry) : null,
                 STATE_EPIC_ADOPT_FAILED.equals(effective) ? entry.adoptionFailure : null,
                 STATE_RECIPE.equals(effective) || STATE_RECIPE_CHOOSE.equals(effective) ? entry.recipes
                         : List.of());
-        return state;
     }
 
     private String effectiveState(StartEntry entry) {
@@ -1136,15 +1165,12 @@ final class StartRegistry {
         if (entry.refusal != null) {
             return STATE_REFUSED;
         }
+        if (STATE_EPIC_ADOPT_FAILED.equals(entry.state)) {
+            return STATE_EPIC_ADOPT_FAILED;
+        }
         if (entry.kind.epic() && !entry.adoptable.isEmpty() && STATE_SOURCES.equals(entry.state)
                 && entry.sources.isEmpty() && entry.planId == null) {
             return STATE_EPIC_ADOPT;
-        }
-        if (entry.adoptionFailure != null && STATE_EPIC_ADOPT_FAILED.equals(entry.state)) {
-            return STATE_EPIC_ADOPT_FAILED;
-        }
-        if (entry.created) {
-            return STATE_READY;
         }
         if (entry.documentsModeAsked) {
             return STATE_SOURCES;
@@ -1166,7 +1192,7 @@ final class StartRegistry {
     }
 
     private StartReadyResource readyOf(StartEntry entry, @Nullable String planId) {
-        var id = planId != null ? planId : slug(entry.title != null ? entry.title : "started-work");
+        var id = planId != null ? planId : slug(entry.title != null ? entry.title : DEFAULT_WORK);
         if (entry.kind.epic()) {
             return new StartReadyResource(entry.title, id, true, true, null, List.of(), entry.landing, false,
                     projectAutoStart.getOrDefault(entry.projectId, true),
@@ -1201,9 +1227,10 @@ final class StartRegistry {
     // Seeding helpers
 
     private SourceResource sourceFrom(Map<String, Object> map) throws ActRefused {
-        var kind = SourceKind.fromWireOrNull(JsonTree.string(map, KEY_KIND));
+        var kindValue = JsonTree.string(map, KEY_KIND);
+        var kind = SourceKind.fromWireOrNull(kindValue);
         if (kind == null) {
-            throw new ActRefused("invalid_arguments", "Unknown source kind in start_case: " + JsonTree.string(map, KEY_KIND));
+            throw new ActRefused("invalid_arguments", "Unknown source kind in " + TYPE + ": " + kindValue);
         }
         var state = SourceState.fromWireOrNull(JsonTree.string(map, KEY_STATE));
         var trust = SourceTrust.fromWireOrNull(JsonTree.string(map, KEY_TRUST));
@@ -1212,46 +1239,58 @@ final class StartRegistry {
         var dispositionWire = JsonTree.string(map, KEY_DISPOSITION);
         var disposition = dispositionWire != null ? UnscreenedDisposition.fromWireOrNull(dispositionWire) : null;
         var failureMap = JsonTree.object(map, KEY_FAILURE);
-        var spans = new ArrayList<ScreeningSpan>();
-        for (var span : objects(map.get(KEY_SPANS))) {
-            var start = JsonTree.integer(span, "start");
-            var end = JsonTree.integer(span, "end");
-            spans.add(new ScreeningSpan(start != null ? start : 0, end != null ? end : 0,
-                    JsonTree.string(span, KEY_TEXT) != null ? JsonTree.string(span, KEY_TEXT) : "",
-                    JsonTree.string(span, KEY_REASON) != null ? JsonTree.string(span, KEY_REASON) : ""));
-        }
-        var files = new ArrayList<ChangedFile>();
-        for (var file : objects(map.get(KEY_CHANGED_FILES))) {
-            var path = JsonTree.string(file, KEY_PATH);
-            var additions = JsonTree.integer(file, "additions");
-            var deletions = JsonTree.integer(file, "deletions");
-            files.add(new ChangedFile(path != null ? path : "", additions != null ? additions : 0,
-                    deletions != null ? deletions : 0, Boolean.TRUE.equals(JsonTree.bool(file, "untrusted")),
-                    Boolean.TRUE.equals(JsonTree.bool(file, "operator_authored"))));
-        }
-        var sourceId = JsonTree.string(map, KEY_SOURCE_ID);
-        return new SourceResource(sourceId != null ? sourceId : nextSourceId(), kind,
-                JsonTree.string(map, KEY_REFERENCE) != null ? JsonTree.string(map, KEY_REFERENCE) : kind.wireValue(),
-                JsonTree.string(map, KEY_TITLE),
+        var failure = failureMap != null ? failureFrom(failureMap) : null;
+        var referenceValue = JsonTree.string(map, KEY_REFERENCE);
+        var sourceIdValue = JsonTree.string(map, KEY_SOURCE_ID);
+        return new SourceResource(sourceIdValue != null ? sourceIdValue : nextSourceId(), kind,
+                referenceValue != null ? referenceValue : kind.wireValue(), JsonTree.string(map, KEY_TITLE),
                 state != null ? state : SourceState.STORED,
-                trust != null ? trust : kind.external() ? SourceTrust.UNTRUSTED : SourceTrust.TRUSTED,
-                verdict, failureMap != null ? failureFrom(failureMap) : null, spans, disposition,
-                JsonTree.string(map, KEY_DISPOSITION_REASON), files, JsonTree.string(map, KEY_DIGEST));
+                defaultTrust(trust, kind), verdict, failure,
+                objects(map.get(KEY_SPANS)).stream().map(StartRegistry::spanFrom).toList(), disposition,
+                JsonTree.string(map, KEY_DISPOSITION_REASON),
+                objects(map.get(KEY_CHANGED_FILES)).stream().map(StartRegistry::changedFileFrom).toList(),
+                JsonTree.string(map, KEY_DIGEST));
+    }
+
+    private static SourceTrust defaultTrust(@Nullable SourceTrust trust, SourceKind kind) {
+        if (trust != null) {
+            return trust;
+        }
+        return kind.external() ? SourceTrust.UNTRUSTED : SourceTrust.TRUSTED;
+    }
+
+    private static ScreeningSpan spanFrom(Map<String, Object> span) {
+        var start = JsonTree.integer(span, KEY_START);
+        var end = JsonTree.integer(span, KEY_END);
+        var text = JsonTree.string(span, KEY_TEXT);
+        var reason = JsonTree.string(span, KEY_REASON);
+        return new ScreeningSpan(start != null ? start : 0, end != null ? end : 0,
+                text != null ? text : "", reason != null ? reason : "");
+    }
+
+    private static ChangedFile changedFileFrom(Map<String, Object> file) {
+        var path = JsonTree.string(file, KEY_PATH);
+        var additions = JsonTree.integer(file, KEY_ADDITIONS);
+        var deletions = JsonTree.integer(file, KEY_DELETIONS);
+        return new ChangedFile(path != null ? path : "", additions != null ? additions : 0,
+                deletions != null ? deletions : 0, Boolean.TRUE.equals(JsonTree.bool(file, KEY_UNTRUSTED)),
+                Boolean.TRUE.equals(JsonTree.bool(file, KEY_OPERATOR_AUTHORED)));
     }
 
     private SourceFailure failureFrom(Map<String, Object> map) throws ActRefused {
-        var cause = SourceFailureCause.fromWireOrNull(JsonTree.string(map, "cause"));
+        var causeValue = JsonTree.string(map, KEY_CAUSE);
+        var cause = SourceFailureCause.fromWireOrNull(causeValue);
         if (cause == null) {
-            throw new ActRefused("invalid_arguments", "Unknown cause in start_case: " + JsonTree.string(map, "cause"));
+            throw new ActRefused("invalid_arguments", "Unknown cause in " + TYPE + ": " + causeValue);
+        }
+        var detail = JsonTree.string(map, KEY_DETAIL);
+        if (!cause.namesReset()) {
+            return new SourceFailure(cause, detail, null);
         }
         var resetsAt = JsonTree.number(map, KEY_RESETS_AT);
-        var detail = JsonTree.string(map, KEY_DETAIL);
-        if (cause.namesReset()) {
-            var forge = JsonTree.string(map, KEY_FORGE);
-            return SourceFailure.rateLimited(Instant.ofEpochSecond(resetsAt != null ? resetsAt.longValue()
-                    : Instant.parse("2026-10-19T14:40:00Z").getEpochSecond()), forge != null ? forge : "the forge");
-        }
-        return new SourceFailure(cause, detail, null);
+        var epoch = resetsAt != null ? resetsAt.longValue() : DEFAULT_RESET_EPOCH;
+        var forge = JsonTree.string(map, KEY_FORGE);
+        return SourceFailure.rateLimited(Instant.ofEpochSecond(epoch), forge != null ? forge : "the forge");
     }
 
     private StartRefusal refusalFrom(Map<String, Object> map, String projectId) {
@@ -1264,7 +1303,7 @@ final class StartRegistry {
     }
 
     private AdoptionFailure adoptionFailureFrom(Map<String, Object> map) {
-        var epicId = JsonTree.string(map, "epic_id");
+        var epicId = JsonTree.string(map, KEY_EPIC_ID);
         var reason = AdoptionFailureReason.fromWireOrNull(JsonTree.string(map, KEY_REASON));
         var file = JsonTree.string(map, "file");
         var detail = JsonTree.string(map, KEY_DETAIL);
@@ -1292,19 +1331,19 @@ final class StartRegistry {
                         Map.of(KEY_NAME, "pom.xml", KEY_PATH, "pom.xml", KEY_DIRECTORY, false, KEY_SIZE, 18432,
                                 KEY_READABLE, true)),
                 "doc", List.of(
-                        Map.of(KEY_NAME, "concepts", KEY_PATH, "doc/concepts", KEY_DIRECTORY, true, KEY_SIZE, 0,
+                        Map.of(KEY_NAME, "concepts", KEY_PATH, DOC_DIRECTORY, KEY_DIRECTORY, true, KEY_SIZE, 0,
                                 KEY_READABLE, true),
                         Map.of(KEY_NAME, "forgejo.adoc", KEY_PATH, "doc/forgejo.adoc", KEY_DIRECTORY, false,
                                 KEY_SIZE, 8192, KEY_READABLE, true),
                         Map.of(KEY_NAME, "secret.key", KEY_PATH, "doc/secret.key", KEY_DIRECTORY, false,
                                 KEY_SIZE, 0, KEY_READABLE, false,
-                                KEY_REFUSAL_FILE, Map.of("cause", "not_readable"))),
-                "doc/concepts", List.of(
-                        Map.of(KEY_NAME, "forgejo.adoc", KEY_PATH, "doc/concepts/forgejo.adoc", KEY_DIRECTORY,
+                                KEY_REFUSAL_FILE, Map.of(KEY_CAUSE, C_NOT_READABLE))),
+                DOC_DIRECTORY, List.of(
+                        Map.of(KEY_NAME, "forgejo.adoc", KEY_PATH, DEFAULT_DOCUMENT, KEY_DIRECTORY,
                                 false, KEY_SIZE, 8192, KEY_READABLE, true),
                         Map.of(KEY_NAME, "outside", KEY_PATH, "doc/concepts/outside", KEY_DIRECTORY, false,
                                 KEY_SIZE, 0, KEY_READABLE, false,
-                                KEY_REFUSAL_FILE, Map.of("cause", "link_outside"))));
+                                KEY_REFUSAL_FILE, Map.of(KEY_CAUSE, C_LINK_OUTSIDE))));
     }
 
     private String answer(StartEntry entry, String text) {
@@ -1332,7 +1371,7 @@ final class StartRegistry {
 
     private static String firstLine(@Nullable String text) {
         if (text == null) {
-            return "A description";
+            return DEFAULT_TITLE;
         }
         var trimmed = text.strip();
         var newline = trimmed.indexOf('\n');

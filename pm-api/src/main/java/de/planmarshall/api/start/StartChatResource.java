@@ -10,7 +10,6 @@
 package de.planmarshall.api.start;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -252,10 +251,6 @@ public record StartChatResource(
     }
 
     private static List<ChatTurnResource> readTurns(Map<String, Object> map) throws IOException {
-        var turns = new ArrayList<ChatTurnResource>();
-        for (var object : StartJson.readObjects(map, FIELD_TURNS)) {
-            turns.add(ChatTurnResource.fromMap(object));
-        }
-        return turns;
+        return StartJson.readEach(StartJson.readObjects(map, FIELD_TURNS), ChatTurnResource::fromMap);
     }
 }

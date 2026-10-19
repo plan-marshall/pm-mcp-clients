@@ -239,14 +239,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String CONST_PLAN_MARSHALL = "plan-marshall";
     private static final String STEP_IDENTITY = "Identity";
     private static final String SUFFIX_ABANDON = "/abandon";
-    private static final String PATH_ENTRIES = "/api/v1/entries";
     private static final String PATH_ENTRIES_PREFIX = "/api/v1/entries/";
+    private static final String SEGMENT_EVENTS = "/events";
     private static final String SEGMENT_LINKS = "/links/";
     private static final String SEGMENT_ENTRY_CHAT = "/chat";
-    private static final String SEGMENT_ENTRY_CHAT_TURNS = "/chat/turns";
+    private static final String SEGMENT_ENTRY_CHAT_TURNS = SEGMENT_ENTRY_CHAT + "/turns";
     private static final String SEGMENT_ENTRY_CHAT_END = "/chat/end";
-    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = "/chat/proposal/accept";
-    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = "/chat/proposal/reject";
+    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL = SEGMENT_ENTRY_CHAT + "/proposal/";
+    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + "accept";
+    private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = SEGMENT_ENTRY_CHAT_PROPOSAL + "reject";
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
     private static final String SEGMENT_PROJECT_FILES = "/files";
     private static final String PATH_ENDED = "/api/v1/projects/";
@@ -769,7 +770,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 4. SSE event stream subscription
-        if ("GET".equals(request.method()) && ("/api/v1/events".equals(path) || path.endsWith("/events"))) {
+        if ("GET".equals(request.method())
+                && ("/api/v1/events".equals(path) || path.endsWith(SEGMENT_EVENTS))) {
             handleEventStream(response);
             return;
         }
@@ -2443,44 +2445,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handleStartRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
-        var method = request.method();
-        if (handleStartEntryRoutes(request, response)) {
+        if (handleStartEntryRoutes(request, response)
+                || handleStartProjectRoutes(request, response)
+                || handleStartEndedRoutes(request, response)) {
             return true;
         }
-        if ("GET".equals(method) && PATH_RECIPES.equals(path)) {
+        if ("GET".equals(request.method()) && PATH_RECIPES.equals(path)) {
             handleListRecipes(response);
-            return true;
-        }
-        if ("GET".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX)
-                && path.endsWith(SEGMENT_PROJECT_FILES)) {
-            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
-                    path.length() - SEGMENT_PROJECT_FILES.length());
-            handleProjectFiles(request, response, projectId, false);
-            return true;
-        }
-        if ("POST".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX)
-                && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
-            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
-                    path.length() - SEGMENT_PROJECT_ENTRIES.length());
-            handleOpenEntry(request, response, projectId);
-            return true;
-        }
-        if ("GET".equals(method) && path.startsWith(PATH_ENDED) && path.endsWith("/chat")
-                && path.contains(SEGMENT_ENDED_CHAT)) {
-            var rest = path.substring(PATH_ENDED.length());
-            var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
-            var subjectId = rest.substring(marker + SEGMENT_ENDED_CHAT.length(),
-                    rest.length() - "/chat".length());
-            handleEndedChat(response, subjectId);
-            return true;
-        }
-        if ("POST".equals(method) && path.startsWith(PATH_ENDED) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
-            var rest = path.substring(PATH_ENDED.length());
-            var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
-            var projectId = rest.substring(0, marker);
-            var subjectId = rest.substring(marker + SEGMENT_ENDED_CHAT.length(),
-                    rest.length() - SEGMENT_ENDED_CHAT_ACCEPT.length());
-            handleAcceptFollowUp(response, projectId, subjectId);
             return true;
         }
         if ("POST".equals(request.method()) && PATH_INTAKE_DRAFT.equals(path)) {
@@ -2498,6 +2469,54 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         return false;
+    }
+
+    private boolean handleStartProjectRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
+            return false;
+        }
+        if ("GET".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_FILES)) {
+            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_PROJECT_FILES.length());
+            handleProjectFiles(request, response, projectId, false);
+            return true;
+        }
+        if ("POST".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
+            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_PROJECT_ENTRIES.length());
+            handleOpenEntry(request, response, projectId);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleStartEndedRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        var method = request.method();
+        if (!path.startsWith(PATH_ENDED) || !path.contains(SEGMENT_ENDED_CHAT)) {
+            return false;
+        }
+        if ("GET".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT)) {
+            handleEndedChat(response, endedSubjectId(path, SEGMENT_ENTRY_CHAT.length()));
+            return true;
+        }
+        if ("POST".equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
+            var rest = path.substring(PATH_ENDED.length());
+            var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
+            var projectId = rest.substring(0, marker);
+            var subjectId = rest.substring(marker + SEGMENT_ENDED_CHAT.length(),
+                    rest.length() - SEGMENT_ENDED_CHAT_ACCEPT.length());
+            handleAcceptFollowUp(response, projectId, subjectId);
+            return true;
+        }
+        return false;
+    }
+
+    private static String endedSubjectId(String path, int suffixLength) {
+        var rest = path.substring(PATH_ENDED.length());
+        var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
+        return rest.substring(marker + SEGMENT_ENDED_CHAT.length(), rest.length() - suffixLength);
     }
 
     /**
@@ -2520,7 +2539,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (rest.isEmpty()) {
             return false;
         }
-        if (rest.endsWith("/events")) {
+        if (rest.endsWith(SEGMENT_EVENTS)) {
             return false;
         }
         if ("POST".equals(method) && rest.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
@@ -2549,7 +2568,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         var entryId = rest;
-        var act = (String) null;
+        String act = null;
         var marker = rest.indexOf(SEGMENT_LINKS);
         if (marker > 0) {
             entryId = rest.substring(0, marker);
@@ -2613,7 +2632,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } catch (StartRegistry.ActRefused refused) {
             var status = switch (refused.error()) {
                 case ERR_INVALID_REQUEST, "invalid_arguments" -> 400;
-                case "loopback_only", "cli_only" -> 403;
+                case "loopback_only", ERR_CLI_ONLY -> 403;
                 case ERR_SCOPE_NOT_FOUND -> 404;
                 default -> 409;
             };
@@ -3370,15 +3389,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && path.endsWith("/chat/turns")) {
-            handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX, "/chat/turns"));
+        if (isPlan && "POST".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
+            handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX,
+                    SEGMENT_ENTRY_CHAT_TURNS));
             return true;
         }
 
         if (isPlan && "POST".equals(method) && (path.endsWith("/chat/proposal/accept")
-                || path.endsWith("/chat/proposal/reject"))) {
-            var accept = path.endsWith("/chat/proposal/accept");
-            var suffix = accept ? "/chat/proposal/accept" : "/chat/proposal/reject";
+                || path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT))) {
+            var accept = path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT);
+            var suffix = accept ? SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT : SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT;
             handleChatProposal(response, controlSubjectId(path, PATH_PLANS_PREFIX, suffix), accept);
             return true;
         }
@@ -5242,7 +5262,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (StandardScenarios.PROJECTS.equals(currentScenario.get().name())
                 && path.startsWith("/api/v1/projects/")
                 && !path.endsWith("/ended")
-                && !path.endsWith("/events")
+                && !path.endsWith(SEGMENT_EVENTS)
                 && !path.endsWith(SEGMENT_PROJECT_FILES)
                 && !path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
             var prjId = path.substring("/api/v1/projects/".length());
@@ -5300,8 +5320,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleAbandonProjectOnboarding(response, onbId);
             return true;
         }
-        if (path.startsWith("/api/v1/entries/") && path.endsWith(SUFFIX_ABANDON)) {
-            var entId = path.substring("/api/v1/entries/".length(), path.length() - SUFFIX_ABANDON.length());
+        if (path.startsWith(PATH_ENTRIES_PREFIX) && path.endsWith(SUFFIX_ABANDON)) {
+            var entId = path.substring(PATH_ENTRIES_PREFIX.length(), path.length() - SUFFIX_ABANDON.length());
             handleAbandonProjectOnboarding(response, entId);
             return true;
         }
