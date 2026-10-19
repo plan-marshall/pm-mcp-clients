@@ -1,0 +1,96 @@
+{
+  "format_version": 1,
+  "name": "intent-epic",
+  "description": "An epic's intent with its done-when checks, evidence, non-goals, unspecified aspects, and its plans' criteria (UC-CTL-2, PM-WF-15)",
+  "start": "intent.epic",
+  "pairing_code": "INTN-EPIC",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/epics/relay-hardening/intent": {
+      "representation": {
+        "epic_id": "relay-hardening",
+        "destination": "The relay survives a dropped connection without losing an event.",
+        "done_when": [
+          {
+            "text": "The relay reconnects within five seconds after a dropped connection.",
+            "verdict": "met",
+            "evidence": [
+              "pm://plans/fix-relay/report",
+              "pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java"
+            ]
+          },
+          {
+            "text": "Every accepted event survives a relay restart.",
+            "verdict": "met",
+            "evidence": ["pm://plans/fix-relay/report"]
+          },
+          {
+            "text": "The reconnect count is observable on the status resource.",
+            "verdict": "not_met",
+            "evidence": ["pm://plans/fix-relay/report"]
+          },
+          {
+            "text": "The legacy relay endpoint keeps serving existing clients.",
+            "verdict": "pending",
+            "evidence": []
+          }
+        ],
+        "non_goals": [
+          "Change the on-disk queue format.",
+          "Support more than one relay per machine."
+        ],
+        "not_yet_specified": [
+          "Does the relay need IPv6 support?",
+          "Should reconnects be rate-limited per client?"
+        ],
+        "plans": [
+          {
+            "plan_id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "done_when": [
+              "The relay reconnects within five seconds.",
+              "The queue keeps every accepted event."
+            ]
+          },
+          {
+            "plan_id": "queue-format",
+            "title": "Keep the Queue",
+            "done_when": ["The queue survives a restart."]
+          }
+        ]
+      }
+    }
+  },
+  "states": {
+    "intent.epic": {
+      "representation": {
+        "scope": {
+          "kind": "epic",
+          "id": "relay-hardening",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "intent.epic",
+          "kind": "operator_wait"
+        },
+        "links": []
+      },
+      "links": {}
+    }
+  }
+}

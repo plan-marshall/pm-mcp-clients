@@ -1,12 +1,12 @@
 = Intent, outline, and their checks in both clients
 :nofooter:
 
-link:README.adoc[Work packages of `pm-mcp-clients`] » `intent-views`
+link:../README.adoc[Work packages of `pm-mcp-clients`] » `intent-views`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]; roadmap Milestones 8, 10, 11, and 12
+Serves:: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]; roadmap Milestones 8, 10, 11, and 12
 Where:: the design (`doc/design/shared/plan-view.adoc`, `epic-view.adoc`, `starting-work.adoc`, `decisions.adoc`, `completion-report.adoc`, and their terminal and web parts); then the views of both clients
-Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+Status and dependencies:: in the link:../README.adoc#packages[index], the only place that states them
 
 == What
 
@@ -30,8 +30,8 @@ until the operator agrees), then builds it in both clients.
 
 == Trace
 
-* Requirements: link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-10[PM-WF-10] (intent record, outline record, builder check), link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-13[PM-WF-13] (results per criterion), link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-15[PM-WF-15] (epic intent), link:../../../plan-marshall-documentation/doc/requirements/16-model-work.adoc#PM-WORK-7[PM-WORK-7] (`over_size`)
-* Specification: link:../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows § The Intent Record], link:../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#builder-check[§ Builder Check], link:../../../pm-mcp-core/doc/specification/store-schemas/06-task-and-references.adoc#outline-record-store[Store Schemas § Outline Record], link:../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-intent[Model Work § Epic Intent]
+* Requirements: link:../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-10[PM-WF-10] (intent record, outline record, builder check), link:../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-13[PM-WF-13] (results per criterion), link:../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-15[PM-WF-15] (epic intent), link:../../../../plan-marshall-documentation/doc/requirements/16-model-work.adoc#PM-WORK-7[PM-WORK-7] (`over_size`)
+* Specification: link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows § The Intent Record], link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#builder-check[§ Builder Check], link:../../../../pm-mcp-core/doc/specification/store-schemas/06-task-and-references.adoc#outline-record-store[Store Schemas § Outline Record], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-intent[Model Work § Epic Intent]
 
 == Done When
 

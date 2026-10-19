@@ -106,6 +106,10 @@ import de.planmarshall.api.entry.PairingRedemptionResponse;
 import de.planmarshall.api.entry.PairingResource;
 import de.planmarshall.api.entry.WebCredentialResource;
 import de.planmarshall.api.event.StreamClosedEvent;
+import de.planmarshall.api.intent.EpicIntentResource;
+import de.planmarshall.api.intent.OutlineResource;
+import de.planmarshall.api.intent.OverSizeDistributionResource;
+import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.ConsentKind;
@@ -381,6 +385,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String REASON_LESSON_PREMISE_BROKEN = "lesson_premise_broken";
     private static final String PATH_PLANS_PREFIX = "/api/v1/plans/";
     private static final String PATH_EPICS_PREFIX = "/api/v1/epics/";
+    private static final String SUFFIX_INTENT = "/intent";
+    private static final String SUFFIX_OUTLINE = "/outline";
+    private static final String SEGMENT_METRICS_OVERSIZE = "/metrics/oversize";
+    private static final String FIXTURE_PLAN_INTENT = "/api/v1/plans/fix-relay/intent";
+    private static final String FIXTURE_PLAN_OUTLINE = "/api/v1/plans/fix-relay/outline";
+    private static final String FIXTURE_EPIC_INTENT = "/api/v1/epics/relay-hardening/intent";
+    private static final String FIXTURE_OVERSIZE = "/api/v1/projects/pm-mcp-clients/metrics/oversize";
     private static final String SEGMENT_DECISIONS = "/decisions/";
     private static final String SUFFIX_PROCESS = "/process";
     private static final String CONST_DOMAIN = "domain";
@@ -807,6 +818,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleProjectExplorerRoutes(request, response)
                 || handleProjectOverviewRoutes(request, response)
                 || handleReportRoutes(request, response, isWeb)
+                || handleIntentRoutes(request, response)
                 || handleDecisionRoutes(request, response, isWeb)
                 || handleSystemRoutes(request, response, isWeb)
                 || handleProcessRoutes(request, response)
@@ -4034,6 +4046,77 @@ public final class MockRuntimeEngine implements AutoCloseable {
             mockReports.add(0, item);
         }
         broadcastEvent("report.sent", Map.of("report", item.toMap()));
+    }
+
+    /**
+     * Serves the intent and outline records and the {@code over_size} distribution. The fixtures are
+     * static routes of a scenario; a request for another plan, epic, or project id is answered from
+     * the same fixture with its id replaced, so the client's dynamic address is exercised without a
+     * fixture per id.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return {@code true} if the request was answered here
+     * @throws IOException on write failure
+     */
+    private boolean handleIntentRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (!"GET".equals(request.method())) {
+            return false;
+        }
+        var path = request.path();
+        if (path.startsWith(PATH_PLANS_PREFIX) && path.endsWith(SUFFIX_INTENT)) {
+            var sub = path.substring(PATH_PLANS_PREFIX.length());
+            var planId = sub.substring(0, sub.length() - SUFFIX_INTENT.length());
+            return !planId.isEmpty() && !planId.contains("/")
+                    && serveIntentFixture(response, FIXTURE_PLAN_INTENT, PlanIntentResource::fromMap,
+                    PlanIntentResource.FIELD_PLAN_ID, planId);
+        }
+        if (path.startsWith(PATH_PLANS_PREFIX) && path.endsWith(SUFFIX_OUTLINE)) {
+            var sub = path.substring(PATH_PLANS_PREFIX.length());
+            var planId = sub.substring(0, sub.length() - SUFFIX_OUTLINE.length());
+            return !planId.isEmpty() && !planId.contains("/")
+                    && serveIntentFixture(response, FIXTURE_PLAN_OUTLINE, OutlineResource::fromMap,
+                    OutlineResource.FIELD_PLAN_ID, planId);
+        }
+        if (path.startsWith(PATH_EPICS_PREFIX) && path.endsWith(SUFFIX_INTENT)) {
+            var sub = path.substring(PATH_EPICS_PREFIX.length());
+            var epicId = sub.substring(0, sub.length() - SUFFIX_INTENT.length());
+            return !epicId.isEmpty() && !epicId.contains("/")
+                    && serveIntentFixture(response, FIXTURE_EPIC_INTENT, EpicIntentResource::fromMap,
+                    EpicIntentResource.FIELD_EPIC_ID, epicId);
+        }
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_METRICS_OVERSIZE)) {
+            var sub = path.substring(PREFIX_PROJECTS.length());
+            var projectId = sub.substring(0, sub.length() - SEGMENT_METRICS_OVERSIZE.length());
+            return !projectId.isEmpty() && !projectId.contains("/")
+                    && serveIntentFixture(response, FIXTURE_OVERSIZE, OverSizeDistributionResource::fromMap,
+                    OverSizeDistributionResource.FIELD_PROJECT_ID, projectId);
+        }
+        return false;
+    }
+
+    private boolean serveIntentFixture(MockHttpResponse response, String fixturePath, FixtureReader reader,
+            String idField, String id) throws IOException {
+        var route = currentScenario.get().route("GET", fixturePath);
+        if (route == null) {
+            return false;
+        }
+        var representation = JsonTree.asObject(route.representation());
+        reader.read(representation);
+        var copy = new LinkedHashMap<String, Object>(representation);
+        copy.put(idField, id);
+        response.json(200, copy);
+        return true;
+    }
+
+    @FunctionalInterface
+    private interface FixtureReader {
+
+        /**
+         * @param representation the fixture's representation
+         * @throws IOException if the fixture is not the contract's shape
+         */
+        void read(Map<String, Object> representation) throws IOException;
     }
 
     private boolean handleReportRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
