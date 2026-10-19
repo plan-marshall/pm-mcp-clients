@@ -240,10 +240,14 @@ class IntentContractTest {
         @DisplayName("a plan intent without a goal, criteria, or unique ids is refused")
         void invalidPlanIntent() {
             var repeated = List.of(criterion(), criterion());
+            var goals = List.of("none");
+            List<PlanIntentResource.Decision> noDecisions = List.of();
+            List<String> noQuestions = List.of();
+            List<PlanIntentResource.DeferredItem> noDeferred = List.of();
             assertThrows(JsonFormatException.class, () -> PlanIntentResource.fromJson(
                     "{\"plan_id\":\"p\",\"revision\":1,\"goal\":\"\",\"criteria\":[]}"));
             assertThrows(IllegalArgumentException.class, () -> new PlanIntentResource("p", 1, "goal",
-                    repeated, List.of("none"), List.of(), List.of(), List.of(), null));
+                    repeated, goals, noDecisions, noQuestions, noDeferred, null));
         }
 
         @Test
@@ -261,12 +265,17 @@ class IntentContractTest {
         void invalidOutline() {
             var first = deliverable();
             var second = deliverable();
+            var duplicates = List.of(first, second);
             var one = List.of(first);
             var orphan = new DependencyJustification("x", null, "needed", 7);
-            assertThrows(IllegalArgumentException.class, () -> new OutlineResource("p", 1, "summary",
-                    List.of(first, second), List.of(), List.of(), List.of(), null));
-            assertThrows(IllegalArgumentException.class, () -> new OutlineResource("p", 1, "summary",
-                    one, List.of(orphan), List.of(), List.of(), null));
+            var orphans = List.of(orphan);
+            List<DependencyJustification> noDependencies = List.of();
+            List<String> noTexts = List.of();
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OutlineResource("p", 1, "summary", duplicates, noDependencies, noTexts,
+                            noTexts, null));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new OutlineResource("p", 1, "summary", one, orphans, noTexts, noTexts, null));
         }
 
         @Test
@@ -282,11 +291,15 @@ class IntentContractTest {
         @DisplayName("an epic intent with too few checks or no non-goal is refused")
         void invalidEpicIntent() {
             var check = doneWhen();
+            var one = List.of(check);
             var three = List.of(check, check, check);
-            assertThrows(IllegalArgumentException.class, () -> new EpicIntentResource("e", "destination",
-                    List.of(check), List.of("none"), List.of(), List.of()));
-            assertThrows(IllegalArgumentException.class, () -> new EpicIntentResource("e", "destination",
-                    three, List.of(), List.of(), List.of()));
+            var goals = List.of("none");
+            List<String> noTexts = List.of();
+            List<EpicIntentResource.PlanDoneWhen> noPlans = List.of();
+            assertThrows(IllegalArgumentException.class,
+                    () -> new EpicIntentResource("e", "destination", one, goals, noTexts, noPlans));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new EpicIntentResource("e", "destination", three, noTexts, noTexts, noPlans));
         }
 
         @Test
