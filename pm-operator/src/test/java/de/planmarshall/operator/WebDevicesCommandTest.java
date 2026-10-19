@@ -188,9 +188,9 @@ class WebDevicesCommandTest {
 
     @ParameterizedTest
     @CsvSource({
-                        "revoke, dev-3, ✓ Revoked paired device(s)",
-                        "revoke, --others, ✓ Revoked paired device(s)",
-                        "listener-off, '', ✓ Network listener turned off (loopback remains open)"
+                        "revoke, dev-3, ✓ Revoked: Chrome on build-box",
+                        "revoke, --others, ✓ Revoked 3 devices. No browser is paired; web pair issues a new code.",
+                        "listener-off, '', ✓ The network listener is off; the devices on the network stay paired and work again once it is on."
     })
     @DisplayName("executes single, others revoke and listener-off actions directly")
     void executesDirectActions(String action, String argument, String expectedOutput) throws Exception {
@@ -256,7 +256,7 @@ class WebDevicesCommandTest {
         assertAll(
                             () -> assertEquals(0, code),
                             () -> assertTrue(output.contains("3) Chrome on build-box")),
-                            () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
+                            () -> assertTrue(output.contains("✓ Revoked: Chrome on build-box"))
         );
     }
 
@@ -276,7 +276,7 @@ class WebDevicesCommandTest {
         var output = writer.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("✓ Revoked paired device(s)"))
+                            () -> assertTrue(output.contains("✓ Revoked 3 devices. No browser is paired; web pair issues a new code."))
         );
     }
 
@@ -296,7 +296,7 @@ class WebDevicesCommandTest {
         var output = writer.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("✓ Network listener turned off (loopback remains open)"))
+                            () -> assertTrue(output.contains("✓ The network listener is off; the devices on the network stay paired and work again once it is on."))
         );
     }
 

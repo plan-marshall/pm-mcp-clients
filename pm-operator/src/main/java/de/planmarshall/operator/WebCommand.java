@@ -62,6 +62,10 @@ public final class WebCommand implements Callable<Integer> {
     private static final String LABEL = "label";
     private static final String LOOPBACK = "loopback";
 
+    private static String localeFor(OperatorContext context) {
+        return context.clientEnvironment().locale();
+    }
+
     @Spec
     CommandSpec spec = CommandSpec.create();
 
@@ -156,8 +160,10 @@ public final class WebCommand implements Callable<Integer> {
                 var url = json != null ? (String) json.get("url") : "http://127.0.0.1:7420/pair#code=" + code;
                 var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
 
-                out.printf("✓ Pairing code: %s (valid until %s)%n", code, validUntil);
-                out.printf("  URL: %s%n%n", url);
+                var locale = localeFor(context);
+                out.println(MessageCatalogue.format(locale, "operator.web.pair_code",
+                                    Map.of("code", code, "time", validUntil)));
+                out.println(MessageCatalogue.format(locale, "operator.web.pair_url", Map.of("url", url)) + "\n");
                 var sideLines = List.of(url, "Code " + code + ", valid until " + validUntil);
                 out.println(QrCodeRenderer.render(url, sideLines));
                 out.flush();
@@ -204,10 +210,12 @@ public final class WebCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             try {
                 context.openBrowser(URI.create(url));
-                out.println("✓ Browser opened: " + url);
+                out.println(MessageCatalogue.format(localeFor(context), "operator.web.browser_opened", Map.of("url", url)));
             } catch (IOException e) {
-                out.println("– No browser opened: " + e.getMessage());
-                out.println("  Open manually: " + url);
+                var locale = localeFor(context);
+                out.println(MessageCatalogue.format(locale, "operator.web.no_browser",
+                                    Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
+                out.println(MessageCatalogue.format(locale, "operator.web.open_manually", Map.of("url", url)));
             }
             out.flush();
             return 0;
@@ -297,22 +305,25 @@ public final class WebCommand implements Callable<Integer> {
         }
 
         private void handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {
+            var locale = context.clientEnvironment().locale();
             if (deviceId == null || newLabel == null) {
                 throw new CommandLine.ParameterException(
                                     spec.commandLine(), "rename requires <deviceId> <newLabel>");
             }
-            var cleanLabel = ConsoleNotice.stripControlSequences(newLabel);
+            var cleanLabel = TerminalSanitizer.sanitizeLine(newLabel);
             var body = JsonTree.write(Map.of(LABEL, cleanLabel));
             var response = runtime.send(HttpRequest.json("PUT",
                                 "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId), body));
             if (response.status() == 200 || response.status() == 204) {
-                out.println("✓ Renamed: " + cleanLabel);
+                out.println(MessageCatalogue.format(locale, "operator.devices.renamed", Map.of(LABEL, cleanLabel)));
             } else {
-                out.printf("Failed to rename device: HTTP %d%n", response.status());
+                out.println(MessageCatalogue.format(locale, "operator.devices.rename_failed",
+                                    Map.of("status", response.status())));
             }
         }
 
         private void handleRevoke(RuntimeClient runtime, PrintWriter out) throws IOException {
+            var locale = context.clientEnvironment().locale();
             if (!others && !all && deviceId == null) {
                 throw new CommandLine.ParameterException(
                                     spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
@@ -328,19 +339,46 @@ public final class WebCommand implements Callable<Integer> {
                                 : "/api/v1/web/devices?scope=" + scope;
             var response = runtime.send(new HttpRequest("DELETE", path, Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
-                out.println("✓ Revoked paired device(s)");
+                printRevocation(out, locale, response.body());
             } else {
-                out.printf("Failed to revoke: HTTP %d%n", response.status());
+                out.println(MessageCatalogue.format(locale, "operator.devices.revoke_failed",
+                                    Map.of("status", response.status())));
+            }
+        }
+
+        private void printRevocation(PrintWriter out, String locale, byte[] body) {
+            var label = (String) null;
+            int revokedCount = 1;
+            try {
+                var json = JsonTree.asObject(JsonTree.parse(body));
+                if (json != null) {
+                    label = JsonTree.string(json, LABEL);
+                    var count = JsonTree.integer(json, "revoked_count");
+                    if (count != null && count > 0) {
+                        revokedCount = count;
+                    }
+                }
+            } catch (IOException _) {
+                // a body-less 204 revokes the one entry named on the command line
+            }
+            if (deviceId != null && !all) {
+                out.println(MessageCatalogue.format(locale, "operator.devices.revoked_this",
+                                    Map.of(LABEL, TerminalSanitizer.sanitizeLine(label != null ? label : deviceId))));
+            } else {
+                out.println(MessageCatalogue.format(locale, "operator.devices.revoked_all",
+                                    Map.of("count", revokedCount)));
             }
         }
 
         private void handleListenerOff(RuntimeClient runtime, PrintWriter out) throws IOException {
+            var locale = context.clientEnvironment().locale();
             var body = JsonTree.write(Map.of("lan", false));
             var response = runtime.send(HttpRequest.json("PUT", "/api/v1/web", body));
             if (response.status() == 200 || response.status() == 204) {
-                out.println("✓ Network listener turned off (loopback remains open)");
+                out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_done", Map.of()));
             } else {
-                out.printf("Failed to turn listener off: HTTP %d%n", response.status());
+                out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_failed",
+                                    Map.of("status", response.status())));
             }
         }
 
@@ -348,7 +386,8 @@ public final class WebCommand implements Callable<Integer> {
             var locale = context.clientEnvironment().locale();
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
             if (response.status() != 200) {
-                out.printf("Failed to list devices: HTTP %d%n", response.status());
+                out.println(MessageCatalogue.format(locale, "operator.devices.list_failed",
+                                    Map.of("status", response.status())));
                 return;
             }
 
@@ -372,9 +411,18 @@ public final class WebCommand implements Callable<Integer> {
         }
 
         private void handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list) {
+            var locale = context.clientEnvironment().locale();
             try (var terminal = context.createTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(terminal).build();
-                var prompt = String.format("Act on a device: 1-%d   o) revoke all others   n) turn the network listener off   q) leave   ?   › ", list.size());
+                var prompt = MessageCatalogue.format(locale, "operator.devices.act_prompt",
+                                    Map.of("range", "1-" + list.size()))
+                                    + MessageCatalogue.format(locale, "operator.devices.act_options",
+                                                        Map.of("others", MessageCatalogue.format(locale,
+                                                                            "operator.devices.others", Map.of()),
+                                                                            "listener_off", MessageCatalogue.format(locale,
+                                                                                                "operator.devices.listener_off", Map.of()),
+                                                                            "leave", MessageCatalogue.format(locale,
+                                                                                                "operator.devices.leave", Map.of())));
                 var line = reader.readLine(prompt);
                 if (line != null) {
                     processInteractiveChoice(runtime, out, reader, list, line.trim());
@@ -403,6 +451,7 @@ public final class WebCommand implements Callable<Integer> {
         }
 
         private void processDeviceIndexChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
+            var locale = context.clientEnvironment().locale();
             int num;
             try {
                 num = Integer.parseInt(choice);
@@ -414,15 +463,18 @@ public final class WebCommand implements Callable<Integer> {
             }
             var item = list.get(num - 1);
             var devInfo = extractDeviceInfo(item, num);
-            out.printf("  %d) %s%n", num, devInfo.label());
+            out.println(MessageCatalogue.format(locale, "operator.devices.selected",
+                                Map.of("index", num, LABEL, devInfo.label())));
             out.flush();
-            var actLine = reader.readLine("Rename or revoke? r) rename   x) revoke   b) back   ?   › ");
+            var actLine = reader.readLine(MessageCatalogue.format(locale,
+                                "operator.devices.rename_or_revoke_prompt", Map.of()));
             if (actLine == null) {
                 return;
             }
             var act = actLine.trim();
             if ("r".equalsIgnoreCase(act) || "rename".equalsIgnoreCase(act)) {
-                var newLbl = reader.readLine(String.format("Label [%s] › ", devInfo.label()));
+                var newLbl = reader.readLine(MessageCatalogue.format(locale, "operator.devices.label_input",
+                                    Map.of(LABEL, devInfo.label())));
                 if (newLbl != null && !newLbl.trim().isEmpty()) {
                     this.deviceId = devInfo.id();
                     this.newLabel = newLbl.trim();
@@ -443,7 +495,7 @@ public final class WebCommand implements Callable<Integer> {
             if (item instanceof Map<?, ?> map) {
                 var rawLabel = map.get(LABEL);
                 if (rawLabel != null) {
-                    label = ConsoleNotice.stripControlSequences(rawLabel.toString());
+                    label = TerminalSanitizer.sanitizeLine(rawLabel.toString());
                 }
                 var idObj = map.get("device_id");
                 if (idObj != null) {
@@ -457,43 +509,40 @@ public final class WebCommand implements Callable<Integer> {
             var parsed = JsonTree.parse(body);
             if (parsed instanceof List<?> list && !list.isEmpty()) {
                 out.println(MessageCatalogue.format(locale, "devices.list.title", Map.of())
-                                    + " · "
+                                    + " \u00b7 "
                                     + MessageCatalogue.format(locale, "devices.list.subtitle", Map.of()));
                 int idx = 1;
                 for (var item : list) {
-                    printDevice(out, idx++, item);
+                    printDevice(out, idx++, item, locale);
                 }
                 out.println();
-                out.printf("  %s Network listener: %s.%n",
-                                    MessageCatalogue.format(locale, "devices.list.terminal_note", Map.of()),
-                                    lanOn ? "on" : "off");
+                out.println(MessageCatalogue.format(locale, "operator.devices.console_not_listed",
+                                    Map.of("state", lanOn ? "on" : "off")));
             } else {
-                out.println("No paired devices.");
+                out.println(MessageCatalogue.format(locale, "operator.devices.none", Map.of()));
             }
         }
 
-        private static void printDevice(PrintWriter out, int idx, Object item) {
+        private static void printDevice(PrintWriter out, int idx, Object item, String locale) {
             if (item instanceof Map<?, ?> dev) {
                 var rawLabel = dev.get(LABEL);
-                var labelVal = rawLabel != null ? ConsoleNotice.stripControlSequences(rawLabel.toString()) : "browser";
+                var labelVal = rawLabel != null ? TerminalSanitizer.sanitizeLine(rawLabel.toString()) : "browser";
                 var pairedFrom = dev.get("paired_from");
                 var fromStr = "network";
                 if (LOOPBACK.equals(pairedFrom)) {
                     fromStr = LOOPBACK;
                 } else if (pairedFrom != null) {
-                    fromStr = pairedFrom.toString();
+                    fromStr = TerminalSanitizer.sanitizeLine(pairedFrom.toString());
                 }
                 var pairedDate = formatPairedDate(dev.get("created_at"));
                 var lastUsed = formatLastUsed(dev.get("last_used_at"));
 
-                out.printf("    %d) %-25s paired %s from %-8s   last used %s%n",
-                                    idx,
-                                    labelVal,
-                                    pairedDate,
-                                    fromStr,
-                                    lastUsed);
+                out.println(MessageCatalogue.format(locale, "operator.devices.row",
+                                    Map.of("index", idx, LABEL, labelVal, "date", pairedDate,
+                                                        "from", fromStr, "last_used", lastUsed)));
             } else {
-                out.printf("    %d) %s%n", idx, item);
+                out.println(MessageCatalogue.format(locale, "operator.devices.row_plain",
+                                    Map.of("index", idx, LABEL, TerminalSanitizer.sanitizeLine(String.valueOf(item)))));
             }
         }
 
@@ -547,7 +596,8 @@ public final class WebCommand implements Callable<Integer> {
         private boolean confirm() {
             try (var terminal = context.createTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(terminal).build();
-                var answer = reader.readLine("Revoke? [Enter]   b) back   ?   › ");
+                var answer = reader.readLine(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.devices.revoke_prompt", Map.of()));
                 return answer == null || (!"b".equalsIgnoreCase(answer.trim()) && !"back".equalsIgnoreCase(answer.trim()));
             }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
@@ -568,7 +618,8 @@ public final class WebCommand implements Callable<Integer> {
             throw new OperatorRefusedException("web", response);
         }
         var out = spec.commandLine().getOut();
-        out.println("web       " + describe(JsonTree.asObject(JsonTree.parse(response.body()))));
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.web.status_line",
+                            Map.of("state", describe(JsonTree.asObject(JsonTree.parse(response.body()))))));
         out.flush();
         return 0;
     }
@@ -617,13 +668,19 @@ public final class WebCommand implements Callable<Integer> {
      * @return a readable line
      */
     static String describe(@Nullable Map<String, Object> web) {
+        return describe("en", web);
+    }
+
+    static String describe(String locale, @Nullable Map<String, Object> web) {
         if (web == null) {
-            return "-";
+            return MessageCatalogue.format(locale, "operator.web.state.empty", Map.of());
         }
         if (!Boolean.TRUE.equals(web.get("enabled"))) {
-            return "disabled";
+            return MessageCatalogue.format(locale, "operator.web.state.disabled", Map.of());
         }
-        return "enabled (" + (Boolean.TRUE.equals(web.get("lan")) ? "lan" : LOOPBACK) + "), port "
-                            + web.get("port") + ", " + (Boolean.TRUE.equals(web.get("open")) ? "open" : "not open");
+        return MessageCatalogue.format(locale, "operator.web.state.enabled", Map.of(
+                            "mode", Boolean.TRUE.equals(web.get("lan")) ? "lan" : LOOPBACK,
+                            "port", web.get("port"),
+                            "open", Boolean.TRUE.equals(web.get("open")) ? "open" : "not open"));
     }
 }
