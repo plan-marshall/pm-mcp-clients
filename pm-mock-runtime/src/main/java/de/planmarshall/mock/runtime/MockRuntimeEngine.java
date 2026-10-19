@@ -37,6 +37,20 @@ import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.ActionAvailability;
+import de.planmarshall.api.control.ArchiveCheck;
+import de.planmarshall.api.control.ArchiveCheckLine;
+import de.planmarshall.api.control.ChatProposalResource;
+import de.planmarshall.api.control.ChatReadBackResource;
+import de.planmarshall.api.control.ChatState;
+import de.planmarshall.api.control.ChatTurnResource;
+import de.planmarshall.api.control.DecompositionCheck;
+import de.planmarshall.api.control.DecompositionPlan;
+import de.planmarshall.api.control.DecompositionResource;
+import de.planmarshall.api.control.DecompositionWorkstream;
+import de.planmarshall.api.control.EpicEvent;
+import de.planmarshall.api.control.EpicResource;
+import de.planmarshall.api.control.EpicTokens;
+import de.planmarshall.api.control.EpicWorkstream;
 import de.planmarshall.api.control.HoldChangedEvent;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionRequest;
@@ -47,7 +61,13 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateRequest;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.PlanSettingsValue;
+import de.planmarshall.api.control.PlanTokenFigure;
+import de.planmarshall.api.control.RegisterSummary;
+import de.planmarshall.api.control.ReviewItemResource;
+import de.planmarshall.api.control.ReviewResource;
+import de.planmarshall.api.control.TokenFigure;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.decision.AnswerType;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
@@ -430,6 +450,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, HoldRecord> controlHolds = new LinkedHashMap<>();
     private final Map<String, Integer> controlSettingsRevisions = new LinkedHashMap<>();
     private final Map<String, Map<String, PlanSettingsValue>> controlSettings = new LinkedHashMap<>();
+    private final Map<String, EpicResource> controlEpics = new LinkedHashMap<>();
+    private final Map<String, ChatReadBackResource> controlChats = new LinkedHashMap<>();
+    private final Map<String, ReviewResource> controlReviews = new LinkedHashMap<>();
+    private final Map<String, ArchiveCheck> controlArchiveChecks = new LinkedHashMap<>();
 
     private final Object decompositionLock = new Object();
     private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
@@ -1528,7 +1552,143 @@ public final class MockRuntimeEngine implements AutoCloseable {
             values.put("integration.git", new PlanSettingsValue("integration.git", "native", "project", List.of()));
             values.put("provider.issues", new PlanSettingsValue("provider.issues", "GitHub", "project", List.of()));
             controlSettings.put(CONST_FIX_RELAY, values);
+
+            controlEpics.clear();
+            controlChats.clear();
+            controlReviews.clear();
+            controlArchiveChecks.clear();
+            controlEpics.put(CONST_RELAY_HARDENING, relayHardeningResource());
+            controlEpics.put("relay-docs-epic", relayDocsEpicResource());
+
+            controlChats.put(CONST_FIX_RELAY, planChat());
+            controlChats.put(CONST_RELAY_HARDENING, epicChat());
+            controlChats.put(CONST_DOCS_TYPO, endedChat());
+
+            controlReviews.put(reviewKey(CONST_RELAY_HARDENING, FIELD_FINDINGS), findingsReview());
+            controlReviews.put(reviewKey(CONST_RELAY_HARDENING, "watches"), watchesReview());
+
+            controlArchiveChecks.put(CONST_RELAY_HARDENING, archiveCheckOpenFindings());
+            controlArchiveChecks.put("relay-docs-epic", archiveCheckReviewFirst());
         }
+    }
+
+    private static String reviewKey(String epicId, String register) {
+        return epicId + ":" + register;
+    }
+
+    private static EpicResource relayHardeningResource() {
+        var ws1 = new EpicWorkstream("WS-1", "Reconnect", true, List.of(
+                new WorkRow("relay-reconnect-backoff", "relay-reconnect-backoff", "shipped", null, null,
+                        List.of(), 211, null, null, List.of(), List.of(), List.of()),
+                new WorkRow("relay-cursor-order", "relay-cursor-order", "running", null, null,
+                        List.of(), null, null, null, List.of(), List.of(), List.of()),
+                new WorkRow("relay-reconnect-docs", "relay-reconnect-docs", "paused", null, null,
+                        List.of(), null, null, null, List.of(), List.of(), List.of()),
+                new WorkRow("relay-reconnect-metrics", "relay-reconnect-metrics", "staged", "none", null,
+                        List.of(), null, null, "measure the reconnect",
+                        List.of("the reconnect metrics"), List.of("pm-relay/src/metrics"), List.of())));
+        var ws2 = new EpicWorkstream("WS-2", "Authentication", true, List.of(
+                new WorkRow(CONST_RELAY_AUTH_V2, CONST_RELAY_AUTH_V2, "waiting for you", null, null,
+                        List.of(), null, null, null, List.of(), List.of(), List.of()),
+                new WorkRow("relay-token-rotation", "relay-token-rotation", "staged", "dependency",
+                        CONST_RELAY_AUTH_V2, List.of(), null, null, null, List.of(), List.of(), List.of()),
+                new WorkRow("relay-docs", "relay-docs", "staged", "overlap", CONST_RELAY_AUTH_V2,
+                        List.of("pm-api/src/store/Docs.java"), null, null, null, List.of(), List.of(), List.of())));
+        var tokens = new EpicTokens(
+                new TokenFigure(3_860_000L, 3_520_000L, 340_000L, true, true, 4, 1),
+                new TokenFigure(120_000L, 110_000L, 10_000L, true, false, 1, 0),
+                List.of(new PlanTokenFigure("relay-reconnect-backoff",
+                        new TokenFigure(1_400_000L, 1_300_000L, 100_000L, true, false, 2, 0))));
+        return new EpicResource(CONST_RELAY_HARDENING, CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CLIENTS, null,
+                "running", true, 0, 3, 3, null, List.of(ws1, ws2),
+                List.of("2 documents", "1 issue"), 2,
+                new RegisterSummary(3, 4, 2), new RegisterSummary(1, 4, 0), tokens,
+                List.of(new EpicEvent("2026-10-16T12:40:00Z", "relay-auth-v2 asks a decision"),
+                        new EpicEvent("2026-10-16T12:05:00Z",
+                                "relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered"),
+                        new EpicEvent("2026-10-16T11:55:00Z", "you paused relay-reconnect-docs")));
+    }
+
+    private static EpicResource relayDocsEpicResource() {
+        var docs = new WorkRow("relay-docs", "relay-docs", "handed back", null, null,
+                List.of(), 218, null, null, List.of(), List.of(), List.of());
+        return new EpicResource("relay-docs-epic", CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CLIENTS, null,
+                "landing", false, 0, 1, 0, null,
+                List.of(new EpicWorkstream("WS-1", "Docs", true, List.of(docs))),
+                List.of("1 document"), 1,
+                new RegisterSummary(0, 0, 0), new RegisterSummary(0, 0, 0),
+                new EpicTokens(TokenFigure.notMeasured(), TokenFigure.notMeasured(), List.of()),
+                List.of(new EpicEvent("2026-10-16T12:30:00Z", "the ledger is landing")));
+    }
+
+    private static ChatReadBackResource planChat() {
+        return new ChatReadBackResource("C-0001", CONST_FIX_RELAY, "plan", "replan", "plan",
+                ChatState.READ_BACK.wireValue(),
+                List.of(new ChatTurnResource("operator", "Can the cursor test also cover the SSE transport?",
+                                CONST_TIME_10_14, false),
+                        new ChatTurnResource("replan", "Yes. TASK-4 tests one transport only; I propose a second test.",
+                                CONST_TIME_10_14, false)),
+                new ChatProposalResource("a test per transport",
+                        "TASK-4  cursor write order: a test for the websocket transport",
+                        "TASK-4  cursor write order: a test per transport, websocket and SSE",
+                        "after the current task"));
+    }
+
+    private static ChatReadBackResource epicChat() {
+        return new ChatReadBackResource("C-0002", CONST_RELAY_HARDENING, "epic", "decompose", "epic",
+                ChatState.TURN.wireValue(),
+                List.of(new ChatTurnResource("operator", "Why does relay-docs wait?", CONST_TIME_10_14, false),
+                        new ChatTurnResource("decompose",
+                                "Its surface shares pm-api/src/store with relay-auth-v2; it waits for that plan.",
+                                CONST_TIME_10_14, false)),
+                null);
+    }
+
+    private static ChatReadBackResource endedChat() {
+        return new ChatReadBackResource("C-0003", CONST_DOCS_TYPO, "plan", "replan", "archive",
+                ChatState.OPEN.wireValue(),
+                List.of(new ChatTurnResource("operator", "Why was it cancelled?", CONST_TIME_10_14, false),
+                        new ChatTurnResource("replan", "You cancelled it: replaced by relay-v2.",
+                                CONST_TIME_10_14, false)),
+                null);
+    }
+
+    private static ReviewResource findingsReview() {
+        return new ReviewResource("R-0001", CONST_RELAY_HARDENING, FIELD_FINDINGS, List.of(
+                        new ReviewItemResource("F-0004", FIELD_FINDINGS, "Reconnect loses the last event",
+                                List.of("a fix must hold for every transport; covered by a test that drops the connection "
+                                        + "between delivery and cursor write"),
+                                "landing of relay-reconnect (#211) · 2 days ago", "trusted", "open",
+                                "Promote to a plan: it needs a change across two modules"),
+                        new ReviewItemResource("F-0005", FIELD_FINDINGS, "The retry count is not bounded",
+                                List.of("bound the retries"), "review comment of #212", "untrusted", "kept", null),
+                        new ReviewItemResource("F-0006", FIELD_FINDINGS, "A typo in the README",
+                                List.of(), "the plan's own review", "trusted", "dropped", null)),
+                2, 3, "item", null, null);
+    }
+
+    private static ReviewResource watchesReview() {
+        return new ReviewResource("R-0002", CONST_RELAY_HARDENING, "watches", List.of(
+                        new ReviewItemResource("W-0001", "watches", "The reconnect backoff grows without bound",
+                                List.of("check the backoff against the docs"), "the epic's review", "trusted", "watch", null),
+                        new ReviewItemResource("W-0002", "watches", "The cursor file is not fsynced",
+                                List.of(), "a later review", "trusted", "kept", null)),
+                2, 2, "open", null, null);
+    }
+
+    private static ArchiveCheck archiveCheckOpenFindings() {
+        return new ArchiveCheck(CONST_RELAY_HARDENING, List.of(
+                        new ArchiveCheckLine("control.archive.no_plan_active", true, null, null),
+                        new ArchiveCheckLine("control.archive.rows_ended", true, "11 shipped · 1 cancelled", null),
+                        new ArchiveCheckLine("control.archive.open_findings", false, "2", "review-findings"),
+                        new ArchiveCheckLine("control.archive.ledger_landed", true, null, null),
+                        new ArchiveCheckLine("control.archive.completion_reviewed", true, null, null),
+                        new ArchiveCheckLine("control.archive.carried", true, "3 kept findings · 5 watches", null)),
+                3, 5, false);
+    }
+
+    private static ArchiveCheck archiveCheckReviewFirst() {
+        return new ArchiveCheck("relay-docs-epic", List.of(), 0, 0, true);
     }
 
     private void initDefaultStart() {
@@ -2762,6 +2922,54 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
 
+        if ("GET".equals(method) && path.endsWith("/tokens")) {
+            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
+            handleGetTokens(response, controlSubjectId(path, prefix, "/tokens"));
+            return true;
+        }
+
+        if ("GET".equals(method) && isEpic && path.endsWith("/archive-check")) {
+            handleGetArchiveCheck(response, controlSubjectId(path, PATH_EPICS_PREFIX, "/archive-check"));
+            return true;
+        }
+
+        if ("GET".equals(method) && isEpic && path.endsWith("/decomposition")) {
+            handleGetControlDecomposition(response, controlSubjectId(path, PATH_EPICS_PREFIX, "/decomposition"));
+            return true;
+        }
+
+        if ("GET".equals(method) && isEpic && path.endsWith("/review")) {
+            handleGetReview(request, response, controlSubjectId(path, PATH_EPICS_PREFIX, "/review"));
+            return true;
+        }
+
+        if ("GET".equals(method) && path.endsWith("/chat")) {
+            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
+            handleGetChat(response, controlSubjectId(path, prefix, "/chat"));
+            return true;
+        }
+
+        if (isPlan && "POST".equals(method) && path.endsWith("/chat/turns")) {
+            handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX, "/chat/turns"));
+            return true;
+        }
+
+        if (isPlan && "POST".equals(method) && (path.endsWith("/chat/proposal/accept")
+                || path.endsWith("/chat/proposal/reject"))) {
+            var accept = path.endsWith("/chat/proposal/accept");
+            var suffix = accept ? "/chat/proposal/accept" : "/chat/proposal/reject";
+            handleChatProposal(response, controlSubjectId(path, PATH_PLANS_PREFIX, suffix), accept);
+            return true;
+        }
+
+        if ("GET".equals(method) && isEpic) {
+            var epicId = path.substring(PATH_EPICS_PREFIX.length());
+            if (!epicId.isEmpty() && !epicId.contains("/")) {
+                handleGetEpicResource(response, epicId);
+                return true;
+            }
+        }
+
         return false;
     }
 
@@ -3014,6 +3222,163 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return values.get(aspect).value();
         }
         return "";
+    }
+
+    private void handleGetEpicResource(MockHttpResponse response, String epicId) throws IOException {
+        synchronized (controlLock) {
+            var resource = controlEpics.get(epicId);
+            if (resource == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
+                return;
+            }
+            response.json(200, resource.toMap());
+        }
+    }
+
+    private void handleGetTokens(MockHttpResponse response, String subjectId) throws IOException {
+        synchronized (controlLock) {
+            var epic = controlEpics.get(subjectId);
+            if (epic != null) {
+                response.json(200, epic.tokens().toMap());
+                return;
+            }
+            for (var resource : controlEpics.values()) {
+                for (var plan : resource.tokens().plans()) {
+                    if (plan.planId().equals(subjectId)) {
+                        response.json(200, plan.figure().toMap());
+                        return;
+                    }
+                }
+            }
+            response.json(404, Map.of(KEY_ERROR, "tokens_not_found", KEY_MESSAGE, "No tokens for " + subjectId));
+        }
+    }
+
+    private void handleGetArchiveCheck(MockHttpResponse response, String epicId) throws IOException {
+        synchronized (controlLock) {
+            var check = controlArchiveChecks.get(epicId);
+            if (check == null) {
+                response.json(404, Map.of(KEY_ERROR, "epic_not_found",
+                        KEY_MESSAGE, "No archive check for epic: " + epicId));
+                return;
+            }
+            response.json(200, check.toMap());
+        }
+    }
+
+    private void handleGetReview(MockHttpRequest request, MockHttpResponse response, String epicId)
+            throws IOException {
+        var register = queryValue(request, "register");
+        var wanted = register != null && !register.isBlank() ? register : FIELD_FINDINGS;
+        synchronized (controlLock) {
+            var review = controlReviews.get(reviewKey(epicId, wanted));
+            if (review == null) {
+                response.json(404, Map.of(KEY_ERROR, "review_not_found",
+                        KEY_MESSAGE, "No " + wanted + " review for epic: " + epicId));
+                return;
+            }
+            response.json(200, review.toMap());
+        }
+    }
+
+    private void handleGetControlDecomposition(MockHttpResponse response, String epicId) throws IOException {
+        synchronized (decompositionLock) {
+            var cut = decompositions.get(epicId);
+            if (cut == null) {
+                response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND,
+                        KEY_MESSAGE, "No decomposition for epic: " + epicId));
+                return;
+            }
+            response.json(200, toControlDecomposition(cut).toMap());
+        }
+    }
+
+    private static DecompositionResource toControlDecomposition(EpicDecomposition cut) {
+        var workstreams = new ArrayList<DecompositionWorkstream>();
+        var workstreamOrder = 1;
+        for (var workstream : cut.workstreams()) {
+            var plans = new ArrayList<DecompositionPlan>();
+            var planOrder = 1;
+            for (var plan : workstream.stagedPlans()) {
+                var change = StagedPlanRecord.STATUS_STAGED.equals(plan.status()) ? null : plan.status();
+                plans.add(new DecompositionPlan(plan.planId(), plan.title(), plan.objective(), List.of(),
+                        plan.expectedSurface(), plan.dependencies(), planOrder, change, plan.isLocked()));
+                planOrder++;
+            }
+            workstreams.add(new DecompositionWorkstream(workstream.id(), workstream.name(),
+                    workstream.description(), workstreamOrder, plans));
+            workstreamOrder++;
+        }
+        var checks = new ArrayList<DecompositionCheck>();
+        for (var finding : cut.findings()) {
+            var planId = finding.affectedPlans().isEmpty() ? null : finding.affectedPlans().getFirst();
+            checks.add(new DecompositionCheck(planId, finding.severity().wireValue(), finding.message()));
+        }
+        return new DecompositionResource(cut.epicId(), cut.status().wireValue(), cut.revision(), workstreams,
+                checks);
+    }
+
+    private void handleGetChat(MockHttpResponse response, String subjectId) throws IOException {
+        synchronized (controlLock) {
+            var chat = controlChats.get(subjectId);
+            if (chat == null) {
+                response.json(404, Map.of(KEY_ERROR, "chat_not_found", KEY_MESSAGE, "No chat for " + subjectId));
+                return;
+            }
+            response.json(200, chat.toMap());
+        }
+    }
+
+    private void handleChatTurn(MockHttpRequest request, MockHttpResponse response, String planId)
+            throws IOException {
+        var body = readBodyMap(request);
+        var text = body.get(FIELD_TEXT) instanceof String value ? value : "";
+        synchronized (controlLock) {
+            var chat = controlChats.get(planId);
+            if (chat == null) {
+                response.json(404, Map.of(KEY_ERROR, "chat_not_found", KEY_MESSAGE, "No chat for " + planId));
+                return;
+            }
+            var at = Instant.now().toString();
+            var turns = new ArrayList<>(chat.turns());
+            turns.add(new ChatTurnResource(ChatTurnResource.ROLE_OPERATOR, text, at, false));
+            turns.add(new ChatTurnResource(chat.role(),
+                    "I have read the plan; say what should change, or ask on.", at, false));
+            var updated = new ChatReadBackResource(chat.chatId(), chat.subjectId(), chat.subjectKind(),
+                    chat.role(), chat.scope(), ChatState.TURN.wireValue(), turns, null);
+            controlChats.put(planId, updated);
+            response.json(200, updated.toMap());
+        }
+    }
+
+    private void handleChatProposal(MockHttpResponse response, String planId, boolean accept) throws IOException {
+        synchronized (controlLock) {
+            var chat = controlChats.get(planId);
+            if (chat == null) {
+                response.json(404, Map.of(KEY_ERROR, "chat_not_found", KEY_MESSAGE, "No chat for " + planId));
+                return;
+            }
+            var state = accept ? ChatState.APPLY.wireValue() : ChatState.TURN.wireValue();
+            var updated = new ChatReadBackResource(chat.chatId(), chat.subjectId(), chat.subjectKind(),
+                    chat.role(), chat.scope(), state, chat.turns(), null);
+            controlChats.put(planId, updated);
+            response.json(200, updated.toMap());
+        }
+    }
+
+    private static String queryValue(MockHttpRequest request, String name) {
+        var query = request.query();
+        if (query == null) {
+            return null;
+        }
+        for (var part : query.split("&")) {
+            var separator = part.indexOf('=');
+            var key = separator < 0 ? part : part.substring(0, separator);
+            if (key.equals(name)) {
+                return separator < 0 ? "" : URLDecoder.decode(part.substring(separator + 1), StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 
     private void initDefaultReports() {

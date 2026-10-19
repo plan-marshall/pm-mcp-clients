@@ -1,0 +1,29 @@
+{
+  "format_version": 1,
+  "name": "control-settings",
+  "description": "Controlling work (UC-CTL-5): a plan's setting changed while it runs, refused for its value, refused as too late, and refused as conflict after a change in another client and applied again",
+  "start": "control-settings.start",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {},
+  "states": {
+    "control-settings.start": {
+      "representation": {
+        "scope": "workspace",
+        "state": "control-settings.start",
+        "summary": "Controlling work \u00b7 a plan's settings and their revision guard"
+      },
+      "links": {
+        "settings": {
+          "method": "GET",
+          "href": "/api/v1/plans/fix-relay/settings",
+          "next": "control-settings.start"
+        },
+        "change": {
+          "method": "PUT",
+          "href": "/api/v1/plans/fix-relay/settings",
+          "next": "control-settings.start"
+        }
+      }
+    }
+  }
+}

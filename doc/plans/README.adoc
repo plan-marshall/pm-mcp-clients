@@ -132,7 +132,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/decision-contract.adoc[`decision-contract`]
 |Decisions: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
 |link:onboarding-contract.adoc[`onboarding-contract`]
@@ -195,40 +195,40 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/process-contract.adoc[`process-contract`]; link:implemented/web-overview.adoc[`web-overview`]
 |epic clients
 
-|link:control-contract.adoc[`control-contract`]
+|link:implemented/control-contract.adoc[`control-contract`]
 |Controlling work: contract and mock runtime
-|`open`
+|`done`
 |link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
 |link:cli-actions.adoc[`cli-actions`]
 |Actions on plans and epics in the terminal
 |`open`
-|link:control-contract.adoc[`control-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]; link:cli-start.adoc[`cli-start`]
+|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]; link:cli-start.adoc[`cli-start`]
 |epic clients
 
 |link:web-actions.adoc[`web-actions`]
 |Actions on plans and epics in the web app
 |`open`
-|link:control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
+|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:web-start.adoc[`web-start`]
 |epic clients
 
 |link:start-contract.adoc[`start-contract`]
 |Starting work: contract and mock runtime
 |`open`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:control-contract.adoc[`control-contract`] (the chat's records)
+|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the chat's records)
 |epic clients
 
 |link:cli-start.adoc[`cli-start`]
 |Starting work in the terminal
 |`open`
-|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
+|link:start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
 |epic clients
 
 |link:web-start.adoc[`web-start`]
 |Starting work in the web app
 |`open`
-|link:start-contract.adoc[`start-contract`]; link:control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]
+|link:start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]
 |epic clients
 
 |link:implemented/overview-contract.adoc[`overview-contract`]

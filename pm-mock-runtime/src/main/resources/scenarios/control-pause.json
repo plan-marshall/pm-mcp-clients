@@ -1,0 +1,39 @@
+{
+  "format_version": 1,
+  "name": "control-pause",
+  "description": "Controlling work (UC-CTL-1): a plan paused now, after the task, and after the phase, a pause withdrawn while pausing, and a plan cancelled with its pull request closed",
+  "start": "control-pause.start",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {},
+  "states": {
+    "control-pause.start": {
+      "representation": {
+        "scope": "workspace",
+        "state": "control-pause.start",
+        "summary": "Controlling work \u00b7 pausing and resuming a plan"
+      },
+      "links": {
+        "plan_actions": {
+          "method": "GET",
+          "href": "/api/v1/plans/fix-relay/actions",
+          "next": "control-pause.start"
+        },
+        "pause": {
+          "method": "POST",
+          "href": "/api/v1/plans/fix-relay/actions/pause",
+          "next": "control-pause.start"
+        },
+        "start": {
+          "method": "POST",
+          "href": "/api/v1/plans/fix-relay/actions/start",
+          "next": "control-pause.start"
+        },
+        "cancel": {
+          "method": "POST",
+          "href": "/api/v1/plans/fix-relay/actions/cancel",
+          "next": "control-pause.start"
+        }
+      }
+    }
+  }
+}

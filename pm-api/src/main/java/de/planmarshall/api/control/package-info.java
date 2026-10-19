@@ -8,8 +8,10 @@
  * the root of this repository.
  */
 /**
- * Data contracts, enumerations, and events for Controlling Work (UC-CTL-1..5): the actions of a
- * plan and an epic per state, a plan's settings and their revision guard, and the holds that stop
- * a plan, an epic, or a landing with the acts that resolve them.
+ * Data contracts, enumerations, and events for Controlling Work (UC-CTL-1..5, UC-STA-6, UC-PLN-5):
+ * the actions of a plan and an epic per state, a plan's settings and their revision guard, the
+ * holds that stop a plan, an epic, or a landing with the acts that resolve them, the epic as a
+ * resource with its tokens, the decomposition draft and its checks, the chat with the planning
+ * role, the findings review, and the archive check.
  */
 package de.planmarshall.api.control;

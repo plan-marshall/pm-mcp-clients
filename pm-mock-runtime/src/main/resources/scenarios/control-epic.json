@@ -1,0 +1,39 @@
+{
+  "format_version": 1,
+  "name": "control-epic",
+  "description": "Controlling work (UC-CTL-2, UC-CTL-3): the epic as a resource with its workstreams, rows and waits, its automatic mode, its archive check, and its tokens",
+  "start": "control-epic.start",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {},
+  "states": {
+    "control-epic.start": {
+      "representation": {
+        "scope": "workspace",
+        "state": "control-epic.start",
+        "summary": "Controlling work \u00b7 the epic as a resource"
+      },
+      "links": {
+        "epic": {
+          "method": "GET",
+          "href": "/api/v1/epics/relay-hardening",
+          "next": "control-epic.start"
+        },
+        "epic_actions": {
+          "method": "GET",
+          "href": "/api/v1/epics/relay-hardening/actions",
+          "next": "control-epic.start"
+        },
+        "auto": {
+          "method": "POST",
+          "href": "/api/v1/epics/relay-hardening/actions/auto",
+          "next": "control-epic.start"
+        },
+        "archive_check": {
+          "method": "GET",
+          "href": "/api/v1/epics/relay-hardening/archive-check",
+          "next": "control-epic.start"
+        }
+      }
+    }
+  }
+}
