@@ -9,12 +9,14 @@
  */
 package de.planmarshall.api.control;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.experimental.UtilityClass;
 
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -38,12 +40,14 @@ final class ControlJson {
     }
 
     /**
-     * Reads a JSON array of objects as a list of maps.
+     * Reads a JSON array of objects as a list of maps. A value that is not an array yields an empty
+     * list, but a non-object element fails closed instead of being dropped silently.
      *
      * @param raw the raw tree value
      * @return the object maps, never {@code null}
+     * @throws IOException if an element is not an object
      */
-    static List<Map<String, Object>> readObjects(Object raw) {
+    static List<Map<String, Object>> readObjects(Object raw) throws IOException {
         var array = JsonTree.asArray(raw);
         if (array == null) {
             return List.of();
@@ -51,9 +55,10 @@ final class ControlJson {
         var objects = new ArrayList<Map<String, Object>>();
         for (var item : array) {
             var object = JsonTree.asObject(item);
-            if (object != null) {
-                objects.add(object);
+            if (object == null) {
+                throw new JsonFormatException("Expected an object in a control array");
             }
+            objects.add(object);
         }
         return objects;
     }

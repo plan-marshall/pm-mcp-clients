@@ -3358,6 +3358,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 response.json(404, Map.of(KEY_ERROR, "chat_not_found", KEY_MESSAGE, "No chat for " + planId));
                 return;
             }
+            if (!chat.hasProposal()) {
+                response.json(409, Map.of(KEY_ERROR, "no_proposal",
+                        KEY_MESSAGE, "No open proposal for " + planId));
+                return;
+            }
             var state = accept ? ChatState.APPLY.wireValue() : ChatState.TURN.wireValue();
             var updated = new ChatReadBackResource(chat.chatId(), chat.subjectId(), chat.subjectKind(),
                     chat.role(), chat.scope(), state, chat.turns(), null);

@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.TreeSet;
 
 
@@ -50,6 +52,31 @@ class StandardScenariosTest {
             }
         }
         assertEquals(expected, new TreeSet<>(StandardScenarios.ALL));
+    }
+
+    @Test
+    @DisplayName("registers exactly the control scenario resources")
+    void controlScenariosMatchResources() throws Exception {
+        var constants = new TreeSet<String>();
+        for (var field : StandardScenarios.class.getDeclaredFields()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.getType() == String.class) {
+                var value = (String) field.get(null);
+                if (value.startsWith("control")) {
+                    constants.add(value);
+                }
+            }
+        }
+
+        var scenarios = Path.of("src", "main", "resources", "scenarios");
+        if (!Files.isDirectory(scenarios)) {
+            scenarios = Path.of("pm-mock-runtime", "src", "main", "resources", "scenarios");
+        }
+        var resources = new TreeSet<String>();
+        try (var files = Files.list(scenarios)) {
+            files.filter(path -> path.getFileName().toString().startsWith("control"))
+                    .forEach(path -> resources.add(path.getFileName().toString().replace(".json", "")));
+        }
+        assertEquals(constants, resources);
     }
 
     @Test

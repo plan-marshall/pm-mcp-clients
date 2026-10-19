@@ -227,5 +227,11 @@ class ControlResourcesTest {
         assertThrows(JsonFormatException.class, () -> ArchiveCheck.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> TokenFigure.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> WorkRow.fromJson("{}"));
+
+        // a non-object nested element fails closed instead of being dropped
+        assertThrows(JsonFormatException.class,
+                () -> ArchiveCheck.fromJson("{\"epic_id\":\"e\",\"lines\":[false]}"));
+        assertThrows(JsonFormatException.class,
+                () -> ReviewItemResource.fromJson("{\"item_id\":\"F\",\"state\":\"fixed\"}"));
     }
 }

@@ -104,10 +104,14 @@ public record ReviewItemResource(
         if (itemId == null) {
             throw new JsonFormatException("Missing item_id in ReviewItemResource");
         }
+        var state = JsonTree.string(map, "state");
+        if (state != null && !state.isBlank() && ReviewDisposition.fromValue(state) == null) {
+            throw new JsonFormatException("Unknown state in ReviewItemResource: " + state);
+        }
         return new ReviewItemResource(itemId, JsonTree.string(map, "register"),
                 JsonTree.string(map, "statement"), ControlJson.readStrings(map.get("rules")),
                 JsonTree.string(map, "origin"), JsonTree.string(map, "trust"),
-                JsonTree.string(map, "state"), JsonTree.string(map, "proposal"));
+                state, JsonTree.string(map, "proposal"));
     }
 
     /**

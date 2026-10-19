@@ -2,7 +2,7 @@
 
 This implementation plan governs the implementation of the `control-contract` work package (`doc/plans/control-contract.adoc`, epic clients) in `pm-api` and `pm-mock-runtime`.
 
-It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](runbook.md).
+It operates strictly under the rules and lifecycle defined in [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 

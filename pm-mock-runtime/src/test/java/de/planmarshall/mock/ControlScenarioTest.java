@@ -394,6 +394,11 @@ class ControlScenarioTest {
             assertFalse(rejected.hasProposal());
             assertEquals(ChatState.TURN, rejected.chatState());
 
+            // nothing is left to apply after a reject
+            var acceptAfterReject = client.send(HttpRequest.json("POST",
+                    "/api/v1/plans/fix-relay/chat/proposal/accept", "{}").withHeader(AUTH_HEADER, auth));
+            assertEquals(409, acceptAfterReject.status());
+
             // the epic's chat is routed to decompose
             var epicRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/chat").withHeader(AUTH_HEADER, auth));
             assertEquals("decompose", ChatReadBackResource.fromJson(new String(epicRes.body())).role());
@@ -434,11 +439,23 @@ class ControlScenarioTest {
     }
 
     @Test
-    @DisplayName("carries a chat on with a turn and applies its proposal")
+    @DisplayName("applies a chat proposal once and refuses a second, then carries the chat on with a turn")
     void shouldChatTurnAndProposal() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_CHAT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
+
+            var acceptRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(200, acceptRes.status());
+            var accepted = ChatReadBackResource.fromJson(new String(acceptRes.body()));
+            assertEquals(ChatState.APPLY, accepted.chatState());
+            assertFalse(accepted.hasProposal());
+
+            // there is nothing left to apply, so the second accept is refused
+            var second = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
+                    .withHeader(AUTH_HEADER, auth));
+            assertEquals(409, second.status());
 
             var turnRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/turns",
                     JsonTree.write(Map.of("text", "Make the test cover the SSE transport too.")))
@@ -448,13 +465,6 @@ class ControlScenarioTest {
             assertEquals(ChatState.TURN, turned.chatState());
             assertEquals(4, turned.turns().size());
             assertTrue(turned.turns().get(2).isOperator());
-
-            var acceptRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, acceptRes.status());
-            var accepted = ChatReadBackResource.fromJson(new String(acceptRes.body()));
-            assertEquals(ChatState.APPLY, accepted.chatState());
-            assertFalse(accepted.hasProposal());
         }
     }
 

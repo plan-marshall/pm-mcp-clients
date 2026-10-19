@@ -15,12 +15,12 @@
       "links": {
         "findings": {
           "method": "GET",
-          "href": "/api/v1/epics/relay-hardening/review",
+          "href": "/api/v1/epics/relay-hardening/review?register=findings",
           "next": "control-review.start"
         },
         "watches": {
           "method": "GET",
-          "href": "/api/v1/epics/relay-hardening/review",
+          "href": "/api/v1/epics/relay-hardening/review?register=watches",
           "next": "control-review.start"
         }
       }
