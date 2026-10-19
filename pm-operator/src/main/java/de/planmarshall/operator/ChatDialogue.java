@@ -106,7 +106,7 @@ final class ChatDialogue {
         }
         var answer = prompt.askRaw(text("start.chat.accept_prompt", Map.of()), "start.sources",
                             text("start.chat.open", Map.of()), state.entryId());
-        var accept = answer.isEmpty() || "y".equalsIgnoreCase(answer) || "a".equalsIgnoreCase(answer);
+        var accept = answer.isEmpty();
         if (!accept && !"r".equalsIgnoreCase(answer)) {
             return;
         }

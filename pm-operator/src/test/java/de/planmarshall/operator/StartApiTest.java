@@ -76,6 +76,14 @@ class StartApiTest {
     }
 
     @Test
+    @DisplayName("a link id outside the closed form is refused before the request")
+    void unsafeLinkIdRefused() throws Exception {
+        serve(failure(500, "{}"));
+        assertThrows(IllegalArgumentException.class,
+                            () -> api.act("ent-1", "bad id?query", Map.of()));
+    }
+
+    @Test
     @DisplayName("a refused act carries the runtime's message")
     void actRefusedCarriesMessage() throws Exception {
         serve(failure(409, "{\"message\":\"the source does not combine\"}"));

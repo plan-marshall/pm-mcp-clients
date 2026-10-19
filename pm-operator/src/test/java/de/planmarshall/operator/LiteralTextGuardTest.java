@@ -60,7 +60,8 @@ class LiteralTextGuardTest {
 
     /** A call that renders text to the operator. */
     private static final Pattern RENDER_CALL = Pattern.compile(
-                        "(?:out|err|writer)\\.(?:print|println|printf|readLine|printAbove)\\s*\\(\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+                        "(?:(?:out|err|writer)\\.(?:print|println|printf|readLine|printAbove)"
+                                            + "|prompt\\.(?:raw|askRaw|askInline))\\s*\\(\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
 
     /** A prompt passed to a line reader. */
     private static final Pattern PROMPT_CALL = Pattern.compile(
@@ -178,7 +179,11 @@ class LiteralTextGuardTest {
         }
         assertTrue(Files.isDirectory(directory), "the operator sources must be found from " + Path.of("").toAbsolutePath());
         try (Stream<Path> files = Files.list(directory)) {
-            return files.filter(path -> GUARDED.contains(path.getFileName().toString())).toList();
+            var found = files.filter(path -> GUARDED.contains(path.getFileName().toString())).toList();
+            var names = found.stream().map(path -> path.getFileName().toString()).toList();
+            var missing = GUARDED.stream().filter(name -> !names.contains(name)).toList();
+            assertTrue(missing.isEmpty(), "guarded sources not found: " + missing);
+            return found;
         }
     }
 }

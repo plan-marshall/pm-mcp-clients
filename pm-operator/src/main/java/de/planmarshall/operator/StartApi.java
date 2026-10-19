@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.decomposition.DecompositionCommitResult;
@@ -45,6 +46,7 @@ final class StartApi {
     private static final String KEY_MESSAGE = "message";
     private static final String KEY_RECIPES = "recipes";
     private static final String KEY_TEXT = "text";
+    private static final Pattern LINK_ID = Pattern.compile("[A-Za-z0-9:_-]+");
 
     private final OperatorContext context;
 
@@ -90,6 +92,9 @@ final class StartApi {
      */
     StartStateResource act(String entryId, String linkId, Map<String, Object> body)
                         throws IOException {
+        if (!LINK_ID.matcher(linkId).matches()) {
+            throw new IllegalArgumentException("The link id names no operator act: " + linkId);
+        }
         var response = send(HttpRequest.json("POST",
                             ENTRIES + OperatorUrlUtil.encodePathSegment(entryId) + LINKS + linkId,
                             JsonTree.write(body)));

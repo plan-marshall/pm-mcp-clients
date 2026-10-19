@@ -465,7 +465,8 @@ public final class PlanCommand implements Callable<Integer> {
         List<String> issues = new ArrayList<>();
 
         @Option(names = "--lesson", description = "Input lesson ID")
-        List<String> lessons = new ArrayList<>();
+        @Nullable
+        String lesson;
 
         @Option(names = "--local-changes", description = "Include local changes as source")
         boolean localChanges;
@@ -501,7 +502,7 @@ public final class PlanCommand implements Callable<Integer> {
             answers.id = common.id;
             answers.documents.addAll(documents);
             answers.issues.addAll(issues);
-            answers.lesson = lessons.isEmpty() ? null : lessons.getFirst();
+            answers.lesson = lesson;
             answers.localChanges = localChanges;
             answers.pullRequest = pullRequest;
             answers.copy = copy;

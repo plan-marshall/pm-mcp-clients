@@ -113,6 +113,10 @@ final class StartDialogue {
     static int run(OperatorContext context, PrintWriter out, EntryKind kind, StartAnswers answers)
                         throws IOException {
         var dialogue = new StartDialogue(context, out, kind, answers);
+        if (answers.copy && answers.move) {
+            dialogue.prompt.line("start.documents.mode.conflict", Map.of());
+            return EXIT_FAILURE;
+        }
         try {
             return dialogue.execute();
         } catch (StartPrompt.MissingInputException missing) {
@@ -487,6 +491,9 @@ final class StartDialogue {
             }
         }
         state = act("choose:" + key, Map.of());
+        if (answers.recipeKey != null && answers.recipeKey.equals(key)) {
+            answers.recipeKey = null;
+        }
         recipeSelected = true;
     }
 
@@ -514,6 +521,7 @@ final class StartDialogue {
                                 text("start.recipe.no_option", Map.of("parameter", "", KEY_REASON, "")),
                                 entry.entryId());
             if ("b".equalsIgnoreCase(answer)) {
+                recipeSelected = false;
                 state = act("back", Map.of());
             }
             return;
@@ -524,6 +532,7 @@ final class StartDialogue {
                                 text("start.recipe.parameters.title", Map.of("recipe", recipe.key())),
                                 entry.entryId());
             if ("b".equalsIgnoreCase(answer)) {
+                recipeSelected = false;
                 state = act("back", Map.of());
                 return;
             }
@@ -721,7 +730,7 @@ final class StartDialogue {
         if (ids.size() == 1) {
             return ids.getFirst();
         }
-        return name;
+        return "default";
     }
 
     private StartStateResource act(String linkId, Map<String, Object> body) throws IOException {

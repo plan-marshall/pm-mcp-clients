@@ -469,6 +469,17 @@ class StartDialogueTest {
                             () -> assertTrue(rendered.contains("has started"), rendered));
     }
 
+    @Test
+    @DisplayName("copy and move together are refused before the entry opens")
+    void copyAndMoveConflict() throws Exception {
+        var outcome = runWithCode(StandardScenarios.START_SOURCES, null,
+                            "plan", "add", "--project", PROJECT, "--copy", "--move", "--no-input");
+        assertAll(
+                            () -> assertEquals(1, outcome.code()),
+                            () -> assertTrue(outcome.rendered().contains("exclude each other"),
+                                                outcome.rendered()));
+    }
+
     private static String run(String scenario, String input, String... args) throws Exception {
         var outcome = runWithCode(scenario, input, args);
         assertEquals(0, outcome.code(), outcome.rendered());
