@@ -89,6 +89,8 @@
   let lastState = '';
   let unsubscribeEntry: (() => void) | null = null;
   let destroyed = false;
+  let mounted = false;
+  let loadedEntryId: string | null = entryId;
 
   $: entry = state?.entry ?? null;
   $: ready = state?.ready ?? null;
@@ -97,8 +99,16 @@
   $: currentProject = entry?.project_id ?? projectId ?? '';
 
   onMount(() => {
+    mounted = true;
     void load();
   });
+
+  $: if (mounted && entryId && entryId !== loadedEntryId) {
+    loadedEntryId = entryId;
+    unsubscribeEntry?.();
+    unsubscribeEntry = null;
+    void load();
+  }
 
   onDestroy(() => {
     destroyed = true;
@@ -113,6 +123,7 @@
       if (entryId) {
         const resource = await apiClient.getEntry(entryId);
         if (destroyed) return;
+        loadedEntryId = entryId;
         apply(resource);
         subscribeEntry(entryId);
       } else if (projectId) {
@@ -121,6 +132,7 @@
         apply(opened);
         const id = opened.start.entry?.entry_id;
         if (id) {
+          loadedEntryId = id;
           runtimeStore.update((current) => ({ ...current, startEntryId: id }));
           subscribeEntry(id);
         }
@@ -541,6 +553,16 @@
     }
   }
 
+  /**
+   * Drops a staged plan through the contract's whole-cut rewrite, which is the only write verb
+   * that can remove a plan before agreement; the server's answer replaces the cut.
+   *
+   * @param planId the staged plan to remove
+   */
+  async function dropPlan(planId: string): Promise<void> {
+    await instructDecomposition(null, `Drop the plan ${planId} from the cut.`, 'rewrite');
+  }
+
   function discardReadBack(): void {
     decompositionReadBack = null;
     void loadDecomposition();
@@ -661,6 +683,7 @@
           readBack={decompositionReadBack}
           {busy}
           onKeep={() => {}}
+          onDrop={dropPlan}
           onInstruct={instructDecomposition}
           onAccept={() => (decompositionReadBack = null)}
           onInstructAgain={() => {

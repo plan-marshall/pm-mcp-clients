@@ -117,9 +117,11 @@ records, states, and offers.
   reports (`open_entries`); the mock runtime does not yet carry that optional summary, so the
   action appears as soon as the runtime reports it.
 - The decomposition review reuses `control-contract`'s decomposition endpoints. It offers Keep,
-  Edit, Add, instructions, read-back, draft-again (`rewrite`), and agree/commit; a persisted *Drop*
-  is not offered because the contract's `InstructAction` has no drop verb. The shared start chat is
-  the component the later `web-actions`/`web-plan-view` work can mount unchanged.
+  Edit, Drop, Add, instructions, read-back, draft-again (`rewrite`), and agree/commit. Drop is sent
+  as the contract's whole-cut `rewrite` instruction naming the plan, because `InstructAction` has
+  no separate drop verb; the server's answer replaces the cut, so nothing is removed only locally.
+  The shared start chat is the component the later `web-actions`/`web-plan-view` work can mount
+  unchanged.
 - The package's Done When names both clients. The web view tests are complete here; the terminal
   half of the same scenarios is the sibling Wave 10 `cli-start` package, still open, and the
   package index now records it as a dependency rather than claiming terminal parity from this PR.

@@ -33,7 +33,7 @@
 {:else if $runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'}
   <ListenerOffView />
 {:else if $runtimeStore.currentRoute === 'start'}
-  {#key `${$runtimeStore.startEntryId ?? ''}|${$runtimeStore.startProjectId ?? ''}|${$runtimeStore.startKind ?? 'plan'}`}
+  {#key `${$runtimeStore.startProjectId ?? ''}|${$runtimeStore.startKind ?? 'plan'}`}
     <StartView
       projectId={$runtimeStore.startProjectId ?? null}
       entryId={$runtimeStore.startEntryId ?? null}

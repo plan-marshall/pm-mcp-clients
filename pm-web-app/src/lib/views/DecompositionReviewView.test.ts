@@ -110,4 +110,12 @@ describe('the decomposition review', () => {
     await fireEvent.click(screen.getByTestId('agree-commit'));
     expect(agree).toHaveBeenCalled();
   });
+
+  it('passes a dropped plan to the runtime-backed handler', async () => {
+    const drop = vi.fn();
+    render(DecompositionReviewView, { props: { decomposition: cut(), onDrop: drop } });
+
+    await fireEvent.click(screen.getByTestId('plan-drop-relay-auth-v2'));
+    expect(drop).toHaveBeenCalledWith('relay-auth-v2');
+  });
 });

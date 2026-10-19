@@ -15,6 +15,7 @@
   } | null = null;
   export let busy = false;
   export let onKeep: (planId: string) => void = () => {};
+  export let onDrop: (planId: string) => void = () => {};
   export let onInstruct: (planId: string | null, instruction: string) => void = () => {};
   export let onAccept: () => void = () => {};
   export let onInstructAgain: () => void = () => {};
@@ -168,6 +169,14 @@
                     }}
                   >
                     {$t('start.decomposition.edit')}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`plan-drop-${plan.plan_id}`}
+                    disabled={busy}
+                    on:click={() => onDrop(plan.plan_id)}
+                  >
+                    {$t('start.decomposition.drop')}
                   </button>
                 </span>
               </li>
