@@ -1,0 +1,133 @@
+/* Shared layout of the onboarding's choice screens. */
+
+.choice-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.choice-screen__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.choice-screen__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.choice-screen__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.choice-screen__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
+.choice-screen__hint,
+.choice-screen__note {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.choice-screen__note {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.choice-screen__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+  padding-top: var(--space-4);
+}
+
+.choice-screen__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.choice-screen__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.choice-screen__row--disabled {
+  opacity: 0.65;
+}
+
+.choice-screen__row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.choice-screen__row-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.choice-screen__row-meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+.choice-screen__row-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.choice-screen__badge {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.choice-screen__badge--default {
+  background-color: var(--color-primary-subtle);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.choice-screen__badge--warn {
+  background-color: var(--color-warning-subtle);
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
+}
+
+@media (max-width: 768px) {
+  .choice-screen__actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .choice-screen__row {
+    padding: var(--space-2) var(--space-3);
+  }
+}

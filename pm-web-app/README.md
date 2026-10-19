@@ -6,11 +6,14 @@
 
 ## Capabilities & Views
 
-- **Device Pairing**: Web pairing flow (`/pair#code=...`) with PIN and token validation.
-- **Onboarding Setup**: Multi-step wizard covering language, harnesses, models, roles, credentials, providers, and plan defaults.
-- **Operator Dashboard**: Real-time status overview of active projects, epics, running plans, questions, and reports.
-- **Settings & Consents**: View and modify machine configurations, credential rotation, and document sources.
-- **Mock Runtime Integration**: Connects seamlessly to `pm-mock-runtime` via Vite reverse-proxy for local development and offline manual testing.
+- **Onboarding route**: `/onboarding` renders the state the runtime reports — start, consents, language, harnesses with their token reporting, models, roles, credentials, providers, plan defaults, the automatic run, and the done screen with read-only step summaries.
+- **Entry & pairing**: `/pair` and `/entry` pair a browser with a code (or the URL fragment), present the pairing URL as a QR code, show the network listener's fingerprint, and hold the loopback credential entry.
+- **Machine settings**: `/settings/machine` shows the seven aspects, the remembered consents with their withdrawal, the documents mode, the cleanup durations, the tokens with rotate/replace, and the paired devices; a value changed in another client opens the 409 conflict dialogue.
+- **Paired devices**: `/settings` lists the browsers that can act on the machine, renames one inline, revokes one or all others, and turns the network listener off.
+- **Operator dashboard**: real-time status overview of active projects, epics, running plans, questions, and reports.
+- **Mock Runtime Integration**: connects to `pm-mock-runtime` via the Vite reverse-proxy for local development, the scenario view tests, and offline manual testing.
+
+Every string is loaded from the message catalogue (English and German); no user-facing text is written in the app's code.
 
 ---
 
@@ -62,9 +65,10 @@ Paired:  http://localhost:5173/pair#code=KXQB-MRTN
 Vite is configured to automatically proxy `/api` and `/mock` calls to `http://127.0.0.1:7420`.
 
 ### Step 3: Interactive Testing in the Browser
-1. **Pairing Flow**: Navigate to `http://localhost:5173/pair#code=TEST-CODE` to test browser pairing and device onboarding.
-2. **Onboarding Wizard**: Step through the onboarding pages (languages, harnesses, roles).
-3. **Switching Scenarios**: You can change the mock server scenario on the fly via the mock control API or restarting `pm-mock-runtime` with another scenario:
+1. **Pairing Flow**: Navigate to `http://localhost:5173/pair#code=TEST-CODE` to test browser pairing and device pairing.
+2. **Onboarding**: Open `http://localhost:5173/onboarding` and step through the states (language, harnesses, models, roles, credentials, providers, plans).
+3. **Machine settings**: Open `http://localhost:5173/settings/machine` for the aspects, the consents, the documents mode, the tokens, and the paired devices.
+4. **Switching Scenarios**: You can change the mock server scenario on the fly via the mock control API or restarting `pm-mock-runtime` with another scenario:
    ```bash
    ./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario status-only --web-port 7420"
    ```

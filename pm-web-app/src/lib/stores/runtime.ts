@@ -8,6 +8,9 @@ import {
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
 } from '../api/client';
+import { pathForRoute, routeForPath, type AppRoute } from '../routes';
+
+export type { AppRoute };
 
 export interface RevokedInfo {
   reason?: string;
@@ -22,23 +25,7 @@ export interface RuntimeState {
   isOnboarded: boolean;
   deviceLabel: string;
   machineName: string;
-  currentRoute:
-    | 'pair'
-    | 'onboarding'
-    | 'workspace'
-    | 'settings'
-    | 'designer'
-    | 'revoked'
-    | 'overview'
-    | 'reports'
-    | 'decisions'
-    | 'system'
-    | 'cleanup'
-    | 'projects'
-    | 'plan'
-    | 'epic'
-    | 'decomposition'
-    | 'machine-settings';
+  currentRoute: AppRoute;
   currentState: StateRepresentation | null;
   onboarding?: OnboardingState | null;
   machineSettings?: MachineSettingsRecord | null;
@@ -46,11 +33,15 @@ export interface RuntimeState {
   revokedReason: string;
   revokedInfo?: RevokedInfo | null;
   isOffline: boolean;
+  /** The network listener this browser reached the machine over was turned off. */
+  isListenerClosed: boolean;
   isDraining: boolean;
   drainInfo?: { count?: number; what?: string; who?: string; since?: string } | null;
   isStopped: boolean;
   stoppedInfo?: { command?: string; who?: string; time?: string } | null;
   activeStep: number;
+  /** The steps the runtime reports as done, 1-based. */
+  completedSteps: number;
   unreadReportsCount: number;
   unreadReportsArrivalNotice?: string | null;
   quietReportNotice?: string | null;
@@ -77,11 +68,13 @@ const initialState: RuntimeState = {
   revokedReason: '',
   revokedInfo: null,
   isOffline: false,
+  isListenerClosed: false,
   isDraining: false,
   drainInfo: null,
   isStopped: false,
   stoppedInfo: null,
   activeStep: 1,
+  completedSteps: 0,
   unreadReportsCount: 0,
   unreadReportsArrivalNotice: null,
   quietReportNotice: null,
@@ -98,7 +91,7 @@ const initialState: RuntimeState = {
 
 export const runtimeStore = writable<RuntimeState>(initialState);
 
-function deriveStepFromState(stateId?: string): number {
+export function deriveStepFromState(stateId?: string): number {
   if (!stateId) return 1;
   if (stateId.startsWith('onboard.mode') || stateId.startsWith('onboard.entry')) return 1;
   if (stateId.startsWith('language.')) return 1;
@@ -178,6 +171,7 @@ export async function initRuntime(): Promise<void> {
 
   const isPaired = apiClient.isPaired();
   const label = apiClient.getLabel() || '';
+  const requested = routeForPath(typeof window !== 'undefined' ? window.location.pathname : '/');
 
   if (!isPaired) {
     runtimeStore.update((s) => ({
@@ -198,7 +192,17 @@ export async function initRuntime(): Promise<void> {
     const machineName =
       typeof status.machine === 'string' ? status.machine : status.machine?.name || 'local-machine';
 
-    const initialRoute: RuntimeState['currentRoute'] = onboarded ? 'workspace' : 'onboarding';
+    // An un-onboarded machine shows the onboarding on every route but the pairing page.
+    let initialRoute: AppRoute;
+    if (requested === 'entry') {
+      // The entry is not a page of its own once the browser is paired: it opens where the app
+      // left off.
+      initialRoute = onboarded ? 'workspace' : 'onboarding';
+    } else if (!onboarded) {
+      initialRoute = requested === 'pair' ? 'pair' : 'onboarding';
+    } else {
+      initialRoute = requested ?? 'workspace';
+    }
 
     // If there is a current state reported in status, store it
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
@@ -274,7 +278,42 @@ export async function refreshDecisionsCount(): Promise<void> {
   }
 }
 
+const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
+
+/**
+ * Records that the network listener this browser reached the machine over was closed.
+ *
+ * A browser on the loopback listener keeps working, so it stays where it is and only the
+ * connection banner changes; a browser on the network loses its access and lands on the page
+ * that says why, with its pairing kept.
+ */
+function markListenerClosed(): void {
+  const onLoopback =
+    typeof window === 'undefined' || loopbackHosts.includes(window.location.hostname);
+  runtimeStore.update((s) => ({
+    ...s,
+    isListenerClosed: true,
+    currentRoute: onLoopback ? s.currentRoute : 'listener-off',
+  }));
+}
+
 export function handleRuntimeEvent(event: string, data: unknown): void {
+  if (event === 'stream.closed') {
+    const closed = (data || {}) as { reason?: string };
+    if (closed.reason === 'listener_closed') {
+      markListenerClosed();
+    }
+    return;
+  }
+  if (event === 'listener.changed') {
+    const changed = (data || {}) as { state?: string; kind?: string };
+    if (changed.kind === 'lan' && changed.state === 'closed') {
+      markListenerClosed();
+    } else if (changed.kind === 'lan') {
+      runtimeStore.update((s) => ({ ...s, isListenerClosed: false }));
+    }
+    return;
+  }
   if (event === 'state_transition' || event === 'check') {
     const stateData = data as StateRepresentation;
     if (stateData?.state) {
@@ -339,7 +378,11 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
       isStopped: true,
       stoppedInfo: stoppedData,
     }));
-  } else if (event === 'project.changed' || event === 'project.released' || event === 'project.enrolled') {
+  } else if (
+    event === 'project.changed' ||
+    event === 'project.released' ||
+    event === 'project.enrolled'
+  ) {
     runtimeStore.update((s) => ({
       ...s,
       projectEventNotice: `${event}_${Date.now()}`,
@@ -353,7 +396,9 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
 
 export async function pairBrowser(code: string): Promise<void> {
   const res = await apiClient.pair(code);
-  const status = await apiClient.getStatus().catch(() => ({ status: 'ready', onboarded: false }));
+  const status: StatusResponse = await apiClient
+    .getStatus()
+    .catch(() => ({ status: 'ready', onboarded: false }) as StatusResponse);
   const onboarded =
     status.onboarded ??
     (typeof status.machine === 'object' && status.machine ? status.machine.onboarded : false) ??
@@ -372,7 +417,6 @@ export async function pairBrowser(code: string): Promise<void> {
     currentRoute: onboarded ? 'workspace' : 'onboarding',
     isOffline: false,
   }));
-
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
@@ -391,22 +435,61 @@ export async function executeLink(link: HypermediaLink | string, body?: unknown)
   }
 }
 
-export function navigateTo(route: RuntimeState['currentRoute']): void {
+export function navigateTo(route: AppRoute): void {
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
   }));
+  if (typeof window !== 'undefined' && window.history) {
+    const path = pathForRoute(route);
+    if (path && window.location.pathname !== path) {
+      window.history.pushState({ route }, '', path);
+    }
+  }
+}
+
+/**
+ * Takes the route the address bar names, if it names one of the app's routes.
+ *
+ * @returns the route taken, or `null` when the path names none
+ */
+export function adoptRouteFromLocation(): AppRoute | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const route = routeForPath(window.location.pathname);
+  if (route) {
+    runtimeStore.update((s) => ({ ...s, currentRoute: route }));
+  }
+  return route;
 }
 
 function applyOnboardingState(state: OnboardingState): void {
   const activeStep = deriveStepFromState(state.state);
+  const completed =
+    typeof state.completed_steps === 'number' ? state.completed_steps : Math.max(0, activeStep - 1);
   runtimeStore.update((s) => ({
     ...s,
     onboarding: state,
     currentState: state as unknown as StateRepresentation,
     activeStep,
+    completedSteps: completed,
     isOnboarded: state.state === 'onboard.completed' ? true : s.isOnboarded,
   }));
+}
+
+/**
+ * The steps the runtime reports as done, 1-based, for the step bar.
+ *
+ * @param completedSteps how many aspects the runtime reports as completed
+ * @returns the step numbers, in order
+ */
+export function completedStepNumbers(completedSteps: number): number[] {
+  const numbers: number[] = [];
+  for (let step = 1; step <= Math.min(completedSteps, 7); step++) {
+    numbers.push(step);
+  }
+  return numbers;
 }
 
 export async function loadOnboardingState(): Promise<OnboardingState | null> {
@@ -425,6 +508,32 @@ export async function stepOnboarding(link: string): Promise<void> {
     applyOnboardingState(await apiClient.stepOnboarding(link));
   } catch {
     // A refused step leaves the state as it is.
+  }
+}
+
+/**
+ * Records the token of a credential, either rotated in place or replaced by a new entry.
+ *
+ * @param key the credential key, e.g. `github`
+ * @param secret the new secret; it is written once and never read back
+ * @param kind the kind of a replaced entry, or `null` to keep the recorded kind
+ * @returns `true` when the runtime stored it
+ */
+export async function storeCredential(
+  key: string,
+  secret: string,
+  kind: string | null = null,
+): Promise<boolean> {
+  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+  try {
+    await apiClient.setCredential(key, secret);
+    if (kind) {
+      await apiClient.updateMachineSetting(`credential:${key}`, kind, revision);
+    }
+    await loadMachineSettings();
+    return true;
+  } catch {
+    return false;
   }
 }
 

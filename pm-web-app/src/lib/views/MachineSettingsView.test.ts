@@ -57,6 +57,8 @@ describe('MachineSettingsView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 1,
     });
 
@@ -116,7 +118,10 @@ describe('MachineSettingsView component', () => {
     await fireEvent.click(screen.getByTestId('save-documents'));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Changed meanwhile: it is now copy');
+      expect(screen.getByTestId('conflict-dialog')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Current value: copy');
+    expect(screen.getByTestId('conflict-apply')).toBeInTheDocument();
+    expect(screen.getByTestId('conflict-keep')).toBeInTheDocument();
   });
 });

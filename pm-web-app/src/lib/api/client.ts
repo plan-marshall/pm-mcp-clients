@@ -738,6 +738,10 @@ export interface OnboardingState {
   completed_steps?: number;
   auto?: boolean;
   links?: Record<string, OnboardingLink>;
+  /** The recorded summary of each done step, keyed by step number (1 to 7). */
+  step_summaries?: Record<string, string>;
+  /** The enrolled harnesses, with the name the model screens group by. */
+  harnesses?: Array<Record<string, unknown>>;
   [key: string]: unknown;
 }
 

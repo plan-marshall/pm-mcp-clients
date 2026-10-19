@@ -19,6 +19,8 @@ describe('OnboardingView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 1,
     });
   });
@@ -52,6 +54,8 @@ describe('OnboardingView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 2,
     });
 
@@ -79,6 +83,8 @@ describe('OnboardingView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 2,
     });
 
@@ -103,12 +109,14 @@ describe('OnboardingView component', () => {
       isRevoked: false,
       revokedReason: '',
       isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
       activeStep: 8,
     });
 
     render(OnboardingView);
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Done');
-    expect(screen.getByRole('button', { name: /projects/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('This machine is ready');
+    expect(screen.getByRole('button', { name: /add a project/i })).toBeInTheDocument();
   });
 });
