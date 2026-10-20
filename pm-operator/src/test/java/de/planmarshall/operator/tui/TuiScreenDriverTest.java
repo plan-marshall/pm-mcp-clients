@@ -243,7 +243,7 @@ class TuiScreenDriverTest {
     void escapeHasShortAmbiguityTimeout() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var driver = new TuiScreenDriver(virtual.terminal(), "en");
-            assertEquals(TuiScreenDriver.AMBIGUOUS_TIMEOUT_MILLIS, driver.keyMap().getAmbiguousTimeout());
+            assertEquals(TuiScreenDriver.AMBIGUOUS_TIMEOUT_MILLIS, driver.keyMap(TuiLevel.Kind.OVERVIEW).getAmbiguousTimeout());
         }
     }
 

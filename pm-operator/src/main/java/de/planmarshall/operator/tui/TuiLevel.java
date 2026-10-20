@@ -37,6 +37,10 @@ public record TuiLevel(Kind kind, @Nullable String id, String title) {
         PROJECT_BY_EPIC,
         /** One plan's process. */
         PLAN,
+        /** One task of a plan's leaf, its worker's live activity. */
+        PLAN_ACTIVITY,
+        /** One ended plan's completion report. */
+        PLAN_COMPLETION,
         /** One epic's view. */
         EPIC,
         /** The ended work of a project, or of the machine. */

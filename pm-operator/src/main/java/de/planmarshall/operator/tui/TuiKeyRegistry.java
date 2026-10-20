@@ -135,7 +135,31 @@ public final class TuiKeyRegistry {
         } else if (action == TuiKeyAction.REPORTS) {
             params.put("count", reportsCount);
         }
-        return MessageCatalogue.format(locale, action.textKey(), params);
+        return MessageCatalogue.format(locale, planKey(action, kind), params);
+    }
+
+    /**
+     * The plan view names its keys from {@code operator.plan.keys.*} where the design lists them,
+     * and falls back to the shared action keys for move, filter, help, leave, and back.
+     */
+    private static String planKey(TuiKeyAction action, TuiLevel.Kind kind) {
+        if (kind != TuiLevel.Kind.PLAN) {
+            return action.textKey();
+        }
+        var key = switch (action) {
+            case OPEN -> "operator.plan.keys.open";
+            case CLOSE -> "operator.plan.keys.close";
+            case EXPAND_ALL -> "operator.plan.keys.all";
+            case WHERE -> "operator.plan.keys.where";
+            case NON_LANE -> "operator.plan.keys.not_in_plan";
+            case TOKENS -> "operator.plan.keys.tokens";
+            case PROJECT -> "operator.plan.keys.project";
+            case EPIC -> "operator.plan.keys.epic";
+            case COMPLETION -> "operator.plan.keys.completion";
+            case ACTIONS -> "operator.plan.keys.actions";
+            default -> null;
+        };
+        return key != null ? key : action.textKey();
     }
 
     /**
@@ -239,15 +263,27 @@ public final class TuiKeyRegistry {
                             footer("Tab", TuiKeyAction.SWITCH_VIEW), footer("E", TuiKeyAction.ENDED),
                             footer("Esc", TuiKeyAction.BACK)));
 
-        var planNavigation = new ArrayList<>(navigation);
-        planNavigation.add(new Binding("a", TuiKeyAction.ACTIONS));
-        planNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
-        planNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
+        var planNavigation = planNavigation();
         registry.put(TuiLevel.Kind.PLAN, level(planNavigation,
                             footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
-                            footer("a", TuiKeyAction.ACTIONS), footer("/", TuiKeyAction.FILTER),
-                            footer("Esc", TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
-                            footer("q", TuiKeyAction.LEAVE)));
+                            footer("→", TuiKeyAction.OPEN), footer("←", TuiKeyAction.CLOSE),
+                            footer(".", TuiKeyAction.WHERE), footer("*", TuiKeyAction.EXPAND_ALL),
+                            footer("n", TuiKeyAction.NON_LANE), footer("t", TuiKeyAction.TOKENS),
+                            footer("p", TuiKeyAction.PROJECT), footer("e", TuiKeyAction.EPIC),
+                            footer("c", TuiKeyAction.COMPLETION), footer("a", TuiKeyAction.ACTIONS),
+                            footer("Esc", TuiKeyAction.BACK), footer("q", TuiKeyAction.LEAVE)));
+
+        var activityNavigation = new ArrayList<>(navigation);
+        activityNavigation.add(new Binding("a", TuiKeyAction.ACTIONS));
+        activityNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
+        activityNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
+        registry.put(TuiLevel.Kind.PLAN_ACTIVITY, level(activityNavigation,
+                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Esc", TuiKeyAction.BACK),
+                            footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
+
+        registry.put(TuiLevel.Kind.PLAN_COMPLETION, level(activityNavigation,
+                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Esc", TuiKeyAction.BACK),
+                            footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
 
         var epicLevel = new ArrayList<>(planNavigation);
         epicLevel.add(new Binding("\t", TuiKeyAction.SWITCH_VIEW));
@@ -281,6 +317,43 @@ public final class TuiKeyRegistry {
 
     private static FooterEntry footer(String display, TuiKeyAction action) {
         return new FooterEntry(display, action);
+    }
+
+    /**
+     * The keys of the plan view: the tree replaces the overview's open and back, and the plan adds
+     * its own keys for open-all, the jump to where it is, the lane toggle, tokens, the project and
+     * epic jumps, and the completion report.
+     */
+    private static List<Binding> planNavigation() {
+        var bindings = new ArrayList<Binding>();
+        bindings.add(new Binding(UP, TuiKeyAction.MOVE_UP));
+        bindings.add(new Binding("k", TuiKeyAction.MOVE_UP));
+        bindings.add(new Binding(DOWN, TuiKeyAction.MOVE_DOWN));
+        bindings.add(new Binding("j", TuiKeyAction.MOVE_DOWN));
+        bindings.add(new Binding(PAGE_UP, TuiKeyAction.PAGE_UP));
+        bindings.add(new Binding(PAGE_DOWN, TuiKeyAction.PAGE_DOWN));
+        bindings.add(new Binding("g", TuiKeyAction.FIRST));
+        bindings.add(new Binding("G", TuiKeyAction.LAST));
+        bindings.add(new Binding(ENTER, TuiKeyAction.OPEN));
+        bindings.add(new Binding(NEWLINE, TuiKeyAction.OPEN));
+        bindings.add(new Binding(RIGHT, TuiKeyAction.OPEN));
+        bindings.add(new Binding("l", TuiKeyAction.OPEN));
+        bindings.add(new Binding(LEFT, TuiKeyAction.CLOSE));
+        bindings.add(new Binding("h", TuiKeyAction.CLOSE));
+        bindings.add(new Binding(ESC, TuiKeyAction.BACK));
+        bindings.add(new Binding("/", TuiKeyAction.FILTER));
+        bindings.add(new Binding("r", TuiKeyAction.RELOAD));
+        bindings.add(new Binding("?", TuiKeyAction.HELP));
+        bindings.add(new Binding("q", TuiKeyAction.LEAVE));
+        bindings.add(new Binding("a", TuiKeyAction.ACTIONS));
+        bindings.add(new Binding("e", TuiKeyAction.EPIC));
+        bindings.add(new Binding("p", TuiKeyAction.PROJECT));
+        bindings.add(new Binding("*", TuiKeyAction.EXPAND_ALL));
+        bindings.add(new Binding(".", TuiKeyAction.WHERE));
+        bindings.add(new Binding("n", TuiKeyAction.NON_LANE));
+        bindings.add(new Binding("t", TuiKeyAction.TOKENS));
+        bindings.add(new Binding("c", TuiKeyAction.COMPLETION));
+        return bindings;
     }
 
     private static List<Binding> projectRootNavigation(List<Binding> navigation) {

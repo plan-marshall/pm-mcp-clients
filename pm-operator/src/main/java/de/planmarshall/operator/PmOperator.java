@@ -115,7 +115,7 @@ public final class PmOperator implements Callable<Integer> {
      * @param args    the arguments
      * @return the exit code
      */
-    static int execute(OperatorContext context, PrintWriter out, PrintWriter err, String... args) {
+    public static int execute(OperatorContext context, PrintWriter out, PrintWriter err, String... args) {
         var commandLine = new CommandLine(new PmOperator(context), new Factory(context));
         commandLine.setOut(out);
         commandLine.setErr(err);

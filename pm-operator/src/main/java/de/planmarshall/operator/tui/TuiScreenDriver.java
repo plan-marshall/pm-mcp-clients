@@ -10,8 +10,6 @@
 package de.planmarshall.operator.tui;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.jline.keymap.BindingReader;
@@ -23,6 +21,7 @@ import org.jline.terminal.Terminal;
 import org.jline.utils.Display;
 import org.jline.utils.InfoCmp;
 import org.jline.utils.NonBlockingReader;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -184,7 +183,8 @@ public final class TuiScreenDriver {
             enterAlternate();
             var display = new Display(terminal, true);
             var reader = new BindingReader(terminal.reader());
-            var keyMap = keyMap();
+            TuiLevel.@Nullable Kind keyMapKind = null;
+            KeyMap<TuiKeyAction> keyMap = keyMap(TuiLevel.Kind.OVERVIEW);
             TuiScreen previous = null;
             int previousColumns = -1;
             int previousRows = -1;
@@ -192,10 +192,21 @@ public final class TuiScreenDriver {
             while (running) {
                 display.resize(terminal);
                 var screen = renderer.screen();
+                if (screen.kind() != keyMapKind) {
+                    keyMap = keyMap(screen.kind());
+                    keyMapKind = screen.kind();
+                }
                 int columns = terminal.getColumns();
                 int rows = terminal.getRows();
                 if (!screen.equals(previous) || columns != previousColumns || rows != previousRows) {
-                    display.update(layout.render(screen, columns, rows), 0);
+                    var rendered = layout.render(screen, columns, rows);
+                    // A level that loses or gains rows (a closed node, a hidden token panel) must
+                    // redraw every line: Display's diff only moves the tail and would leave the
+                    // old, longer body in place. A reset makes the next update a full frame.
+                    if (previous == null || previous.rows().size() != screen.rows().size()) {
+                        display.reset();
+                    }
+                    display.update(rendered, 0);
                     previous = screen;
                     previousColumns = columns;
                     previousRows = rows;
@@ -274,12 +285,12 @@ public final class TuiScreenDriver {
         return TuiKeyRegistry.bindings(kind).stream().anyMatch(binding -> binding.action() == action);
     }
 
-    KeyMap<TuiKeyAction> keyMap() {
+    KeyMap<TuiKeyAction> keyMap(TuiLevel.Kind kind) {
         var map = new KeyMap<TuiKeyAction>();
         // A lone Esc is also the prefix of the arrow and page sequences; the terminal sends a
         // sequence in one write, so a short wait tells them apart without a visible lag on Esc.
         map.setAmbiguousTimeout(AMBIGUOUS_TIMEOUT_MILLIS);
-        for (var binding : allBindings()) {
+        for (var binding : TuiKeyRegistry.bindings(kind)) {
             map.bindIfNotBound(binding.action(), binding.trigger());
         }
         bindCapability(map, TuiKeyAction.MOVE_UP, InfoCmp.Capability.key_up);
@@ -297,19 +308,6 @@ public final class TuiScreenDriver {
         if (sequence != null && !sequence.isEmpty()) {
             map.bindIfNotBound(action, sequence);
         }
-    }
-
-    private static List<TuiKeyRegistry.Binding> allBindings() {
-        var bindings = new ArrayList<TuiKeyRegistry.Binding>();
-        for (var kind : TuiLevel.Kind.values()) {
-            for (var binding : TuiKeyRegistry.bindings(kind)) {
-                if (bindings.stream().noneMatch(existing -> existing.trigger().equals(binding.trigger())
-                                    && existing.action() == binding.action())) {
-                    bindings.add(binding);
-                }
-            }
-        }
-        return bindings;
     }
 
     /**

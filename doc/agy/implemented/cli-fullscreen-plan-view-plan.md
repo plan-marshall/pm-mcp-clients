@@ -58,15 +58,15 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-plan-view` on branch `feat/cli-fullscreen-plan-view` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/cli-fullscreen-plan-view-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-plan-view-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/cli-fullscreen-plan-view-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-plan-view-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-plan-view-plan-report.md` by orchestrator session.
@@ -89,32 +89,32 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Catalogue & `running-work` Process States Verification
-- [ ] **1.1 Message Catalogue & Scenario Audit**:
+- [x] **1.1 Message Catalogue & Scenario Audit**:
   - Verify all keys in `doc/design/terminal-client/16-plan-view.adoc#plan-texts` (`operator.plan.keys.*`, `operator.plan.header.*`, `operator.plan.leaf.*`, `operator.plan.activity.*`, `operator.plan.tokens.*`) exist in `pm-api/src/main/resources/messages/operator.{en,de}.properties` and `plan_view.{en,de}.properties`, and verify the `process.*` states in `running-work.json` (delivered by `mock-runtime-running-work-plan.md`).
 
 ### Phase 2: `PlanViewLevel` Tree Model (`de.planmarshall.operator.planview`)
-- [ ] **2.1 Hierarchical Node State**:
+- [x] **2.1 Hierarchical Node State**:
   - Model the plan's phases, sub-workflows (including `land.*` under `execute` for the land lane), tasks, and leaf details from `PlanViewResource`, opening by default down to the currently active node.
   - Implement `→`/`l` (open node), `←`/`h` (close node or move to parent), `*` (open all descendants), `.` (focus active node), `n` (show/hide skipped lane phases), and `t` (toggle token breakdown table by phase and role with floor `≥` and unmeasured count).
-- [ ] **2.2 Header & Breadcrumb Formatting**:
+- [x] **2.2 Header & Breadcrumb Formatting**:
   - Format header path `<project> › [<epic> ›] <plan> › <node>` and sub-header with state, hold kind, token total + split, and PR number.
   - Hide `e` in the footer when the plan has no parent epic (`epicId == null`), and show `c` in the footer when the plan has ended.
 
 ### Phase 3: Leaf Details & `WorkerActivityLevel`
-- [ ] **3.1 Leaf Expansion & Decision Hand-Off**:
+- [x] **3.1 Leaf Expansion & Decision Hand-Off**:
   - On `Enter` on a leaf node, toggle inline leaf details (inputs, outputs, checks, duration, tokens); on a node waiting for the operator, suspend/leave the view and invoke `AnswerCommand` for that decision.
-- [ ] **3.2 `WorkerActivityLevel` (Live Task Stream)**:
+- [x] **3.2 `WorkerActivityLevel` (Live Task Stream)**:
   - On `Enter` on a task (or when entering an off-track plan from the Overview), push `WorkerActivityLevel` showing role, harness, model, attempt, duration, tokens, off-track banner (if any), and sanitized plain-text activity lines (`OutputSafety.stripControlSequences`), auto-scrolling at bottom unless the operator scrolls up.
 
 ### Phase 4: Cross-Level Jumps (`p`, `e`, `c`, `Esc`)
-- [ ] **4.1 One-Key Jumps & Caller Return**:
+- [x] **4.1 One-Key Jumps & Caller Return**:
   - Wire `p` to push/jump to `ProjectWorkLevel` for the plan's project; wire `e` to push/jump to `EpicViewLevel` for the plan's epic (or pop back if opened from that epic); wire `c` on an ended plan to open its completion report view.
   - Ensure `Esc` from `PlanViewLevel` always returns to the exact level that opened it (Overview project level, Epic view, Ended work, or Reports).
 
 ### Phase 5: Screen Tests & Integration Verification
-- [ ] **5.1 `PlanViewFullScreenTest` (`VirtualScreenTerminal`)**:
+- [x] **5.1 `PlanViewFullScreenTest` (`VirtualScreenTerminal`)**:
   - Verify all `process-contract` scenarios in the full-screen view: phase tree expansion/collapse (`→`, `←`, `*`), `.` jump to active node, `n` non-lane nodes toggle, `t` token breakdown toggle, leaf detail expansion, and `WorkerActivityLevel` plain-text sanitization.
   - Verify live SSE tree update preserving selection on the selected node ID.
   - Verify reaching `p` (project) and `e` (epic) in one key from a plan opened in (a) the overview, (b) an epic's view, and (c) ended work, and `Esc` returning to the origin in each case.
-- [ ] **5.2 Pre-Commit & Operational Gate**:
+- [x] **5.2 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).
