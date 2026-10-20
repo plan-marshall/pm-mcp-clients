@@ -3,6 +3,10 @@
   Repository-wide Maven settings, passed as global settings through .mvn/maven.config, so the personal
   ~/.m2/settings.xml stays in force and takes precedence. This file holds no token.
 
+  The Maven CLI is the only reader: IDEs (m2e in VS Code, for one) ignore .mvn/maven.config and this
+  file, so the profile below must also be in ~/.m2/settings.xml on a developer machine, or the editor
+  reports the parent POM as unresolvable.
+
   Every artifact of the product is resolved from the GitHub Packages registry of the organisation plan-marshall,
   which answers no anonymous request. The server "plan-marshall" below reads the workflow token in CI. On a
   developer machine a <server> with the same id in ~/.m2/settings.xml replaces it
