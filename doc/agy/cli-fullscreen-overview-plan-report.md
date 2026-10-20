@@ -54,11 +54,11 @@ Key deliverables include:
 
 | File | Test Scope & Verification |
 |---|---|
-| `OverviewFormattingTest.java` | Unit tests for duration, relative time, phase state localization in EN & DE, attention badges, sort comparator transitivity, and OSC 8 links. (13 tests) |
+| `OverviewFormattingTest.java` | Unit tests for duration, relative time, phase state localization in EN & DE, attention badges, sort comparator transitivity, and OSC 8 links. (18 tests) |
 | `ProjectsOverviewLevelTest.java` | Unit tests for Level 1 row ordering, attention badge prioritization, empty state message, and metadata. (4 tests) |
 | `ProjectWorkLevelTest.java` | Unit tests for `BY_PLAN` and `BY_EPIC` row formatting, tree branches, alongside landings, setup rows, orphan plan grouping, and detail help visibility. (6 tests) |
 | `EndedWorkLevelTest.java` | Unit tests for ended work pagination, German outcome localization and sanitization, refreshFirstPage older item retention, PR numbers, and empty page handling. (6 tests) |
-| `OverviewFullScreenTest.java` | End-to-end `VirtualScreenTerminal` tests covering layout at 120x30, Enter/Tab/e/Esc navigation, / filter, E pagination, 80x24 responsive widths, 50x20 too-narrow fallback, live SSE updates with anchored selection, 0600 overview.json persistence round-trip, and notice buffer draining. (8 tests) |
+| `OverviewFullScreenTest.java` | End-to-end `VirtualScreenTerminal` tests covering layout at 120x30, Enter/Tab/e/Esc navigation, / filter, E pagination, 80x24 responsive widths, 50x20 too-narrow fallback, live SSE updates with anchored selection, 0600 overview.json persistence round-trip, notice buffer draining, reports/system views, and help/drill-down toggles. (11 tests) |
 | `PmOperatorProcessIT.java` | Subprocess IT testing non-interactive execution of `pm-operator plans` against mock runtime, verifying hierarchical tree fallback output. (1 test) |
 
 ---
@@ -66,23 +66,24 @@ Key deliverables include:
 ## 3. Test & Verification Results
 
 ### 3.1 Unit & Screen Test Suite
-All 37 overview-specific tests pass cleanly:
-- `OverviewFormattingTest`: 13/13 passed
+All 45 overview-specific tests pass cleanly:
+- `OverviewFormattingTest`: 18/18 passed
 - `ProjectsOverviewLevelTest`: 4/4 passed
 - `ProjectWorkLevelTest`: 6/6 passed
 - `EndedWorkLevelTest`: 6/6 passed
-- `OverviewFullScreenTest`: 8/8 passed
+- `OverviewFullScreenTest`: 11/11 passed
 
 Full `pm-operator` test suite:
-- **Total Tests Run**: 687
+- **Total Tests Run**: 695
 - **Failures**: 0
 - **Errors**: 0
 - **Skipped**: 0
 - **Status**: `BUILD SUCCESS`
 
-### 3.2 Pre-Commit Gate
+### 3.2 Pre-Commit Gate & Code Quality
 - Gate command: `./mvnw verify -Ppre-commit`
 - Reactor build, Checkstyle, OpenRewrite formatting, Enforcer rules, Javadoc generation, and all module unit/integration tests verified.
+- 100% resolution of automated review findings: all SonarCloud issues resolved (0 bugs, 0 vulnerabilities, 0 code smells, cognitive complexity reduced under threshold, streams adopted, test coverage expanded across views).
 
 ---
 
