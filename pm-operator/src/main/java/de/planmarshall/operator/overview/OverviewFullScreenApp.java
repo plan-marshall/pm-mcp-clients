@@ -466,7 +466,13 @@ public final class OverviewFullScreenApp {
     private final class OverviewKeyHandler implements TuiScreenDriver.KeyHandler {
 
         @Override
-        public synchronized boolean handle(TuiKeyAction action) {
+        public boolean handle(TuiKeyAction action) {
+            synchronized (OverviewFullScreenApp.this) {
+                return handleLocked(action);
+            }
+        }
+
+        private boolean handleLocked(TuiKeyAction action) {
             switch (action) {
                 case MOVE_UP -> {
                     stack.move(-1);
@@ -514,8 +520,10 @@ public final class OverviewFullScreenApp {
         }
 
         @Override
-        public synchronized void filter(String text) {
-            stack.filter(text);
+        public void filter(String text) {
+            synchronized (OverviewFullScreenApp.this) {
+                stack.filter(text);
+            }
         }
 
         private void refreshHelpRows() {
