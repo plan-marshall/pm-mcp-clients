@@ -145,11 +145,9 @@ public final class EndedWorkLevel {
             return List.of(new TuiRow(EMPTY_ENDED_ROW_ID, emptyText, null, false, false));
         }
 
-        var result = new ArrayList<TuiRow>(items.size());
-        for (var item : items) {
-            result.add(formatItemRow(locale, clock, helpVisible, item));
-        }
-        return result;
+        return items.stream()
+                .map(item -> formatItemRow(locale, clock, helpVisible, item))
+                .toList();
     }
 
     private static TuiRow formatItemRow(String locale, Clock clock, boolean helpVisible, EndedWorkItem item) {

@@ -227,6 +227,24 @@ public final class ProjectWorkLevel {
     private static List<String> buildPlanDetailParts(ActivePlanSummary plan, String locale, Clock clock,
                         boolean helpVisible, boolean insideEpic) {
         var detailParts = new ArrayList<String>();
+        appendTimeDetails(detailParts, plan, locale, clock);
+        if (plan.tasksTotal() > 0 || "refine".equalsIgnoreCase(plan.currentPhase())) {
+            detailParts.add(MessageCatalogue.format(locale, "overview.progress.tasks",
+                                Map.of("done", plan.tasksDone(), "total", plan.tasksTotal())));
+        }
+        if (!insideEpic && plan.epicTitle() != null && !plan.epicTitle().isBlank()) {
+            detailParts.add(MessageCatalogue.format(locale, "overview.plan.belongs_to",
+                                Map.of("epic", OverviewFormatting.EPIC_GLYPH + " " + OverviewFormatting.clean(plan.epicTitle()))));
+        }
+        if (plan.offTrackSignal() != null && !plan.offTrackSignal().isBlank()) {
+            detailParts.add(MessageCatalogue.format(locale, "overview.plan.off_track",
+                                Map.of("signal", OverviewFormatting.clean(plan.offTrackSignal()))));
+        }
+        appendPrDetails(detailParts, plan, locale, helpVisible);
+        return detailParts;
+    }
+
+    private static void appendTimeDetails(List<String> detailParts, ActivePlanSummary plan, String locale, Clock clock) {
         if (plan.runningSince() != null) {
             var dur = OverviewFormatting.formatDuration(plan.runningSince(), clock);
             if (!dur.isEmpty()) {
@@ -240,28 +258,19 @@ public final class ProjectWorkLevel {
                                     Map.of("phase", OverviewFormatting.clean(plan.currentPhase()), KEY_DURATION, phaseDur)));
             }
         }
-        if (plan.tasksTotal() > 0 || "refine".equalsIgnoreCase(plan.currentPhase())) {
-            detailParts.add(MessageCatalogue.format(locale, "overview.progress.tasks",
-                                Map.of("done", plan.tasksDone(), "total", plan.tasksTotal())));
+    }
+
+    private static void appendPrDetails(List<String> detailParts, ActivePlanSummary plan, String locale, boolean helpVisible) {
+        if (plan.pullRequestNumber() == null) {
+            return;
         }
-        if (!insideEpic && plan.epicTitle() != null && !plan.epicTitle().isBlank()) {
-            detailParts.add(MessageCatalogue.format(locale, "overview.plan.belongs_to",
-                                Map.of("epic", OverviewFormatting.EPIC_GLYPH + " " + OverviewFormatting.clean(plan.epicTitle()))));
+        var prNum = MessageCatalogue.format(locale, "overview.plan.pull_request",
+                            Map.of("number", plan.pullRequestNumber()));
+        if (helpVisible && plan.pullRequestUrl() != null && !plan.pullRequestUrl().isBlank()) {
+            detailParts.add(prNum + " " + OverviewFormatting.clean(plan.pullRequestUrl()));
+        } else {
+            detailParts.add(prNum);
         }
-        if (plan.offTrackSignal() != null && !plan.offTrackSignal().isBlank()) {
-            detailParts.add(MessageCatalogue.format(locale, "overview.plan.off_track",
-                                Map.of("signal", OverviewFormatting.clean(plan.offTrackSignal()))));
-        }
-        if (plan.pullRequestNumber() != null) {
-            var prNum = MessageCatalogue.format(locale, "overview.plan.pull_request",
-                                Map.of("number", plan.pullRequestNumber()));
-            if (helpVisible && plan.pullRequestUrl() != null && !plan.pullRequestUrl().isBlank()) {
-                detailParts.add(prNum + " " + OverviewFormatting.clean(plan.pullRequestUrl()));
-            } else {
-                detailParts.add(prNum);
-            }
-        }
-        return detailParts;
     }
 
     private void buildAlongsideRows(List<TuiRow> rows, String locale) {
