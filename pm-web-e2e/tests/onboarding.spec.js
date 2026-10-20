@@ -119,4 +119,28 @@ test.describe('Machine settings route', () => {
     await page.getByTestId('withdraw-scan_harnesses').click();
     await expect(page.getByText('Withdrawn: you will be asked again next time.')).toBeVisible();
   });
+
+  test('opens the onboarding at the aspect whose Change was clicked', async ({ page, request }) => {
+    await openOnboarding(page, request, 'entry-device-lifecycle');
+    await page.goto('/settings/machine');
+    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+
+    await page.getByTestId('change-aspect-providers').click();
+
+    await expect(page).toHaveURL(/\/onboarding\?step=6$/);
+    await expect(page.getByTestId('onboarding-view')).toBeVisible();
+  });
+
+  test('returns from the settings to the route it was opened from', async ({ page, request }) => {
+    await openOnboarding(page, request, 'entry-device-lifecycle');
+    await page.goto('/projects');
+    await expect(page.getByTestId('project-explorer-view')).toBeVisible();
+
+    await page.getByRole('button', { name: /Settings/i }).click();
+    await expect(page.locator('.settings-view')).toBeVisible();
+
+    await page.getByTestId('settings-back-button').click();
+    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page.getByTestId('project-explorer-view')).toBeVisible();
+  });
 });

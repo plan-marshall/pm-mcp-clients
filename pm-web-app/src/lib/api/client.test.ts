@@ -336,15 +336,32 @@ describe('ApiClient', () => {
         status: 200,
         json: async () => {
           if (url.endsWith('/catalogue')) {
-            return { scope: 'pm-mcp-clients', runtime_version: '0.9.0', digest: 'sha256:cat', blocks: [] };
+            return {
+              scope: 'pm-mcp-clients',
+              runtime_version: '0.9.0',
+              digest: 'sha256:cat',
+              blocks: [],
+            };
           }
           if (url.includes('/workflows/validate')) {
             return { valid: true, stages: [], findings: [] };
           }
           if (url.includes('/workflows/')) {
-            return { unit: 'phase-6-finalize', target: 'pm-mcp-clients', status: 'landed', steps: ['written'] };
+            return {
+              unit: 'phase-6-finalize',
+              target: 'pm-mcp-clients',
+              status: 'landed',
+              steps: ['written'],
+            };
           }
-          return [{ name: 'phase-6-finalize', group: 'project_owned', level_in_force: 'project', levels: [] }];
+          return [
+            {
+              name: 'phase-6-finalize',
+              group: 'project_owned',
+              level_in_force: 'project',
+              levels: [],
+            },
+          ];
         },
       });
     });
@@ -361,7 +378,9 @@ describe('ApiClient', () => {
     expect(lastMethod).toBe('POST');
     expect(validation.valid).toBe(true);
 
-    const placed = await client.placeWorkflowUnit('pm-mcp-clients', 'phase-6-finalize', { text: 'x' });
+    const placed = await client.placeWorkflowUnit('pm-mcp-clients', 'phase-6-finalize', {
+      text: 'x',
+    });
     expect(lastUrl).toContain('/api/v1/projects/pm-mcp-clients/workflows/phase-6-finalize');
     expect(lastMethod).toBe('PUT');
     expect(lastBody).toEqual({ text: 'x' });
@@ -370,5 +389,154 @@ describe('ApiClient', () => {
     await client.removeWorkflowUnit(null, 'phase-6-finalize');
     expect(lastUrl).toContain('/api/v1/workflows/phase-6-finalize');
     expect(lastMethod).toBe('DELETE');
+  });
+
+  it('reads and steps a project onboarding, keeping a conflict body', async () => {
+    // Arrange
+    let lastUrl = '';
+    let lastMethod = '';
+    let lastBody: unknown;
+    let status = 200;
+    let responseBody: Record<string, unknown> = {
+      project_id: 'pm-mcp-clients',
+      step: 2,
+      state: 'project.identity',
+    };
+    globalThis.fetch = vi.fn().mockImplementation((url, init) => {
+      lastUrl = String(url);
+      lastMethod = init?.method ?? 'GET';
+      lastBody = init?.body ? JSON.parse(String(init.body)) : undefined;
+      return Promise.resolve({
+        ok: status < 400,
+        status,
+        json: async () => responseBody,
+      });
+    });
+
+    // Act
+    const run = await client.getProjectOnboarding('pm-mcp-clients');
+
+    // Assert
+    expect(lastMethod).toBe('GET');
+    expect(lastUrl).toContain('/api/v1/projects/pm-mcp-clients/onboarding');
+    expect(run.step).toBe(2);
+
+    // Arrange: another client changed the value first
+    status = 409;
+    responseBody = {
+      conflict: true,
+      current_value: 'landing.main',
+      wanted_value: 'landing.files',
+      revision: 9,
+    };
+
+    // Act
+    const conflicted = await client.stepProjectOnboarding('pm-mcp-clients', 'own', {
+      value: 'landing.files',
+    });
+
+    // Assert
+    expect(lastMethod).toBe('POST');
+    expect(lastUrl).toContain('/api/v1/projects/pm-mcp-clients/onboarding/step');
+    expect(lastBody).toEqual({ step: 'own', value: 'landing.files' });
+    expect(conflicted.conflict).toBe(true);
+    expect(conflicted.current_value).toBe('landing.main');
+  });
+
+  it('saves a project value against the revision it was read at', async () => {
+    // Arrange
+    let lastBody: unknown;
+    let status = 200;
+    let responseBody: Record<string, unknown> = { applied: true, conflict: false, revision: 8 };
+    globalThis.fetch = vi.fn().mockImplementation((_url, init) => {
+      lastBody = init?.body ? JSON.parse(String(init.body)) : undefined;
+      return Promise.resolve({
+        ok: status < 400,
+        status,
+        json: async () => responseBody,
+      });
+    });
+
+    // Act
+    const applied = await client.saveProjectSettings(
+      'pm-mcp-clients',
+      'landing',
+      'landing.files',
+      7,
+    );
+
+    // Assert
+    expect(lastBody).toEqual({
+      aspect: 'landing',
+      value: 'landing.files',
+      expected_revision: 7,
+    });
+    expect(applied.applied).toBe(true);
+
+    // Arrange: the revision moved on
+    status = 409;
+    responseBody = {
+      applied: false,
+      conflict: true,
+      revision: 9,
+      current_value: 'landing.pull-request',
+    };
+
+    // Act
+    const refused = await client.saveProjectSettings(
+      'pm-mcp-clients',
+      'landing',
+      'landing.files',
+      7,
+    );
+
+    // Assert
+    expect(refused.conflict).toBe(true);
+    expect(refused.current_value).toBe('landing.pull-request');
+  });
+
+  it('persists the favourite order through the explorer contract', async () => {
+    // Arrange
+    let lastUrl = '';
+    let lastMethod = '';
+    let lastBody: unknown;
+    globalThis.fetch = vi.fn().mockImplementation((url, init) => {
+      lastUrl = String(url);
+      lastMethod = init?.method ?? 'GET';
+      lastBody = init?.body ? JSON.parse(String(init.body)) : undefined;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'ok', project_ids: ['pm-mcp-core', 'pm-mcp-clients'] }),
+      });
+    });
+
+    // Act
+    const result = await client.reorderFavouriteProjects(['pm-mcp-core', 'pm-mcp-clients']);
+
+    // Assert
+    expect(lastMethod).toBe('PUT');
+    expect(lastUrl).toContain('/api/v1/explorer/favourites');
+    expect(lastBody).toEqual({ project_ids: ['pm-mcp-core', 'pm-mcp-clients'] });
+    expect(result.project_ids).toEqual(['pm-mcp-core', 'pm-mcp-clients']);
+  });
+
+  it('clears the pairing when a conflict-capable call is refused with 401', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_revoked');
+    const onRevoked = vi.fn();
+    client.setOnRevoked(onRevoked);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'unauthorized' }),
+    });
+
+    // Act & Assert
+    await expect(
+      client.saveProjectSettings('pm-mcp-clients', 'landing', 'landing.files', 7),
+    ).rejects.toThrow('unauthorized');
+    expect(onRevoked).toHaveBeenCalledWith('unauthorized');
+    expect(client.isPaired()).toBe(false);
   });
 });

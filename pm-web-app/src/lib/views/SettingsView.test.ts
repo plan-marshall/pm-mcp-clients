@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
-import { runtimeStore } from '../stores/runtime';
+import { runtimeStore, navigateTo } from '../stores/runtime';
 import { apiClient } from '../api/client';
 
 describe('SettingsView component', () => {
@@ -172,5 +173,31 @@ describe('SettingsView component', () => {
 
     await waitFor(() => expect(screen.getByTestId('lan-listener-modal')).toBeInTheDocument());
     expect(screen.getByTestId('lan-fingerprint')).toHaveTextContent('4F:1A:9C');
+  });
+
+  it('returns to the route the caller came from on Back', async () => {
+    runtimeStore.set({
+      isInitialized: true,
+      isPaired: true,
+      isOnboarded: true,
+      deviceLabel: 'Firefox on mbp-oliver',
+      machineName: 'mbp-oliver',
+      currentRoute: 'projects',
+      currentState: null,
+      isRevoked: false,
+      revokedReason: '',
+      isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
+      activeStep: 1,
+    });
+    navigateTo('settings');
+
+    render(SettingsView);
+
+    await waitFor(() => expect(screen.getByTestId('settings-back-button')).toBeInTheDocument());
+    await fireEvent.click(screen.getByTestId('settings-back-button'));
+
+    expect(get(runtimeStore).currentRoute).toBe('projects');
   });
 });

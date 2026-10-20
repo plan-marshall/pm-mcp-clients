@@ -9,6 +9,7 @@
     updateMachineSetting,
     withdrawConsent,
     storeCredential,
+    openOnboardingStep,
   } from '../stores/runtime';
   import type {
     ConsentRecord,
@@ -254,8 +255,9 @@
             <span class="aspect-row__value">{aspect.summary}</span>
             <Button
               variant="ghost"
-              on:click={() => navigateTo('onboarding')}
+              on:click={() => openOnboardingStep(aspect.step)}
               aria-label={`${$t('web.settings.aspects.change')} ${stepName(aspect.aspect)}`}
+              data-testid={`change-aspect-${aspect.aspect}`}
             >
               {$t('web.settings.aspects.change')}
             </Button>

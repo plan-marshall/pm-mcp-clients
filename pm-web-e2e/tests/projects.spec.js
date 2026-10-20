@@ -60,6 +60,37 @@ test.describe('Projects Explorer Flow (UC-PRJ-1..3)', () => {
     await expect(page.getByTestId('project-explorer-view')).toBeVisible();
   });
 
+  test('reorders favourites with the move controls and keeps the operator order', async ({
+    page,
+  }) => {
+    const favourites = page.getByTestId('section-favourites');
+    const cards = favourites.locator('[data-testid^="project-card-"]');
+    await expect(cards.first()).toHaveAttribute('data-testid', 'project-card-pm-mcp-clients');
+
+    await page.getByTestId('favourite-down-pm-mcp-clients').click();
+
+    await expect(cards.first()).toHaveAttribute('data-testid', 'project-card-pm-mcp-core');
+    await expect(page.getByTestId('reorder-error')).not.toBeVisible();
+  });
+
+  test('opens the project onboarding route from Add a project and from Continue', async ({
+    page,
+  }) => {
+    await page.getByTestId('add-project-btn').click();
+    await expect(page).toHaveURL(/\/projects\/onboard$/);
+    await expect(page.getByTestId('project-onboarding-view')).toBeVisible();
+    await expect(page.getByTestId('project-checkout-step')).toBeVisible();
+
+    await page.goto('/projects');
+    await expect(page.getByTestId('project-explorer-view')).toBeVisible();
+    await page.getByTestId('continue-onboarding-btn').click();
+
+    await expect(page).toHaveURL(/\/projects\/onboard$/);
+    await expect(page.getByTestId('project-onboarding-step')).toBeVisible();
+    await expect(page.getByTestId('project-step-2')).toHaveAttribute('aria-current', 'step');
+    await expect(page.getByTestId('project-onboarding-step')).toContainText('~/git/cui-parent');
+  });
+
   test('releases a project with modal confirmation', async ({ page }) => {
     const releaseBtn = page
       .getByTestId('section-all-projects')
