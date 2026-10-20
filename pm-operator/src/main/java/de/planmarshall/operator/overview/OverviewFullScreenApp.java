@@ -221,8 +221,9 @@ public final class OverviewFullScreenApp {
 
         var saved = stateStore.read().orElse(OverviewSavedState.empty());
 
-        if (initialSelection.plan() != null && !initialSelection.plan().isBlank()) {
-            openPlanAsRoot(runtime, initialSelection.plan());
+        var initialPlan = initialSelection.plan();
+        if (initialPlan != null && !initialPlan.isBlank()) {
+            openPlanAsRoot(runtime, initialPlan);
             return;
         }
 
