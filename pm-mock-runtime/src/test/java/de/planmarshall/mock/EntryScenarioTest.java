@@ -57,8 +57,8 @@ class EntryScenarioTest {
         assertTrue(StandardScenarios.ALL.contains(StandardScenarios.ENTRY));
 
         try (var runtime = MockRuntime.start(StandardScenarios.ENTRY)) {
-            assertEquals(StandardScenarios.ENTRY, runtime.currentScenarioName());
-            assertEquals("entry.pair", runtime.currentStateName());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
+            assertEquals("entry.ready", runtime.currentStateName());
         }
     }
 
@@ -67,7 +67,7 @@ class EntryScenarioTest {
     @DisplayName("loads every entry case scenario and serves its runtime status")
     void shouldLoadEveryCaseScenario(String scenario) throws Exception {
         try (var runtime = MockRuntime.start(scenario)) {
-            assertEquals(scenario, runtime.currentScenarioName());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
 
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var res = client.send(HttpRequest.get("/api/v1/status")

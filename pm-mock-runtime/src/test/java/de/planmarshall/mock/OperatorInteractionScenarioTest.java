@@ -50,7 +50,7 @@ class OperatorInteractionScenarioTest {
                         .withHeader("Authorization", auth));
                 assertEquals(200, yes.status());
                 var check = JsonTree.asObject(JsonTree.parse(yes.body()));
-                assertEquals("onboarding.check", JsonTree.string(JsonTree.object(check, "state"), "state_id"));
+                assertEquals("wait.check", JsonTree.string(JsonTree.object(check, "state"), "state_id"));
 
                 // the state's operator links are keyed by their id and carry the whole contract
                 var links = JsonTree.asArray(check.get("links"));
@@ -100,9 +100,10 @@ class OperatorInteractionScenarioTest {
     @DisplayName("loads the scenario and validates its operator representation against the pm-api codecs")
     void scenarioValidatesAgainstTheContract() {
         // the delivered scenario decodes with the operator recording codecs
-        var scenario = ScenarioLoader.load(StandardScenarios.OPERATOR_INTERACTION);
-        assertEquals("operator-interaction", scenario.name());
-        assertEquals("wait.choose", scenario.start());
+        var scenario = ScenarioLoader.load(StandardScenarios.ONBOARDING);
+        assertEquals("onboarding", scenario.name());
+        assertEquals("onboard.mode", scenario.start());
+        assertTrue(scenario.states().containsKey("wait.choose"));
     }
 
     @Test

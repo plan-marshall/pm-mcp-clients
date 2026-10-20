@@ -65,6 +65,9 @@ public class ScenarioLoader {
     private static final Set<String> EVENT_FIELDS = Set.of("after_ms", "event", "data");
     private static final Set<String> AUTO_FIELDS = Set.of("after_ms", "next");
 
+    /** The engine-only fixture object a state's facts may carry. */
+    private static final String RUNTIME_FIXTURE = "runtime";
+
     /**
      * Loads a scenario from a classpath resource or file system.
      *
@@ -346,6 +349,13 @@ public class ScenarioLoader {
             state = OperatorStateResource.fromMap(representationMap);
         } catch (IOException e) {
             throw new ScenarioValidationException(scenario, stateId, "representation", e.getMessage());
+        }
+
+        var facts = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_FACTS));
+        if (facts != null && facts.containsKey(RUNTIME_FIXTURE)
+                && !(facts.get(RUNTIME_FIXTURE) instanceof Map<?, ?>)) {
+            throw new ScenarioValidationException(scenario, stateId, "representation.facts.runtime",
+                    "runtime fixture must be an object");
         }
 
         var advertised = new LinkedHashMap<String, OperatorLink>();

@@ -38,8 +38,8 @@ class PairedDevicesScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals(StandardScenarios.PAIRED_DEVICES, runtime.currentScenarioName());
-            assertEquals("devices.list", runtime.currentStateName());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
+            assertEquals("entry.device-lifecycle", runtime.currentStateName());
 
             var res = client.send(HttpRequest.get("/api/v1/web/devices").withHeader("Authorization", auth));
             assertEquals(200, res.status());
@@ -53,7 +53,7 @@ class PairedDevicesScenarioTest {
 
             assertEquals("dev-2", devices.get(1).deviceId());
             assertEquals("Safari on iPad", devices.get(1).label());
-            assertEquals("network", devices.get(1).pairedFrom());
+            assertEquals("lan", devices.get(1).pairedFrom());
 
             assertEquals("dev-3", devices.get(2).deviceId());
             assertEquals("Chrome on build-box", devices.get(2).label());

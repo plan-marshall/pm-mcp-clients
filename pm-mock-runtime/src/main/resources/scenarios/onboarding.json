@@ -1,24 +1,27 @@
 {
   "format_version": 1,
   "name": "onboarding",
-  "description": "Guided and automatic machine onboarding and the machine's settings: every aspect with its consents, checks, and the revision-guarded settings (UC-ONB-1..10)",
+  "description": "Scenario 1: the guided and automatic machine onboarding, the machine's settings, and the entry with browser pairing, paired devices, the LAN listener, and the shared operator interaction (UC-ONB-1..10, UC-ENT-1..2)",
   "start": "onboard.mode",
   "pairing_code": "KXQB-MRTN",
   "routes": {
     "GET /api/v1/status": {
       "representation": {
         "status": "onboarding",
-        "machine": "mbp-oliver",
+        "machine": "mock-machine",
         "onboarded": false,
         "onboard": {
           "state": "onboard.mode",
           "step": 0,
-          "completed_steps": 0
+          "steps": 7,
+          "completed_steps": 0,
+          "completed": false
         },
         "web": {
           "enabled": true,
           "lan": true,
           "port": 7420,
+          "lan_port": 7421,
           "open": true
         }
       }
@@ -27,550 +30,3901 @@
   "states": {
     "onboard.mode": {
       "representation": {
-        "scope": "machine",
-        "state": "onboard.mode",
-        "summary": "Set up this machine for plan-marshall"
-      },
-      "links": {
-        "auto": { "next": "auto.consent", "href": "/api/v1/onboarding/auto" },
-        "begin": { "next": "language.choose", "href": "/api/v1/onboarding/language" }
-      }
-    },
-    "language.choose": {
-      "representation": {
-        "scope": "machine",
-        "state": "language.choose",
-        "summary": "Choose your languages",
-        "interface": "de",
-        "model": "same"
-      },
-      "links": {
-        "set": { "next": "harness.consent", "href": "/api/v1/onboarding/language/set" }
-      }
-    },
-    "harness.consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.consent",
-        "summary": "Look for harnesses on this machine?",
-        "kind": "scan_harnesses",
-        "looks_for": "claude, opencode, codex, agy",
-        "in": "your PATH, ~/.local/bin, /Applications, /opt/homebrew/bin",
-        "runs": "<program> --version on each one found",
-        "never": "reads other files, starts a session, uses the network",
-        "tokens": "none"
-      },
-      "links": {
-        "no": { "next": "harness.consent", "href": "/api/v1/onboarding/harness/decline" },
-        "remember": { "next": "harness.choose", "href": "/api/v1/onboarding/harness/consent", "delay_ms": 200 },
-        "yes": { "next": "harness.choose", "href": "/api/v1/onboarding/harness/scan", "delay_ms": 200 }
-      }
-    },
-    "harness.choose": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.choose",
-        "summary": "Choose the harnesses to enrol",
-        "harnesses": [
-          { "harness_id": "claude", "name": "Claude Code", "path": "~/.local/bin/claude", "version": "2.4.1", "found": true, "supported": true, "worker_eligible": true, "token_usage": "complete", "default": true },
-          { "harness_id": "codex", "name": "Codex", "path": "/opt/homebrew/bin/codex", "version": "0.31.2", "found": true, "supported": true, "worker_eligible": false, "token_usage": "not_reported" },
-          { "harness_id": "opencode", "name": "OpenCode", "path": "/opt/homebrew/bin/opencode", "version": "1.9.0", "found": true, "supported": true, "worker_eligible": true, "token_usage": "complete" },
-          { "harness_id": "agy", "name": "Antigravity", "found": false, "supported": false, "worker_eligible": false, "token_usage": "not_reported" }
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "onboard.mode",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Set up this machine for plan-marshall"
+        },
+        "links": [
+          {
+            "id": "auto",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/auto"
+          },
+          {
+            "id": "begin",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/language",
+            "preselected": true
+          }
         ]
       },
       "links": {
-        "add": { "next": "harness.add", "href": "/api/v1/onboarding/harness/add" },
-        "choose": { "next": "harness.probe-consent", "href": "/api/v1/onboarding/harness/choose" }
-      }
-    },
-    "harness.probe-consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.probe-consent",
-        "summary": "Check whether the 2 chosen harnesses are logged in?",
-        "kind": "probe_harness_login",
-        "runs": "claude auth status (Claude Code), opencode auth list (OpenCode)",
-        "never": "starts a session, sends a prompt",
-        "tokens": "none"
-      },
-      "links": {
-        "no": { "next": "harness.probe-consent", "href": "/api/v1/onboarding/harness/probe-decline" },
-        "yes": { "next": "harness.probe", "href": "/api/v1/onboarding/harness/probe" }
-      }
-    },
-    "harness.probe": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.probe",
-        "summary": "Checking 2 harnesses"
-      },
-      "auto": { "after_ms": 300, "next": "harness.confirm" }
-    },
-    "harness.blocked": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.blocked",
-        "summary": "OpenCode is not ready",
-        "harness": "opencode",
-        "cause": "not logged in",
-        "fix": "opencode auth login"
-      },
-      "links": {
-        "choose_again": { "next": "harness.choose", "href": "/api/v1/onboarding/harness/choose-again" },
-        "leave_out": { "next": "harness.confirm", "href": "/api/v1/onboarding/harness/leave-out" },
-        "recheck": { "next": "harness.probe", "href": "/api/v1/onboarding/harness/recheck" }
-      }
-    },
-    "harness.confirm": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.confirm",
-        "summary": "Enrol 2 harnesses",
-        "default": "claude"
-      },
-      "links": {
-        "back": { "next": "harness.choose", "href": "/api/v1/onboarding/harness/back" },
-        "confirm": { "next": "harness.enrol", "href": "/api/v1/onboarding/harness/confirm", "delay_ms": 200 }
-      }
-    },
-    "harness.enrol": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.enrol",
-        "summary": "2 harnesses enrolled: Claude Code 2.4.1 (default), OpenCode 1.9.0"
-      },
-      "auto": { "after_ms": 250, "next": "catalogue.consent" }
-    },
-    "harness.add": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.add",
-        "summary": "Add a harness",
-        "executable": "/usr/local/bin/aider",
-        "name": "Aider",
-        "client_id": "aider",
-        "start_from": "opencode"
-      },
-      "links": {
-        "known": { "next": "harness.choose", "href": "/api/v1/onboarding/harness/add/known" },
-        "submit": { "next": "harness.add-consent", "href": "/api/v1/onboarding/harness/add/submit" }
-      }
-    },
-    "harness.add-consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.add-consent",
-        "summary": "Run Aider to verify these settings?",
-        "kind": "verify_harness_profile",
-        "runs": "/usr/local/bin/aider with the settings above, once per stage",
-        "never": "touches your repositories; it runs in a temporary directory",
-        "tokens": "about 12 short headless calls"
-      },
-      "links": {
-        "no": { "next": "harness.add", "href": "/api/v1/onboarding/harness/add/decline" },
-        "yes": { "next": "harness.verify-profile", "href": "/api/v1/onboarding/harness/add/verify" }
-      }
-    },
-    "harness.verify-profile": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.verify-profile",
-        "summary": "Verifying Aider"
-      },
-      "auto": { "after_ms": 250, "next": "harness.add-confirm" }
-    },
-    "harness.add-confirm": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.add-confirm",
-        "summary": "Install the profile of Aider",
-        "worker_eligible": true,
-        "token_usage": "partial"
-      },
-      "links": {
-        "back": { "next": "harness.add", "href": "/api/v1/onboarding/harness/add/back" },
-        "install": { "next": "harness.install-profile", "href": "/api/v1/onboarding/harness/add/install" }
-      }
-    },
-    "harness.install-profile": {
-      "representation": {
-        "scope": "machine",
-        "state": "harness.install-profile",
-        "summary": "Profile of Aider installed"
-      },
-      "auto": { "after_ms": 250, "next": "harness.choose" }
-    },
-    "catalogue.consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "catalogue.consent",
-        "summary": "Ask the harnesses for their models, and a model for advice?",
-        "kind": "probe_harness_models",
-        "runs": "claude models list, opencode models",
-        "tokens": "none"
-      },
-      "links": {
-        "no": { "next": "catalogue.consent", "href": "/api/v1/onboarding/catalogue/decline" },
-        "no_advice": { "next": "catalogue.select", "href": "/api/v1/onboarding/catalogue/no-advice" },
-        "yes": { "next": "catalogue.models", "href": "/api/v1/onboarding/catalogue/advice" }
-      }
-    },
-    "catalogue.models": {
-      "representation": {
-        "scope": "machine",
-        "state": "catalogue.models",
-        "summary": "Choose the models plans may use"
-      },
-      "auto": { "after_ms": 300, "next": "catalogue.select" }
-    },
-    "catalogue.advise": {
-      "representation": {
-        "scope": "machine",
-        "state": "catalogue.advise",
-        "summary": "The steward is advising",
-        "role": "steward",
-        "harness": "Claude Code",
-        "model": "sonnet-5.5",
-        "tokens": "about 50 k tokens"
-      },
-      "auto": { "after_ms": 300, "next": "catalogue.select" }
-    },
-    "catalogue.select": {
-      "representation": {
-        "scope": "machine",
-        "state": "catalogue.select",
-        "summary": "Choose the models plans may use",
-        "models": [
-          { "harness_id": "claude", "model_id": "opus-5.5", "source": "probe" },
-          { "harness_id": "claude", "model_id": "sonnet-5.5", "source": "probe" },
-          { "harness_id": "opencode", "model_id": "qwen-coder-32b", "source": "operator" }
-        ]
-      },
-      "links": {
-        "set": { "next": "catalogue.record", "href": "/api/v1/onboarding/catalogue/record", "delay_ms": 150 }
-      }
-    },
-    "catalogue.record": {
-      "representation": {
-        "scope": "machine",
-        "state": "catalogue.record",
-        "summary": "3 models allowed on 2 harnesses"
-      },
-      "auto": { "after_ms": 250, "next": "roles.review" }
-    },
-    "roles.review": {
-      "representation": {
-        "scope": "machine",
-        "state": "roles.review",
-        "summary": "Give every role a harness and a model",
-        "roles": [
-          { "role": "outline", "harness_id": "claude", "model_id": "opus-5.5", "effort": "high", "origin": "default" },
-          { "role": "implement", "harness_id": "claude", "model_id": "sonnet-5.5", "effort": "medium", "origin": "default" }
-        ]
-      },
-      "links": {
-        "ask_steward": { "next": "roles.consent", "href": "/api/v1/onboarding/roles/consent" },
-        "accept": { "next": "roles.validate", "href": "/api/v1/onboarding/roles/validate", "delay_ms": 150 }
-      }
-    },
-    "roles.consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "roles.consent",
-        "summary": "May a model refine the defaults?",
-        "kind": "model_advice",
-        "role": "steward",
-        "harness": "Claude Code",
-        "model": "sonnet-5.5",
-        "tokens": "not known yet: first run"
-      },
-      "links": {
-        "no": { "next": "roles.review", "href": "/api/v1/onboarding/roles/consent-decline" },
-        "yes": { "next": "roles.validate", "href": "/api/v1/onboarding/roles/consent" }
-      }
-    },
-    "roles.validate": {
-      "representation": {
-        "scope": "machine",
-        "state": "roles.validate",
-        "summary": "36 roles assigned"
-      },
-      "auto": { "after_ms": 250, "next": "store.choose" }
-    },
-    "store.choose": {
-      "representation": {
-        "scope": "machine",
-        "state": "store.choose",
-        "summary": "Where should this machine keep its tokens?",
-        "stores": [
-          { "kind": "os", "name": "macOS Keychain", "available": true, "recommended": true },
-          { "kind": "file", "name": "Files in ~/.plan-marshall-mcp/credentials/", "available": true, "recommended": false }
-        ]
-      },
-      "links": {
-        "file": { "next": "store.check", "href": "/api/v1/onboarding/store/file" },
-        "os": { "next": "store.consent", "href": "/api/v1/onboarding/store/os" }
-      }
-    },
-    "store.consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "store.consent",
-        "summary": "Check the macOS Keychain with a test entry?",
-        "kind": "check_credential_store",
-        "runs": "one test entry written, read back, and deleted",
-        "never": "reads or changes any other entry",
-        "tokens": "none"
-      },
-      "links": {
-        "no": { "next": "store.consent", "href": "/api/v1/onboarding/store/consent-decline" },
-        "yes": { "next": "store.check", "href": "/api/v1/onboarding/store/consent" }
-      }
-    },
-    "store.check": {
-      "representation": {
-        "scope": "machine",
-        "state": "store.check",
-        "summary": "Tokens are kept in the macOS Keychain",
-        "store": "macOS Keychain"
-      },
-      "auto": { "after_ms": 250, "next": "store.record" }
-    },
-    "store.record": {
-      "representation": {
-        "scope": "machine",
-        "state": "store.record",
-        "summary": "Tokens are kept in the macOS Keychain"
-      },
-      "auto": { "after_ms": 250, "next": "providers.consent" }
-    },
-    "providers.consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "providers.consent",
-        "summary": "Look for CLI tools and stored tokens?",
-        "kind": "scan_providers",
-        "looks_for": "git, gh, glab and the tokens already stored",
-        "tokens": "none"
-      },
-      "links": {
-        "no": { "next": "providers.consent", "href": "/api/v1/onboarding/providers/decline" },
-        "yes": { "next": "providers.select", "href": "/api/v1/onboarding/providers/scan" }
-      }
-    },
-    "providers.select": {
-      "representation": {
-        "scope": "machine",
-        "state": "providers.select",
-        "summary": "Choose what this machine works with",
-        "providers": [
-          { "provider": "github", "name": "GitHub", "available": true, "variant": "gh", "token_stored": true },
-          { "provider": "gitlab", "name": "GitLab", "available": false },
-          { "provider": "sonar", "name": "SonarCloud", "available": true, "token_stored": false }
-        ]
-      },
-      "links": {
-        "set": { "next": "providers.credentials", "href": "/api/v1/onboarding/providers/select" }
-      }
-    },
-    "providers.credentials": {
-      "representation": {
-        "scope": "machine",
-        "state": "providers.credentials",
-        "summary": "SonarCloud needs a token",
-        "provider": "SonarCloud",
-        "loopback_only": true
-      },
-      "links": {
-        "continue": { "next": "providers.verify-consent", "href": "/api/v1/onboarding/providers/credentials" }
-      }
-    },
-    "providers.verify-consent": {
-      "representation": {
-        "scope": "machine",
-        "state": "providers.verify-consent",
-        "summary": "Check the providers with their tokens?",
-        "kind": "verify_providers",
-        "runs": "a call of each selected provider with its token and gh auth status",
-        "never": "changes anything at the provider or sends the token anywhere else",
-        "tokens": "none"
-      },
-      "links": {
-        "no": { "next": "providers.verify-consent", "href": "/api/v1/onboarding/providers/verify-decline" },
-        "yes": { "next": "providers.verify", "href": "/api/v1/onboarding/providers/verify" }
-      }
-    },
-    "providers.verify": {
-      "representation": {
-        "scope": "machine",
-        "state": "providers.verify",
-        "summary": "Checking the providers",
-        "providers": [
-          { "provider": "github", "ready": true },
-          { "provider": "sonar", "ready": true }
-        ]
-      },
-      "auto": { "after_ms": 300, "next": "providers.record" }
-    },
-    "providers.failed": {
-      "representation": {
-        "scope": "machine",
-        "state": "providers.failed",
-        "summary": "The provider could not be verified",
-        "provider": "SonarCloud",
-        "cause": "401 \"Invalid token\"",
-        "fix": "enter the token again"
-      },
-      "links": {
-        "check_again": { "next": "providers.verify", "href": "/api/v1/onboarding/providers/check-again" },
-        "continue_without": { "next": "providers.record", "href": "/api/v1/onboarding/providers/continue-without" }
-      }
-    },
-    "providers.record": {
-      "representation": {
-        "scope": "machine",
-        "state": "providers.record",
-        "summary": "Providers recorded: GitHub (gh)"
-      },
-      "auto": { "after_ms": 250, "next": "defaults.review" }
-    },
-    "defaults.review": {
-      "representation": {
-        "scope": "machine",
-        "state": "defaults.review",
-        "summary": "How should plans run on this machine?",
-        "landing": "landing.pull-request",
-        "method": "method.test-first",
-        "asking": "ask.key-points"
-      },
-      "links": {
-        "accept": { "next": "defaults.validate", "href": "/api/v1/onboarding/defaults/validate", "delay_ms": 150 }
-      }
-    },
-    "defaults.validate": {
-      "representation": {
-        "scope": "machine",
-        "state": "defaults.validate",
-        "summary": "Plan defaults recorded"
-      },
-      "auto": { "after_ms": 250, "next": "defaults.record" }
-    },
-    "defaults.record": {
-      "representation": {
-        "scope": "machine",
-        "state": "defaults.record",
-        "summary": "Plan defaults recorded"
-      },
-      "auto": { "after_ms": 250, "next": "onboard.completed" }
-    },
-    "onboard.completed": {
-      "representation": {
-        "scope": "machine",
-        "state": "onboard.completed",
-        "summary": "This machine is ready",
-        "completed_steps": 7
-      },
-      "links": {
-        "settings": { "next": "settings.choose", "href": "/api/v1/onboarding/settings" }
+        "auto": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/auto",
+          "next": "auto.consent"
+        },
+        "begin": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/language",
+          "next": "language.choose"
+        }
       }
     },
     "auto.consent": {
       "representation": {
-        "scope": "machine",
-        "state": "auto.consent",
-        "summary": "Decide everything for me?",
-        "kind": "auto_run",
-        "looks_for": "the harnesses claude, opencode, codex, agy; the tools git, gh, glab and the tokens already stored",
-        "runs": "the version and login probe of each harness found, the model probe, one test entry in the OS credential store, the version probe of each tool, a call of each provider found",
-        "never": "asks a model for advice, reads other files, sends anything over the network except the provider checks and the icons",
-        "tokens": "only for a harness that has no login probe: one short headless call, about 1,200 tokens"
-      },
-      "links": {
-        "no": { "next": "onboard.mode", "href": "/api/v1/onboarding/auto-decline" },
-        "yes": { "next": "auto.run", "href": "/api/v1/onboarding/auto/run" }
-      }
-    },
-    "auto.run": {
-      "representation": {
-        "scope": "machine",
-        "state": "auto.run",
-        "summary": "Deciding everything"
-      },
-      "auto": { "after_ms": 300, "next": "auto.result" }
-    },
-    "auto.result": {
-      "representation": {
-        "scope": "machine",
-        "state": "auto.result",
-        "summary": "Everything is decided.",
-        "results": [
-          { "aspect": "language", "value": "Deutsch, models too", "reason": "detected" },
-          { "aspect": "harness", "value": "Claude Code 2.4.1 (default), OpenCode 1.9.0", "reason": "all_supported" },
-          { "aspect": "catalogue", "value": "8 models on 2 harnesses", "reason": "default" },
-          { "aspect": "roles", "value": "default assignment, 31 roles", "reason": "default" },
-          { "aspect": "store", "value": "macOS Keychain", "reason": "detected" },
-          { "aspect": "providers", "value": "GitHub (gh)", "reason": "detected" },
-          { "aspect": "defaults", "value": "Pull Request \\u00b7 Test first \\u00b7 key points", "reason": "default" }
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "auto.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Decide everything for me?",
+          "kind": "auto_run",
+          "looks_for": "the harnesses claude, opencode, codex, agy; the tools git, gh, glab and the tokens already stored",
+          "runs": "the version and login probe of each harness found, the model probe, one test entry in the OS credential store, the version probe of each tool, a call of each provider found",
+          "never": "asks a model for advice, reads other files, sends anything over the network except the provider checks and the icons",
+          "tokens": "only for a harness that has no login probe: one short headless call, about 1,200 tokens"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/auto-decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/auto/run",
+            "preselected": true
+          }
         ]
       },
       "links": {
-        "done": { "next": "onboard.completed", "href": "/api/v1/onboarding/auto/result/done" }
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/auto-decline",
+          "next": "onboard.mode"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/auto/run",
+          "next": "auto.scan"
+        }
+      }
+    },
+    "auto.scan": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "auto.scan",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Deciding everything"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 300,
+        "next": "auto.result"
+      }
+    },
+    "auto.result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "auto.result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Everything is decided.",
+          "results": [
+            {
+              "aspect": "language",
+              "value": "Deutsch, models too",
+              "reason": "detected"
+            },
+            {
+              "aspect": "harness",
+              "value": "Claude Code 2.4.1 (default), OpenCode 1.9.0",
+              "reason": "all_supported"
+            },
+            {
+              "aspect": "catalogue",
+              "value": "8 models on 2 harnesses",
+              "reason": "default"
+            },
+            {
+              "aspect": "roles",
+              "value": "default assignment, 31 roles",
+              "reason": "default"
+            },
+            {
+              "aspect": "store",
+              "value": "macOS Keychain",
+              "reason": "detected"
+            },
+            {
+              "aspect": "providers",
+              "value": "GitHub (gh)",
+              "reason": "detected"
+            },
+            {
+              "aspect": "defaults",
+              "value": "Pull Request · Test first · key points",
+              "reason": "default"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "done",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/auto/result/done",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "done": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/auto/result/done",
+          "next": "onboard.completed"
+        }
+      }
+    },
+    "language.choose": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "language.choose",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose your languages",
+          "interface": "de",
+          "model": "same"
+        },
+        "links": [
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/language/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/language/set",
+          "next": "harness.consent"
+        }
+      }
+    },
+    "harness.consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Look for harnesses on this machine?",
+          "kind": "scan_harnesses",
+          "looks_for": "claude, opencode, codex, agy",
+          "in": "your PATH, ~/.local/bin, /Applications, /opt/homebrew/bin",
+          "runs": "<program> --version on each one found",
+          "never": "reads other files, starts a session, uses the network",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/decline"
+          },
+          {
+            "id": "remember",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/consent"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/scan",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/decline",
+          "next": "harness.consent"
+        },
+        "remember": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/consent",
+          "next": "harness.choose",
+          "delay_ms": 200
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/scan",
+          "next": "harness.choose",
+          "delay_ms": 200
+        }
+      }
+    },
+    "harness.choose": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.choose",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose the harnesses to enrol",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "path": "~/.local/bin/claude",
+              "version": "2.4.1",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete",
+              "default": true
+            },
+            {
+              "harness_id": "codex",
+              "name": "Codex",
+              "path": "/opt/homebrew/bin/codex",
+              "version": "0.31.2",
+              "found": true,
+              "supported": true,
+              "worker_eligible": false,
+              "token_usage": "not_reported"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode",
+              "path": "/opt/homebrew/bin/opencode",
+              "version": "1.9.0",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete"
+            },
+            {
+              "harness_id": "agy",
+              "name": "Antigravity",
+              "path": "",
+              "version": "",
+              "found": false,
+              "supported": false,
+              "worker_eligible": false,
+              "token_usage": "not_reported"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "add",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add"
+          },
+          {
+            "id": "choose",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/choose",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "add": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add",
+          "next": "harness.add"
+        },
+        "choose": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/choose",
+          "next": "harness.probe-consent"
+        }
+      }
+    },
+    "harness.not-logged-in": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.not-logged-in",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose the harnesses to enrol",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "path": "~/.local/bin/claude",
+              "version": "2.4.1",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete",
+              "default": true
+            },
+            {
+              "harness_id": "codex",
+              "name": "Codex",
+              "path": "/opt/homebrew/bin/codex",
+              "version": "0.31.2",
+              "found": true,
+              "supported": true,
+              "worker_eligible": false,
+              "token_usage": "not_reported"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode",
+              "path": "/opt/homebrew/bin/opencode",
+              "version": "1.9.0",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete"
+            },
+            {
+              "harness_id": "agy",
+              "name": "Antigravity",
+              "path": "",
+              "version": "",
+              "found": false,
+              "supported": false,
+              "worker_eligible": false,
+              "token_usage": "not_reported"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "check",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/check",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "check": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/check",
+          "next": "harness.probe"
+        }
+      }
+    },
+    "harness.tokens-complete": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.tokens-complete",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Claude Code reports its token usage completely",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "path": "~/.local/bin/claude",
+              "version": "2.4.1",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete",
+              "default": true,
+              "usage": {
+                "coverage": "complete",
+                "figures": {
+                  "input": "reported",
+                  "cache_read": "reported",
+                  "cache_write": "not_applicable",
+                  "output": "reported",
+                  "reasoning": "not_applicable"
+                }
+              }
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode",
+              "path": "/opt/homebrew/bin/opencode",
+              "version": "1.9.0",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete",
+              "usage": {
+                "coverage": "complete",
+                "figures": {
+                  "input": "reported",
+                  "cache_read": "reported",
+                  "cache_write": "reported",
+                  "output": "reported",
+                  "reasoning": "reported"
+                }
+              }
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "choose",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/choose",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "choose": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/choose",
+          "next": "harness.confirm"
+        }
+      }
+    },
+    "harness.tokens-partial": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.tokens-partial",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "OpenCode reports its token usage only in part",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "path": "~/.local/bin/claude",
+              "version": "2.4.1",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete",
+              "default": true,
+              "usage": {
+                "coverage": "complete",
+                "figures": {
+                  "input": "reported",
+                  "cache_read": "reported",
+                  "cache_write": "not_applicable",
+                  "output": "reported"
+                }
+              }
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode",
+              "path": "/opt/homebrew/bin/opencode",
+              "version": "1.9.0",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "partial",
+              "missing_figures": [
+                "cache_read",
+                "cache_write"
+              ],
+              "usage": {
+                "coverage": "partial",
+                "figures": {
+                  "input": "reported",
+                  "cache_read": "not_reported",
+                  "cache_write": "not_reported",
+                  "output": "reported"
+                }
+              }
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "choose",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/choose",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "choose": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/choose",
+          "next": "harness.confirm"
+        }
+      }
+    },
+    "harness.tokens-not-reported": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.tokens-not-reported",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Codex reports nothing of its token usage",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "path": "~/.local/bin/claude",
+              "version": "2.4.1",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete",
+              "default": true,
+              "usage": {
+                "coverage": "complete",
+                "figures": {
+                  "input": "reported",
+                  "cache_read": "reported",
+                  "cache_write": "reported",
+                  "output": "reported"
+                }
+              }
+            },
+            {
+              "harness_id": "codex",
+              "name": "Codex",
+              "path": "/opt/homebrew/bin/codex",
+              "version": "0.31.2",
+              "found": true,
+              "supported": true,
+              "worker_eligible": false,
+              "token_usage": "not_reported",
+              "usage": {
+                "coverage": "not_reported",
+                "figures": {
+                  "input": "not_reported"
+                }
+              }
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "choose",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/choose",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "choose": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/choose",
+          "next": "harness.confirm"
+        }
+      }
+    },
+    "harness.probe-consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.probe-consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Check whether the 2 chosen harnesses are logged in?",
+          "kind": "probe_harness_login",
+          "runs": "claude auth status (Claude Code), opencode auth list (OpenCode)",
+          "never": "starts a session, sends a prompt",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/probe-decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/probe",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/probe-decline",
+          "next": "harness.probe-consent"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/probe",
+          "next": "harness.probe"
+        }
+      }
+    },
+    "harness.probe": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.probe",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Checking 2 harnesses"
+        },
+        "links": []
+      },
+      "events": [
+        {
+          "after_ms": 100,
+          "event": "check.result",
+          "data": {
+            "event": "check.result",
+            "at": "2026-10-18T10:00:00Z",
+            "scope": {
+              "kind": "machine"
+            },
+            "check_id": "version",
+            "result": "pass",
+            "harness": "Claude Code"
+          }
+        }
+      ],
+      "auto": {
+        "after_ms": 300,
+        "next": "harness.confirm"
+      }
+    },
+    "harness.blocked": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.blocked",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "OpenCode is not ready",
+          "harness": "opencode",
+          "cause": "not logged in",
+          "fix": "opencode auth login"
+        },
+        "links": [
+          {
+            "id": "choose_again",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/choose-again"
+          },
+          {
+            "id": "leave_out",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/leave-out"
+          },
+          {
+            "id": "recheck",
+            "rel": "retry",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/recheck",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "choose_again": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/choose-again",
+          "next": "harness.choose"
+        },
+        "leave_out": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/leave-out",
+          "next": "harness.confirm"
+        },
+        "recheck": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/recheck",
+          "next": "harness.probe"
+        }
+      }
+    },
+    "harness.all-failed": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.all-failed",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose the harnesses to enrol",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "path": "~/.local/bin/claude",
+              "version": "2.4.1",
+              "found": true,
+              "supported": true,
+              "worker_eligible": true,
+              "token_usage": "complete",
+              "default": true
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode",
+              "path": "/opt/homebrew/bin/opencode",
+              "version": "0.9.2",
+              "found": true,
+              "supported": false,
+              "worker_eligible": true,
+              "token_usage": "partial"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "check",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/probe",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "check": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/probe",
+          "next": "harness.probe-failed"
+        }
+      }
+    },
+    "harness.probe-failed": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.probe-failed",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Checking 2 harnesses",
+          "checks": [
+            {
+              "harness": "claude",
+              "name": "Claude Code",
+              "result": "fail",
+              "cause": "not logged in",
+              "fix": "claude login"
+            },
+            {
+              "harness": "opencode",
+              "name": "OpenCode",
+              "result": "fail",
+              "cause": "version 0.9.2 is not supported (1.5 - 1.x)",
+              "fix": "install a version in 1.5 - 1.x, then check again"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "continue",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/probe/continue",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "continue": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/probe/continue",
+          "next": "harness.none"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 100,
+          "event": "check.result",
+          "data": {
+            "event": "check.result",
+            "at": "2026-10-18T10:00:00Z",
+            "scope": {
+              "kind": "machine"
+            },
+            "check_id": "version",
+            "result": "fail"
+          }
+        },
+        {
+          "after_ms": 200,
+          "event": "check.result",
+          "data": {
+            "event": "check.result",
+            "at": "2026-10-18T10:00:00Z",
+            "scope": {
+              "kind": "machine"
+            },
+            "check_id": "login",
+            "result": "fail"
+          }
+        }
+      ]
+    },
+    "harness.none": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.none",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "No harness can be used"
+        },
+        "links": [
+          {
+            "id": "recheck",
+            "rel": "retry",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/recheck"
+          },
+          {
+            "id": "add",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add"
+          },
+          {
+            "id": "later",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/none/later"
+          }
+        ]
+      },
+      "links": {
+        "recheck": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/recheck",
+          "next": "harness.probe-failed"
+        },
+        "add": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add",
+          "next": "harness.add"
+        },
+        "later": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/none/later",
+          "next": "harness.none"
+        }
+      }
+    },
+    "harness.confirm": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.confirm",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Enrol 2 harnesses",
+          "default": "claude"
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/back"
+          },
+          {
+            "id": "confirm",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/confirm",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/back",
+          "next": "harness.choose"
+        },
+        "confirm": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/confirm",
+          "next": "harness.enrol",
+          "delay_ms": 200
+        }
+      }
+    },
+    "harness.enrol": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.enrol",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "2 harnesses enrolled: Claude Code 2.4.1 (default), OpenCode 1.9.0"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "catalogue.consent"
+      }
+    },
+    "harness.unknown": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.unknown",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "A harness the binary does not know",
+          "name": "Aider",
+          "client_id": "aider"
+        },
+        "links": [
+          {
+            "id": "add",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "add": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add",
+          "next": "harness.add"
+        }
+      }
+    },
+    "harness.add": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.add",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Add a harness",
+          "executable": "/usr/local/bin/aider",
+          "name": "Aider",
+          "client_id": "aider",
+          "start_from": "opencode"
+        },
+        "links": [
+          {
+            "id": "known",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add/known"
+          },
+          {
+            "id": "submit",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add/submit",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "known": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add/known",
+          "next": "harness.choose"
+        },
+        "submit": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add/submit",
+          "next": "harness.add-consent"
+        }
+      }
+    },
+    "harness.add-consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.add-consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Run Aider to verify these settings?",
+          "kind": "verify_harness_profile",
+          "runs": "/usr/local/bin/aider with the settings above, once per stage",
+          "never": "touches your repositories; it runs in a temporary directory",
+          "tokens": "about 12 short headless calls"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add/decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add/verify",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add/decline",
+          "next": "harness.add"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add/verify",
+          "next": "harness.verify-profile"
+        }
+      }
+    },
+    "harness.verify-profile": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.verify-profile",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Verifying Aider",
+          "verification": {
+            "stages": {
+              "identity": "passed",
+              "detection": "passed",
+              "launch": "passed",
+              "isolation": "passed",
+              "classes": "passed",
+              "limits": "passed",
+              "paths": "passed",
+              "faults": "passed",
+              "usage": "failed"
+            },
+            "usage": {
+              "coverage": "partial",
+              "figures": {
+                "input": "reported",
+                "cache_write": "not_reported",
+                "output": "reported"
+              }
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "edit",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add/edit"
+          }
+        ]
+      },
+      "links": {
+        "edit": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add/edit",
+          "next": "harness.add"
+        }
+      }
+    },
+    "harness.add-confirm": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.add-confirm",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Install the profile of Aider",
+          "worker_eligible": true,
+          "token_usage": "partial"
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add/back"
+          },
+          {
+            "id": "install",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/add/install",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add/back",
+          "next": "harness.add"
+        },
+        "install": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/add/install",
+          "next": "harness.install-profile"
+        }
+      }
+    },
+    "harness.install-profile": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.install-profile",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Profile of Aider installed"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "harness.choose"
+      }
+    },
+    "catalogue.consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "catalogue.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Ask the harnesses for their models, and a model for advice?",
+          "kind": "probe_harness_models",
+          "runs": "claude models list, opencode models",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/catalogue/decline"
+          },
+          {
+            "id": "no_advice",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/catalogue/no-advice"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/catalogue/advice",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/catalogue/decline",
+          "next": "catalogue.consent"
+        },
+        "no_advice": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/catalogue/no-advice",
+          "next": "catalogue.select"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/catalogue/advice",
+          "next": "catalogue.models"
+        }
+      }
+    },
+    "catalogue.models": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "catalogue.models",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose the models plans may use"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 300,
+        "next": "catalogue.select"
+      }
+    },
+    "catalogue.advise": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "catalogue.advise",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The steward is advising",
+          "role": "steward",
+          "harness": "Claude Code",
+          "model": "sonnet-5.5",
+          "tokens": "about 50 k tokens"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 300,
+        "next": "catalogue.select"
+      }
+    },
+    "catalogue.select": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "catalogue.select",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose the models plans may use",
+          "models": [
+            {
+              "harness_id": "claude",
+              "model_id": "opus-5.5",
+              "source": "probe"
+            },
+            {
+              "harness_id": "claude",
+              "model_id": "sonnet-5.5",
+              "source": "probe"
+            },
+            {
+              "harness_id": "opencode",
+              "model_id": "qwen-coder-32b",
+              "source": "operator"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/catalogue/record",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/catalogue/record",
+          "next": "catalogue.record",
+          "delay_ms": 150
+        }
+      }
+    },
+    "catalogue.record": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "catalogue.record",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "3 models allowed on 2 harnesses"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "roles.review"
+      }
+    },
+    "roles.review": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "roles.review",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Give every role a harness and a model",
+          "roles": [
+            {
+              "role": "outline",
+              "harness_id": "claude",
+              "model_id": "opus-5.5",
+              "effort": "high",
+              "origin": "default"
+            },
+            {
+              "role": "implement",
+              "harness_id": "claude",
+              "model_id": "sonnet-5.5",
+              "effort": "medium",
+              "origin": "default"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "ask_steward",
+            "rel": "consult",
+            "method": "POST",
+            "href": "/api/v1/onboarding/roles/consent"
+          },
+          {
+            "id": "accept",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/roles/validate",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "ask_steward": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/roles/consent",
+          "next": "roles.consent"
+        },
+        "accept": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/roles/validate",
+          "next": "roles.validate",
+          "delay_ms": 150
+        }
+      }
+    },
+    "roles.consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "roles.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "May a model refine the defaults?",
+          "kind": "model_advice",
+          "role": "steward",
+          "harness": "Claude Code",
+          "model": "sonnet-5.5",
+          "tokens": "not known yet: first run"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/roles/consent-decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/roles/consent",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/roles/consent-decline",
+          "next": "roles.review"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/roles/consent",
+          "next": "roles.validate"
+        }
+      }
+    },
+    "roles.validate": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "roles.validate",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "36 roles assigned"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "store.choose"
+      }
+    },
+    "store.choose": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "store.choose",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Where should this machine keep its tokens?",
+          "stores": [
+            {
+              "kind": "os",
+              "name": "macOS Keychain",
+              "available": true,
+              "recommended": true
+            },
+            {
+              "kind": "file",
+              "name": "Files in ~/.plan-marshall-mcp/credentials/",
+              "available": true,
+              "recommended": false
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "file",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/store/file"
+          },
+          {
+            "id": "os",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/store/os",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "file": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/store/file",
+          "next": "store.check"
+        },
+        "os": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/store/os",
+          "next": "store.consent"
+        }
+      }
+    },
+    "store.consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "store.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Check the macOS Keychain with a test entry?",
+          "kind": "check_credential_store",
+          "runs": "one test entry written, read back, and deleted",
+          "never": "reads or changes any other entry",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/store/consent-decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/store/consent",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/store/consent-decline",
+          "next": "store.consent"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/store/consent",
+          "next": "store.check"
+        }
+      }
+    },
+    "store.check": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "store.check",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Tokens are kept in the macOS Keychain",
+          "store": "macOS Keychain"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "store.record"
+      }
+    },
+    "store.record": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "store.record",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Tokens are kept in the macOS Keychain"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "providers.consent"
+      }
+    },
+    "providers.consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Look for CLI tools and stored tokens?",
+          "kind": "scan_providers",
+          "looks_for": "git, gh, glab and the tokens already stored",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/scan",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/decline",
+          "next": "providers.consent"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/scan",
+          "next": "providers.select"
+        }
+      }
+    },
+    "providers.select": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.select",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose what this machine works with",
+          "providers": [
+            {
+              "provider": "github",
+              "name": "GitHub",
+              "available": true,
+              "variant": "gh",
+              "token_stored": true
+            },
+            {
+              "provider": "gitlab",
+              "name": "GitLab",
+              "available": false
+            },
+            {
+              "provider": "sonar",
+              "name": "SonarCloud",
+              "available": true,
+              "token_stored": false
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "github",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/github"
+          },
+          {
+            "id": "sonar",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/sonar"
+          },
+          {
+            "id": "set",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/select",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "github": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/github",
+          "next": "github.consent"
+        },
+        "sonar": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/sonar",
+          "next": "sonar.consent"
+        },
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/select",
+          "next": "providers.credentials"
+        }
+      }
+    },
+    "github.consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "github.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Check the GitHub CLI?",
+          "kind": "verify_providers",
+          "runs": "gh auth status",
+          "never": "changes anything at the provider",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/github/decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/github/check",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/github/decline",
+          "next": "providers.select"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/github/check",
+          "next": "github.check"
+        }
+      }
+    },
+    "github.check": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "github.check",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Checking the GitHub CLI",
+          "provider": "GitHub",
+          "ready": true
+        },
+        "links": []
+      },
+      "events": [
+        {
+          "after_ms": 100,
+          "event": "check.result",
+          "data": {
+            "event": "check.result",
+            "at": "2026-10-18T10:00:00Z",
+            "scope": {
+              "kind": "machine"
+            },
+            "check_id": "github",
+            "result": "pass"
+          }
+        }
+      ],
+      "auto": {
+        "after_ms": 250,
+        "next": "providers.select"
+      }
+    },
+    "sonar.consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "sonar.consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Enter the SonarCloud token?",
+          "kind": "verify_providers",
+          "provider": "SonarCloud",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/sonar/decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/sonar/token",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/sonar/decline",
+          "next": "providers.select"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/sonar/token",
+          "next": "sonar.key"
+        }
+      }
+    },
+    "sonar.key": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "sonar.key",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "SonarCloud needs a token",
+          "provider": "SonarCloud",
+          "loopback_only": true
+        },
+        "links": [
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/sonar/key",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/sonar/key",
+          "next": "providers.credentials"
+        }
+      }
+    },
+    "providers.credentials": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.credentials",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "SonarCloud needs a token",
+          "provider": "SonarCloud",
+          "loopback_only": true
+        },
+        "links": [
+          {
+            "id": "continue",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/credentials",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "continue": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/credentials",
+          "next": "providers.verify-consent"
+        }
+      }
+    },
+    "providers.verify-consent": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.verify-consent",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Check the providers with their tokens?",
+          "kind": "verify_providers",
+          "runs": "a call of each selected provider with its token and gh auth status",
+          "never": "changes anything at the provider or sends the token anywhere else",
+          "tokens": "none"
+        },
+        "links": [
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/verify-decline"
+          },
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/verify",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/verify-decline",
+          "next": "providers.verify-consent"
+        },
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/verify",
+          "next": "providers.verify"
+        }
+      }
+    },
+    "providers.verify": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.verify",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Checking the providers",
+          "providers": [
+            {
+              "provider": "github",
+              "ready": true
+            },
+            {
+              "provider": "sonar",
+              "ready": true
+            }
+          ]
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 300,
+        "next": "providers.record"
+      }
+    },
+    "providers.failed": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.failed",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The provider could not be verified",
+          "provider": "SonarCloud",
+          "cause": "401 \"Invalid token\"",
+          "fix": "enter the token again"
+        },
+        "links": [
+          {
+            "id": "check_again",
+            "rel": "retry",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/check-again"
+          },
+          {
+            "id": "continue_without",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/continue-without"
+          }
+        ]
+      },
+      "links": {
+        "check_again": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/check-again",
+          "next": "providers.verify"
+        },
+        "continue_without": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/continue-without",
+          "next": "providers.record"
+        }
+      }
+    },
+    "providers.record": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.record",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Providers recorded: GitHub (gh)"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "defaults.review"
+      }
+    },
+    "defaults.review": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "defaults.review",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "How should plans run on this machine?",
+          "landing": "landing.pull-request",
+          "method": "method.test-first",
+          "asking": "ask.key-points",
+          "posture": "posture.standard"
+        },
+        "links": [
+          {
+            "id": "accept",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/defaults/validate",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "accept": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/defaults/validate",
+          "next": "defaults.validate",
+          "delay_ms": 150
+        }
+      }
+    },
+    "defaults.validate": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "defaults.validate",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Plan defaults recorded"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "defaults.record"
+      }
+    },
+    "defaults.record": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "defaults.record",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Plan defaults recorded"
+        },
+        "links": []
+      },
+      "auto": {
+        "after_ms": 250,
+        "next": "onboard.summary"
+      }
+    },
+    "onboard.summary": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "onboard.summary",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Review the setup of this machine",
+          "aspects": [
+            {
+              "aspect": "language",
+              "step": 1,
+              "summary": "Deutsch, models English"
+            },
+            {
+              "aspect": "harness",
+              "step": 2,
+              "summary": "Claude Code 2.4.1 (default), OpenCode 1.9.0"
+            },
+            {
+              "aspect": "catalogue",
+              "step": 3,
+              "summary": "3 models on 2 harnesses"
+            },
+            {
+              "aspect": "roles",
+              "step": 4,
+              "summary": "36 roles assigned"
+            },
+            {
+              "aspect": "store",
+              "step": 5,
+              "summary": "macOS Keychain"
+            },
+            {
+              "aspect": "providers",
+              "step": 6,
+              "summary": "GitHub (gh)"
+            },
+            {
+              "aspect": "defaults",
+              "step": 7,
+              "summary": "Pull Request · Test first · key points"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "back",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/summary/back"
+          },
+          {
+            "id": "done",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/summary/done",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "back": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/summary/back",
+          "next": "defaults.review"
+        },
+        "done": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/summary/done",
+          "next": "onboard.completed"
+        }
+      }
+    },
+    "onboard.completed": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "onboard.completed",
+          "kind": "completed",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "This machine is ready",
+          "completed_steps": 7,
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "settings",
+            "rel": "consult",
+            "method": "GET",
+            "href": "/api/v1/onboarding/settings",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "settings": {
+          "method": "GET",
+          "href": "/api/v1/onboarding/settings",
+          "next": "settings.choose"
+        }
       }
     },
     "settings.choose": {
       "representation": {
-        "scope": "machine",
-        "state": "settings.choose",
-        "summary": "Machine settings"
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.choose",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Machine settings",
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "cleanup_durations",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/cleanup"
+          },
+          {
+            "id": "documents_mode",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/documents"
+          },
+          {
+            "id": "plan_defaults",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/defaults"
+          },
+          {
+            "id": "withdraw",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/withdraw"
+          },
+          {
+            "id": "done",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/done",
+            "preselected": true
+          }
+        ]
       },
       "links": {
-        "cleanup_durations": { "next": "settings.cleanup-durations", "href": "/api/v1/onboarding/settings/cleanup" },
-        "documents_mode": { "next": "settings.documents-mode", "href": "/api/v1/onboarding/settings/documents" },
-        "withdraw": { "next": "settings.withdraw", "href": "/api/v1/onboarding/settings/withdraw" },
-        "done": { "next": "onboard.completed", "href": "/api/v1/onboarding/settings/done" }
+        "cleanup_durations": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/cleanup",
+          "next": "settings.cleanup-durations"
+        },
+        "documents_mode": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/documents",
+          "next": "settings.documents-mode"
+        },
+        "plan_defaults": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/defaults",
+          "next": "settings.plan-defaults"
+        },
+        "withdraw": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/withdraw",
+          "next": "settings.withdraw"
+        },
+        "done": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/done",
+          "next": "onboard.completed"
+        }
+      }
+    },
+    "settings.conflict": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.conflict",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "A change was made in another client",
+          "documents_mode": "ask",
+          "revision": 4,
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "documents_mode",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/documents"
+          },
+          {
+            "id": "done",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/done",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "documents_mode": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/documents",
+          "next": "settings.documents-mode"
+        },
+        "done": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/done",
+          "next": "onboard.completed"
+        }
       }
     },
     "settings.withdraw": {
       "representation": {
-        "scope": "machine",
-        "state": "settings.withdraw",
-        "summary": "Withdraw \"look for harnesses\"?"
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.withdraw",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Withdraw \"look for harnesses\"?",
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "withdraw",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/withdraw/confirm"
+          },
+          {
+            "id": "keep",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/back"
+          }
+        ]
       },
       "links": {
-        "withdraw": { "next": "settings.record", "href": "/api/v1/onboarding/settings/withdraw/confirm" },
-        "keep": { "next": "settings.choose", "href": "/api/v1/onboarding/settings/back" }
+        "withdraw": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/withdraw/confirm",
+          "next": "settings.record"
+        },
+        "keep": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/back",
+          "next": "settings.choose"
+        }
       }
     },
     "settings.documents-mode": {
       "representation": {
-        "scope": "machine",
-        "state": "settings.documents-mode",
-        "summary": "How should documents be taken into a plan?",
-        "current": "ask"
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.documents-mode",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "How should documents be taken into a plan?",
+          "current": "ask",
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/documents/set",
+            "preselected": true
+          }
+        ]
       },
       "links": {
-        "set": { "next": "settings.record", "href": "/api/v1/onboarding/settings/documents/set" }
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/documents/set",
+          "next": "settings.record"
+        }
+      }
+    },
+    "settings.plan-defaults": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.plan-defaults",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "How should plans run on this machine?",
+          "landing": "landing.pull-request",
+          "method": "method.test-first",
+          "asking": "ask.key-points",
+          "posture": "posture.standard",
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/defaults/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/defaults/set",
+          "next": "settings.record"
+        }
       }
     },
     "settings.cleanup-durations": {
       "representation": {
-        "scope": "machine",
-        "state": "settings.cleanup-durations",
-        "summary": "How long should ended work be kept?",
-        "days": 30,
-        "remind_days": 3
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.cleanup-durations",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "How long should ended work be kept?",
+          "days": 30,
+          "remind_days": 3,
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/cleanup/set",
+            "preselected": true
+          }
+        ]
       },
       "links": {
-        "set": { "next": "settings.record", "href": "/api/v1/onboarding/settings/cleanup/set" }
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/cleanup/set",
+          "next": "settings.record"
+        }
       }
     },
     "settings.record": {
       "representation": {
-        "scope": "machine",
-        "state": "settings.record",
-        "summary": "Saved"
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "settings.record",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Saved",
+          "runtime": {
+            "status": "ready",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            }
+          }
+        },
+        "links": []
       },
-      "auto": { "after_ms": 250, "next": "settings.choose" }
+      "auto": {
+        "after_ms": 250,
+        "next": "settings.choose"
+      }
+    },
+    "entry.ready": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.ready",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Pair this browser",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "onboard.mode",
+              "step": 0,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              },
+              {
+                "device_id": "dev-2",
+                "label": "Safari on iPad",
+                "paired_from": "lan",
+                "paired_by": "entry",
+                "created_at": "2026-05-20T10:00:00Z",
+                "last_used_at": "2026-10-13T10:00:00Z"
+              },
+              {
+                "device_id": "dev-3",
+                "label": "Chrome on build-box",
+                "paired_from": "loopback",
+                "paired_by": "pair",
+                "created_at": "2026-06-02T10:00:00Z",
+                "last_used_at": "2026-09-08T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "links": [
+          {
+            "id": "pair",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/pair",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "pair": {
+          "method": "POST",
+          "href": "/api/v1/pair",
+          "next": "entry.paired"
+        }
+      }
+    },
+    "entry.paired": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.paired",
+          "kind": "completed",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Browser paired; a fresh code follows",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "onboard.mode",
+              "step": 0,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              },
+              {
+                "device_id": "dev-2",
+                "label": "Safari on iPad",
+                "paired_from": "lan",
+                "paired_by": "entry",
+                "created_at": "2026-05-20T10:00:00Z",
+                "last_used_at": "2026-10-13T10:00:00Z"
+              },
+              {
+                "device_id": "dev-3",
+                "label": "Chrome on build-box",
+                "paired_from": "loopback",
+                "paired_by": "pair",
+                "created_at": "2026-06-02T10:00:00Z",
+                "last_used_at": "2026-09-08T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "links": []
+      }
+    },
+    "entry.lan-open": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.lan-open",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Network listener open with its fingerprint",
+          "fingerprint": "4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "onboard.mode",
+              "step": 0,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              },
+              {
+                "device_id": "dev-2",
+                "label": "Safari on iPad",
+                "paired_from": "lan",
+                "paired_by": "entry",
+                "created_at": "2026-05-20T10:00:00Z",
+                "last_used_at": "2026-10-13T10:00:00Z"
+              },
+              {
+                "device_id": "dev-3",
+                "label": "Chrome on build-box",
+                "paired_from": "loopback",
+                "paired_by": "pair",
+                "created_at": "2026-06-02T10:00:00Z",
+                "last_used_at": "2026-09-08T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "links": [
+          {
+            "id": "listener_off",
+            "rel": "abort",
+            "method": "DELETE",
+            "href": "/api/v1/web/listeners/lan"
+          }
+        ]
+      },
+      "links": {
+        "listener_off": {
+          "method": "DELETE",
+          "href": "/api/v1/web/listeners/lan",
+          "next": "entry.ready"
+        }
+      }
+    },
+    "entry.unonboarded": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.unonboarded",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Set up this machine for plan-marshall",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "onboard.none",
+              "step": 0,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": false,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": []
+          }
+        },
+        "links": []
+      }
+    },
+    "entry.onboarding": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.onboarding",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "This machine is set up up to step 2 of 7; it stopped at [3/7] Models",
+          "runtime": {
+            "status": "onboarding",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "harness.choose",
+              "step": 2,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": false,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": []
+          }
+        },
+        "links": [
+          {
+            "id": "terminal",
+            "rel": "next",
+            "method": "GET",
+            "href": "/api/v1/onboarding/state"
+          },
+          {
+            "id": "web",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/web/pairings"
+          }
+        ]
+      },
+      "links": {
+        "terminal": {
+          "method": "GET",
+          "href": "/api/v1/onboarding/state",
+          "next": "onboard.mode"
+        },
+        "web": {
+          "method": "POST",
+          "href": "/api/v1/web/pairings",
+          "next": "entry.web-app"
+        }
+      }
+    },
+    "entry.web-app": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.web-app",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The web app opens at the setup of this machine",
+          "runtime": {
+            "status": "onboarding",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "harness.choose",
+              "step": 2,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": false,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": []
+          }
+        },
+        "links": []
+      }
+    },
+    "entry.paired-browser": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.paired-browser",
+          "kind": "completed",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": {
+              "enabled": true,
+              "lan": false,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              }
+            ]
+          }
+        },
+        "links": []
+      }
+    },
+    "entry.ssh-session": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.ssh-session",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "SSH session: no browser opened here",
+          "ways_in": [
+            {
+              "kind": "forward",
+              "command": "ssh -L 7420:127.0.0.1:7420 operator@mock-machine"
+            },
+            {
+              "kind": "url",
+              "href": "http://127.0.0.1:7420/pair#code=KXQB-MRTN"
+            }
+          ],
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": {
+              "enabled": true,
+              "lan": false,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": []
+          }
+        },
+        "links": [
+          {
+            "id": "pair",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/web/pairings",
+            "preselected": true
+          },
+          {
+            "id": "qr",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/web/pairings"
+          }
+        ]
+      },
+      "links": {
+        "pair": {
+          "method": "POST",
+          "href": "/api/v1/web/pairings",
+          "next": "entry.ssh-session"
+        },
+        "qr": {
+          "method": "POST",
+          "href": "/api/v1/web/pairings",
+          "next": "entry.ssh-session"
+        }
+      }
+    },
+    "entry.fresh-code": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.fresh-code",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The ways in, each to copy",
+          "code": "KXQB-MRTN",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": {
+              "enabled": true,
+              "lan": false,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": []
+          }
+        },
+        "links": [
+          {
+            "id": "pair",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/pair",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "pair": {
+          "method": "POST",
+          "href": "/api/v1/pair",
+          "next": "entry.paired"
+        }
+      }
+    },
+    "entry.lan-conflict": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.lan-conflict",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The network listener did not open: port 7421 is in use on 192.168.1.20",
+          "loopback": "http://127.0.0.1:7420",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": {
+              "enabled": true,
+              "lan": false,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [],
+            "lan_conflict": {
+              "port": 7421,
+              "host": "192.168.1.20",
+              "message": "Port 7421 is in use on 192.168.1.20; stop the program that uses it or choose another port"
+            }
+          }
+        },
+        "links": []
+      }
+    },
+    "entry.lan-credentials": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.lan-credentials",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Enter the provider credentials; a secret is entered on this machine only",
+          "loopback_only": true,
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              }
+            ],
+            "loopback_only": true
+          }
+        },
+        "links": []
+      }
+    },
+    "entry.device-lifecycle": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.device-lifecycle",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Paired devices · The browsers that can act on this machine",
+          "lan_listener_on": true,
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              },
+              {
+                "device_id": "dev-2",
+                "label": "Safari on iPad",
+                "paired_from": "lan",
+                "paired_by": "entry",
+                "created_at": "2026-05-20T10:00:00Z",
+                "last_used_at": "2026-10-13T10:00:00Z"
+              },
+              {
+                "device_id": "dev-3",
+                "label": "Chrome on build-box",
+                "paired_from": "loopback",
+                "paired_by": "pair",
+                "created_at": "2026-06-02T10:00:00Z",
+                "last_used_at": "2026-09-08T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "links": [
+          {
+            "id": "rename",
+            "rel": "submit",
+            "method": "PATCH",
+            "href": "/api/v1/web/devices/dev-1",
+            "preselected": true
+          },
+          {
+            "id": "revoke",
+            "rel": "abort",
+            "method": "DELETE",
+            "href": "/api/v1/web/devices/dev-3"
+          },
+          {
+            "id": "revoke_others",
+            "rel": "abort",
+            "method": "DELETE",
+            "href": "/api/v1/web/devices?others"
+          },
+          {
+            "id": "listener_off",
+            "rel": "abort",
+            "method": "DELETE",
+            "href": "/api/v1/web/listeners/lan"
+          }
+        ]
+      },
+      "links": {
+        "rename": {
+          "method": "PATCH",
+          "href": "/api/v1/web/devices/dev-1",
+          "next": "entry.device-lifecycle"
+        },
+        "revoke": {
+          "method": "DELETE",
+          "href": "/api/v1/web/devices/dev-3",
+          "next": "entry.device-lifecycle"
+        },
+        "revoke_others": {
+          "method": "DELETE",
+          "href": "/api/v1/web/devices?others",
+          "next": "entry.device-lifecycle"
+        },
+        "listener_off": {
+          "method": "DELETE",
+          "href": "/api/v1/web/listeners/lan",
+          "next": "entry.device-lifecycle"
+        }
+      }
+    },
+    "entry.stream-close": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "entry.stream-close",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Paired devices · The browsers that can act on this machine",
+          "lan_listener_on": true,
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              },
+              {
+                "device_id": "dev-2",
+                "label": "Safari on iPad",
+                "paired_from": "lan",
+                "paired_by": "entry",
+                "created_at": "2026-05-20T10:00:00Z",
+                "last_used_at": "2026-10-13T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "links": [
+          {
+            "id": "revoke",
+            "rel": "abort",
+            "method": "DELETE",
+            "href": "/api/v1/web/devices/dev-2",
+            "preselected": true
+          },
+          {
+            "id": "listener_off",
+            "rel": "abort",
+            "method": "DELETE",
+            "href": "/api/v1/web/listeners/lan"
+          }
+        ]
+      },
+      "links": {
+        "revoke": {
+          "method": "DELETE",
+          "href": "/api/v1/web/devices/dev-2",
+          "next": "entry.stream-close"
+        },
+        "listener_off": {
+          "method": "DELETE",
+          "href": "/api/v1/web/listeners/lan",
+          "next": "entry.stream-close"
+        }
+      }
+    },
+    "web.pair": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "web.pair",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Pair this browser",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "onboard.mode",
+              "step": 0,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              },
+              {
+                "device_id": "dev-2",
+                "label": "Safari on iPad",
+                "paired_from": "lan",
+                "paired_by": "entry",
+                "created_at": "2026-05-20T10:00:00Z",
+                "last_used_at": "2026-10-13T10:00:00Z"
+              },
+              {
+                "device_id": "dev-3",
+                "label": "Chrome on build-box",
+                "paired_from": "loopback",
+                "paired_by": "pair",
+                "created_at": "2026-06-02T10:00:00Z",
+                "last_used_at": "2026-09-08T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "links": [
+          {
+            "id": "pair",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/pair",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "pair": {
+          "method": "POST",
+          "href": "/api/v1/pair",
+          "next": "web.paired"
+        }
+      }
+    },
+    "web.paired": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "web.paired",
+          "kind": "completed",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Browser paired successfully",
+          "runtime": {
+            "status": "ready",
+            "version": "0.9.0",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "onboard.mode",
+              "step": 0,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            },
+            "devices": [
+              {
+                "device_id": "dev-1",
+                "label": "Firefox on mbp-oliver",
+                "paired_from": "loopback",
+                "paired_by": "open",
+                "created_at": "2026-05-12T10:00:00Z",
+                "last_used_at": "2026-10-16T14:02:00Z"
+              },
+              {
+                "device_id": "dev-2",
+                "label": "Safari on iPad",
+                "paired_from": "lan",
+                "paired_by": "entry",
+                "created_at": "2026-05-20T10:00:00Z",
+                "last_used_at": "2026-10-13T10:00:00Z"
+              },
+              {
+                "device_id": "dev-3",
+                "label": "Chrome on build-box",
+                "paired_from": "loopback",
+                "paired_by": "pair",
+                "created_at": "2026-06-02T10:00:00Z",
+                "last_used_at": "2026-09-08T10:00:00Z"
+              }
+            ]
+          }
+        },
+        "links": []
+      }
+    },
+    "status.only": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "status.only",
+          "kind": "completed",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Runtime is idle",
+          "runtime": {
+            "status": "ready",
+            "version": "0.1.0-SNAPSHOT",
+            "listener": "unix",
+            "machine": {
+              "name": "mock-machine",
+              "onboarded": true
+            },
+            "projects": [],
+            "onboarded": true,
+            "onboard": {
+              "state": "onboard.completed",
+              "step": 7,
+              "steps": 7,
+              "completed": true
+            },
+            "web": null
+          }
+        },
+        "links": []
+      }
+    },
+    "wait.choose": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "wait.choose",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The harness choice of the shared operator interaction",
+          "revision": 1,
+          "runtime": {
+            "status": "onboarding",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "harness.choose",
+              "step": 2,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "yes",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/machine/links/yes",
+            "preselected": true,
+            "confirm": "onboard.harness.consent.title"
+          },
+          {
+            "id": "no",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/machine/links/no"
+          }
+        ]
+      },
+      "links": {
+        "yes": {
+          "method": "POST",
+          "href": "/api/v1/machine/links/yes",
+          "next": "wait.check"
+        },
+        "no": {
+          "method": "POST",
+          "href": "/api/v1/machine/links/no",
+          "next": "wait.cancelled"
+        }
+      }
+    },
+    "wait.check": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "wait.check",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Checking the harness",
+          "runtime": {
+            "status": "onboarding",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "harness.choose",
+              "step": 2,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "retry",
+            "rel": "retry",
+            "method": "POST",
+            "href": "/api/v1/machine/links/retry"
+          }
+        ]
+      },
+      "links": {
+        "retry": {
+          "method": "POST",
+          "href": "/api/v1/machine/links/retry",
+          "next": "wait.choose"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 200,
+          "event": "check.result",
+          "data": {
+            "event": "check.result",
+            "at": "2026-10-18T10:00:00Z",
+            "scope": {
+              "kind": "machine"
+            },
+            "check_id": "version",
+            "result": "pass"
+          }
+        },
+        {
+          "after_ms": 600,
+          "event": "check.result",
+          "data": {
+            "event": "check.result",
+            "at": "2026-10-18T10:00:02Z",
+            "scope": {
+              "kind": "machine"
+            },
+            "check_id": "login",
+            "result": "fail"
+          }
+        }
+      ],
+      "auto": {
+        "after_ms": 900,
+        "next": "wait.moved"
+      }
+    },
+    "wait.moved": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "wait.moved",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The interaction moved on",
+          "runtime": {
+            "status": "onboarding",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "harness.choose",
+              "step": 2,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            }
+          }
+        },
+        "links": [
+          {
+            "id": "restart",
+            "rel": "retry",
+            "method": "POST",
+            "href": "/api/v1/machine/links/restart"
+          }
+        ]
+      },
+      "links": {
+        "restart": {
+          "method": "POST",
+          "href": "/api/v1/machine/links/restart",
+          "next": "wait.choose"
+        }
+      }
+    },
+    "wait.cancelled": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "wait.cancelled",
+          "kind": "completed",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The interaction was cancelled",
+          "runtime": {
+            "status": "onboarding",
+            "machine": "mock-machine",
+            "onboarded": false,
+            "onboard": {
+              "state": "harness.choose",
+              "step": 2,
+              "steps": 7,
+              "completed": false
+            },
+            "web": {
+              "enabled": true,
+              "lan": true,
+              "port": 7420,
+              "lan_port": 7421,
+              "open": true
+            }
+          }
+        },
+        "links": []
+      }
     }
   }
 }

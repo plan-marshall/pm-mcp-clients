@@ -176,8 +176,8 @@ class MockRuntimeCliTest {
         var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.STATUS_ONLY, "-p", "0"}, out, err);
         assertEquals(0, exitCode);
         assertTrue(stdout().contains("Mock runtime started successfully"));
-        assertTrue(stdout().contains("Pairing Code:       MOCKMOCK"));
-        assertTrue(stdout().contains("Web App URL:        http://localhost:5173/pair#code=MOCKMOCK"));
+        assertTrue(stdout().contains("Pairing Code:       KXQB-MRTN"));
+        assertTrue(stdout().contains("Web App URL:        http://localhost:5173/pair#code=KXQB-MRTN"));
     }
 
     @Test

@@ -67,8 +67,8 @@ class MockRuntimeTest {
             assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(paths.runtimeToken())));
             assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(paths.runtimeRecord())));
 
-            assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
-            assertEquals("runtime.idle", runtime.currentStateName());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
+            assertEquals("status.only", runtime.currentStateName());
             assertEquals(runtime.base().toString(), runtime.environment().get(MachinePaths.ENV_BASE));
         }
 
@@ -109,7 +109,7 @@ class MockRuntimeTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals("harness.choose", runtime.currentStateName());
+            assertEquals("harness.not-logged-in", runtime.currentStateName());
 
             // 1. Initial representation on static /api/v1/status route
             var statusRes = client.send(HttpRequest.get("/api/v1/status").withHeader("Authorization", auth));
@@ -117,24 +117,22 @@ class MockRuntimeTest {
             var statusJson = JsonTree.asObject(JsonTree.parse(statusRes.body()));
             assertEquals("onboarding", JsonTree.string(statusJson, "status"));
 
-            // 2. Follow offered link "check": POST /api/v1/operator/onboard/harness/check
-            var checkRes = client.send(HttpRequest.json("POST", "/api/v1/operator/onboard/harness/check", "{}")
+            // 2. Follow offered link "check": POST /api/v1/onboarding/harness/check
+            var checkRes = client.send(HttpRequest.json("POST", "/api/v1/onboarding/harness/check", "{}")
                     .withHeader("Authorization", auth));
             assertEquals(200, checkRes.status());
             var checkJson = JsonTree.asObject(JsonTree.parse(checkRes.body()));
-            assertEquals("harness.probe", JsonTree.string(checkJson, "state"));
+            assertEquals("harness.probe",
+                    JsonTree.string(JsonTree.object(checkJson, "state"), "state_id"));
             assertEquals("harness.probe", runtime.currentStateName());
 
-            // 3. Try to POST /api/v1/operator/onboard/harness/check again -> 404 mock_no_route because harness.probe has no links!
-            var secondCheck = client.send(HttpRequest.json("POST", "/api/v1/operator/onboard/harness/check", "{}")
+            // 3. The link the left state offered is refused act_not_available in harness.probe
+            var secondCheck = client.send(HttpRequest.json("POST", "/api/v1/onboarding/harness/check", "{}")
                     .withHeader("Authorization", auth));
-            assertEquals(404, secondCheck.status());
+            assertEquals(409, secondCheck.status());
             var errorJson = JsonTree.asObject(JsonTree.parse(secondCheck.body()));
-            assertEquals("mock_no_route", JsonTree.string(errorJson, "error"));
+            assertEquals("act_not_available", JsonTree.string(errorJson, "error"));
             assertEquals("harness.probe", JsonTree.string(errorJson, "state"));
-            var offered = JsonTree.asArray(errorJson.get("offered_links"));
-            assertNotNull(offered);
-            assertTrue(offered.isEmpty());
         }
     }
 
@@ -144,29 +142,29 @@ class MockRuntimeTest {
         try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_HAPPY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
 
-            assertEquals(StandardScenarios.ONBOARDING_HAPPY, runtime.currentScenarioName());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
             assertEquals("onboard.mode", runtime.currentStateName());
 
             // Programmatic switch to status-only
             runtime.switchScenario(StandardScenarios.STATUS_ONLY);
-            assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
-            assertEquals("runtime.idle", runtime.currentStateName());
-            assertEquals("MOCKMOCK", runtime.pairingCode());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
+            assertEquals("status.only", runtime.currentStateName());
+            assertEquals("KXQB-MRTN", runtime.pairingCode());
 
             // Control endpoint: GET /mock/state
             var stateRes = client.send(HttpRequest.get("/mock/state"));
             assertEquals(200, stateRes.status());
             var stateJson = JsonTree.asObject(JsonTree.parse(stateRes.body()));
-            assertEquals(StandardScenarios.STATUS_ONLY, JsonTree.string(stateJson, "scenario"));
-            assertEquals("runtime.idle", JsonTree.string(stateJson, "state"));
-            assertEquals("MOCKMOCK", JsonTree.string(stateJson, "pairing_code"));
+            assertEquals(StandardScenarios.ONBOARDING, JsonTree.string(stateJson, "scenario"));
+            assertEquals("status.only", JsonTree.string(stateJson, "state"));
+            assertEquals("KXQB-MRTN", JsonTree.string(stateJson, "pairing_code"));
 
             // Verify scenario switching control endpoint
             var switchRes = client.send(HttpRequest.json("POST", "/mock/scenario", "{\"scenario\":\"" + StandardScenarios.WEB_PAIRING + "\"}"));
             assertEquals(200, switchRes.status());
             var switchJson = JsonTree.asObject(JsonTree.parse(switchRes.body()));
             assertEquals("switched", JsonTree.string(switchJson, "status"));
-            assertEquals(StandardScenarios.WEB_PAIRING, JsonTree.string(switchJson, "scenario"));
+            assertEquals(StandardScenarios.ONBOARDING, JsonTree.string(switchJson, "scenario"));
             assertEquals("web.pair", runtime.currentStateName());
             assertEquals("KXQB-MRTN", runtime.pairingCode());
 
@@ -218,10 +216,10 @@ class MockRuntimeTest {
 
                 var event = sse.next();
                 assertNotNull(event, "Must receive scheduled event");
-                assertEquals("check", event.event());
+                assertEquals("check.result", event.event());
                 var payload = JsonTree.asObject(JsonTree.parse(event.data()));
-                assertEquals("Claude Code", JsonTree.string(payload, "harness"));
-                assertEquals("pass", JsonTree.string(payload, "status"));
+                assertEquals("version", JsonTree.string(payload, "check_id"));
+                assertEquals("pass", JsonTree.string(payload, "result"));
             }
         }
     }
@@ -300,15 +298,15 @@ class MockRuntimeTest {
                 assertEquals(-1, runtime.webPort());
                 assertTrue(runtime.environment().containsKey(MachinePaths.ENV_BASE));
 
-                assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
-                assertEquals("runtime.idle", runtime.currentStateName());
+                assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
+                assertEquals("status.only", runtime.currentStateName());
                 assertNotNull(runtime.currentScenario());
 
-                runtime.goToState("runtime.idle");
-                assertEquals("runtime.idle", runtime.currentStateName());
+                runtime.goToState("status.only");
+                assertEquals("status.only", runtime.currentStateName());
 
                 runtime.switchScenario(StandardScenarios.ONBOARDING_HAPPY);
-                assertEquals(StandardScenarios.ONBOARDING_HAPPY, runtime.currentScenarioName());
+                assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
                 assertEquals("onboard.mode", runtime.currentStateName());
 
                 runtime.reset();
