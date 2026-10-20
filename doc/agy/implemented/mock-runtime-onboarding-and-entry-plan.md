@@ -52,15 +52,15 @@ Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`, which already pr
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-onboarding-entry` on branch `feat/mock-runtime-onboarding-and-entry` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/mock-runtime-onboarding-and-entry-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-onboarding-and-entry-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/mock-runtime-onboarding-and-entry-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-onboarding-and-entry-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/mock-runtime-onboarding-and-entry-plan-report.md` by orchestrator session.
@@ -81,21 +81,21 @@ Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`, which already pr
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Migrate Onboarding States to `OperatorStateResource` in `onboarding.json`
-- [ ] **1.1 Convert Guided & Automatic Onboarding States**:
+- [x] **1.1 Convert Guided & Automatic Onboarding States**:
   - Rewrite all states in `onboarding.json` (`onboard.mode`, `auto.consent`, `auto.scan`, `language.choose`, `harness.consent`, `harness.choose`, `harness.add`, `harness.probe-consent`, `harness.probe`, `harness.blocked`, `harness.all-failed`, `harness.unknown`, `harness.confirm`, `github.consent`, `github.check`, `sonar.consent`, `sonar.key`, `defaults.choose`, `onboard.summary`, `onboard.completed`, `settings.conflict`) to carry full `OperatorStateResource` representations (`scope`, `state`, `summary`, `detail`, `links`, `data`).
   - Ensure all `check.result` and `state.changed` events in `events` use complete `EventEnvelope` objects.
-- [ ] **1.2 Align `MockRuntimeEngine` Onboarding Route Helpers**:
+- [x] **1.2 Align `MockRuntimeEngine` Onboarding Route Helpers**:
   - Update `handleOnboardingRoutes` and `handleMachineSettingsRoutes` in `MockRuntimeEngine` so state transitions and responses preserve the `OperatorStateResource` envelope from `onboarding.json` while applying stateful mutations (such as settings revision increments and `409 conflict` on stale revision).
 
 ### Phase 2: Consolidate Entry, Pairing & Device Lifecycle into `onboarding.json`
-- [ ] **2.1 Merge Entry & Pairing States**:
+- [x] **2.1 Merge Entry & Pairing States**:
   - Add entry/pairing states (`entry.ready`, `entry.unonboarded`, `entry.paired-browser`, `entry.ssh-session`, `entry.fresh-code`, `entry.lan-conflict`, `entry.lan-credentials`, `entry.device-lifecycle`, `entry.stream-close`, `status.only`, `wait.choose`, `wait.check`, `wait.moved`) into `onboarding.json` with valid `OperatorStateResource` representations and `OperatorLink` definitions.
-- [ ] **2.2 Remove Superseded Scenario Files & Wire Registry Aliases**:
+- [x] **2.2 Remove Superseded Scenario Files & Wire Registry Aliases**:
   - Delete the 22 superseded scenario files (`onboarding-*.json`, `entry*.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, `status-only.json`) from `pm-mock-runtime/src/main/resources/scenarios/`.
   - Map their constants in `ScenarioRegistry` to `onboarding#<state>` so `MockRuntime.start(StandardScenarios.ONBOARDING_HAPPY)` or `POST /mock/scenario` with a legacy case name activates `onboarding` at the corresponding start state.
 
 ### Phase 3: Verification & Scenario Contract Tests
-- [ ] **3.1 Comprehensive Scenario Tests**:
+- [x] **3.1 Comprehensive Scenario Tests**:
   - Update and expand `OnboardingScenarioTest`, `EntryScenarioTest`, `PairedDevicesScenarioTest`, and `OperatorInteractionScenarioTest` to assert that every state in `onboarding.json` decodes via `OperatorStateResource.fromTree` and every contract case (including refusals, unknown harness, token reporting levels, settings conflict, wrong pairing code, device revocation, and LAN conflict) is verified.
-- [ ] **3.2 Pre-Commit & Operational Gate**:
+- [x] **3.2 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).
