@@ -1,59 +1,103 @@
 /**
  * The routes of the app, and the one route model the store, the router and the views share.
  *
- * The onboarding, the entry and the machine settings are routes of their own
- * (`/onboarding`, `/entry`, `/pair`, `/settings/machine`); the start of a plan or an epic is
- * addressed by its project and its open entry (`/projects/{id}/start`, `/entries/{id}`). Every
- * other view keeps its store-driven route so that existing deep links and the header navigation
- * still work.
+ * Every view has a canonical path: the pairing and entry pages (`/pair`, `/entry`), the
+ * onboarding (`/onboarding`), the settings and the machine settings (`/settings`,
+ * `/settings/machine`), the project explorer and a project's onboarding (`/projects`,
+ * `/projects/onboard`), the overview (`/overview`), a plan and an epic by their id
+ * (`/plans/{id}`, `/epics/{id}`), an epic's decomposition (`/epics/decompose`, or
+ * `/epics/{id}/decomposition` for an epic already cut), the decisions (`/decisions`), the
+ * reports (`/reports`), the system and its cleanup (`/system`, `/system/cleanup`), the designer
+ * (`/designer`), and the start (`/start`, `/projects/{id}/start`, `/entries/{id}`).
+ *
+ * The pairing code lands on `/pair`; the address bar follows the store on every other route, so
+ * a reload, a bookmark, and the browser's back all open the same view.
  */
 
 export type AppRoute =
   | 'pair'
   | 'entry'
   | 'onboarding'
-  | 'workspace'
+  | 'project-onboarding'
   | 'settings'
   | 'machine-settings'
-  | 'designer'
-  | 'revoked'
-  | 'listener-off'
-  | 'overview'
-  | 'reports'
-  | 'decisions'
-  | 'system'
-  | 'cleanup'
   | 'projects'
+  | 'overview'
   | 'plan'
   | 'epic'
   | 'decomposition'
-  | 'start';
+  | 'decisions'
+  | 'reports'
+  | 'system'
+  | 'cleanup'
+  | 'designer'
+  | 'start'
+  | 'revoked'
+  | 'listener-off';
 
-/** The project and the entry a start path names. */
-export interface StartPath {
+/** The identifiers a parameterized path carries. */
+export interface RouteParams {
   projectId?: string;
   entryId?: string;
+  planId?: string;
+  epicId?: string;
+  taskId?: string;
 }
 
-/** A path resolved to its route and, for a start, the project and entry it names. */
-export interface PathMatch extends StartPath {
+/** The project and the entry a start path names. */
+export type StartPath = Pick<RouteParams, 'projectId' | 'entryId'>;
+
+/** A path resolved to its route and the identifiers it names. */
+export interface PathMatch extends RouteParams {
   route: AppRoute;
 }
 
-/** Path of every route that has a page of its own. */
-const ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
+/** Path of every route that has a fixed path of its own. */
+const FIXED_ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
   pair: '/pair',
   entry: '/entry',
   onboarding: '/onboarding',
+  'project-onboarding': '/projects/onboard',
   settings: '/settings',
   'machine-settings': '/settings/machine',
   projects: '/projects',
+  overview: '/overview',
+  decomposition: '/epics/decompose',
+  decisions: '/decisions',
+  reports: '/reports',
+  system: '/system',
+  cleanup: '/system/cleanup',
+  designer: '/designer',
 };
 
-/** Routes that are reachable by path alone, without a selected plan or epic. */
-const PATH_ROUTES: ReadonlyArray<{ path: string; route: AppRoute }> = (
-  Object.entries(ROUTE_PATHS) as Array<[AppRoute, string]>
-).map(([route, path]) => ({ path, route }));
+/**
+ * The fixed paths, longest first, so `/settings/machine` is resolved before `/settings` and
+ * `/system/cleanup` before `/system`.
+ */
+const FIXED_PATHS: ReadonlyArray<{ path: string; route: AppRoute }> = (
+  Object.entries(FIXED_ROUTE_PATHS) as Array<[AppRoute, string]>
+)
+  .map(([route, path]) => ({ path, route }))
+  .sort((left, right) => right.path.length - left.path.length);
+
+/** The paths that carry one identifier, matched after the fixed paths. */
+const PARAMETERIZED_PATHS: ReadonlyArray<{
+  pattern: RegExp;
+  route: AppRoute;
+  parameter: 'planId' | 'epicId' | 'projectId' | 'entryId';
+}> = [
+  // A decomposition that is already cut names its epic; `/epics/decompose` names none and is
+  // listed as a fixed path above, so this one never swallows it.
+  {
+    pattern: /^\/epics\/([^/]+)\/decomposition$/,
+    route: 'decomposition',
+    parameter: 'epicId',
+  },
+  { pattern: /^\/epics\/([^/]+)$/, route: 'epic', parameter: 'epicId' },
+  { pattern: /^\/plans\/([^/]+)$/, route: 'plan', parameter: 'planId' },
+  { pattern: /^\/projects\/([^/]+)\/start$/, route: 'start', parameter: 'projectId' },
+  { pattern: /^\/entries\/([^/]+)$/, route: 'start', parameter: 'entryId' },
+];
 
 /**
  * Trims the trailing slashes of a path, keeping the root.
@@ -84,35 +128,32 @@ function decodeSegment(segment: string): string | null {
 }
 
 /**
- * Resolves a path to its route and, for a start, the project and the entry it names.
- *
- * The start paths are `/start` (the project is chosen there), `/projects/{id}/start` (a new
- * entry under that project) and `/entries/{id}` (an entry that is already open, whichever client
- * opened it).
+ * Resolves a path to its route and the identifiers it names.
  *
  * @param pathname the browser path, e.g. `/settings/machine`
  * @returns the match, or `null` when the path names none of the app's routes
  */
 export function matchPath(pathname = '/'): PathMatch | null {
   const trimmed = normalise(pathname || '/');
-  for (const entry of PATH_ROUTES) {
+
+  for (const entry of FIXED_PATHS) {
     if (entry.path === trimmed) {
       return { route: entry.route };
     }
   }
+
   if (trimmed === '/start') {
     return { route: 'start' };
   }
-  const projectStart = /^\/projects\/([^/]+)\/start$/.exec(trimmed);
-  if (projectStart?.[1]) {
-    const projectId = decodeSegment(projectStart[1]);
-    return projectId ? { route: 'start', projectId } : null;
+
+  for (const entry of PARAMETERIZED_PATHS) {
+    const match = entry.pattern.exec(trimmed);
+    if (!match?.[1]) continue;
+    const value = decodeSegment(match[1]);
+    if (!value) return null;
+    return { route: entry.route, [entry.parameter]: value };
   }
-  const entryPath = /^\/entries\/([^/]+)$/.exec(trimmed);
-  if (entryPath?.[1]) {
-    const entryId = decodeSegment(entryPath[1]);
-    return entryId ? { route: 'start', entryId } : null;
-  }
+
   return null;
 }
 
@@ -129,19 +170,33 @@ export function routeForPath(pathname = '/'): AppRoute | null {
 /**
  * The path of a route, for the address bar.
  *
+ * A route that needs an identifier it was not given has no path: the caller keeps the address
+ * bar as it is rather than writing `/`.
+ *
  * @param route the route
- * @param start the project and entry of a start route
- * @returns its path, or `null` when the route has no path of its own
+ * @param params the identifiers the route needs, e.g. a plan's id
+ * @returns its path, or `null` when the route has no path without a selection
  */
-export function pathForRoute(route: AppRoute, start?: StartPath): string | null {
+export function pathForRoute(route: AppRoute, params: RouteParams = {}): string | null {
   if (route === 'start') {
-    if (start?.entryId) {
-      return `/entries/${encodeURIComponent(start.entryId)}`;
+    if (params.entryId) {
+      return `/entries/${encodeURIComponent(params.entryId)}`;
     }
-    if (start?.projectId) {
-      return `/projects/${encodeURIComponent(start.projectId)}/start`;
+    if (params.projectId) {
+      return `/projects/${encodeURIComponent(params.projectId)}/start`;
     }
     return '/start';
   }
-  return ROUTE_PATHS[route] ?? null;
+  if (route === 'plan') {
+    return params.planId ? `/plans/${encodeURIComponent(params.planId)}` : null;
+  }
+  if (route === 'epic') {
+    return params.epicId ? `/epics/${encodeURIComponent(params.epicId)}` : null;
+  }
+  if (route === 'decomposition') {
+    return params.epicId
+      ? `/epics/${encodeURIComponent(params.epicId)}/decomposition`
+      : '/epics/decompose';
+  }
+  return FIXED_ROUTE_PATHS[route] ?? null;
 }

@@ -1,0 +1,212 @@
+= Post-Run Wave Review & Remediation Planning Guideline
+:toc: left
+:toclevels: 3
+:nofooter:
+:sectnums:
+
+This document establishes the canonical methodology for conducting a **Post-Run Wave Review** across `pm-mcp-clients`, synthesizing remediation plans, and de-colliding those plans against both staged specifications (`doc/plans/`) and currently running (`in-flight`) worktrees (`doc/agy/`).
+
+Whenever a session is instructed to review completed/staged plans across a module stream (or across the whole repository) and create corresponding fix plans:
+
+[quote]
+____
+Review the implemented and staged plans using `doc/meta/post_run_review.adoc`, identify gaps and collisions, and create de-collided remediation plans in `doc/agy/`.
+____
+
+the agent shall execute the four-phase workflow defined in this guideline.
+
+== Position in the Governance Lifecycle
+
+Whereas link:verification-protocol.md[`doc/meta/verification-protocol.md`] governs **single-plan** verification immediately after a pull request lands (Step 8 of `doc/agy/runbook.md`), this guideline governs **multi-plan wave reviews**:
+
+[cols="2,3,3",options="header"]
+|===
+|Document |Scope |Primary Output
+
+|link:implement_use-cases.md[`doc/meta/implement_use-cases.md`]
+|Single use-case or work package implementation across the 5 repository modules.
+|One executable plan in `doc/agy/<topic>-plan.md` + code implementation.
+
+|link:verification-protocol.md[`doc/meta/verification-protocol.md`]
+|Single landed pull request verification (Step 8 audit).
+|Verification verdict (`PASSED` -> `doc/agy/verified/`, or single remediation plan).
+
+|`doc/meta/post_run_review.adoc` _(this document)_
+|Whole-stream or cross-stream review of `implemented/` and staged `doc/plans/` packages (`pm-operator`, `pm-mock-runtime`, `pm-web-app`).
+|Stream gap analysis + a de-collided, parallelizable DAG of remediation plans in `doc/agy/` that safely sequences around in-flight plans.
+|===
+
+---
+
+== Phase 1: Evidence-Driven Stream Audit
+
+A post-run review must **never** trust completion reports or green unit-test counts at face value. For each target stream, compare three sources of truth against the actual codebase and live runtime behavior:
+
+1. **Authoritative Design & Specifications**: `../plan-marshall-documentation/doc/design/{shared,terminal-client,web-app}/*.adoc` and `../plan-marshall-documentation/doc/specification/*.adoc`.
+2. **Roadmap & Staged Work Packages**: `doc/plans/README.adoc`, `doc/plans/*.adoc`, and `doc/plans/implemented/*.adoc`.
+3. **Production Code, Tests & Live UX**: Actual classes, Svelte views, scenario JSON fixtures, and interactive launcher scripts (`start.sh`).
+
+=== Stream A: Terminal Client (`pm-operator`) Audit Checklist
+
+* **TUI vs. Plain-Text REPL Gap**:
+  Verify whether full-screen terminal packages (`tui-foundation`, `tui-overview`, `tui-plan-view`, `tui-projects`, `tui-reports-system`, `tui-actions`) are implemented as true interactive full-screen `Tamboui` (`dev.tamboui`) TUI views or if the binary still drops into a plain-text `pm ›` line-oriented REPL.
+* **Screen Lifecycle & Terminal Hygiene**:
+  Verify alternate-screen buffer entry/exit, cursor visibility restoration on `SIGINT`/`SIGTERM`/exceptions, and `OutputSafety` (`PM-SEC-3`) sanitization on all untrusted runtime fields.
+* **Keyboard & Focus Navigation**:
+  Verify global navigation bar (`[1] Overview`, `[2] Projects`, `[3] Reports`, `[4] System`), contextual action modals, split-pane resizing, and non-TTY fallback (`--no-tui` / piped stdout).
+* **Bilingual Catalogue & Native Image**:
+  Verify zero hardcoded user-facing strings in Java sources, complete `pm-api/src/main/resources/messages/*.{en,de}.properties` bindings, and GraalVM native-image compatibility (`NativeMeasurementsIT`).
+
+=== Stream B: Mock Runtime (`pm-mock-runtime`) Audit Checklist
+
+* **Interactive Scenario Ergonomics (Consolidation vs. Fragmentation)**:
+  Inspect `pm-mock-runtime/src/main/resources/scenarios/` and `./start.sh`. An interactive operator or developer launching `pm-mock-runtime` must **not** be confronted with 50–60 fragmented micro-scenarios.
+  ** _Standard_: Structure the user-facing interactive picker around **~5 cohesive, multi-state journey scenarios** in `StandardScenarios` (e.g., `onboarding`, `projects-and-start`, `running-work`, `reports-and-system`, `workflow-designer`) while preserving **100% backward-compatible alias resolution** in `ScenarioRegistry` so existing automated CLI and Playwright tests referencing legacy granular scenario names continue to pass without breakage.
+* **Contract & Engine Completeness**:
+  Audit all `doc/plans/implemented/mock-*.adoc` deliverables against `MockRuntimeEngine`, `MockHttpHandler`, and `ScenarioLoader`:
+  ** Closed-schema parsing (unknown JSON properties fail closed).
+  ** Stateful in-memory mutations (`POST`, `PATCH`, `PUT`, `DELETE`) persisting across subsequent `GET` requests within a session.
+  ** SSE stream fidelity (`Last-Event-ID` replay, `reset` event emission on scenario switch, heartbeat/close semantics).
+  ** Route matching precedence (exact static paths resolved before parameterized `/api/v1/.../{id}` templates).
+  ** Complete HTTP error simulation (`403 Forbidden`, `409 Conflict`, `422 Unprocessable Entity`).
+
+=== Stream C: Web Application (`pm-web-app` & `pm-web-e2e`) Audit Checklist
+
+* **Routing & Placeholder Retirement**:
+  Inspect `AppRouter.svelte`, `routes.ts`, and `+layout.svelte`. Verify that every domain view has a deterministic URL route (`pushState`/`popstate` history support) and that temporary scaffolding views (such as `WorkspaceView.svelte`) are retired rather than masking unrouted components.
+* **Catalogue Purity & Fallback Dictionary Detection**:
+  Scan `pm-web-app/src/` for hardcoded strings or inline fallback dictionaries (e.g., `fallbackMessages` in `src/lib/i18n/index.ts`) that bypass `pm-api` message catalogues. Verify `catalogue.test.ts` enforces strict checks across all `.svelte` and `.ts` files without waivers.
+* **View & Dialogue Completeness**:
+  Compare every view in `doc/design/web-app/*.adoc` against `pm-web-app/src/lib/views/` and `components/` (Onboarding wizard steps, Entry/Pairing/Revoked screens, Overview attention band & cards, Plan/Epic detail tabs, Decision answer cards + Chat handoff, Reports/System settings, and Workflow Designer canvas).
+* **End-to-End Verification (`pm-web-e2e`)**:
+  Verify Playwright specs (`pm-web-e2e/tests/*.spec.js`) exercise real user journeys and SSE updates against `pm-mock-runtime` down to 320px mobile viewports.
+
+---
+
+== Phase 2: Remediation Plan Synthesis
+
+Group all findings from Phase 1 into bounded, self-contained execution plans under `doc/agy/<stream>-<topic>-plan.md`:
+
+1. **One Foundation Plan per Stream**:
+   Start each stream with a single foundation plan (`cli-fullscreen-foundation-plan.md`, `mock-runtime-foundation-and-consolidation-plan.md`, `web-foundation-routing-and-catalogue-plan.md`) that owns shared infrastructure, routing tables, base registries, and cross-cutting test harnesses.
+2. **Parallel Feature Plans**:
+   Decompose the remaining domain views/scenarios into 3–5 orthogonal feature plans per stream that depend on the stream's foundation plan.
+3. **Standard Plan Structure**:
+   Every generated plan in `doc/agy/` must follow `doc/meta/implement_use-cases.md` and `doc/agy/runbook.md`, containing:
+   * **Goal & Context** (linking exact design `.adoc` files and staged `doc/plans/*.adoc` packages)
+   * **Dependencies & Collision Guardrails** (explicit execution ordering and file-ownership boundaries)
+   * **Deliverables & Phased Tasks** (`pm-api` -> `pm-mock-runtime` -> `pm-operator` / `pm-web-app` -> IT / E2E tests)
+   * **Verification & Runbook Checklist** (`./mvnw verify -Ppre-commit`, PR gate, Step 8 audit criteria)
+
+---
+
+== Phase 3: Cross-Stream & Staged-Plan Collision Elimination
+
+Before any remediation plan can be scheduled, perform a systematic **collision audit** across all newly created plans in `doc/agy/` and all staged packages in `doc/plans/`.
+
+=== Shared Hotspot Matrix
+
+Check every plan's file footprint against these high-contention files:
+
+[cols="2,3,3",options="header"]
+|===
+|Hotspot File / Directory |Collision Risk |Mandatory Resolution Strategy
+
+|`doc/plans/README.adoc` & `doc/plans/<pkg>.adoc`
+|Multiple plans moving staged `.adoc` files to `doc/plans/implemented/` and editing the master package table concurrently.
+|Assign each staged `doc/plans/<pkg>.adoc` package to **exactly one** owning `doc/agy/` plan, or centralize all `doc/plans/README.adoc` status table updates into the stream's foundation/finalizer step.
+
+|`pm-api/src/main/resources/messages/*.{en,de}.properties`
+|Concurrent plans adding/editing keys in the same `.properties` bundle (`operator`, `start`, `overview`, `plan`, `projects`, `reports`, `system`).
+|Partition ownership strictly by domain bundle file (`overview.{en,de}.properties`, `plan.{en,de}.properties`, etc.). Shared base keys in `operator.{en,de}.properties` are added in the stream's **Foundation Plan** first.
+
+|`AppRouter.svelte`, `routes.ts`, `+layout.svelte`, `PmOperator.java`
+|Feature plans editing the top-level router or CLI command tree simultaneously.
+|Pre-wire the complete route table / screen registry / navigation shell in the **Foundation Plan** (`web-foundation-*`, `cli-fullscreen-foundation-*`) so leaf plans only implement their isolated view classes/components.
+
+|`StandardScenarios.java`, `ScenarioRegistry.java`, `MockHttpHandler.java`
+|Multiple mock-runtime plans editing scenario registration and HTTP dispatch in parallel.
+|Pre-register the 5 canonical scenario constants and legacy alias mappings in `mock-runtime-foundation-and-consolidation-plan.md`, and modularize handler delegates by domain path prefix (`/api/v1/onboarding`, `/api/v1/projects`, `/api/v1/plans`, `/api/v1/reports`).
+
+|`pm-mock-runtime/src/main/resources/scenarios/*.json`
+|Mock consolidation deleting legacy granular `.json` fixtures while client tests or other plans still reference them.
+|Keep legacy alias resolution active in `ScenarioRegistry` and sequence fixture deletion only after dependent client plans have migrated or landed.
+|===
+
+---
+
+== Phase 4: In-Flight (Running) Plan Protection
+
+When one or more plans in `doc/agy/` are **already running in active worktrees** (for example, `doc/agy/cli-start-plan.md` or `doc/agy/web-start-plan.md`), special non-interference rules apply.
+
+[IMPORTANT]
+====
+**Never edit or overwrite a running plan file.**
+If an in-flight plan file in `doc/agy/` was modified during analysis, immediately revert it to `HEAD`:
+[source,bash]
+----
+git checkout HEAD -- doc/agy/<running-plan>.md
+----
+All collision handling, sequencing, and integration adjustments **must** be expressed inside the **new** plans.
+====
+
+=== Four Rules for De-Colliding Against Running Plans
+
+1. **Eliminate Duplicate Scope**:
+   If a newly drafted plan overlaps the scope of a running plan (e.g., creating a separate `web-start-sources-and-chat-plan.md` while `web-start-plan.md` is already running), delete the duplicate new plan and designate the running plan as the sole owner of that scope.
+2. **Sequence Shared File Edits After the Running Plan Lands**:
+   Inspect the running plan's file footprint. Any new plan that touches files modified by the running plan (such as `AppRouter.svelte`, `routes.ts`, `+layout.svelte`, `doc/plans/README.adoc`, or `pm-api/src/main/resources/messages/{start,operator}.{en,de}.properties`) must declare an explicit dependency barrier:
+   * _Depends on_: In-flight `<running-plan>.md` landed on `main`.
+   * _Scope rule_: Explicitly instruct the new plan to preserve and integrate the routes, commands, and components landed by the running plan rather than overwriting them.
+3. **Protect Scenario Fixtures Read by Running Worktrees**:
+   If a running plan reads existing mock scenario files (e.g., `pm-mock-runtime/src/main/resources/scenarios/start-*.json`), any new mock-runtime plan that consolidates or deletes those scenario files (`mock-runtime-projects-and-start-plan.md`) must wait until the running plan has landed on `main`. Meanwhile, foundation plans (`mock-runtime-foundation-and-consolidation-plan.md`) may run immediately in parallel as long as they keep existing `.json` files intact on disk.
+4. **Align Component & Class Names with Running Plans**:
+   Inspect the exact symbol names being created by the running plan (e.g., `ChatPanel.svelte`, `SourceList.svelte`, `ConfinedFilePicker.svelte`, `GrantModal.svelte` in `web-start-plan.md`; `PlanAddCommand`, `EpicAddCommand`, `RecipeRunCommand`, `ChatDialogue` in `cli-start-plan.md`). Update downstream new plans (such as `web-decisions-and-actions-plan.md` and `cli-fullscreen-actions-plan.md`) to import and reuse those exact symbols.
+
+---
+
+== Phase 5: Execution Wave Partitioning
+
+Conclude every post-run review by publishing a clear **Execution Wave Schedule** that tells the operator which plans can start immediately in parallel with running worktrees and which plans unlock once the in-flight plans land:
+
+[source]
+----
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Wave 0: Immediate Start (100% Disjoint from In-Flight Plans)               │
+│   • mock-runtime-foundation-and-consolidation-plan.md                      │
+│   • Followed immediately by disjoint scenario plans (e.g. onboarding,      │
+│     running-work) that do not touch files used by running plans            │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │ (In-flight plans land on main)
+                                      ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Wave 1: Stream Foundations & Remaining Mock Consolidation                  │
+│   • mock-runtime-projects-and-start-plan.md (consolidates start-*.json)    │
+│   • mock-runtime-reports-system-designer-plan.md                           │
+│   • cli-fullscreen-foundation-plan.md                                      │
+│   • web-foundation-routing-and-catalogue-plan.md                           │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+                                      ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Wave 2: Parallel Feature Plans Across CLI & Web                            │
+│   • CLI: overview, plan-view, projects, reports-system                     │
+│   • Web: onboarding-entry-projects, overview-plan-epic,                    │
+│          decisions-and-actions, reports-system-and-designer                │
+└─────────────────────────────────────┬──────────────────────────────────────┘
+                                      │
+                                      ▼
+┌────────────────────────────────────────────────────────────────────────────┐
+│ Wave 3: Cross-Screen Integration & Modal Actions                           │
+│   • cli-fullscreen-actions-plan.md (integrates start commands & modals)    │
+└────────────────────────────────────────────────────────────────────────────┘
+----
+
+== Verification Checklist Before Closing a Post-Run Review
+
+* [ ] All three streams (`pm-operator`, `pm-mock-runtime`, `pm-web-app` + `pm-web-e2e`) audited against `plan-marshall-documentation` specs and `doc/plans/`.
+* [ ] Interactive mock-runtime scenario bloat consolidated into ~5 cohesive multi-state scenarios with backward-compatible alias routing in `ScenarioRegistry`.
+* [ ] Every gap mapped to an actionable remediation plan in `doc/agy/*-plan.md`.
+* [ ] Zero file-ownership collisions across parallel plans (`doc/plans/README.adoc`, `messages/*.properties`, routers, scenario files).
+* [ ] All in-flight (`running`) plan files verified clean via `git status` (`git diff` shows zero modifications to running plans).
+* [ ] Clear Wave 0 / Wave 1 / Wave 2+ execution schedule presented to the operator.

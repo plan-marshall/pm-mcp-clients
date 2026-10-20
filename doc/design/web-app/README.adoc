@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
-Status: `DRAFT`. The design of the web app, the specification its implementation follows (work packages link:../../plans/implemented/web-app-foundation.adoc[`web-app-foundation`] and link:../../plans/implemented/web-onboarding.adoc[`web-onboarding`]); the work package link:../../plans/implemented/web-design.adoc[`web-design`] works it out. Its parts:
+Status: `FINAL`. The design of the web app, the specification its implementation follows (work packages link:../../plans/implemented/web-app-foundation.adoc[`web-app-foundation`] and link:../../plans/implemented/web-onboarding.adoc[`web-onboarding`]); the work package link:../../plans/implemented/web-design.adoc[`web-design`] works it out. Its parts:
 
 * link:entry.adoc[Entry]: the pairing page, the page a revoked device lands on, the page of a device whose network listener was turned off, and where the app opens after pairing.
 * link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
@@ -91,8 +91,341 @@ How the app is organised and how one moves from one part to another and back. Un
 
 How the parts are laid out in one app (the header, the navigation between the explorer, the overview and the settings, the routes) is worked out with the visual language below.
 
-The sections below are the subjects still to work out.
-
+[#visual-language]
 == Visual Language
 
-Layout, colours, typography, how states and attention are shown, and the light and dark themes.
+Every screen is built from the same frame, the same grid, the same tokens, and the same components. A view never invents a colour, a spacing, or a type size: it names a token of `pm-web-app/src/styles/tokens.css`, and the theme resolves it. The sketches below show layout and content, not pixel-exact spacing.
+
+[#frame]
+=== The Frame
+
+The app is one column of five tiers, always in this order:
+
+----
+header       brand · machine · overview · projects · explorer · decisions ·
+             reports · system · settings · language · theme
+──────────────────────────────────────────────────────────────────────────
+notices      runtime progress (a drain, an upgrade), connection state,
+             the arrival line of reports or decisions
+──────────────────────────────────────────────────────────────────────────
+context      the view's own head: title, path (project › epic › plan),
+             its actions, and its filters or view switches
+──────────────────────────────────────────────────────────────────────────
+body         the view: a list, a table, a process tree, a form, a dialogue
+──────────────────────────────────────────────────────────────────────────
+live region  polite announcements, visually hidden
+----
+
+* *Header*: the brand and the machine's name; the entries to the overview, the projects, the explorer, the decisions, the reports (with the unread count), the system, and the machine settings; the language switch (`EN`/`DE`) and the theme switch. The reports entry is present while there are unread reports, with its count; the decisions entry carries the open count.
+* *Notices*: at most one line per kind, above the view and below the header, never over the body. The progress line of a drain or an upgrade is on every paired device (link:../shared/system.adoc[System]); the offline and listener-closed banners say what the app does about them (link:entry.adoc[Entry]); the arrival line names what arrived and holds the one step to it (link:../shared/reports.adoc#arrival[Reports, On Start], link:../shared/decisions.adoc#announce[Decisions, Announcing a Decision]).
+* *Context*: the view's title, its breadcrumb where it has a path, its actions on the right, and its filter, sort, or grouping controls directly below the title. A dialogue is never a tier of the frame: it opens over the body and keeps the header and the notices in place.
+* *Body*: one scroll container. The page itself does not scroll sideways; a wide table scrolls inside its own wrapper.
+* *Live region*: a polite `aria-live` region at the end of the frame, visually hidden, carrying the quiet notices (a new report, a new decision, a project change). It never repeats a notice the operator already sees.
+
+[#grid]
+=== The Layout Grid
+
+[cols="1,1,2",options="header"]
+|===
+|Token |Value |Use
+
+|`--space-1` … `--space-6`
+|`0.25rem` … `1.5rem`
+|The only spacing steps. `--space-1`/`--space-2` inside a control, `--space-3`/`--space-4` between the parts of a row, `--space-6` around a card or a view's body.
+
+|`--space-8`, `--space-10`
+|`2rem`, `2.5rem`
+|The gap between sections of a long view, and the inset of a choice screen.
+
+|`--radius-sm` … `--radius-full`
+|`4px` … `9999px`
+|Controls and badges take `--radius-sm`; cards `--radius-lg`; counts and pills `--radius-full`. A badge is never a card and a card never a pill.
+
+|`--shadow-sm`, `--shadow-md`
+|two steps
+|A card at rest takes `--shadow-sm`; a dialogue or a popover takes `--shadow-md`. A view's body has no shadow of its own.
+|===
+
+The content column is centred and bounded: a reading view (a form, a dialogue, a list of one column) at `480px`, a table or a card grid at `1000px`, the explorer and the reports list at `1200px`, and the process views (plan, epic, designer) at the full width of the window minus `--space-6` on each side. A view picks one of these bounds; it never sets an arbitrary width.
+
+Two-column views (a list beside a detail, the process tree beside the inspector, the sources beside the chat) split at `2fr 1fr` on the desktop and stack on the tablet and the phone. A column that carries a live stream (chat, activity) keeps its own scroll and never pushes the page.
+
+[#breakpoints]
+=== Responsive Breakpoints
+
+[cols="2,2,3",options="header"]
+|===
+|Name |Width |Rules
+
+|Desktop
+|`>= 1024px`
+|The frame in one header row; two-column views side by side; tables show every column; the header entries show their labels.
+
+|Tablet
+|`640px` to `1023px`
+|The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
+
+|Phone
+|< `640px`
+|One column throughout; the header keeps the icons and hides the words of the system and settings entries; breadcrumbs shorten in the middle; a table becomes a list of rows, each row a labelled pair (the terminal's field list, link:../terminal-client/03-dialogues.adoc#content[Terminal Client, Content]); a dialogue takes the whole body; a badge stays visible but never widens its row.
+|===
+
+The layout is usable down to `320px` without horizontal scrolling. A touch target is at least `2.75rem` high on the phone. Focus is never hidden: every interactive element carries the `--focus-ring`, and the focus order follows the reading order.
+
+[#typography]
+=== Typography
+
+[cols="1,1,1,3",options="header"]
+|===
+|Token |Size |Face |Use
+
+|`--text-xs`
+|`0.75rem`
+|sans
+|Badges, counts, timestamps, the machine's name in the header.
+
+|`--text-sm`
+|`0.875rem`
+|sans
+|Table cells, secondary lines, the explanation under a title, a notice.
+
+|`--text-base`
+|`1rem`
+|sans
+|Body copy, a button's label, the default of a form control.
+
+|`--text-lg`
+|`1.125rem`
+|sans
+|A card's or a section's title.
+
+|`--text-xl`
+|`1.25rem`
+|sans
+|A view's title where it is not the page's only `<h1>`.
+
+|`--text-2xl`
+|`1.5rem`
+|sans
+|The page's `<h1>`, and the figure of a summary.
+|===
+
+`--font-sans` is the face of every word of the interface. `--font-mono` (at `0.9em`) is the face of every identifier, path, digest, branch, commit, model id, version, count of tokens, diff line, and log line: anything the operator may compare character by character or copy. A view switches the face, never the words: a value is not translated, an identifier is never emphasised by a colour alone.
+
+Text does not fall below `--text-xs`, and a line of copy is at most `72ch` wide. A label is short and in sentence case; a button is labelled with what it does ("Enrol 2 harnesses", never "Next"); a heading is a statement, not a question. Numerals are tabular in a table and a figure.
+
+[#colour]
+=== Semantic Colour Tokens
+
+The palette is semantic: a view names the role, not the hue. The tokens are defined once for the light theme and once for the dark one.
+
+[cols="2,3,3",options="header"]
+|===
+|Role |Tokens |Where
+
+|Ground
+|`--color-bg-app`, `--color-bg-surface`, `--color-bg-subtle`, `--color-bg-inset`
+|The page, a card, a table header and a hover, an inset field.
+
+|Line
+|`--color-border`, `--color-border-subtle`
+|The edge of a card or a control, and the rule between rows.
+
+|Text
+|`--color-text-primary`, `--color-text-secondary`, `--color-text-muted`, `--color-text-inverse`
+|Body, a secondary line, a hint or a timestamp, text on a filled control.
+
+|Primary
+|`--color-primary`, `--color-primary-hover`, `--color-primary-subtle`, `--color-primary-text`
+|The one action of a view, a link, the selected tab or view switch, a count badge.
+
+|Success
+|`--color-success`, `--color-success-subtle`, `--color-success-border`
+|A finished check, a ready project, a plan that landed.
+
+|Warning
+|`--color-warning`, `--color-warning-subtle`, `--color-warning-border`
+|Something waits for the operator, a drain runs, an aspect needs a look.
+
+|Danger
+|`--color-danger`, `--color-danger-subtle`, `--color-danger-border`
+|A failure, an irreversible action, a revoked device, a refused step.
+|===
+
+A colour never carries a meaning alone: every state also has its word and, where it stands in a row, its badge glyph or icon. `--color-primary` marks exactly one primary action per screen; every other action is secondary or a plain link. A danger control is filled only for the irreversible act of its dialogue; the entry that opens the dialogue is a plain danger-coloured link.
+
+[#states]
+=== States and Attention
+
+[cols="2,2,3",options="header"]
+|===
+|State |Shown as |Example
+
+|Neutral
+|A muted badge or plain text
+|`planned`, `not taken`, `none`
+
+|In progress
+|A spinner and a line that names the act
+|`Checking the premise …`, `drafting w3`
+
+|Done
+|A success badge with its word, never a bare colour
+|`done`, `merged`, `ready`
+
+|Waiting for the operator
+|A warning badge that starts with `!` and its count, plus its word in the row's detail
+|`! 2`, `waiting for you`, `setup needs you`
+
+|Failed
+|A danger badge and the reason beside it
+|`failed`, `the start failed: …`
+
+|Held or stalled
+|A warning or danger badge on the row that holds, with the hold's kind
+|`held`, `stalled`, `integrity pause`
+|===
+
+A badge is at most one per kind per row; a row that carries both a state and a hold shows the hold first. The overview's `! n` badge is the operator's one count of what needs them (link:../shared/plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]); the reports entry's count is unread reports only and never mixes with it. A check that has not run says so; nothing is shown as done that was not checked.
+
+[#themes]
+=== Light and Dark Themes
+
+The theme follows the operating system on first run (`prefers-color-scheme`) and the header's switch afterwards; the choice is remembered per browser. Every token is defined in both themes, and a view uses only the tokens, so a theme switch never requires a view to change.
+
+* *Light*: the app's ground is the lightest step, a card is white, text is the darkest step. The primary, success, warning, and danger roles take their darker variants so that text on a subtle background keeps a contrast ratio of at least `4.5:1`.
+* *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control keeps white text on the primary fill.
+* *Never inverted*: a colour that carries meaning is not swapped between the themes (danger stays red, success stays green), and no view hard-codes a hex value. An identifier in `--font-mono` keeps the same contrast as body text; a diff keeps its added and removed roles in both themes.
+
+[#reports-layout]
+=== Reports View (`/reports`)
+
+The list and, in place of the list, a report's detail, with the browser's back returning to the list. It is a reading view: one column, the machine's reports grouped by project, epic, and plan.
+
+----
+header
+──────────────────────────────────────────────────────────────────────────
+context   Reports                                              [Mark all shown read]
+──────────────────────────────────────────────────────────────────────────
+body      relay-hardening
+            fix-relay ended: merged (#214)           2 h ago    [Show details]
+            relay-docs landed                         4 h ago    [Show details]
+          pm-mcp-clients
+            pm-mcp-clients is onboarded              yesterday  [Show details]
+──────────────────────────────────────────────────────────────────────────
+          [Show 12 older]
+----
+
+* The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only inside the subject (a plan id, a pull request number).
+* The detail replaces the list in the same body: its head names the report and carries _Back_; its body is the completion report or the view the report leads to (link:../shared/completion-report.adoc[Completion Report]). The route stays `/reports`; the browser's back returns to the list without a reload.
+* The unread state is a left rule and the word _new_, never only a background tint. _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
+* Width: `1200px` on the desktop, one column on the tablet and the phone. An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
+
+[#system-layout]
+=== System View (`/system`)
+
+The runtime's six parts in a fixed order (link:../shared/system.adoc#view[System, The System View]), each part a card of the same width, each figure one step from what it counts.
+
+----
+header
+──────────────────────────────────────────────────────────────────────────
+context   System                                    [Upgrade…] [Restart…] [Stop…]
+──────────────────────────────────────────────────────────────────────────
+body      Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d)   0.10.0 available
+                    running since today 08:14 · 6 h 12 min
+                    memory 412 MB in use of 1 GB · CPU 4 %
+                    listeners socket · loopback 127.0.0.1:7420 · network on
+──────────────────────────────────────────────────────────────────────────
+          Work      3 running · 1 waiting for you · 1 held · 2 paused
+                    [All] [Per project]
+──────────────────────────────────────────────────────────────────────────
+          Workers   5 · 3 busy · 2 idle
+          Jobs      build 1 of 2 slots · 1 queued · locks 3 held
+          Models    [Last hour] [Today] [7 days]   [Per model] [Per role]
+──────────────────────────────────────────────────────────────────────────
+          Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB  [Review…]
+──────────────────────────────────────────────────────────────────────────
+----
+
+* The three acts are buttons in the context tier, not in the body; each opens its confirmation as a dialogue over the view. A figure that leads to what it counts is a link; a figure that is not measured says so and never shows a zero.
+* Grouping and window switches are segmented controls of the part they belong to (`--color-primary-subtle` for the chosen one), not a global filter.
+* The stopped state replaces the body with the page that says the runtime is stopped and how to start it; the header and the frame stay, and the page connects again by itself.
+* Width: `1000px` on the desktop; the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
+
+[#cleanup-layout]
+=== Cleanup View (`/system/cleanup`)
+
+A part of the system view, reached from its cleanup line and from a cleanup report. It shows a cleanup job: its summary, its items, and the confirmation of a deletion.
+
+----
+header
+──────────────────────────────────────────────────────────────────────────
+context   System › Cleanup                                        [Back to System]
+──────────────────────────────────────────────────────────────────────────
+body      Summary   12 plans · 2 epics · 40 logs · 1.8 GB        [Check all]
+          4 kept for good · last sweep today 03:00
+──────────────────────────────────────────────────────────────────────────
+          Details   [x] Archived plans      30 days     1.2 GB
+                    [x] Archived epics      30 days     0.5 GB
+                    [ ] Logs of ended work  14 days     0.1 GB
+                    Unchecked items are kept for good.
+──────────────────────────────────────────────────────────────────────────
+                                 [Ask me again in 3 days] [Ignore] [Delete…]
+----
+
+* The summary and the details are two cards; each item is a checkbox with its kind, its duration, and its size. An unchecked item is kept for good and the line says so.
+* _Delete_ opens the confirmation as a dialogue over the view; the confirmation repeats what is freed and what stays (branches, pull requests, the remote, the checkout, the epic's ledger). _Back_ leaves everything as it is.
+* The items kept for good are a separate list below the details, with their release actions. The technical residue is a read-only figure, never an item.
+* Width: `1000px` on the desktop; the checklist becomes a list of labelled rows on the phone, and the acts stack at the foot of the body.
+
+[#routes]
+=== Routes and the Address Bar
+
+Every view has a canonical path; the path is the view's address and the browser's back returns to the previous one. A route without a selection of its own (`/overview`, `/reports`, `/system`) is addressable alone; a plan and an epic are addressed by their id.
+
+[cols="2,2,3",options="header"]
+|===
+|Path |View |Notes
+
+|`/pair`, `/entry`, `/onboarding`
+|Entry, pairing, onboarding
+|The entry a browser reaches without a pairing; the onboarding while the machine is not onboarded.
+
+|`/settings`, `/settings/machine`
+|Settings, machine settings
+|The paired devices and the aspects; the machine settings one step below.
+
+|`/projects`, `/projects/onboard`
+|Project explorer, project onboarding
+|An open project onboarding is a route of its own.
+
+|`/overview`
+|Running and ended work
+|The start point when work is running or waiting.
+
+|`/start`, `/projects/{id}/start`, `/entries/{id}`
+|Starting work
+|A start with a project, or an entry another client opened, addressed by its id.
+
+|`/plans/{id}`, `/epics/{id}`, `/epics/decompose`
+|Plan view, epic view, decomposition
+|The plan and the epic are addressed by their id.
+
+|`/decisions`
+|Decisions
+|The open decisions of every project.
+
+|`/reports`
+|Reports and a report's detail
+|The detail is a state of the list's route; the browser's back returns to the list.
+
+|`/system`, `/system/cleanup`
+|System, cleanup
+|The cleanup is a route below the system view.
+
+|`/designer`
+|Process designer
+|Opened from a project's setup, a plan node, or the machine settings.
+|===
+
+A route that is not one of these opens the overview for a paired, onboarded browser and the pairing page otherwise; it never opens a blank page. The address bar is written with `pushState` when the operator moves, and read on `popstate`, so Back and Forward move between views without a reload. A pairing code in the fragment is redeemed before the first write and never rewritten into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).

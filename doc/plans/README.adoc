@@ -100,7 +100,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |epic clients
 
 |link:implemented/web-design.adoc[`web-design`]
-|Visual design of the web app (Claude Design), accepted by the operator
+|Visual design of the web app (Claude Design), accepted by the operator; its visual language (frame, grid, breakpoints, typography, colour tokens, states, themes, routes) and the reports, system, and cleanup layouts complete
 |`done`
 |nothing
 |epic clients

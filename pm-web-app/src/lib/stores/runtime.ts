@@ -7,10 +7,19 @@ import {
   type OnboardingState,
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
+  type ProjectOverviewResponse,
 } from '../api/client';
-import { matchPath, pathForRoute, type AppRoute, type StartPath } from '../routes';
+import {
+  matchPath,
+  pathForRoute,
+  type AppRoute,
+  type PathMatch,
+  type RouteParams,
+  type StartPath,
+} from '../routes';
+import { currentLocale, translate } from '../i18n';
 
-export type { AppRoute };
+export type { AppRoute, RouteParams, StartPath };
 
 export interface RevokedInfo {
   reason?: string;
@@ -175,17 +184,65 @@ function machineNameOf(status: StatusResponse): string {
 /**
  * The route the app opens on for a paired browser.
  *
- * A paired browser never lands on the pairing page or the entry: the design says it opens its
- * start view there (the onboarding while the machine is not onboarded, else where it left off).
+ * A paired browser never lands on the pairing page or the entry: it opens where the operator
+ * left it (`pm_start_route`), or the overview when work is running or waiting and the explorer
+ * otherwise. The onboarding comes first while the machine is not onboarded.
+ *
+ * @param requested the route the address bar named, if it named one
+ * @param onboarded whether the machine is onboarded
+ * @param workRunning whether the machine reports running work or work that waits for the operator
+ * @returns the route to open
  */
-function landingRoute(requested: AppRoute | null, onboarded: boolean): AppRoute {
-  if (requested === 'pair' || requested === 'entry') {
-    return onboarded ? 'workspace' : 'onboarding';
-  }
+function landingRoute(
+  requested: PathMatch | null,
+  onboarded: boolean,
+  workRunning: boolean,
+): AppRoute {
   if (!onboarded) {
     return 'onboarding';
   }
-  return requested ?? 'workspace';
+  if (requested?.route === 'onboarding') {
+    return 'onboarding';
+  }
+  if (requested && requested.route !== 'pair' && requested.route !== 'entry') {
+    return requested.route;
+  }
+  const remembered = rememberedStartRoute();
+  if (remembered) {
+    return remembered;
+  }
+  return workRunning ? 'overview' : 'projects';
+}
+
+/**
+ * The start point the operator last chose, if it is one of the landing routes.
+ *
+ * @returns `overview` or `projects`, or `null` when nothing was remembered
+ */
+function rememberedStartRoute(): AppRoute | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const saved = localStorage.getItem('pm_start_route');
+  return saved === 'overview' || saved === 'projects' ? saved : null;
+}
+
+/**
+ * Whether the machine reports work that runs or waits for the operator.
+ *
+ * @param summary the projects summary, or `null` when it could not be read
+ * @returns `true` when at least one project carries work
+ */
+function hasWork(summary: ProjectOverviewResponse | null): boolean {
+  if (!summary?.projects?.length) {
+    return false;
+  }
+  return summary.projects.some((project) => {
+    const plans = Number(project.active_plans_count ?? 0);
+    const epics = Number(project.active_epics_count ?? 0);
+    const needs = Number(project.needs_operator_count ?? 0);
+    return plans > 0 || epics > 0 || needs > 0 || project.setup_needs_operator === true;
+  });
 }
 
 export async function initRuntime(): Promise<void> {
@@ -241,6 +298,10 @@ export async function initRuntime(): Promise<void> {
     const onboarded = onboardedOf(status);
     const machineName = machineNameOf(status);
 
+    // The landing point depends on whether work runs or waits; the explorer summary answers it.
+    // A paired browser that the runtime reports as not onboarded needs no summary.
+    const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
+
     // If there is a current state reported in status, store it
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
 
@@ -251,7 +312,9 @@ export async function initRuntime(): Promise<void> {
       isOnboarded: onboarded,
       deviceLabel: label,
       machineName,
-      currentRoute: landingRoute(requested?.route ?? null, onboarded),
+      currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
+      selectedPlanId: requested?.planId ?? null,
+      selectedEpicId: requested?.epicId ?? null,
       startProjectId: requested?.projectId ?? null,
       startEntryId: requested?.entryId ?? null,
       currentState,
@@ -282,8 +345,14 @@ export async function refreshReportsCount(): Promise<void> {
     runtimeStore.update((s) => {
       let arrivalNotice = s.unreadReportsArrivalNotice;
       if (page.unread_count > 0 && !arrivalNotice) {
-        const timePart = page.oldest_unread_time ? ` since ${page.oldest_unread_time}` : '';
-        arrivalNotice = `${page.unread_count} unread reports${timePart}`;
+        arrivalNotice = page.oldest_unread_time
+          ? translate(get(currentLocale), 'report.arrival.line', {
+              count: page.unread_count,
+              time: page.oldest_unread_time,
+            })
+          : translate(get(currentLocale), 'report.arrival.line_now', {
+              count: page.unread_count,
+            });
       }
       return {
         ...s,
@@ -303,7 +372,9 @@ export async function refreshDecisionsCount(): Promise<void> {
     runtimeStore.update((s) => {
       let arrivalNotice = s.newDecisionArrivalNotice;
       if (decisions.length > 0 && !arrivalNotice && s.openDecisionsCount === 0) {
-        arrivalNotice = `${decisions.length} open decision${decisions.length > 1 ? 's' : ''}`;
+        arrivalNotice = translate(get(currentLocale), 'decisions.list.open', {
+          count: decisions.length,
+        });
       }
       return {
         ...s,
@@ -370,7 +441,8 @@ function handleReportEvent(event: string, data: unknown): void {
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: s.unreadReportsCount + 1,
-      quietReportNotice: reportData.subject || 'A new report has arrived',
+      quietReportNotice:
+        reportData.subject || translate(get(currentLocale), 'report.arrival.quiet'),
     }));
   } else {
     runtimeStore.update((s) => ({
@@ -384,7 +456,8 @@ function handleReportEvent(event: string, data: unknown): void {
 function handleDecisionEvent(event: string, data: unknown): void {
   if (event === 'decision.opened') {
     const dec = (data || {}) as { title?: string; question?: string };
-    const notice = dec.title || dec.question || 'A new decision requires attention';
+    const notice =
+      dec.title || dec.question || translate(get(currentLocale), 'decision.arrival.quiet');
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: s.openDecisionsCount + 1,
@@ -464,6 +537,10 @@ export async function pairBrowser(code: string): Promise<void> {
     false;
   const machineName =
     typeof status.machine === 'string' ? status.machine : status.machine?.name || 'local-machine';
+  // Pairing is the main path into the app, so it applies the same landing rule as a reload. A
+  // deep link opened with the code keeps its route and its identifiers.
+  const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
 
   runtimeStore.update((s) => ({
     ...s,
@@ -473,7 +550,11 @@ export async function pairBrowser(code: string): Promise<void> {
     deviceLabel: res.label,
     machineName,
     isOnboarded: onboarded,
-    currentRoute: onboarded ? 'workspace' : 'onboarding',
+    currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
+    selectedPlanId: requested?.planId ?? null,
+    selectedEpicId: requested?.epicId ?? null,
+    startProjectId: requested?.projectId ?? null,
+    startEntryId: requested?.entryId ?? null,
     isOffline: false,
   }));
   subscribeToEvents();
@@ -494,48 +575,138 @@ export async function executeLink(link: HypermediaLink | string, body?: unknown)
   }
 }
 
-export function navigateTo(route: AppRoute, start?: StartPath): void {
+/**
+ * One entry of the caller's navigation stack: where the operator was before the current view.
+ */
+export interface NavigationEntry {
+  route: AppRoute;
+  params: RouteParams;
+}
+
+/** The routes the browser can return to by the caller's own back, newest last. */
+const navigationStack: NavigationEntry[] = [];
+
+/**
+ * The identifiers the store carries, so a route can be written to the address bar and pushed on
+ * the caller's stack without collecting them at every call site.
+ *
+ * @param state the runtime state
+ * @returns the identifiers of the route it holds
+ */
+export function routeParamsOf(state: RuntimeState): RouteParams {
+  return {
+    projectId: state.startProjectId ?? undefined,
+    entryId: state.startEntryId ?? undefined,
+    planId: state.selectedPlanId ?? undefined,
+    epicId: state.selectedEpicId ?? undefined,
+    taskId: state.selectedTaskId ?? undefined,
+  };
+}
+
+/**
+ * Applies a route and its identifiers to the store.
+ *
+ * @param route the route to show
+ * @param params the identifiers it names
+ */
+function applyRoute(route: AppRoute, params: RouteParams): void {
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
     ...(route === 'start'
       ? {
-          startProjectId: start?.projectId ?? s.startProjectId ?? null,
-          startEntryId: start?.entryId ?? null,
+          startProjectId: params.projectId ?? s.startProjectId ?? null,
+          startEntryId: params.entryId ?? null,
         }
       : {}),
+    ...(route === 'plan'
+      ? {
+          selectedPlanId: params.planId ?? s.selectedPlanId ?? null,
+          selectedTaskId: params.taskId ?? null,
+        }
+      : {}),
+    ...(route === 'epic' || route === 'decomposition'
+      ? { selectedEpicId: params.epicId ?? s.selectedEpicId ?? null }
+      : {}),
   }));
-  const path = pathForRoute(route, start);
-  if (path) {
-    void syncUrl(path, false);
+  if ((route === 'overview' || route === 'projects') && typeof window !== 'undefined') {
+    // The remembered start point: where the operator last chose to begin.
+    localStorage.setItem('pm_start_route', route);
   }
+}
+
+/**
+ * Moves to a route and pushes the one left behind on the caller's navigation stack.
+ *
+ * @param route the route to show
+ * @param params the identifiers it names, e.g. a plan's id
+ */
+export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
+  const state = get(runtimeStore);
+  if (state.isInitialized) {
+    navigationStack.push({ route: state.currentRoute, params: routeParamsOf(state) });
+  }
+  applyRoute(route, params);
+  const path = pathForRoute(route, params);
+  if (path) {
+    syncUrl(path, false);
+  }
+}
+
+/**
+ * Returns to the route the caller came from.
+ *
+ * The browser's own history is the fallback when the caller's stack holds nothing (the view was
+ * opened by a deep link or a reload).
+ *
+ * @returns `true` when a previous route was found
+ */
+export function goBack(): boolean {
+  const previous = navigationStack.pop();
+  if (!previous) {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+      return true;
+    }
+    return false;
+  }
+  applyRoute(previous.route, previous.params);
+  const path = pathForRoute(previous.route, previous.params);
+  if (path) {
+    // The current entry is replaced, so the browser's Back does not lead into a loop.
+    syncUrl(path, true);
+  }
+  return true;
+}
+
+/**
+ * Shows a route and writes its path to the address bar.
+ *
+ * @param route the route to show
+ * @param start the identifiers it names
+ */
+export function navigateTo(route: AppRoute, start: RouteParams = {}): void {
+  pushRoute(route, start);
 }
 
 /**
  * Puts a path in the address bar without reloading the view.
  *
- * SvelteKit's router is preferred, so its state stays in step; a bare browser without a running
- * router (the unit tests) falls back to the history API.
+ * The history API is used directly: every route page mounts the same dispatcher, so a history
+ * entry alone moves between views, and `popstate` reads it back.
  *
  * @param path the path to show
  * @param replace `true` to replace the current entry instead of pushing one
  */
-export async function syncUrl(path: string, replace: boolean): Promise<void> {
+export function syncUrl(path: string, replace: boolean): void {
   if (typeof window === 'undefined') {
     return;
   }
-  if (window.location.pathname === path && !replace) {
+  if (window.location.pathname === path) {
     return;
   }
-  try {
-    const { goto } = await import('$app/navigation');
-    await goto(path, { replace, noScroll: true, keepFocus: true });
-  } catch {
-    if (window.location.pathname !== path) {
-      const method = replace ? 'replaceState' : 'pushState';
-      window.history[method]({ path }, '', path);
-    }
-  }
+  const method = replace ? 'replaceState' : 'pushState';
+  window.history[method]({ path }, '', path);
 }
 
 /**
@@ -552,6 +723,8 @@ export function adoptRouteFromLocation(): AppRoute | null {
     runtimeStore.update((s) => ({
       ...s,
       currentRoute: match.route,
+      selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
+      selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       startProjectId: match.projectId ?? s.startProjectId ?? null,
       startEntryId: match.entryId ?? s.startEntryId ?? null,
     }));
@@ -708,27 +881,14 @@ export async function withdrawConsent(kind: string): Promise<MachineSettingsUpda
 }
 
 export function openPlanView(planId: string, taskId?: string | null): void {
-  runtimeStore.update((s) => ({
-    ...s,
-    currentRoute: 'plan',
-    selectedPlanId: planId,
-    selectedTaskId: taskId || null,
-  }));
+  pushRoute('plan', { planId, taskId: taskId ?? undefined });
 }
 
 export function openEpicView(epicId: string): void {
-  runtimeStore.update((s) => ({
-    ...s,
-    currentRoute: 'epic',
-    selectedEpicId: epicId,
-  }));
+  pushRoute('epic', { epicId });
 }
 
 export function openEpicDecomposition(epicId: string, projectId: string): void {
-  runtimeStore.update((s) => ({
-    ...s,
-    currentRoute: 'decomposition',
-    selectedEpicId: epicId,
-    selectedProjectId: projectId,
-  }));
+  runtimeStore.update((s) => ({ ...s, selectedProjectId: projectId }));
+  pushRoute('decomposition', { epicId });
 }

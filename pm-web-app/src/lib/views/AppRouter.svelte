@@ -2,7 +2,6 @@
   import { runtimeStore } from '../stores/runtime';
   import PairingView from './PairingView.svelte';
   import OnboardingView from './OnboardingView.svelte';
-  import WorkspaceView from './WorkspaceView.svelte';
   import SettingsView from './SettingsView.svelte';
   import MachineSettingsView from './MachineSettingsView.svelte';
   import ProcessDesigner from './ProcessDesigner.svelte';
@@ -42,9 +41,9 @@
   {/key}
 {:else if !$runtimeStore.isPaired}
   <PairingView />
-{:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding'}
+{:else if !$runtimeStore.isOnboarded && $runtimeStore.currentRoute !== 'onboarding' && $runtimeStore.currentRoute !== 'project-onboarding'}
   <OnboardingView />
-{:else if $runtimeStore.currentRoute === 'onboarding'}
+{:else if $runtimeStore.currentRoute === 'onboarding' || $runtimeStore.currentRoute === 'project-onboarding'}
   <OnboardingView />
 {:else if $runtimeStore.currentRoute === 'projects'}
   <ProjectExplorerView />
@@ -62,8 +61,6 @@
   <CleanupView />
 {:else if $runtimeStore.currentRoute === 'designer'}
   <ProcessDesigner />
-{:else if $runtimeStore.currentRoute === 'workspace'}
-  <WorkspaceView />
 {:else if $runtimeStore.currentRoute === 'plan'}
   <PlanView />
 {:else if $runtimeStore.currentRoute === 'epic'}

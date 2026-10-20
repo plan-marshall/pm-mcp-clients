@@ -70,7 +70,8 @@
   }
 
   function openUnit(unit: WorkflowUnit): void {
-    const level = unit.levels.find((entry) => entry.level === unit.level_in_force) ?? unit.levels[0];
+    const level =
+      unit.levels.find((entry) => entry.level === unit.level_in_force) ?? unit.levels[0];
     unitName = unit.name;
     unitKind = unit.frontmatter?.type || 'subworkflow';
     text = level?.text ?? '';
@@ -190,7 +191,7 @@
       >
         {$t('designer.place.action')}
       </Button>
-      <Button variant="ghost" on:click={() => navigateTo('workspace')}>
+      <Button variant="ghost" on:click={() => navigateTo('projects')}>
         {$t('designer.back')}
       </Button>
     </div>
@@ -211,7 +212,10 @@
       {:else}
         <ul class="designer__units-list">
           {#each units as unit (unit.name)}
-            <li class="designer__unit-row" class:designer__unit-row--active={unit.name === unitName}>
+            <li
+              class="designer__unit-row"
+              class:designer__unit-row--active={unit.name === unitName}
+            >
               <button
                 type="button"
                 class="designer__unit-open"

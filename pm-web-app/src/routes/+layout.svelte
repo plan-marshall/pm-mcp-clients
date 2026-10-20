@@ -8,6 +8,7 @@
     initRuntime,
     navigateTo,
     adoptRouteFromLocation,
+    routeParamsOf,
     syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
@@ -30,6 +31,9 @@
   let { children }: Props = $props();
 
   let theme = $state<'light' | 'dark'>('light');
+  // The first write settles the address bar on the route the store chose; every later one is a
+  // history entry, so the browser's Back returns to the previous view.
+  let addressBarSettled = false;
 
   onMount(async () => {
     // Detect system theme
@@ -44,12 +48,10 @@
     window.addEventListener('popstate', onPop);
     onDestroy(() => window.removeEventListener('popstate', onPop));
 
-    // Initialize i18n concurrently with a timeout so a slow catalogue load doesn't block startup
-    const i18nPromise = Promise.race([
-      initI18n(),
-      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-    ]);
-    await Promise.all([i18nPromise, initRuntime()]);
+    // Initialize i18n before the runtime, so a notice the runtime composes at start-up reads
+    // from the catalogue. A slow catalogue must not block start-up: the race bounds the wait.
+    await Promise.race([initI18n(), new Promise<void>((resolve) => setTimeout(resolve, 2000))]);
+    await initRuntime();
   });
 
   // The address bar follows the route the store selects, so a reload opens the same page.
@@ -66,12 +68,11 @@
     // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
     // first, and only then does the app move on.
     if (window.location.hash.includes('code=')) return;
-    const path =
-      pathForRoute(route, {
-        projectId: $runtimeStore.startProjectId ?? undefined,
-        entryId: $runtimeStore.startEntryId ?? undefined,
-      }) ?? '/';
-    void syncUrl(path, true);
+    const path = pathForRoute(route, routeParamsOf($runtimeStore));
+    if (!path) return;
+    // The URL the popstate handler just adopted is already in the address bar; syncUrl leaves it.
+    syncUrl(path, !addressBarSettled);
+    addressBarSettled = true;
   }
 
   function toggleTheme() {
@@ -86,7 +87,7 @@
 
 {#if !$runtimeStore.isInitialized}
   <div class="app-loading" role="status">
-    <Spinner size="3rem" label="Initializing application…" />
+    <Spinner size="3rem" label={$t('web.frame.initializing')} />
   </div>
 {:else}
   {#if $runtimeStore.isOffline}
@@ -108,11 +109,11 @@
           runtimeStore.update((s) => ({ ...s, unreadReportsArrivalNotice: null }));
         }}
       >
-        {$t('report.arrival.show_them') || 'Show them'}
+        {$t('report.arrival.show')}
       </button>
       <button
         class="reports-arrival-close"
-        aria-label="Dismiss notice"
+        aria-label={$t('web.frame.close_notice')}
         onclick={() => {
           runtimeStore.update((s) => ({ ...s, unreadReportsArrivalNotice: null }));
         }}
@@ -132,11 +133,11 @@
           runtimeStore.update((s) => ({ ...s, newDecisionArrivalNotice: null }));
         }}
       >
-        {$t('decisions.arrival.show_them') || 'Show decision'}
+        {$t('decisions.arrival.show_them')}
       </button>
       <button
         class="reports-arrival-close"
-        aria-label="Dismiss notice"
+        aria-label={$t('web.frame.close_notice')}
         onclick={() => {
           runtimeStore.update((s) => ({ ...s, newDecisionArrivalNotice: null }));
         }}
@@ -151,7 +152,7 @@
       <span class="draining-text">
         {$t('system.stopping.line', {
           count: $runtimeStore.drainInfo?.count ?? 0,
-          what: $runtimeStore.drainInfo?.what ?? 'running work',
+          what: $runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work'),
         })}
       </span>
       <div class="draining-actions">
@@ -179,7 +180,7 @@
   <header class="app-header">
     <div class="app-header__brand">
       <span class="app-header__logo" aria-hidden="true">✦</span>
-      <span class="app-header__title">plan-marshall</span>
+      <span class="app-header__title">{$t('web.frame.brand')}</span>
       {#if $runtimeStore.isPaired}
         <span class="app-header__machine mono">
           {$t('web.frame.machine', { name: $runtimeStore.machineName })}
@@ -198,18 +199,11 @@
         </button>
         <button
           class="header-action-btn"
-          aria-label={$t('project.explorer.title') || 'Projects'}
+          aria-label={$t('project.explorer.title')}
           onclick={() => navigateTo('projects')}
           data-testid="nav-projects-btn"
         >
-          {$t('project.explorer.title') || 'Projects'}
-        </button>
-        <button
-          class="header-action-btn"
-          aria-label={$t('web.frame.nav.explorer')}
-          onclick={() => navigateTo('workspace')}
-        >
-          {$t('web.frame.nav.explorer')}
+          {$t('project.explorer.title')}
         </button>
         <button
           class="header-action-btn header-action-btn--decisions"
@@ -220,7 +214,9 @@
           {#if $runtimeStore.openDecisionsCount > 0}
             <span
               class="reports-badge decisions-badge"
-              aria-label="{$runtimeStore.openDecisionsCount} open"
+              aria-label={$t('decisions.list.open', {
+                count: $runtimeStore.openDecisionsCount,
+              })}
             >
               {$runtimeStore.openDecisionsCount}
             </span>
@@ -228,12 +224,17 @@
         </button>
         <button
           class="header-action-btn header-action-btn--reports"
-          aria-label="Reports"
+          aria-label={$t('web.frame.nav.reports')}
           onclick={() => navigateTo('reports')}
         >
-          {$t('web.frame.nav.reports') || 'Reports'}
+          {$t('web.frame.nav.reports')}
           {#if $runtimeStore.unreadReportsCount > 0}
-            <span class="reports-badge" aria-label="{$runtimeStore.unreadReportsCount} unread">
+            <span
+              class="reports-badge"
+              aria-label={$t('report.list.unread', {
+                count: $runtimeStore.unreadReportsCount,
+              })}
+            >
               {$runtimeStore.unreadReportsCount}
             </span>
           {/if}
@@ -254,11 +255,19 @@
         </button>
       {/if}
 
-      <button class="header-action-btn" onclick={toggleLocale} aria-label="Toggle language">
+      <button
+        class="header-action-btn"
+        onclick={toggleLocale}
+        aria-label={$t('web.frame.toggle_language')}
+      >
         {$currentLocale === 'en' ? 'DE' : 'EN'}
       </button>
 
-      <button class="header-action-btn" onclick={toggleTheme} aria-label="Toggle light/dark theme">
+      <button
+        class="header-action-btn"
+        onclick={toggleTheme}
+        aria-label={$t('web.frame.toggle_theme')}
+      >
         {theme === 'light' ? '🌙' : '☀️'}
       </button>
     </div>

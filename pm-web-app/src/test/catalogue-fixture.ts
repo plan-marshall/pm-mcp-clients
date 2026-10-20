@@ -2,16 +2,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 /**
- * The message packs of `pm-api`, read for the view tests.
+ * The catalogue fixture of the unit tests.
  *
- * The tests assert the texts the catalogue carries, so they load the same properties files the
- * runtime serves instead of keeping a second copy of the strings.
+ * The tests run without a live runtime, so the message catalogue the runtime would serve is read
+ * from `pm-api`'s properties files instead. Production code never imports this module: it reads
+ * the catalogue from `GET /api/v1/catalogue`, and `src/lib/i18n/index.ts` keeps no copy of it.
  */
 
-const MESSAGES_DIR = path.resolve(__dirname, '../../../../pm-api/src/main/resources/messages');
+const MESSAGES_DIR = path.resolve(__dirname, '../../../pm-api/src/main/resources/messages');
 
+/**
+ * Decodes the escapes of a Java properties value.
+ *
+ * @param value the raw value
+ * @returns the value with `\uXXXX` escapes decoded
+ */
 function decodePropertiesValue(value: string): string {
-  // Java properties escape non-ASCII as \uXXXX.
   return value.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) =>
     String.fromCodePoint(Number.parseInt(hex, 16)),
   );

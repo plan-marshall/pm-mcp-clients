@@ -49,7 +49,7 @@
       // Initialize all items as checked (i.e. uncheckedIds is empty)
       uncheckedIds = {};
     } catch {
-      loadError = 'Failed to load cleanup data.';
+      loadError = $t('system.cleanup.load_failed');
     } finally {
       isLoading = false;
     }
@@ -127,7 +127,7 @@
       closeDeleteModal();
       void loadData();
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || 'Failed to execute cleanup';
+      actionError = (err as Error)?.message || $t('system.cleanup.failed');
     } finally {
       isDeleting = false;
     }
@@ -140,7 +140,7 @@
       actionSuccess = $t('system.cleanup.reminded', { date: 'in 3 days' });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || 'Failed to postpone cleanup';
+      actionError = (err as Error)?.message || $t('system.cleanup.postpone_failed');
     }
   }
 
@@ -151,7 +151,7 @@
       actionSuccess = $t('system.cleanup.ignored', { count: allItems.length });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || 'Failed to ignore cleanup';
+      actionError = (err as Error)?.message || $t('system.cleanup.ignore_failed');
     }
   }
 
@@ -166,7 +166,7 @@
       selectedKeptIds = {};
       void loadData();
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || 'Failed to release kept items';
+      actionError = (err as Error)?.message || $t('system.cleanup.release_failed');
     }
   }
 
@@ -237,18 +237,20 @@
 
   {#if isLoading}
     <div class="cleanup-loading">
-      <Spinner size="2.5rem" label="Loading cleanup job…" />
+      <Spinner size="2.5rem" label={$t('system.cleanup.loading')} />
     </div>
   {:else if loadError}
     <div class="notice-alert notice-alert--danger" role="alert">
       <p>{loadError}</p>
-      <Button variant="secondary" onclick={() => loadData()}>Retry</Button>
+      <Button variant="secondary" onclick={() => loadData()}>{$t('web.common.retry')}</Button>
     </div>
   {:else if activeTab === 'job'}
     {#if !job || allItems.length === 0}
       <div class="empty-state card">
         <h2>{$t('system.cleanup.none', { time: 'tomorrow 03:00' })}</h2>
-        <Button variant="secondary" onclick={() => navigateTo('system')}>Back to System</Button>
+        <Button variant="secondary" onclick={() => navigateTo('system')}>
+          {$t('system.cleanup.back_to_system')}
+        </Button>
       </div>
     {:else}
       <!-- Summary Card -->
@@ -257,14 +259,20 @@
         <div class="summary-content">
           <div class="summary-counts">
             <span>
-              <strong>{job.summary.plans_count}</strong> plans ·
-              <strong>{job.summary.epics_count}</strong> epics ·
-              <strong>{job.summary.logs_count}</strong> logs
+              {$t('system.cleanup.summary.plans', { count: job.summary.plans_count })} ·
+              {$t('system.cleanup.summary.epics', { count: job.summary.epics_count })} ·
+              {$t('system.cleanup.summary.logs', { count: job.summary.logs_count })}
               {#if job.summary.read_reports_count}
-                · <strong>{job.summary.read_reports_count}</strong> read reports
+                ·
+                {$t('system.cleanup.summary.read_reports', {
+                  count: job.summary.read_reports_count,
+                })}
               {/if}
               {#if job.summary.unenrolled_projects_count}
-                · <strong>{job.summary.unenrolled_projects_count}</strong> unenrolled
+                ·
+                {$t('system.cleanup.summary.unenrolled', {
+                  count: job.summary.unenrolled_projects_count,
+                })}
               {/if}
             </span>
           </div>

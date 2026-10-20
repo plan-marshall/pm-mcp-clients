@@ -45,7 +45,7 @@
     try {
       epic = await apiClient.getEpicProcess(epicId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load epic process';
+      errorMessage = (err as Error)?.message || $t('epic.view.load_failed');
     } finally {
       if (initial) isLoading = false;
     }
@@ -63,18 +63,24 @@
 <div class="epic-view" data-testid="epic-view">
   {#if isLoading}
     <div class="epic-view__loading" data-testid="epic-loading">
-      <Spinner size="2.5rem" label="Loading epic process…" />
+      <Spinner size="2.5rem" label={$t('epic.view.loading')} />
     </div>
   {:else if errorMessage}
     <div class="epic-view__error" role="alert" data-testid="epic-error">
       <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={() => loadEpicProcess(true)}>Retry</Button>
+      <Button variant="secondary" onclick={() => loadEpicProcess(true)}
+        >{$t('web.common.retry')}</Button
+      >
     </div>
   {:else if epic}
     <!-- Path Navigation Header -->
     <header class="epic-header" data-testid="epic-header">
       <div class="epic-header__top">
-        <nav class="epic-breadcrumb mono" aria-label="Breadcrumb" data-testid="epic-breadcrumb">
+        <nav
+          class="epic-breadcrumb mono"
+          aria-label={$t('common.breadcrumb')}
+          data-testid="epic-breadcrumb"
+        >
           <button
             class="breadcrumb-link"
             onclick={goBackToOverview}

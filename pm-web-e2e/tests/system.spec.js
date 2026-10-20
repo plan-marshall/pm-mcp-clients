@@ -18,7 +18,7 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
     const systemNavBtn = page.getByRole('button', { name: /System/i });
     await expect(systemNavBtn).toBeVisible();
     await systemNavBtn.click();
-    await expect(page.locator('.system-view')).toBeVisible();
+    await expect(page.getByTestId('system-view')).toBeVisible();
   });
 
   test.afterAll(async ({ request }) => {
@@ -34,11 +34,11 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
   test('renders 6-part system dashboard with metrics and cards', async ({ page }) => {
     // 1. Runtime Card
     await expect(page.getByRole('heading', { name: 'Runtime' })).toBeVisible();
-    await expect(page.getByText(/pm-mcpd 0\.9\.1/i)).toBeVisible();
+    await expect(page.getByText(/pm-mcpd 0\.9\.1/i).first()).toBeVisible();
     await expect(page.getByText(/CPU/i)).toBeVisible();
 
     // 2. Work Card
-    await expect(page.getByRole('heading', { name: 'Work' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
     await expect(page.getByText(/plans/i)).toBeVisible();
 
     // 3. Workers Card
@@ -84,7 +84,7 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
     await expect(modal).toBeVisible();
     await expect(modal.getByText(/Stop the runtime\?/i)).toBeVisible();
     await expect(modal.getByText(/When what runs is done/i)).toBeVisible();
-    await expect(modal.getByText(/Now/i)).toBeVisible();
+    await expect(modal.getByText('Now', { exact: true })).toBeVisible();
 
     // Click "Keep it running" to close without action
     const keepBtn = modal.getByRole('button', { name: /Keep it running/i });
@@ -100,7 +100,7 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
     await reviewBtn.click();
 
     // Cleanup view mounted
-    await expect(page.locator('.cleanup-view')).toBeVisible();
+    await expect(page.getByTestId('cleanup-view')).toBeVisible();
     await expect(page.getByText('Summary')).toBeVisible();
     await expect(page.getByText('fix-relay')).toBeVisible();
 
