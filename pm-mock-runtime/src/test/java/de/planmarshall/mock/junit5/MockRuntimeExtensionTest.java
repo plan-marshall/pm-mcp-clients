@@ -70,8 +70,8 @@ class MockRuntimeExtensionTest {
             assertNotNull(scenario);
             assertNotNull(config);
 
-            assertEquals(StandardScenarios.STATUS_ONLY, scenario.name());
-            assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
+            assertEquals(StandardScenarios.ONBOARDING, scenario.name());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
             assertEquals(base, runtime.base());
             assertEquals(paths.socket(), runtime.socketPath());
 
@@ -99,8 +99,8 @@ class MockRuntimeExtensionTest {
             assertNotNull(scenario);
             assertNotNull(webUri);
 
-            assertEquals(StandardScenarios.ONBOARDING_HAPPY, scenario.name());
-            assertEquals(StandardScenarios.ONBOARDING_HAPPY, runtime.currentScenarioName());
+            assertEquals(StandardScenarios.ONBOARDING, scenario.name());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
 
             assertTrue(runtime.webPort() > 0);
             assertEquals("127.0.0.1", webUri.getHost());
@@ -119,8 +119,8 @@ class MockRuntimeExtensionTest {
         @DisplayName("method-level @EnableMockRuntime overrides class-level configuration")
         @EnableMockRuntime(scenario = StandardScenarios.WEB_PAIRING, webPort = 0)
         void shouldSupportMethodLevelOverride(MockRuntime runtime, Scenario scenario) {
-            assertEquals(StandardScenarios.WEB_PAIRING, scenario.name());
-            assertEquals(StandardScenarios.WEB_PAIRING, runtime.currentScenarioName());
+            assertEquals(StandardScenarios.ONBOARDING, scenario.name());
+            assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
         }
     }
 
@@ -150,7 +150,7 @@ class MockRuntimeExtensionTest {
             try (var runtime = MockRuntime.start(config)) {
                 assertNotNull(runtime.base());
                 assertTrue(Files.exists(runtime.base()));
-                assertEquals(StandardScenarios.STATUS_ONLY, runtime.currentScenarioName());
+                assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
             }
         }
     }

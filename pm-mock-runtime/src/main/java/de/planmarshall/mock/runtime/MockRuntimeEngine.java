@@ -117,6 +117,7 @@ import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.OutlineResource;
 import de.planmarshall.api.intent.OverSizeDistributionResource;
 import de.planmarshall.api.intent.PlanIntentResource;
+import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.ConsentKind;
@@ -327,6 +328,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
     private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
+    /** The engine-only fixture data a state's operator facts carry beside its domain facts. */
+    private static final String FIXTURE_RUNTIME = "runtime";
+    private static final String FIXTURE_DEVICES = "devices";
+    private static final String FIXTURE_WEB = "web";
+    private static final String FIXTURE_ONBOARD = "onboard";
+    private static final String FIXTURE_SUMMARY = "summary";
+    private static final String FIXTURE_LAN_CONFLICT = "lan_conflict";
+    private static final String FIXTURE_LOOPBACK_ONLY = "loopback_only";
+    private static final String FIELD_SCOPE_KIND = "kind";
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CREDENTIAL_PREFIX = "credential:";
     private static final String CONST_CLAUDE = "claude";
@@ -629,7 +639,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (devicesLock) {
             pairedDevices.clear();
             devicePairedBy.clear();
-            if (!seedDevicesFromFixture()) {
+            if (!seedDevicesFromStateFixture() && !seedDevicesFromFixture()) {
                 pairedDevices.add(new PairedDevice("dev-1", "Firefox on mbp-oliver", KEY_LOOPBACK,
                         Instant.parse("2026-05-12T10:00:00Z"), Instant.parse("2026-10-16T14:02:00Z")));
                 pairedDevices.add(new PairedDevice("dev-2", "Safari on iPad", "network",
@@ -638,6 +648,39 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         Instant.parse("2026-06-02T10:00:00Z"), Instant.parse("2026-09-08T10:00:00Z")));
             }
             seedListenerFromStatus();
+        }
+    }
+
+    /**
+     * Seeds the paired devices from a fixture the start state carries under its operator state's
+     * {@code facts.runtime.devices}, so a consolidated scenario can show a different device list per
+     * state. The state on start is the one a legacy alias resolves to, so a case that starts at its
+     * own state receives its own fixture.
+     *
+     * @return {@code true} when the state fixture seeded the devices
+     */
+    private boolean seedDevicesFromStateFixture() {
+        var runtime = stateRuntimeFixture(currentScenario.get().start());
+        if (runtime == null || !(runtime.get(FIXTURE_DEVICES) instanceof List<?> devices)) {
+            return false;
+        }
+        try {
+            var list = DeviceListResource.fromTree(devices);
+            for (var device : list.devices()) {
+                pairedDevices.add(new PairedDevice(
+                        device.deviceId(),
+                        device.label(),
+                        device.pairedFrom(),
+                        device.createdAt(),
+                        device.lastUsedAt()));
+                devicePairedBy.put(device.deviceId(), device.pairedBy());
+            }
+            return true;
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException _) {
+            pairedDevices.clear();
+            devicePairedBy.clear();
+            return false;
         }
     }
 
@@ -679,8 +722,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * object keeps the default of an open listener on {@link #DEFAULT_LAN_PORT}.
      */
     private void seedListenerFromStatus() {
-        var route = currentScenario.get().route("GET", "/api/v1/status");
-        var web = route != null ? JsonTree.object(JsonTree.asObject(route.representation()), "web") : null;
+        var runtime = stateRuntimeFixture(currentScenario.get().start());
+        var web = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_WEB)) : null;
+        if (web == null) {
+            var route = currentScenario.get().route("GET", "/api/v1/status");
+            web = route != null ? JsonTree.object(JsonTree.asObject(route.representation()), FIXTURE_WEB) : null;
+        }
         if (web == null) {
             lanListenerOn = true;
             lanListenerPort = DEFAULT_LAN_PORT;
@@ -689,6 +736,123 @@ public final class MockRuntimeEngine implements AutoCloseable {
         lanListenerOn = !Boolean.FALSE.equals(web.get("lan"));
         var port = JsonTree.integer(web, "lan_port");
         lanListenerPort = port != null && port > 0 ? port : DEFAULT_LAN_PORT;
+    }
+
+    /**
+     * @param stateId a state of the active scenario
+     * @return the engine-only fixture data the state's operator facts carry under {@code runtime},
+     *         or {@code null} when the state or the fixture is absent
+     */
+    private @Nullable Map<String, Object> stateRuntimeFixture(@Nullable String stateId) {
+        if (stateId == null) {
+            return null;
+        }
+        var state = currentScenario.get().state(stateId);
+        if (state == null) {
+            return null;
+        }
+        var representation = JsonTree.asObject(state.representation());
+        if (representation == null) {
+            return null;
+        }
+        var facts = JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        if (facts == null) {
+            return null;
+        }
+        return JsonTree.asObject(facts.get(FIXTURE_RUNTIME));
+    }
+
+    /**
+     * @return the engine-only fixture data of the current state, or {@code null}
+     */
+    private @Nullable Map<String, Object> currentRuntimeFixture() {
+        return stateRuntimeFixture(currentStateId.get());
+    }
+
+    /**
+     * Overlays the current state's fixture on the {@code GET /api/v1/status} representation: the
+     * status and version of the case, the machine's onboarding progress, whether it completed, and
+     * the enabled listeners. A state whose fixture names none keeps what the scenario route says.
+     *
+     * @param status the status representation to complete
+     */
+    private void applyStateRuntimeToStatus(Map<String, Object> status) {
+        var stateId = currentStateId.get();
+        var runtime = stateRuntimeFixture(stateId);
+        if (runtime != null) {
+            copyStatusMember(status, runtime, KEY_STATUS);
+            copyStatusMember(status, runtime, "version");
+            copyStatusMember(status, runtime, "machine");
+            copyStatusMember(status, runtime, "listener");
+            copyStatusMember(status, runtime, "projects");
+            if (runtime.containsKey(FIXTURE_WEB)) {
+                if (runtime.get(FIXTURE_WEB) instanceof Map<?, ?> web) {
+                    var merged = new LinkedHashMap<String, Object>();
+                    if (status.get(FIXTURE_WEB) instanceof Map<?, ?> currentWeb) {
+                        currentWeb.forEach((key, value) -> merged.put(String.valueOf(key), value));
+                    }
+                    web.forEach((key, value) -> merged.put(String.valueOf(key), value));
+                    merged.put("lan", lanListenerOn);
+                    merged.put("lan_port", lanListenerPort);
+                    if (lanListenerOn) {
+                        merged.put("lan_fingerprint", CONST_LAN_FINGERPRINT);
+                    }
+                    status.put(FIXTURE_WEB, merged);
+                } else {
+                    status.remove(FIXTURE_WEB);
+                }
+            }
+        }
+
+        var onboard = runtime != null && runtime.get(FIXTURE_ONBOARD) instanceof Map<?, ?> fixture
+                ? fixture
+                : onboardingProgressFor(stateId);
+        if (onboard != null) {
+            status.put(FIXTURE_ONBOARD, onboard);
+        } else {
+            status.remove(FIXTURE_ONBOARD);
+        }
+        status.put(FIELD_ONBOARDED, machineOnboardedFor(stateId, runtime));
+    }
+
+    private static void copyStatusMember(Map<String, Object> status, Map<String, Object> runtime, String member) {
+        if (runtime.containsKey(member)) {
+            status.put(member, runtime.get(member));
+        }
+    }
+
+    /**
+     * The onboarding progress the current state implies, for the states of the guided run whose id
+     * names an aspect. A state of the entry carries its own progress in its runtime fixture instead.
+     *
+     * @param stateId the current state
+     * @return the progress map, or {@code null} when the state belongs to no onboarding aspect
+     */
+    private static @Nullable Map<String, Object> onboardingProgressFor(@Nullable String stateId) {
+        if (stateId == null) {
+            return null;
+        }
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
+            return Map.of("state", STATE_ONBOARD_COMPLETED, "step", 7, "steps", 7, "completed", true);
+        }
+        var aspect = MachineOnboardingState.aspectOf(stateId);
+        if (aspect == null) {
+            return null;
+        }
+        return Map.of("state", stateId, "step", aspect.step() - 1, "steps", 7, "completed", false);
+    }
+
+    /**
+     * @param stateId the current state
+     * @param runtime the state's runtime fixture, may be {@code null}
+     * @return whether the machine's onboarding has completed in this state
+     */
+    private static boolean machineOnboardedFor(@Nullable String stateId,
+            @Nullable Map<String, Object> runtime) {
+        if (runtime != null && runtime.get(FIELD_ONBOARDED) instanceof Boolean onboarded) {
+            return onboarded;
+        }
+        return completedStepsFor(stateId) >= 7;
     }
 
     /**
@@ -1713,6 +1877,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean isMachineOnboarded() {
+        var stateId = currentStateId.get();
+        var runtime = stateRuntimeFixture(stateId);
+        if (runtime != null && runtime.get(FIELD_ONBOARDED) instanceof Boolean onboarded) {
+            return onboarded;
+        }
+        if (onboardingProgressFor(stateId) != null) {
+            return machineOnboardedFor(stateId, runtime);
+        }
         var route = currentScenario.get().route("GET", "/api/v1/status");
         if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
             return true;
@@ -1782,6 +1954,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 response.json(403, cliOnly("Opening the network listener"));
                 return true;
             }
+            var runtime = currentRuntimeFixture();
+            if (runtime != null && runtime.get(FIXTURE_LAN_CONFLICT) instanceof Map<?, ?> conflict) {
+                broadcastListenerChanged(ListenerState.PORT_OCCUPIED, extractLanPort(request));
+                response.json(409, Map.of(KEY_ERROR, ERR_WEB_LISTENER_CONFLICT, KEY_MESSAGE,
+                        String.valueOf(conflict.get(KEY_MESSAGE))));
+                return true;
+            }
             var override = currentScenario.get().route("PUT", path);
             if (override != null) {
                 handleRouteWithDynamicStatus(override, path, response);
@@ -1794,6 +1973,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (path.startsWith(PATH_CREDENTIALS)) {
+            var runtime = currentRuntimeFixture();
+            if (runtime != null && Boolean.TRUE.equals(runtime.get(FIXTURE_LOOPBACK_ONLY))) {
+                response.json(403, Map.of(KEY_ERROR, FIXTURE_LOOPBACK_ONLY, KEY_MESSAGE,
+                        "A credential is entered on the loopback listener only"));
+                return true;
+            }
             var override = currentScenario.get().route("PUT", path);
             if (override != null) {
                 handleRouteWithDynamicStatus(override, path, response);
@@ -4681,6 +4866,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     copy.put(String.valueOf(entry.getKey()), entry.getValue());
                 }
             }
+            applyStateRuntimeToStatus(copy);
             copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
             copy.put("listeners", listenerMaps());
             synchronized (devicesLock) {
@@ -5377,12 +5563,39 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(200, mergeRepresentation(state, stateId));
     }
 
+    /**
+     * Serves the current onboarding state. The state's representation is the operator state the
+     * scenario file carries; this endpoint keeps the flat member names the onboarding clients read
+     * (the summary, the domain facts, the state id, the link map) and preserves the whole operator
+     * envelope under {@code operator}.
+     *
+     * @param state   the state definition, may be {@code null}
+     * @param stateId the state id
+     * @return the response body
+     */
     private Map<String, Object> mergeRepresentation(@Nullable StateDefinition state, @Nullable String stateId) {
         var body = new LinkedHashMap<String, Object>();
         if (state != null && state.representation() instanceof Map<?, ?> rep) {
-            for (var entry : rep.entrySet()) {
-                body.put(String.valueOf(entry.getKey()), entry.getValue());
+            var facts = JsonTree.asObject(rep.get(OperatorStateResource.FIELD_FACTS));
+            if (facts != null) {
+                for (var entry : facts.entrySet()) {
+                    if (!FIXTURE_RUNTIME.equals(entry.getKey()) && !FIXTURE_SUMMARY.equals(entry.getKey())) {
+                        body.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                var summary = JsonTree.string(facts, FIXTURE_SUMMARY);
+                if (summary != null) {
+                    body.put(FIXTURE_SUMMARY, summary);
+                }
             }
+            var scope = JsonTree.asObject(rep.get(OperatorStateResource.FIELD_SCOPE));
+            if (scope != null) {
+                var kind = JsonTree.string(scope, FIELD_SCOPE_KIND);
+                if (kind != null) {
+                    body.put(OperatorStateResource.FIELD_SCOPE, kind);
+                }
+            }
+            body.put("operator", rep);
         }
         if (state != null && !state.links().isEmpty()) {
             var links = new LinkedHashMap<String, Object>();

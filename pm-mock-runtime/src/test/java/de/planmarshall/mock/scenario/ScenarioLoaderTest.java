@@ -27,10 +27,11 @@ class ScenarioLoaderTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "/scenarios/status-only.json",
-            "/scenarios/onboarding-happy.json",
-            "/scenarios/onboarding-harness-not-logged-in.json",
-            "/scenarios/web-pairing.json"
+            "/scenarios/onboarding.json",
+            "/scenarios/running-work.json",
+            "/scenarios/projects-and-start.json",
+            "/scenarios/reports-and-system.json",
+            "/scenarios/designer.json"
     })
     @DisplayName("loads and validates all standard scenarios from classpath")
     void loadsStandardScenarios(String resourcePath) throws Exception {

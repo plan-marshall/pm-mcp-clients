@@ -42,7 +42,8 @@ class ScenarioRegistryTest {
     void resolvesByBareName() {
         var scenario = registry.resolve(StandardScenarios.STATUS_ONLY);
         assertNotNull(scenario);
-        assertEquals(StandardScenarios.STATUS_ONLY, scenario.name());
+        assertEquals(StandardScenarios.ONBOARDING, scenario.name());
+        assertEquals("status.only", scenario.start());
     }
 
     @Test
@@ -50,7 +51,8 @@ class ScenarioRegistryTest {
     void resolvesWithJsonSuffix() {
         var scenario = registry.resolve(StandardScenarios.ONBOARDING_HAPPY + ".json");
         assertNotNull(scenario);
-        assertEquals(StandardScenarios.ONBOARDING_HAPPY, scenario.name());
+        assertEquals(StandardScenarios.ONBOARDING, scenario.name());
+        assertEquals("onboard.mode", scenario.start());
     }
 
     @Test
@@ -140,7 +142,7 @@ class ScenarioRegistryTest {
     @DisplayName("publishes the standard legacy alias table")
     void publishesStandardAliases() {
         var aliases = registry.legacyAliases();
-        assertEquals("onboarding#harness.blocked", aliases.get("onboarding-harness-not-logged-in"));
+        assertEquals("onboarding#harness.not-logged-in", aliases.get("onboarding-harness-not-logged-in"));
         assertEquals("projects-and-start#start.sources", aliases.get("start"));
         assertEquals("reports-and-system#reports.list", aliases.get("reports"));
         assertNull(aliases.get("designer"), "a primary scenario needs no alias");
