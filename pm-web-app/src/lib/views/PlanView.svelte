@@ -357,10 +357,23 @@
    * report counts them.
    *
    * @param item one row of the runtime's breakdown
-   * @returns the row's cached tokens
+   * @returns the row's cached tokens, or `null` when the row reports no components
    */
-  function cachedOf(item: TokenBreakdownItem): number {
-    return (item.components?.cache_read ?? 0) + (item.components?.cache_write ?? 0);
+  function cachedOf(item: TokenBreakdownItem): number | null {
+    if (!item.components) {
+      return null;
+    }
+    return (item.components.cache_read ?? 0) + (item.components.cache_write ?? 0);
+  }
+
+  /**
+   * Formats one breakdown cell, naming an unreported component rather than showing a zero.
+   *
+   * @param value the token count, or `null` when the runtime did not report it
+   * @returns the catalogue-formatted count, or a dash
+   */
+  function formatComponent(value: number | null): string {
+    return value === null ? '—' : formatBreakdownValue(value);
   }
 
   function selectTask(taskId: string) {
@@ -536,7 +549,7 @@
                       <tr data-testid="token-phase-{item.name}">
                         <th scope="row" class="mono">{item.name}</th>
                         <td class="mono">{formatBreakdownValue(item.input)}</td>
-                        <td class="mono">{formatBreakdownValue(cachedOf(item))}</td>
+                        <td class="mono">{formatComponent(cachedOf(item))}</td>
                         <td class="mono">{formatBreakdownValue(item.output)}</td>
                         <td class="mono">{formatBreakdownValue(item.total)}</td>
                       </tr>
@@ -564,7 +577,7 @@
                       <tr data-testid="token-role-{item.name}">
                         <th scope="row" class="mono">{item.name}</th>
                         <td class="mono">{formatBreakdownValue(item.input)}</td>
-                        <td class="mono">{formatBreakdownValue(cachedOf(item))}</td>
+                        <td class="mono">{formatComponent(cachedOf(item))}</td>
                         <td class="mono">{formatBreakdownValue(item.output)}</td>
                         <td class="mono">{formatBreakdownValue(item.total)}</td>
                       </tr>

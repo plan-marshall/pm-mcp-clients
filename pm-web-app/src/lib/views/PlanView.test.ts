@@ -356,6 +356,8 @@ describe('PlanView component', () => {
     const roleRow = screen.getByTestId('token-role-implement');
     expect(roleRow).toHaveTextContent('350 k');
     expect(roleRow).toHaveTextContent('380 k');
+    // The row reports no components, so the cached cell says so rather than showing zero.
+    expect(roleRow).toHaveTextContent('—');
   });
 
   it('reads the token breakdown of an ended plan from its completion report', async () => {
