@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jspecify.annotations.Nullable;
@@ -63,6 +64,8 @@ public final class OperatorContext {
     private final DirectFileAccess directFiles;
     private final TerminalProvider terminalProvider;
     private final BrowserOpener browserOpener;
+    private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
+    private final AtomicBoolean consoleActive = new AtomicBoolean(false);
 
     /**
      * Creates an operator context assuming an interactive terminal and capturing client environment.
@@ -157,6 +160,25 @@ public final class OperatorContext {
     /** @return the state directory manager */
     public OperatorStateDirectory stateDirectory() {
         return stateDirectory;
+    }
+
+    /** @return the buffer holding notices while a full-screen view is active */
+    public ConsoleNoticeBuffer noticeBuffer() {
+        return noticeBuffer;
+    }
+
+    /**
+     * @return {@code true} when running inside an interactive PmConsole session
+     */
+    public boolean isConsoleActive() {
+        return consoleActive.get();
+    }
+
+    /**
+     * @param active whether a PmConsole session is running
+     */
+    public void setConsoleActive(boolean active) {
+        consoleActive.set(active);
     }
 
     /** @return the direct file access enforcer */

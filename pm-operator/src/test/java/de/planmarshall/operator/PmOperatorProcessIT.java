@@ -267,6 +267,32 @@ class PmOperatorProcessIT {
     }
 
     @Test
+    @DisplayName("plans against runtime reports hierarchical overview in non-interactive environment (UC-PLN-4)")
+    void plansWithProjectsOverview() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/status".equals(target)) {
+                response.json(200, PmOperatorTest.STATUS);
+            } else if ("/api/v1/projects".equals(target)) {
+                response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\",\"display_name\":\"pm-mcp-clients\",\"plans_count\":1,\"epics_count\":0,\"needs_operator_count\":1}]}");
+            } else if ("/api/v1/projects/pm-mcp-clients".equals(target)) {
+                response.json(200, "{\"project_id\":\"pm-mcp-clients\",\"display_name\":\"pm-mcp-clients\",\"plans\":[{\"plan_id\":\"pln-console-history\",\"title\":\"Console history of answers\",\"current_phase\":\"refine\",\"phase_state\":\"waiting_for_you\",\"needs_operator_count\":1,\"needs_operator_kind\":\"decision\"}],\"epics\":[],\"alongside_landings\":[]}");
+            } else {
+                response.json(404, "{\"error\":\"not_found\"}");
+            }
+        });
+
+        try (var process = operator(environment(), "plans")) {
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
+            assertTrue(stdout.contains("Runtime pm-mcpd"), "expected runtime status header; got: " + stdout);
+            assertTrue(stdout.contains("pm-mcp-clients"), "expected project in overview; got: " + stdout);
+            assertTrue(stdout.contains("Console history of answers"), "expected plan in overview; got: " + stdout);
+        }
+    }
+
+    @Test
     @DisplayName("reports refuses execution without an interactive terminal (PM-SEC-3)")
     void reportsRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
