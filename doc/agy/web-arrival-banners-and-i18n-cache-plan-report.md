@@ -33,8 +33,8 @@ The full reactor gate `./mvnw verify -Ppre-commit` completes with `BUILD SUCCESS
 
 | File | Change |
 |---|---|
-| `src/lib/i18n/index.ts` | Added `loadCachedCatalogue(locale)` and `persistCatalogue(locale, messages)` over `localStorage` (`pm_i18n_messages_${locale}`), each guarded against unavailable storage, private mode, quota failures, and corrupt entries (a corrupt entry is dropped). The stored entry is `{ locale, cachedAt, messages }`. Boot hydration runs at module import and at the start of `initI18n()`; `loadMessages()` hydrates a full catalogue before awaiting the runtime request and keeps the cache when the request rejects; `setLocale()` hydrates the target locale before revalidating. `translate()`/`t()` resolve through the active catalogue → cached English (for non-English locales) → session history → `humanizeKey()`, warning once per missing key in development. |
-| `src/lib/i18n/index.test.ts` | Replaced the "renders the raw key" expectation with the readable-label contract and added ten tests covering boot hydration, in-flight SWR rendering, persistence with metadata, unreachable-runtime resilience, offline locale switching, English fallback, key masking, the development warning, corrupt-cache healing, and storage-write failure. |
+| `src/lib/i18n/index.ts` | Added `loadCachedCatalogue(locale)` and `persistCatalogue(locale, messages)` over `localStorage` (`pm_i18n_messages_${locale}`), each guarded against unavailable storage, private mode, quota failures, and corrupt entries (a corrupt entry is dropped). The stored entry is `{ locale, cachedAt, messages }`. Boot hydration runs at module import and at the start of `initI18n()`; `loadMessages()` hydrates a full catalogue before awaiting the runtime request and keeps the cache when the request rejects; `setLocale()` hydrates the target locale before revalidating. `messagesLocale` records which locale owns the store, so a late full response cannot overwrite the catalogue of a locale the person switched to, and a partial area merges into its own locale's cache rather than another locale's store. `translate()`/`t()` resolve through the active catalogue → cached English (for non-English locales) → session history → `humanizeKey()`, warning once per missing key in development. |
+| `src/lib/i18n/index.test.ts` | Replaced the "renders the raw key" expectation with the readable-label contract and added twelve tests covering boot hydration, in-flight SWR rendering, persistence with metadata, unreachable-runtime resilience, offline locale switching, English fallback, key masking, the development warning, corrupt-cache healing, storage-write failure, the late-response locale race, and partial-load locale scoping. |
 | `package.json` | Added `"prepare": "svelte-kit sync"`. The Maven `verify` lifecycle runs a javadoc goal that forks a second lifecycle starting at `generate-sources`; its `npm ci` deletes `node_modules/$app/tsconfig.json` after the compile-phase build created it, leaving `npm run check` unable to resolve `$app/tsconfig`. The prepare hook, which is the SvelteKit template's own setup, regenerates it after every install and keeps the gate deterministic. |
 
 ---
@@ -45,10 +45,10 @@ The full reactor gate `./mvnw verify -Ppre-commit` completes with `BUILD SUCCESS
 
 ```
 Test Files  42 passed (42)
-Tests       298 passed (298)
+Tests       300 passed (300)
 ```
 
-The i18n suite alone is 23 tests (17 in `index.test.ts`, 6 in `catalogue.test.ts`).
+The i18n suite alone is 25 tests (19 in `index.test.ts`, 6 in `catalogue.test.ts`).
 
 ### 3.2 Catalogue guard
 
@@ -64,6 +64,11 @@ The i18n suite alone is 23 tests (17 in `index.test.ts`, 6 in `catalogue.test.ts
 ### 3.4 E2E
 
 The Playwright suite is skipped in the default Maven build (`skipPlaywrightTests=true`, browsers not installed). The only E2E edit is the removal of a stale comment and test rename in `reports.spec.js`; no assertion changed.
+
+### 3.5 Automated review findings (PR #142)
+
+* **CodeRabbit** — two minor findings: (1) a slow full-catalogue response could replace the store after a locale switch, and (2) a partial area merged into whichever locale owned the store and was persisted under the requested locale. Both are fixed in `b3d508f` through `messagesLocale` ownership tracking, with regression tests.
+* **SonarCloud** — Quality Gate passed; the two new minor issues (`Object.prototype.hasOwnProperty.call` and `filter(...).pop()`) were replaced with `Object.hasOwn()` and `findLast()` in `b3d508f`. No accepted issues, no security hotspots.
 
 ---
 
@@ -85,6 +90,8 @@ The Playwright suite is skipped in the default Maven build (`skipPlaywrightTests
 
 ## 5. Build & Quality Evidence
 
+First full reactor run (commit `012bb5c`, 2026-10-20):
+
 ```
 Reactor Summary:
 pm-mcp-clients ..................................... SUCCESS [ 13.927 s]
@@ -98,7 +105,17 @@ pm-web-e2e ......................................... SUCCESS [ 15.368 s]
 BUILD SUCCESS — Total time: 06:35 min
 ```
 
-Note: the inherited OpenRewrite recipe set reformats 311 unrelated Java files during the gate (an import-spacing and continuation-indent drift inherited from the parent POM). Those files were reverted after the run to leave a clean worktree, matching the practice recorded in earlier completion reports.
+After the review fixes (`b3d508f`), the affected modules pass again:
+
+```
+pm-web-app ......................................... SUCCESS [01:04 min]  (300 tests, svelte-check 0 errors)
+pm-web-e2e ......................................... SUCCESS [  6.893 s]
+BUILD SUCCESS
+```
+
+A second full-reactor run on 2026-10-21 stopped in `pm-operator` at the pre-existing, date-dependent `PlanCompletionLevelTest.minimalReport`: it hard-codes an `ended_at` of `2026-10-18T10:00:00Z` and asserts the rendered age says `2 d ago`, which became `3 d ago` on that date. The test and module are outside this plan's boundary and were not modified; the first full run (2026-10-20) passed the same module. The `pm-web-app`/`pm-web-e2e` reactor result above is green.
+
+Note: the inherited OpenRewrite recipe set reformats 311 unrelated Java files during the gate (an import-spacing and continuation-indent drift inherited from the parent POM). Those files were reverted after each run to leave a clean worktree, matching the practice recorded in earlier completion reports.
 
 ---
 
