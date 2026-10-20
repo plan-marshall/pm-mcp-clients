@@ -58,6 +58,7 @@ Key deliverables include:
 | `ProjectsOverviewLevelTest.java` | Unit tests for Level 1 row ordering, attention badge prioritization, empty state message, and metadata. (4 tests) |
 | `ProjectWorkLevelTest.java` | Unit tests for `BY_PLAN` and `BY_EPIC` row formatting, tree branches, alongside landings, setup rows, orphan plan grouping, and detail help visibility. (6 tests) |
 | `EndedWorkLevelTest.java` | Unit tests for ended work pagination, German outcome localization and sanitization, refreshFirstPage older item retention, PR numbers, and empty page handling. (6 tests) |
+| `OverviewFullScreenAppTest.java` | Unit tests for event classification, notice buffering, live event handling, level switching, state persistence, view navigation actions, and error handling. (14 tests) |
 | `OverviewFullScreenTest.java` | End-to-end `VirtualScreenTerminal` tests covering layout at 120x30, Enter/Tab/e/Esc navigation, / filter, E pagination, 80x24 responsive widths, 50x20 too-narrow fallback, live SSE updates with anchored selection, 0600 overview.json persistence round-trip, notice buffer draining, reports/system views, help/drill-down toggles, direct project and ended startup, and SSE notice event categories. (12 tests) |
 | `PmOperatorProcessIT.java` | Subprocess IT testing non-interactive execution of `pm-operator plans` against mock runtime, verifying hierarchical tree fallback output. (1 test) |
 
@@ -66,15 +67,16 @@ Key deliverables include:
 ## 3. Test & Verification Results
 
 ### 3.1 Unit & Screen Test Suite
-All 46 overview-specific tests pass cleanly:
+All 60 overview-specific tests pass cleanly:
 - `OverviewFormattingTest`: 18/18 passed
 - `ProjectsOverviewLevelTest`: 4/4 passed
 - `ProjectWorkLevelTest`: 6/6 passed
 - `EndedWorkLevelTest`: 6/6 passed
+- `OverviewFullScreenAppTest`: 14/14 passed
 - `OverviewFullScreenTest`: 12/12 passed
 
 Full `pm-operator` test suite:
-- **Total Tests Run**: 696
+- **Total Tests Run**: 710
 - **Failures**: 0
 - **Errors**: 0
 - **Skipped**: 0
