@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import PlanView from './PlanView.svelte';
 import {
   apiClient,
@@ -206,6 +206,33 @@ describe('PlanView component', () => {
     expect(entries[1]).toHaveTextContent('read');
     expect(entries[2]).toHaveTextContent('failed · 4 KiB');
     expect(entries[3]).toHaveTextContent('Transport.java');
+  });
+
+  it('normalizes live activity events and ignores malformed ones', async () => {
+    let onEvent: ((event: string, data: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(
+      (_planId, _taskId, callback) => {
+        onEvent = callback;
+        return () => {};
+      },
+    );
+
+    render(PlanView);
+    await screen.findByTestId('task-inspector');
+    await waitFor(() => expect(onEvent).toBeDefined());
+
+    onEvent?.('task.activity', {
+      kind: 'text',
+      text: 'Live output',
+      timestamp: '14:04:00',
+      content: { unexpected: true },
+      files: ['Transport.java', 7],
+    });
+    onEvent?.('task.activity', { kind: 42, timestamp: '14:04:01' });
+    onEvent?.('other.event', { kind: 'text', text: 'not activity' });
+
+    await waitFor(() => expect(screen.getAllByTestId('activity-entry')).toHaveLength(5));
+    expect(screen.getAllByTestId('activity-entry')[4]).toHaveTextContent('Live output');
   });
 
   it('renders pruned nodes in not-in-plan section for land lane plans', async () => {

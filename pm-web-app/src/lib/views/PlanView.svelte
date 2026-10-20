@@ -176,11 +176,24 @@
     return null;
   }
 
+  /** A field that is a string, or `null`; JSON says nothing about the type it carries. */
+  function textOf(value: unknown): string | null {
+    return typeof value === 'string' ? value : null;
+  }
+
+  /** The string items of a JSON array, and nothing else. */
+  function stringsOf(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : [];
+  }
+
   /**
    * Reads one live-activity event into an entry.
    *
    * The stream reports the entry either directly (`task.activity`) or inside an `entry` field
-   * (`activity`); a text entry names its body `text` in one and `content` in the other.
+   * (`activity`); a text entry names its body `text` in one and `content` in the other. Every
+   * field is checked, because the renderer hands them to text helpers that require strings.
    */
   function toActivityEntry(event: string, data: unknown): ActivityEntry | null {
     if (event !== 'task.activity' && event !== 'activity') return null;
@@ -192,18 +205,15 @@
         : payload;
     if (typeof source.kind !== 'string') return null;
     return {
-      timestamp: typeof source.timestamp === 'string' ? source.timestamp : '',
+      timestamp: textOf(source.timestamp) ?? '',
       kind: source.kind,
-      tool_name: (source.tool_name as string | null | undefined) ?? null,
-      tool_target: (source.tool_target as string | null | undefined) ?? null,
+      tool_name: textOf(source.tool_name),
+      tool_target: textOf(source.tool_target),
       tool_failed: source.tool_failed === true,
-      content:
-        (source.content as string | null | undefined) ??
-        (source.text as string | undefined) ??
-        null,
-      size: (source.size as string | null | undefined) ?? null,
-      files: Array.isArray(source.files) ? (source.files as string[]) : [],
-      questions: Array.isArray(source.questions) ? (source.questions as string[]) : [],
+      content: textOf(source.content) ?? textOf(source.text),
+      size: textOf(source.size),
+      files: stringsOf(source.files),
+      questions: stringsOf(source.questions),
     };
   }
 
