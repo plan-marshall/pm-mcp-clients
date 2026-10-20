@@ -571,6 +571,8 @@ public final class OverviewFullScreenApp {
         return type.startsWith("project.") || type.startsWith("phase.") || type.startsWith("scope.")
                             || type.startsWith("hold.") || type.startsWith("condition.") || type.startsWith("task.")
                             || "activity.changed".equals(type) || "tokens.changed".equals(type)
+                            || "state.entered".equals(type) || "state.left".equals(type)
+                            || "instance.changed".equals(type) || "needs_operator.changed".equals(type)
                             || "reset".equals(type);
     }
 
