@@ -47,7 +47,8 @@ class RuntimeClientIT {
         assertEquals("onboarding", JsonTree.string(statusBody, "status"));
 
         // 2. Perform state transition via RuntimeClient (follow link 'begin')
-        var beginRes = client.send(HttpRequest.json("POST", "/api/v1/operator/onboard/begin", "{}"));
+        var beginRes = client.send(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                "{\"link\":\"begin\"}"));
         assertEquals(200, beginRes.status());
         var beginBody = JsonTree.asObject(JsonTree.parse(beginRes.body()));
         assertNotNull(beginBody);
