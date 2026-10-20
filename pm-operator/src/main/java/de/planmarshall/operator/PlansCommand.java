@@ -50,9 +50,6 @@ public final class PlansCommand implements Callable<Integer> {
     @Option(names = "--ended", description = "Show ended work")
     boolean ended;
 
-    @Option(names = "--watch", description = "Watch status updates")
-    boolean watch;
-
     PlansCommand(OperatorContext context) {
         this.context = context;
     }
@@ -74,7 +71,6 @@ public final class PlansCommand implements Callable<Integer> {
             statusCmd.by = this.by;
             statusCmd.byEpic = this.byEpic;
             statusCmd.ended = this.ended;
-            statusCmd.watch = this.watch;
             return statusCmd.call();
         }
 

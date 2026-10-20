@@ -166,6 +166,42 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("the reports arrival notice fills its {time} placeholder")
+        void reportsArrivalNoticeFormatsTime() throws Exception {
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                        """);
+                } else if ("/api/v1/web/devices".equals(request.target())) {
+                    response.json(200, """
+                                        [{"device_id":"d1","label":"Firefox on mbp-oliver","paired_from":"loopback","paired_by":"open"}]
+                                        """);
+                } else if ("/api/v1/reports".equals(request.target())) {
+                    response.json(200, """
+                                        {"items":[],"unread_count":2,"oldest_unread_time":"2026-10-14T10:00:00Z",
+                                         "has_older":false,"older_count":0}
+                                        """);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            PmOperatorTest.writeLiveRecord(fixture);
+
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var writer = new StringWriter();
+            var out = new PrintWriter(writer);
+
+            new EntryFlow(context).run(out, createReader(""));
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains("2 unread reports since 2026-10-14T10:00:00Z"), text),
+                                () -> assertFalse(text.contains("{time}"), text)
+            );
+        }
+
+        @Test
         @DisplayName("desktop onboarded without paired browser issues code and opens browser")
         void desktopOnboardedUnpairedOpensBrowser() throws Exception {
             var openedUri = new AtomicReference<URI>();

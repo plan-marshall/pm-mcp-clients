@@ -44,11 +44,13 @@ import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.start.EntryKind;
 
 import picocli.CommandLine.Command;
+import picocli.CommandLine.ITypeConverter;
 import picocli.CommandLine.Mixin;
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 import picocli.CommandLine.Spec;
+import picocli.CommandLine.TypeConversionException;
 
 /**
  * {@code pm-operator plan}: inspects, adds, pauses, resumes, watches, or terminates plans
@@ -86,9 +88,10 @@ public final class PlanCommand implements Callable<Integer> {
     @Option(names = "--all", description = "Show all details")
     boolean all;
 
-    @Option(names = "--depth", description = "Process tree depth: compact, standard, full")
+    @Option(names = "--depth", paramLabel = "<n>", converter = DepthConverter.class,
+                        description = "Opens n levels of the process tree (default 3).")
     @Nullable
-    String depth;
+    Integer depth;
 
     @Option(names = {"--task", "--activity"}, description = "Task ID for worker activity")
     @Nullable
@@ -427,25 +430,32 @@ public final class PlanCommand implements Callable<Integer> {
                             TokenFormat.formatTokens(tokens.output(), false, "en"));
     }
 
-    private static int parseDepth(@Nullable String depth, boolean all) {
+    private static int parseDepth(@Nullable Integer depth, boolean all) {
         if (all) {
             return Integer.MAX_VALUE;
         }
-        if (depth == null || depth.isBlank()) {
-            return 3;
-        }
-        return switch (depth.toLowerCase()) {
-            case "compact", "1" -> 1;
-            case "standard", "2" -> 2;
-            case "full", "3" -> 3;
-            default -> {
-                try {
-                    yield Integer.parseInt(depth);
-                } catch (NumberFormatException e) {
-                    yield 3;
+        return depth != null ? depth : 3;
+    }
+
+    /**
+     * Parses {@code --depth <n>}: a positive number of levels. The value is validated at parse
+     * time, so an explicit {@code 0} is refused with the usage and never sent to the runtime.
+     */
+    static final class DepthConverter implements ITypeConverter<Integer> {
+
+        @Override
+        public Integer convert(String value) {
+            try {
+                int depth = Integer.parseInt(value.trim());
+                if (depth < 1) {
+                    throw new TypeConversionException(
+                                        MessageCatalogue.get("operator.plan.depth_invalid"));
                 }
+                return depth;
+            } catch (NumberFormatException _) {
+                throw new TypeConversionException(MessageCatalogue.get("operator.plan.depth_invalid"));
             }
-        };
+        }
     }
 
     @Command(name = "add", description = "Starts a plan from its sources.")
