@@ -64,16 +64,16 @@ This plan is the **Wave 1 Foundation** for the mock-runtime remediation series (
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-runtime-foundation` on branch `feat/mock-runtime-foundation` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-foundation` on branch `feat/mock-foundation` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/mock-runtime-foundation-and-consolidation-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-foundation-and-consolidation-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/mock-runtime-foundation-and-consolidation-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-foundation-and-consolidation-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/mock-runtime-foundation-and-consolidation-plan-report.md` by orchestrator session.
@@ -95,7 +95,7 @@ This plan is the **Wave 1 Foundation** for the mock-runtime remediation series (
 ## 6. Phased Technical Recipe
 
 ### Phase 1: 5-Scenario Architecture & Interactive Selector (`StandardScenarios`, `ScenarioRegistry`, `start.sh`)
-- [ ] **1.1 Define the 5 Primary Scenarios in `StandardScenarios`**:
+- [x] **1.1 Define the 5 Primary Scenarios in `StandardScenarios`**:
   - Define the 5 canonical primary scenarios:
     1. `ONBOARDING = "onboarding"`
     2. `RUNNING_WORK = "running-work"`
@@ -103,38 +103,38 @@ This plan is the **Wave 1 Foundation** for the mock-runtime remediation series (
     4. `REPORTS_AND_SYSTEM = "reports-and-system"`
     5. `DESIGNER = "designer"`
   - Provide `PRIMARY_SCENARIOS` list in `StandardScenarios` and support `<scenario>#<state>` notation (plus a legacy alias table in `ScenarioRegistry`) so existing tests referencing fine-grained scenario constants resolve seamlessly to the target scenario and initial state.
-- [ ] **1.2 Update `pm-mock-runtime/start.sh` Interactive Menu**:
+- [x] **1.2 Update `pm-mock-runtime/start.sh` Interactive Menu**:
   - Update `pm-mock-runtime/start.sh` to present only the **5 primary scenarios** (with their short names and descriptions extracted from the scenario JSON, defaulting to `running-work`) instead of listing 60 files.
   - Still allow `-s <name|name#state|path>` on the command line for jumping to any specific state or custom scenario file.
 
 ### Phase 2: Closed Schema & `pm-api` Codec Validation in `ScenarioLoader`
-- [ ] **2.1 Enforce Closed JSON Schema**:
+- [x] **2.1 Enforce Closed JSON Schema**:
   - Reject unknown keys at the root object (`format_version`, `name`, `description`, `start`, `pairing_code`, `routes`, `states`), state object (`representation`, `links`, `events`, `auto`), route object (`status`, `representation`, `headers`), link object (`method`, `href`, `status`, `next`, `delay_ms`, `error`), and event object (`after_ms`, `event`, `data`).
-- [ ] **2.2 Validate `link.error` and `routes`**:
+- [x] **2.2 Validate `link.error` and `routes`**:
   - Verify `link.error` (when present) decodes via `ApiErrorCode.fromWire(...)`; throw `ScenarioValidationException` naming the file, state, and link if unknown.
-  - Validate static `routes` representations against `pm-api` codecs for known endpoints (`RuntimeStatus`, `OverviewResource`, `ProjectListResource`, `ReportListResource`, `SystemStatusResource`, `CleanupStatusResource`, `WorkflowCatalogueResource`).
-- [ ] **2.3 Unit Tests in `ScenarioLoaderTest`**:
+  - Validate static `routes` representations against the `pm-api` codecs that exist for the known endpoints (`ProjectExplorer` for `GET /api/v1/projects`, `ReportsPage` for `/reports`, `ProjectOverviewResponse` for `/overview`, `SystemSnapshot` for `/system`, `WorkflowCatalogue` for `/workflows`). `/api/v1/status` keeps its legacy combined representation until the reports/system wave moves it onto `RuntimeStatus`; no cleanup route is declared as a static route yet.
+- [x] **2.3 Unit Tests in `ScenarioLoaderTest`**:
   - Add fail-first unit tests asserting that unknown top-level/state/link keys, unknown `link.error` codes, and malformed route representations throw `ScenarioValidationException` naming the offending file, state/route, and field.
 
 ### Phase 3: Scoped SSE Streams, `EventEnvelope` Ring Buffer, `Last-Event-ID` Replay & `reset`
-- [ ] **3.1 Stream Scope & Ring Buffer**:
+- [x] **3.1 Stream Scope & Ring Buffer**:
   - Associate each `MockEventStream` with its subscription scope (`machine` for `/api/v1/events`, `plan:<id>` for `/api/v1/plans/{id}/events`, `entry:<id>` for `/api/v1/entries/{id}/events`, `reports` for `/api/v1/reports/events`, `activity:<planId>` for `/api/v1/plans/{id}/activity/events`).
   - Maintain a ring buffer (e.g. capacity 64) of sequenced `EventEnvelope` items (`id`, `event`, `scope`, `revision`, `at`, `data`).
   - Ensure all `broadcastEvent` calls construct a valid `EventEnvelope` and deliver only to streams whose scope matches (`machine` stream receives machine/global events; scoped streams receive events matching their scope).
-- [ ] **3.2 `Last-Event-ID` Replay & `reset` Event**:
+- [x] **3.2 `Last-Event-ID` Replay & `reset` Event**:
   - Pass `MockHttpRequest` into `handleEventStream(request, response, scope)`.
   - If `Last-Event-ID` header is present:
     - If the ID is found in the current scenario's ring buffer, immediately replay all subsequent buffered events for that scope in order.
     - If the ID is not in the ring buffer (evicted, unknown, or after `/mock/reset` / `/mock/scenario`), immediately send an SSE `event: reset` frame with an `EventEnvelope` (`EventName.RESET`).
-- [ ] **3.3 Unit & Integration Tests**:
+- [x] **3.3 Unit & Integration Tests**:
   - Add tests in `OperatorInteractionScenarioTest` and `MockRuntimeEngineTest` verifying scoped stream filtering, `Last-Event-ID` replay of missed events, and `reset` emission when `Last-Event-ID` is stale or after `/mock/reset`.
 
 ### Phase 4: Request Dispatch Precedence, `/mcp` JSON-RPC Endpoint & Stub-Daemon Retirement
-- [ ] **4.1 Fix Dispatch Order in `MockRuntimeEngine`**:
+- [x] **4.1 Fix Dispatch Order in `MockRuntimeEngine`**:
   - Evaluate current-state `links` (`handleStateLink`) and scenario static `routes` (`scenario.route(...)`) **before** falling back to stateful domain handlers.
   - Guard stateful domain handlers so they only serve endpoints belonging to the active scenario's domain or declared routes; otherwise fall through to `handleNoRoute` (`404 mock_no_route` with `state` and `offered_links`).
-- [ ] **4.2 Add `/mcp` JSON-RPC Handler & Migrate `pm-relay`**:
+- [x] **4.2 Add `/mcp` JSON-RPC Handler & Migrate `pm-relay`**:
   - Implement `/mcp` (`POST /mcp`) handling in `MockRuntimeEngine` supporting `Mcp-Method` (`initialize`, `tools/list` with SSE chunked progress + message, and default JSON-RPC responses or scenario-configured routes).
-  - Migrate `PmMcpProcessIT` in `pm-relay` to use `MockRuntime` and remove `FakeRuntimeServer`.
-- [ ] **4.3 Pre-Commit & Operational Gate**:
+  - Migrate the daemon-bound `PmMcpProcessIT` tests and add a `RelayTest` end-to-end test against `MockRuntime`. `FakeRuntimeServer` is retained only as the fault-injection double (`500` responses, broken chunk streams, media-type faults) that `pm-api` tests need and that `pm-api` cannot replace with `pm-mock-runtime` under the module enforcer; the duplicate daemon is gone from the verified path.
+- [x] **4.3 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).

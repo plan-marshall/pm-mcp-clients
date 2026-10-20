@@ -63,7 +63,6 @@ class ScenarioLoaderTest {
                   },
                   "states": {
                     "initial": {
-                      "description": "Initial state",
                       "representation": {
                         "status": "idle",
                         "links": {
@@ -238,5 +237,95 @@ class ScenarioLoaderTest {
         var json = "{ not valid json";
         assertThrows(ScenarioValidationException.class,
                 () -> ScenarioLoader.load(json, "bad.json"));
+    }
+
+    @Test
+    @DisplayName("rejects an unknown top-level field, naming the file and the field")
+    void rejectsUnknownRootField() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a","unknown_root":true,
+                 "states":{"a":{"representation":{}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "closed-root.json"));
+        assertEquals("closed-root.json", ex.scenario());
+        assertEquals("unknown_root", ex.field());
+        assertTrue(ex.getMessage().contains("unknown field 'unknown_root'"));
+    }
+
+    @Test
+    @DisplayName("rejects an unknown state field, naming the state and the field")
+    void rejectsUnknownStateField() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"retry":2}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "closed-state.json"));
+        assertEquals("a", ex.state());
+        assertEquals("retry", ex.field());
+    }
+
+    @Test
+    @DisplayName("rejects an unknown link, event, route, and auto field")
+    void rejectsUnknownFieldsAtEveryLevel() {
+        var link = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"links":{"go":{"next":"a","visit":true}}}}}
+                """;
+        var linkEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(link, "closed-link.json"));
+        assertEquals("links.go.visit", linkEx.field());
+
+        var event = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"events":[{"after_ms":1,"event":"check.result","data":{},"repeat":2}]}}}
+                """;
+        var eventEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(event, "closed-event.json"));
+        assertEquals("events[0].repeat", eventEx.field());
+
+        var route = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/status":{"representation":{},"cache":"no"}},
+                 "states":{"a":{"representation":{}}}}
+                """;
+        var routeEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(route, "closed-route.json"));
+        assertEquals("routes.GET /api/v1/status.cache", routeEx.field());
+
+        var auto = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"auto":{"after_ms":1,"next":"a","repeat":true}}}}
+                """;
+        var autoEx = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(auto, "closed-auto.json"));
+        assertEquals("auto.repeat", autoEx.field());
+    }
+
+    @Test
+    @DisplayName("rejects a link.error that is not a pm-api error code")
+    void rejectsUnknownLinkError() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "states":{"a":{"representation":{},"links":{"go":{"next":"a","status":409,"error":"not_a_code"}}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "closed-error.json"));
+        assertEquals("links.go.error", ex.field());
+        assertTrue(ex.getMessage().contains("not_a_code"));
+    }
+
+    @Test
+    @DisplayName("rejects a static route representation the pm-api codec refuses")
+    void rejectsMalformedRouteRepresentation() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/projects":{"representation":{"all_projects":[{"project_id":""}]}}},
+                 "states":{"a":{"representation":{}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "closed-codec.json"));
+        assertEquals("routes.GET /api/v1/projects.representation", ex.field());
     }
 }

@@ -117,7 +117,7 @@ class ReportsScenarioTest {
                 assertNotNull(event);
                 assertEquals("report.read", event.event());
                 var eventData = JsonTree.asObject(JsonTree.parse(event.data()));
-                assertEquals("rep-0142", JsonTree.string(eventData, "report_id"));
+                assertEquals("rep-0142", JsonTree.string(eventData, "report_id"), event.data());
 
                 // Verify report leaves unread list
                 var listRes = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));

@@ -20,25 +20,50 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 
 import lombok.experimental.UtilityClass;
 
+import de.planmarshall.api.designer.WorkflowCatalogue;
 import de.planmarshall.api.event.EventEnvelope;
 import de.planmarshall.api.event.EventName;
 import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.ProjectOverviewResponse;
+import de.planmarshall.api.project.ProjectExplorer;
+import de.planmarshall.api.report.ReportsPage;
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.system.SystemSnapshot;
 
 /**
- * Loads and validates scenario files against the closed scenario format specification.
+ * Loads and validates scenario files against the closed scenario format specification
+ * ({@code 05-mock-runtime.adoc#scenario-files}).
+ * <p>
+ * The schema is closed: an unknown member at the root, state, route, link, event, or auto level is
+ * refused with the file, the state or route, and the offending field. The {@code designer} and
+ * {@code start_case} extension members and the {@code summary} hint of the still-migrating legacy
+ * representations are accepted until the consolidation waves move them into {@code pm-api}
+ * codecs; every member the specification names is validated against the {@code pm-api} codecs.
  */
 @UtilityClass
 public class ScenarioLoader {
 
     /** Default classpath directory for scenario files. */
     public static final String SCENARIOS_RESOURCE_DIR = "scenarios/";
+
+    private static final Set<String> ROOT_FIELDS = Set.of(
+            "format_version", "name", "description", "start", "pairing_code", "routes", "states",
+            "designer", "start_case");
+    private static final Set<String> STATE_FIELDS = Set.of(
+            "representation", "links", "events", "auto");
+    private static final Set<String> ROUTE_FIELDS = Set.of("status", "representation", "headers");
+    private static final Set<String> LINK_FIELDS = Set.of(
+            "method", "href", "status", "next", "delay_ms", "error");
+    private static final Set<String> EVENT_FIELDS = Set.of("after_ms", "event", "data");
+    private static final Set<String> AUTO_FIELDS = Set.of("after_ms", "next");
 
     /**
      * Loads a scenario from a classpath resource or file system.
@@ -121,6 +146,7 @@ public class ScenarioLoader {
         if (root == null) {
             throw new ScenarioValidationException(identifier, null, null, "Root JSON value must be an object");
         }
+        rejectUnknownFields(root, ROOT_FIELDS, identifier, null, "");
 
         // 1. format_version
         var formatVersionObj = root.get("format_version");
@@ -238,11 +264,15 @@ public class ScenarioLoader {
                 throw new ScenarioValidationException(scenario, null, "routes." + routeKey,
                         "route definition must be an object");
             }
+            @SuppressWarnings("unchecked")
+            var typedRoute = (Map<String, Object>) routeMap;
+            rejectUnknownFields(typedRoute, ROUTE_FIELDS, scenario, null, "routes." + routeKey);
             var rep = routeMap.get("representation");
             if (!(rep instanceof Map<?, ?>)) {
                 throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
                         "route representation must be a JSON object");
             }
+            validateRouteRepresentation(routeKey, rep, scenario);
             var status = asInt(routeMap.get("status"), 200);
             result.put(routeKey, new RouteDefinition(rep, status));
         }
@@ -261,6 +291,7 @@ public class ScenarioLoader {
             }
             @SuppressWarnings("unchecked")
             var stateMap = (Map<String, Object>) stateMapRaw;
+            rejectUnknownFields(stateMap, STATE_FIELDS, scenario, stateId, "");
 
             // representation
             var representation = stateMap.get("representation");
@@ -383,6 +414,7 @@ public class ScenarioLoader {
             }
             @SuppressWarnings("unchecked")
             var linkMap = (Map<String, Object>) linkMapRaw;
+            rejectUnknownFields(linkMap, LINK_FIELDS, scenario, stateId, "links." + linkName);
 
             var next = JsonTree.string(linkMap, "next");
             if (next == null || next.isBlank()) {
@@ -399,6 +431,10 @@ public class ScenarioLoader {
             }
             var status = asInt(linkMap.get("status"), 200);
             var error = JsonTree.string(linkMap, "error");
+            if (error != null && ApiErrorCode.fromWireOrNull(error) == null) {
+                throw new ScenarioValidationException(scenario, stateId, "links." + linkName + ".error",
+                        "unknown API error code: " + error);
+            }
 
             links.put(linkName, new LinkDefinition(next, method, href, delayMs, status, error));
         }
@@ -418,6 +454,7 @@ public class ScenarioLoader {
             }
             @SuppressWarnings("unchecked")
             var eventMap = (Map<String, Object>) eventMapRaw;
+            rejectUnknownFields(eventMap, EVENT_FIELDS, scenario, stateId, "events[" + i + "]");
 
             var afterMs = asLong(eventMap.get("after_ms"), -1);
             if (afterMs < 0) {
@@ -451,6 +488,7 @@ public class ScenarioLoader {
         }
         @SuppressWarnings("unchecked")
         var autoMap = (Map<String, Object>) autoMapRaw;
+        rejectUnknownFields(autoMap, AUTO_FIELDS, scenario, stateId, "auto");
 
         var afterMs = asLong(autoMap.get("after_ms"), -1);
         if (afterMs < 0) {
@@ -463,6 +501,50 @@ public class ScenarioLoader {
         }
 
         return new AutoTransitionDefinition(afterMs, next);
+    }
+
+    /**
+     * Refuses a member the closed schema does not define, naming the file, the state or route, and
+     * the field.
+     */
+    private static void rejectUnknownFields(Map<String, Object> map, Set<String> allowed,
+            String scenario, String stateId, String path) {
+        for (var key : map.keySet()) {
+            if (!allowed.contains(key)) {
+                var field = path == null || path.isBlank() ? key : path + "." + key;
+                throw new ScenarioValidationException(scenario, stateId, field,
+                        "unknown field '" + key + "' in the closed scenario schema");
+            }
+        }
+    }
+
+    /**
+     * Decodes a static route representation with the {@code pm-api} codec the endpoint's contract
+     * names. A route the registry does not know is left to the callers; the known operator API
+     * routes fail the load when their representation is not what the contract allows.
+     */
+    private static void validateRouteRepresentation(String routeKey, Object representation, String scenario) {
+        var map = JsonTree.asObject(representation);
+        if (map == null) {
+            return;
+        }
+        try {
+            switch (routeKey) {
+                case "GET /api/v1/projects" -> ProjectExplorer.fromMap(map);
+                case "GET /api/v1/reports" -> ReportsPage.fromMap(map);
+                case "GET /api/v1/overview" -> ProjectOverviewResponse.fromJson(JsonTree.write(map));
+                case "GET /api/v1/system" -> SystemSnapshot.fromMap(map);
+                case "GET /api/v1/workflows" -> WorkflowCatalogue.fromMap(map);
+                default -> {
+                    // No closed codec is registered for this endpoint yet.
+                }
+            }
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (IOException | RuntimeException e) {
+            throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
+                    "representation does not decode with the pm-api codec: " + e.getMessage());
+        }
     }
 
     private static int asInt(Object val, int defaultVal) {

@@ -37,6 +37,7 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.PmVersion;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.runtime.RuntimeAccess;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.runtime.RuntimeStarter;
@@ -44,6 +45,8 @@ import de.planmarshall.api.runtime.RuntimeTokenFile;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.StandardScenarios;
 
 @DisplayName("Relay")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -97,6 +100,27 @@ class RelayTest {
     @Nested
     @DisplayName("Session relay")
     class Session {
+
+        @Test
+        @DisplayName("relays a real initialize and tools/list against the mock runtime")
+        void againstMockRuntime() throws Exception {
+            try (var mock = MockRuntime.start(
+                         StandardScenarios.STATUS_ONLY)) {
+                startRelay(mock.client(), RelayMode.session("claude", "/work/space"));
+
+                send("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":"
+                        + "\"2025-11-25\",\"clientInfo\":{\"name\":\"relay-test\",\"version\":\"1\"},\"capabilities\":{}}}");
+
+                var answer = JsonTree.asObject(JsonTree.parse(out.next(5)));
+                assertEquals(1, JsonTree.integer(answer, "id"));
+                assertEquals("2025-11-25",
+                        JsonTree.string(JsonTree.object(answer, "result"), "protocolVersion"));
+                assertNotNull(mock.requests().stream()
+                        .filter(request -> "initialize".equals(request.header("Mcp-Method")))
+                        .findFirst()
+                        .orElse(null));
+            }
+        }
 
         @Test
         @DisplayName("forwards initialize with the connection metadata and writes the response as one line")

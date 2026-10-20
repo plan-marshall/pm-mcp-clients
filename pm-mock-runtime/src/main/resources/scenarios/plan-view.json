@@ -514,7 +514,6 @@
   },
   "states": {
     "plan_view.active": {
-      "summary": "Plan and Epic process view active",
       "representation": {
         "active_plan": "fix-relay",
         "active_epic": "relay-hardening"
