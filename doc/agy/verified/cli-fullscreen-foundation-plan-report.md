@@ -1,9 +1,9 @@
 # Completion Report: `cli-fullscreen-foundation` (Terminal Full-Screen TUI Framework, Screen Test Harness & Hygiene)
 
-**Status:** Implemented and verified; PR #124 is open and under review (Step 8 is reserved for the orchestrator)
-**Plan:** [`doc/agy/implemented/cli-fullscreen-foundation-plan.md`](implemented/cli-fullscreen-foundation-plan.md)
+**Status:** Implemented, landed on `main` (commit `e3ae1c0`, PR #124), and verified under [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md) (Step 8 PASSED)
+**Plan:** [`doc/agy/implemented/cli-fullscreen-foundation-plan.md`](../implemented/cli-fullscreen-foundation-plan.md)
 **Branch:** `feat/cli-fullscreen-foundation`
-**Governed by:** [`doc/agy/runbook.md`](../runbook.md) and [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md)
+**Governed by:** [`doc/agy/runbook.md`](../runbook.md) and [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md)
 
 ---
 
@@ -217,3 +217,34 @@ commits, none was refuted.
 `keepsVerbatimLines`, `closedBufferRejectsLine`, `TuiLayoutTest.indicatorsKeepSelectionVisible`,
 `TuiScreenDriverTest.unboundKeyIsDropped`, `escapeHasShortAmbiguityTimeout`, and
 `filterHandoffRedraws`, and the tightened `OverviewStateStoreTest` security tests.
+
+---
+
+## 7. Post-Landing Verification Audit (Step 8: PASSED)
+
+In accordance with [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md), the orchestrator session conducted an active, independent 4-pillar verification audit of PR #124 landed at commit `e3ae1c0` on `main`:
+
+### Pillar 1: Specification & Contract Conformance Matrix (Traceability Audit)
+- **Scope Verification**: Delivered all 5 phases: pure Java TUI model (`TuiLevel`, `TuiRow`, `TuiKeyAction`, `TuiKeyRegistry`, `TuiViewStack`, `TuiScreen`, `TuiLayout`), JLine 4 driver (`TuiScreenDriver`), notice buffer (`ConsoleNoticeBuffer`), state store (`OverviewStateStore`), virtual-terminal screen-test harness (`VirtualScreenTerminal`), and CLI hygiene (`{time}`, `--depth <n>`, `--watch` removal).
+- **Placeholder & Stub Audit**: Zero stubs, temporary mock branches, or `UnsupportedOperationException` instances in production classes. All grep hits for `TODO` represent standard OpenRewrite recipe markers (`cui-rewrite:disable InvalidExceptionUsageRecipe`).
+- **Closed Catalogues**: Closed enum validation in `TuiLevel.Kind` and `TuiKeyAction`. Key registry guard test (`TuiKeyRegistryTest`) strictly enforces no footer entry without a binding and no duplicate triggers.
+
+### Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans
+- **Terminal Safety Boundary**: Verified `TuiLayout.sanitizeCell` routes 100% of dynamic strings through `OutputSafety.stripControlSequences` and `TerminalSanitizer.sanitize`, stripping C0/C1, DEL, CSI, OSC 52, and DCS/SOS/PM/APC control sequences.
+- **Clean State Restoration**: Verified `TuiScreenDriver` installs unconditional `finally` restoration restoring keypad mode (`keypad_local`), cursor (`cursor_normal`), and alternate screen buffer (`exit_ca_mode`). Verified by `TuiScreenDriverTest.restoresOnException`.
+- **Native Measurements & Formatting**: `NativeMeasurementsIT` and `VirtualScreenTerminal` tests (72 tests) executed and passed with `BUILD SUCCESS`. Truncation tests confirm surrogate pairs and wide glyphs are never split.
+- **Catalogue Purity**: Zero literal text in output (`LiteralTextGuardTest` passed). Shared overview keys in `overview.{en,de}.properties` validated by `OverviewCatalogueTest` and `ConsoleTextsTest`.
+- **Jackson Streaming Purity**: Verified zero `jackson-databind` dependencies (`jackson-core` streaming only in `OverviewSavedState` and `OverviewStateStore`). Strict `0600`/`0700` permissions enforced on `$XDG_STATE_HOME/pm-operator/overview.json`.
+
+### Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight
+- **Lifecycle Scripts**: Verified `pm-mock-runtime/start.sh` interactive scenario selector and arguments parsing. Verified `pm-mock-runtime/stop.sh` cleanly detects inactive state without orphaned PIDs.
+- **Console Hook Integration**: Verified `PmConsoleBehaviourTest` correctly integrates `ConsoleNoticeBuffer` to hold notices during active full-screen sessions and emit coalesced summaries upon leaving.
+
+### Pillar 4: Independent Diff & AST Verification (Adversarial Audit)
+- **Attribution**: Commit `e3ae1c0` verified with mandatory trailer:
+  `Co-Authored-By: plan-marshall <noreply@cuioss.de>`
+- **Boundary Discipline**: Changes strictly confined to `pm-operator`, `pm-api` message bundles, and `doc/` design/plan links. No unauthorized cross-module drift.
+- **Reversion Audit**: Verified parent OpenRewrite formatting drift across 309 external files was properly identified and reverted by the worker prior to landing, preserving repository stability.
+
+### Verification Verdict
+**PASSED** — All 4 pillars satisfied with complete technical evidence. Report archived to `doc/agy/verified/cli-fullscreen-foundation-plan-report.md`.
