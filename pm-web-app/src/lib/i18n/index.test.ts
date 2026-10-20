@@ -285,6 +285,50 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
     expect(localStorage.getItem('pm_i18n_messages_en')).toBeNull();
   });
 
+  it('keeps the newly chosen locale when an older full response arrives late', async () => {
+    // Arrange
+    localStorage.setItem('pm_locale', 'de');
+    let resolveGerman: (messages: Record<string, string>) => void = () => {};
+    vi.spyOn(apiClient, 'getMessages').mockImplementation((locale) =>
+      locale === 'de'
+        ? new Promise<Record<string, string>>((resolve) => {
+            resolveGerman = resolve;
+          })
+        : Promise.resolve({ 'stale.race.label': 'English wins' }),
+    );
+
+    // Act
+    const initializing = initI18n();
+    await setLocale('en');
+    resolveGerman({ 'stale.race.label': 'Deutsch verliert' });
+    await initializing;
+
+    // Assert
+    expect(get(currentLocale)).toBe('en');
+    expect(get(t)('stale.race.label')).toBe('English wins');
+  });
+
+  it('merges a partial catalogue into its own locale without touching the active store', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'getMessages').mockImplementation((_locale, area) =>
+      area === 'all'
+        ? Promise.resolve({ 'owned.en.label': 'English' })
+        : Promise.resolve({ 'partial.de.label': 'Deutsch' }),
+    );
+    await loadMessages('en', 'all');
+
+    // Act
+    await loadMessages('de', 'common');
+
+    // Assert
+    const store = get(messagesStore);
+    expect(store['owned.en.label']).toBe('English');
+    expect(store['partial.de.label']).toBeUndefined();
+    const cachedGerman = JSON.parse(localStorage.getItem('pm_i18n_messages_de') as string);
+    expect(cachedGerman.messages['partial.de.label']).toBe('Deutsch');
+    expect(cachedGerman.messages['owned.en.label']).toBeUndefined();
+  });
+
   it('keeps working when web storage refuses writes', () => {
     // Arrange
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {

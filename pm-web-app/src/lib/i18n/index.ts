@@ -269,6 +269,8 @@ const sessionMessages: Record<string, string> = Object.create(null);
 /** The English catalogue, the fallback of every other locale. */
 let englishMessages: Record<string, string> | null = null;
 let englishLookupAttempted = false;
+/** The locale whose catalogue `messagesStore` currently holds. */
+let messagesLocale: Locale = 'en';
 /** Keys already reported as missing, so a render loop cannot flood the console. */
 const warnedKeys = new Set<string>();
 
@@ -299,7 +301,10 @@ function englishCatalogue(): Record<string, string> | null {
 function hydrateFromCache(locale: Locale): boolean {
   const cached = loadCachedCatalogue(locale);
   if (!cached) return false;
-  messagesStore.set(cached);
+  if (locale === get(currentLocale)) {
+    messagesStore.set(cached);
+    messagesLocale = locale;
+  }
   rememberMessages(cached);
   if (locale === 'en') {
     englishMessages = cached;
@@ -343,17 +348,34 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
   }
   try {
     const msgs = await apiClient.getMessages(locale, area);
-    const merged = area === 'all' ? msgs : { ...get(messagesStore), ...msgs };
-    messagesStore.set(merged);
+    const merged = area === 'all' ? msgs : { ...baseFor(locale), ...msgs };
+    // A slow response must not replace the catalogue of a locale the person has switched to
+    // since the request began: the store follows the active locale only.
+    const ownsStore = area === 'all' ? locale === get(currentLocale) : messagesLocale === locale;
+    if (ownsStore) {
+      messagesStore.set(merged);
+      messagesLocale = locale;
+    }
     rememberMessages(msgs);
-    persistCatalogue(locale, merged);
+    persistCatalogue(locale, area === 'all' ? msgs : merged);
     if (locale === 'en') {
-      englishMessages = merged;
+      englishMessages =
+        area === 'all'
+          ? msgs
+          : { ...(englishMessages ?? loadCachedCatalogue('en') ?? {}), ...msgs };
       englishLookupAttempted = true;
     }
   } catch {
     // Offline or the runtime is down: the cached catalogue stays on screen.
   }
+}
+
+/**
+ * @param locale the locale a partial area belongs to
+ * @returns the messages to merge it into: the store when it holds that locale, else its cache
+ */
+function baseFor(locale: Locale): Record<string, string> {
+  return messagesLocale === locale ? get(messagesStore) : (loadCachedCatalogue(locale) ?? {});
 }
 
 /**
@@ -390,7 +412,7 @@ export async function initI18n(): Promise<void> {
 
 /** @param messages a catalogue @param key a message key @returns its text, if the catalogue has it */
 function ownMessage(messages: Record<string, string> | null, key: string): string | undefined {
-  if (!messages || !Object.prototype.hasOwnProperty.call(messages, key)) return undefined;
+  if (!messages || !Object.hasOwn(messages, key)) return undefined;
   return messages[key];
 }
 
@@ -404,11 +426,7 @@ function ownMessage(messages: Record<string, string> | null, key: string): strin
  * @returns a human-readable label
  */
 export function humanizeKey(key: string): string {
-  const leaf =
-    key
-      .split('.')
-      .filter((segment) => segment.length > 0)
-      .pop() ?? '';
+  const leaf = key.split('.').findLast((segment) => segment.length > 0) ?? '';
   const words = leaf
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/[_-]+/g, ' ')
