@@ -68,7 +68,6 @@ describe('ReportsView component', () => {
         completedSteps: 0,
         activeStep: 1,
         unreadReportsCount: 3,
-        unreadReportsArrivalNotice: null,
         quietReportNotice: null,
       }),
     );
