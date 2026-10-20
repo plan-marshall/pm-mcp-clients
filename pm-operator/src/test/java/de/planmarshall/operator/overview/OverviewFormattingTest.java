@@ -197,4 +197,90 @@ class OverviewFormattingTest {
         assertEquals("\u001B]8;;https://example.com/pr/1\u001B\\#1\u001B]8;;\u001B\\",
                             OverviewFormatting.osc8Link("https://example.com/pr/1", "#1"));
     }
+
+    @Test
+    @DisplayName("formatAttentionMarker covers all kinds, invalid counts, and localized labels")
+    void attentionMarkerExhaustive() {
+        assertEquals("", OverviewFormatting.formatAttentionMarker("en", "decision", null));
+        assertEquals("", OverviewFormatting.formatAttentionMarker("en", "decision", 0));
+        assertEquals("", OverviewFormatting.formatAttentionMarker("en", "decision", -1));
+        assertEquals("", OverviewFormatting.formatAttentionMarker("en", "   ", 2));
+
+        for (var kind : List.of("question", "waiver", "waiver_request", "waits_for_you", "operator_wait",
+                "integrity_pause", "stalled", "condition", "held", "landing_failed", "findings", "setup")) {
+            var single = OverviewFormatting.formatAttentionMarker("en", kind, 1);
+            assertFalse(single.isBlank(), "Expected non-blank for single: " + kind);
+            var plural = OverviewFormatting.formatAttentionMarker("en", kind, 3);
+            assertTrue(plural.contains("! 3"), "Expected '! 3' in plural for: " + kind);
+        }
+
+        var unknownKind = OverviewFormatting.formatAttentionMarker("en", "custom_attention", 1);
+        assertEquals("! custom_attention", unknownKind);
+        var unknownPlural = OverviewFormatting.formatAttentionMarker("en", "custom_attention", 2);
+        assertTrue(unknownPlural.contains("! 2"), unknownPlural);
+    }
+
+    @Test
+    @DisplayName("formatPhaseState covers pausing points and unknown states")
+    void phaseStateExhaustive() {
+        assertEquals("running", OverviewFormatting.formatPhaseState("en", null, null));
+        assertEquals("running", OverviewFormatting.formatPhaseState("en", "   ", null));
+
+        var pausingTask = OverviewFormatting.formatPhaseState("en", "pausing", "task");
+        assertTrue(pausingTask.contains("task"), pausingTask);
+
+        var pausingDefault = OverviewFormatting.formatPhaseState("en", "pausing", null);
+        assertTrue(pausingDefault.contains("phase"), pausingDefault);
+
+        assertEquals("waiting for you", OverviewFormatting.formatPhaseState("en", "waiting", null));
+        assertEquals("custom_phase", OverviewFormatting.formatPhaseState("en", "custom_phase", null));
+    }
+
+    @Test
+    @DisplayName("formatDuration and formatRelativeActivity with ISO string overloads")
+    void stringOverloads() {
+        assertEquals("", OverviewFormatting.formatDuration((String) null, clock));
+        assertEquals("", OverviewFormatting.formatDuration("   ", clock));
+        assertEquals("invalid-date", OverviewFormatting.formatDuration("invalid-date", clock));
+        assertEquals("5 min", OverviewFormatting.formatDuration("2026-10-20T11:55:00Z", clock));
+
+        assertEquals("", OverviewFormatting.formatRelativeActivity("en", (String) null, clock));
+        assertEquals("", OverviewFormatting.formatRelativeActivity("en", "  ", clock));
+        assertEquals("custom-str", OverviewFormatting.formatRelativeActivity("en", "custom-str", clock));
+        assertEquals("5 min ago", OverviewFormatting.formatRelativeActivity("en", "2026-10-20T11:55:00Z", clock));
+    }
+
+    @Test
+    @DisplayName("formatEndedTime with ISO string overloads and 3-7 day range")
+    void endedTimeExhaustive() {
+        assertEquals("", OverviewFormatting.formatEndedTime("en", (String) null, clock));
+        assertEquals("", OverviewFormatting.formatEndedTime("en", "   ", clock));
+        assertEquals("bad-date", OverviewFormatting.formatEndedTime("en", "bad-date", clock));
+        assertEquals("10 min ago", OverviewFormatting.formatEndedTime("en", "2026-10-20T11:50:00Z", clock));
+
+        // 3 days ago in EN and DE
+        var threeDaysInstant = baseInstant.minusSeconds(86400 * 3);
+        assertEquals("3 days ago", OverviewFormatting.formatEndedTime("en", threeDaysInstant, clock));
+        assertEquals("vor 3 Tagen", OverviewFormatting.formatEndedTime("de", threeDaysInstant, clock));
+
+        // 10 days ago in DE
+        var tenDaysInstant = baseInstant.minusSeconds(86400 * 10);
+        var tenDaysDe = OverviewFormatting.formatEndedTime("de", tenDaysInstant, clock);
+        assertTrue(tenDaysDe.contains("Okt"), tenDaysDe);
+    }
+
+    @Test
+    @DisplayName("needsOperator for ActiveEpicSummary evaluates plans presence")
+    void epicNeedsOperator() {
+        var epicNoPlans = new ActiveEpicSummary("e0", "Empty", null, 0, 0, 0, 0, null, null, null);
+        assertFalse(OverviewFormatting.needsOperator(epicNoPlans));
+
+        var normalPlan = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null);
+        var epicWithNormal = new ActiveEpicSummary("e1", "Normal", null, 1, 0, 0, 1, null, null, List.of(normalPlan));
+        assertFalse(OverviewFormatting.needsOperator(epicWithNormal));
+
+        var attentionPlan = new ActivePlanSummary("p2", "Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1);
+        var epicWithAttention = new ActiveEpicSummary("e2", "Attention", null, 1, 1, 0, 0, "decision", 1, List.of(attentionPlan));
+        assertTrue(OverviewFormatting.needsOperator(epicWithAttention));
+    }
 }

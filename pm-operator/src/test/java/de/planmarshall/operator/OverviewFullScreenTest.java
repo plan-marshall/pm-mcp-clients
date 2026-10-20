@@ -668,4 +668,159 @@ class OverviewFullScreenTest {
             assertTrue(outText.contains("Decision requested: approve PR"), outText);
         }
     }
+
+    @Test
+    @DisplayName("reports and system views can be opened and popped back")
+    void shouldOpenReportsAndSystemAndReturn() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
+                                new OverviewStateStore(context.stateDirectory()),
+                                new ConsoleNoticeBuffer());
+
+            var out = new StringWriter();
+            var thread = new Thread(() -> {
+                try {
+                    app.run(new PrintWriter(out));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-clients")));
+
+            // Press 'R' for reports
+            virtual.type("R");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("Reports")));
+
+            // Press Esc to return
+            virtual.type("\u001b");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-clients")));
+
+            // Press 'S' for system
+            virtual.type("S");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("System")));
+
+            // Press Esc to return
+            virtual.type("\u001b");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-clients")));
+
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("help toggle, plan drill down, and Ctrl-L refresh work across views")
+    void shouldToggleHelpDrillDownAndRefresh() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
+                                new OverviewStateStore(context.stateDirectory()),
+                                new ConsoleNoticeBuffer());
+
+            var out = new StringWriter();
+            var thread = new Thread(() -> {
+                try {
+                    app.run(new PrintWriter(out));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-clients")));
+
+            // Enter pm-mcp-clients
+            virtual.type("\r");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("by plan")));
+
+            // Toggle help with '?'
+            virtual.type("?");
+            delay(50L);
+
+            // Hide help with '?'
+            virtual.type("?");
+            delay(50L);
+
+            // Drill down into first plan with Enter
+            virtual.type("\r");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("pln-console-history")));
+
+            // Return with Esc
+            virtual.type("\u001b");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("by plan")));
+
+            // Open ended work with 'E'
+            virtual.type("E");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("Ended work") || l.contains("ended")));
+
+            // Trigger refresh in ended view with Ctrl-L
+            virtual.type("\u000c");
+            delay(50L);
+
+            // Return to project view
+            virtual.type("\u001b");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("by plan")));
+
+            // Trigger refresh in project view with Ctrl-L
+            virtual.type("\u000c");
+            delay(50L);
+
+            // Return to projects overview
+            virtual.type("\u001b");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-clients")));
+
+            // Trigger refresh in projects view with Ctrl-L
+            virtual.type("\u000c");
+            delay(50L);
+
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("open ended work directly from projects overview and navigate with vim keys")
+    void shouldOpenEndedFromOverviewAndUseVimKeys() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
+                                new OverviewStateStore(context.stateDirectory()),
+                                new ConsoleNoticeBuffer());
+
+            var out = new StringWriter();
+            var thread = new Thread(() -> {
+                try {
+                    app.run(new PrintWriter(out));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-clients")));
+
+            // Navigate down to second project with 'j'
+            virtual.type("j");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("▶") && l.contains("plan-marshall")));
+
+            // Navigate back up to first project with 'k'
+            virtual.type("k");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("▶") && l.contains("pm-mcp-clients")));
+
+            // Open ended work directly from overview with 'E'
+            virtual.type("E");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("Relay drops events on reconnect")));
+
+            // Return with Esc
+            virtual.type("\u001b");
+            await(() -> virtual.screen().lines().stream().noneMatch(l -> l.contains("Relay drops events on reconnect")));
+            delay(100L);
+
+            virtual.type("q");
+            join(thread);
+        }
+    }
 }
