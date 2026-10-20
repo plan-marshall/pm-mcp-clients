@@ -10,15 +10,52 @@
     type LeafTask,
     type TaskActivity,
     type ProcessTokens,
+    type ProcessEndedInfo,
+    type TokenBreakdownItem,
   } from '../api/client';
-  import { runtimeStore, openEpicView, navigateTo } from '../stores/runtime';
-  import { formatSplit, formatDurationSeconds } from '../utils/tokenFormat';
+  import {
+    runtimeStore,
+    openEpicView,
+    openProjectInExplorer,
+    openCompletionReport,
+    goBack,
+    navigateTo,
+  } from '../stores/runtime';
+  import { formatSplit, formatTokens, formatDurationSeconds } from '../utils/tokenFormat';
   import { stripControlSequences } from '../utils/outputSafety';
 
   let planId = $derived($runtimeStore.selectedPlanId || '');
   let plan = $state<ProcessTree | null>(null);
   let isLoading = $state(true);
   let errorMessage = $state('');
+  let showTokenBreakdown = $state(false);
+  let isLoadingBreakdown = $state(false);
+  let reportPhaseBreakdown = $state<TokenBreakdownItem[] | null>(null);
+  let reportRoleBreakdown = $state<TokenBreakdownItem[] | null>(null);
+
+  /**
+   * How the plan ended: the process resource's own record, or what Ended Work handed the view.
+   */
+  let ended: ProcessEndedInfo | null = $derived(
+    plan?.ended ??
+      ($runtimeStore.selectedPlanEnded?.plan_id === plan?.plan_id
+        ? $runtimeStore.selectedPlanEnded
+        : null),
+  );
+
+  let tokenBreakdown: {
+    byPhase: TokenBreakdownItem[];
+    byRole: TokenBreakdownItem[];
+  } = $derived({
+    byPhase:
+      (plan?.tokens_so_far?.by_phase?.length ? plan.tokens_so_far.by_phase : null) ??
+      reportPhaseBreakdown ??
+      [],
+    byRole:
+      (plan?.tokens_so_far?.by_role?.length ? plan.tokens_so_far.by_role : null) ??
+      reportRoleBreakdown ??
+      [],
+  });
 
   let selectedTaskId = $state<string | null>($runtimeStore.selectedTaskId || null);
   let taskActivity = $state<TaskActivity | null>(null);
@@ -231,36 +268,123 @@
     return node.state;
   }
 
+  function formatCoverage(tokens: ProcessTokens): string {
+    return $t('common.tokens.coverage', {
+      unmeasured: Math.max(0, tokens.tasks_total - tokens.tasks_measured),
+      total: tokens.tasks_total,
+      reason: 'none',
+    });
+  }
+
   function formatTokensLine(tokens?: ProcessTokens | null, loc = 'en'): string {
     if (!tokens || tokens.none_yet) {
       return $t('plan.view.tokens_none');
     }
     if (tokens.not_measured) {
-      const unmeasured = tokens.tasks_total - tokens.tasks_measured;
-      return `not measured · ${unmeasured} of ${tokens.tasks_total} tasks not measured`;
+      return `${$t('common.tokens.not_measured')} · ${formatCoverage(tokens)}`;
     }
     const split = formatSplit(tokens.total, tokens.input, tokens.output, tokens.floor, loc);
     if (tokens.floor && tokens.tasks_total > tokens.tasks_measured) {
-      const unmeasured = tokens.tasks_total - tokens.tasks_measured;
-      return `${split} · ${unmeasured} of ${tokens.tasks_total} tasks not measured`;
+      return `${split} · ${formatCoverage(tokens)}`;
     }
     return split;
   }
 
-  function goBackToOverview() {
-    navigateTo('overview');
+  /**
+   * Goes back to the view the plan was opened from.
+   *
+   * The caller's navigation stack names that view; a plan opened by a deep link or a reload has
+   * none, and falls back to Running Work.
+   */
+  function goBackToCaller() {
+    if (!goBack()) {
+      navigateTo('overview');
+    }
   }
 
   function openEpic(epicId: string) {
     openEpicView(epicId);
   }
 
+  function openProject(projectId: string) {
+    openProjectInExplorer(projectId);
+  }
+
   function openReport(pId: string) {
-    runtimeStore.update((s) => ({
-      ...s,
-      currentRoute: 'reports',
-      selectedReportDetailPlanId: pId,
-    }));
+    openCompletionReport(pId);
+  }
+
+  /**
+   * Opens or closes the one-step token breakdown.
+   *
+   * The process resource may carry the breakdown itself. When it does not, the completion
+   * resource is the second source (its token usage record holds the same figure by phase and by
+   * role); a plan that has not ended yet reports none, and the disclosure says so.
+   */
+  async function toggleTokenBreakdown() {
+    showTokenBreakdown = !showTokenBreakdown;
+    if (
+      !showTokenBreakdown ||
+      tokenBreakdown.byPhase.length > 0 ||
+      tokenBreakdown.byRole.length > 0
+    ) {
+      return;
+    }
+    // A running plan has no completion report to read the breakdown from; the disclosure says
+    // the figure is not reported yet rather than asking for a report that does not exist.
+    if (!ended) {
+      return;
+    }
+    isLoadingBreakdown = true;
+    try {
+      const report = await apiClient.getPlanCompletion(planId);
+      reportPhaseBreakdown = report.token_usage?.by_phase ?? [];
+      reportRoleBreakdown = report.token_usage?.by_role ?? [];
+    } catch {
+      reportPhaseBreakdown = [];
+      reportRoleBreakdown = [];
+    } finally {
+      isLoadingBreakdown = false;
+    }
+  }
+
+  function formatBreakdownValue(value?: number | null): string {
+    return formatTokens(value ?? 0, false, $currentLocale);
+  }
+
+  /**
+   * Formats the end time the ended plan carries.
+   *
+   * @param iso the runtime's ISO timestamp
+   * @returns the timestamp in the operator's locale, or the raw value when it is not a date
+   */
+  function formatEndedAt(iso: string): string {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString($currentLocale);
+  }
+
+  /**
+   * The cached tokens of a breakdown row: cache reads and cache writes, as the completion
+   * report counts them.
+   *
+   * @param item one row of the runtime's breakdown
+   * @returns the row's cached tokens, or `null` when the row reports no components
+   */
+  function cachedOf(item: TokenBreakdownItem): number | null {
+    if (!item.components) {
+      return null;
+    }
+    return (item.components.cache_read ?? 0) + (item.components.cache_write ?? 0);
+  }
+
+  /**
+   * Formats one breakdown cell, naming an unreported component rather than showing a zero.
+   *
+   * @param value the token count, or `null` when the runtime did not report it
+   * @returns the catalogue-formatted count, or a dash
+   */
+  function formatComponent(value: number | null): string {
+    return value === null ? '—' : formatBreakdownValue(value);
   }
 
   function selectTask(taskId: string) {
@@ -291,7 +415,7 @@
         >
           <button
             class="breadcrumb-link"
-            onclick={goBackToOverview}
+            onclick={() => openProject(plan!.project.project_id)}
             data-testid="breadcrumb-project"
           >
             {plan.project?.display_name || plan.project?.project_id || 'project'}
@@ -334,7 +458,7 @@
           >
             {$t('report.action.details')}
           </button>
-          <Button variant="ghost" onclick={goBackToOverview} data-testid="back-btn">
+          <Button variant="ghost" onclick={goBackToCaller} data-testid="back-btn">
             {$t('common.actions.back')}
           </Button>
         </div>
@@ -354,11 +478,128 @@
         </div>
       </div>
 
+      <!-- An Ended Plan -->
+      {#if ended}
+        <div class="ended-banner" data-testid="plan-ended">
+          <div class="ended-banner__text">
+            <span class="ended-outcome">
+              {#if ended.outcome}
+                {$t('plan.view.ended', {
+                  outcome: $t('overview.ended.outcome', { outcome: ended.outcome }),
+                })}
+              {:else}
+                {$t('plan.view.ended_none')}
+              {/if}
+            </span>
+            {#if ended.ended_at}
+              <span class="ended-time text-muted">
+                {$t('overview.ended.time', { time: formatEndedAt(ended.ended_at) })}
+              </span>
+            {/if}
+            {#if ended.reason}
+              <span class="ended-reason text-muted">
+                {$t('overview.ended.reason', { reason: ended.reason })}
+              </span>
+            {/if}
+          </div>
+          <button
+            class="report-link-btn"
+            onclick={() => openReport(plan!.plan_id)}
+            data-testid="ended-completion-report"
+          >
+            {$t('report.completion.open')}
+          </button>
+        </div>
+      {/if}
+
       <!-- Tokens So Far -->
       <div class="plan-tokens mono" data-testid="plan-tokens">
         <span class="tokens-label">{$t('plan.view.tokens')}</span>
         <span class="tokens-value">{formatTokensLine(plan.tokens_so_far, $currentLocale)}</span>
+        {#if plan.tokens_so_far && !plan.tokens_so_far.none_yet}
+          <button
+            class="tokens-toggle"
+            aria-expanded={showTokenBreakdown}
+            aria-controls="plan-token-breakdown"
+            onclick={toggleTokenBreakdown}
+            data-testid="tokens-toggle"
+          >
+            {showTokenBreakdown
+              ? $t('plan.view.tokens_detail_hide')
+              : $t('plan.view.tokens_detail')}
+          </button>
+        {/if}
       </div>
+
+      {#if showTokenBreakdown && plan.tokens_so_far}
+        <div class="token-breakdown" id="plan-token-breakdown" data-testid="token-breakdown">
+          {#if isLoadingBreakdown}
+            <div class="token-breakdown__empty">
+              <Spinner size="1rem" label={$t('plan.view.tokens_detail')} />
+            </div>
+          {:else if tokenBreakdown.byPhase.length === 0 && tokenBreakdown.byRole.length === 0}
+            <p class="token-breakdown__empty text-muted">
+              {$t('plan.view.tokens_detail_waiting')}
+            </p>
+          {:else}
+            {#if tokenBreakdown.byPhase.length > 0}
+              <section class="token-breakdown__group" data-testid="token-breakdown-phase">
+                <h3 class="token-breakdown__title">{$t('report.completion.by_phase')}</h3>
+                <table class="token-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{$t('report.completion.by_phase')}</th>
+                      <th scope="col">{$t('plan.tokens.col.input')}</th>
+                      <th scope="col">{$t('plan.tokens.col.cached')}</th>
+                      <th scope="col">{$t('plan.tokens.col.output')}</th>
+                      <th scope="col">{$t('plan.tokens.col.total')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each tokenBreakdown.byPhase as item (item.name)}
+                      <tr data-testid="token-phase-{item.name}">
+                        <th scope="row" class="mono">{item.name}</th>
+                        <td class="mono">{formatBreakdownValue(item.input)}</td>
+                        <td class="mono">{formatComponent(cachedOf(item))}</td>
+                        <td class="mono">{formatBreakdownValue(item.output)}</td>
+                        <td class="mono">{formatBreakdownValue(item.total)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </section>
+            {/if}
+
+            {#if tokenBreakdown.byRole.length > 0}
+              <section class="token-breakdown__group" data-testid="token-breakdown-role">
+                <h3 class="token-breakdown__title">{$t('report.completion.by_role')}</h3>
+                <table class="token-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{$t('report.completion.by_role')}</th>
+                      <th scope="col">{$t('plan.tokens.col.input')}</th>
+                      <th scope="col">{$t('plan.tokens.col.cached')}</th>
+                      <th scope="col">{$t('plan.tokens.col.output')}</th>
+                      <th scope="col">{$t('plan.tokens.col.total')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each tokenBreakdown.byRole as item (item.name)}
+                      <tr data-testid="token-role-{item.name}">
+                        <th scope="row" class="mono">{item.name}</th>
+                        <td class="mono">{formatBreakdownValue(item.input)}</td>
+                        <td class="mono">{formatComponent(cachedOf(item))}</td>
+                        <td class="mono">{formatBreakdownValue(item.output)}</td>
+                        <td class="mono">{formatBreakdownValue(item.total)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </section>
+            {/if}
+          {/if}
+        </div>
+      {/if}
     </header>
 
     <!-- Two-Panel Main Layout -->
@@ -741,6 +982,95 @@
   }
 
   .tokens-value {
+    font-weight: 500;
+  }
+
+  .tokens-toggle {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-size: var(--text-xs);
+    font-family: inherit;
+    text-decoration: underline;
+  }
+
+  .tokens-toggle:hover {
+    color: var(--color-primary-hover);
+  }
+
+  .ended-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border-subtle);
+    border-left: 3px solid var(--color-text-muted);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
+    font-size: var(--text-sm);
+  }
+
+  .ended-banner__text {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .ended-outcome {
+    font-weight: 600;
+  }
+
+  .token-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: var(--space-3);
+  }
+
+  .token-breakdown__group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    overflow-x: auto;
+  }
+
+  .token-breakdown__title {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .token-breakdown__empty {
+    margin: 0;
+    font-size: var(--text-xs);
+  }
+
+  .token-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--text-xs);
+  }
+
+  .token-table th,
+  .token-table td {
+    padding: var(--space-1) var(--space-2);
+    text-align: right;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+
+  .token-table th:first-child,
+  .token-table td:first-child {
+    text-align: left;
+  }
+
+  .token-table thead th {
+    color: var(--color-text-muted);
     font-weight: 500;
   }
 

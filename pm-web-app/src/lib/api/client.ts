@@ -287,6 +287,17 @@ export interface ProcessTokens {
   tasks_measured: number;
   none_yet: boolean;
   not_measured: boolean;
+  /** The same figure by phase, when the runtime reports the breakdown. */
+  by_phase?: TokenBreakdownItem[] | null;
+  /** The same figure by role, when the runtime reports the breakdown. */
+  by_role?: TokenBreakdownItem[] | null;
+}
+
+/** How an ended plan ended, when the process resource carries it. */
+export interface ProcessEndedInfo {
+  outcome?: string | null;
+  reason?: string | null;
+  ended_at?: string | null;
 }
 
 export interface OffTrackInfo {
@@ -358,6 +369,8 @@ export interface ProcessTree {
   pull_request_number?: number | null;
   pull_request_url?: string | null;
   duration_seconds: number;
+  /** How the plan ended, when the process resource carries it. */
+  ended?: ProcessEndedInfo | null;
 }
 
 export interface ActivityEntry {

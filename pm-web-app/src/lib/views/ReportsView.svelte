@@ -4,7 +4,7 @@
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type ReportItem, type ReportsPage } from '../api/client';
-  import { runtimeStore, refreshReportsCount } from '../stores/runtime';
+  import { runtimeStore, refreshReportsCount, syncUrl } from '../stores/runtime';
   import CompletionReportView from './CompletionReportView.svelte';
 
   let items = $state<ReportItem[]>([]);
@@ -16,6 +16,7 @@
   let errorMessage = $state('');
 
   let activeDetailPlanId = $state<string | null>(null);
+  let syncedRouteReportPlan: string | null | undefined;
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -56,8 +57,44 @@
     return Object.values(projectMap);
   });
 
+  /**
+   * The plan whose completion report the route opened, from `/reports?plan={id}` or the store a
+   * plan view set when it led here.
+   *
+   * @returns the plan id, or `null` for the plain list
+   */
+  function requestedReportPlan(): string | null {
+    if (typeof window !== 'undefined') {
+      const fromQuery = new URLSearchParams(window.location.search).get('plan');
+      if (fromQuery) return fromQuery;
+    }
+    return $runtimeStore.selectedReportDetailPlanId ?? null;
+  }
+
+  /** Leaves the detail and returns to the list, clearing the plan from the address bar. */
+  function closeDetail(): void {
+    activeDetailPlanId = null;
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
+    syncUrl('/reports', true);
+  }
+
+  // The reports route stays the same while its detail changes (a header visit to Reports, the
+  // browser's back between two reports). Follow the store so the view does not keep a plan the
+  // address no longer names.
+  $effect(() => {
+    if ($runtimeStore.currentRoute !== 'reports') return;
+    const routePlan = $runtimeStore.selectedReportDetailPlanId ?? null;
+    if (routePlan === syncedRouteReportPlan) return;
+    syncedRouteReportPlan = routePlan;
+    activeDetailPlanId = routePlan;
+  });
+
   onMount(async () => {
     isMounted = true;
+    const initialPlan = requestedReportPlan();
+    activeDetailPlanId = initialPlan;
+    syncedRouteReportPlan = initialPlan;
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: initialPlan }));
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
@@ -153,6 +190,18 @@
     }
   }
 
+  /**
+   * Opens a report's detail and records the plan on the route, so a plain visit to Reports
+   * closes it the same way it closes a detail reached by its query.
+   *
+   * @param planId the plan whose completion report to show
+   */
+  function showDetail(planId: string): void {
+    activeDetailPlanId = planId;
+    syncedRouteReportPlan = planId;
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
+  }
+
   async function openDetail(item: ReportItem) {
     // Mark report read first as per specification
     void markRead(item);
@@ -163,19 +212,19 @@
     // Check if detail links to a plan completion report
     const match = /plans\/([^/]+)\/completion/.exec(detailLink);
     if (match?.[1]) {
-      activeDetailPlanId = match[1];
+      showDetail(match[1]);
       return;
     }
 
     const planReportMatch = /plan report\s+([^\s]+)/.exec(detailLink);
     if (planReportMatch?.[1]) {
-      activeDetailPlanId = planReportMatch[1];
+      showDetail(planReportMatch[1]);
       return;
     }
 
     // If it is another plan reference
     if (item.from?.plan) {
-      activeDetailPlanId = item.from.plan;
+      showDetail(item.from.plan);
       return;
     }
   }
@@ -196,12 +245,9 @@
 
 <div class="reports-view">
   {#if activeDetailPlanId}
-    <CompletionReportView
-      planId={activeDetailPlanId}
-      onClose={() => {
-        activeDetailPlanId = null;
-      }}
-    />
+    {#key activeDetailPlanId}
+      <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+    {/key}
   {:else}
     <div class="reports-container">
       <!-- Header -->

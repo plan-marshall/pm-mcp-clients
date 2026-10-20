@@ -76,7 +76,7 @@ class PlanViewCatalogueTest {
     @Test
     @DisplayName("the plan-view scenario's process states are the closed list of the contract")
     void scenarioStatesAreClosed() throws Exception {
-        var json = resource("/scenarios/plan-view.json");
+        var json = resource("/scenarios/running-work.json");
         var root = JsonTree.asObject(JsonTree.parse(json));
         assertNotNull(root);
         var routes = JsonTree.asObject(root.get("routes"));
