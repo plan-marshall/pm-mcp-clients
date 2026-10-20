@@ -71,7 +71,7 @@ This plan is the **Wave 1 Web Foundation** for all subsequent `web-*` remediatio
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-foundation` on branch `feat/web-foundation-routing-and-catalogue` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-foundation` on branch `feat/web-foundation-routing-and-catalogue` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-documenter` & `pm-documents:ref-asciidoc` for completing `doc/design/web-app/README.adoc`.
   - `persona-implementer` & `pm-dev-frontend-javascript` for URL routing, history stack, and catalogue loader cleanup.
