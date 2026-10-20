@@ -158,6 +158,14 @@ public final class TuiViewStack {
         return frames.size();
     }
 
+    /**
+     * @param index the zero-based index from the root
+     * @return the level at that index, or {@code null}
+     */
+    public @Nullable TuiLevel levelAt(int index) {
+        return index >= 0 && index < frames.size() ? frames.get(index).level : null;
+    }
+
     /** @return {@code true} while the stack is empty */
     public boolean isEmpty() {
         return frames.isEmpty();
@@ -246,6 +254,41 @@ public final class TuiViewStack {
      */
     public void page(int direction) {
         move(direction * PAGE);
+    }
+
+    /**
+     * Selects the visible row with the given id, if it is visible.
+     *
+     * @param id the row id to select, or {@code null} to leave the selection unchanged
+     * @return {@code true} when the row was found and selected
+     */
+    public boolean select(@Nullable String id) {
+        if (frames.isEmpty() || id == null) {
+            return false;
+        }
+        var frame = current();
+        if (frame.visible.stream().noneMatch(row -> row.id().equals(id))) {
+            return false;
+        }
+        frame.selectedId = id;
+        return true;
+    }
+
+    /**
+     * @return the id of the last visible row, or {@code null} when no row is visible
+     */
+    public @Nullable String lastVisibleId() {
+        if (frames.isEmpty() || current().visible.isEmpty()) {
+            return null;
+        }
+        return current().visible.getLast().id();
+    }
+
+    /**
+     * @return the number of visible rows of the current level
+     */
+    public int visibleRowCount() {
+        return frames.isEmpty() ? 0 : current().visible.size();
     }
 
     /**

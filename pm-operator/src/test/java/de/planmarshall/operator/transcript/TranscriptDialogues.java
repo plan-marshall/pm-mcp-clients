@@ -88,6 +88,27 @@ final class TranscriptDialogues {
     }
 
     /**
+     * @return {@code plan fix-relay --all} against the mock runtime's plan-view scenario
+     * @throws Exception if the runtime or the verb fails
+     */
+    static Dialogue planView() throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.PLAN_VIEW).build());
+             var driver = TerminalTestDriver.create()) {
+            MockMachine.recordLiveRuntime(runtime);
+            driver.project(environment(runtime), runtime.base().getParent());
+            driver.endOfInput();
+
+            var exitCode = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(),
+                                "plan", "fix-relay", "--all");
+            if (exitCode != 0) {
+                throw new IllegalStateException("plan fix-relay exited with " + exitCode);
+            }
+            return new Dialogue("plan-view", driver.render(), runtime.base());
+        }
+    }
+
+    /**
      * @return the console with {@code status} and {@code exit} typed at its prompt
      * @throws Exception if the runtime or the console fails
      */

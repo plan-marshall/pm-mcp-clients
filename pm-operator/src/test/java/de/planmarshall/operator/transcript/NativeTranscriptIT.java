@@ -67,6 +67,22 @@ class NativeTranscriptIT {
     }
 
     @Test
+    @DisplayName("plan fix-relay matches the recorded transcript on the native binary")
+    void planViewMatchesRecordedTranscript() throws Exception {
+        Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.PLAN_VIEW).build())) {
+            MockMachine.recordLiveRuntime(runtime);
+
+            var rendered = PseudoTerminal.run(binary.with("plan", "fix-relay", "--all"),
+                                environment(runtime), Path.of("").toAbsolutePath());
+
+            TranscriptAssert.assertMatches("plan-view", rendered,
+                                new TranscriptNormalizer().replacing(runtime.base(), "<machine-root>"));
+        }
+    }
+
+    @Test
     @DisplayName("web pair matches the recorded transcript on the native binary")
     void webPairMatchesRecordedTranscript() throws Exception {
         Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");

@@ -1,0 +1,15 @@
+pm-mcp-clients › relay-hardening › fix-relay
+fix-relay · execute · running · <duration> · pull request #214 https://github.com/plan-marshall/pm-mcp-clients/pull/214
+  in pm-mcp-clients · epic relay-hardening      status --project pm-mcp-clients · epic relay-hardening
+  tokens so far   ≥ 412 k (380 k in · 32 k out) plan fix-relay --tokens
+  ✓ done      phase init                     <duration>
+  ✓ done      phase refine                   <duration>
+  ✓ done      phase outline                  <duration>
+  ✓ done      phase plan                     <duration>
+  ▶ running   phase execute                  <duration>
+    ▶ running   execute.envelope               <duration> · tasks: 2 of 3 done
+      ✓ done      TASK-001 (implement)           <duration>
+      ✓ done      TASK-002 (module-tester)       <duration>
+      ▶ running   TASK-003 (implement)           <duration> · off-track: repeating
+    ○ planned   sub-workflow remediation.ci-failure
+  ○ planned   phase finalize

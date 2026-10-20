@@ -228,6 +228,10 @@ class OverviewFullScreenAppTest {
         assertTrue(OverviewFullScreenApp.isStructuralChange("", "scope.defined"));
         assertTrue(OverviewFullScreenApp.isStructuralChange("", "hold.released"));
         assertTrue(OverviewFullScreenApp.isStructuralChange("", "condition.unmet"));
+        assertTrue(OverviewFullScreenApp.isStructuralChange("", "state.entered"));
+        assertTrue(OverviewFullScreenApp.isStructuralChange("", "state.left"));
+        assertTrue(OverviewFullScreenApp.isStructuralChange("", "instance.changed"));
+        assertTrue(OverviewFullScreenApp.isStructuralChange("", "needs_operator.changed"));
         assertTrue(OverviewFullScreenApp.isStructuralChange("", "reset"));
 
         // Non-structural

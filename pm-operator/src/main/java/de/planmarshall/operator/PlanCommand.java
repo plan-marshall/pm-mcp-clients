@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Clock;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.HoldResolutionResult;
@@ -42,6 +44,9 @@ import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.tui.TuiLayout;
+import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.ITypeConverter;
@@ -114,6 +119,10 @@ public final class PlanCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
+        var fullScreen = runFullScreen(out);
+        if (fullScreen != null) {
+            return fullScreen;
+        }
         var runtime = context.runtime(true);
 
         if (planId != null && !planId.isBlank()) {
@@ -189,6 +198,43 @@ public final class PlanCommand implements Callable<Integer> {
             return 0;
         }
         throw new OperatorRefusedException("plan list", response);
+    }
+
+    /**
+     * Opens the full-screen plan view when the verb is run interactively for one plan and without
+     * a scrollback-only flag ({@code --all}, {@code --depth}, {@code --activity}, {@code --tokens},
+     * {@code --components}, {@code --watch}).
+     *
+     * @param out the writer of the console
+     * @return {@code 0} when the view was left normally, or {@code null} to use the scrollback
+     * @throws IOException when the terminal cannot be opened
+     */
+    private @Nullable Integer runFullScreen(PrintWriter out) throws IOException {
+        if (planId == null || planId.isBlank() || all || depth != null || activity != null
+                            || tokens || components || watch || !context.isInteractiveTerminal()) {
+            return null;
+        }
+        Terminal terminal = null;
+        try {
+            terminal = context.createTerminal();
+        } catch (IOException _) {
+            return null;
+        }
+        try {
+            if (!TuiScreenDriver.canOpenFullScreen(
+                                context, terminal, TuiLayout.MIN_COLUMNS)) {
+                return null;
+            }
+            var app = new OverviewFullScreenApp(
+                                context, terminal,
+                                OverviewFullScreenApp.InitialSelection.plan(planId),
+                                Clock.systemUTC(),
+                                new OverviewStateStore(context.stateDirectory()),
+                                context.noticeBuffer());
+            return app.run(out) == TuiScreenDriver.Result.LEFT ? 0 : null;
+        } finally {
+            terminal.close();
+        }
     }
 
     private void printTaskActivity(PrintWriter out, String planId, TaskActivity act) {

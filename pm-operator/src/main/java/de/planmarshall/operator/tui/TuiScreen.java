@@ -25,9 +25,11 @@ import org.jspecify.annotations.Nullable;
  * @param help          whether the help overlay is shown
  * @param connected     whether the event stream is open
  * @param reportsCount  the number of unread reports
+ * @param footerText    the footer to draw instead of the one the key registry generates, or
+ *                      {@code null} for the registry's footer
  */
 public record TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
-String filter, boolean help, boolean connected, int reportsCount) {
+String filter, boolean help, boolean connected, int reportsCount, @Nullable String footerText) {
 
     /**
      * @param breadcrumb    the header's left side
@@ -38,6 +40,22 @@ String filter, boolean help, boolean connected, int reportsCount) {
      * @param help          whether the help overlay is shown
      * @param connected     whether the event stream is open
      * @param reportsCount  the number of unread reports
+     */
+    public TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
+                        String filter, boolean help, boolean connected, int reportsCount) {
+        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, null);
+    }
+
+    /**
+     * @param breadcrumb    the header's left side
+     * @param kind          the kind of level
+     * @param rows          the visible rows
+     * @param selectedIndex the index of the selected row, or {@code -1}
+     * @param filter        the filter text
+     * @param help          whether the help overlay is shown
+     * @param connected     whether the event stream is open
+     * @param reportsCount  the number of unread reports
+     * @param footerText    the footer to draw, or {@code null}
      */
     public TuiScreen {
         Objects.requireNonNull(breadcrumb, "breadcrumb");

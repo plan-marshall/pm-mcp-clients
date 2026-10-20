@@ -161,7 +161,9 @@ public final class TuiLayout {
     }
 
     private AttributedString footer(TuiScreen screen, int width) {
-        var text = TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
+        var text = screen.footerText() != null
+                            ? screen.footerText()
+                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
         return new AttributedString(truncate(text, width));
     }
 
@@ -184,20 +186,22 @@ public final class TuiLayout {
         var lines = new ArrayList<BodyLine>();
         var selected = screen.selected();
         if (selected != null) {
-            lines.add(new BodyLine(new AttributedString(truncate(INDENT + selected.line(), width)), 0));
+            lines.add(new BodyLine(new AttributedString(pad(INDENT + selected.line(), width)), 0));
             if (selected.details() != null) {
-                lines.add(new BodyLine(new AttributedString(truncate(DETAIL_INDENT + selected.details(), width)), 0));
+                lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + selected.details(), width)), 0));
             }
         }
-        lines.add(new BodyLine(new AttributedString(truncate(
-                            TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount()), width)), 0));
+        var footer = screen.footerText() != null
+                            ? screen.footerText()
+                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
+        lines.add(new BodyLine(new AttributedString(pad(footer, width)), 0));
         return lines;
     }
 
     private List<BodyLine> rowLines(TuiScreen screen, int width, int columns) {
         var lines = new ArrayList<BodyLine>();
         if (!screen.filter().isEmpty()) {
-            lines.add(new BodyLine(new AttributedString(truncate("/ " + screen.filter(), width)), -1));
+            lines.add(new BodyLine(new AttributedString(pad("/ " + screen.filter(), width)), -1));
         }
         var rows = screen.rows();
         for (int index = 0; index < rows.size(); index++) {
@@ -207,10 +211,10 @@ public final class TuiLayout {
             if (selected) {
                 lines.add(new BodyLine(new AttributedString(pad(text, width), AttributedStyle.DEFAULT.inverse()), index));
             } else {
-                lines.add(new BodyLine(new AttributedString(truncate(text, width)), index));
+                lines.add(new BodyLine(new AttributedString(pad(text, width)), index));
             }
             if (columns >= DETAIL_COLUMNS && row.details() != null && !row.details().isBlank()) {
-                lines.add(new BodyLine(new AttributedString(truncate(DETAIL_INDENT + row.details(), width)), index));
+                lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + row.details(), width)), index));
             }
         }
         return lines;
@@ -230,8 +234,9 @@ public final class TuiLayout {
             for (var line : lines) {
                 filled.add(line.text);
             }
+            var blank = new AttributedString(" ".repeat(Math.max(0, width)));
             while (filled.size() < height) {
-                filled.add(AttributedString.EMPTY);
+                filled.add(blank);
             }
             return filled;
         }
@@ -263,21 +268,21 @@ public final class TuiLayout {
         var view = new ArrayList<AttributedString>(height);
         if (indicators) {
             int above = rowsAbove(lines, offset);
-            view.add(above > 0
-                                ? new AttributedString(truncate(indicator("operator.overview.more_above", above), width))
-                                : AttributedString.EMPTY);
+            view.add(new AttributedString(pad(above > 0
+                                ? indicator("operator.overview.more_above", above) : "", width)));
         }
         for (int i = 0; i < inner; i++) {
-            view.add(offset + i < total ? lines.get(offset + i).text : AttributedString.EMPTY);
+            view.add(offset + i < total ? lines.get(offset + i).text
+                                : new AttributedString(" ".repeat(Math.max(0, width))));
         }
+        var blank = new AttributedString(" ".repeat(Math.max(0, width)));
         while (view.size() < (indicators ? height - 1 : height)) {
-            view.add(AttributedString.EMPTY);
+            view.add(blank);
         }
         if (indicators) {
             int below = rowsBelow(lines, offset + inner, total);
-            view.add(below > 0
-                                ? new AttributedString(truncate(indicator("operator.overview.more_below", below), width))
-                                : AttributedString.EMPTY);
+            view.add(new AttributedString(pad(below > 0
+                                ? indicator("operator.overview.more_below", below) : "", width)));
         }
         return view;
     }

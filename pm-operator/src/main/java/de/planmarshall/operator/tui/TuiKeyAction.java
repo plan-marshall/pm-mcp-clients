@@ -30,8 +30,22 @@ public enum TuiKeyAction {
     LAST("last"),
     /** Open the selected row as a level. */
     OPEN("open"),
+    /** Close the selected node, or move to its parent. */
+    CLOSE("close"),
     /** Back one level, or clear the filter or the help overlay. */
     BACK("back"),
+    /** Open every level below the selected node. */
+    EXPAND_ALL("expand_all"),
+    /** Jump to where the plan currently executes. */
+    WHERE("where"),
+    /** Show or hide the nodes not in this plan's lane. */
+    NON_LANE("not_in_plan"),
+    /** Show or hide the token breakdown by phase and by role. */
+    TOKENS("tokens"),
+    /** Jump to the plan's project. */
+    PROJECT("project"),
+    /** Open an ended plan's completion report. */
+    COMPLETION("completion"),
     /** Switch a project's view between by plan and by epic. */
     SWITCH_VIEW("switch_view"),
     /** Open the selected plan's epic. */
