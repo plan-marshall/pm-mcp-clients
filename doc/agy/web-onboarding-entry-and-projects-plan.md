@@ -69,7 +69,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-onboarding-projects` on branch `feat/web-onboarding-entry-and-projects` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-onboarding-projects` on branch `feat/web-onboarding-entry-and-projects` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `pm-dev-frontend-javascript` for `ProjectOnboardingView.svelte` and `ProjectExplorerView.svelte`.
   - `pm-dev-frontend-css` for responsive layout and step bar styling.
