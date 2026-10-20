@@ -19,12 +19,12 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     page,
   }) => {
     // Check arrival banner if present or click Reports button
-    const reportsBtn = page.getByRole('button', { name: /Reports/i });
+    const reportsBtn = page.locator('.app-header').getByRole('button', { name: /Reports/i });
     await expect(reportsBtn).toBeVisible();
     await reportsBtn.click();
 
     await expect(page.locator('.reports-view')).toBeVisible();
-    await expect(page.locator('.reports-title')).toContainText('Reports');
+    await expect(page.locator('.reports-heading')).toContainText('Reports');
 
     // Verify grouped hierarchy
     await expect(page.getByText('pm-mcp-clients')).toBeVisible();
@@ -35,7 +35,10 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
   test('marks a single report read and removes it from view', async ({ page }) => {
     // Navigate to reports view
-    await page.getByRole('button', { name: /Reports/i }).click();
+    await page
+      .locator('.app-header')
+      .getByRole('button', { name: /Reports/i })
+      .click();
     await expect(page.locator('.reports-view')).toBeVisible();
 
     // Look for Ended: no change (rep-0139)
@@ -55,7 +58,10 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
   test('opens completion report from report detail', async ({ page }) => {
     // Navigate to reports view
-    await page.getByRole('button', { name: /Reports/i }).click();
+    await page
+      .locator('.app-header')
+      .getByRole('button', { name: /Reports/i })
+      .click();
     await expect(page.locator('.reports-view')).toBeVisible();
 
     // Click Show the details on fix-relay report
@@ -64,7 +70,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await detailBtn.click();
 
     // Completion report modal / view should be visible
-    await expect(page.locator('.completion-report-view')).toBeVisible();
+    await expect(page.locator('.completion-report')).toBeVisible();
     await expect(page.getByText('the pull request #214 was merged into main')).toBeVisible();
     await expect(page.getByText('cursor write order')).toBeVisible();
 
@@ -81,7 +87,10 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
   });
 
   test('marks all shown reports read and shows empty state', async ({ page }) => {
-    await page.getByRole('button', { name: /Reports/i }).click();
+    await page
+      .locator('.app-header')
+      .getByRole('button', { name: /Reports/i })
+      .click();
     await expect(page.locator('.reports-view')).toBeVisible();
 
     const markAllBtn = page.getByRole('button', { name: /Mark all shown read/i });

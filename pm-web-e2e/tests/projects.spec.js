@@ -27,15 +27,18 @@ test.describe('Projects Explorer Flow (UC-PRJ-1..3)', () => {
     await expect(page.getByTestId('section-being-added')).toBeVisible();
     await expect(page.getByText('~/git/cui-parent')).toBeVisible();
 
-    await expect(page.getByTestId('section-favourites')).toBeVisible();
-    await expect(page.getByTestId('project-card-pm-mcp-clients')).toBeVisible();
-    await expect(page.getByTestId('star-btn-pm-mcp-clients')).toHaveText('★');
+    const favourites = page.getByTestId('section-favourites');
+    await expect(favourites).toBeVisible();
+    await expect(favourites.getByTestId('project-card-pm-mcp-clients')).toBeVisible();
+    await expect(favourites.getByTestId('star-btn-pm-mcp-clients')).toHaveText('★');
 
-    await expect(page.getByTestId('section-recent')).toBeVisible();
-    await expect(page.getByTestId('project-card-plan-marshall')).toBeVisible();
+    const recent = page.getByTestId('section-recent');
+    await expect(recent).toBeVisible();
+    await expect(recent.getByTestId('project-card-plan-marshall')).toBeVisible();
 
-    await expect(page.getByTestId('section-all-projects')).toBeVisible();
-    await expect(page.getByTestId('project-card-API-Sheriff')).toBeVisible();
+    const allProjects = page.getByTestId('section-all-projects');
+    await expect(allProjects).toBeVisible();
+    await expect(allProjects.getByTestId('project-card-API-Sheriff')).toBeVisible();
   });
 
   test('filters projects by query input', async ({ page }) => {
@@ -49,7 +52,7 @@ test.describe('Projects Explorer Flow (UC-PRJ-1..3)', () => {
   });
 
   test('toggles favourite status when star button is clicked', async ({ page }) => {
-    const starBtn = page.getByTestId('star-btn-pm-mcp-clients');
+    const starBtn = page.getByTestId('section-all-projects').getByTestId('star-btn-pm-mcp-clients');
     await expect(starBtn).toBeVisible();
     await starBtn.click();
 
@@ -58,7 +61,9 @@ test.describe('Projects Explorer Flow (UC-PRJ-1..3)', () => {
   });
 
   test('releases a project with modal confirmation', async ({ page }) => {
-    const releaseBtn = page.getByTestId('release-btn-pm-mcp-clients');
+    const releaseBtn = page
+      .getByTestId('section-all-projects')
+      .getByTestId('release-btn-pm-mcp-clients');
     await expect(releaseBtn).toBeVisible();
     await releaseBtn.click();
 

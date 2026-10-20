@@ -1,43 +1,23 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadMessages } from './testMessages';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 /**
- * The catalogue guard: every user-facing text of the onboarding, the entry and the machine
- * settings is loaded from the message catalogue, in English and in German.
+ * The catalogue guard: every user-facing text of the web app is loaded from the message
+ * catalogue, in English and in German.
  *
- * The check reads the view and component sources and asserts that no user-facing literal is
- * written there: a text node with more than a symbol in it, a `title`/`placeholder`/`aria-label`
- * string, or a button label, must come from `$t(...)`.
+ * The check reads every source of the package and asserts that
+ *
+ * 1. no `.svelte` file writes a user-facing literal (a text node, a `title`/`placeholder`/
+ *    `aria-label` string, or a button label) instead of a `$t(...)` look-up,
+ * 2. no `.svelte` or `.ts` file hides a catalogue gap behind a `$t(...) || '...'` fallback,
+ * 3. `src/lib/i18n/index.ts` carries no embedded `fallbackMessages` dictionary, and
+ * 4. every key a source looks up exists in the catalogue.
  */
 
-const SOURCE_DIR = path.resolve(__dirname, '..');
-
-/** The sources this package owns. */
-const SCREEN_SOURCES = [
-  'views/OnboardingView.svelte',
-  'views/PairingView.svelte',
-  'views/MachineSettingsView.svelte',
-  'views/SettingsView.svelte',
-  'views/ListenerOffView.svelte',
-  'components/ConsentBox.svelte',
-  'components/LanguageChoice.svelte',
-  'components/HarnessChoice.svelte',
-  'components/ModelsChoice.svelte',
-  'components/AspectChoice.svelte',
-  'components/PairingQr.svelte',
-  'components/StepBar.svelte',
-  'components/SourceList.svelte',
-  'components/ConfinedFilePicker.svelte',
-  'components/GrantModal.svelte',
-  'components/ChatPanel.svelte',
-  'components/MarkdownPreview.svelte',
-  'views/StartView.svelte',
-  'views/RecipeReadyView.svelte',
-  'views/EpicAdoptView.svelte',
-  'views/DecompositionReviewView.svelte',
-];
+const SOURCE_DIR = path.resolve(__dirname, '../..');
+const I18N_SOURCE = path.resolve(__dirname, 'index.ts');
 
 /**
  * Texts that are not UI copy: they are wire values, ids, or the punctuation of a layout.
@@ -83,8 +63,41 @@ const ALLOWED_LITERALS = new Set([
   'multipart',
 ]);
 
-function readSource(relativePath: string): string {
-  return fs.readFileSync(path.join(SOURCE_DIR, relativePath), 'utf-8');
+/**
+ * @param directory the directory to walk
+ * @returns every file below it, recursively
+ */
+function walk(directory: string): string[] {
+  const found: string[] = [];
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    const full = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      found.push(...walk(full));
+    } else {
+      found.push(full);
+    }
+  }
+  return found;
+}
+
+/** Every source file of the package, with its path relative to the source root. */
+const ALL_SOURCES = walk(SOURCE_DIR).map((file) => ({
+  relative: path.relative(SOURCE_DIR, file),
+  full: file,
+}));
+
+const SVELTE_SOURCES = ALL_SOURCES.filter((file) => file.relative.endsWith('.svelte'));
+
+/** Sources that look up catalogue keys; the tests' own fixtures are left out. */
+const LOOKUP_SOURCES = ALL_SOURCES.filter(
+  (file) =>
+    (file.relative.endsWith('.svelte') || file.relative.endsWith('.ts')) &&
+    !file.relative.endsWith('.test.ts') &&
+    !file.relative.startsWith('test/'),
+);
+
+function readSource(full: string): string {
+  return fs.readFileSync(full, 'utf-8');
 }
 
 /** Strips the script block, so only the markup's own text is inspected. */
@@ -122,6 +135,49 @@ function literalTexts(source: string): string[] {
   }
 
   return found;
+}
+
+/**
+ * Finds every `$t(...)` whose result is defaulted with a string.
+ *
+ * The catalogue is the only source of copy: a fallback hides a missing key, so the guard fails
+ * on the expression instead of letting the view show English where the catalogue has a gap.
+ *
+ * @param source a source file's text
+ * @returns the offsets of the offending `$t(` calls
+ */
+function fallbackOffsets(source: string): number[] {
+  const offsets: number[] = [];
+  let index = source.indexOf('$t(');
+  while (index !== -1) {
+    let depth = 0;
+    let cursor = index + 2;
+    for (; cursor < source.length; cursor++) {
+      if (source[cursor] === '(') depth++;
+      if (source[cursor] === ')') {
+        depth--;
+        if (depth === 0) {
+          cursor++;
+          break;
+        }
+      }
+    }
+    const suffix = source.slice(cursor).match(/^\s*(\|\||\?\?)\s*(['"`])/);
+    if (suffix) {
+      offsets.push(index);
+    }
+    index = source.indexOf('$t(', cursor);
+  }
+  return offsets;
+}
+
+/**
+ * @param source a source file's text
+ * @param offset an offset into it
+ * @returns the 1-based line of that offset
+ */
+function lineOf(source: string, offset: number): number {
+  return source.slice(0, offset).split('\n').length;
 }
 
 describe('the catalogue carries every text of the package', () => {
@@ -174,7 +230,7 @@ describe('the catalogue carries every text of the package', () => {
       'web.settings.credentials.rotate_title',
       'web.settings.credentials.secret',
       'web.settings.devices.loading',
-      'web.settings.devices.other' + 's_title',
+      'web.settings.devices.others_title',
       'web.entry.lan_off.title',
       'web.entry.lan_off.reason',
       'start.plan.title',
@@ -302,17 +358,70 @@ describe('the catalogue carries every text of the package', () => {
       'start.local_changes.add',
       'start.local_changes.not_now',
       'start.local_changes.changed',
+      'report.completion.outcome',
+      'report.completion.reason',
+      'report.completion.ran',
+      'report.completion.tokens',
+      'report.list.title',
+      'report.list.empty',
+      'web.frame.nav.reports',
+      'web.frame.nav.decisions',
+      'decisions.list.title',
+      'decisions.list.empty',
+      'system.view.title',
+      'system.cleanup.title',
+      'system.cleanup.summary.title',
+      'project.explorer.title',
+      'overview.running.title',
+      'plan.view.title',
+      'epic.view.title',
+      'common.breadcrumb',
+      'web.common.retry',
     ];
     for (const key of required) {
       expect(en[key], `Key '${key}' must exist in the catalogue`).toBeTruthy();
     }
   });
 
-  it('writes no user-facing literal in the screens', () => {
+  it('writes no user-facing literal in any screen', () => {
     const offenders: string[] = [];
-    for (const source of SCREEN_SOURCES) {
-      for (const literal of literalTexts(markupOf(readSource(source)))) {
-        offenders.push(`${source}: ${literal}`);
+    for (const source of SVELTE_SOURCES) {
+      for (const literal of literalTexts(markupOf(readSource(source.full)))) {
+        offenders.push(`${source.relative}: ${literal}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('hides no catalogue gap behind a fallback in any svelte or ts source', () => {
+    const offenders: string[] = [];
+    for (const source of LOOKUP_SOURCES) {
+      const text = readSource(source.full);
+      for (const offset of fallbackOffsets(text)) {
+        offenders.push(`${source.relative}:${lineOf(text, offset)}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps no embedded fallback dictionary in the i18n module', () => {
+    const source = readSource(I18N_SOURCE);
+    expect(source).not.toContain('fallbackMessages');
+  });
+
+  it('looks up only keys the catalogue carries', () => {
+    const en = loadMessages('en');
+    const offenders: string[] = [];
+    for (const source of LOOKUP_SOURCES) {
+      const text = readSource(source.full);
+      for (const match of text.matchAll(/\$t\('([^']+)'/g)) {
+        const key = match[1];
+        // A key that ends in a dot is the prefix of a computed key (`overview.state.${state}`);
+        // its values are checked by the parity test above.
+        if (key.endsWith('.')) continue;
+        if (!(key in en)) {
+          offenders.push(`${source.relative}: ${key}`);
+        }
       }
     }
     expect(offenders).toEqual([]);

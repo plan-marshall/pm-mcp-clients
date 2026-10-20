@@ -15,7 +15,7 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 * *Small parts*: a document stays below 500 lines; one that grows beyond is split into parts.
 * *Traceability*: every document names the use cases it serves (`_Use cases:_` below its title) and the specification sections it relies on.
 * *Both clients, one state*: a state of a workflow is designed for both clients; where one client needs something the other does not, its design says so.
-* *Status*: `DRAFT` while it is being worked out, `AGREED` once the operator agreed to it; the work package of a design records the acceptance in the index of the work packages.
+* *Status*: `DRAFT` while it is being worked out, `AGREED` once the operator agreed to it, `FINAL` once its implementation is complete; the work package of a design records the acceptance in the index of the work packages.
 * *Pictures*: wireframes and mock-ups are SVG files beside the document, named `<subject>-<what>.svg`, embedded with `image::`; a picture always has a text that says what it shows.
 
 [#index]
@@ -30,8 +30,8 @@ The design shows how the use cases (link:../../../plan-marshall-documentation/do
 |The console `pm-operator`: its commands, the levels machine, project and plan, how a state is rendered and answered, pushed questions, a transcript of every state, and its texts in English and German. Work package link:../plans/implemented/cli-design.adoc[`cli-design`].
 
 |link:web-app/README.adoc[Web App]
-|`AGREED`
-|The web app: its principles, its structure and navigation, the entry and pairing pages, the onboarding screens, the machine settings, the harness icons, the process designer; its visual language is still to be worked out. Work package link:../plans/implemented/web-design.adoc[`web-design`].
+|`FINAL`
+|The web app: its principles, its structure and navigation, the entry and pairing pages, the onboarding screens, the machine settings, the harness icons, the process designer, and its visual language (the frame, the grid, the breakpoints, the typography, the semantic colours, states and attention, the light and dark themes, and the routes); the layouts of the reports, the system, and the cleanup view. Work package link:../plans/implemented/web-design.adoc[`web-design`].
 
 |link:web-app/process-designer.adoc[Process Designer]
 |`AGREED`

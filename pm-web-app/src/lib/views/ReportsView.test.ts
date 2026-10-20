@@ -75,7 +75,7 @@ describe('ReportsView component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Reports')).toBeInTheDocument();
-      expect(screen.getByText('3 unread')).toBeInTheDocument();
+      expect(screen.getByText(/3 unread/)).toBeInTheDocument();
     });
 
     // Check project headers

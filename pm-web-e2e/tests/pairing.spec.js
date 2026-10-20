@@ -35,7 +35,7 @@ test.describe('Web Client Pairing Flow', () => {
 
     await pairBtn.click();
 
-    // After pairing against web-pairing scenario, should transition to onboard.mode or workspace
+    // After pairing against web-pairing scenario, should transition to onboard.mode or the start point
     await expect(page.locator('.app-header__title')).toHaveText('plan-marshall');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
   });
