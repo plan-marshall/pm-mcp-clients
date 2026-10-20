@@ -360,9 +360,7 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
     persistCatalogue(locale, area === 'all' ? msgs : merged);
     if (locale === 'en') {
       englishMessages =
-        area === 'all'
-          ? msgs
-          : { ...(englishMessages ?? loadCachedCatalogue('en') ?? {}), ...msgs };
+        area === 'all' ? msgs : { ...(englishMessages ?? loadCachedCatalogue('en')), ...msgs };
       englishLookupAttempted = true;
     }
   } catch {
