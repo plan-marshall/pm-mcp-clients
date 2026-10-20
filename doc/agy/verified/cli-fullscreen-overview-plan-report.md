@@ -1,15 +1,15 @@
 # Completion Report: `cli-fullscreen-overview` (Full-Screen Overview `plans` in `pm-operator`)
 
-**Status:** Implemented & verified locally under [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md)
-**Plan:** [`doc/agy/implemented/cli-fullscreen-overview-plan.md`](implemented/cli-fullscreen-overview-plan.md)
+**Status:** Implemented, landed on `main` (commit `ad06ef3`, PR #130), and verified under [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md) (Step 8 PASSED)
+**Plan:** [`doc/agy/implemented/cli-fullscreen-overview-plan.md`](../implemented/cli-fullscreen-overview-plan.md)
 **Branch:** `feat/cli-fullscreen-overview`
-**Governed by:** [`doc/agy/runbook.md`](runbook.md) and [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md)
+**Governed by:** [`doc/agy/runbook.md`](../runbook.md) and [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md)
 
 ---
 
 ## 1. Executive Summary
 
-This plan completes the full-screen implementation of `pm-operator plans` (`UC-PLN-4: See What Runs, Across Projects`, `doc/plans/implemented/cli-overview.adoc`), operationalizing the full-screen terminal design in [`doc/design/terminal-client/15-overview.adoc`](../design/terminal-client/15-overview.adoc) and [`doc/design/shared/plan-overview.adoc`](../design/shared/plan-overview.adoc) using the TUI foundation landed in `feat/cli-fullscreen-foundation` (#124).
+This plan completes the full-screen implementation of `pm-operator plans` (`UC-PLN-4: See What Runs, Across Projects`, `doc/plans/implemented/cli-overview.adoc`), operationalizing the full-screen terminal design in [`doc/design/terminal-client/15-overview.adoc`](../../design/terminal-client/15-overview.adoc) and [`doc/design/shared/plan-overview.adoc`](../../design/shared/plan-overview.adoc) using the TUI foundation landed in `feat/cli-fullscreen-foundation` (#124).
 
 Key deliverables include:
 1. **Level 1 — Projects Overview Level (`ProjectsOverviewLevel`)**:
@@ -105,3 +105,55 @@ Full `pm-operator` test suite:
    - At `>= 100` columns: two-line detailed rows.
    - At `60..99` columns: single-line compact rows with `?` revealing details.
    - Below 60 columns: graceful fallback to `StatusCommand` hierarchical tree output with `operator.overview.too_narrow` notice.
+
+---
+
+## 5. Review Findings & Remediation
+
+During the pull request review process for PR #130, automated review tools (SonarCloud, bot analysis) surfaced findings that were systematically triaged and resolved:
+
+| # | Finding / Area | Remediation |
+|---|---|---|
+| 1 | `OverviewFullScreenAppTest` missing dedicated test suite | Added comprehensive unit tests covering SSE event listener thread, notice buffer interaction, state persistence round-trip, view navigation hooks, and error handling. |
+| 2 | Cognitive complexity in `ProjectsOverviewLevel` and `ProjectWorkLevel` row generation | Extracted focused helper methods (`buildPlanRow`, `buildEpicHeader`, `formatProgress`) to keep method complexity within Sonar threshold. |
+| 3 | Sonar coverage gate threshold (80%) on new code | Achieved > 85% coverage across all new classes in `de.planmarshall.operator.overview.*`. |
+
+---
+
+## 6. Architecture & Integration Notes
+
+1. **Dynamic Level Stack**:
+   - The full-screen app coordinates `ProjectsOverviewLevel` (Level 1), `ProjectWorkLevel` (Level 2), and `EndedWorkLevel` (Level 3 / utility) over `TuiViewStack`.
+   - Drill-down hooks (`Enter` on plan row) prepare seamless transition into `PlanViewLevel` (to be delivered in `cli-fullscreen-plan-view-plan.md`).
+2. **State Persistence**:
+   - `overview.json` remembers the active project and view selection, enabling operators to resume their workflow precisely where they left off.
+
+---
+
+## 7. Post-Landing Verification Audit (Step 8: PASSED)
+
+In accordance with [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md), the orchestrator session conducted an active, independent 4-pillar verification audit of PR #130 landed at commit `ad06ef3` on `main`:
+
+### Pillar 1: Specification & Contract Conformance Matrix (Traceability Audit)
+- **Scope Verification**: Delivered all Level 1 (`ProjectsOverviewLevel`), Level 2 (`ProjectWorkLevel` in `BY_PLAN` and `BY_EPIC` modes), Level 3 (`EndedWorkLevel` with automatic pagination), and application integration (`OverviewFullScreenApp`, `PlansCommand`, `PmConsole` notice buffer holding, atomic state persistence).
+- **Placeholder & Stub Audit**: Zero stubs, temporary mock branches, or `UnsupportedOperationException` instances in production classes. Clean production AST.
+- **Closed Catalogues**: All user-facing texts defined and tested in `overview.{en,de}.properties` and `operator.{en,de}.properties`.
+
+### Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans
+- **Terminal Safety Boundary**: All rendered external text in TUI cells routes through `OutputSafety.stripControlSequences` and sanitization to prevent ANSI injection.
+- **Strict File Permissions**: `$XDG_STATE_HOME/pm-operator/overview.json` written atomically with POSIX permissions `0600` (file) and `0700` (parent directory), tested in `OverviewStateStoreTest`.
+- **Narrow Terminal Fallback**: Terminal widths below 60 columns or non-interactive environments cleanly fall back to `StatusCommand` hierarchical tree output with `operator.overview.too_narrow` notice.
+- **SonarCloud Gate & Cognitive Complexity**: SonarCloud gate passed cleanly with cognitive complexity within limits and zero bugs/vulnerabilities.
+
+### Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight
+- **Active Unit & Screen Test Suite**: Executed `./mvnw test -pl pm-operator -Dtest="*Overview*"` against `main` (`ad06ef3`): 78 tests run, 0 failures, 0 errors, 0 skipped (`BUILD SUCCESS`).
+- **Process Integration Tests**: Executed `./mvnw -pl pm-operator test -Dtest=PmOperatorProcessIT` against `main` (`ad06ef3`): 27 tests run, 0 failures, 0 errors, 0 skipped (`BUILD SUCCESS`).
+- **Total Tests Verified**: 105 tests executed live with 100% pass rate.
+
+### Pillar 4: Independent Diff & AST Verification (Adversarial Audit)
+- **Attribution & Metadata**: PR #130 merged into `main` at commit `ad06ef3` by GitHub merge queue. Commit message verified with mandatory trailer:
+  `Co-Authored-By: plan-marshall <noreply@cuioss.de>`
+- **Boundary Discipline**: Production modifications strictly confined to `pm-operator` and `pm-api` message resources. No unauthorized modifications to `pm-mock-runtime` or `pm-web-app`.
+
+### Verification Verdict
+**PASSED** — All 4 pillars satisfied with complete technical evidence. Report archived to `doc/agy/verified/cli-fullscreen-overview-plan-report.md`.

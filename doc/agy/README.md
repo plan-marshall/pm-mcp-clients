@@ -45,8 +45,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)
 1. **Foundation (Landed & Verified)**: [`cli-fullscreen-foundation-plan.md`](implemented/cli-fullscreen-foundation-plan.md) ([Report](verified/cli-fullscreen-foundation-plan-report.md) — PR #124, commit `e3ae1c0`)
    *(Terminal screen harness, raw mode safety, resize signal traps, notice-holding)*
-2. **Overview (Active in PR #130)**: `cli-fullscreen-overview-plan.md`
-3. **Plan View**: `cli-fullscreen-plan-view-plan.md`
+2. **Overview (Landed & Verified)**: [`cli-fullscreen-overview-plan.md`](implemented/cli-fullscreen-overview-plan.md) ([Report](verified/cli-fullscreen-overview-plan-report.md) — PR #130, commit `ad06ef3`)
+   *(Full-screen overview across projects, Level 1 Projects level, Level 2 Project detail by-plan & by-epic, Level 3 Ended work with pagination, OSC 8 PR links, live SSE updates, 0600 state persistence)*
+3. **Plan View (Next Active)**: `cli-fullscreen-plan-view-plan.md`
 4. **Projects**: `cli-fullscreen-projects-plan.md`
 5. **Reports & System**: `cli-fullscreen-reports-system-plan.md`
 6. **Actions & Controlling**: `cli-fullscreen-actions-plan.md`
