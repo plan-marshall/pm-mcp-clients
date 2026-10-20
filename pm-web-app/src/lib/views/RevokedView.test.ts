@@ -3,29 +3,32 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import RevokedView from './RevokedView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 
 describe('RevokedView component', () => {
   beforeEach(() => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: false,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp-oliver',
-      machineName: 'mbp-oliver',
-      currentRoute: 'revoked',
-      currentState: null,
-      isRevoked: true,
-      revokedReason: 'device_revoked',
-      revokedInfo: {
-        reason: 'device_revoked',
-        revoked_by: 'the terminal client',
-        revoked_at: 'today at 14:10',
-      },
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: false,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'mbp-oliver',
+        currentRoute: 'revoked',
+        currentState: null,
+        isRevoked: true,
+        revokedReason: 'device_revoked',
+        revokedInfo: {
+          reason: 'device_revoked',
+          revoked_by: 'the terminal client',
+          revoked_at: 'today at 14:10',
+        },
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+      }),
+    );
   });
 
   it('renders revoked title, reason and how to pair back', () => {

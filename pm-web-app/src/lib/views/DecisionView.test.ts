@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type DecisionEnvelope } from '../api/client';
 
 describe('DecisionView component', () => {
@@ -71,33 +72,32 @@ describe('DecisionView component', () => {
   };
 
   beforeEach(() => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp-oliver',
-      machineName: 'mbp-oliver',
-      currentRoute: 'decisions',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-      unreadReportsCount: 0,
-      openDecisionsCount: 2,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'mbp-oliver',
+        currentRoute: 'decisions',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+        unreadReportsCount: 0,
+        openDecisionsCount: 2,
+      }),
+    );
 
     vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([mockDecision, mockWaiver]);
     vi.spyOn(apiClient, 'answerDecision').mockResolvedValue({ status: 'answered' });
     vi.spyOn(apiClient, 'interpretDecision').mockResolvedValue({
-      words: 'Use rebase please',
-      reading: 'Rebase onto main',
-      option: 'rebase',
-      interpretation_type: 'option',
-      confidence: 0.95,
-      understood: true,
+      interpretation_type: 'OPTION',
+      mapped_option_key: 'rebase',
+      read_back_text: 'Rebase onto main',
     });
     vi.spyOn(apiClient, 'withdrawDecision').mockResolvedValue({ status: 'withdrawn' });
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
@@ -233,8 +233,6 @@ describe('DecisionView component', () => {
     const withdrawBtn = screen.getByText(/none fits: let the plan think again/);
     await fireEvent.click(withdrawBtn);
 
-    expect(apiClient.withdrawDecision).toHaveBeenCalledWith('dec-101', {
-      reason: 'none fits',
-    });
+    expect(apiClient.withdrawDecision).toHaveBeenCalledWith('dec-101');
   });
 });

@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
 import ListenerOffView from './ListenerOffView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type PairedDevice } from '../api/client';
 
 /**
@@ -35,24 +36,26 @@ const devices: PairedDevice[] = [
 ];
 
 function arrange(partial: Record<string, unknown> = {}): void {
-  runtimeStore.set({
-    isInitialized: true,
-    isPaired: true,
-    isOnboarded: true,
-    deviceLabel: 'Firefox on mbp-oliver',
-    machineName: 'mbp-oliver',
-    currentRoute: 'settings',
-    currentState: null,
-    isRevoked: false,
-    revokedReason: '',
-    isOffline: false,
-    isListenerClosed: false,
-    completedSteps: 7,
-    activeStep: 8,
-    unreadReportsCount: 0,
-    openDecisionsCount: 0,
-    ...partial,
-  });
+  runtimeStore.set(
+    makeRuntimeState({
+      isInitialized: true,
+      isPaired: true,
+      isOnboarded: true,
+      deviceLabel: 'Firefox on mbp-oliver',
+      machineName: 'mbp-oliver',
+      currentRoute: 'settings',
+      currentState: null,
+      isRevoked: false,
+      revokedReason: '',
+      isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 7,
+      activeStep: 8,
+      unreadReportsCount: 0,
+      openDecisionsCount: 0,
+      ...partial,
+    }),
+  );
 }
 
 describe('Paired devices against the mock runtime scenarios', () => {

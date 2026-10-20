@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
 import { runtimeStore, navigateTo } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient } from '../api/client';
 
 describe('SettingsView component', () => {
@@ -28,21 +29,23 @@ describe('SettingsView component', () => {
     localStorage.setItem('pm_device_secret', 'secret123');
     localStorage.setItem('pm_device_label', 'Firefox on mbp-oliver');
 
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp-oliver',
-      machineName: 'mbp-oliver',
-      currentRoute: 'settings',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'mbp-oliver',
+        currentRoute: 'settings',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+      }),
+    );
 
     vi.spyOn(apiClient, 'getDevices').mockResolvedValue(mockDevices);
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
@@ -176,21 +179,23 @@ describe('SettingsView component', () => {
   });
 
   it('returns to the route the caller came from on Back', async () => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp-oliver',
-      machineName: 'mbp-oliver',
-      currentRoute: 'projects',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'mbp-oliver',
+        currentRoute: 'projects',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+      }),
+    );
     navigateTo('settings');
 
     render(SettingsView);

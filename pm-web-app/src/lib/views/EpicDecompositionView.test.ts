@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import EpicDecompositionView from './EpicDecompositionView.svelte';
 import { apiClient, type EpicDecomposition } from '../api/client';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 
 function cut(overrides: Partial<EpicDecomposition> = {}): EpicDecomposition {
   return {
@@ -55,29 +56,31 @@ function cut(overrides: Partial<EpicDecomposition> = {}): EpicDecomposition {
 describe('EpicDecompositionView', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'test',
-      machineName: 'test-mac',
-      currentRoute: 'decomposition',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      isDraining: false,
-      isStopped: false,
-      activeStep: 1,
-      unreadReportsCount: 0,
-      openDecisionsCount: 0,
-      selectedPlanId: null,
-      selectedEpicId: 'relay-hardening',
-      selectedProjectId: 'pm-mcp-clients',
-      selectedTaskId: null,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'test',
+        machineName: 'test-mac',
+        currentRoute: 'decomposition',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        isDraining: false,
+        isStopped: false,
+        activeStep: 1,
+        unreadReportsCount: 0,
+        openDecisionsCount: 0,
+        selectedPlanId: null,
+        selectedEpicId: 'relay-hardening',
+        selectedProjectId: 'pm-mcp-clients',
+        selectedTaskId: null,
+      }),
+    );
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
   });
 

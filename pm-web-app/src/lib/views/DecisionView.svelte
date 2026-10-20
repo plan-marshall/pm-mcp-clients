@@ -124,7 +124,7 @@
     try {
       await apiClient.answerDecision(id, {
         words: ownWordsTexts[id],
-        option: interp?.option || 'own_words',
+        option: interp?.mapped_option_key || 'own_words',
         note: notes[id],
       });
       decisions = decisions.filter((d) => d.id !== id);
@@ -157,7 +157,7 @@
   async function submitWithdraw(id: string) {
     isSubmitting[id] = true;
     try {
-      await apiClient.withdrawDecision(id, { reason: 'none fits' });
+      await apiClient.withdrawDecision(id);
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
@@ -445,10 +445,7 @@
                               <div class="readback-box">
                                 <p class="readback-text">
                                   {$t('decision.readback.understood', {
-                                    reading:
-                                      interpretations[dec.id]?.reading ||
-                                      interpretations[dec.id]?.words ||
-                                      '',
+                                    reading: interpretations[dec.id]?.read_back_text || '',
                                   })}
                                 </p>
                                 <div class="readback-actions">

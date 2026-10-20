@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import OnboardingView from './OnboardingView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type OnboardingState } from '../api/client';
 
 /**
@@ -23,24 +24,26 @@ function onboardingState(partial: Partial<OnboardingState>): OnboardingState {
 }
 
 function arrange(state: OnboardingState, completedSteps = 0): void {
-  runtimeStore.set({
-    isInitialized: true,
-    isPaired: true,
-    isOnboarded: state.state === 'onboard.completed',
-    deviceLabel: 'Firefox on mbp-oliver',
-    machineName: 'mbp-oliver',
-    currentRoute: 'onboarding',
-    currentState: state,
-    onboarding: state,
-    isRevoked: false,
-    revokedReason: '',
-    isOffline: false,
-    isListenerClosed: false,
-    completedSteps,
-    activeStep: 1,
-    unreadReportsCount: 0,
-    openDecisionsCount: 0,
-  });
+  runtimeStore.set(
+    makeRuntimeState({
+      isInitialized: true,
+      isPaired: true,
+      isOnboarded: state.state === 'onboard.completed',
+      deviceLabel: 'Firefox on mbp-oliver',
+      machineName: 'mbp-oliver',
+      currentRoute: 'onboarding',
+      currentState: state,
+      onboarding: state,
+      isRevoked: false,
+      revokedReason: '',
+      isOffline: false,
+      isListenerClosed: false,
+      completedSteps,
+      activeStep: 1,
+      unreadReportsCount: 0,
+      openDecisionsCount: 0,
+    }),
+  );
   // The view pulls the state on mount; the mock reports the state this case arranges.
   vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(state);
 }

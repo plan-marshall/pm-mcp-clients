@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ProjectExplorerView from './ProjectExplorerView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ProjectExplorer } from '../api/client';
 
 describe('ProjectExplorerView component', () => {
@@ -101,25 +102,27 @@ describe('ProjectExplorerView component', () => {
   beforeEach(() => {
     localStorage.clear();
     window.history.replaceState(null, '', '/projects');
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp',
-      machineName: 'local-machine',
-      currentRoute: 'projects',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      isDraining: false,
-      isStopped: false,
-      activeStep: 1,
-      unreadReportsCount: 0,
-      openDecisionsCount: 0,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp',
+        machineName: 'local-machine',
+        currentRoute: 'projects',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        isDraining: false,
+        isStopped: false,
+        activeStep: 1,
+        unreadReportsCount: 0,
+        openDecisionsCount: 0,
+      }),
+    );
 
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(mockExplorer);
     vi.spyOn(apiClient, 'toggleFavourite').mockResolvedValue();

@@ -77,15 +77,15 @@
           <dt></dt>
           <dd data-testid="hold-recorded">
             {$t('control.hold.integrity.recorded', {
-              size: hold.recorded_size,
-              digest: hold.recorded_digest,
+              size: hold.recorded_size ?? 0,
+              digest: hold.recorded_digest ?? '',
             })}
           </dd>
           <dt></dt>
           <dd data-testid="hold-current">
             {$t('control.hold.integrity.current', {
-              size: hold.current_size,
-              digest: hold.current_digest,
+              size: hold.current_size ?? 0,
+              digest: hold.current_digest ?? '',
             })}
           </dd>
         {/if}
@@ -95,15 +95,15 @@
         <div class="hold-modal__confirm" data-testid="hold-confirm">
           <label>
             {$t('control.hold.cause')}
-            <input
-              type="text"
-              data-testid="hold-reason"
-              bind:value={reason}
-              placeholder=""
-            />
+            <input type="text" data-testid="hold-reason" bind:value={reason} placeholder="" />
           </label>
           <div class="hold-modal__actions">
-            <button type="button" data-testid="hold-confirm-button" on:click={confirmAct} disabled={busy}>
+            <button
+              type="button"
+              data-testid="hold-confirm-button"
+              on:click={confirmAct}
+              disabled={busy}
+            >
               {actLabel(confirming)}
             </button>
             <button type="button" data-testid="hold-cancel-button" on:click={cancelConfirm}>
