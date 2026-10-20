@@ -6,7 +6,7 @@
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
-  import { runtimeStore, navigateTo } from '../stores/runtime';
+  import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
 
   /**
    * The paired devices of the machine (UC-ENT-2): the list, renaming one inline, revoking one,
@@ -212,7 +212,15 @@
       >
         {$t('web.settings.page.title')}
       </Button>
-      <Button variant="secondary" on:click={() => navigateTo('projects')}>
+      <Button
+        variant="secondary"
+        on:click={() => {
+          if (!goBack()) {
+            navigateTo('projects');
+          }
+        }}
+        data-testid="settings-back-button"
+      >
         {$t('web.common.back')}
       </Button>
     </div>

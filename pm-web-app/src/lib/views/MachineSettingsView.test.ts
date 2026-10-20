@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import MachineSettingsView from './MachineSettingsView.svelte';
 import { runtimeStore } from '../stores/runtime';
@@ -123,5 +124,35 @@ describe('MachineSettingsView component', () => {
     expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Current value: copy');
     expect(screen.getByTestId('conflict-apply')).toBeInTheDocument();
     expect(screen.getByTestId('conflict-keep')).toBeInTheDocument();
+  });
+
+  it('opens the onboarding at the aspect whose Change was clicked', async () => {
+    runtimeStore.set({
+      isInitialized: true,
+      isPaired: true,
+      isOnboarded: true,
+      deviceLabel: 'Firefox on mbp-oliver',
+      machineName: 'mbp-oliver',
+      currentRoute: 'machine-settings',
+      currentState: null,
+      isRevoked: false,
+      revokedReason: '',
+      isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 0,
+      activeStep: 1,
+    });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('change-aspect-providers')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('change-aspect-providers'));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('onboarding');
+    expect(state.onboardingStep).toBe(6);
   });
 });

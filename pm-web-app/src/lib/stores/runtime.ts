@@ -73,6 +73,10 @@ export interface RuntimeState {
   startEntryId?: string | null;
   /** Whether the open start is a plan's or an epic's. */
   startKind?: 'plan' | 'epic';
+  /** The project onboarding the project route opens, when it names one. */
+  selectedOnboardingId?: string | null;
+  /** The onboarding step another screen opened the onboarding at, 1-based. */
+  onboardingStep?: number | null;
 }
 
 const initialState: RuntimeState = {
@@ -111,6 +115,8 @@ const initialState: RuntimeState = {
   startProjectId: null,
   startEntryId: null,
   startKind: 'plan',
+  selectedOnboardingId: null,
+  onboardingStep: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -891,4 +897,52 @@ export function openEpicView(epicId: string): void {
 export function openEpicDecomposition(epicId: string, projectId: string): void {
   runtimeStore.update((s) => ({ ...s, selectedProjectId: projectId }));
   pushRoute('decomposition', { epicId });
+}
+
+/**
+ * Opens the project onboarding route, at the run the explorer selected.
+ *
+ * @param onboardingId the being-added run's onboarding id or checkout path; `null` for a new run
+ * @param projectId the project, once the run has reached its enrolment
+ */
+export function openProjectOnboarding(
+  onboardingId?: string | null,
+  projectId?: string | null,
+): void {
+  runtimeStore.update((s) => ({
+    ...s,
+    selectedOnboardingId: onboardingId ?? null,
+    selectedProjectId: projectId ?? null,
+  }));
+  pushRoute('project-onboarding');
+}
+
+/**
+ * Opens the machine onboarding at one aspect, so a `Change` on the machine settings lands on the
+ * step that records it rather than on the first step.
+ *
+ * @param step the aspect's step, 1-based
+ */
+export function openOnboardingStep(step: number): void {
+  runtimeStore.update((s) => ({ ...s, onboardingStep: step }));
+  pushRoute('onboarding');
+  // The step travels in the address bar too, so a reload opens the same aspect.
+  syncUrl(`/onboarding?step=${step}`, true);
+}
+
+/**
+ * The step the address bar or the store asked the onboarding to open at.
+ *
+ * @param maxStep the last step the screen offers
+ * @returns the requested step, or `null` when none was asked for
+ */
+export function requestedOnboardingStep(maxStep: number): number | null {
+  const fromStore = get(runtimeStore).onboardingStep;
+  const fromUrl =
+    typeof window !== 'undefined'
+      ? Number.parseInt(new URLSearchParams(window.location.search).get('step') ?? '', 10)
+      : Number.NaN;
+  const requested = Number.isFinite(fromUrl) ? fromUrl : fromStore;
+  if (typeof requested !== 'number' || !Number.isInteger(requested)) return null;
+  return requested >= 1 && requested <= maxStep ? requested : null;
 }
