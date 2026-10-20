@@ -353,6 +353,17 @@
   }
 
   /**
+   * Formats the end time the ended plan carries.
+   *
+   * @param iso the runtime's ISO timestamp
+   * @returns the timestamp in the operator's locale, or the raw value when it is not a date
+   */
+  function formatEndedAt(iso: string): string {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString($currentLocale);
+  }
+
+  /**
    * The cached tokens of a breakdown row: cache reads and cache writes, as the completion
    * report counts them.
    *
@@ -469,7 +480,7 @@
 
       <!-- An Ended Plan -->
       {#if ended}
-        <div class="ended-banner" role="status" data-testid="plan-ended">
+        <div class="ended-banner" data-testid="plan-ended">
           <div class="ended-banner__text">
             <span class="ended-outcome">
               {#if ended.outcome}
@@ -482,7 +493,7 @@
             </span>
             {#if ended.ended_at}
               <span class="ended-time text-muted">
-                {$t('overview.ended.time', { time: ended.ended_at })}
+                {$t('overview.ended.time', { time: formatEndedAt(ended.ended_at) })}
               </span>
             {/if}
             {#if ended.reason}

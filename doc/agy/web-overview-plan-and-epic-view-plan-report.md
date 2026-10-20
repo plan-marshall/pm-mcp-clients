@@ -75,12 +75,12 @@ All 284 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 
 | Invariant | Status |
 |---|---|
-| No uncatalogued user-facing strings (`catalogue.test.ts`) | **Pass** — every new label comes from the catalogue; no `$t(...) || '…'` fallback. |
+| No uncatalogued user-facing strings (`catalogue.test.ts`) | **Pass** — every new label comes from the catalogue; no `$t(...) \|\| '…'` fallback. |
 | Bilingual catalogue (EN & DE parity) | **Pass**. |
 | No `fallbackMessages` dictionary | **Pass** — unchanged and re-checked. |
 | Module boundaries | **Pass** — changes stay in `pm-web-app`, its E2E package, and the `pm-api` message catalogue; `pm-operator`, `pm-mock-runtime` scenarios, and other modules are untouched. |
 | Responsive layout down to 320px | **Pass** — the breakdown tables scroll inside their own wrapper; the ended banner wraps; existing mobile rules unchanged. |
-| Accessibility | **Pass** — disclosure exposes `aria-expanded`/`aria-controls`; start-page toggle exposes `aria-pressed`; the ended banner uses `role="status"`. |
+| Accessibility | **Pass** — disclosure exposes `aria-expanded`/`aria-controls`; start-page toggle exposes `aria-pressed`; the ended banner is static text with its outcome, time, and reason. |
 | Untrusted text | **Pass** — existing `stripControlSequences` boundary untouched; new values are ids and catalogue texts. |
 
 ---

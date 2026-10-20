@@ -424,8 +424,9 @@ describe('PlanView component', () => {
     await screen.findByTestId('plan-title');
 
     const banner = screen.getByTestId('plan-ended');
+    const endedAt = new Date('2026-10-16T11:20:00Z').toLocaleString('en');
     expect(banner).toHaveTextContent('The plan has ended: merged');
-    expect(banner).toHaveTextContent('ended 2026-10-16T11:20:00Z');
+    expect(banner).toHaveTextContent(`ended ${endedAt}`);
     expect(banner).toHaveTextContent('Reason: the fallback held');
 
     await fireEvent.click(screen.getByTestId('ended-completion-report'));

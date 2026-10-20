@@ -4,7 +4,7 @@
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type ReportItem, type ReportsPage } from '../api/client';
-  import { runtimeStore, refreshReportsCount } from '../stores/runtime';
+  import { runtimeStore, refreshReportsCount, syncUrl } from '../stores/runtime';
   import CompletionReportView from './CompletionReportView.svelte';
 
   let items = $state<ReportItem[]>([]);
@@ -74,11 +74,7 @@
   function closeDetail(): void {
     activeDetailPlanId = null;
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
-    if (typeof window !== 'undefined') {
-      // Replace the entry directly: `syncUrl('/reports')` would leave the query in place because
-      // the pathname is already `/reports`.
-      window.history.replaceState({ path: '/reports' }, '', '/reports');
-    }
+    syncUrl('/reports', true);
   }
 
   onMount(async () => {

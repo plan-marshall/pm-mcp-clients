@@ -72,6 +72,9 @@
       const fromStore = get(runtimeStore).selectedProjectId;
       if (fromStore) {
         selectedProjectId = fromStore;
+        // The store names a project another view opened one step ago. Consume it once, so a
+        // later visit falls back to the browser's own selection rather than snapping back.
+        runtimeStore.update((s) => ({ ...s, selectedProjectId: null }));
       }
     }
 

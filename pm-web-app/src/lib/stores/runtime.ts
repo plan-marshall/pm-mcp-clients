@@ -637,6 +637,7 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
     epicId: state.selectedEpicId ?? undefined,
     taskId: state.selectedTaskId ?? undefined,
     reportPlanId: state.selectedReportDetailPlanId ?? undefined,
+    explorerProjectId: state.selectedProjectId ?? undefined,
   };
 }
 
@@ -668,6 +669,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // The reports route carries the plan whose completion report it shows, if any; a plain
     // visit to the list clears it so the query does not outlive the detail.
     ...(route === 'reports' ? { selectedReportDetailPlanId: params.reportPlanId ?? null } : {}),
+    // The explorer focuses the project a caller named; a plain visit starts from the list.
+    ...(route === 'projects' ? { selectedProjectId: params.explorerProjectId ?? null } : {}),
   }));
 }
 
@@ -738,12 +741,8 @@ export function syncUrl(path: string, replace: boolean): void {
   if (typeof window === 'undefined') {
     return;
   }
-  if (window.location.pathname === path) {
-    return;
-  }
-  // A path that carries a query (a report's plan, a project in the explorer) is the same address
-  // as the one in the bar when path and query both match; rewriting it would only add a history
-  // entry the operator's Back would have to walk through.
+  // The address is the same only when path and query both match: a plain path must drop a stale
+  // query (a report's plan, a project in the explorer) rather than leave it in the bar.
   if (`${window.location.pathname}${window.location.search}` === path) {
     return;
   }
@@ -956,11 +955,7 @@ export function openCompletionReport(planId: string): void {
  * @param projectId the project to show
  */
 export function openProjectInExplorer(projectId: string): void {
-  runtimeStore.update((s) => ({ ...s, selectedProjectId: projectId }));
-  pushRoute('projects');
-  // The explorer reads the project from the query, so a reload lands on the same project. The
-  // route itself has no query, so the layout's address-bar sync leaves this one in place.
-  syncUrl(`/projects?project=${encodeURIComponent(projectId)}`, true);
+  pushRoute('projects', { explorerProjectId: projectId });
 }
 
 export function openEpicDecomposition(epicId: string, projectId: string): void {

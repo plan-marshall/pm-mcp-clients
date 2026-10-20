@@ -44,6 +44,8 @@ export interface RouteParams {
   taskId?: string;
   /** The plan whose completion report the reports route shows. */
   reportPlanId?: string;
+  /** The project the explorer focuses, so a plan's project is one step away. */
+  explorerProjectId?: string;
 }
 
 /** The project and the entry a start path names. */
@@ -204,6 +206,11 @@ export function pathForRoute(route: AppRoute, params: RouteParams = {}): string 
     return params.reportPlanId
       ? `/reports?plan=${encodeURIComponent(params.reportPlanId)}`
       : '/reports';
+  }
+  if (route === 'projects') {
+    return params.explorerProjectId
+      ? `/projects?project=${encodeURIComponent(params.explorerProjectId)}`
+      : '/projects';
   }
   return FIXED_ROUTE_PATHS[route] ?? null;
 }
