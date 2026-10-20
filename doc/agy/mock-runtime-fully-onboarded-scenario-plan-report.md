@@ -9,7 +9,7 @@ The runtime now seeds reports, enrolled projects, and being-added projects from 
 The showroom is verified twice:
 
 - **`FullyOnboardedScenarioTest`** boots the scenario on the Unix socket and asserts that every domain route answers HTTP 200 and decodes with the `pm-api` codec of its contract, including the event streams.
-- **`pm-web-e2e/tests/showroom.spec.js`** walks both clients through the populated header badges, projects and file tree, overview, six-phase plan view, epic view, decisions, reports and completion report, system and cleanup, settings and paired devices, and the process designer.
+- **`pm-web-e2e/tests/showroom.spec.js`** walks the web client through the populated header badges, projects and file tree, overview, six-phase plan view, epic view, decisions, reports and completion report, system and cleanup, settings and paired devices, and the process designer. The terminal client is covered by the runtime contract matrix, not by Playwright.
 
 ## 2. Delivered Artifacts
 

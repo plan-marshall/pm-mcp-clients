@@ -447,7 +447,6 @@ public final class StandardScenarios {
      */
     private static List<String> loadPrimaryScenarios() {
         var resource = "scenarios/primary.txt";
-        var expectedCount = 6;
         try (var in = StandardScenarios.class.getClassLoader().getResourceAsStream(resource)) {
             if (in == null) {
                 throw new IllegalStateException("Missing classpath resource " + resource);
@@ -457,9 +456,8 @@ public final class StandardScenarios {
                         .map(String::trim)
                         .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                         .toList();
-                if (names.size() != expectedCount) {
-                    throw new IllegalStateException("Expected " + expectedCount
-                            + " primary scenarios in " + resource + ", found " + names.size());
+                if (names.isEmpty()) {
+                    throw new IllegalStateException("No primary scenarios in " + resource);
                 }
                 return names;
             }

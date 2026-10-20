@@ -6,7 +6,7 @@ While the 5 consolidated scenarios partition domain-specific test fixtures (onbo
 
 This plan delivers a unified, realistic, fully onboarded mock environment enabling complete end-to-end UI testing, interactive walkthroughs, and Playwright verification across both `pm-web-app` and `pm-operator` without switching scenario files.
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.md`](../../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -14,13 +14,13 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-ONB-1..10`](../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc) (Machine Onboarding & Settings), [`UC-ENT-1..2`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc) (Entry & Paired Devices), [`UC-PRJ-1..4`](../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc) (Projects & Setup), [`UC-PLN-1..6`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc) (Plans, Epics, Decisions, Reports, Designer), [`UC-STA-1..9`](../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc) (Starting Work), [`UC-CTL-1..5`](../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc) (Controlling Work), [`UC-SYS-1..3`](../../../plan-marshall-documentation/doc/use-cases/07-system.adoc) (System & Cleanup) |
-| **Specifications** | [`05-mock-runtime.adoc`](../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc), [`04-operator-api.adoc`](../../../plan-marshall-documentation/doc/specification/runtime-model/04-operator-api.adoc), [`state-catalogue.adoc`](../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
-| **Contracts** | [`api-contract.adoc`](../plans/implemented/api-contract.adoc), [`overview-contract.adoc`](../plans/implemented/overview-contract.adoc), [`process-contract.adoc`](../plans/implemented/process-contract.adoc), [`decision-contract.adoc`](../plans/implemented/decision-contract.adoc), [`control-contract.adoc`](../plans/implemented/control-contract.adoc), [`report-contract.adoc`](../plans/implemented/report-contract.adoc), [`system-contract.adoc`](../plans/implemented/system-contract.adoc), [`project-contract.adoc`](../plans/implemented/project-contract.adoc), [`start-contract.adoc`](../plans/implemented/start-contract.adoc), [`designer-contract.adoc`](../plans/implemented/designer-contract.adoc) |
-| **Local Client Design** | [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc), [`doc/design/terminal-client/README.adoc`](../design/terminal-client/README.adoc), [`doc/design/shared/`](../design/shared/) |
-| **Prerequisite Plans** | [`doc/agy/mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md), [`doc/agy/mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Use Cases** | [`UC-ONB-1..10`](../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc) (Machine Onboarding & Settings), [`UC-ENT-1..2`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc) (Entry & Paired Devices), [`UC-PRJ-1..4`](../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc) (Projects & Setup), [`UC-PLN-1..6`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc) (Plans, Epics, Decisions, Reports, Designer), [`UC-STA-1..9`](../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc) (Starting Work), [`UC-CTL-1..5`](../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc) (Controlling Work), [`UC-SYS-1..3`](../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc) (System & Cleanup) |
+| **Specifications** | [`05-mock-runtime.adoc`](../../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc), [`04-operator-api.adoc`](../../../../plan-marshall-documentation/doc/specification/runtime-model/04-operator-api.adoc), [`state-catalogue.adoc`](../../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
+| **Contracts** | [`api-contract.adoc`](../../plans/implemented/api-contract.adoc), [`overview-contract.adoc`](../../plans/implemented/overview-contract.adoc), [`process-contract.adoc`](../../plans/implemented/process-contract.adoc), [`decision-contract.adoc`](../../plans/implemented/decision-contract.adoc), [`control-contract.adoc`](../../plans/implemented/control-contract.adoc), [`report-contract.adoc`](../../plans/implemented/report-contract.adoc), [`system-contract.adoc`](../../plans/implemented/system-contract.adoc), [`project-contract.adoc`](../../plans/implemented/project-contract.adoc), [`start-contract.adoc`](../../plans/implemented/start-contract.adoc), [`designer-contract.adoc`](../../plans/implemented/designer-contract.adoc) |
+| **Local Client Design** | [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc), [`doc/design/terminal-client/README.adoc`](../../design/terminal-client/README.adoc), [`doc/design/shared/`](../../design/shared/) |
+| **Prerequisite Plans** | [`doc/agy/mock-runtime-foundation-and-consolidation-plan.md`](mock-runtime-foundation-and-consolidation-plan.md), [`doc/agy/mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../../meta/implement_use-cases.md) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ---
 

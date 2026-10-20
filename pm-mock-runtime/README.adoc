@@ -331,7 +331,7 @@ The module ships with the following standard scenarios out of the box, declared 
 * `StandardScenarios.WEB_PAIRING` (`"web-pairing"`): browser pairing flow demonstrating pairing code exchange and subsequent authenticated web client requests.
 * `StandardScenarios.FULLY_ONBOARDED` (`"fully-onboarded"`): the showroom. One fully onboarded machine with every operator domain populated at once (projects, running work, decisions, reports, system, settings, start, designer, and the event stream), so both clients can be walked end to end without switching scenarios.
 
-The launcher offers the canonical scenarios listed in `src/main/resources/scenarios/primary.txt`: onboarding, running-work, projects-and-start, reports-and-system, designer, and fully-onboarded.
+The fine-grained entries above remain resolvable by name for case-level tests. The interactive launcher offers the canonical scenarios in link:src/main/resources/scenarios/primary.txt[`primary.txt`], the one list the Java catalog and `start.sh` both read; `fully-onboarded` is the sixth entry.
 
 `StandardScenarios.ALL` provides an unmodifiable list of all delivered standard scenario names.
 
