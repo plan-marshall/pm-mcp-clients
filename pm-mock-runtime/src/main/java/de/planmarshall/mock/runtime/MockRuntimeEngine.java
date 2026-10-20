@@ -588,6 +588,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private synchronized void setScenario(Scenario scenario) {
+        // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
+        // the active scenario and every stateful fixture untouched.
+        validateRuntimeFixture(scenario);
         this.currentScenario.set(scenario);
         this.currentPairingCode = scenario.pairingCode();
         this.pairingCounter = 0;
@@ -791,8 +794,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the merged fixture, or {@code null} when neither the state nor the base carries one
      */
     private @Nullable Map<String, Object> startRuntimeFixture() {
-        var base = stateRuntimeFixture(BASE_FIXTURE_STATE);
-        var own = stateRuntimeFixture(currentScenario.get().start());
+        return startRuntimeFixtureOf(currentScenario.get());
+    }
+
+    /**
+     * Merges the start state's fixture of a scenario over that scenario's base fixture, without
+     * touching the engine state, so a candidate scenario can be validated before it is activated.
+     *
+     * @param scenario the candidate scenario
+     * @return the merged fixture, or {@code null} when neither state carries one
+     */
+    private static @Nullable Map<String, Object> startRuntimeFixtureOf(Scenario scenario) {
+        var base = runtimeFixtureOf(scenario, BASE_FIXTURE_STATE);
+        var own = runtimeFixtureOf(scenario, scenario.start());
         if (base == null || own == null || own == base) {
             return own != null ? own : base;
         }
@@ -2371,95 +2385,131 @@ public final class MockRuntimeEngine implements AutoCloseable {
             controlReviews.clear();
             controlArchiveChecks.clear();
 
-            var fixture = startRuntimeFixture();
-            var control = fixtureObject(fixture, FIXTURE_CONTROL);
+            var control = fixtureObject(startRuntimeFixture(), FIXTURE_CONTROL);
             if (control == null) {
                 return;
             }
-            seedControlPlans(control);
-            seedControlEpics(control);
-            seedControlHolds(control);
-            seedControlSettings(control);
-            seedControlChats(control);
+            var seed = readControlSeed(control);
+            controlPlanStates.putAll(seed.planStates());
+            controlPlanPausePoints.putAll(seed.pausePoints());
+            controlPlanEpics.putAll(seed.planEpics());
+            controlEpicStates.putAll(seed.epicStates());
+            controlEpicAuto.putAll(seed.epicAuto());
+            controlEpicScope.putAll(seed.epicScope());
+            controlEpicRunning.putAll(seed.epicRunning());
+            controlEpicOverlap.putAll(seed.epicOverlap());
+            controlHolds.putAll(seed.holds());
+            controlSettingsRevisions.putAll(seed.settingsRevisions());
+            controlSettings.putAll(seed.settings());
+            controlEpics.putAll(seed.epics());
+            controlChats.putAll(seed.chats());
+            controlReviews.putAll(seed.reviews());
+            controlArchiveChecks.putAll(seed.archiveChecks());
         }
     }
 
-    private void seedControlPlans(Map<String, Object> control) {
+    /**
+     * The parsed control fixture, kept apart from the engine maps so a candidate scenario can be
+     * read (and refused) before the active scenario's state is cleared.
+     */
+    private record ControlSeed(
+    Map<String, String> planStates,
+    Map<String, String> pausePoints,
+    Map<String, String> planEpics,
+    Map<String, String> epicStates,
+    Map<String, Boolean> epicAuto,
+    Map<String, Integer> epicScope,
+    Map<String, Integer> epicRunning,
+    Map<String, Integer> epicOverlap,
+    Map<String, HoldRecord> holds,
+    Map<String, Integer> settingsRevisions,
+    Map<String, Map<String, PlanSettingsValue>> settings,
+    Map<String, EpicResource> epics,
+    Map<String, ChatReadBackResource> chats,
+    Map<String, ReviewResource> reviews,
+    Map<String, ArchiveCheck> archiveChecks) {
+    }
+
+    private static ControlSeed readControlSeed(Map<String, Object> control) {
+        var planStates = new LinkedHashMap<String, String>();
+        var pausePoints = new LinkedHashMap<String, String>();
+        var planEpics = new LinkedHashMap<String, String>();
         for (var plan : fixtureObjects(control, "plans", "facts.runtime.control.plans")) {
             var planId = JsonTree.string(plan, "plan_id");
             if (planId == null || planId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.plans names a plan without plan_id");
             }
             var state = JsonTree.string(plan, "state");
-            controlPlanStates.put(planId, state != null ? state : "running");
+            planStates.put(planId, state != null ? state : "running");
             var epicId = JsonTree.string(plan, "epic_id");
             if (epicId != null) {
-                controlPlanEpics.put(planId, epicId);
+                planEpics.put(planId, epicId);
             }
             var pausePoint = JsonTree.string(plan, "pause_point");
             if (pausePoint != null) {
-                controlPlanPausePoints.put(planId, pausePoint);
+                pausePoints.put(planId, pausePoint);
             }
         }
-    }
 
-    private static String reviewKey(String epicId, String register) {
-        return epicId + ":" + register;
-    }
-
-    private void seedControlEpics(Map<String, Object> control) {
+        var epicStates = new LinkedHashMap<String, String>();
+        var epicAuto = new LinkedHashMap<String, Boolean>();
+        var epicScope = new LinkedHashMap<String, Integer>();
+        var epicRunning = new LinkedHashMap<String, Integer>();
+        var epicOverlap = new LinkedHashMap<String, Integer>();
+        var epics = new LinkedHashMap<String, EpicResource>();
+        var archiveChecks = new LinkedHashMap<String, ArchiveCheck>();
+        var reviews = new LinkedHashMap<String, ReviewResource>();
         for (var epic : fixtureObjects(control, "epics", "facts.runtime.control.epics")) {
             var epicId = JsonTree.string(epic, "epic_id");
             if (epicId == null || epicId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.epics names an epic without epic_id");
             }
-            controlEpicStates.put(epicId, JsonTree.string(epic, "state") != null
-                    ? JsonTree.string(epic, "state") : "running");
-            controlEpicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
-            controlEpicScope.put(epicId, intMember(epic, "scope"));
-            controlEpicRunning.put(epicId, intMember(epic, "running"));
-            controlEpicOverlap.put(epicId, intMember(epic, "overlap_max_files"));
+            var state = JsonTree.string(epic, "state");
+            epicStates.put(epicId, state != null ? state : "running");
+            epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
+            epicScope.put(epicId, intMember(epic, "scope"));
+            epicRunning.put(epicId, intMember(epic, "running"));
+            epicOverlap.put(epicId, intMember(epic, "overlap_max_files"));
 
             var resource = fixtureObject(epic, "resource",
                     "facts.runtime.control.epics." + epicId + ".resource");
             if (resource != null) {
-                controlEpics.put(epicId, readFixture(() -> EpicResource.fromMap(resource),
+                epics.put(epicId, readFixture(() -> EpicResource.fromMap(resource),
                         "facts.runtime.control.epics." + epicId + ".resource"));
             }
             var archiveCheck = fixtureObject(epic, "archive_check",
                     "facts.runtime.control.epics." + epicId + ".archive_check");
             if (archiveCheck != null) {
-                controlArchiveChecks.put(epicId, readFixture(() -> ArchiveCheck.fromMap(archiveCheck),
+                archiveChecks.put(epicId, readFixture(() -> ArchiveCheck.fromMap(archiveCheck),
                         "facts.runtime.control.epics." + epicId + ".archive_check"));
             }
             if (epic.containsKey("reviews")) {
-                var reviews = JsonTree.asObject(epic.get("reviews"));
-                if (reviews == null) {
+                var epicReviews = JsonTree.asObject(epic.get("reviews"));
+                if (epicReviews == null) {
                     throw new IllegalStateException("facts.runtime.control.epics." + epicId
                             + ".reviews must be an object");
                 }
-                reviews.forEach((register, value) -> {
+                epicReviews.forEach((register, value) -> {
                     var map = JsonTree.asObject(value);
                     if (map == null) {
                         throw new IllegalStateException("facts.runtime.control.epics." + epicId
                                 + ".reviews." + register + " must be an object");
                     }
-                    controlReviews.put(reviewKey(epicId, String.valueOf(register)),
+                    reviews.put(reviewKey(epicId, String.valueOf(register)),
                             readFixture(() -> ReviewResource.fromMap(map),
                                     "facts.runtime.control.epics." + epicId + ".reviews." + register));
                 });
             }
         }
-    }
 
-    private void seedControlHolds(Map<String, Object> control) {
+        var holds = new LinkedHashMap<String, HoldRecord>();
         for (var hold : fixtureObjects(control, "holds", "facts.runtime.control.holds")) {
             var record = readFixture(() -> HoldRecord.fromMap(hold), "facts.runtime.control.holds");
-            controlHolds.put(holdKey(record.subjectId(), record.holdId()), record);
+            holds.put(holdKey(record.subjectId(), record.holdId()), record);
         }
-    }
 
-    private void seedControlSettings(Map<String, Object> control) {
+        var settingsRevisions = new LinkedHashMap<String, Integer>();
+        var settings = new LinkedHashMap<String, Map<String, PlanSettingsValue>>();
         for (var entry : fixtureObjects(control, "settings", "facts.runtime.control.settings")) {
             var planId = JsonTree.string(entry, "plan_id");
             if (planId == null || planId.isBlank()) {
@@ -2467,23 +2517,53 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             var record = readFixture(() -> PlanSettingsRecord.fromMap(entry),
                     "facts.runtime.control.settings." + planId);
-            controlSettingsRevisions.put(planId, (int) record.revision());
+            settingsRevisions.put(planId, (int) record.revision());
             var values = new LinkedHashMap<String, PlanSettingsValue>();
             record.values().forEach(value -> values.put(value.aspect(), value));
-            controlSettings.put(planId, values);
+            settings.put(planId, values);
         }
-    }
 
-    private void seedControlChats(Map<String, Object> control) {
+        var chats = new LinkedHashMap<String, ChatReadBackResource>();
         for (var chat : fixtureObjects(control, "chats", "facts.runtime.control.chats")) {
             var record = readFixture(() -> ChatReadBackResource.fromMap(chat), "facts.runtime.control.chats");
-            controlChats.put(record.subjectId(), record);
+            chats.put(record.subjectId(), record);
         }
+
+        return new ControlSeed(planStates, pausePoints, planEpics, epicStates, epicAuto, epicScope,
+                epicRunning, epicOverlap, holds, settingsRevisions, settings, epics, chats, reviews,
+                archiveChecks);
+    }
+
+    private static String reviewKey(String epicId, String register) {
+        return epicId + ":" + register;
     }
 
     private static int intMember(Map<String, Object> map, String key) {
         var value = JsonTree.integer(map, key);
         return value != null ? value : 0;
+    }
+
+    /**
+     * Reads and refuses the candidate scenario's runtime fixture without activating it, so a
+     * malformed fixture cannot leave the engine half-switched.
+     *
+     * @param scenario the candidate scenario
+     */
+    private static void validateRuntimeFixture(Scenario scenario) {
+        var fixture = startRuntimeFixtureOf(scenario);
+        if (fixture == null) {
+            return;
+        }
+        var control = fixtureObject(fixture, FIXTURE_CONTROL);
+        if (control != null) {
+            readControlSeed(control);
+        }
+        for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
+            DecisionEnvelope.fromMap(entry);
+        }
+        for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
+            readFixture(() -> EpicDecomposition.fromMap(cut), "facts.runtime.decompositions");
+        }
     }
 
     /**
@@ -2512,7 +2592,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
          */
         T get() throws IOException;
     }
-
 
     private void initDefaultStart() {
         synchronized (startLock) {

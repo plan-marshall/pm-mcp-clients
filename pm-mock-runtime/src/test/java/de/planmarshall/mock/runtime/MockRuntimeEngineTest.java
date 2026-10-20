@@ -60,10 +60,15 @@ class MockRuntimeEngineTest {
     }
 
     private TestResponse send(String method, String target, Map<String, String> headers, byte[] body, boolean isWeb) throws IOException {
-        var req = new MockHttpRequest(method, target, headers, body, System.nanoTime());
+        return send(engine, method, target, headers, body, isWeb);
+    }
+
+    private static TestResponse send(MockRuntimeEngine target, String method, String targetPath,
+            Map<String, String> headers, byte[] body, boolean isWeb) throws IOException {
+        var req = new MockHttpRequest(method, targetPath, headers, body, System.nanoTime());
         var out = new ByteArrayOutputStream();
         var res = new MockHttpResponse(out);
-        engine.dispatch(req, res, isWeb);
+        target.dispatch(req, res, isWeb);
 
         var raw = out.toString(StandardCharsets.UTF_8);
         var status = parseStatus(raw);
@@ -591,7 +596,37 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("refuses a runtime fixture whose member has the wrong type instead of reading it as absent")
     void refusesWrongTypedFixture() {
-        var json = """
+        var scenario = ScenarioLoader.load(brokenFixtureJson(), "broken-fixture");
+        var failure = assertThrows(IllegalStateException.class,
+                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
+        assertTrue(failure.getMessage().contains("facts.runtime.control.holds"), failure.getMessage());
+    }
+
+    @Test
+    @DisplayName("a failed switch leaves the active scenario, its state, and its fixtures untouched")
+    void failedSwitchKeepsTheActiveScenario() throws Exception {
+        var running = registry.resolve(StandardScenarios.RUNNING_WORK);
+        try (var live = new MockRuntimeEngine(registry, running, "test-token", "test-secret")) {
+            var beforeState = live.currentStateId();
+            registry.register(ScenarioLoader.load(brokenFixtureJson(),
+                    "broken-fixture"));
+
+            var failure = assertThrows(IllegalStateException.class,
+                    () -> live.switchScenario("broken-fixture"));
+            assertTrue(failure.getMessage().contains("facts.runtime.control.holds"), failure.getMessage());
+
+            assertEquals(StandardScenarios.RUNNING_WORK, live.currentScenario().name());
+            assertEquals(beforeState, live.currentStateId());
+
+            var actions = send(live, "GET", "/api/v1/plans/fix-relay/actions",
+                    Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+            assertEquals(200, actions.status());
+            assertEquals("relay-hardening", actions.json().get("epic_id"));
+        }
+    }
+
+    private static String brokenFixtureJson() {
+        return """
                 {
                   "format_version": 1,
                   "name": "broken-fixture",
@@ -612,9 +647,5 @@ class MockRuntimeEngineTest {
                   }
                 }
                 """;
-        var scenario = ScenarioLoader.load(json, "broken-fixture");
-        var failure = assertThrows(IllegalStateException.class,
-                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
-        assertTrue(failure.getMessage().contains("facts.runtime.control.holds"), failure.getMessage());
     }
 }
