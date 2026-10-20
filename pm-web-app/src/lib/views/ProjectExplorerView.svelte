@@ -50,6 +50,9 @@
   let abandonError = $state<string | null>(null);
 
   let unsubscribeEvents: (() => void) | null = null;
+  let unsubscribePopstate: (() => void) | null = null;
+  /** The filter the last `?project=` focus set, so a popstate can clear only that one. */
+  let focusedFilter: string | null = null;
 
   async function loadExplorer() {
     isLoading = true;
@@ -63,8 +66,42 @@
     }
   }
 
+  /**
+   * Focuses the project a caller opened the explorer at (`/projects?project={id}`).
+   *
+   * The plan and epic views reach their project in one step; filtering to its name shows that
+   * project's card without the others in the way. A plain visit to the explorer has no query and
+   * is left as it is.
+   */
+  function focusRequestedProject(): void {
+    if (typeof window === 'undefined' || !explorer) return;
+    const requested = new URLSearchParams(window.location.search).get('project');
+    if (!requested) {
+      // Back to the plain explorer: drop only the filter a focus set, never one the operator
+      // typed.
+      if (focusedFilter !== null && filter === focusedFilter) {
+        filter = '';
+      }
+      focusedFilter = null;
+      return;
+    }
+    const project = [...explorer.favourites, ...explorer.recent, ...explorer.all_projects].find(
+      (p) => p.project_id === requested,
+    );
+    if (project) {
+      filter = project.display_name;
+      focusedFilter = project.display_name;
+    }
+  }
+
   onMount(() => {
-    void loadExplorer();
+    void loadExplorer().then(focusRequestedProject);
+
+    // The explorer stays mounted on the projects route, so a back or forward step between two
+    // projects must move the focus with the address.
+    const onPopstate = () => focusRequestedProject();
+    window.addEventListener('popstate', onPopstate);
+    unsubscribePopstate = () => window.removeEventListener('popstate', onPopstate);
 
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
       if (
@@ -78,6 +115,10 @@
   });
 
   onDestroy(() => {
+    if (unsubscribePopstate) {
+      unsubscribePopstate();
+      unsubscribePopstate = null;
+    }
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;

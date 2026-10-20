@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import EpicView from './EpicView.svelte';
 import { apiClient, type EpicProcess } from '../api/client';
-import { runtimeStore } from '../stores/runtime';
+import { runtimeStore, navigateTo, openPlanView, openEpicView } from '../stores/runtime';
 import { get } from 'svelte/store';
 
 describe('EpicView component', () => {
@@ -127,15 +127,31 @@ describe('EpicView component', () => {
     expect(state.selectedPlanId).toBe('fix-relay');
   });
 
-  it('clicking breadcrumb project or back button navigates back to overview', async () => {
+  it('returns to the plan it was opened from, then to the overview', async () => {
+    navigateTo('overview');
+    openPlanView('fix-relay');
+    openEpicView('relay-hardening');
+
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    await fireEvent.click(screen.getByTestId('back-btn'));
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+
+    await fireEvent.click(screen.getByTestId('back-btn'));
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+  });
+
+  it('opens the project in the explorer in one step', async () => {
     render(EpicView);
 
     await screen.findByTestId('epic-title');
-
-    const backBtn = screen.getByTestId('back-btn');
-    await fireEvent.click(backBtn);
+    await fireEvent.click(screen.getByTestId('breadcrumb-project'));
 
     const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('overview');
+    expect(state.currentRoute).toBe('projects');
+    expect(state.selectedProjectId).toBe('pm-mcp-clients');
+    expect(window.location.search).toBe('?project=pm-mcp-clients');
   });
 });

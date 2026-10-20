@@ -4,7 +4,13 @@
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type EpicProcess, type EpicProcessPlan } from '../api/client';
-  import { runtimeStore, openPlanView, navigateTo } from '../stores/runtime';
+  import {
+    runtimeStore,
+    openPlanView,
+    openProjectInExplorer,
+    goBack,
+    navigateTo,
+  } from '../stores/runtime';
   import { formatSplit } from '../utils/tokenFormat';
 
   let epicId = $derived($runtimeStore.selectedEpicId || '');
@@ -51,12 +57,21 @@
     }
   }
 
-  function goBackToOverview() {
-    navigateTo('overview');
+  /**
+   * Goes back to the view the epic was opened from, and to Running Work when it has no caller.
+   */
+  function goBackToCaller() {
+    if (!goBack()) {
+      navigateTo('overview');
+    }
   }
 
   function openPlan(pId: string) {
     openPlanView(pId);
+  }
+
+  function openProject(projectId: string) {
+    openProjectInExplorer(projectId);
   }
 </script>
 
@@ -83,7 +98,7 @@
         >
           <button
             class="breadcrumb-link"
-            onclick={goBackToOverview}
+            onclick={() => openProject(epic!.project)}
             data-testid="breadcrumb-project"
           >
             {epic.project}
@@ -100,7 +115,7 @@
               {$t('epic.review.ready')}
             </span>
           {/if}
-          <Button variant="ghost" onclick={goBackToOverview} data-testid="back-btn">
+          <Button variant="ghost" onclick={goBackToCaller} data-testid="back-btn">
             {$t('common.actions.back')}
           </Button>
         </div>

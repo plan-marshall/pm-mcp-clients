@@ -77,6 +77,16 @@ export interface RuntimeState {
   selectedOnboardingId?: string | null;
   /** The onboarding step another screen opened the onboarding at, 1-based. */
   onboardingStep?: number | null;
+  /** How an ended plan ended, when a view opened it from Ended Work. */
+  selectedPlanEnded?: EndedPlanInfo | null;
+}
+
+/** An ended plan as Ended Work names it, for the plan view it opens. */
+export interface EndedPlanInfo {
+  plan_id: string;
+  outcome?: string | null;
+  reason?: string | null;
+  ended_at?: string | null;
 }
 
 const initialState: RuntimeState = {
@@ -117,6 +127,7 @@ const initialState: RuntimeState = {
   startKind: 'plan',
   selectedOnboardingId: null,
   onboardingStep: null,
+  selectedPlanEnded: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -223,14 +234,33 @@ function landingRoute(
 /**
  * The start point the operator last chose, if it is one of the landing routes.
  *
+ * Only an explicit choice is remembered; a browser that never chose one lands by the rule of
+ * `landingRoute`, on the overview while work runs or waits and on the projects otherwise.
+ *
  * @returns `overview` or `projects`, or `null` when nothing was remembered
  */
-function rememberedStartRoute(): AppRoute | null {
+export function rememberedStartRoute(): 'overview' | 'projects' | null {
   if (typeof window === 'undefined') {
     return null;
   }
   const saved = localStorage.getItem('pm_start_route');
   return saved === 'overview' || saved === 'projects' ? saved : null;
+}
+
+/**
+ * Remembers the operator's chosen start point, or clears it to land by the rule again.
+ *
+ * @param route `overview` or `projects`, or `null` to forget the choice
+ */
+export function setRememberedStartRoute(route: 'overview' | 'projects' | null): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  if (route) {
+    localStorage.setItem('pm_start_route', route);
+  } else {
+    localStorage.removeItem('pm_start_route');
+  }
 }
 
 /**
@@ -606,6 +636,8 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
     planId: state.selectedPlanId ?? undefined,
     epicId: state.selectedEpicId ?? undefined,
     taskId: state.selectedTaskId ?? undefined,
+    reportPlanId: state.selectedReportDetailPlanId ?? undefined,
+    explorerProjectId: state.selectedProjectId ?? undefined,
   };
 }
 
@@ -634,11 +666,12 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     ...(route === 'epic' || route === 'decomposition'
       ? { selectedEpicId: params.epicId ?? s.selectedEpicId ?? null }
       : {}),
+    // The reports route carries the plan whose completion report it shows, if any; a plain
+    // visit to the list clears it so the query does not outlive the detail.
+    ...(route === 'reports' ? { selectedReportDetailPlanId: params.reportPlanId ?? null } : {}),
+    // The explorer focuses the project a caller named; a plain visit starts from the list.
+    ...(route === 'projects' ? { selectedProjectId: params.explorerProjectId ?? null } : {}),
   }));
-  if ((route === 'overview' || route === 'projects') && typeof window !== 'undefined') {
-    // The remembered start point: where the operator last chose to begin.
-    localStorage.setItem('pm_start_route', route);
-  }
 }
 
 /**
@@ -708,7 +741,9 @@ export function syncUrl(path: string, replace: boolean): void {
   if (typeof window === 'undefined') {
     return;
   }
-  if (window.location.pathname === path) {
+  // The address is the same only when path and query both match: a plain path must drop a stale
+  // query (a report's plan, a project in the explorer) rather than leave it in the bar.
+  if (`${window.location.pathname}${window.location.search}` === path) {
     return;
   }
   const method = replace ? 'replaceState' : 'pushState';
@@ -729,6 +764,10 @@ export function adoptRouteFromLocation(): AppRoute | null {
     runtimeStore.update((s) => ({
       ...s,
       currentRoute: match.route,
+      // The reports route keeps its plan in the query, so a reload or the browser's back
+      // between two reports opens the one the address names.
+      selectedReportDetailPlanId:
+        match.route === 'reports' ? new URLSearchParams(window.location.search).get('plan') : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       startProjectId: match.projectId ?? s.startProjectId ?? null,
@@ -887,11 +926,40 @@ export async function withdrawConsent(kind: string): Promise<MachineSettingsUpda
 }
 
 export function openPlanView(planId: string, taskId?: string | null): void {
+  runtimeStore.update((s) => ({ ...s, selectedPlanEnded: null }));
   pushRoute('plan', { planId, taskId: taskId ?? undefined });
+}
+
+/**
+ * Opens an ended plan's view with how it ended, so the head can say so.
+ *
+ * @param info the ended plan as Ended Work named it
+ */
+export function openEndedPlanView(info: EndedPlanInfo): void {
+  runtimeStore.update((s) => ({ ...s, selectedPlanEnded: info }));
+  pushRoute('plan', { planId: info.plan_id });
 }
 
 export function openEpicView(epicId: string): void {
   pushRoute('epic', { epicId });
+}
+
+/**
+ * Opens a plan's completion report in one step, on the reports route.
+ *
+ * @param planId the plan whose completion report to show
+ */
+export function openCompletionReport(planId: string): void {
+  pushRoute('reports', { reportPlanId: planId });
+}
+
+/**
+ * Opens the project explorer at one project, its detail one step away.
+ *
+ * @param projectId the project to show
+ */
+export function openProjectInExplorer(projectId: string): void {
+  pushRoute('projects', { explorerProjectId: projectId });
 }
 
 export function openEpicDecomposition(epicId: string, projectId: string): void {

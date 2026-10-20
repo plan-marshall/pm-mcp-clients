@@ -81,7 +81,9 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     // Verify activity feed entries
     const entries = page.locator('[data-testid="activity-entry"]');
     await expect(entries.first()).toBeVisible();
-    await expect(entries).toContainText(['Reading the relay transport', 'read', 'bash']);
+    await expect(entries.first()).toContainText('Reading the relay');
+    await expect(entries.nth(1)).toContainText('read');
+    await expect(entries.nth(2)).toContainText('bash');
 
     // Verify Jump button
     const jumpBtn = page.locator('[data-testid="jump-btn"]');
@@ -130,11 +132,43 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(alongsideSection).toBeVisible();
     await expect(alongsideSection).toContainText('remediation.ci-failure · done');
 
-    // Click back button to return to overview
+    // Back returns to the plan the epic was opened from, not to the overview
     const backBtn = page.locator('[data-testid="back-btn"]');
     await expect(backBtn).toBeVisible();
     await backBtn.click();
+    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
 
+    // The plan's own back then returns to Running Work, where it was opened
+    await page.locator('[data-testid="back-btn"]').click();
     await expect(page.locator('.overview')).toBeVisible();
+  });
+
+  test('opens the project in the explorer in one step', async ({ page }) => {
+    const planCard = page.locator('[data-testid="plan-card"]').first();
+    await planCard.click();
+    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
+
+    await page.locator('[data-testid="breadcrumb-project"]').click();
+
+    await expect(page).toHaveURL(/\/projects\?project=pm-mcp-clients$/);
+    await expect(page.locator('[data-testid="project-explorer-view"]')).toBeVisible();
+  });
+
+  test('discloses the token breakdown by phase and role', async ({ page }) => {
+    const planCard = page.locator('[data-testid="plan-card"]').first();
+    await planCard.click();
+    await expect(page.locator('[data-testid="plan-tokens"]')).toBeVisible();
+
+    const toggle = page.locator('[data-testid="tokens-toggle"]');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const breakdown = page.locator('[data-testid="token-breakdown"]');
+    await expect(breakdown).toBeVisible();
+    await expect(breakdown).toContainText('The breakdown by phase and role is not reported yet.');
+
+    await toggle.click();
+    await expect(breakdown).toHaveCount(0);
   });
 });

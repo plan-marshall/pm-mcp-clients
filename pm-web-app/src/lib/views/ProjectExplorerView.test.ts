@@ -100,6 +100,7 @@ describe('ProjectExplorerView component', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    window.history.replaceState(null, '', '/projects');
     runtimeStore.set({
       isInitialized: true,
       isPaired: true,
@@ -488,6 +489,28 @@ describe('ProjectExplorerView component', () => {
     await fireEvent.click(screen.getByTestId('continue-onboarding-btn'));
     expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
     expect(get(runtimeStore).selectedOnboardingId).toBe('~/git/cui-parent');
+  });
+
+  it('moves the project focus with a back or forward step', async () => {
+    window.history.replaceState(null, '', '/projects?project=API-Sheriff');
+    render(ProjectExplorerView);
+
+    const input = screen.getByTestId('project-filter-input');
+    await waitFor(() => {
+      expect(input).toHaveValue('API-Sheriff');
+    });
+
+    window.history.replaceState(null, '', '/projects?project=cui-http');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => {
+      expect(input).toHaveValue('cui-http');
+    });
+
+    window.history.replaceState(null, '', '/projects');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    await waitFor(() => {
+      expect(input).toHaveValue('');
+    });
   });
 
   it('continues an enrolled project’s setup by its project id', async () => {
