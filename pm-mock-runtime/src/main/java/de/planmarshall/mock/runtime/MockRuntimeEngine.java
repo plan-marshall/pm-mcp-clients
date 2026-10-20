@@ -831,16 +831,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param fixture the runtime fixture, may be {@code null}
      * @param key     the fixture member
      * @return the member's array of objects, empty when the member is absent
+     * @throws IllegalStateException when the member is present but is not an array of objects
      */
     private static List<Map<String, Object>> fixtureObjects(@Nullable Map<String, Object> fixture, String key) {
-        if (fixture == null || !(fixture.get(key) instanceof List<?> list)) {
+        return fixtureObjects(fixture, key, "facts.runtime." + key);
+    }
+
+    private static List<Map<String, Object>> fixtureObjects(@Nullable Map<String, Object> fixture, String key,
+            String path) {
+        if (fixture == null || !fixture.containsKey(key)) {
             return List.of();
+        }
+        if (!(fixture.get(key) instanceof List<?> list)) {
+            throw new IllegalStateException(path + " must be an array");
         }
         var result = new ArrayList<Map<String, Object>>(list.size());
         for (var element : list) {
             var map = JsonTree.asObject(element);
             if (map == null) {
-                throw new IllegalStateException("facts.runtime." + key + " must be an array of objects");
+                throw new IllegalStateException(path + " must be an array of objects");
             }
             result.add(map);
         }
@@ -850,10 +859,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * @param fixture the runtime fixture, may be {@code null}
      * @param key     the fixture member
-     * @return the member's object, or {@code null}
+     * @return the member's object, or {@code null} when the member is absent
+     * @throws IllegalStateException when the member is present but is not an object
      */
     private static @Nullable Map<String, Object> fixtureObject(@Nullable Map<String, Object> fixture, String key) {
-        return fixture == null ? null : JsonTree.asObject(fixture.get(key));
+        return fixtureObject(fixture, key, "facts.runtime." + key);
+    }
+
+    private static @Nullable Map<String, Object> fixtureObject(@Nullable Map<String, Object> fixture, String key,
+            String path) {
+        if (fixture == null || !fixture.containsKey(key)) {
+            return null;
+        }
+        var map = JsonTree.asObject(fixture.get(key));
+        if (map == null) {
+            throw new IllegalStateException(path + " must be an object");
+        }
+        return map;
     }
 
     /**
@@ -2363,7 +2385,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void seedControlPlans(Map<String, Object> control) {
-        for (var plan : fixtureObjects(control, "plans")) {
+        for (var plan : fixtureObjects(control, "plans", "facts.runtime.control.plans")) {
             var planId = JsonTree.string(plan, "plan_id");
             if (planId == null || planId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.plans names a plan without plan_id");
@@ -2386,7 +2408,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void seedControlEpics(Map<String, Object> control) {
-        for (var epic : fixtureObjects(control, "epics")) {
+        for (var epic : fixtureObjects(control, "epics", "facts.runtime.control.epics")) {
             var epicId = JsonTree.string(epic, "epic_id");
             if (epicId == null || epicId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.epics names an epic without epic_id");
@@ -2398,17 +2420,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
             controlEpicRunning.put(epicId, intMember(epic, "running"));
             controlEpicOverlap.put(epicId, intMember(epic, "overlap_max_files"));
 
-            var resource = fixtureObject(epic, "resource");
+            var resource = fixtureObject(epic, "resource",
+                    "facts.runtime.control.epics." + epicId + ".resource");
             if (resource != null) {
                 controlEpics.put(epicId, readFixture(() -> EpicResource.fromMap(resource),
                         "facts.runtime.control.epics." + epicId + ".resource"));
             }
-            var archiveCheck = fixtureObject(epic, "archive_check");
+            var archiveCheck = fixtureObject(epic, "archive_check",
+                    "facts.runtime.control.epics." + epicId + ".archive_check");
             if (archiveCheck != null) {
                 controlArchiveChecks.put(epicId, readFixture(() -> ArchiveCheck.fromMap(archiveCheck),
                         "facts.runtime.control.epics." + epicId + ".archive_check"));
             }
-            if (epic.get("reviews") instanceof Map<?, ?> reviews) {
+            if (epic.containsKey("reviews")) {
+                var reviews = JsonTree.asObject(epic.get("reviews"));
+                if (reviews == null) {
+                    throw new IllegalStateException("facts.runtime.control.epics." + epicId
+                            + ".reviews must be an object");
+                }
                 reviews.forEach((register, value) -> {
                     var map = JsonTree.asObject(value);
                     if (map == null) {
@@ -2424,14 +2453,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void seedControlHolds(Map<String, Object> control) {
-        for (var hold : fixtureObjects(control, "holds")) {
+        for (var hold : fixtureObjects(control, "holds", "facts.runtime.control.holds")) {
             var record = readFixture(() -> HoldRecord.fromMap(hold), "facts.runtime.control.holds");
             controlHolds.put(holdKey(record.subjectId(), record.holdId()), record);
         }
     }
 
     private void seedControlSettings(Map<String, Object> control) {
-        for (var entry : fixtureObjects(control, "settings")) {
+        for (var entry : fixtureObjects(control, "settings", "facts.runtime.control.settings")) {
             var planId = JsonTree.string(entry, "plan_id");
             if (planId == null || planId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.settings names no plan_id");
@@ -2446,7 +2475,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void seedControlChats(Map<String, Object> control) {
-        for (var chat : fixtureObjects(control, "chats")) {
+        for (var chat : fixtureObjects(control, "chats", "facts.runtime.control.chats")) {
             var record = readFixture(() -> ChatReadBackResource.fromMap(chat), "facts.runtime.control.chats");
             controlChats.put(record.subjectId(), record);
         }

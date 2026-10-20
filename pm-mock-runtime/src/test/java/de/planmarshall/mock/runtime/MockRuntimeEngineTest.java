@@ -34,6 +34,7 @@ import de.planmarshall.mock.http.MockHttpResponse;
 import de.planmarshall.mock.scenario.LinkDefinition;
 import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
+import de.planmarshall.mock.scenario.ScenarioLoader;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
 
@@ -585,5 +586,35 @@ class MockRuntimeEngineTest {
         var putRes = send("PUT", "/api/v1/web", auth, putBody, false);
         assertEquals(200, putRes.status());
         assertEquals(Boolean.TRUE, putRes.json().get("lan"));
+    }
+
+    @Test
+    @DisplayName("refuses a runtime fixture whose member has the wrong type instead of reading it as absent")
+    void refusesWrongTypedFixture() {
+        var json = """
+                {
+                  "format_version": 1,
+                  "name": "broken-fixture",
+                  "start": "broken.start",
+                  "states": {
+                    "broken.start": {
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "broken.start" },
+                        "facts": {
+                          "runtime": {
+                            "control": { "holds": { "hold_id": "H-1" } }
+                          }
+                        },
+                        "links": []
+                      }
+                    }
+                  }
+                }
+                """;
+        var scenario = ScenarioLoader.load(json, "broken-fixture");
+        var failure = assertThrows(IllegalStateException.class,
+                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
+        assertTrue(failure.getMessage().contains("facts.runtime.control.holds"), failure.getMessage());
     }
 }

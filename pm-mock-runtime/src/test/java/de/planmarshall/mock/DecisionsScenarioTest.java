@@ -11,6 +11,7 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,6 +63,7 @@ class DecisionsScenarioTest {
 
                 var byPlan = (List<?>) JsonTree.parse(
                         get(runtime, "/api/v1/decisions?plan=fix-relay").body());
+                assertFalse(byPlan.isEmpty(), "the plan filter names the plan's decisions");
                 for (var item : byPlan) {
                     assertEquals("fix-relay", ((Map<?, ?>) item).get("plan"));
                 }
