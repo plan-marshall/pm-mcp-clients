@@ -12,7 +12,7 @@
 
 The web client now carries the caller's navigation context into the plan and epic views and back out of them again. A plan opened from Running Work, an epic, Ended Work, or a report returns to that exact view on **Back**; its project and parent epic are each one step away. Running Work remembers what the operator was looking at (project, by-plan/by-epic mode, Ended Work page) across those trips, and can be set as the browser's explicit start page. Plans expose their token figure with the catalogue-formatted coverage, a one-step breakdown by phase and role with raw components, and — when ended — how and when they ended with a one-step completion report. Ended Work rows open either the item's view or, for a plan, its completion report.
 
-All 285 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests pass, and `./mvnw verify -Ppre-commit` completed with `BUILD SUCCESS` across the reactor.
+All 286 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests pass, and `./mvnw verify -Ppre-commit` completed with `BUILD SUCCESS` across the reactor.
 
 ---
 
@@ -44,7 +44,7 @@ All 285 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 |---|---|
 | `pm-web-app/src/lib/views/PlanView.test.ts` | Caller-aware Back; epic and project one-step links; token line floor/coverage; breakdown disclosure from the process resource and from the completion resource; ended-plan banner and one-step completion report. |
 | `pm-web-app/src/lib/views/EpicView.test.ts` | Back to the opening plan and then to Running Work; project one-step link. |
-| `pm-web-app/src/lib/views/ReportsView.test.ts` | The reports route follows its `?plan=` detail across store changes while mounted. |
+| `pm-web-app/src/lib/views/ReportsView.test.ts` | The reports route follows its `?plan=` detail across store changes while mounted, remounts the completion report on a direct step to another plan, and closes a list-opened detail on a plain Reports visit. |
 | `pm-web-app/src/lib/views/OverviewView.test.ts` | Start-page toggle persistence; ended plan → plan view with ended context; ended plan → completion report; Ended Work page restored; project named by another view selected. |
 | `pm-web-e2e/tests/plan-view.spec.js` | Caller-aware Back through plan → epic → plan → Running Work; project explorer landing at `/projects?project=…`; token-breakdown disclosure; activity assertions aligned with the scenario's seven entries. |
 | `pm-web-e2e/tests/overview.spec.js` | Ended plan view and one-step completion report with Ended Work restored on return; start-page toggle survives a reload. |
@@ -55,7 +55,7 @@ All 285 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 
 | Gate | Command | Result |
 |---|---|---|
-| Web unit/component tests | `cd pm-web-app && npm test` | **285 passed**, 42 files |
+| Web unit/component tests | `cd pm-web-app && npm test` | **286 passed**, 42 files |
 | Web lint | `cd pm-web-app && npm run lint` | clean |
 | Targeted E2E | `cd pm-web-e2e && npx playwright test tests/overview.spec.js tests/plan-view.spec.js` | **10 passed** |
 | Pre-commit gate | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** (7:25 min, all 7 modules) |
