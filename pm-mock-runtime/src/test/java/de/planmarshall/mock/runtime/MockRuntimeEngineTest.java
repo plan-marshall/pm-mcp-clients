@@ -119,6 +119,34 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @DisplayName("a malformed device entry in a state fixture fails the start")
+    void malformedStateDeviceEntryFailsFast() {
+        var representation = Map.<String, Object>of(
+                "scope", Map.of("kind", "machine"),
+                "state", Map.of("state_id", "start.state"),
+                "facts", Map.of("runtime", Map.of("devices", List.of(Map.of("label", "no id")))));
+        var state = new StateDefinition(representation, Map.of(), List.of(), null);
+        var scenario = new Scenario(1, "bad-device-entry", "Bad device entry", "start.state", null,
+                Map.of(), Map.of("start.state", state));
+
+        assertThrows(IllegalStateException.class,
+                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
+    }
+
+    @Test
+    @DisplayName("the status-only case keeps its recorded status and drops the web object")
+    void statusOnlyKeepsItsRecordedStatus() throws Exception {
+        var res = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+                new byte[0], false);
+        assertEquals(200, res.status());
+        assertEquals("ready", res.json().get("status"));
+        assertEquals(Boolean.TRUE, res.json().get("onboarded"));
+        assertNotNull(res.json().get("listener"));
+        assertFalse(res.json().containsKey("web"));
+        assertEquals("mock-machine", JsonTree.string(JsonTree.asObject(res.json().get("machine")), "name"));
+    }
+
+    @Test
     @DisplayName("goToState transitions to valid state and rejects invalid state")
     void stateTransitions() {
         assertThrows(IllegalArgumentException.class, () -> engine.goToState("non-existent"));

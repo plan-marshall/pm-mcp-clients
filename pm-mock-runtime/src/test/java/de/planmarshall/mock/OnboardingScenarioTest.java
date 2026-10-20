@@ -197,6 +197,47 @@ class OnboardingScenarioTest {
                 assertEquals(AutoResultReason.ALL_SUPPORTED, harness.reason());
             }
         }
+
+        @Test
+        @DisplayName("reports the seven done aspects at the review step without completing the machine")
+        void shouldReportTheReviewStep() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("onboard.summary");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var stateRes = client.send(HttpRequest.get("/api/v1/onboarding/state")
+                        .withHeader("Authorization", auth));
+                var state = JsonTree.asObject(JsonTree.parse(new String(stateRes.body(), StandardCharsets.UTF_8)));
+                assertEquals(7, JsonTree.integer(state, "completed_steps"));
+                assertEquals(7, JsonTree.asObject(state.get("step_summaries")).size());
+
+                var statusRes = client.send(HttpRequest.get("/api/v1/status")
+                        .withHeader("Authorization", auth));
+                var status = JsonTree.asObject(JsonTree.parse(new String(statusRes.body(), StandardCharsets.UTF_8)));
+                var onboard = JsonTree.asObject(status.get("onboard"));
+                assertEquals("onboard.summary", JsonTree.string(onboard, "state"));
+                assertEquals(7, JsonTree.integer(onboard, "step"));
+                assertEquals(Boolean.FALSE, onboard.get("completed"));
+                assertEquals(Boolean.FALSE, status.get("onboarded"));
+            }
+        }
+
+        @Test
+        @DisplayName("keeps the route's onboarding progress for a state without an aspect")
+        void shouldKeepTheRouteProgressWithoutAnAspect() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("auto.consent");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var statusRes = client.send(HttpRequest.get("/api/v1/status")
+                        .withHeader("Authorization", auth));
+                var status = JsonTree.asObject(JsonTree.parse(new String(statusRes.body(), StandardCharsets.UTF_8)));
+                assertEquals("onboard.mode", JsonTree.string(JsonTree.asObject(status.get("onboard")), "state"));
+                assertEquals(Boolean.FALSE, status.get("onboarded"));
+            }
+        }
     }
 
     @Nested
