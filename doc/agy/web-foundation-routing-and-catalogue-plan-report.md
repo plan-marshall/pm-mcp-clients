@@ -44,7 +44,7 @@ The static catalogue scan reports **zero** literal-copy offenders and **zero** f
 | `src/lib/i18n/testMessages.ts` | **Deleted** (superseded by the fixture). |
 | `src/lib/i18n/catalogue.test.ts` | Rewritten: all `.svelte` discovery, literal/attribute scan, fallback scan across `.svelte`/`.ts`, embedded-dictionary guard, and static-key existence check. |
 | `pm-api/src/main/resources/messages/*.{en,de}.properties` | 20 bundles extended with the web views' keys (frame, reports, decisions, system, cleanup, projects, overview, plan, epic, decomposition, notifications), with EN/DE parity. |
-| 11 `.svelte` views and `+layout.svelte` | All literal text nodes and `placeholder`/`title`/`aria-label` values now come from `$t(...)`; all `$t(...) ||` fallbacks removed. |
+| 11 `.svelte` views and `+layout.svelte` | All literal text nodes and `placeholder`/`title`/`aria-label` values now come from `$t(...)`; all `$t(...) \|\|` fallbacks removed. |
 | `src/lib/stores/runtime.ts` | Arrival notices and quiet notices are composed through `translate`. |
 
 ### 2.4 Tests & E2E (`pm-web-e2e`)
@@ -74,7 +74,7 @@ Route coverage added in `src/lib/routes.test.ts`: 13 cases, including every fixe
 
 * EN/DE key parity (`2314` keys each at the time of writing);
 * zero literal text nodes or `title`/`placeholder`/`aria-label` literals in all `.svelte` sources;
-* zero `$t(...) || '...'` / `?? '...'` fallbacks in all `.svelte` and `.ts` sources;
+* zero `$t(...) \|\| '...'` / `?? '...'` fallbacks in all `.svelte` and `.ts` sources;
 * no `fallbackMessages` in `src/lib/i18n/index.ts`;
 * every statically named `$t('key')` present in the catalogue.
 
@@ -89,7 +89,7 @@ The repository's E2E baseline on `main` is not green: a comparison run of the un
 | Invariant | Status |
 |---|---|
 | No uncatalogued UI text | **Pass** — static gate green across all `.svelte` sources. |
-| No `$t(...) || fallback` | **Pass** — gate green across all `.svelte`/`.ts` sources. |
+| No `$t(...) \|\| fallback` | **Pass** — gate green across all `.svelte`/`.ts` sources. |
 | No production fallback dictionary | **Pass** — `fallbackMessages` removed; a test-only fixture serves Vitest. |
 | Bilingual catalogue (EN & DE) | **Pass** — `2314` keys in each locale, parity asserted. |
 | Every view has a canonical URL | **Pass** — route table and route tests; E2E Back/Forward and deep links. |

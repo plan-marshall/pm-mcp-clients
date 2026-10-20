@@ -73,6 +73,8 @@ export interface RuntimeState {
   startEntryId?: string | null;
   /** Whether the open start is a plan's or an epic's. */
   startKind?: 'plan' | 'epic';
+  /** The continuation link of a project onboarding the operator chose to continue. */
+  onboardingContinueLink?: string | null;
 }
 
 const initialState: RuntimeState = {
@@ -111,6 +113,7 @@ const initialState: RuntimeState = {
   startProjectId: null,
   startEntryId: null,
   startKind: 'plan',
+  onboardingContinueLink: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -537,6 +540,8 @@ export async function pairBrowser(code: string): Promise<void> {
     false;
   const machineName =
     typeof status.machine === 'string' ? status.machine : status.machine?.name || 'local-machine';
+  // Pairing is the main path into the app, so it applies the same landing rule as a reload.
+  const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
 
   runtimeStore.update((s) => ({
     ...s,
@@ -546,7 +551,7 @@ export async function pairBrowser(code: string): Promise<void> {
     deviceLabel: res.label,
     machineName,
     isOnboarded: onboarded,
-    currentRoute: onboarded ? (rememberedStartRoute() ?? 'projects') : 'onboarding',
+    currentRoute: landingRoute(null, onboarded, hasWork(summary)),
     isOffline: false,
   }));
   subscribeToEvents();
@@ -620,6 +625,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     ...(route === 'epic' || route === 'decomposition'
       ? { selectedEpicId: params.epicId ?? s.selectedEpicId ?? null }
       : {}),
+    // The continuation link belongs to the project onboarding only; leaving that screen drops it.
+    ...(route === 'project-onboarding' ? {} : { onboardingContinueLink: null }),
   }));
   if ((route === 'overview' || route === 'projects') && typeof window !== 'undefined') {
     // The remembered start point: where the operator last chose to begin.
@@ -750,6 +757,23 @@ export function completedStepNumbers(completedSteps: number): number[] {
     numbers.push(step);
   }
   return numbers;
+}
+
+/**
+ * Continues one project's onboarding run from the continuation link its entry carries.
+ *
+ * @param link the `continue_link` of the being-added project
+ * @returns the state the runtime reports, or `null` when the link could not be followed
+ */
+export async function loadOnboardingLink(link: string): Promise<OnboardingState | null> {
+  if (!apiClient.isPaired()) return null;
+  try {
+    const state = (await apiClient.followLink(link)) as unknown as OnboardingState;
+    applyOnboardingState(state);
+    return state;
+  } catch {
+    return null;
+  }
 }
 
 export async function loadOnboardingState(): Promise<OnboardingState | null> {

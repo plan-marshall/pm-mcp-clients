@@ -426,7 +426,13 @@
                   <Button
                     variant="primary"
                     size="small"
-                    onclick={() => navigateTo('project-onboarding')}
+                    onclick={() => {
+                      runtimeStore.update((s) => ({
+                        ...s,
+                        onboardingContinueLink: being.continue_link ?? null,
+                      }));
+                      navigateTo('project-onboarding');
+                    }}
                     data-testid="continue-onboarding-btn"
                   >
                     {$t('project.adding.continue')}
@@ -847,7 +853,10 @@
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="release-modal">
     <div class="modal-card">
       <h3 class="modal-title">
-        {$t('project.release.title', { project: releaseTarget.display_name })}
+        {$t('project.release.title', {
+          project: releaseTarget.display_name,
+          action: 'release',
+        })}
       </h3>
 
       <div class="modal-explain">

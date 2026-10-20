@@ -2,7 +2,7 @@
 
 This directory stores historical, implemented execution plans created under [`doc/agy/runbook.md`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/runbook.md).
 
-When an implementation plan in `doc/agy/` (e.g. `doc/agy/<topic>-plan.md`) finishes all technical deliverables, passes verification, and produces its completion report (`doc/agy/<topic>-plan-report.md`), the plan is moved here to preserve its historical record and keep the active `doc/agy/` directory clean.
+When an implementation plan in `doc/agy/` (e.g. `doc/agy/<topic>-plan.md`) finishes all technical deliverables and produces its completion report (`doc/agy/<topic>-plan-report.md`), the plan is moved here to preserve its historical record and keep the active `doc/agy/` directory clean. The report is verified and moved to [`doc/agy/verified/`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/verified/README.md) by the orchestrator session after the change lands on `main` (Step 8 of the runbook); the archive row says when that verification is still pending.
 
 Companion verified completion reports are maintained under [`doc/agy/verified/`](file:///Users/oliver/git/pm-mcp-clients/doc/agy/verified/README.md).
 
