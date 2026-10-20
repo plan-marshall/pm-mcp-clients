@@ -44,7 +44,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`, which already pre-registers all legacy scenario aliases in `ScenarioRegistry`). Runs in parallel with Waves 2b–2d (`mock-runtime-running-work`, `mock-runtime-projects-and-start`, `mock-runtime-reports-system-designer`) with zero shared Java or JSON files.
 
 ### Boundary Rules
-- **Sole Owner of**: `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` (and deletion of the 23 superseded `onboarding-*.json`, `entry-*.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, `status-only.json` files), plus `OnboardingScenarioTest.java`, `EntryScenarioTest.java`, `PairedDevicesScenarioTest.java`, and `OperatorInteractionScenarioTest.java`.
+- **Sole Owner of**: `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` (and deletion of the 23 superseded `onboarding-*.json`, `entry*.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, `status-only.json` files), plus `OnboardingScenarioTest.java`, `EntryScenarioTest.java`, `PairedDevicesScenarioTest.java`, and `OperatorInteractionScenarioTest.java`.
 - **No Touch**: `ScenarioRegistry.java` / `StandardScenarios.java` (owned by `mock-runtime-foundation-and-consolidation-plan.md`), `doc/plans/README.adoc`, `pm-operator`, and `pm-web-app`.
 
 ---
