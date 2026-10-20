@@ -76,7 +76,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |Milestone 7
 
 |link:implemented/mock-runtime.adoc[`mock-runtime`]
-|Mock runtime `pm-mock-runtime` and its scenario format
+|Mock runtime `pm-mock-runtime` and its scenario format; the five-scenario catalog, closed scenario schema, scoped SSE with `Last-Event-ID`, and `/mcp` (foundation of the scenario consolidation, link:../agy/implemented/mock-runtime-foundation-and-consolidation-plan.md[`mock-runtime-foundation-and-consolidation`])
 |`done`
 |link:implemented/api-contract.adoc[`api-contract`]
 |Milestone 2; epic clients

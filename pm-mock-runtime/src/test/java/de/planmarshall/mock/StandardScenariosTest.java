@@ -12,11 +12,13 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.TreeSet;
 
 
@@ -52,6 +54,28 @@ class StandardScenariosTest {
             }
         }
         assertEquals(expected, new TreeSet<>(StandardScenarios.ALL));
+    }
+
+    @Test
+    @DisplayName("defines exactly the five canonical primary scenarios")
+    void shouldDefineFivePrimaryScenarios() {
+        assertEquals(5, StandardScenarios.PRIMARY_SCENARIOS.size());
+        assertEquals(StandardScenarios.PRIMARY_SCENARIOS, List.of("onboarding", "running-work", "projects-and-start",
+                "reports-and-system", "designer"));
+        assertEquals("projects-and-start", StandardScenarios.PROJECTS_AND_START);
+        assertEquals("reports-and-system", StandardScenarios.REPORTS_AND_SYSTEM);
+    }
+
+    @Test
+    @DisplayName("every primary scenario has a delivered resource file")
+    void primaryScenariosHaveResources() {
+        var scenarios = Path.of("src", "main", "resources", "scenarios");
+        if (!Files.isDirectory(scenarios)) {
+            scenarios = Path.of("pm-mock-runtime", "src", "main", "resources", "scenarios");
+        }
+        for (var name : StandardScenarios.PRIMARY_SCENARIOS) {
+            assertTrue(Files.isRegularFile(scenarios.resolve(name + ".json")), name + ".json is missing");
+        }
     }
 
     @Test

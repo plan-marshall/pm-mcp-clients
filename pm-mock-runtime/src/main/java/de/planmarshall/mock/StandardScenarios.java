@@ -25,6 +25,20 @@ import lombok.experimental.UtilityClass;
 public final class StandardScenarios {
 
     /**
+     * The five canonical, user-facing scenarios of the mock runtime. They are the only entries the
+     * interactive launcher offers; the fine-grained case scenarios below remain resolvable through
+     * the legacy alias table of {@link de.planmarshall.mock.scenario.ScenarioRegistry} while the
+     * consolidation waves migrate them into these five files.
+     */
+    public static final String PROJECTS_AND_START = "projects-and-start";
+
+    /**
+     * The system and reports scenario: the reports inbox, plan completion reports, the runtime
+     * lifecycle (drain, stop, restart), and cleanup (UC-PLN-6, UC-SYS-1..3).
+     */
+    public static final String REPORTS_AND_SYSTEM = "reports-and-system";
+
+    /**
      * Represents an idle runtime serving machine status ({@code /api/v1/status}).
      */
     public static final String STATUS_ONLY = "status-only";
@@ -410,6 +424,16 @@ public final class StandardScenarios {
     public static final String OPERATOR_INTERACTION = "operator-interaction";
 
     /**
+     * Unmodifiable list of the five canonical scenarios, in the order the launcher presents them.
+     */
+    public static final List<String> PRIMARY_SCENARIOS = List.of(
+            ONBOARDING,
+            RUNNING_WORK,
+            PROJECTS_AND_START,
+            REPORTS_AND_SYSTEM,
+            DESIGNER);
+
+    /**
      * Unmodifiable list of all delivered standard scenario names. The entry cases are derived from
      * {@link #ENTRY_CASES}, so a new case is listed here by construction.
      */
@@ -429,7 +453,7 @@ public final class StandardScenarios {
                     START_CHAT, START_FOLLOW_UP,
                     LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
                     INTENT_PLAN, INTENT_OUTLINE, INTENT_EPIC, INTENT_OVERSIZE,
-                    OPERATOR_INTERACTION))
+                    OPERATOR_INTERACTION, PROJECTS_AND_START, REPORTS_AND_SYSTEM))
             .flatMap(List::stream)
             .toList();
 }

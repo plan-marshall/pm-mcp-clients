@@ -22,10 +22,36 @@ public final class MockEventStream implements AutoCloseable {
 
     private final OutputStream out;
     private volatile boolean closed;
+    private volatile String scope = "machine";
     private long lastEventId;
 
     MockEventStream(OutputStream out) {
         this.out = out;
+    }
+
+    /**
+     * @return the subscription scope this stream belongs to ({@code machine}, {@code plan:<id>}, …)
+     */
+    public String scope() {
+        return scope;
+    }
+
+    /**
+     * Sets the subscription scope before the response head is written.
+     *
+     * @param value the scope key
+     * @return this stream
+     */
+    public MockEventStream scope(String value) {
+        this.scope = value == null || value.isBlank() ? "machine" : value;
+        return this;
+    }
+
+    /**
+     * @return the id of the last event written to this stream
+     */
+    public synchronized long lastEventId() {
+        return lastEventId;
     }
 
     /**
@@ -36,11 +62,24 @@ public final class MockEventStream implements AutoCloseable {
      * @throws IOException on connection error
      */
     public synchronized void send(String event, String data) throws IOException {
+        send(event, ++lastEventId, data);
+    }
+
+    /**
+     * Sends an event with an explicit id, as the scoped ring buffer assigned it.
+     *
+     * @param event the event type name, or {@code null}
+     * @param id    the id of the event within this stream
+     * @param data  the event payload text
+     * @throws IOException on connection error
+     */
+    public synchronized void send(String event, long id, String data) throws IOException {
         if (closed) {
             throw new IOException("Event stream is closed");
         }
+        this.lastEventId = Math.max(this.lastEventId, id);
         var sb = new StringBuilder();
-        sb.append("id: ").append(++lastEventId).append('\n');
+        sb.append("id: ").append(id).append('\n');
         if (event != null && !event.isBlank()) {
             sb.append("event: ").append(event).append('\n');
         }
@@ -62,6 +101,19 @@ public final class MockEventStream implements AutoCloseable {
     public synchronized void sendJson(String event, Object data) throws IOException {
         var json = data instanceof String s ? s : JsonTree.write(data);
         send(event, json);
+    }
+
+    /**
+     * Sends an event with an explicit id and JSON serializable data.
+     *
+     * @param event the event type name, or {@code null}
+     * @param id    the id of the event within this stream
+     * @param data  the event payload object
+     * @throws IOException on connection error
+     */
+    public synchronized void sendJson(String event, long id, Object data) throws IOException {
+        var json = data instanceof String s ? s : JsonTree.write(data);
+        send(event, id, json);
     }
 
     /**

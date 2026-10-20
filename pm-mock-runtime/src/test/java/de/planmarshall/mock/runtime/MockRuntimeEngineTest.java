@@ -31,6 +31,7 @@ import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
 import de.planmarshall.mock.scenario.LinkDefinition;
+import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -277,6 +278,42 @@ class MockRuntimeEngineTest {
         assertEquals("mock_no_route", res.json().get("error"));
         assertEquals("runtime.idle", res.json().get("state"));
         assertNotNull(res.json().get("offered_links"));
+    }
+
+    @Test
+    @DisplayName("an unoffered domain endpoint answers mock_no_route naming the state")
+    void unofferedDomainIsNoRoute() throws Exception {
+        var auth = Map.of("Authorization", "Bearer test-token");
+
+        var system = send("GET", "/api/v1/system", auth, new byte[0], false);
+        assertEquals(404, system.status());
+        assertEquals("mock_no_route", system.json().get("error"));
+        assertEquals("runtime.idle", system.json().get("state"));
+
+        var decisions = send("GET", "/api/v1/decisions", auth, new byte[0], false);
+        assertEquals(404, decisions.status());
+        assertEquals("mock_no_route", decisions.json().get("error"));
+
+        // The domain a scenario declares is served.
+        engine.switchScenario(StandardScenarios.SYSTEM);
+        assertEquals(200, send("GET", "/api/v1/system", auth, new byte[0], false).status());
+    }
+
+    @Test
+    @DisplayName("a scenario static route outside the live domains wins over the domain defaults")
+    void scenarioRouteWinsOutsideLiveDomains() throws Exception {
+        var state = new StateDefinition(Map.of("message", "start"), Map.of(), List.of(), null);
+        var testScenario = new Scenario(1, "route-precedence", "Route precedence", "start", null,
+                Map.of("GET /api/v1/custom/thing", new RouteDefinition(
+                        Map.of("value", "from-scenario"), 200)),
+                Map.of("start", state));
+        registry.register(testScenario);
+        engine.switchScenario("route-precedence");
+
+        var res = send("GET", "/api/v1/custom/thing", Map.of("Authorization", "Bearer test-token"),
+                new byte[0], false);
+        assertEquals(200, res.status());
+        assertEquals("from-scenario", res.json().get("value"));
     }
 
     @Test

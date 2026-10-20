@@ -16,8 +16,11 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -105,6 +108,10 @@ import de.planmarshall.api.entry.PairingCode;
 import de.planmarshall.api.entry.PairingRedemptionResponse;
 import de.planmarshall.api.entry.PairingResource;
 import de.planmarshall.api.entry.WebCredentialResource;
+import de.planmarshall.api.event.EventEnvelope;
+import de.planmarshall.api.event.EventName;
+import de.planmarshall.api.event.EventScope;
+import de.planmarshall.api.event.EventScopeKind;
 import de.planmarshall.api.event.StreamClosedEvent;
 import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.OutlineResource;
@@ -429,8 +436,33 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final String runtimeToken;
     private final String deviceSecret;
     private final ScheduledExecutorService scheduler;
-    private final Set<MockEventStream> activeStreams = ConcurrentHashMap.newKeySet();
+
+    /** The bounded ring buffer capacity per stream scope ({@code 05-mock-runtime.adoc}). */
+    private static final int EVENT_BUFFER_CAPACITY = 64;
+    private static final String STREAM_MACHINE = "machine";
+    private static final String STREAM_REPORTS = "reports";
+    private static final String STREAM_PLAN_PREFIX = "plan:";
+    private static final String STREAM_EPIC_PREFIX = "epic:";
+    private static final String STREAM_ENTRY_PREFIX = "entry:";
+    private static final String STREAM_WORKSPACE_PREFIX = "workspace:";
+    private static final String STREAM_ACTIVITY_PREFIX = "activity:";
+
+    /** Open streams and the subscription scope each one asked for. */
+    private final Map<MockEventStream, String> activeStreams = new ConcurrentHashMap<>();
+    private final Object eventLock = new Object();
+    private final Map<String, Deque<BufferedEvent>> eventBuffers = new HashMap<>();
+    private final Map<String, Long> streamSequences = new HashMap<>();
     private final List<ScheduledFuture<?>> pendingTasks = new ArrayList<>();
+
+    /**
+     * One buffered event of a stream scope, replayable after a {@code Last-Event-ID}.
+     *
+     * @param id    the id within the stream scope
+     * @param event the catalogue name
+     * @param json  the serialized envelope
+     */
+    private record BufferedEvent(long id, String event, String json) {
+    }
 
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
@@ -554,6 +586,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultLessonSource();
         designer.init(scenario);
         transitionTo(scenario.start());
+        broadcastReset();
     }
 
     /**
@@ -576,6 +609,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultLessonSource();
         designer.init(currentScenario.get());
         transitionTo(currentScenario.get().start());
+        broadcastReset();
     }
 
     private void initDefaultDevices() {
@@ -741,16 +775,204 @@ public final class MockRuntimeEngine implements AutoCloseable {
         broadcastEvent(event, data);
     }
 
+    /**
+     * Broadcasts one event as a valid {@link EventEnvelope} to every stream whose scope it belongs
+     * to, buffers it in that scope's bounded ring buffer, and drops a stream that fails to write.
+     * The runtime-wide {@code /api/v1/events} stream receives every event; a scoped stream receives
+     * only the events of its scope. A scenario event whose {@code data} already carries the envelope
+     * members ({@code event}, {@code at}, {@code scope}) keeps them, so a fixture can pin the instant
+     * and the scope it plays.
+     *
+     * @param event the event name
+     * @param data  the event payload
+     */
     private void broadcastEvent(String event, Object data) {
-        var iterator = activeStreams.iterator();
-        while (iterator.hasNext()) {
-            var stream = iterator.next();
-            try {
-                stream.sendJson(event, data);
-            } catch (IOException _) {
-                iterator.remove();
+        var payload = payloadOf(data);
+        var scope = scopeOf(event, payload);
+
+        var targets = streamTargetsOf(event, scope, payload);
+        var framed = new ArrayList<FramedEvent>();
+        synchronized (eventLock) {
+            for (var target : targets) {
+                var id = nextStreamId(target);
+                var envelope = envelopeJson(event, id, scope, payload);
+                var buffer = eventBuffers.computeIfAbsent(target, key -> new ArrayDeque<>());
+                buffer.addLast(new BufferedEvent(id, event, envelope));
+                while (buffer.size() > EVENT_BUFFER_CAPACITY) {
+                    buffer.removeFirst();
+                }
+                for (var entry : activeStreams.entrySet()) {
+                    if (entry.getValue().equals(target)) {
+                        framed.add(new FramedEvent(entry.getKey(), id, event, envelope));
+                    }
+                }
             }
         }
+        framed.forEach(this::writeOrDrop);
+    }
+
+    /**
+     * @param stream the stream to write to
+     * @param event  the event name
+     * @param id     the event id
+     * @param json   the envelope JSON
+     */
+    private record FramedEvent(MockEventStream stream, long id, String event, String json) {
+    }
+
+    private void writeOrDrop(FramedEvent framed) {
+        try {
+            framed.stream().sendJson(framed.event(), framed.id(), framed.json());
+        } catch (IOException _) {
+            activeStreams.remove(framed.stream());
+        }
+    }
+
+    private static Map<String, Object> payloadOf(Object data) {
+        var payload = new LinkedHashMap<String, Object>();
+        if (data instanceof Map<?, ?> map) {
+            map.forEach((key, value) -> payload.put(String.valueOf(key), value));
+        } else if (data != null) {
+            payload.put("data", data);
+        }
+        return payload;
+    }
+
+    private long nextStreamId(String scope) {
+        var id = streamSequences.merge(scope, 1L, Long::sum);
+        return id;
+    }
+
+    /**
+     * Derives the envelope scope from the payload: a plan, epic, or entry identifier the event
+     * names, else the project's workspace scope, else the machine's reports, else the runtime.
+     */
+    private static EventScope scopeOf(String event, Map<String, Object> payload) {
+        if (payload.get(EventEnvelope.FIELD_SCOPE) instanceof Map<?, ?> declared) {
+            @SuppressWarnings("unchecked")
+            var typed = (Map<String, Object>) declared;
+            try {
+                return EventScope.fromMap(typed);
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (RuntimeException | IOException _) {
+                // A malformed fixture scope falls back to the identifiers in the payload.
+            }
+        }
+        var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId != null) {
+            return new EventScope(EventScopeKind.PLAN, planId, stringMember(payload, KEY_PROJECT_ID));
+        }
+        var epicId = stringMember(payload, "epic_id");
+        if (epicId != null) {
+            return new EventScope(EventScopeKind.EPIC, epicId, stringMember(payload, KEY_PROJECT_ID));
+        }
+        var entryId = stringMember(payload, "entry_id");
+        if (entryId != null) {
+            return new EventScope(EventScopeKind.ENTRY, entryId, stringMember(payload, KEY_PROJECT_ID));
+        }
+        if (event.startsWith("report.")) {
+            return new EventScope(EventScopeKind.MACHINE, null, null);
+        }
+        var projectId = stringMember(payload, KEY_PROJECT_ID);
+        if (projectId != null) {
+            return new EventScope(EventScopeKind.WORKSPACE, null, projectId);
+        }
+        return new EventScope(EventScopeKind.RUNTIME, null, null);
+    }
+
+    private static String stringMember(Map<String, Object> payload, String key) {
+        var value = payload.get(key);
+        if (value instanceof String text && !text.isBlank()) {
+            return text;
+        }
+        return null;
+    }
+
+    /**
+     * Builds the serialized envelope. A catalogue event is built through {@link EventEnvelope}, so a
+     * malformed payload fails the same way the clients' codec fails it; an engine-internal name that
+     * the closed catalogue does not yet carry is wrapped in the same {@code event}/{@code id}/{@code data}
+     * shape without claiming catalogue membership.
+     */
+    private static String envelopeJson(String event, long id, EventScope scope, Map<String, Object> payload) {
+        var at = Instant.now();
+        var scopeMap = scope.toMap();
+        if (payload.get(EventEnvelope.FIELD_AT) instanceof String text) {
+            try {
+                at = Instant.parse(text);
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (RuntimeException _) {
+                // A fixture with a malformed instant keeps the current instant instead of failing the stream.
+            }
+        }
+        if (payload.get(EventEnvelope.FIELD_SCOPE) instanceof Map<?, ?> fixedScope) {
+            @SuppressWarnings("unchecked")
+            var typed = (Map<String, Object>) fixedScope;
+            try {
+                scopeMap = EventScope.fromMap(typed).toMap();
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (RuntimeException | IOException _) {
+                // Keep the derived scope when the fixture's scope is not a valid EventScope.
+            }
+        }
+
+        var payloadWithoutEnvelope = new LinkedHashMap<String, Object>();
+        for (var entry : payload.entrySet()) {
+            if (!EventEnvelope.FIELD_EVENT.equals(entry.getKey())
+                    && !EventEnvelope.FIELD_AT.equals(entry.getKey())
+                    && !EventEnvelope.FIELD_SCOPE.equals(entry.getKey())) {
+                payloadWithoutEnvelope.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        var name = EventName.fromWireOrNull(event);
+        if (name != null) {
+            try {
+                var rebuiltScope = EventScope.fromMap(scopeMap);
+                var envelope = new EventEnvelope(name, id, at, rebuiltScope, payloadWithoutEnvelope).toMap();
+                // The SSE event and id fields carry the envelope's outer members; the data line is the
+                // envelope's data object, the shape every client's SseReader expects.
+                return JsonTree.write(envelope.get(EventEnvelope.FIELD_DATA));
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (RuntimeException | IOException _) {
+                // Fall through to the shape below: the payload keeps a member the envelope reserves.
+            }
+        }
+
+        var data = new LinkedHashMap<String, Object>();
+        data.put(EventEnvelope.FIELD_EVENT, event);
+        data.put(EventEnvelope.FIELD_AT, at.toString());
+        data.put(EventEnvelope.FIELD_SCOPE, scopeMap);
+        data.putAll(payloadWithoutEnvelope);
+        return JsonTree.write(data);
+    }
+
+    /**
+     * @return every stream scope the event belongs to: the runtime-wide stream always, the scope it
+     *         names, and the reports or task-activity stream it belongs to
+     */
+    private static List<String> streamTargetsOf(String event, EventScope scope, Map<String, Object> payload) {
+        var targets = new LinkedHashSet<String>();
+        targets.add(STREAM_MACHINE);
+        switch (scope.kind()) {
+            case PLAN -> targets.add(STREAM_PLAN_PREFIX + scope.id());
+            case EPIC -> targets.add(STREAM_EPIC_PREFIX + scope.id());
+            case ENTRY -> targets.add(STREAM_ENTRY_PREFIX + scope.id());
+            case WORKSPACE -> targets.add(STREAM_WORKSPACE_PREFIX + scope.projectId());
+            default -> {
+                // The runtime and machine scopes are served by the runtime-wide stream.
+            }
+        }
+        if (event.startsWith("report.")) {
+            targets.add(STREAM_REPORTS);
+        }
+        if ("task.activity".equals(event) && scope.kind() == EventScopeKind.PLAN) {
+            var taskId = stringMember(payload, "task_id");
+            if (taskId != null) {
+                targets.add(STREAM_ACTIVITY_PREFIX + scope.id() + ":" + taskId);
+            }
+        }
+        return List.copyOf(targets);
     }
 
     /**
@@ -780,32 +1002,81 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        // 3. Dynamic routes of the domain areas
+        // 3. A scoped SSE subscription, before a domain handler can swallow the path.
+        var streamScope = "GET".equals(request.method()) ? streamScopeOf(path) : null;
+        if (streamScope != null) {
+            handleEventStream(request, response, streamScope);
+            return;
+        }
+
+        // 4. The MCP endpoint of the relay, beside the operator API.
+        if ("/mcp".equals(path)) {
+            handleMcp(request, response);
+            return;
+        }
+
+        // 5. A scenario link or static route outside the engine's live domain areas wins over the
+        //    domain defaults: a scenario definition is never shadowed by a Java fixture, and an
+        //    operator link under /links/ is always served as the scenario declares it.
+        var route = currentScenario.get().route(request.method(), path);
+        if (!isLiveDomainPath(path)) {
+            if (handleStateLink(request, response)) {
+                return;
+            }
+            if (route != null) {
+                handleRouteWithDynamicStatus(route, path, response);
+                return;
+            }
+        }
+
+        // 6. Dynamic routes of the domain areas.
         if (handleDynamicRoutes(request, response, isWeb)) {
             return;
         }
 
-        // 4. SSE event stream subscription
-        if ("GET".equals(request.method())
-                && ("/api/v1/events".equals(path) || path.endsWith(SEGMENT_EVENTS))) {
-            handleEventStream(response);
-            return;
-        }
-
-        // 5. Match against current state links
+        // 7. A live path no domain handler claimed falls back to the scenario's link or route.
         if (handleStateLink(request, response)) {
             return;
         }
-
-        // 6. Match against static routes
-        var route = currentScenario.get().route(request.method(), path);
         if (route != null) {
             handleRouteWithDynamicStatus(route, path, response);
             return;
         }
 
-        // 7. No match: answer mock_no_route
+        // 8. No match: answer mock_no_route
         handleNoRoute(request, response);
+    }
+
+    /**
+     * The operator API families the engine serves with stateful handlers (mutations, revisions,
+     * live lists). A scenario that declares a link or route on one of these paths describes the
+     * state the handler plays; the handler is the richer answer, so it wins. Every other path — in
+     * particular an operator link below {@code /links/} — is served by the scenario first.
+     *
+     * @param path the request path
+     * @return {@code true} when a stateful domain handler owns the family
+     */
+    private static boolean isLiveDomainPath(String path) {
+        return path.startsWith("/api/v1/reports")
+                || path.startsWith("/api/v1/plans")
+                || path.startsWith("/api/v1/epics")
+                || path.startsWith("/api/v1/entries")
+                || path.startsWith("/api/v1/projects")
+                || path.startsWith("/api/v1/project-onboardings")
+                || path.startsWith("/api/v1/explorer")
+                || path.startsWith("/api/v1/overview")
+                || path.startsWith("/api/v1/workflows")
+                || path.startsWith("/api/v1/decisions")
+                || path.startsWith("/api/v1/system")
+                || path.startsWith("/api/v1/recipes")
+                || path.startsWith("/api/v1/intake")
+                || path.startsWith("/api/v1/onboarding")
+                || path.startsWith("/api/v1/web/")
+                || path.startsWith("/api/v1/status/")
+                || path.startsWith("/api/v1/enrol")
+                || path.startsWith("/api/v1/credentials")
+                || path.startsWith("/api/v1/machine/decisions")
+                || path.startsWith("/api/v1/machine/settings");
     }
 
     private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
@@ -819,14 +1090,38 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleProjectOverviewRoutes(request, response)
                 || handleReportRoutes(request, response, isWeb)
                 || handleIntentRoutes(request, response)
-                || handleDecisionRoutes(request, response, isWeb)
-                || handleSystemRoutes(request, response, isWeb)
+                || (declaresDecisions() && handleDecisionRoutes(request, response, isWeb))
+                || (declaresSystem() && handleSystemRoutes(request, response, isWeb))
                 || handleProcessRoutes(request, response)
                 || handleDecompositionRoutes(request, response)
                 || handleGitSourceRoutes(request, response)
                 || handleStartRoutes(request, response, isWeb)
                 || handleLessonSourceRoutes(request, response)
                 || handleControlRoutes(request, response);
+    }
+
+    /**
+     * @return {@code true} when the active scenario declares the system domain (by name, route, or
+     *         state prefix), so its stateful handlers serve it
+     */
+    private boolean declaresSystem() {
+        var scenario = currentScenario.get();
+        return StandardScenarios.SYSTEM.equals(scenario.name())
+                || StandardScenarios.REPORTS_AND_SYSTEM.equals(scenario.name())
+                || scenario.routes().keySet().stream().anyMatch(route -> route.contains("/api/v1/system"))
+                || scenario.states().keySet().stream().anyMatch(state -> state.startsWith("system."));
+    }
+
+    /**
+     * @return {@code true} when the active scenario declares the decisions domain (by name, route,
+     *         or state id), so its stateful handlers serve it
+     */
+    private boolean declaresDecisions() {
+        var scenario = currentScenario.get();
+        return StandardScenarios.DECISIONS.equals(scenario.name())
+                || StandardScenarios.RUNNING_WORK.equals(scenario.name())
+                || scenario.routes().keySet().stream().anyMatch(route -> route.contains("/decisions"))
+                || scenario.states().keySet().stream().anyMatch(state -> state.contains("decision"));
     }
 
     private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -992,7 +1287,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (linkDef.href() != null && linkDef.href().equals(path)) {
             return true;
         }
-        if (path.endsWith("/" + linkName)) {
+        // The operator link convention puts the id below /links/; a deeper domain path that merely
+        // ends in the same word (…/reports/rep-0142/read) is not this link.
+        if (path.endsWith(SEGMENT_LINKS + linkName)) {
             return true;
         }
         return matchesRepresentationLink(state, linkName, path);
@@ -4485,10 +4782,155 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(200, messages);
     }
 
-    private void handleEventStream(MockHttpResponse response) throws IOException {
-        var stream = response.events(200, activeStreams::add);
+    /**
+     * The relay-facing MCP endpoint ({@code POST /mcp}). The relay sends the JSON-RPC request body and
+     * names the method in the {@code Mcp-Method} header; a plain client may omit the header and carry
+     * the method in the body. {@code initialize} and {@code tools/call} answer with one JSON-RPC
+     * object, {@code tools/list} with a chunked SSE progress notification followed by the
+     * {@code message} frame, and a notification with {@code 202} and no body. A scenario may fix any
+     * answer with a static {@code POST /mcp} route.
+     *
+     * @param request  the request
+     * @param response the response
+     * @throws IOException on write failure
+     */
+    private void handleMcp(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (!"POST".equals(request.method())) {
+            response.send(405, "application/json",
+                    JsonTree.write(Map.of(KEY_ERROR, "method_not_allowed", KEY_MESSAGE, "POST /mcp only")));
+            return;
+        }
+
+        var body = request.bodyText();
+        Map<String, Object> message;
         try {
+            message = JsonTree.asObject(JsonTree.parse(body));
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException _) {
+            response.json(200, Map.of("jsonrpc", "2.0", "id", null,
+                    "error", Map.of("code", -32700, "message", "parse_error")));
+            return;
+        }
+        if (message == null) {
+            response.json(200, Map.of("jsonrpc", "2.0", "id", null,
+                    "error", Map.of("code", -32600, "message", "invalid_request")));
+            return;
+        }
+
+        var method = request.header("Mcp-Method");
+        if (method == null || method.isBlank()) {
+            method = JsonTree.string(message, "method");
+        }
+        var id = message.get("id");
+        var params = JsonTree.object(message, "params");
+
+        if (method == null || method.isBlank()) {
+            response.json(200, Map.of("jsonrpc", "2.0", "id", id == null ? "" : id,
+                    "error", Map.of("code", -32600, "message", "invalid_request")));
+            return;
+        }
+
+        if (method.startsWith("notifications/")) {
+            response.send(202, null, "");
+            return;
+        }
+
+        var scenarioRoute = currentScenario.get().route("POST", request.path());
+        if (scenarioRoute != null && !"tools/list".equals(method)) {
+            response.json(scenarioRoute.status(), scenarioRoute.representation());
+            return;
+        }
+
+        switch (method) {
+            case "initialize" -> response.json(200, Map.of(
+                    "jsonrpc", "2.0",
+                    "id", id == null ? "" : id,
+                    "result", Map.of(
+                            "protocolVersion", protocolVersionOf(params),
+                            "capabilities", Map.of("tools", Map.of()),
+                            "serverInfo", Map.of("name", "pm-mock-runtime", "version", "0.1.0-SNAPSHOT"))));
+            case "tools/list" -> {
+                try (var events = response.events(200)) {
+                    events.send(null, JsonTree.write(Map.of(
+                            "jsonrpc", "2.0",
+                            "method", "notifications/progress",
+                            "params", Map.of("progress", 1, "total", 1))));
+                    events.send("message", JsonTree.write(Map.of(
+                            "jsonrpc", "2.0",
+                            "id", id == null ? "" : id,
+                            "result", Map.of("tools", List.of(Map.of(
+                                    "name", "pm_wait",
+                                    "inputSchema", Map.of("type", "object", "properties", Map.of())))))));
+                }
+            }
+            case "tools/call" -> response.json(200, Map.of(
+                    "jsonrpc", "2.0",
+                    "id", id == null ? "" : id,
+                    "result", Map.of("content", List.of())));
+            default -> response.json(200, Map.of(
+                    "jsonrpc", "2.0",
+                    "id", id == null ? "" : id,
+                    "result", Map.of()));
+        }
+    }
+
+    private static String protocolVersionOf(Map<String, Object> params) {
+        var version = params == null ? null : JsonTree.string(params, "protocolVersion");
+        return version == null || version.isBlank() ? "2025-11-25" : version;
+    }
+
+    /**
+     * Serves one scoped Server-Sent Events stream. The stream is registered in the response's
+     * pre-head callback, so a broadcast that follows the request cannot be missed. A
+     * {@code Last-Event-ID} that the scope's ring buffer still holds replays every later event in
+     * order; a stale, evicted, or unknown id receives one {@code reset} envelope instead, as does a
+     * client that reconnects after {@code /mock/reset} or a scenario switch.
+     *
+     * @param request  the request carrying the optional {@code Last-Event-ID}
+     * @param response the response to write
+     * @param scope    the subscription scope key
+     * @throws IOException on write failure
+     */
+    private void handleEventStream(MockHttpRequest request, MockHttpResponse response, String scope) throws IOException {
+        var stream = response.events(200, created -> {
+            created.scope(scope);
+            activeStreams.put(created, scope);
+        });
+
+        var lastEventId = parseLastEventId(request.header("Last-Event-ID"));
+        var replay = new ArrayList<BufferedEvent>();
+        var reset = false;
+        synchronized (eventLock) {
+            if (lastEventId != null) {
+                var buffer = eventBuffers.get(scope);
+                var found = buffer != null && buffer.stream().anyMatch(item -> item.id() == lastEventId);
+                if (found) {
+                    for (var item : buffer) {
+                        if (item.id() > lastEventId) {
+                            replay.add(item);
+                        }
+                    }
+                } else {
+                    reset = true;
+                }
+            }
+        }
+
+        try {
+            if (reset) {
+                var resetId = nextBufferedReset(scope);
+                writeOrDrop(new FramedEvent(stream, resetId, EventName.RESET.wire(),
+                        envelopeJson(EventName.RESET.wire(), resetId, resetScopeOf(scope),
+                                new LinkedHashMap<>())));
+            } else {
+                for (var item : replay) {
+                    writeOrDrop(new FramedEvent(stream, item.id(), item.event(), item.json()));
+                }
+            }
             stream.sendComment("connected to mock runtime");
+            if (scope.startsWith(STREAM_ACTIVITY_PREFIX)) {
+                sendActivitySeed(stream, scope);
+            }
         } catch (IOException _) {
             activeStreams.remove(stream);
             return;
@@ -4506,31 +4948,152 @@ public final class MockRuntimeEngine implements AutoCloseable {
         activeStreams.remove(stream);
     }
 
-    private void handleTaskActivityEventStream(MockHttpResponse response) throws IOException {
-        var stream = response.events(200, activeStreams::add);
+    private static Long parseLastEventId(String header) {
+        if (header == null || header.isBlank()) {
+            return null;
+        }
         try {
-            stream.sendComment("connected to mock runtime");
-            stream.sendJson("task.activity", Map.of(
-                    "kind", "assistant_text",
-                    "text", "Analyzing module dependencies...",
-                    "tokens", 450,
-                    "timestamp", Instant.now().toString()
-            ));
+            return Long.parseLong(header.trim());
+        } catch (NumberFormatException _) {
+            return -1L;
+        }
+    }
+
+    private long nextBufferedReset(String scope) {
+        synchronized (eventLock) {
+            var id = nextStreamId(scope);
+            var buffer = eventBuffers.computeIfAbsent(scope, key -> new ArrayDeque<>());
+            var envelope = envelopeJson(EventName.RESET.wire(), id, resetScopeOf(scope), new LinkedHashMap<>());
+            buffer.addLast(new BufferedEvent(id, EventName.RESET.wire(), envelope));
+            while (buffer.size() > EVENT_BUFFER_CAPACITY) {
+                buffer.removeFirst();
+            }
+            return id;
+        }
+    }
+
+    private static EventScope resetScopeOf(String scope) {
+        if (scope.startsWith(STREAM_PLAN_PREFIX)) {
+            return new EventScope(EventScopeKind.PLAN, scope.substring(STREAM_PLAN_PREFIX.length()), null);
+        }
+        if (scope.startsWith(STREAM_EPIC_PREFIX)) {
+            return new EventScope(EventScopeKind.EPIC, scope.substring(STREAM_EPIC_PREFIX.length()), null);
+        }
+        if (scope.startsWith(STREAM_ENTRY_PREFIX)) {
+            return new EventScope(EventScopeKind.ENTRY, scope.substring(STREAM_ENTRY_PREFIX.length()), null);
+        }
+        if (scope.startsWith(STREAM_ACTIVITY_PREFIX)) {
+            var rest = scope.substring(STREAM_ACTIVITY_PREFIX.length());
+            var separator = rest.indexOf(':');
+            var planId = separator > 0 ? rest.substring(0, separator) : rest;
+            return new EventScope(EventScopeKind.PLAN, planId, null);
+        }
+        if (scope.startsWith(STREAM_WORKSPACE_PREFIX)) {
+            return new EventScope(EventScopeKind.WORKSPACE, null,
+                    scope.substring(STREAM_WORKSPACE_PREFIX.length()));
+        }
+        if (STREAM_REPORTS.equals(scope)) {
+            return new EventScope(EventScopeKind.MACHINE, null, null);
+        }
+        return new EventScope(EventScopeKind.RUNTIME, null, null);
+    }
+
+    private void sendActivitySeed(MockEventStream stream, String scope) {
+        var rest = scope.substring(STREAM_ACTIVITY_PREFIX.length());
+        var separator = rest.indexOf(':');
+        var planId = separator > 0 ? rest.substring(0, separator) : rest;
+        var taskId = separator > 0 ? rest.substring(separator + 1) : null;
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("kind", "assistant_text");
+        payload.put("text", "Analyzing module dependencies...");
+        payload.put("tokens", 450);
+        payload.put("timestamp", Instant.now().toString());
+        if (taskId != null) {
+            payload.put("task_id", taskId);
+        }
+        long id;
+        String envelope;
+        synchronized (eventLock) {
+            id = nextStreamId(scope);
+            envelope = envelopeJson("task.activity", id,
+                    new EventScope(EventScopeKind.PLAN, planId, null), payload);
+        }
+        try {
+            stream.sendJson("task.activity", id, envelope);
         } catch (IOException _) {
             activeStreams.remove(stream);
-            return;
         }
+    }
 
-        while (!closed && !stream.isClosed()) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException _) {
-                Thread.currentThread().interrupt();
-                break;
+    /**
+     * Emits one {@code reset} to every open stream and clears every ring buffer. Called by
+     * {@code /mock/reset} and by a scenario switch: the envelopes of the previous scenario must not
+     * be replayed into the new one.
+     */
+    private void broadcastReset() {
+        var framed = new ArrayList<FramedEvent>();
+        synchronized (eventLock) {
+            eventBuffers.clear();
+            streamSequences.clear();
+            for (var entry : activeStreams.entrySet()) {
+                var scope = entry.getValue();
+                var id = nextStreamId(scope);
+                var envelope = envelopeJson(EventName.RESET.wire(), id, resetScopeOf(scope),
+                        new LinkedHashMap<>());
+                eventBuffers.computeIfAbsent(scope, key -> new ArrayDeque<>())
+                        .addLast(new BufferedEvent(id, EventName.RESET.wire(), envelope));
+                framed.add(new FramedEvent(entry.getKey(), id, EventName.RESET.wire(), envelope));
             }
         }
-        activeStreams.remove(stream);
+        framed.forEach(this::writeOrDrop);
     }
+
+    /**
+     * Derives the subscription scope of an SSE path.
+     *
+     * @param path the request path
+     * @return the scope key, or {@code null} when the path is not an event stream
+     */
+    private static String streamScopeOf(String path) {
+        if ("/api/v1/events".equals(path) || "/api/v1/machine/events".equals(path)) {
+            return STREAM_MACHINE;
+        }
+        if ("/api/v1/reports/events".equals(path)) {
+            return STREAM_REPORTS;
+        }
+        var activity = ACTIVITY_EVENTS_PATH.matcher(path);
+        if (activity.matches()) {
+            return STREAM_ACTIVITY_PREFIX + activity.group(1) + ":" + activity.group(2);
+        }
+        var plan = PLAN_EVENTS_PATH.matcher(path);
+        if (plan.matches()) {
+            return STREAM_PLAN_PREFIX + plan.group(1);
+        }
+        var epic = EPIC_EVENTS_PATH.matcher(path);
+        if (epic.matches()) {
+            return STREAM_EPIC_PREFIX + epic.group(1);
+        }
+        var entry = ENTRY_EVENTS_PATH.matcher(path);
+        if (entry.matches()) {
+            return STREAM_ENTRY_PREFIX + entry.group(1);
+        }
+        var workspace = WORKSPACE_EVENTS_PATH.matcher(path);
+        if (workspace.matches()) {
+            return STREAM_WORKSPACE_PREFIX + workspace.group(1);
+        }
+        return path.endsWith(SEGMENT_EVENTS) ? STREAM_MACHINE : null;
+    }
+
+    private static final Pattern ACTIVITY_EVENTS_PATH =
+            Pattern.compile("^/api/v1/plans/([^/]+)/tasks/([^/]+)/activity/events$");
+    private static final Pattern PLAN_EVENTS_PATH =
+            Pattern.compile("^/api/v1/plans/([^/]+)/events$");
+    private static final Pattern EPIC_EVENTS_PATH =
+            Pattern.compile("^/api/v1/epics/([^/]+)/events$");
+    private static final Pattern ENTRY_EVENTS_PATH =
+            Pattern.compile("^/api/v1/entries/([^/]+)/events$");
+    private static final Pattern WORKSPACE_EVENTS_PATH =
+            Pattern.compile("^/api/v1/projects/([^/]+)/workspace/events$");
 
     private void handleControlRequest(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
@@ -6841,12 +7404,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
 
-        var isPlanActivityEvents = path.startsWith(PATH_PLANS_PREFIX) && path.endsWith("/activity/events");
         var isPlanActivity = path.startsWith(PATH_PLANS_PREFIX) && path.contains("/tasks/") && path.endsWith("/activity");
         var isPlanProcess = path.startsWith(PATH_PLANS_PREFIX) && path.endsWith(SUFFIX_PROCESS);
         var isEpicProcess = path.startsWith(PATH_EPICS_PREFIX) && path.endsWith(SUFFIX_PROCESS);
 
-        if (!isPlanActivityEvents && !isPlanActivity && !isPlanProcess && !isEpicProcess) {
+        if (!isPlanActivity && !isPlanProcess && !isEpicProcess) {
             return false;
         }
 
@@ -6857,13 +7419,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        // 2. Dynamic plan task activity events SSE stream
-        if (isPlanActivityEvents) {
-            handleTaskActivityEventStream(response);
-            return true;
-        }
-
-        // 3. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity
+        // 2. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity
         if (isPlanActivity) {
             var parts = path.split("/");
             if (parts.length >= 7 && "tasks".equals(parts[5])) {
@@ -6922,7 +7478,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             closed = true;
             cancelPendingTasks();
             scheduler.shutdownNow();
-            for (var stream : activeStreams) {
+            for (var stream : activeStreams.keySet()) {
                 try {
                     stream.close();
                 } catch (IOException _) {

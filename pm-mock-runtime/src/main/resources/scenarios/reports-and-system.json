@@ -1,0 +1,75 @@
+{
+  "format_version": 1,
+  "name": "reports-and-system",
+  "description": "Reports inbox, plan completion reports, runtime lifecycle (drain, stop, restart), and cleanup and kept items (UC-PLN-6, UC-SYS-1..3)",
+  "start": "reports.list",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "lifecycle_state": "running",
+        "listener": "unix",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "running_since": "today 08:14",
+        "uptime_seconds": 22320,
+        "workers_count": 5,
+        "build_slots_used": 1,
+        "build_slots_total": 2,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    }
+  },
+  "states": {
+    "reports.list": {
+      "representation": {
+        "scope": "workspace",
+        "state": "reports.list",
+        "summary": "Reports · 5 unread"
+      },
+      "links": {
+        "read": {
+          "method": "POST",
+          "href": "/api/v1/reports/read",
+          "next": "reports.list"
+        }
+      }
+    },
+    "system.ready": {
+      "representation": {
+        "status": "ready",
+        "state": "running"
+      }
+    },
+    "system.draining": {
+      "representation": {
+        "status": "draining",
+        "state": "draining",
+        "draining_by": "the console",
+        "can_withdraw": true
+      }
+    },
+    "system.stopping": {
+      "representation": {
+        "status": "stopping",
+        "state": "stopping"
+      }
+    },
+    "system.upgrading": {
+      "representation": {
+        "status": "upgrading",
+        "state": "upgrading",
+        "step": "preparing"
+      }
+    }
+  }
+}
