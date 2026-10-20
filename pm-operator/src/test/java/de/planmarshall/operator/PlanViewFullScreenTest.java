@@ -410,11 +410,14 @@ class PlanViewFullScreenTest {
 
             virtual.type("p");
             await(() -> shows(virtual, "by plan"));
+            delay(200L);
             virtual.type("\u001b");
             await(() -> shows(virtual, "p project"));
+            delay(200L);
 
             virtual.type("e");
             await(() -> shows(virtual, "by epic") && shows(virtual, "Relay Hardening"));
+            delay(200L);
             virtual.type("\u001b");
             await(() -> shows(virtual, "p project"));
 
