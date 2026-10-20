@@ -328,6 +328,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
     private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
+    private static final String STATE_ONBOARD_SUMMARY = "onboard.summary";
     /** The engine-only fixture data a state's operator facts carry beside its domain facts. */
     private static final String FIXTURE_RUNTIME = "runtime";
     private static final String FIXTURE_DEVICES = "devices";
@@ -840,6 +841,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
             return Map.of("state", STATE_ONBOARD_COMPLETED, "step", 7, "steps", 7, "completed", true);
         }
+        if (STATE_ONBOARD_SUMMARY.equals(stateId)) {
+            return Map.of("state", stateId, "step", 7, "steps", 7, "completed", false);
+        }
         var aspect = MachineOnboardingState.aspectOf(stateId);
         if (aspect == null) {
             return null;
@@ -857,7 +861,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (runtime != null && runtime.get(FIELD_ONBOARDED) instanceof Boolean onboarded) {
             return onboarded;
         }
-        return completedStepsFor(stateId) >= 7;
+        return STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.");
     }
 
     /**
@@ -5635,7 +5639,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var current = MachineOnboardingState.aspectOf(stateId);
         var upTo = current != null ? current.step() - 1 : 0;
-        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || STATE_ONBOARD_SUMMARY.equals(stateId)
+                || stateId.startsWith("settings.")) {
             upTo = 7;
         }
         if (upTo >= 1) {
@@ -5666,7 +5671,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (stateId == null) {
             return 0;
         }
-        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || STATE_ONBOARD_SUMMARY.equals(stateId)
+                || stateId.startsWith("settings.")) {
             return 7;
         }
         var aspect = MachineOnboardingState.aspectOf(stateId);
