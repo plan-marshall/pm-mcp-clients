@@ -85,7 +85,9 @@
       focusedFilter = null;
       return;
     }
-    const project = explorer.all_projects.find((p) => p.project_id === requested);
+    const project = [...explorer.favourites, ...explorer.recent, ...explorer.all_projects].find(
+      (p) => p.project_id === requested,
+    );
     if (project) {
       filter = project.display_name;
       focusedFilter = project.display_name;
