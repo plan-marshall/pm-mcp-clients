@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ReportsView from './ReportsView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { get } from 'svelte/store';
 import {
   apiClient,
   type PlanCompletionReport,
@@ -124,17 +125,48 @@ describe('ReportsView component', () => {
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).not.toBeNull();
     });
+    expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('fix-relay');
+
+    // A direct step to another report remounts the detail and fetches that report.
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'docs-typo' }));
+    await waitFor(() => {
+      expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('docs-typo');
+    });
 
     // A plain visit to the reports route closes the detail it no longer names.
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).toBeNull();
     });
+  });
 
-    // A back or forward step to another report opens that report.
-    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'docs-typo' }));
+  it('closes a detail opened from the list on a plain reports visit', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue({
+      plan_id: 'fix-relay',
+      title: 'fix-relay',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      outcome: 'merged',
+      started_at: '2026-10-16T08:40:00Z',
+      ended_at: '2026-10-16T11:20:00Z',
+      duration_seconds: 9600,
+      paused_seconds: 0,
+      deliverables: [],
+      replanning_records: [],
+      decision_records: [],
+    } as unknown as PlanCompletionReport);
+
+    render(ReportsView);
+
+    const details = await screen.findAllByRole('button', { name: /Show the details/i });
+    await fireEvent.click(details[0]);
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+    expect(get(runtimeStore).selectedReportDetailPlanId).toBe('fix-relay');
+
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).toBeNull();
     });
   });
 

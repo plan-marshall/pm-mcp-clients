@@ -190,6 +190,18 @@
     }
   }
 
+  /**
+   * Opens a report's detail and records the plan on the route, so a plain visit to Reports
+   * closes it the same way it closes a detail reached by its query.
+   *
+   * @param planId the plan whose completion report to show
+   */
+  function showDetail(planId: string): void {
+    activeDetailPlanId = planId;
+    syncedRouteReportPlan = planId;
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
+  }
+
   async function openDetail(item: ReportItem) {
     // Mark report read first as per specification
     void markRead(item);
@@ -200,19 +212,19 @@
     // Check if detail links to a plan completion report
     const match = /plans\/([^/]+)\/completion/.exec(detailLink);
     if (match?.[1]) {
-      activeDetailPlanId = match[1];
+      showDetail(match[1]);
       return;
     }
 
     const planReportMatch = /plan report\s+([^\s]+)/.exec(detailLink);
     if (planReportMatch?.[1]) {
-      activeDetailPlanId = planReportMatch[1];
+      showDetail(planReportMatch[1]);
       return;
     }
 
     // If it is another plan reference
     if (item.from?.plan) {
-      activeDetailPlanId = item.from.plan;
+      showDetail(item.from.plan);
       return;
     }
   }
@@ -233,7 +245,9 @@
 
 <div class="reports-view">
   {#if activeDetailPlanId}
-    <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+    {#key activeDetailPlanId}
+      <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+    {/key}
   {:else}
     <div class="reports-container">
       <!-- Header -->
