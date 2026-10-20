@@ -37,9 +37,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Core engine, closed schema, scoped SSE replay, JSON-RPC `/mcp`, 5-scenario architecture)*
 2. **Wave 2a (Landed & Verified)**: [`mock-runtime-onboarding-and-entry-plan.md`](implemented/mock-runtime-onboarding-and-entry-plan.md) ([Report](verified/mock-runtime-onboarding-and-entry-plan-report.md) — PR #131, commit `77f75eb`)
    *(Consolidated 23 scenario files into 80-state onboarding.json; full OperatorStateResource closure)*
-3. **Wave 2b (Next Active)**: `mock-runtime-running-work-plan.md`
-   *(Consolidates running-work, plan-view, decisions, and control files into rich running-work.json)*
-4. **Wave 3**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
+3. **Wave 2b (Landed & Verified)**: [`mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) ([Report](verified/mock-runtime-running-work-plan-report.md) — PR #136, commit `49d0ef6`)
+   *(Consolidated 16 scenario files into 38-state running-work.json; declarative routes and fixtures)*
+4. **Wave 3 (Next Active)**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
    *(Migrates projects, starting work, reports, and system views into standard scenarios)*
 
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)

@@ -1,9 +1,10 @@
 # Completion Report: `mock-runtime-running-work`
 
+**Status:** Implemented, landed on `main` (commit `49d0ef6`, PR #136), and verified under [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md) (Step 8 PASSED)
 **Plan**: [`mock-runtime-running-work-plan.md`](../implemented/mock-runtime-running-work-plan.md)
 **Branch**: `feat/mock-runtime-running-work`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-mock-running-work`
-**Runbook**: [`runbook.md`](../runbook.md)
+**Governed by:** [`doc/agy/runbook.md`](../runbook.md) and [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md)
 **Date**: 2026-10-20
 
 ---
@@ -99,8 +100,8 @@ without a recommendation; the two waivers; and the six quorum-vote models.
 
 | Gate | Command | Result |
 |---|---|---|
-| Consolidated contract suites | `./mvnw -pl pm-mock-runtime test -Dtest='RunningWorkScenarioTest,PlanViewScenarioTest,IntentScenarioTest,DecisionsScenarioTest,DecompositionScenarioTest,ControlScenarioTest'` | **80 tests, 0 failures** |
-| Full mock-runtime suite | `./mvnw -pl pm-mock-runtime test` | **372 tests, 0 failures** |
+| Consolidated contract suites | `./mvnw -pl pm-mock-runtime test -Dtest='RunningWorkScenarioTest,PlanViewScenarioTest,IntentScenarioTest,DecisionsScenarioTest,DecompositionScenarioTest,ControlScenarioTest,StandardScenariosTest'` | **80 tests, 0 failures** |
+| Full mock-runtime suite | `./mvnw -pl pm-mock-runtime test` | **374 tests, 0 failures** |
 | Operator start dialogues | `./mvnw -pl pm-operator test -Dtest=StartDialogueTest` | **37 tests, 0 failures** |
 | Pre-commit gate | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** across all eight reactor modules (8:14 min) |
 
@@ -186,3 +187,34 @@ test, and the one re-recorded transcript).
 
 No temporary diagnostics, commented-out code, or generated artifacts remain. The temporary
 fixture-dump test used to capture the wire shapes was deleted before the gate.
+
+---
+
+## 7. Post-Landing Verification Audit (Step 8: PASSED)
+
+In accordance with [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md), the orchestrator session conducted an active, independent 4-pillar verification audit of PR #136 landed at commit `49d0ef6` on `main`:
+
+### Pillar 1: Specification & Contract Conformance Matrix (Traceability Audit)
+- **Scope Verification**: Delivered all 38 `OperatorStateResource` states and 20 routes in `pm-mock-runtime/src/main/resources/scenarios/running-work.json`, consolidating 16 fragmented scenario files across overview, process view, intent, decisions, and control.
+- **Placeholder & Stub Audit**: Zero stubs, temporary mock branches, `UnsupportedOperationException`, or `TODO`/`FIXME` markers in production code. Clean production AST.
+- **Closed Wire Catalogues**: All scheduled events use `EventEnvelope` with the closed `EventName` catalogue; all state definitions decode cleanly through `pm-api` codecs (`EpicResource`, `ArchiveCheck`, `ReviewResource`, `PlanSettingsRecord`, `HoldRecord`, `ChatReadBackResource`, `DecisionEnvelope`, `EpicDecomposition`).
+
+### Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans
+- **Standard Scenarios Architecture**: 16 legacy micro-scenarios completely removed; all legacy names resolve through `ScenarioRegistry` alias table to `running-work#running_work.active`.
+- **Closed Schema & Codec Enforcement**: `MockRuntimeEngine` and `ScenarioLoader` strictly validate all 38 states against `pm-api` schema; unknown properties fail closed.
+- **Dynamic Route & Fixture Overrides**: Route overrides in `facts.runtime.routes` resolve before scenario-level routes; case states cleanly merge over the base fixture.
+- **SonarCloud Gate & Code Quality**: Passed cleanly with 90.3% coverage on new code and 0.0% duplication.
+
+### Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight
+- **Consolidated Contract Suites**: Executed `./mvnw test -pl pm-mock-runtime -Dtest='RunningWorkScenarioTest,PlanViewScenarioTest,IntentScenarioTest,DecisionsScenarioTest,DecompositionScenarioTest,ControlScenarioTest,StandardScenariosTest'`: **80 tests run, 0 failures, 0 errors, 0 skipped** (`BUILD SUCCESS`).
+- **Full Mock-Runtime Suite**: Executed `./mvnw test -pl pm-mock-runtime`: **374 tests run, 0 failures, 0 errors, 0 skipped** (`BUILD SUCCESS`).
+- **Cross-Module Operator Start Dialogues**: Executed `./mvnw test -pl pm-operator -Dtest=StartDialogueTest`: **37 tests run, 0 failures, 0 errors, 0 skipped** (`BUILD SUCCESS`).
+- **Subprocess Scripts**: Verified `start.sh` interactive selector correctly exposes `2) running-work` with multi-state description.
+
+### Pillar 4: Independent Diff & AST Verification (Adversarial Audit)
+- **Attribution & Metadata**: PR #136 merged into `main` at commit `49d0ef6` by GitHub merge queue. Commit message verified with mandatory trailer:
+  `Co-Authored-By: plan-marshall <noreply@cuioss.de>`
+- **Boundary Discipline**: Changes strictly confined to `pm-mock-runtime`, `status.transcript` in `pm-operator`, and `doc/agy/`. No unintended drifts.
+
+### Verification Verdict
+**PASSED** — All 4 pillars satisfied with complete technical evidence. Report archived to `doc/agy/verified/mock-runtime-running-work-plan-report.md`.
