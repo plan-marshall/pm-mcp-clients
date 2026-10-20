@@ -377,7 +377,7 @@
                 max: formatBytes(snapshot.runtime.memory_max_bytes || 0),
                 resident: snapshot.runtime.memory_resident_bytes
                   ? formatBytes(snapshot.runtime.memory_resident_bytes)
-                  : formatBytes(0),
+                  : $t('system.figure.unavailable'),
               })}
             </span>
           </div>
@@ -545,7 +545,7 @@
               {$t('system.jobs.slots', {
                 kind: $t('system.jobs.field.build_slots'),
                 used: snapshot.jobs.build?.slots_used || 0,
-                total: snapshot.jobs.build?.slots_total || 1,
+                total: snapshot.jobs.build?.slots_total ?? 0,
                 queued: snapshot.jobs.build?.queued || 0,
               })}
             </span>
@@ -557,7 +557,7 @@
               {$t('system.jobs.slots', {
                 kind: $t('system.jobs.field.test_slots'),
                 used: snapshot.jobs.test?.slots_used || 0,
-                total: snapshot.jobs.test?.slots_total || 1,
+                total: snapshot.jobs.test?.slots_total ?? 0,
                 queued: snapshot.jobs.test?.queued || 0,
               })}
             </span>
