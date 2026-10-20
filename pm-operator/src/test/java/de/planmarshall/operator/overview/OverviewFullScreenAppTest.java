@@ -16,19 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.file.Files;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import de.planmarshall.api.overview.EndedWorkPage;
-import de.planmarshall.api.overview.ProjectDetailResponse;
-import de.planmarshall.api.overview.ProjectOverviewResponse;
-import de.planmarshall.api.overview.ProjectSummary;
+
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.ClientEnvironment;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
@@ -37,7 +31,6 @@ import de.planmarshall.operator.OverviewSavedState;
 import de.planmarshall.operator.OverviewStateStore;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLevel;
-import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -287,6 +280,7 @@ class OverviewFullScreenAppTest {
 
         // Structural change event
         app.handleLiveEvent("project.updated", "{\"type\":\"project.updated\",\"project_id\":\"pm-mcp-clients\"}");
+        assertNotNull(app.buildScreen());
     }
 
     @Test
@@ -303,7 +297,6 @@ class OverviewFullScreenAppTest {
     @DisplayName("fetchTargetDetail and fetchTargetEnded validate kinds and project IDs")
     void testFetchTargetDetailAndEnded() throws IOException {
         var virtual = VirtualScreenTerminal.create(120, 30);
-        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
 
         // fetchTargetDetail
@@ -367,10 +360,12 @@ class OverviewFullScreenAppTest {
         app.openProject(runtime, null, false, null);
         app.openProject(runtime, "   ", false, null);
         app.openProject(runtime, "unknown-project", false, null);
+        assertEquals(0, app.stack().depth());
 
         app.openEnded(runtime, null);
         app.openEnded(runtime, "   ");
         app.openEnded(runtime, "unknown-project");
+        assertEquals(0, app.stack().depth());
     }
 
     @Test
@@ -384,42 +379,59 @@ class OverviewFullScreenAppTest {
 
         // Apply to OVERVIEW
         app.applyRefreshedData(TuiLevel.Kind.OVERVIEW, null, null, null);
+        assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
 
         // Mismatched kind does not crash
         app.applyRefreshedData(TuiLevel.Kind.PROJECT_BY_PLAN, "pm-mcp-clients", null, null);
+        assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
 
         // Drill into project
         app.openProject(runtime, "pm-mcp-clients", false, null);
         var detail = OverviewFullScreenApp.fetchTargetDetail(runtime, TuiLevel.Kind.PROJECT_BY_PLAN, "pm-mcp-clients");
         app.applyRefreshedData(TuiLevel.Kind.PROJECT_BY_PLAN, "pm-mcp-clients", detail, null);
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
 
         // Open ended
         app.openEnded(runtime, "pm-mcp-clients");
         var ended = OverviewFullScreenApp.fetchTargetEnded(runtime, TuiLevel.Kind.ENDED, "pm-mcp-clients");
         app.applyRefreshedData(TuiLevel.Kind.ENDED, "pm-mcp-clients", null, ended);
+        assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
     }
 
     @Test
     @DisplayName("saveState persists view state across navigation levels")
     void testSaveState() throws IOException {
         var virtual = VirtualScreenTerminal.create(120, 30);
-        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
-        var runtime = createContext(virtual).runtime(false);
+        var context = createContext(virtual);
+        var store = new OverviewStateStore(context.stateDirectory());
+        var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock, store, context.noticeBuffer());
+        var runtime = context.runtime(false);
 
         // Empty stack save
         app.saveState();
+        assertTrue(store.read().isEmpty());
 
         // Overview level save
         app.loadInitialData(runtime);
         app.saveState();
+        var savedOverview = store.read();
+        assertTrue(savedOverview.isPresent());
+        assertNull(savedOverview.get().projectId());
 
         // Project by plan save
         app.openProject(runtime, "pm-mcp-clients", false, null);
         app.saveState();
+        var savedPlan = store.read();
+        assertTrue(savedPlan.isPresent());
+        assertEquals("pm-mcp-clients", savedPlan.get().projectId());
+        assertEquals("plan", savedPlan.get().projectView());
 
         // Project by epic save
         app.openProject(runtime, "pm-mcp-clients", true, null);
         app.saveState();
+        var savedEpic = store.read();
+        assertTrue(savedEpic.isPresent());
+        assertEquals("epic", savedEpic.get().projectView());
     }
 
     @Test
@@ -453,8 +465,8 @@ class OverviewFullScreenAppTest {
     }
 
     @Test
-    @DisplayName("keyHandler covers all navigation actions, view switching, and drill-down")
-    void testKeyHandler() throws IOException {
+    @DisplayName("keyHandler covers navigation, help, system views, and exit")
+    void testKeyHandlerNavigationAndHelp() throws IOException {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -484,6 +496,25 @@ class OverviewFullScreenAppTest {
         assertTrue(handler.handle(TuiKeyAction.SYSTEM));
         assertEquals(TuiLevel.Kind.SYSTEM, app.stack().level().kind());
         assertTrue(handler.handle(TuiKeyAction.BACK));
+
+        // Reload, Actions, Waits
+        assertTrue(handler.handle(TuiKeyAction.RELOAD));
+        assertTrue(handler.handle(TuiKeyAction.ACTIONS));
+        assertTrue(handler.handle(TuiKeyAction.WAITS));
+
+        // Leave returns false
+        assertFalse(handler.handle(TuiKeyAction.LEAVE));
+    }
+
+    @Test
+    @DisplayName("keyHandler covers view switching, jump to epic, drill-down, and ended work")
+    void testKeyHandlerViewsAndDrillDown() throws IOException {
+        var virtual = VirtualScreenTerminal.create(120, 30);
+        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
+        var runtime = createContext(virtual).runtime(false);
+        app.loadInitialData(runtime);
+
+        var handler = app.keyHandler();
 
         // Open selected project
         app.stack().first(); // select pm-mcp-clients
@@ -539,13 +570,5 @@ class OverviewFullScreenAppTest {
         assertTrue(handler.handle(TuiKeyAction.ENDED));
         assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
         assertTrue(handler.handle(TuiKeyAction.BACK));
-
-        // Reload, Actions, Waits
-        assertTrue(handler.handle(TuiKeyAction.RELOAD));
-        assertTrue(handler.handle(TuiKeyAction.ACTIONS));
-        assertTrue(handler.handle(TuiKeyAction.WAITS));
-
-        // Leave returns false
-        assertFalse(handler.handle(TuiKeyAction.LEAVE));
     }
 }
