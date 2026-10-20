@@ -88,7 +88,7 @@
         detail = null;
       }
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load projects';
+      errorMessage = (err as Error)?.message || $t('overview.projects.load_failed');
     } finally {
       isLoadingProjects = false;
     }
@@ -303,7 +303,7 @@
     <div class="sidebar-header">
       <h2 class="sidebar-title">{$t('overview.running.title')}</h2>
       {#if isLoadingProjects}
-        <Spinner size="1rem" label="Loading projects" />
+        <Spinner size="1rem" label={$t('overview.projects.loading')} />
       {/if}
     </div>
 
@@ -312,7 +312,7 @@
         <p>{$t('overview.projects.empty')}</p>
       </div>
     {:else}
-      <div class="project-list" role="tablist" aria-label="Projects">
+      <div class="project-list" role="tablist" aria-label={$t('project.explorer.title')}>
         {#each projects as proj}
           <button
             class="project-item"
@@ -323,11 +323,13 @@
           >
             <div class="project-item__header">
               {#if proj.needs_operator_count > 0}
-                <span class="badge badge--attention" title="Needs operator attention">
+                <span class="badge badge--attention" title={$t('overview.needs.attention_hint')}>
                   ! {proj.needs_operator_count}
                 </span>
               {:else if proj.setup_needs_operator}
-                <span class="badge badge--attention" title="Setup needs operator">! 1</span>
+                <span class="badge badge--attention" title={$t('overview.needs.setup_hint')}
+                  >! 1</span
+                >
               {/if}
               <span class="project-item__name">{proj.display_name}</span>
             </div>
@@ -369,7 +371,9 @@
         </div>
 
         {#if isLoadingEnded}
-          <div class="ended-loading"><Spinner size="2rem" label="Loading ended work" /></div>
+          <div class="ended-loading">
+            <Spinner size="2rem" label={$t('overview.ended.loading')} />
+          </div>
         {:else if !endedPage || endedPage.items.length === 0}
           <p class="empty-text">
             {$t('overview.ended.empty', { project: selectedProject.display_name })}
@@ -379,11 +383,11 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Kind</th>
-                  <th>Title</th>
-                  <th>Outcome / Reason</th>
-                  <th>Pull Request</th>
-                  <th>Ended</th>
+                  <th>{$t('overview.ended.col.kind')}</th>
+                  <th>{$t('overview.ended.col.title')}</th>
+                  <th>{$t('overview.ended.col.outcome')}</th>
+                  <th>{$t('overview.ended.col.pull_request')}</th>
+                  <th>{$t('overview.ended.col.ended')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -463,7 +467,7 @@
           </div>
 
           <div class="project-header__actions">
-            <div class="view-toggle" role="radiogroup" aria-label="View grouping">
+            <div class="view-toggle" role="radiogroup" aria-label={$t('overview.view.label')}>
               <button
                 class="toggle-btn"
                 class:toggle-btn--active={viewMode === 'plan'}
@@ -510,9 +514,11 @@
         </div>
 
         {#if isLoadingDetail}
-          <div class="detail-loading"><Spinner size="2rem" label="Loading details" /></div>
+          <div class="detail-loading">
+            <Spinner size="2rem" label={$t('overview.details.loading')} />
+          </div>
         {:else if !detail}
-          <p class="empty-text">No active work in this project.</p>
+          <p class="empty-text">{$t('overview.projects.none_active')}</p>
         {:else}
           <!-- Cards Container -->
           <div class="cards-container">

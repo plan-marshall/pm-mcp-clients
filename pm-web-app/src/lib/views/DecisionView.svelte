@@ -73,7 +73,7 @@
       decisions = await apiClient.getDecisions();
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load decisions';
+      errorMessage = (err as Error)?.message || $t('decisions.list.load_failed');
     } finally {
       isLoading = false;
     }
@@ -98,7 +98,7 @@
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to submit waiver';
+      errorMessage = (err as Error)?.message || $t('decision.waiver.failed');
     } finally {
       isSubmitting[id] = false;
     }
@@ -112,7 +112,7 @@
       const res = await apiClient.interpretDecision(id, words);
       interpretations[id] = res;
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to interpret answer';
+      errorMessage = (err as Error)?.message || $t('decision.interpret.failed');
     } finally {
       isInterpreting[id] = false;
     }
@@ -130,7 +130,7 @@
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to submit answer';
+      errorMessage = (err as Error)?.message || $t('decision.answer.failed');
     } finally {
       isSubmitting[id] = false;
     }
@@ -148,7 +148,7 @@
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to submit answer';
+      errorMessage = (err as Error)?.message || $t('decision.answer.failed');
     } finally {
       isSubmitting[id] = false;
     }
@@ -161,7 +161,7 @@
       decisions = decisions.filter((d) => d.id !== id);
       void refreshDecisionsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to withdraw decision';
+      errorMessage = (err as Error)?.message || $t('decision.withdraw.failed');
     } finally {
       isSubmitting[id] = false;
     }
@@ -177,9 +177,9 @@
   <div class="decisions-container">
     <header class="decisions-header">
       <h1 class="decisions-heading">
-        {$t('decisions.list.title') || 'Decisions'}
+        {$t('decisions.list.title')}
         {#if decisions.length > 0}
-          <span class="unread-pill">{decisions.length} open</span>
+          <span class="unread-pill">{$t('decisions.list.open', { count: decisions.length })}</span>
         {/if}
       </h1>
     </header>
@@ -187,19 +187,20 @@
     {#if errorMessage}
       <div class="error-banner" role="alert">
         <p>{errorMessage}</p>
-        <Button variant="secondary" size="small" onclick={loadDecisions}>Retry</Button>
+        <Button variant="secondary" size="small" onclick={loadDecisions}
+          >{$t('web.common.retry')}</Button
+        >
       </div>
     {/if}
 
     {#if isLoading}
       <div class="loading-state">
-        <Spinner size="2.5rem" label="Loading decisions…" />
+        <Spinner size="2.5rem" label={$t('decisions.list.loading')} />
       </div>
     {:else if decisions.length === 0}
       <div class="empty-state">
         <p class="empty-title">
-          {$t('decisions.list.empty') ||
-            'No open decisions. Running plans will ask when a decision is needed.'}
+          {$t('decisions.list.empty')}
         </p>
       </div>
     {:else}
@@ -211,7 +212,9 @@
               <div class="waiver-card">
                 <header class="card-header">
                   <h2 class="decision-title">
-                    {$t('decision.waiver.title', { plan: dec.subject || 'Plan' })}
+                    {$t('decision.waiver.title', {
+                      plan: dec.subject || $t('decision.waiver.plan_fallback'),
+                    })}
                   </h2>
                   <span class="waiting-time">
                     {$t('decision.waiting', {
@@ -225,7 +228,9 @@
                   <div class="detail-row">
                     <span class="detail-label">{$t('decision.waiver.gate')}:</span>
                     <span class="detail-value mono"
-                      >{dec.waiver_gate || (dec.evidence?.gate as string) || 'Quality gate'}</span
+                      >{dec.waiver_gate ||
+                        (dec.evidence?.gate as string) ||
+                        $t('decision.waiver.gate_fallback')}</span
                     >
                   </div>
                   <div class="detail-row">
@@ -233,7 +238,7 @@
                     <span class="detail-value"
                       >{dec.waiver_result ||
                         (dec.evidence?.result as string) ||
-                        'Gate failed'}</span
+                        $t('decision.waiver.result_failed')}</span
                     >
                   </div>
                   <div class="detail-row">
@@ -310,7 +315,9 @@
                       class="evidence-toggle"
                       onclick={() => toggleEvidence(dec.id)}
                     >
-                      {showEvidence[dec.id] ? '▾ Hide evidence' : '▸ Show evidence'}
+                      {$t(
+                        showEvidence[dec.id] ? 'decision.evidence.hide' : 'decision.evidence.show',
+                      )}
                     </button>
                     {#if showEvidence[dec.id]}
                       <div class="evidence-box">
@@ -360,7 +367,9 @@
                             <div class="option-label-row">
                               <span class="option-label">{opt.label}</span>
                               {#if part.recommendation === opt.key}
-                                <span class="recommended-tag">← recommended</span>
+                                <span class="recommended-tag"
+                                  >← {$t('decision.recommendation.marker')}</span
+                                >
                               {/if}
                               {#if opt.quorum_support}
                                 <span class="support-badge">
@@ -414,7 +423,7 @@
                               <textarea
                                 class="form-textarea"
                                 rows="3"
-                                placeholder="State your decision in your own words…"
+                                placeholder={$t('decision.answer.own_words_placeholder')}
                                 bind:value={ownWordsTexts[dec.id]}
                               ></textarea>
                               <div class="own-words-actions">
@@ -429,7 +438,7 @@
                                     ? $t('decision.interpret.working', {
                                         role: part.recommending_role || 'interpret',
                                       })
-                                    : 'Read back'}
+                                    : $t('decision.readback.action')}
                                 </Button>
                               </div>
                             {:else}
@@ -487,7 +496,7 @@
                           id="note-{dec.id}"
                           type="text"
                           class="form-input"
-                          placeholder="Optional note"
+                          placeholder={$t('decision.answer.note_placeholder')}
                           bind:value={notes[dec.id]}
                         />
                       </div>

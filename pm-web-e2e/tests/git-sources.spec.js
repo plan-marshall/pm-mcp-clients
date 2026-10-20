@@ -11,13 +11,16 @@ async function pairOnGitSourcesScenario(page, request) {
   await page.goto('/#code=GTSR-CMTR');
   await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-  const overviewNav = page.getByRole('button', { name: /Running work/i });
+  const overviewNav = page.locator('.app-header').getByRole('button', { name: /Running work/i });
   await expect(overviewNav).toBeVisible();
   await overviewNav.click();
   await expect(page.locator('.overview')).toBeVisible();
 
   // The scenario serves a not-ready project too; select the ready one explicitly.
-  await page.locator('.project-list').getByRole('tab', { name: /pm-mcp-clients/i }).click();
+  await page
+    .locator('.project-list')
+    .getByRole('tab', { name: /pm-mcp-clients/i })
+    .click();
   await expect(page.locator('.project-title')).toContainText('pm-mcp-clients');
 }
 
@@ -33,7 +36,9 @@ test.describe('Web Client Git Plan Sources (UC-STA-7, UC-STA-9)', () => {
 
   test('observes and adopts a pull request', async ({ page }) => {
     await openGitSourceModal(page);
-    await expect(page.getByTestId('git-source-title')).toContainText('Git sources in pm-mcp-clients');
+    await expect(page.getByTestId('git-source-title')).toContainText(
+      'Git sources in pm-mcp-clients',
+    );
 
     await page.getByTestId('pr-reference-input').fill('4711');
     await page.getByTestId('pr-observe').click();
@@ -72,15 +77,16 @@ test.describe('Web Client Git Plan Sources (UC-STA-7, UC-STA-9)', () => {
     await page.getByTestId('local-confirm').check();
     await page.getByTestId('local-capture').click();
 
-    await expect(page.getByTestId('git-source-done')).toContainText(
-      'captured the local changes',
-    );
+    await expect(page.getByTestId('git-source-done')).toContainText('captured the local changes');
     await expect(page.getByTestId('git-source-snapshot')).toContainText('snapshot commit');
   });
 
   test('refuses local changes where the landing does not commit (PM-WF-25)', async ({ page }) => {
     // pm-mcp-core stands in for a project whose landing is landing.files.
-    await page.locator('.project-list').getByRole('tab', { name: /pm-mcp-core/i }).click();
+    await page
+      .locator('.project-list')
+      .getByRole('tab', { name: /pm-mcp-core/i })
+      .click();
     await expect(page.locator('.project-title')).toContainText('pm-mcp-core');
 
     await openGitSourceModal(page);

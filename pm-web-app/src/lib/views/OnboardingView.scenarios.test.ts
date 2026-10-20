@@ -358,7 +358,7 @@ describe('OnboardingView against the mock runtime states', () => {
 
   it('renders every string through the message catalogue, in English and in German', async () => {
     const { setLocale, messagesStore } = await import('../i18n');
-    const { loadMessages } = await import('../i18n/testMessages');
+    const { loadMessages } = await import('../../test/catalogue-fixture');
     arrange(onboardingState({ state: 'onboard.mode' }));
 
     render(OnboardingView);

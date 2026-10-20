@@ -31,7 +31,7 @@
     const projectMap: Record<string, ProjectGroup> = {};
 
     for (const item of items) {
-      const proj = item.from?.project || 'This machine';
+      const proj = item.from?.project || $t('report.list.machine');
       if (!projectMap[proj]) {
         projectMap[proj] = {
           project: proj,
@@ -107,7 +107,7 @@
       olderCount = page.older_count;
       void refreshReportsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load reports';
+      errorMessage = (err as Error)?.message || $t('report.list.load_failed');
     } finally {
       isLoading = false;
     }
@@ -123,7 +123,7 @@
       hasOlder = page.has_older;
       olderCount = page.older_count;
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load older reports';
+      errorMessage = (err as Error)?.message || $t('report.list.older_failed');
     } finally {
       isLoadingOlder = false;
     }
@@ -136,7 +136,7 @@
       unreadCount = Math.max(0, unreadCount - 1);
       void refreshReportsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to mark report read';
+      errorMessage = (err as Error)?.message || $t('report.list.mark_read_failed');
     }
   }
 
@@ -149,7 +149,7 @@
       unreadCount = 0;
       void refreshReportsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to mark all reports read';
+      errorMessage = (err as Error)?.message || $t('report.list.mark_all_failed');
     }
   }
 
@@ -188,7 +188,7 @@
 
     if (isSentLater) {
       const sentStr = item.sent || item.sent_at;
-      return `${createdStr} · sent ${sentStr}`;
+      return `${createdStr} · ${$t('report.list.sent_at', { time: sentStr })}`;
     }
     return createdStr;
   }
@@ -208,14 +208,16 @@
       <header class="reports-header">
         <div class="reports-header__title-row">
           <h1 class="reports-heading">
-            Reports
+            {$t('report.list.title')}
             {#if unreadCount > 0}
-              <span class="unread-pill">{unreadCount} unread</span>
+              <span class="unread-pill">
+                {$t('report.list.unread', { count: unreadCount })}
+              </span>
             {/if}
           </h1>
           {#if items.length > 0}
             <Button variant="secondary" size="small" onclick={markAllShownRead}>
-              {$t('report.action.mark_all_read') || 'Mark all shown read'}
+              {$t('report.action.mark_all_read')}
             </Button>
           {/if}
         </div>
@@ -224,19 +226,20 @@
       {#if errorMessage}
         <div class="error-banner" role="alert">
           <p>{errorMessage}</p>
-          <Button variant="secondary" size="small" onclick={loadReports}>Retry</Button>
+          <Button variant="secondary" size="small" onclick={loadReports}>
+            {$t('web.common.retry')}
+          </Button>
         </div>
       {/if}
 
       {#if isLoading}
         <div class="loading-state">
-          <Spinner size="2.5rem" label="Loading reports…" />
+          <Spinner size="2.5rem" label={$t('report.list.loading')} />
         </div>
       {:else if items.length === 0}
         <div class="empty-state">
           <p class="empty-title">
-            {$t('report.list.empty') ||
-              'Nothing new. Reports you have read are not shown any more.'}
+            {$t('report.list.empty')}
           </p>
         </div>
       {:else}
@@ -281,14 +284,14 @@
                                 class="action-btn action-btn--detail"
                                 onclick={() => openDetail(item)}
                               >
-                                {$t('report.action.details') || 'Show the details'}
+                                {$t('report.action.details')}
                               </button>
                             {/if}
                             <button
                               class="action-btn action-btn--read"
                               onclick={() => markRead(item)}
                             >
-                              {$t('report.action.mark_read') || 'Mark read'}
+                              {$t('report.action.mark_read')}
                             </button>
                           </div>
                         </div>
@@ -321,14 +324,14 @@
                               class="action-btn action-btn--detail"
                               onclick={() => openDetail(item)}
                             >
-                              {$t('report.detail.show') || 'Show the details'}
+                              {$t('report.action.details')}
                             </button>
                           {/if}
                           <button
                             class="action-btn action-btn--read"
                             onclick={() => markRead(item)}
                           >
-                            {$t('common.actions.read') || 'Mark read'}
+                            {$t('report.action.mark_read')}
                           </button>
                         </div>
                       </div>
@@ -343,7 +346,9 @@
                       <div class="report-card">
                         <div class="report-card__header">
                           <span class="item-glyph">▪</span>
-                          <span class="item-target mono font-medium">project</span>
+                          <span class="item-target mono font-medium">
+                            {$t('report.list.project')}
+                          </span>
                           <span class="item-subject font-semibold">{item.subject}</span>
                           <span class="item-time text-muted">{formatTime(item)}</span>
                         </div>
@@ -360,14 +365,14 @@
                               class="action-btn action-btn--detail"
                               onclick={() => openDetail(item)}
                             >
-                              {$t('report.detail.show') || 'Show the details'}
+                              {$t('report.action.details')}
                             </button>
                           {/if}
                           <button
                             class="action-btn action-btn--read"
                             onclick={() => markRead(item)}
                           >
-                            {$t('common.actions.read') || 'Mark read'}
+                            {$t('report.action.mark_read')}
                           </button>
                         </div>
                       </div>
@@ -384,10 +389,11 @@
           <div class="pagination-bar">
             <Button variant="secondary" disabled={isLoadingOlder} onclick={loadOlder}>
               {#if isLoadingOlder}
-                Loading older reports…
+                {$t('report.list.loading_older')}
+              {:else if olderCount > 0}
+                {$t('report.list.show_older', { count: olderCount })}
               {:else}
-                {$t('report.list.show_older', { count: olderCount }) ||
-                  (olderCount > 0 ? `Show ${olderCount} older` : 'Show older')}
+                {$t('report.list.show_older_plain')}
               {/if}
             </Button>
           </div>

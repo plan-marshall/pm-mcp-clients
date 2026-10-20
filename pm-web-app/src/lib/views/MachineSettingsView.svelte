@@ -197,9 +197,18 @@
 <div class="machine-settings" data-testid="machine-settings-view">
   <div class="machine-settings__header">
     <h1 class="machine-settings__title">{$t('web.settings.page.title')}</h1>
-    <Button variant="secondary" on:click={() => navigateTo('settings')}>
-      {$t('web.settings.back')}
-    </Button>
+    <div class="machine-settings__header-actions">
+      <Button
+        variant="secondary"
+        on:click={() => navigateTo('designer')}
+        data-testid="open-designer-btn"
+      >
+        {$t('designer.view.title')}
+      </Button>
+      <Button variant="secondary" on:click={() => navigateTo('settings')}>
+        {$t('web.settings.back')}
+      </Button>
+    </div>
   </div>
 
   {#if isLoading}
@@ -491,6 +500,12 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-8);
+  }
+
+  .machine-settings__header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .machine-settings__title {

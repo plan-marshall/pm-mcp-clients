@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { vi, beforeEach } from 'vitest';
 import { messagesStore } from './lib/i18n';
-import { loadMessages } from './lib/i18n/testMessages';
+import { loadMessages } from './test/catalogue-fixture';
 
 class LocalStorageMock implements Storage {
   private store: Record<string, string> = {};

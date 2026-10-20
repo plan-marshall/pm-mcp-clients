@@ -212,7 +212,7 @@
       >
         {$t('web.settings.page.title')}
       </Button>
-      <Button variant="secondary" on:click={() => navigateTo('workspace')}>
+      <Button variant="secondary" on:click={() => navigateTo('projects')}>
         {$t('web.common.back')}
       </Button>
     </div>

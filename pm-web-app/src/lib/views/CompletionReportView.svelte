@@ -32,7 +32,7 @@
     try {
       fetchedData = await apiClient.getPlanCompletion(planId);
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load completion report';
+      errorMessage = (err as Error)?.message || $t('report.completion.load_failed');
     } finally {
       isLoading = false;
     }
@@ -51,32 +51,36 @@
 
   function formatDecisionBy(d: { by: string; channel?: string; device?: string }): string {
     if (d.by?.toLowerCase() === 'operator') {
-      const parts = ['you'];
+      const parts = [$t('report.completion.by_you')];
       if (d.channel) parts.push(d.channel);
       if (d.device) parts.push(d.device);
       return parts.join(', ');
     }
-    return d.by || 'delegated';
+    return d.by || $t('report.completion.delegated');
   }
 </script>
 
 <div class="completion-report">
   <div class="completion-report__nav">
     {#if onClose}
-      <button class="nav-back-btn" onclick={onClose} aria-label="Back to reports">
-        ← {$t('common.actions.back') || 'Back'}
+      <button
+        class="nav-back-btn"
+        onclick={onClose}
+        aria-label={$t('report.completion.back_to_reports')}
+      >
+        ← {$t('web.common.back')}
       </button>
     {/if}
   </div>
 
   {#if isLoading}
     <div class="completion-report__loading">
-      <Spinner size="2.5rem" label="Loading completion report…" />
+      <Spinner size="2.5rem" label={$t('report.completion.loading')} />
     </div>
   {:else if errorMessage}
     <div class="completion-report__error" role="alert">
       <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={fetchReport}>Retry</Button>
+      <Button variant="secondary" onclick={fetchReport}>{$t('web.common.retry')}</Button>
     </div>
   {:else if data}
     <!-- Path breadcrumb -->
@@ -121,7 +125,7 @@
       <!-- Summary section -->
       <section class="report-section summary-grid">
         <div class="summary-row">
-          <span class="summary-label">Outcome</span>
+          <span class="summary-label">{$t('report.completion.outcome')}</span>
           <div class="summary-value">
             <span>{data.terminal_reason || data.outcome}</span>
             {#if data.pull_request_url}
@@ -138,13 +142,13 @@
         </div>
 
         <div class="summary-row">
-          <span class="summary-label">Reason</span>
+          <span class="summary-label">{$t('report.completion.reason')}</span>
           <span class="summary-value">{data.reason || '—'}</span>
         </div>
 
         {#if data.ran || data.duration_seconds > 0}
           <div class="summary-row">
-            <span class="summary-label">Ran</span>
+            <span class="summary-label">{$t('report.completion.ran')}</span>
             <span class="summary-value"
               >{data.ran || `${Math.round(data.duration_seconds / 60)} min`}</span
             >
@@ -155,16 +159,18 @@
       <!-- Deliverables -->
       <section class="report-section">
         <h2 class="section-title">
-          Deliverables
+          {$t('report.completion.deliverables')}
           {#if data.deliverables && data.deliverables.length > 0}
             <span class="section-badge">
-              {data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length} of {data
-                .deliverables.length} done
+              {$t('report.completion.deliverables_done', {
+                done: data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length,
+                total: data.deliverables.length,
+              })}
             </span>
           {/if}
         </h2>
         {#if !data.deliverables || data.deliverables.length === 0}
-          <p class="empty-text">no deliverables yet: it ended in refine</p>
+          <p class="empty-text">{$t('report.completion.deliverables_none', { phase: 'refine' })}</p>
         {:else}
           <ul class="deliverables-list">
             {#each data.deliverables as d}
@@ -184,7 +190,7 @@
       {#if data.replanning_records && data.replanning_records.length > 0}
         <section class="report-section">
           <h2 class="section-title">
-            Re-planning
+            {$t('report.completion.replanning')}
             <span class="section-badge">{data.replanning_records.length}</span>
           </h2>
           <ul class="replanning-list">
@@ -205,7 +211,7 @@
       {#if data.decision_records && data.decision_records.length > 0}
         <section class="report-section">
           <h2 class="section-title">
-            Decisions
+            {$t('report.completion.decisions')}
             <span class="section-badge">{data.decision_records.length}</span>
           </h2>
           <ul class="decisions-list">
@@ -227,20 +233,20 @@
         {@const usage = data.token_usage}
         <section class="report-section tokens-section">
           <div class="tokens-header">
-            <h2 class="section-title">Tokens</h2>
+            <h2 class="section-title">{$t('report.completion.tokens')}</h2>
             <button
               class="components-toggle-btn"
               onclick={() => (showRawComponents = !showRawComponents)}
               aria-expanded={showRawComponents}
             >
-              {showRawComponents ? 'Hide raw components' : 'Show raw components'}
+              {$t(showRawComponents ? 'report.completion.raw_hide' : 'report.completion.raw_show')}
             </button>
           </div>
 
           <!-- Total & Coverage -->
           <div class="tokens-total-card">
             <div class="total-row">
-              <span class="total-label">Total</span>
+              <span class="total-label">{$t('report.completion.total')}</span>
               <span class="total-value mono font-semibold">
                 {formatSplit(
                   usage.total,
@@ -255,14 +261,19 @@
               </span>
             </div>
             <div class="coverage-row text-muted">
-              <span class="coverage-label">Coverage</span>
+              <span class="coverage-label">{$t('report.completion.coverage')}</span>
               <span>
                 {#if usage.tasks_total > usage.tasks_measured}
-                  {usage.tasks_total - usage.tasks_measured} of {usage.tasks_total} tasks not measured{usage.unmeasured_reason
-                    ? `: ${usage.unmeasured_reason}`
-                    : ''}
+                  {$t('common.tokens.coverage', {
+                    unmeasured: usage.tasks_total - usage.tasks_measured,
+                    total: usage.tasks_total,
+                    reason: usage.unmeasured_reason || 'none',
+                  })}
                 {:else}
-                  {usage.tasks_total} of {usage.tasks_total} tasks measured
+                  {$t('report.completion.tasks_measured', {
+                    count: usage.tasks_total,
+                    total: usage.tasks_total,
+                  })}
                 {/if}
               </span>
             </div>
@@ -271,7 +282,7 @@
           <!-- Breakdown by Phase -->
           {#if usage.by_phase && usage.by_phase.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">By phase</h3>
+              <h3 class="breakdown-title">{$t('report.completion.by_phase')}</h3>
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_phase as item}
@@ -315,7 +326,7 @@
           <!-- Breakdown by Role -->
           {#if usage.by_role && usage.by_role.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">By role</h3>
+              <h3 class="breakdown-title">{$t('report.completion.by_role')}</h3>
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_role as item}
@@ -364,7 +375,7 @@
           <!-- Breakdown by Model -->
           {#if usage.by_model && usage.by_model.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">By model</h3>
+              <h3 class="breakdown-title">{$t('report.completion.by_model')}</h3>
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_model as item}
@@ -409,11 +420,17 @@
           {#if (usage.total_waste_tokens && usage.total_waste_tokens > 0) || (usage.waste_records && usage.waste_records.length > 0)}
             <div class="breakdown-group waste-group">
               <div class="waste-header">
-                <span class="breakdown-title">Waste</span>
+                <span class="breakdown-title">{$t('report.completion.waste')}</span>
                 <span class="waste-total mono font-semibold">
-                  {formatTokens(usage.total_waste_tokens, false, $currentLocale)} tokens
+                  {$t('report.completion.tokens_count', {
+                    tokens: formatTokens(usage.total_waste_tokens, false, $currentLocale),
+                  })}
                   {#if usage.waste_share_percent > 0}
-                    <span class="text-muted">({usage.waste_share_percent} % of measured)</span>
+                    <span class="text-muted">
+                      ({$t('report.completion.waste_share', {
+                        percent: usage.waste_share_percent,
+                      })})
+                    </span>
                   {/if}
                 </span>
               </div>
@@ -422,7 +439,7 @@
                   <li class="waste-item">
                     <span class="waste-class">
                       {#if w.waste_class === 'no_product'}
-                        produced nothing
+                        {$t('report.completion.produced_nothing')}
                       {:else}
                         {w.waste_class}
                       {/if}
@@ -431,7 +448,8 @@
                       >{formatTokens(w.tokens, false, $currentLocale)}</span
                     >
                     <span class="waste-cause text-muted"
-                      >{w.cause_summary || `${w.tasks_count} tasks`}</span
+                      >{w.cause_summary ||
+                        $t('report.completion.tasks_count', { count: w.tasks_count })}</span
                     >
                   </li>
                 {/each}

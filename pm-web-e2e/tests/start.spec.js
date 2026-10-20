@@ -11,13 +11,16 @@ async function pairOnStartScenario(page, request) {
   await page.goto('/#code=KXQB-MRTN');
   await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-  const overviewNav = page.getByRole('button', { name: /Running work/i });
+  const overviewNav = page.locator('.app-header').getByRole('button', { name: /Running work/i });
   await expect(overviewNav).toBeVisible();
   await overviewNav.click();
   await expect(page.locator('.overview')).toBeVisible();
 
   // The scenario's plan-marshall asks for setup; select the ready project explicitly.
-  await page.locator('.project-list').getByRole('tab', { name: /pm-mcp-clients/i }).click();
+  await page
+    .locator('.project-list')
+    .getByRole('tab', { name: /pm-mcp-clients/i })
+    .click();
   await expect(page.locator('.project-title')).toContainText('pm-mcp-clients');
 }
 
@@ -68,7 +71,10 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
 
   test('refuses a start in a project that is not ready', async ({ page }) => {
     // The start scenario serves three projects; select the one that is not ready.
-    await page.locator('.project-list').getByRole('tab', { name: /plan-marshall/i }).click();
+    await page
+      .locator('.project-list')
+      .getByRole('tab', { name: /plan-marshall/i })
+      .click();
     await page.getByRole('button', { name: 'Start the plan' }).click();
     await page.getByTestId('source-description').fill('something');
     await page.getByTestId('start-submit').click();

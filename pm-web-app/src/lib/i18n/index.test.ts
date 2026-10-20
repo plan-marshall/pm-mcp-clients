@@ -32,11 +32,12 @@ describe('i18n dynamic message formatting', () => {
     expect(result).toBe('Hello Oliver, your code is KXQB-MRTN');
   });
 
-  it('translates fallback messages when no remote bundle is loaded', () => {
-    // Act & Assert
-    expect(translate('en', 'web.pair.page.title')).toBe('Pair this browser');
+  it('renders the key itself when the catalogue carries no message', () => {
+    // Production keeps no copy of the catalogue: a missing key is visible, never a silent
+    // English fallback that would hide a catalogue gap.
+    expect(translate('en', 'web.pair.page.title')).toBe('web.pair.page.title');
     const tFn = get(t);
-    expect(tFn('web.pair.page.title')).toBe('Pair this browser');
+    expect(tFn('web.pair.page.title')).toBe('web.pair.page.title');
   });
 
   it('dynamically loads remote messages and updates t store', async () => {
@@ -82,6 +83,14 @@ describe('i18n dynamic message formatting', () => {
     // Assert
     expect(get(currentLocale)).toBe('de');
     expect(loadSpy).toHaveBeenCalledWith('de', 'all');
+  });
+
+  it('formats ICU plurals with an exact-count branch', () => {
+    const template = '{count, plural, =0 {nothing} one {# item} other {# items}}';
+
+    expect(formatString(template, { count: 0 })).toBe('nothing');
+    expect(formatString(template, { count: 1 })).toBe('1 item');
+    expect(formatString(template, { count: 4 })).toBe('4 items');
   });
 
   it('formats ICU select strings correctly for matched branch and other fallback', () => {

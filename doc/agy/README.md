@@ -23,8 +23,8 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
 | **Mock** | [`mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-foundation` | `feat/mock-foundation` | Implementation complete (PR #125 in review) |
-| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | Next up for worktree allocation | `feat/cli-fullscreen-overview` | Ready to launch (Foundation verified in PR #124) |
-| **Web** | [`web-foundation-routing-and-catalogue-plan.md`](web-foundation-routing-and-catalogue-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-foundation` | `feat/web-foundation-routing-and-catalogue` | Active (PR #126 under review / CI) |
+| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` | `feat/cli-fullscreen-overview` | Ready to execute (Step 1 complete) |
+| **Web** | [`web-onboarding-entry-and-projects-plan.md`](web-onboarding-entry-and-projects-plan.md) | Next up for worktree allocation | `feat/web-onboarding-entry-and-projects` | Ready to launch (Foundation verified in PR #126) |
 
 ---
 
@@ -50,9 +50,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 6. **Actions & Controlling**: `cli-fullscreen-actions-plan.md`
 
 ### Stream C: Web Client Completion (`pm-web-app`)
-1. **Foundation (Active)**: `web-foundation-routing-and-catalogue-plan.md`
+1. **Foundation (Landed & Verified)**: [`web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md) ([Report](verified/web-foundation-routing-and-catalogue-plan-report.md) — PR #126, commit `6b3defb`)
    *(Design spec completion, full URL routing/history, elimination of fallbackMessages, retirement of WorkspaceView)*
-2. **Onboarding, Entry & Projects**: `web-onboarding-entry-and-projects-plan.md`
+2. **Onboarding, Entry & Projects (Next Active)**: `web-onboarding-entry-and-projects-plan.md`
 3. **Overview, Plan & Epic View**: `web-overview-plan-and-epic-view-plan.md`
 4. **Decisions & Actions**: `web-decisions-and-actions-plan.md`
 5. **Reports, System & Designer**: `web-reports-system-and-designer-plan.md`

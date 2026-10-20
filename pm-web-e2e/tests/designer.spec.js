@@ -14,11 +14,13 @@ test.describe('Process Designer Flow (UC-PLN-3)', () => {
     await page.goto('/#code=KXQB-MRTN');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-    // Open the designer from the workspace
-    const designerBtn = page.getByRole('button', { name: 'Process designer' });
-    await expect(designerBtn).toBeVisible();
-    await designerBtn.click();
+    // Open the designer from the machine settings
+    await page.getByRole('button', { name: 'Machine settings' }).click();
+    await page.getByTestId('machine-settings-button').click();
+    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+    await page.getByTestId('open-designer-btn').click();
     await expect(page.getByTestId('process-designer')).toBeVisible();
+    await expect(page).toHaveURL(/\/designer$/);
   });
 
   test.afterAll(async ({ request }) => {

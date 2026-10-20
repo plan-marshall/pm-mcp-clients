@@ -60,7 +60,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` on branch `feat/cli-fullscreen-overview` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` on branch `feat/cli-fullscreen-overview` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
