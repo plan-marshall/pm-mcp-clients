@@ -247,12 +247,12 @@ The repository's `main` branch is protected by GitHub Rulesets and uses GitHub's
 
 Once changes have landed on `main` and the repository workspace is synchronized:
 
-1. **Conduct 4-Point Verification Analysis (No Redundant Re-Testing)**:
-   Do not re-execute Maven reactor builds or tests (functional compilation, tests, and static checks were already proven by CI and pre-commit). Instead, rigorously compare and evaluate:
-   - **Process Adherence**: Verify the entire runbook lifecycle was executed (worktree isolation, cognitive persona adoption, pre-commit checks, review bot resolution or authorized skip, merge queue landing).
-   - **Requirements Completeness & Correctness**: Verify implemented capabilities against source use cases, specifications, event catalogues, and API contracts.
-   - **Related Collateral & Documentation**: Ensure ADRs, design docs, README indexes, bilingual message catalogues, mock scenarios, and client views were updated.
-   - **Runbook / Rules Continuous Improvement**: Identify friction points, ambiguities, or improvements to fold into this runbook or future plan templates.
+1. **Conduct 4-Pillar Verification Analysis (Governed by [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md))**:
+   Do not re-execute Maven reactor builds or tests (functional compilation, tests, and static checks were already proven by CI and pre-commit). Instead, rigorously execute the active 4-pillar audit defined in [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md):
+   - **Pillar 1: Specification & Contract Conformance Matrix**: Trace implemented capabilities against upstream `.adoc` specifications, use cases, wire contracts, and closed enums; verify zero stubs or temporary placeholders.
+   - **Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans**: Automated module-specific checks (zero `fallbackMessages`, zero uncatalogued strings, closed mock schema enforcement, terminal output sanitizer boundary, pure Jackson streaming).
+   - **Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight**: Smoke-test live lifecycles (`start.sh`, `stop.sh`, port bindings, standard scenarios, SSE reset/replay).
+   - **Pillar 4: Independent Diff & AST Verification**: Adversarial inspection of git diff against base, verifying module boundary discipline, commit trailers, and absence of accidental regressions.
 
 2. **Move Verified Report to `verified/`**:
    Move the companion completion report from `doc/agy/<topic>-plan-report.md` into `doc/agy/verified/`:

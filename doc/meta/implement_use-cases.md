@@ -7,11 +7,12 @@ Whenever a session is instructed:
 
 the agent shall follow the phased technical process and task breakdown defined in this guide.
 
-### The Three Pillars of Implementation
-The implementation workflow integrates three coordinated layers:
+### The Four Pillars of Implementation
+The implementation workflow integrates four coordinated layers:
 1. **Governance & Scope (`doc/plans/`)**: Declares the roadmap milestones, package dependencies, and formal specifications/contracts (`*-contract.adoc`, `cli-*.adoc`, etc.). Once completed, packages move to `doc/plans/implemented/`.
 2. **Technical Implementation Recipe (`doc/meta/implement_use-cases.md`)**: Defines *how to build* across the 5 modules (`pm-api` ──▶ `pm-mock-runtime` ──▶ `pm-operator` ──▶ `pm-web-app` ──▶ integration tests), maintaining strict invariants (both clients one state, catalogue-only text, mock-first).
 3. **Operational Lifecycle & SOP (`doc/agy/runbook.md`)**: Governs *how the agent/developer executes* (isolated git worktrees, engineering personas, pre-commit checks, PR review gate with 5-minute wait, 100% findings resolution, and merge queue landing).
+4. **Post-Landing Verification Protocol (`doc/meta/verification-protocol.md`)**: Governs *how the orchestrator verifies* landed changes against specifications, anti-pattern heuristics, subprocess lifecycles, and independent diff audits before archiving into `verified/`.
 
 ---
 
