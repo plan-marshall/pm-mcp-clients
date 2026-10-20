@@ -1,6 +1,6 @@
 # Completion Report: `mock-runtime-foundation-and-consolidation`
 
-**Plan**: [`doc/agy/implemented/mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md)
+**Plan**: [`doc/agy/implemented/mock-runtime-foundation-and-consolidation-plan.md`](../implemented/mock-runtime-foundation-and-consolidation-plan.md)
 **Branch**: `feat/mock-foundation`
 **Scope**: Wave 1 foundation for the mock-runtime remediation series.
 
@@ -130,3 +130,35 @@ The alias table and `PRIMARY_SCENARIOS` are the contract the next waves consume:
 - `mock-runtime-reports-system-designer` → enrich `reports-and-system.json` and `designer.json`, delete reports/system files and make every state an `OperatorStateResource`.
 
 After those deletions, the alias fallback becomes the only path for every legacy name; no caller has to change.
+
+---
+
+## 8. Post-Landing Verification Audit (Step 8: PASSED)
+
+In accordance with [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md), the orchestrator session conducted an active, independent 4-pillar verification audit of PR #125 landed at commit `589bfaf` on `main`:
+
+### Pillar 1: Specification & Contract Conformance Matrix (Traceability Audit)
+- **5-Scenario Catalog**: Verified `StandardScenarios.PRIMARY_SCENARIOS` and `pm-mock-runtime/src/main/resources/scenarios/primary.txt` expose exactly the 5 canonical multi-state scenarios (`onboarding`, `running-work`, `projects-and-start`, `reports-and-system`, `designer`).
+- **Composite Resolution & Alias Fallback**: Verified `ScenarioRegistry` resolves composite `scenario#state` paths, validates state presence, and uses the legacy alias table as a fallback only when a legacy scenario file is absent, enabling zero-breakage downstream wave migrations.
+- **Closed Schema Enforcement**: Verified `ScenarioLoader` rejects unknown fields across root, state, route, link, event, and auto levels with `ScenarioValidationException` citing the file and offending field. Verified `link.error` validation against `ApiErrorCode` and route codec validation for `/projects`, `/reports`, `/overview`, `/system`, `/workflows`.
+- **Zero Stubs / Placeholders**: AST and diff refutation confirms zero temporary mock stubs, `UnsupportedOperationException`, or incomplete placeholder routes in `pm-mock-runtime`.
+
+### Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans
+- **Scoped SSE Stream Integrity**: Verified `MockEventStream` scope discrimination (`machine`, `plan:<id>`, `epic:<id>`, `entry:<id>`, `workspace:<id>`, `reports`, `activity:<plan>:<task>`) and sequenced `EventEnvelope` construction. Verified 64-item ring buffer per scope with ordered `Last-Event-ID` replay and deterministic `event: reset` on stale/unknown IDs or resets.
+- **Dispatch Precedence**: Verified state operator links and scenario routes take precedence over Java defaults outside mutating domain families; unoffered endpoints in inactive domains answer `404 mock_no_route` with available links.
+- **`/mcp` JSON-RPC Endpoint**: Verified `POST /mcp` handler supporting `initialize`, `tools/list` with SSE chunked progress, `tools/call`, and notifications. Verified test migration in `PmMcpProcessIT` and `RelayTest` against live `MockRuntime`.
+- **Test Suite Verification**: Ran `./mvnw test -pl pm-mock-runtime` — 340 tests passed, 0 failures, 0 errors.
+
+### Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight
+- **Lifecycle Scripts Smoke Test**:
+  - Tested `pm-mock-runtime/start.sh` with `-s running-work` and `-s onboarding`: clean background start, PID file creation in `target/pm-mock-runtime.pid`, log output in `target/pm-mock-runtime.log`.
+  - Tested `pm-mock-runtime/stop.sh`: clean process termination, removal of PID file, zero zombie processes.
+- **Network Handshake & Pairing**:
+  - Bound to port 7420. Tested pairing handshake via `POST /api/v1/pair` with single-use pairing code `KXQB-MRTN` returning device secret.
+  - Verified authenticated state transition: `POST /api/v1/onboarding/auto` transitioned state to `auto.consent` with offered links.
+  - Tested SSE event stream `GET /api/v1/events` handshake: stream connected cleanly and received heartbeat/events.
+
+### Pillar 4: Independent Diff & AST Verification (Adversarial Audit)
+- **Attribution**: Commit `589bfaf` verified with mandatory trailer:
+  `Co-Authored-By: plan-marshall <noreply@cuioss.de>`
+- **Boundary Discipline**: Changes strictly confined to `pm-mock-runtime`, `pm-relay`, and `doc/`. No cross-module leakage into `pm-operator` or `pm-web-app`. Pre-existing tests and configurations preserved without weakening.
