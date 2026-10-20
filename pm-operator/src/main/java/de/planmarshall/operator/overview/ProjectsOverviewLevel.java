@@ -24,26 +24,19 @@ import de.planmarshall.operator.tui.TuiRow;
 /**
  * Level 1 of the full-screen overview: the projects list
  * ({@code doc/design/terminal-client/15-overview.adoc#full-screen-layout}).
+ *
+ * @param projects the list of project summaries
  */
-public final class ProjectsOverviewLevel {
+public record ProjectsOverviewLevel(List<ProjectSummary> projects) {
 
     /** Empty project list row ID. */
     public static final String EMPTY_ROW_ID = "__empty__";
 
-    private final List<ProjectSummary> projects;
-
     /**
-     * @param projects the list of project summaries
+     * Compact constructor guaranteeing immutable non-null list.
      */
-    public ProjectsOverviewLevel(List<ProjectSummary> projects) {
-        this.projects = List.copyOf(Objects.requireNonNull(projects, "projects"));
-    }
-
-    /**
-     * @return the immutable project list
-     */
-    public List<ProjectSummary> projects() {
-        return projects;
+    public ProjectsOverviewLevel {
+        projects = List.copyOf(Objects.requireNonNull(projects, "projects"));
     }
 
     /**

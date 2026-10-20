@@ -23,7 +23,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -297,9 +299,13 @@ class OverviewFullScreenTest {
                             fixture.base().getParent(),
                             true,
                             ClientEnvironment.capture(env),
-                            () -> virtual.terminal(),
+                            virtual::terminal,
                             null
         );
+    }
+
+    private static void delay(long millis) {
+        LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(millis));
     }
 
     private static void await(BooleanSupplier condition) throws InterruptedException {
@@ -308,7 +314,10 @@ class OverviewFullScreenTest {
             if (System.nanoTime() > deadline) {
                 fail("the view did not reach the expected state in time");
             }
-            Thread.sleep(20L);
+            delay(20L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
         }
     }
 
@@ -322,7 +331,7 @@ class OverviewFullScreenTest {
     void shouldRenderProjectsOverviewLayout() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var app = new OverviewFullScreenApp(context, virtual.terminal(), null, null, false, clock,
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
                                 new OverviewStateStore(context.stateDirectory()),
                                 new ConsoleNoticeBuffer());
 
@@ -351,7 +360,7 @@ class OverviewFullScreenTest {
     void shouldNavigateEnterTabAndJumpToEpic() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var app = new OverviewFullScreenApp(context, virtual.terminal(), null, null, false, clock,
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
                                 new OverviewStateStore(context.stateDirectory()),
                                 new ConsoleNoticeBuffer());
 
@@ -403,7 +412,7 @@ class OverviewFullScreenTest {
     void shouldFilterAndClearWithEsc() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var app = new OverviewFullScreenApp(context, virtual.terminal(), null, null, false, clock,
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
                                 new OverviewStateStore(context.stateDirectory()),
                                 new ConsoleNoticeBuffer());
 
@@ -445,7 +454,7 @@ class OverviewFullScreenTest {
     void shouldOpenEndedWorkAndPaginate() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var app = new OverviewFullScreenApp(context, virtual.terminal(), null, null, false, clock,
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
                                 new OverviewStateStore(context.stateDirectory()),
                                 new ConsoleNoticeBuffer());
 
@@ -488,7 +497,7 @@ class OverviewFullScreenTest {
         // 1. 80x24: detail lines hidden until ? is typed
         try (var virtual = VirtualScreenTerminal.create(80, 24)) {
             var context = createContext(virtual);
-            var app = new OverviewFullScreenApp(context, virtual.terminal(), "pm-mcp-clients", "plan", false, clock,
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), new OverviewFullScreenApp.InitialSelection("pm-mcp-clients", "plan", false), clock,
                                 new OverviewStateStore(context.stateDirectory()),
                                 new ConsoleNoticeBuffer());
 
@@ -544,7 +553,7 @@ class OverviewFullScreenTest {
     void shouldPreserveSelectionOnLiveSseUpdate() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var app = new OverviewFullScreenApp(context, virtual.terminal(), "pm-mcp-clients", "plan", false, clock,
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), new OverviewFullScreenApp.InitialSelection("pm-mcp-clients", "plan", false), clock,
                                 new OverviewStateStore(context.stateDirectory()),
                                 new ConsoleNoticeBuffer());
 
@@ -574,7 +583,7 @@ class OverviewFullScreenTest {
                     // ignore if closed
                 }
             }
-            Thread.sleep(100L);
+            delay(100L);
 
             // Selection remains on Overview resource
             assertTrue(virtual.screen().lines().stream().anyMatch(l -> l.contains("▶") && l.contains("Overview resource")));
@@ -645,7 +654,7 @@ class OverviewFullScreenTest {
             noticeBuffer.hold(ConsoleNoticeBuffer.Category.DECISION, 1);
             noticeBuffer.holdLine("Decision requested: approve PR");
 
-            var app = new OverviewFullScreenApp(context, virtual.terminal(), null, null, false, clock,
+            var app = new OverviewFullScreenApp(context, virtual.terminal(), OverviewFullScreenApp.InitialSelection.DEFAULT, clock,
                                 new OverviewStateStore(context.stateDirectory()),
                                 noticeBuffer);
 

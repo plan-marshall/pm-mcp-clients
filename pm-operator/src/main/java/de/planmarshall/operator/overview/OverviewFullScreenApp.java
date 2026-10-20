@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
@@ -51,6 +52,20 @@ import de.planmarshall.operator.tui.TuiViewStack;
  */
 public final class OverviewFullScreenApp {
 
+    private static final String PROJECTS_API_PREFIX = "/api/v1/projects/";
+    private static final String DOT_SEPARATOR = " \u00b7 ";
+
+    /**
+     * Initial CLI selection state.
+     *
+     * @param project optional initial project ID
+     * @param by      optional initial view grouping (epic/plan)
+     * @param ended   whether initial level is ended work
+     */
+    public record InitialSelection(@Nullable String project, @Nullable String by, boolean ended) {
+        public static final InitialSelection DEFAULT = new InitialSelection(null, null, false);
+    }
+
     private final OperatorContext context;
     private final Terminal terminal;
     private final String locale;
@@ -62,14 +77,12 @@ public final class OverviewFullScreenApp {
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicInteger unreadReports = new AtomicInteger(0);
 
-    private final @Nullable String initialProject;
-    private final @Nullable String initialBy;
-    private final boolean initialEnded;
+    private final InitialSelection initialSelection;
 
-    private volatile @Nullable ProjectOverviewResponse cachedProjects;
-    private volatile @Nullable ProjectDetailResponse currentProjectDetail;
-    private volatile boolean currentByEpic;
-    private volatile @Nullable EndedWorkLevel currentEndedLevel;
+    private final AtomicReference<ProjectOverviewResponse> cachedProjects = new AtomicReference<>();
+    private final AtomicReference<ProjectDetailResponse> currentProjectDetail = new AtomicReference<>();
+    private final AtomicBoolean currentByEpic = new AtomicBoolean(false);
+    private final AtomicReference<EndedWorkLevel> currentEndedLevel = new AtomicReference<>();
 
     /**
      * Creates the full-screen overview application with system clock and context defaults.
@@ -83,7 +96,7 @@ public final class OverviewFullScreenApp {
     public OverviewFullScreenApp(OperatorContext context, Terminal terminal,
                         @Nullable String initialProject, @Nullable String initialBy,
                         boolean initialEnded) {
-        this(context, terminal, initialProject, initialBy, initialEnded, Clock.systemUTC(),
+        this(context, terminal, new InitialSelection(initialProject, initialBy, initialEnded), Clock.systemUTC(),
                             new OverviewStateStore(context.stateDirectory()), context.noticeBuffer());
     }
 
@@ -91,18 +104,15 @@ public final class OverviewFullScreenApp {
      * Creates the full-screen overview application with explicit clock, store, and notice buffer
      * for deterministic testing.
      *
-     * @param context        the operator context
-     * @param terminal       the JLine terminal
-     * @param initialProject optional initial project ID
-     * @param initialBy      optional initial view grouping
-     * @param initialEnded   whether initial level is ended work
-     * @param clock          reference clock
-     * @param stateStore     overview state store
-     * @param noticeBuffer   notice buffer
+     * @param context          the operator context
+     * @param terminal         the JLine terminal
+     * @param initialSelection initial selection parameters
+     * @param clock            reference clock
+     * @param stateStore       overview state store
+     * @param noticeBuffer     notice buffer
      */
     public OverviewFullScreenApp(OperatorContext context, Terminal terminal,
-                        @Nullable String initialProject, @Nullable String initialBy,
-                        boolean initialEnded, Clock clock, OverviewStateStore stateStore,
+                        InitialSelection initialSelection, Clock clock, OverviewStateStore stateStore,
                         ConsoleNoticeBuffer noticeBuffer) {
         this.context = Objects.requireNonNull(context, "context");
         this.terminal = Objects.requireNonNull(terminal, "terminal");
@@ -110,9 +120,7 @@ public final class OverviewFullScreenApp {
         this.clock = Objects.requireNonNull(clock, "clock");
         this.stateStore = Objects.requireNonNull(stateStore, "stateStore");
         this.noticeBuffer = Objects.requireNonNull(noticeBuffer, "noticeBuffer");
-        this.initialProject = initialProject;
-        this.initialBy = initialBy;
-        this.initialEnded = initialEnded;
+        this.initialSelection = Objects.requireNonNull(initialSelection, "initialSelection");
     }
 
     /**
@@ -139,9 +147,7 @@ public final class OverviewFullScreenApp {
             return driver.run(this::buildScreen, new OverviewKeyHandler());
         } finally {
             running.set(false);
-            if (sseThread != null) {
-                sseThread.interrupt();
-            }
+            sseThread.interrupt();
             saveState();
             noticeBuffer.deactivate();
             var drained = noticeBuffer.drain(locale);
@@ -155,41 +161,50 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void loadInitialData(RuntimeClient runtime) throws IOException {
+    private void loadInitialData(RuntimeClient runtime) {
         fetchProjects(runtime);
         fetchUnreadReports(runtime);
 
-        var projects = cachedProjects != null ? cachedProjects.projects() : List.<ProjectSummary>of();
+        var cached = cachedProjects.get();
+        var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
         var rootLevel = new ProjectsOverviewLevel(projects);
         var rootRows = rootLevel.rows(locale, clock);
 
         var saved = stateStore.read().orElse(OverviewSavedState.empty());
 
-        if (initialEnded) {
-            stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, null);
-            String targetProject = initialProject;
-            if (targetProject == null || targetProject.isBlank()) {
-                if (!projects.isEmpty()) {
-                    targetProject = projects.getFirst().projectId();
-                }
-            }
-            if (targetProject != null && !targetProject.isBlank()) {
-                openEnded(runtime, targetProject);
-            }
+        if (initialSelection.ended()) {
+            loadInitialEnded(runtime, rootRows, projects);
             return;
         }
 
-        if (initialProject != null && !initialProject.isBlank()) {
+        if (initialSelection.project() != null && !initialSelection.project().isBlank()) {
             stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, null);
-            boolean byEpic = "epic".equalsIgnoreCase(initialBy);
-            openProject(runtime, initialProject, byEpic, null);
+            boolean byEpic = "epic".equalsIgnoreCase(initialSelection.by());
+            openProject(runtime, initialSelection.project(), byEpic, null);
             return;
         }
 
-        if (saved.projectId() != null && projects.stream().anyMatch(p -> p.projectId().equals(saved.projectId()))) {
-            stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, saved.projectId());
-            boolean byEpic = "epic".equalsIgnoreCase(initialBy != null ? initialBy : saved.projectView());
-            openProject(runtime, saved.projectId(), byEpic, saved.selectedId());
+        loadInitialSavedOrRoot(runtime, rootRows, projects, saved);
+    }
+
+    private void loadInitialEnded(RuntimeClient runtime, List<TuiRow> rootRows, List<ProjectSummary> projects) {
+        stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, null);
+        String targetProject = initialSelection.project();
+        if ((targetProject == null || targetProject.isBlank()) && !projects.isEmpty()) {
+            targetProject = projects.getFirst().projectId();
+        }
+        if (targetProject != null && !targetProject.isBlank()) {
+            openEnded(runtime, targetProject);
+        }
+    }
+
+    private void loadInitialSavedOrRoot(RuntimeClient runtime, List<TuiRow> rootRows,
+                        List<ProjectSummary> projects, OverviewSavedState saved) {
+        var savedProjectId = saved.projectId();
+        if (savedProjectId != null && projects.stream().anyMatch(p -> p.projectId().equals(savedProjectId))) {
+            stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, savedProjectId);
+            boolean byEpic = "epic".equalsIgnoreCase(initialSelection.by() != null ? initialSelection.by() : saved.projectView());
+            openProject(runtime, savedProjectId, byEpic, saved.selectedId());
         } else {
             stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, saved.selectedId());
         }
@@ -199,7 +214,7 @@ public final class OverviewFullScreenApp {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() == 200) {
-                cachedProjects = ProjectOverviewResponse.fromJson(response.bodyText());
+                cachedProjects.set(ProjectOverviewResponse.fromJson(response.bodyText()));
             }
         } catch (IOException _) {
             // Keep existing cached projects if runtime read fails
@@ -219,25 +234,30 @@ public final class OverviewFullScreenApp {
     }
 
     private boolean isCurrentProjectSetupNeedingOperator() {
-        if (currentProjectDetail == null || cachedProjects == null) {
+        var detail = currentProjectDetail.get();
+        var cached = cachedProjects.get();
+        if (detail == null || cached == null) {
             return false;
         }
-        var currentProjectId = currentProjectDetail.projectId();
-        return cachedProjects.projects().stream()
+        var currentProjectId = detail.projectId();
+        return cached.projects().stream()
                             .filter(p -> p.projectId().equals(currentProjectId))
                             .findFirst()
                             .map(ProjectSummary::setupNeedsOperator)
                             .orElse(false);
     }
 
-    private void openProject(RuntimeClient runtime, String projectId, boolean byEpic, @Nullable String selectedId) {
+    private void openProject(RuntimeClient runtime, @Nullable String projectId, boolean byEpic, @Nullable String selectedId) {
+        if (projectId == null || projectId.isBlank()) {
+            return;
+        }
         try {
-            var path = "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId);
+            var path = PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId);
             var response = runtime.send(HttpRequest.get(path));
             if (response.status() == 200) {
                 var detail = ProjectDetailResponse.fromJson(response.bodyText());
-                currentProjectDetail = detail;
-                currentByEpic = byEpic;
+                currentProjectDetail.set(detail);
+                currentByEpic.set(byEpic);
                 var levelModel = new ProjectWorkLevel(detail, byEpic, isCurrentProjectSetupNeedingOperator());
                 var rows = levelModel.rows(locale, clock, false);
                 stack.push(levelModel.level(locale), rows, selectedId);
@@ -247,14 +267,17 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void openEnded(RuntimeClient runtime, String projectId) {
+    private void openEnded(RuntimeClient runtime, @Nullable String projectId) {
+        if (projectId == null || projectId.isBlank()) {
+            return;
+        }
         try {
-            var path = "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId) + "/ended?page=1";
+            var path = PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId) + "/ended?page=1";
             var response = runtime.send(HttpRequest.get(path));
             if (response.status() == 200) {
                 var endedResponse = EndedWorkPage.fromJson(response.bodyText());
                 var endedLevel = new EndedWorkLevel(endedResponse);
-                currentEndedLevel = endedLevel;
+                currentEndedLevel.set(endedLevel);
                 stack.push(endedLevel.level(locale), endedLevel.rows(locale, clock, false), null);
             }
         } catch (IOException _) {
@@ -281,36 +304,43 @@ public final class OverviewFullScreenApp {
     private Thread startEventListener() {
         var thread = new Thread(() -> {
             while (running.get()) {
-                try {
-                    var runtime = context.runtime(false);
-                    try (var exchange = runtime.open(HttpRequest.get("/api/v1/events"))) {
-                        connected.set(true);
-                        terminal.raise(Terminal.Signal.WINCH);
-                        var sseReader = exchange.events();
-                        var event = sseReader.next();
-                        while (running.get() && event != null) {
-                            handleLiveEvent(event.event(), event.data());
-                            event = sseReader.next();
-                        }
-                    }
-                } catch (IOException _) {
-                    if (!running.get()) {
-                        break;
-                    }
-                    connected.set(false);
-                    terminal.raise(Terminal.Signal.WINCH);
-                    try {
-                        Thread.sleep(1000L);
-                    } catch (InterruptedException _) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
+                connectAndStreamEvents();
             }
         }, "pm-overview-sse");
         thread.setDaemon(true);
         thread.start();
         return thread;
+    }
+
+    private void connectAndStreamEvents() {
+        try {
+            var runtime = context.runtime(false);
+            try (var exchange = runtime.open(HttpRequest.get("/api/v1/events"))) {
+                connected.set(true);
+                terminal.raise(Terminal.Signal.WINCH);
+                var sseReader = exchange.events();
+                var event = sseReader.next();
+                while (running.get() && event != null) {
+                    handleLiveEvent(event.event(), event.data());
+                    event = sseReader.next();
+                }
+            }
+        } catch (IOException _) {
+            handleSseDisconnect();
+        }
+    }
+
+    private void handleSseDisconnect() {
+        connected.set(false);
+        terminal.raise(Terminal.Signal.WINCH);
+        if (running.get()) {
+            try {
+                Thread.sleep(1000L);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                running.set(false);
+            }
+        }
     }
 
     private void handleLiveEvent(@Nullable String eventName, @Nullable String data) {
@@ -369,47 +399,11 @@ public final class OverviewFullScreenApp {
             fetchProjects(runtime);
             fetchUnreadReports(runtime);
 
-            ProjectDetailResponse fetchedDetail = null;
-            EndedWorkPage fetchedEnded = null;
-
-            if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-                if (targetProjectId != null) {
-                    var response = runtime.send(HttpRequest.get("/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(targetProjectId)));
-                    if (response.status() == 200) {
-                        fetchedDetail = ProjectDetailResponse.fromJson(response.bodyText());
-                    }
-                }
-            } else if (targetKind == TuiLevel.Kind.ENDED) {
-                if (targetProjectId != null) {
-                    var response = runtime.send(HttpRequest.get("/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(targetProjectId) + "/ended?page=1"));
-                    if (response.status() == 200) {
-                        fetchedEnded = EndedWorkPage.fromJson(response.bodyText());
-                    }
-                }
-            }
+            ProjectDetailResponse fetchedDetail = fetchTargetDetail(runtime, targetKind, targetProjectId);
+            EndedWorkPage fetchedEnded = fetchTargetEnded(runtime, targetKind, targetProjectId);
 
             synchronized (this) {
-                var currentLvl = stack.level();
-                if (currentLvl == null || currentLvl.kind() != targetKind || !Objects.equals(currentLvl.id(), targetProjectId)) {
-                    return;
-                }
-
-                if (targetKind == TuiLevel.Kind.OVERVIEW) {
-                    var projects = cachedProjects != null ? cachedProjects.projects() : List.<ProjectSummary>of();
-                    var levelModel = new ProjectsOverviewLevel(projects);
-                    stack.refresh(levelModel.rows(locale, clock));
-                } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-                    if (fetchedDetail != null) {
-                        currentProjectDetail = fetchedDetail;
-                        var levelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic, isCurrentProjectSetupNeedingOperator());
-                        stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
-                    }
-                } else if (targetKind == TuiLevel.Kind.ENDED) {
-                    if (fetchedEnded != null && currentEndedLevel != null) {
-                        currentEndedLevel.refreshFirstPage(fetchedEnded);
-                        stack.refresh(currentEndedLevel.rows(locale, clock, stack.helpVisible()));
-                    }
-                }
+                applyRefreshedData(targetKind, targetProjectId, fetchedDetail, fetchedEnded);
             }
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException _) {
@@ -417,10 +411,62 @@ public final class OverviewFullScreenApp {
         }
     }
 
+    private static @Nullable ProjectDetailResponse fetchTargetDetail(RuntimeClient runtime, TuiLevel.Kind kind, @Nullable String projectId) throws IOException {
+        if ((kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) && projectId != null) {
+            var response = runtime.send(HttpRequest.get(PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId)));
+            if (response.status() == 200) {
+                return ProjectDetailResponse.fromJson(response.bodyText());
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable EndedWorkPage fetchTargetEnded(RuntimeClient runtime, TuiLevel.Kind kind, @Nullable String projectId) throws IOException {
+        if (kind == TuiLevel.Kind.ENDED && projectId != null) {
+            var response = runtime.send(HttpRequest.get(PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId) + "/ended?page=1"));
+            if (response.status() == 200) {
+                return EndedWorkPage.fromJson(response.bodyText());
+            }
+        }
+        return null;
+    }
+
+    private void applyRefreshedData(TuiLevel.Kind targetKind, @Nullable String targetProjectId,
+                        @Nullable ProjectDetailResponse fetchedDetail,
+                        @Nullable EndedWorkPage fetchedEnded) {
+        var currentLvl = stack.level();
+        if (currentLvl == null || currentLvl.kind() != targetKind || !Objects.equals(currentLvl.id(), targetProjectId)) {
+            return;
+        }
+
+        if (targetKind == TuiLevel.Kind.OVERVIEW) {
+            var cached = cachedProjects.get();
+            var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
+            var levelModel = new ProjectsOverviewLevel(projects);
+            stack.refresh(levelModel.rows(locale, clock));
+        } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
+            if (fetchedDetail != null) {
+                currentProjectDetail.set(fetchedDetail);
+                var levelModel = new ProjectWorkLevel(fetchedDetail, currentByEpic.get(), isCurrentProjectSetupNeedingOperator());
+                stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
+            }
+        } else if (targetKind == TuiLevel.Kind.ENDED && fetchedEnded != null) {
+            var ended = currentEndedLevel.get();
+            if (ended != null) {
+                ended.refreshFirstPage(fetchedEnded);
+                stack.refresh(ended.rows(locale, clock, stack.helpVisible()));
+            }
+        }
+    }
+
     private void saveState() {
         try {
             var existing = stateStore.read().orElse(OverviewSavedState.empty());
-            var kind = stack.level().kind();
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            var kind = lvl.kind();
             var sel = stack.selected();
             var selectedId = sel != null ? sel.id() : null;
 
@@ -428,7 +474,7 @@ public final class OverviewFullScreenApp {
             String projectView = null;
 
             if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-                projectId = stack.level().id();
+                projectId = lvl.id();
                 projectView = kind == TuiLevel.Kind.PROJECT_BY_EPIC ? "epic" : "plan";
             }
 
@@ -514,6 +560,7 @@ public final class OverviewFullScreenApp {
                     // hooks for actions and decision answering
                 }
                 default -> {
+                    // unhandled key actions
                 }
             }
             return true;
@@ -527,32 +574,40 @@ public final class OverviewFullScreenApp {
         }
 
         private void refreshHelpRows() {
-            var kind = stack.level().kind();
-            if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-                if (currentProjectDetail != null) {
-                    var levelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic, isCurrentProjectSetupNeedingOperator());
-                    stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
-                }
-            } else if (kind == TuiLevel.Kind.ENDED) {
-                if (currentEndedLevel != null) {
-                    stack.refresh(currentEndedLevel.rows(locale, clock, stack.helpVisible()));
-                }
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            var kind = lvl.kind();
+            var detail = currentProjectDetail.get();
+            var ended = currentEndedLevel.get();
+            if ((kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) && detail != null) {
+                var levelModel = new ProjectWorkLevel(detail, currentByEpic.get(), isCurrentProjectSetupNeedingOperator());
+                stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
+            } else if (kind == TuiLevel.Kind.ENDED && ended != null) {
+                stack.refresh(ended.rows(locale, clock, stack.helpVisible()));
             }
         }
 
         private void switchView() {
-            var kind = stack.level().kind();
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            var kind = lvl.kind();
             if (kind != TuiLevel.Kind.PROJECT_BY_PLAN && kind != TuiLevel.Kind.PROJECT_BY_EPIC) {
                 return;
             }
-            if (currentProjectDetail == null) {
+            var detail = currentProjectDetail.get();
+            if (detail == null) {
                 return;
             }
-            currentByEpic = !currentByEpic;
+            boolean newByEpic = !currentByEpic.get();
+            currentByEpic.set(newByEpic);
             var sel = stack.selected();
             var selectedId = sel != null ? sel.id() : null;
             var currentFilter = stack.filter();
-            var newLevelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic, isCurrentProjectSetupNeedingOperator());
+            var newLevelModel = new ProjectWorkLevel(detail, newByEpic, isCurrentProjectSetupNeedingOperator());
             var newLevel = newLevelModel.level(locale);
             var newRows = newLevelModel.rows(locale, clock, stack.helpVisible());
 
@@ -569,7 +624,9 @@ public final class OverviewFullScreenApp {
         }
 
         private void jumpToEpic() {
-            if (stack.level().kind() != TuiLevel.Kind.PROJECT_BY_PLAN || currentProjectDetail == null) {
+            var lvl = stack.level();
+            var detail = currentProjectDetail.get();
+            if (lvl == null || lvl.kind() != TuiLevel.Kind.PROJECT_BY_PLAN || detail == null) {
                 return;
             }
             var selected = stack.selected();
@@ -577,7 +634,7 @@ public final class OverviewFullScreenApp {
                 return;
             }
             var planId = selected.id();
-            var plan = currentProjectDetail.plans().stream()
+            var plan = detail.plans().stream()
                                 .filter(p -> p.planId().equals(planId))
                                 .findFirst()
                                 .orElse(null);
@@ -585,9 +642,9 @@ public final class OverviewFullScreenApp {
                 return;
             }
 
-            currentByEpic = true;
+            currentByEpic.set(true);
             var currentFilter = stack.filter();
-            var newLevelModel = new ProjectWorkLevel(currentProjectDetail, true, isCurrentProjectSetupNeedingOperator());
+            var newLevelModel = new ProjectWorkLevel(detail, true, isCurrentProjectSetupNeedingOperator());
             var newLevel = newLevelModel.level(locale);
             var newRows = newLevelModel.rows(locale, clock, stack.helpVisible());
 
@@ -608,7 +665,11 @@ public final class OverviewFullScreenApp {
             if (selected == null || !selected.openable()) {
                 return;
             }
-            var kind = stack.level().kind();
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            var kind = lvl.kind();
             var selectedId = selected.id();
 
             if (kind == TuiLevel.Kind.OVERVIEW) {
@@ -625,8 +686,11 @@ public final class OverviewFullScreenApp {
 
         private void drillDownWorkItem(String itemId) {
             // Drill down to read-only inspection level
-            var title = stack.level().id() + " \u00b7 " + itemId;
-            var isEpic = currentProjectDetail != null && currentProjectDetail.epics().stream().anyMatch(e -> e.epicId().equals(itemId));
+            var lvl = stack.level();
+            var levelId = lvl != null ? lvl.id() : "";
+            var title = levelId + DOT_SEPARATOR + itemId;
+            var detail = currentProjectDetail.get();
+            var isEpic = detail != null && detail.epics().stream().anyMatch(e -> e.epicId().equals(itemId));
             var levelKind = isEpic ? TuiLevel.Kind.EPIC : TuiLevel.Kind.PLAN;
             var inspectLevel = TuiLevel.of(levelKind, itemId, title);
             var itemRows = new ArrayList<TuiRow>();
@@ -635,13 +699,17 @@ public final class OverviewFullScreenApp {
         }
 
         private void openEndedLevel() {
-            var kind = stack.level().kind();
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            var kind = lvl.kind();
             String targetProjectId = null;
             if (kind == TuiLevel.Kind.OVERVIEW) {
                 var sel = stack.selected();
                 targetProjectId = sel != null ? sel.id() : null;
             } else if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-                targetProjectId = stack.level().id();
+                targetProjectId = lvl.id();
             }
             if (targetProjectId != null && !targetProjectId.startsWith("__")) {
                 try {
@@ -667,24 +735,22 @@ public final class OverviewFullScreenApp {
 
         private void checkEndedPagination() {
             var lvl = stack.level();
-            if (lvl == null || lvl.kind() != TuiLevel.Kind.ENDED || currentEndedLevel == null) {
-                return;
-            }
-            if (!currentEndedLevel.hasOlder()) {
+            var ended = currentEndedLevel.get();
+            if (lvl == null || lvl.kind() != TuiLevel.Kind.ENDED || ended == null || !ended.hasOlder()) {
                 return;
             }
             int idx = stack.selectedIndex();
             int total = stack.visibleRows().size();
             if (idx >= total - 1) {
                 try {
-                    var nextPage = currentEndedLevel.currentPage() + 1;
-                    var path = "/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(currentEndedLevel.projectId())
+                    var nextPage = ended.currentPage() + 1;
+                    var path = PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(ended.projectId())
                                         + "/ended?page=" + nextPage;
                     var response = context.runtime(false).send(HttpRequest.get(path));
                     if (response.status() == 200) {
                         var olderPage = EndedWorkPage.fromJson(response.bodyText());
-                        currentEndedLevel.appendOlderPage(olderPage);
-                        stack.refresh(currentEndedLevel.rows(locale, clock, stack.helpVisible()));
+                        ended.appendOlderPage(olderPage);
+                        stack.refresh(ended.rows(locale, clock, stack.helpVisible()));
                     }
                 } catch (IOException _) {
                     // ignore pagination fetch failures

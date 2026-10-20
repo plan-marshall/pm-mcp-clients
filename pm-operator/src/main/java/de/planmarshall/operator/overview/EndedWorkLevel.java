@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.EndedWorkItem;
@@ -32,12 +33,13 @@ public final class EndedWorkLevel {
     /** Empty ended work row ID. */
     public static final String EMPTY_ENDED_ROW_ID = "__ended_empty__";
 
+    private static final String DOT_SEPARATOR = " \u00b7 ";
+
     private final String projectId;
     private final List<EndedWorkItem> items = new ArrayList<>();
     private int currentPage;
     private int totalPages;
     private boolean hasOlder;
-    private boolean hasNewer;
 
     /**
      * @param initial the first page response
@@ -48,7 +50,6 @@ public final class EndedWorkLevel {
         this.currentPage = initial.page();
         this.totalPages = initial.totalPages();
         this.hasOlder = initial.hasOlder();
-        this.hasNewer = initial.hasNewer();
         this.items.addAll(initial.items());
     }
 
@@ -87,7 +88,6 @@ public final class EndedWorkLevel {
         this.currentPage = olderPage.page();
         this.totalPages = olderPage.totalPages();
         this.hasOlder = olderPage.hasOlder();
-        this.hasNewer = olderPage.hasNewer();
         for (var item : olderPage.items()) {
             if (items.stream().noneMatch(existing -> existing.id().equals(item.id()))) {
                 items.add(item);
@@ -103,7 +103,6 @@ public final class EndedWorkLevel {
     public void refreshFirstPage(EndedWorkPage freshPage) {
         Objects.requireNonNull(freshPage, "freshPage");
         this.totalPages = Math.max(this.totalPages, freshPage.totalPages());
-        this.hasNewer = freshPage.hasNewer();
         if (this.currentPage <= 1) {
             this.hasOlder = freshPage.hasOlder();
         }
@@ -126,7 +125,7 @@ public final class EndedWorkLevel {
      */
     public TuiLevel level(String locale) {
         var title = MessageCatalogue.format(locale, "overview.ended.title", Map.of())
-                            + " \u00b7 "
+                            + DOT_SEPARATOR
                             + OverviewFormatting.clean(projectId);
         return TuiLevel.of(TuiLevel.Kind.ENDED, projectId, title);
     }
@@ -146,55 +145,67 @@ public final class EndedWorkLevel {
             return List.of(new TuiRow(EMPTY_ENDED_ROW_ID, emptyText, null, false, false));
         }
 
-        var rows = new ArrayList<TuiRow>(items.size());
+        var result = new ArrayList<TuiRow>(items.size());
         for (var item : items) {
-            boolean isEpic = "epic".equalsIgnoreCase(item.kind());
-            var kindText = (isEpic ? OverviewFormatting.EPIC_GLYPH : OverviewFormatting.PLAN_GLYPH)
-                                + " "
-                                + MessageCatalogue.format(locale, isEpic ? "overview.kind.epic" : "overview.kind.plan", Map.of());
-            var title = OverviewFormatting.clean(item.title());
-
-            String outcomeText;
-            if (isEpic) {
-                var rawReason = item.terminalReason() != null
-                                    ? item.terminalReason().trim().toLowerCase(Locale.ROOT).replace('-', '_')
-                                    : "completed";
-                var reason = OverviewFormatting.clean(rawReason);
-                outcomeText = MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", reason));
-            } else {
-                var rawOutcome = item.outcome() != null
-                                    ? item.outcome().trim().toLowerCase(Locale.ROOT).replace('-', '_')
-                                    : "completed";
-                var outcome = OverviewFormatting.clean(rawOutcome);
-                outcomeText = MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", outcome));
-            }
-
-            var endedTime = OverviewFormatting.formatEndedTime(locale, item.endedAt(), clock);
-            var prText = item.pullRequestNumber() != null ? "#" + item.pullRequestNumber() : null;
-
-            String right;
-            if (prText != null && !endedTime.isEmpty()) {
-                right = prText + " \u00b7 " + endedTime;
-            } else if (prText != null) {
-                right = prText;
-            } else {
-                right = endedTime;
-            }
-
-            var line = String.format("%s  %-36s %-12s %s", kindText, title, outcomeText, right).stripTrailing();
-
-            var detailParts = new ArrayList<String>();
-            if (item.reason() != null && !item.reason().isBlank()) {
-                detailParts.add(OverviewFormatting.clean(item.reason()));
-            }
-            if (helpVisible && item.pullRequestUrl() != null && !item.pullRequestUrl().isBlank()) {
-                detailParts.add(OverviewFormatting.clean(item.pullRequestUrl()));
-            }
-            var details = detailParts.isEmpty() ? null : String.join(" \u00b7 ", detailParts);
-
-            rows.add(new TuiRow(item.id(), line, details, false, true));
+            result.add(formatItemRow(locale, clock, helpVisible, item));
         }
+        return result;
+    }
 
-        return rows;
+    private static TuiRow formatItemRow(String locale, Clock clock, boolean helpVisible, EndedWorkItem item) {
+        boolean isEpic = "epic".equalsIgnoreCase(item.kind());
+        var kindText = formatKind(locale, isEpic);
+        var title = OverviewFormatting.clean(item.title());
+        var outcomeText = formatOutcome(locale, item, isEpic);
+        var endedTime = OverviewFormatting.formatEndedTime(locale, item.endedAt(), clock);
+        var prText = item.pullRequestNumber() != null ? "#" + item.pullRequestNumber() : null;
+        var right = formatRight(endedTime, prText);
+
+        var line = String.format("%s  %-36s %-12s %s", kindText, title, outcomeText, right).stripTrailing();
+        var details = formatDetails(item, helpVisible);
+
+        return new TuiRow(item.id(), line, details, false, true);
+    }
+
+    private static String formatKind(String locale, boolean isEpic) {
+        var glyph = isEpic ? OverviewFormatting.EPIC_GLYPH : OverviewFormatting.PLAN_GLYPH;
+        var key = isEpic ? "overview.kind.epic" : "overview.kind.plan";
+        return glyph + " " + MessageCatalogue.format(locale, key, Map.of());
+    }
+
+    private static String formatOutcome(String locale, EndedWorkItem item, boolean isEpic) {
+        if (isEpic) {
+            var rawReason = item.terminalReason() != null
+                                ? item.terminalReason().trim().toLowerCase(Locale.ROOT).replace('-', '_')
+                                : "completed";
+            var reason = OverviewFormatting.clean(rawReason);
+            return MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", reason));
+        }
+        var rawOutcome = item.outcome() != null
+                            ? item.outcome().trim().toLowerCase(Locale.ROOT).replace('-', '_')
+                            : "completed";
+        var outcome = OverviewFormatting.clean(rawOutcome);
+        return MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", outcome));
+    }
+
+    private static String formatRight(String endedTime, @Nullable String prText) {
+        if (prText != null && !endedTime.isEmpty()) {
+            return prText + DOT_SEPARATOR + endedTime;
+        }
+        if (prText != null) {
+            return prText;
+        }
+        return endedTime;
+    }
+
+    private static @Nullable String formatDetails(EndedWorkItem item, boolean helpVisible) {
+        var detailParts = new ArrayList<String>();
+        if (item.reason() != null && !item.reason().isBlank()) {
+            detailParts.add(OverviewFormatting.clean(item.reason()));
+        }
+        if (helpVisible && item.pullRequestUrl() != null && !item.pullRequestUrl().isBlank()) {
+            detailParts.add(OverviewFormatting.clean(item.pullRequestUrl()));
+        }
+        return detailParts.isEmpty() ? null : String.join(DOT_SEPARATOR, detailParts);
     }
 }

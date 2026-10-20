@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -41,6 +42,8 @@ public final class OverviewFormatting {
 
     /** Glyph for an epic row ({@code ◇}). */
     public static final String EPIC_GLYPH = "\u25c7";
+
+    private static final String KIND_PAUSED = "paused";
 
     private static final DateTimeFormatter SHORT_DATE_EN = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH);
     private static final DateTimeFormatter SHORT_DATE_DE = DateTimeFormatter.ofPattern("d. MMM", Locale.GERMAN);
@@ -95,13 +98,7 @@ public final class OverviewFormatting {
         Objects.requireNonNull(plan, "plan");
         var count = plan.needsOperatorCount();
         var kind = plan.needsOperatorKind();
-        if (count == null || count <= 0) {
-            return false;
-        }
-        if (kind == null || kind.isBlank() || "paused".equalsIgnoreCase(kind)) {
-            return false;
-        }
-        return true;
+        return count != null && count > 0 && kind != null && !kind.isBlank() && !KIND_PAUSED.equalsIgnoreCase(kind);
     }
 
     /**
@@ -114,10 +111,7 @@ public final class OverviewFormatting {
         Objects.requireNonNull(epic, "epic");
         var count = epic.needsOperatorCount();
         var kind = epic.needsOperatorKind();
-        if (count != null && count > 0 && kind != null && !kind.isBlank() && !"paused".equalsIgnoreCase(kind)) {
-            return true;
-        }
-        return false;
+        return count != null && count > 0 && kind != null && !kind.isBlank() && !KIND_PAUSED.equalsIgnoreCase(kind);
     }
 
     /**
@@ -194,7 +188,7 @@ public final class OverviewFormatting {
      * @return the formatted marker, or empty string if none
      */
     public static String formatAttentionMarker(String locale, @Nullable String kind, @Nullable Integer count) {
-        if (count == null || count <= 0 || kind == null || kind.isBlank() || "paused".equalsIgnoreCase(kind)) {
+        if (count == null || count <= 0 || kind == null || kind.isBlank() || KIND_PAUSED.equalsIgnoreCase(kind)) {
             return "";
         }
         var key = switch (kind) {
@@ -240,7 +234,7 @@ public final class OverviewFormatting {
             case "running" -> MessageCatalogue.format(locale, "overview.state.running", Map.of());
             case "pausing" -> MessageCatalogue.format(locale, "overview.state.pausing",
                                 Map.of("point", pausingPoint != null && !pausingPoint.isBlank() ? clean(pausingPoint) : "phase"));
-            case "paused" -> MessageCatalogue.format(locale, "overview.state.paused", Map.of());
+            case KIND_PAUSED -> MessageCatalogue.format(locale, "overview.state.paused", Map.of());
             case "waiting", "waiting_for_you" -> MessageCatalogue.format(locale, "overview.state.waiting_for_you", Map.of());
             case "held" -> MessageCatalogue.format(locale, "overview.state.held", Map.of());
             default -> clean(phaseState);
@@ -365,7 +359,7 @@ public final class OverviewFormatting {
         boolean german = locale.toLowerCase(Locale.ROOT).startsWith("de");
         LocalDate nowDate = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
         LocalDate endDate = LocalDate.ofInstant(instant, ZoneOffset.UTC);
-        long daysBetween = Duration.between(endDate.atStartOfDay(), nowDate.atStartOfDay()).toDays();
+        long daysBetween = ChronoUnit.DAYS.between(endDate, nowDate);
         if (daysBetween <= 0L) {
             return formatRelativeActivity(locale, instant, clock);
         }

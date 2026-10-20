@@ -10,7 +10,6 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jline.terminal.Terminal;
@@ -72,34 +71,40 @@ public final class PlansCommand implements Callable<Integer> {
             // terminal unavailable
         }
 
-        boolean canOpen = !json && terminal != null
-                            && TuiScreenDriver.canOpenFullScreen(context, terminal, 1);
+        try {
+            boolean canOpen = !json && terminal != null
+                                && TuiScreenDriver.canOpenFullScreen(context, terminal, 1);
 
-        if (canOpen) {
-            String effectiveBy = by;
-            if (byEpic) {
-                effectiveBy = "epic";
-            }
-            var app = new OverviewFullScreenApp(context, terminal, project, effectiveBy, ended);
-            var result = app.run(out);
-            if (result != TuiScreenDriver.Result.TOO_NARROW) {
-                return 0;
+            if (canOpen) {
+                String effectiveBy = by;
+                if (byEpic) {
+                    effectiveBy = "epic";
+                }
+                var app = new OverviewFullScreenApp(context, terminal, project, effectiveBy, ended);
+                var result = app.run(out);
+                if (result != TuiScreenDriver.Result.TOO_NARROW) {
+                    return 0;
+                }
+
+                // Below 60 columns: result == TOO_NARROW.
+                // app.run(out) wrote operator.overview.too_narrow to terminal.writer().
+                return runStatusFallback(terminal);
             }
 
-            // Below 60 columns: result == TOO_NARROW.
-            // app.run(out) wrote operator.overview.too_narrow to terminal.writer().
-            return runStatusFallback(terminal, out);
+            return delegateToStatus();
+        } finally {
+            if (terminal != null) {
+                terminal.close();
+            }
         }
-
-        return delegateToStatus(out);
     }
 
-    private int runStatusFallback(Terminal terminal, PrintWriter out) throws IOException {
+    private int runStatusFallback(Terminal terminal) throws IOException {
         terminal.writer().flush();
-        return delegateToStatus(out);
+        return delegateToStatus();
     }
 
-    private int delegateToStatus(PrintWriter targetOut) throws IOException {
+    private int delegateToStatus() throws IOException {
         boolean overviewAvailable;
         try {
             overviewAvailable = context.runtime(false).send(HttpRequest.get("/api/v1/projects")).status() == 200;
