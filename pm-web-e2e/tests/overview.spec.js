@@ -69,22 +69,23 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(byEpicBtn).toBeVisible();
 
     // Verify plans are shown directly
-    await expect(page.getByText('Console history of answers')).toBeVisible();
-    await expect(page.getByText('Overview resource of the runtime')).toBeVisible();
+    await expect(page.getByText('Fix Relay Transport')).toBeVisible();
+    await expect(page.getByText('Drop the legacy endpoints')).toBeVisible();
+    await expect(page.getByText('Relay metrics')).toBeVisible();
 
     // Switch to by-epic view
     await byEpicBtn.click();
     await expect(byEpicBtn).toHaveAttribute('aria-checked', 'true');
 
     // In by-epic view, verify epic card
-    const epicTitle = page.getByText('client work');
+    const epicTitle = page.getByTestId('epic-card').getByText('Relay Hardening');
     await expect(epicTitle).toBeVisible();
-    await expect(page.getByText(/2 running · 3 staged/)).toBeVisible();
+    await expect(page.getByText(/3 running · 3 staged/)).toBeVisible();
 
     // Switch back to by-plan
     await byPlanBtn.click();
     await expect(byPlanBtn).toHaveAttribute('aria-checked', 'true');
-    await expect(page.getByText('Console history of answers')).toBeVisible();
+    await expect(page.getByText('Fix Relay Transport')).toBeVisible();
   });
 
   test('views attention markers and off-track indicators', async ({ page }) => {
@@ -150,8 +151,8 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(page.locator('[data-testid="ended-item"]').first()).toBeVisible();
 
     // The title opens the plan's own view, remembering the section it was opened from.
-    await page.locator('[data-testid="ended-open-fix-relay"]').click();
-    await expect(page).toHaveURL(/\/plans\/fix-relay$/);
+    await page.locator('[data-testid="ended-open-fix-relay-v1"]').click();
+    await expect(page).toHaveURL(/\/plans\/fix-relay-v1$/);
     await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
 
     // The browser's back returns to Ended Work, on the page the operator left.
@@ -160,8 +161,8 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(page.getByText(/page 1 of 3/i)).toBeVisible();
 
     // A plan's completion report is one step from its row.
-    await page.locator('[data-testid="ended-report-fix-relay"]').click();
-    await expect(page).toHaveURL(/\/reports\?plan=fix-relay$/);
+    await page.locator('[data-testid="ended-report-fix-relay-v1"]').click();
+    await expect(page).toHaveURL(/\/reports\?plan=fix-relay-v1$/);
     await expect(page.locator('.completion-report')).toBeVisible();
   });
 
