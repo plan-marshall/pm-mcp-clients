@@ -325,6 +325,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String FIXTURE_CONTROL = "control";
     private static final String FIXTURE_DECISIONS = "decisions";
     private static final String FIXTURE_DECOMPOSITIONS = "decompositions";
+    private static final String FIXTURE_REPORTS = "reports";
+    private static final String FIXTURE_PROJECTS = "projects";
+    private static final String FIXTURE_BEING_ADDED = "being_added";
     private static final String FIELD_VERSION = "version";
     private static final String FIELD_MACHINE = "machine";
     private static final String FIELD_LISTENER = "listener";
@@ -1477,6 +1480,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var scenario = currentScenario.get();
         return StandardScenarios.SYSTEM.equals(scenario.name())
                 || StandardScenarios.REPORTS_AND_SYSTEM.equals(scenario.name())
+                || StandardScenarios.FULLY_ONBOARDED.equals(scenario.name())
                 || scenario.routes().keySet().stream().anyMatch(route -> route.contains("/api/v1/system"))
                 || scenario.states().keySet().stream().anyMatch(state -> state.startsWith("system."));
     }
@@ -1489,6 +1493,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var scenario = currentScenario.get();
         return StandardScenarios.DECISIONS.equals(scenario.name())
                 || StandardScenarios.RUNNING_WORK.equals(scenario.name())
+                || StandardScenarios.FULLY_ONBOARDED.equals(scenario.name())
                 || scenario.routes().keySet().stream().anyMatch(route -> route.contains("/decisions"))
                 || scenario.states().keySet().stream().anyMatch(state -> state.contains("decision"));
     }
@@ -2563,6 +2568,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
             readFixture(() -> EpicDecomposition.fromMap(cut), "facts.runtime.decompositions");
+        }
+        for (var report : fixtureObjects(fixture, FIXTURE_REPORTS)) {
+            readFixture(() -> ReportItem.fromMap(report), "facts.runtime.reports");
+        }
+        for (var project : fixtureObjects(fixture, FIXTURE_PROJECTS)) {
+            readFixture(() -> EnrolledProject.fromMap(project), "facts.runtime.projects");
+        }
+        for (var beingAdded : fixtureObjects(fixture, FIXTURE_BEING_ADDED)) {
+            readFixture(() -> BeingAddedProject.fromMap(beingAdded), "facts.runtime.being_added");
+        }
+        if (fixture.containsKey(FIXTURE_DEVICES)) {
+            readFixture(() -> DeviceListResource.fromTree(fixture.get(FIXTURE_DEVICES)), "facts.runtime.devices");
         }
     }
 
@@ -4599,90 +4616,97 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void initDefaultReports() {
         synchronized (reportsLock) {
             mockReports.clear();
-            mockReports.add(new ReportItem(
-                    "rep-0142",
-                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
-                    ReportKind.PLAN_ENDED,
-                    "fix-relay ended: merged (#214)",
-                    Map.of("plan", CONST_FIX_RELAY, CONST_OUTCOME, "merged (#214)"),
-                    "3 of 3 deliverables · 2 h 40 min",
-                    Instant.parse(CONST_TIME_11_20),
-                    Instant.parse(CONST_TIME_11_20),
-                    null, null, null,
-                    "/api/v1/plans/fix-relay/completion"
-            ));
-            mockReports.add(new ReportItem(
-                    "rep-0143",
-                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_TOKEN_STORE),
-                    ReportKind.PLAN_STARTED,
-                    "relay-token-store started by relay-hardening (2 of 3 at once)",
-                    Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, "running", 2, "scope", 3, "by", "epic"),
-                    null,
-                    Instant.parse(CONST_TIME_11_21),
-                    Instant.parse(CONST_TIME_11_21),
-                    null, null, null,
-                    "/api/v1/plans/relay-token-store"
-            ));
-            mockReports.add(new ReportItem(
-                    "rep-0144",
-                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, "relay-docs"),
-                    ReportKind.EPIC_WAITS_OVERLAP,
-                    "relay-docs waits: overlap with relay-auth-v2 (2 files)",
-                    Map.of("plan", "relay-docs", "other", CONST_RELAY_AUTH_V2, "files", 2),
-                    null,
-                    Instant.parse(CONST_TIME_11_21),
-                    Instant.parse(CONST_TIME_11_21),
-                    null, null, null,
-                    "/api/v1/epics/relay-hardening"
-            ));
-            mockReports.add(new ReportItem(
-                    "rep-0139",
-                    new ReportFrom(CONST_PM_MCP_CLIENTS, null, CONST_DOCS_TYPO),
-                    ReportKind.PLAN_ENDED,
-                    "docs-typo ended: no change",
-                    Map.of("plan", CONST_DOCS_TYPO, CONST_OUTCOME, "no change"),
-                    null,
-                    Instant.parse("2026-10-16T09:02:00Z"),
-                    Instant.parse("2026-10-16T09:40:00Z"),
-                    null, null, null,
-                    "/api/v1/plans/docs-typo/completion"
-            ));
-            mockReports.add(new ReportItem(
-                    "rep-0131",
-                    new ReportFrom(CONST_PM_MCP_CORE, null, null),
-                    ReportKind.PROJECT_ONBOARDED,
-                    "pm-mcp-core is onboarded",
-                    Map.of("project", CONST_PM_MCP_CORE),
-                    null,
-                    Instant.parse("2026-10-15T18:40:00Z"),
-                    Instant.parse("2026-10-15T18:40:00Z"),
-                    null, null, null,
-                    "/api/v1/projects/pm-mcp-core"
-            ));
-            mockReports.add(new ReportItem(
-                    "rep-0120",
-                    new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_AUTH_V2),
-                    ReportKind.PLAN_ENDED,
-                    "relay-auth-v2 ended: merged (#210)",
-                    Map.of("plan", CONST_RELAY_AUTH_V2, CONST_OUTCOME, "merged (#210)"),
-                    null,
-                    Instant.parse(CONST_TIME_10_14),
-                    Instant.parse(CONST_TIME_10_14),
-                    null, null, null,
-                    "/api/v1/plans/relay-auth-v2/completion"
-            ));
-            mockReports.add(new ReportItem(
-                    "rep-0110",
-                    new ReportFrom(CONST_PM_MCP_CORE, null, null),
-                    ReportKind.SOURCE_FLAGGED,
-                    "A source of codeberg-issues was flagged: issue #4711",
-                    Map.of("item", "codeberg-issues", "source", "issue #4711"),
-                    null,
-                    Instant.parse("2026-10-13T08:00:00Z"),
-                    Instant.parse("2026-10-13T08:00:00Z"),
-                    null, null, null,
-                    "/api/v1/sources/codeberg-issues"
-            ));
+            var fixtureReports = fixtureObjects(startRuntimeFixture(), FIXTURE_REPORTS);
+            if (fixtureReports.isEmpty()) {
+                mockReports.add(new ReportItem(
+                        "rep-0142",
+                        new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
+                        ReportKind.PLAN_ENDED,
+                        "fix-relay ended: merged (#214)",
+                        Map.of("plan", CONST_FIX_RELAY, CONST_OUTCOME, "merged (#214)"),
+                        "3 of 3 deliverables · 2 h 40 min",
+                        Instant.parse(CONST_TIME_11_20),
+                        Instant.parse(CONST_TIME_11_20),
+                        null, null, null,
+                        "/api/v1/plans/fix-relay/completion"
+                ));
+                mockReports.add(new ReportItem(
+                        "rep-0143",
+                        new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_TOKEN_STORE),
+                        ReportKind.PLAN_STARTED,
+                        "relay-token-store started by relay-hardening (2 of 3 at once)",
+                        Map.of("plan", CONST_RELAY_TOKEN_STORE, "epic", CONST_RELAY_HARDENING, "running", 2, "scope", 3, "by", "epic"),
+                        null,
+                        Instant.parse(CONST_TIME_11_21),
+                        Instant.parse(CONST_TIME_11_21),
+                        null, null, null,
+                        "/api/v1/plans/relay-token-store"
+                ));
+                mockReports.add(new ReportItem(
+                        "rep-0144",
+                        new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, "relay-docs"),
+                        ReportKind.EPIC_WAITS_OVERLAP,
+                        "relay-docs waits: overlap with relay-auth-v2 (2 files)",
+                        Map.of("plan", "relay-docs", "other", CONST_RELAY_AUTH_V2, "files", 2),
+                        null,
+                        Instant.parse(CONST_TIME_11_21),
+                        Instant.parse(CONST_TIME_11_21),
+                        null, null, null,
+                        "/api/v1/epics/relay-hardening"
+                ));
+                mockReports.add(new ReportItem(
+                        "rep-0139",
+                        new ReportFrom(CONST_PM_MCP_CLIENTS, null, CONST_DOCS_TYPO),
+                        ReportKind.PLAN_ENDED,
+                        "docs-typo ended: no change",
+                        Map.of("plan", CONST_DOCS_TYPO, CONST_OUTCOME, "no change"),
+                        null,
+                        Instant.parse("2026-10-16T09:02:00Z"),
+                        Instant.parse("2026-10-16T09:40:00Z"),
+                        null, null, null,
+                        "/api/v1/plans/docs-typo/completion"
+                ));
+                mockReports.add(new ReportItem(
+                        "rep-0131",
+                        new ReportFrom(CONST_PM_MCP_CORE, null, null),
+                        ReportKind.PROJECT_ONBOARDED,
+                        "pm-mcp-core is onboarded",
+                        Map.of("project", CONST_PM_MCP_CORE),
+                        null,
+                        Instant.parse("2026-10-15T18:40:00Z"),
+                        Instant.parse("2026-10-15T18:40:00Z"),
+                        null, null, null,
+                        "/api/v1/projects/pm-mcp-core"
+                ));
+                mockReports.add(new ReportItem(
+                        "rep-0120",
+                        new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_AUTH_V2),
+                        ReportKind.PLAN_ENDED,
+                        "relay-auth-v2 ended: merged (#210)",
+                        Map.of("plan", CONST_RELAY_AUTH_V2, CONST_OUTCOME, "merged (#210)"),
+                        null,
+                        Instant.parse(CONST_TIME_10_14),
+                        Instant.parse(CONST_TIME_10_14),
+                        null, null, null,
+                        "/api/v1/plans/relay-auth-v2/completion"
+                ));
+                mockReports.add(new ReportItem(
+                        "rep-0110",
+                        new ReportFrom(CONST_PM_MCP_CORE, null, null),
+                        ReportKind.SOURCE_FLAGGED,
+                        "A source of codeberg-issues was flagged: issue #4711",
+                        Map.of("item", "codeberg-issues", "source", "issue #4711"),
+                        null,
+                        Instant.parse("2026-10-13T08:00:00Z"),
+                        Instant.parse("2026-10-13T08:00:00Z"),
+                        null, null, null,
+                        "/api/v1/sources/codeberg-issues"
+                ));
+            } else {
+                for (var report : fixtureReports) {
+                    mockReports.add(readFixture(() -> ReportItem.fromMap(report), "facts.runtime.reports"));
+                }
+            }
         }
 
         completionReports.clear();
@@ -6233,6 +6257,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.clear();
             favouriteProjectIds.clear();
             beingAddedProjects.clear();
+
+            var fixture = startRuntimeFixture();
+            var fixtureProjects = fixtureObjects(fixture, FIXTURE_PROJECTS);
+            if (!fixtureProjects.isEmpty()) {
+                for (var project : fixtureProjects) {
+                    var enrolled = readFixture(() -> EnrolledProject.fromMap(project), "facts.runtime.projects");
+                    enrolledProjects.add(enrolled);
+                    if (enrolled.isFavourite()) {
+                        favouriteProjectIds.add(enrolled.projectId());
+                    }
+                }
+                for (var beingAdded : fixtureObjects(fixture, FIXTURE_BEING_ADDED)) {
+                    beingAddedProjects.add(readFixture(() -> BeingAddedProject.fromMap(beingAdded),
+                            "facts.runtime.being_added"));
+                }
+                return;
+            }
 
             favouriteProjectIds.add(CONST_PM_MCP_CLIENTS);
             favouriteProjectIds.add(CONST_PM_MCP_CORE);

@@ -1,0 +1,2770 @@
+{
+  "format_version": 1,
+  "name": "fully-onboarded",
+  "description": "The showroom: a fully onboarded machine with every operator domain populated at once.",
+  "start": "showroom.active",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "lifecycle_state": "running",
+        "listener": "unix",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "running_since": "today 08:14",
+        "uptime_seconds": 22320,
+        "workers_count": 5,
+        "build_slots_used": 1,
+        "build_slots_total": 2,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "lan_port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/overview": {
+      "representation": {
+        "projects": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "pm-mcp-clients",
+            "active_plans_count": 3,
+            "active_epics_count": 1,
+            "needs_operator_count": 2,
+            "needs_operator_summary": "decision",
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:36:00Z"
+          },
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "active_plans_count": 0,
+            "active_epics_count": 1,
+            "needs_operator_count": 1,
+            "needs_operator_summary": "setup",
+            "setup_needs_operator": true,
+            "last_activity_at": "2026-10-16T14:38:00Z"
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "pm-mcp-core",
+            "active_plans_count": 2,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "needs_operator_summary": null,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:29:00Z"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/projects": {
+      "representation": {
+        "projects": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "pm-mcp-clients",
+            "active_plans_count": 3,
+            "active_epics_count": 1,
+            "needs_operator_count": 2,
+            "needs_operator_summary": "decision",
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:36:00Z"
+          },
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "active_plans_count": 0,
+            "active_epics_count": 1,
+            "needs_operator_count": 1,
+            "needs_operator_summary": "setup",
+            "setup_needs_operator": true,
+            "last_activity_at": "2026-10-16T14:38:00Z"
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "pm-mcp-core",
+            "active_plans_count": 2,
+            "active_epics_count": 0,
+            "needs_operator_count": 0,
+            "needs_operator_summary": null,
+            "setup_needs_operator": false,
+            "last_activity_at": "2026-10-16T15:29:00Z"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/plans": {
+      "representation": {
+        "plans": [
+          {
+            "id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "project": "pm-mcp-clients",
+            "phase": "execute",
+            "state": "running"
+          },
+          {
+            "id": "drop-legacy-api",
+            "title": "Drop the legacy endpoints",
+            "project": "pm-mcp-clients",
+            "phase": "finalize",
+            "state": "waiting_for_you"
+          },
+          {
+            "id": "relay-metrics",
+            "title": "Relay metrics",
+            "project": "pm-mcp-clients",
+            "phase": "execute",
+            "state": "paused"
+          },
+          {
+            "id": "session-log",
+            "title": "Session log and generations",
+            "project": "pm-mcp-core",
+            "phase": "execute",
+            "state": "running"
+          },
+          {
+            "id": "profile-loader",
+            "title": "Profile loader",
+            "project": "pm-mcp-core",
+            "phase": "finalize",
+            "state": "paused"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/epics": {
+      "representation": {
+        "epics": [
+          {
+            "id": "relay-hardening",
+            "title": "Relay Hardening",
+            "project": "pm-mcp-clients",
+            "running_plans_count": 3,
+            "staged_plans_count": 3
+          },
+          {
+            "id": "platform-setup",
+            "title": "platform setup",
+            "project": "plan-marshall",
+            "running_plans_count": 0,
+            "staged_plans_count": 1
+          }
+        ]
+      }
+    },
+    "GET /api/v1/projects/pm-mcp-clients": {
+      "representation": {
+        "project_id": "pm-mcp-clients",
+        "display_name": "pm-mcp-clients",
+        "plans": [
+          {
+            "plan_id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "current_phase": "execute",
+            "phase_state": "running",
+            "running_since": "2026-10-16T13:28:00Z",
+            "phase_entered_at": "2026-10-16T15:13:00Z",
+            "tasks_done": 2,
+            "tasks_total": 3,
+            "epic_id": "relay-hardening",
+            "epic_title": "Relay Hardening",
+            "pull_request_number": 214,
+            "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+            "off_track_signal": "repeating"
+          },
+          {
+            "plan_id": "drop-legacy-api",
+            "title": "Drop the legacy endpoints",
+            "current_phase": "finalize",
+            "phase_state": "waiting_for_you",
+            "needs_operator_kind": "decision",
+            "needs_operator_count": 1,
+            "running_since": "2026-10-16T12:10:00Z",
+            "phase_entered_at": "2026-10-16T15:05:00Z",
+            "tasks_done": 4,
+            "tasks_total": 4
+          },
+          {
+            "plan_id": "relay-metrics",
+            "title": "Relay metrics",
+            "current_phase": "execute",
+            "phase_state": "paused",
+            "running_since": "2026-10-16T09:20:00Z",
+            "phase_entered_at": "2026-10-16T14:20:00Z",
+            "tasks_done": 8,
+            "tasks_total": 8,
+            "epic_id": "relay-hardening",
+            "epic_title": "Relay Hardening"
+          }
+        ],
+        "epics": [
+          {
+            "epic_id": "relay-hardening",
+            "title": "Relay Hardening",
+            "running_since": "2026-10-13T15:38:00Z",
+            "running_plans_count": 3,
+            "staged_plans_count": 3,
+            "plans_done": 4,
+            "plans_total": 9,
+            "plans": [
+              {
+                "plan_id": "fix-relay",
+                "title": "Fix Relay Transport",
+                "current_phase": "execute",
+                "phase_state": "running",
+                "running_since": "2026-10-16T13:28:00Z",
+                "phase_entered_at": "2026-10-16T15:13:00Z",
+                "tasks_done": 2,
+                "tasks_total": 3,
+                "epic_id": "relay-hardening",
+                "epic_title": "Relay Hardening",
+                "pull_request_number": 214,
+                "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                "off_track_signal": "repeating"
+              }
+            ]
+          }
+        ],
+        "alongside_landings": [
+          {
+            "unit": "remediation.ci-failure",
+            "state": "failed",
+            "kind": "unit",
+            "hold_kind": "landing_failed"
+          },
+          {
+            "unit": null,
+            "state": "running",
+            "count": 2,
+            "kind": "removal",
+            "hold_kind": null
+          }
+        ]
+      }
+    },
+    "GET /api/v1/projects/pm-mcp-core": {
+      "representation": {
+        "project_id": "pm-mcp-core",
+        "display_name": "pm-mcp-core",
+        "plans": [
+          {
+            "plan_id": "session-log",
+            "title": "Session log and generations",
+            "current_phase": "execute",
+            "phase_state": "running",
+            "running_since": "2026-10-16T11:38:00Z",
+            "phase_entered_at": "2026-10-16T11:38:00Z",
+            "tasks_done": 3,
+            "tasks_total": 5,
+            "pull_request_number": 198,
+            "pull_request_url": "https://github.com/plan-marshall/pm-mcp-core/pull/198"
+          },
+          {
+            "plan_id": "profile-loader",
+            "title": "Profile loader",
+            "current_phase": "finalize",
+            "phase_state": "paused",
+            "running_since": "2026-10-16T09:38:00Z",
+            "phase_entered_at": "2026-10-16T14:38:00Z",
+            "tasks_done": 8,
+            "tasks_total": 8
+          }
+        ],
+        "epics": [],
+        "alongside_landings": []
+      }
+    },
+    "GET /api/v1/projects/plan-marshall": {
+      "representation": {
+        "project_id": "plan-marshall",
+        "display_name": "plan-marshall",
+        "plans": [],
+        "epics": [
+          {
+            "epic_id": "platform-setup",
+            "title": "platform setup",
+            "running_since": "2026-10-16T14:38:00Z",
+            "running_plans_count": 0,
+            "staged_plans_count": 1,
+            "plans_done": 0,
+            "plans_total": 1,
+            "needs_operator_kind": "setup",
+            "needs_operator_count": 1,
+            "plans": []
+          }
+        ],
+        "alongside_landings": []
+      }
+    },
+    "GET /api/v1/projects/pm-mcp-clients/ended": {
+      "representation": {
+        "project_id": "pm-mcp-clients",
+        "page": 1,
+        "total_pages": 3,
+        "has_newer": false,
+        "has_older": true,
+        "items": [
+          {
+            "id": "fix-relay-v1",
+            "kind": "plan",
+            "title": "fix-relay-v1",
+            "outcome": "merged",
+            "pull_request_number": 214,
+            "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+            "ended_at": "2026-10-16T11:20:00Z"
+          },
+          {
+            "id": "relay-hardening-v1",
+            "kind": "epic",
+            "title": "relay-hardening-v1",
+            "terminal_reason": "completed",
+            "ended_at": "2026-10-15T18:00:00Z"
+          },
+          {
+            "id": "relay-cursor-order-v1",
+            "kind": "plan",
+            "title": "relay-cursor-order-v1",
+            "outcome": "aborted",
+            "reason": "the edit was not ours",
+            "ended_at": "2026-10-15T14:00:00Z"
+          },
+          {
+            "id": "codeberg-issues",
+            "kind": "plan",
+            "title": "codeberg-issues",
+            "outcome": "cancelled",
+            "reason": "replaced by relay-v2",
+            "ended_at": "2026-10-14T10:00:00Z"
+          },
+          {
+            "id": "docs-cleanup",
+            "kind": "plan",
+            "title": "docs-cleanup",
+            "outcome": "abandoned",
+            "reason": "no longer needed",
+            "ended_at": "2026-10-11T09:00:00Z"
+          }
+        ],
+        "pages": {
+          "2": [
+            {
+              "id": "arch-overhaul",
+              "kind": "plan",
+              "title": "arch-overhaul",
+              "outcome": "released",
+              "reason": "handed back to the project",
+              "ended_at": "2026-10-10T12:00:00Z"
+            }
+          ],
+          "3": [
+            {
+              "id": "initial-prototype",
+              "kind": "plan",
+              "title": "initial-prototype",
+              "outcome": "merged",
+              "pull_request_number": 190,
+              "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/190",
+              "ended_at": "2026-10-01T09:00:00Z"
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/v1/projects/pm-mcp-core/ended": {
+      "representation": {
+        "project_id": "pm-mcp-core",
+        "page": 1,
+        "total_pages": 1,
+        "has_newer": false,
+        "has_older": false,
+        "items": [
+          {
+            "id": "event-bus-v1",
+            "kind": "plan",
+            "title": "Event bus v1",
+            "outcome": "merged",
+            "pull_request_number": 180,
+            "ended_at": "2026-10-12T10:00:00Z"
+          }
+        ]
+      }
+    },
+    "GET /api/v1/projects/plan-marshall/ended": {
+      "representation": {
+        "project_id": "plan-marshall",
+        "page": 1,
+        "total_pages": 1,
+        "has_newer": false,
+        "has_older": false,
+        "items": []
+      }
+    },
+    "GET /api/v1/plans/fix-relay/process": {
+      "representation": {
+        "plan_id": "fix-relay",
+        "title": "Fix Relay Transport",
+        "project": {
+          "project_id": "pm-mcp-clients",
+          "display_name": "pm-mcp-clients",
+          "link": "/api/v1/projects/pm-mcp-clients"
+        },
+        "epic": {
+          "epic_id": "relay-hardening",
+          "title": "Relay Hardening",
+          "link": "/api/v1/epics/relay-hardening/process"
+        },
+        "current_phase": "execute",
+        "phase_state": "running",
+        "activity": "execute.envelope · TASK-003",
+        "needs_operator": false,
+        "instance_version": 1,
+        "tokens_so_far": {
+          "total": 412000,
+          "input": 380000,
+          "output": 32000,
+          "floor": true,
+          "tasks_total": 17,
+          "tasks_measured": 15,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "nodes": [
+          {
+            "node_id": "init",
+            "title": "phase init",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 120,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "refine",
+            "title": "phase refine",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 840,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "outline",
+            "title": "phase outline",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 1860,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "plan",
+            "title": "phase plan",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 540,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "execute",
+            "title": "phase execute",
+            "kind": "phase",
+            "state": "running",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 1500,
+            "sub_nodes": [
+              {
+                "node_id": "execute.envelope",
+                "title": "execute.envelope",
+                "kind": "tasks",
+                "state": "running",
+                "run_count": 1,
+                "current_run": 1,
+                "duration_seconds": 360,
+                "sub_nodes": [],
+                "leaf_tasks": [
+                  {
+                    "task_id": "TASK-001",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "done",
+                    "duration_seconds": 240,
+                    "tokens_so_far": 25000,
+                    "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-001/activity",
+                    "outcome": "success"
+                  },
+                  {
+                    "task_id": "TASK-002",
+                    "role": "module-tester",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "done",
+                    "duration_seconds": 180,
+                    "tokens_so_far": 18000,
+                    "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-002/activity",
+                    "outcome": "success"
+                  },
+                  {
+                    "task_id": "TASK-003",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "running",
+                    "duration_seconds": 360,
+                    "tokens_so_far": 48000,
+                    "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-003/activity",
+                    "off_track": {
+                      "signal": "repeating",
+                      "action": "show",
+                      "value": 5,
+                      "threshold": 5
+                    }
+                  }
+                ]
+              },
+              {
+                "node_id": "remediation.ci-failure",
+                "title": "sub-workflow remediation.ci-failure",
+                "kind": "sub_workflow",
+                "state": "planned",
+                "run_count": 0,
+                "current_run": 0,
+                "duration_seconds": 0,
+                "sub_nodes": [],
+                "leaf_tasks": []
+              }
+            ],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "finalize",
+            "title": "phase finalize",
+            "kind": "phase",
+            "state": "planned",
+            "run_count": 0,
+            "current_run": 0,
+            "duration_seconds": 0,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          }
+        ],
+        "current_position_path": [
+          "execute",
+          "execute.envelope",
+          "TASK-003"
+        ],
+        "pull_request_number": 214,
+        "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+        "duration_seconds": 7800
+      }
+    },
+    "GET /api/v1/plans/docs-typo/process": {
+      "representation": {
+        "plan_id": "docs-typo",
+        "title": "Fix Documentation Typo",
+        "project": {
+          "project_id": "pm-mcp-clients",
+          "display_name": "pm-mcp-clients",
+          "link": "/api/v1/projects/pm-mcp-clients"
+        },
+        "current_phase": "execute",
+        "phase_state": "running",
+        "activity": "execute · land",
+        "needs_operator": false,
+        "instance_version": 1,
+        "tokens_so_far": {
+          "total": 12000,
+          "input": 11000,
+          "output": 1000,
+          "floor": false,
+          "tasks_total": 2,
+          "tasks_measured": 2,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "nodes": [
+          {
+            "node_id": "init",
+            "title": "phase init",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 60,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "execute",
+            "title": "phase execute",
+            "kind": "phase",
+            "state": "running",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 120,
+            "sub_nodes": [
+              {
+                "node_id": "land",
+                "title": "sub-workflow land",
+                "kind": "sub_workflow",
+                "state": "running",
+                "run_count": 1,
+                "current_run": 1,
+                "duration_seconds": 80,
+                "sub_nodes": [
+                  {
+                    "node_id": "land.commit",
+                    "title": "land.commit",
+                    "kind": "state",
+                    "state": "done",
+                    "run_count": 1,
+                    "current_run": 1,
+                    "duration_seconds": 30,
+                    "sub_nodes": [],
+                    "leaf_tasks": []
+                  },
+                  {
+                    "node_id": "land.push",
+                    "title": "land.push",
+                    "kind": "state",
+                    "state": "running",
+                    "run_count": 1,
+                    "current_run": 1,
+                    "duration_seconds": 50,
+                    "sub_nodes": [],
+                    "leaf_tasks": []
+                  }
+                ],
+                "leaf_tasks": []
+              }
+            ],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "finalize",
+            "title": "phase finalize",
+            "kind": "phase",
+            "state": "planned",
+            "run_count": 0,
+            "current_run": 0,
+            "duration_seconds": 0,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "refine",
+            "title": "refine, outline, plan",
+            "kind": "phase",
+            "state": "not_in_plan",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 0,
+            "sub_nodes": [],
+            "leaf_tasks": [],
+            "prune_reason": "lane_choice"
+          }
+        ],
+        "current_position_path": [
+          "execute",
+          "land",
+          "land.push"
+        ],
+        "duration_seconds": 180
+      }
+    },
+    "GET /api/v1/plans/fix-relay/tasks/TASK-003/activity": {
+      "representation": {
+        "task_id": "TASK-003",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 360,
+        "tokens_so_far": 48000,
+        "entries": [
+          {
+            "timestamp": "14:02:11",
+            "kind": "text",
+            "content": "Reading the relay's transport before changing it."
+          },
+          {
+            "timestamp": "14:02:14",
+            "kind": "tool_call",
+            "tool_name": "read",
+            "tool_target": "pm-relay/src/main/java/…/Transport.java",
+            "tool_failed": false
+          },
+          {
+            "timestamp": "14:02:20",
+            "kind": "tool_call",
+            "tool_name": "bash",
+            "tool_target": "./mvnw -pl pm-relay test",
+            "tool_failed": true,
+            "size": "4 KiB"
+          },
+          {
+            "timestamp": "14:03:02",
+            "kind": "file_changed",
+            "files": [
+              "pm-relay/src/main/java/…/Transport.java"
+            ]
+          },
+          {
+            "timestamp": "14:03:40",
+            "kind": "link",
+            "tool_target": "submit:TASK-003"
+          },
+          {
+            "timestamp": "14:03:41",
+            "kind": "question",
+            "content": "Should we retain backwards compatibility with v1 token format?",
+            "questions": [
+              "Retain v1 token compatibility?"
+            ]
+          }
+        ],
+        "off_track": {
+          "signal": "repeating",
+          "action": "show",
+          "value": 5,
+          "threshold": 5
+        },
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
+    "GET /api/v1/plans/fix-relay/tasks/TASK-001/activity": {
+      "representation": {
+        "task_id": "TASK-001",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 240,
+        "tokens_so_far": 25000,
+        "entries": [
+          {
+            "timestamp": "13:40:02",
+            "kind": "text",
+            "content": "The transport now reconnects with backoff."
+          },
+          {
+            "timestamp": "13:41:10",
+            "kind": "file_changed",
+            "files": [
+              "pm-relay/src/main/java/…/Transport.java"
+            ]
+          },
+          {
+            "timestamp": "13:41:12",
+            "kind": "answer_ack",
+            "content": "TASK-001 submitted for review."
+          }
+        ],
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
+    "GET /api/v1/epics/relay-hardening/process": {
+      "representation": {
+        "epic_id": "relay-hardening",
+        "project": "pm-mcp-clients",
+        "title": "Relay Hardening",
+        "state": "running",
+        "running_plans": [
+          {
+            "plan_id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "current_phase": "execute",
+            "phase_state": "running",
+            "tasks_done": 2,
+            "tasks_total": 3,
+            "running": true
+          }
+        ],
+        "staged_plans": [
+          {
+            "plan_id": "relay-auth-v2",
+            "title": "relay-auth-v2",
+            "current_phase": "init",
+            "phase_state": "staged",
+            "tasks_done": 0,
+            "tasks_total": 4,
+            "running": false
+          }
+        ],
+        "alongside_landings": [
+          "remediation.ci-failure · done"
+        ],
+        "tokens_so_far": {
+          "total": 520000,
+          "input": 480000,
+          "output": 40000,
+          "floor": true,
+          "tasks_total": 20,
+          "tasks_measured": 18,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "review_ready": false
+      }
+    },
+    "GET /api/v1/plans/fix-relay/intent": {
+      "representation": {
+        "plan_id": "fix-relay",
+        "revision": 3,
+        "goal": "Make the relay reconnect without losing queued events.",
+        "criteria": [
+          {
+            "id": "AC-001",
+            "text": "When a relay connection drops, the relay shall reconnect within five seconds.",
+            "satisfies": [
+              1,
+              2
+            ],
+            "status": "met",
+            "status_reason": "The reconnection and backoff tests pass."
+          },
+          {
+            "id": "AC-002",
+            "text": "While the relay reconnects, the queue shall keep every accepted event.",
+            "satisfies": [
+              2,
+              3
+            ],
+            "status": "met"
+          },
+          {
+            "id": "AC-003",
+            "text": "The relay shall report the number of reconnects it performed.",
+            "satisfies": [
+              3
+            ],
+            "status": "not_verified",
+            "status_reason": "The mock harness does not expose the reconnect counter."
+          },
+          {
+            "id": "AC-004",
+            "text": "The old relay endpoint shall keep serving existing clients.",
+            "satisfies": [
+              1
+            ],
+            "status": "not_met",
+            "status_reason": "The compatibility test still fails for the legacy event shape."
+          }
+        ],
+        "non_goals": [
+          "Change the on-disk queue format.",
+          "Support more than one relay per machine."
+        ],
+        "decisions": [
+          {
+            "id": "DC-001",
+            "text": "Retry with exponential backoff.",
+            "decider": "operator",
+            "options_weighed": [
+              "fixed interval",
+              "exponential backoff"
+            ],
+            "question_id": "Q-007"
+          },
+          {
+            "id": "DC-002",
+            "text": "The quorum set the backoff ceiling at five minutes.",
+            "decider": "quorum",
+            "options_weighed": [
+              "30 seconds",
+              "5 minutes"
+            ],
+            "question_id": "Q-008"
+          },
+          {
+            "id": "DC-003",
+            "text": "The transport stays HTTP/2.",
+            "decider": "model",
+            "options_weighed": [
+              "HTTP/1.1",
+              "HTTP/2"
+            ]
+          },
+          {
+            "id": "DC-004",
+            "text": "The existing queue already persists each accepted event.",
+            "decider": "fact",
+            "options_weighed": []
+          }
+        ],
+        "open_questions": [
+          "Does the relay need IPv6 support?"
+        ],
+        "deferred": [
+          {
+            "id": "DF-001",
+            "text": "Add reconnect metrics to the status resource.",
+            "reason": "No metrics endpoint is in this plan's scope."
+          }
+        ],
+        "builder_check": {
+          "resolution": "pending",
+          "questions": [
+            {
+              "id": "BQ-001",
+              "text": "Which timeout applies when the queue is full during a reconnect?",
+              "sort": "operator",
+              "recommended": true,
+              "state": "open"
+            },
+            {
+              "id": "BQ-002",
+              "text": "Use the existing retry helper from cui-http.",
+              "sort": "minor",
+              "recommended": false,
+              "state": "open"
+            },
+            {
+              "id": "BQ-003",
+              "text": "AC-002 answers the event-retention question.",
+              "sort": "answered",
+              "recommended": false,
+              "state": "answered",
+              "answer": "AC-002"
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/v1/plans/fix-relay/outline": {
+      "representation": {
+        "plan_id": "fix-relay",
+        "revision": 2,
+        "summary": "Reconnect the relay with backoff and keep the queue durable.",
+        "deliverables": [
+          {
+            "number": 1,
+            "title": "Reconnect the relay",
+            "intent_gloss": "Reconnect with exponential backoff.",
+            "affected_files": [
+              {
+                "path": "pm-relay/src/main/java/de/planmarshall/relay/RelayConnection.java",
+                "intent": "write-replace"
+              },
+              {
+                "path": "pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java",
+                "intent": "write-new"
+              }
+            ],
+            "depends_on": [],
+            "satisfies": [
+              "AC-001",
+              "AC-004"
+            ],
+            "verification": "RelayConnectionTest covers reconnect and legacy event shapes."
+          },
+          {
+            "number": 2,
+            "title": "Keep the queue durable",
+            "intent_gloss": "Persist every accepted event before acknowledging it.",
+            "affected_files": [
+              {
+                "path": "pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java",
+                "intent": "write-new"
+              },
+              {
+                "path": "pm-relay/src/test/java/de/planmarshall/relay/EventQueueTest.java",
+                "intent": "write-new"
+              }
+            ],
+            "depends_on": [
+              1
+            ],
+            "satisfies": [
+              "AC-002"
+            ],
+            "verification": "EventQueueTest restarts the queue with a full buffer."
+          },
+          {
+            "number": 3,
+            "title": "Expose the reconnect count",
+            "intent_gloss": "Report reconnects on the status resource.",
+            "affected_files": [
+              {
+                "path": "pm-relay/src/main/java/de/planmarshall/relay/RelayStatus.java",
+                "intent": "write-conditional"
+              }
+            ],
+            "depends_on": [
+              1
+            ],
+            "satisfies": [
+              "AC-003"
+            ]
+          }
+        ],
+        "added_dependencies": [
+          {
+            "name": "de.cuioss:cui-http",
+            "version": "2.1.0",
+            "justification": "The retry adapter carries the backoff policy.",
+            "deliverable": 1
+          }
+        ],
+        "interfaces": [
+          "RelayConnection",
+          "EventQueue"
+        ],
+        "key_links": [
+          "RelayConnection -> EventQueue"
+        ],
+        "missing_key_link": "EventQueue -> RelayStatus"
+      }
+    },
+    "GET /api/v1/epics/relay-hardening/intent": {
+      "representation": {
+        "epic_id": "relay-hardening",
+        "destination": "The relay survives a dropped connection without losing an event.",
+        "done_when": [
+          {
+            "text": "The relay reconnects within five seconds after a dropped connection.",
+            "verdict": "met",
+            "evidence": [
+              "pm://plans/fix-relay/report",
+              "pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java"
+            ]
+          },
+          {
+            "text": "Every accepted event survives a relay restart.",
+            "verdict": "met",
+            "evidence": [
+              "pm://plans/fix-relay/report"
+            ]
+          },
+          {
+            "text": "The reconnect count is observable on the status resource.",
+            "verdict": "not_met",
+            "evidence": [
+              "pm://plans/fix-relay/report"
+            ]
+          },
+          {
+            "text": "The legacy relay endpoint keeps serving existing clients.",
+            "verdict": "pending",
+            "evidence": []
+          }
+        ],
+        "non_goals": [
+          "Change the on-disk queue format.",
+          "Support more than one relay per machine."
+        ],
+        "not_yet_specified": [
+          "Does the relay need IPv6 support?",
+          "Should reconnects be rate-limited per client?"
+        ],
+        "plans": [
+          {
+            "plan_id": "fix-relay",
+            "title": "Fix Relay Transport",
+            "done_when": [
+              "The relay reconnects within five seconds.",
+              "The queue keeps every accepted event."
+            ]
+          },
+          {
+            "plan_id": "queue-format",
+            "title": "Keep the Queue",
+            "done_when": [
+              "The queue survives a restart."
+            ]
+          }
+        ]
+      }
+    },
+    "GET /api/v1/projects/pm-mcp-clients/metrics/oversize": {
+      "representation": {
+        "project_id": "pm-mcp-clients",
+        "role": "implement",
+        "current_multiple": 3.0,
+        "proposed_multiple": 2.0,
+        "buckets": [
+          {
+            "label": "0-1x",
+            "from_multiple": 0.0,
+            "to_multiple": 1.0,
+            "task_count": 8,
+            "flagged_tasks": 0
+          },
+          {
+            "label": "1-2x",
+            "from_multiple": 1.0,
+            "to_multiple": 2.0,
+            "task_count": 5,
+            "flagged_tasks": 0
+          },
+          {
+            "label": "2-3x",
+            "from_multiple": 2.0,
+            "to_multiple": 3.0,
+            "task_count": 3,
+            "flagged_tasks": 3
+          },
+          {
+            "label": "3x and more",
+            "from_multiple": 3.0,
+            "to_multiple": 6.0,
+            "task_count": 4,
+            "flagged_tasks": 4
+          }
+        ]
+      }
+    }
+  },
+  "states": {
+    "showroom.active": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": "showroom.active",
+        "facts": {
+          "summary": "Running work across three projects",
+          "runtime": {
+            "control": {
+              "plans": [
+                {
+                  "plan_id": "fix-relay",
+                  "state": "running",
+                  "epic_id": "relay-hardening"
+                },
+                {
+                  "plan_id": "relay-cursor-order",
+                  "state": "held",
+                  "epic_id": "relay-hardening"
+                },
+                {
+                  "plan_id": "relay-auth-v2",
+                  "state": "waiting",
+                  "epic_id": "relay-hardening"
+                },
+                {
+                  "plan_id": "relay-docs",
+                  "state": "held",
+                  "epic_id": "relay-hardening"
+                },
+                {
+                  "plan_id": "relay-metrics",
+                  "state": "paused",
+                  "pause_point": "task",
+                  "epic_id": "relay-hardening"
+                },
+                {
+                  "plan_id": "drop-legacy-api",
+                  "state": "waiting"
+                },
+                {
+                  "plan_id": "storage-v2",
+                  "state": "waiting"
+                },
+                {
+                  "plan_id": "docs-typo",
+                  "state": "ended"
+                }
+              ],
+              "epics": [
+                {
+                  "epic_id": "relay-hardening",
+                  "state": "running",
+                  "auto_start": true,
+                  "scope": 3,
+                  "running": 3,
+                  "overlap_max_files": 0,
+                  "resource": {
+                    "epic_id": "relay-hardening",
+                    "project_id": "pm-mcp-clients",
+                    "display_name": "pm-mcp-clients",
+                    "state": "running",
+                    "auto_start": true,
+                    "overlap_max_files": 0,
+                    "scope": 3,
+                    "running": 3,
+                    "workstreams": [
+                      {
+                        "id": "WS-1",
+                        "name": "Reconnect",
+                        "open": true,
+                        "rows": [
+                          {
+                            "plan_id": "relay-reconnect-backoff",
+                            "title": "relay-reconnect-backoff",
+                            "status": "shipped",
+                            "pull_request_number": 211
+                          },
+                          {
+                            "plan_id": "relay-cursor-order",
+                            "title": "relay-cursor-order",
+                            "status": "running"
+                          },
+                          {
+                            "plan_id": "relay-reconnect-docs",
+                            "title": "relay-reconnect-docs",
+                            "status": "paused"
+                          },
+                          {
+                            "plan_id": "relay-reconnect-metrics",
+                            "title": "relay-reconnect-metrics",
+                            "status": "staged",
+                            "wait_reason": "none",
+                            "objective": "measure the reconnect",
+                            "deliverables": [
+                              "the reconnect metrics"
+                            ],
+                            "surface": [
+                              "pm-relay/src/metrics"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "WS-2",
+                        "name": "Authentication",
+                        "open": true,
+                        "rows": [
+                          {
+                            "plan_id": "relay-auth-v2",
+                            "title": "relay-auth-v2",
+                            "status": "waiting for you"
+                          },
+                          {
+                            "plan_id": "relay-token-rotation",
+                            "title": "relay-token-rotation",
+                            "status": "staged",
+                            "wait_reason": "dependency",
+                            "wait_plan_id": "relay-auth-v2"
+                          },
+                          {
+                            "plan_id": "relay-docs",
+                            "title": "relay-docs",
+                            "status": "staged",
+                            "wait_reason": "overlap",
+                            "wait_plan_id": "relay-auth-v2",
+                            "overlap_files": [
+                              "pm-api/src/store/Docs.java"
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "id": "WS-3",
+                        "name": "Observability",
+                        "open": true,
+                        "rows": [
+                          {
+                            "plan_id": "relay-metrics",
+                            "title": "relay-metrics",
+                            "status": "paused"
+                          },
+                          {
+                            "plan_id": "relay-metrics-docs",
+                            "title": "relay-metrics-docs",
+                            "status": "staged",
+                            "wait_reason": "none",
+                            "objective": "document the metrics",
+                            "deliverables": [
+                              "the metrics reference"
+                            ],
+                            "surface": [
+                              "doc/relay"
+                            ]
+                          }
+                        ]
+                      }
+                    ],
+                    "sources": [
+                      "2 documents",
+                      "1 issue"
+                    ],
+                    "landings": 2,
+                    "findings": {
+                      "new": 3,
+                      "open": 4,
+                      "kept": 2
+                    },
+                    "watches": {
+                      "new": 1,
+                      "open": 4,
+                      "kept": 0
+                    },
+                    "tokens": {
+                      "total": {
+                        "total": 3860000,
+                        "input": 3520000,
+                        "output": 340000,
+                        "measured": true,
+                        "floor": true,
+                        "measured_tasks": 4,
+                        "not_measured_tasks": 1
+                      },
+                      "own": {
+                        "total": 120000,
+                        "input": 110000,
+                        "output": 10000,
+                        "measured": true,
+                        "floor": false,
+                        "measured_tasks": 1,
+                        "not_measured_tasks": 0
+                      },
+                      "plans": [
+                        {
+                          "plan_id": "relay-reconnect-backoff",
+                          "figure": {
+                            "total": 1400000,
+                            "input": 1300000,
+                            "output": 100000,
+                            "measured": true,
+                            "floor": false,
+                            "measured_tasks": 2,
+                            "not_measured_tasks": 0
+                          }
+                        }
+                      ],
+                      "not_measured": false,
+                      "not_measured_count": 1
+                    },
+                    "events": [
+                      {
+                        "at": "2026-10-16T12:40:00Z",
+                        "text": "relay-auth-v2 asks a decision"
+                      },
+                      {
+                        "at": "2026-10-16T12:05:00Z",
+                        "text": "relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered"
+                      },
+                      {
+                        "at": "2026-10-16T11:55:00Z",
+                        "text": "you paused relay-reconnect-docs"
+                      }
+                    ]
+                  },
+                  "archive_check": {
+                    "epic_id": "relay-hardening",
+                    "lines": [
+                      {
+                        "label": "control.archive.no_plan_active",
+                        "passed": true
+                      },
+                      {
+                        "label": "control.archive.rows_ended",
+                        "passed": true,
+                        "note": "11 shipped · 1 cancelled"
+                      },
+                      {
+                        "label": "control.archive.open_findings",
+                        "passed": false,
+                        "note": "2",
+                        "action": "review-findings"
+                      },
+                      {
+                        "label": "control.archive.ledger_landed",
+                        "passed": true
+                      },
+                      {
+                        "label": "control.archive.completion_reviewed",
+                        "passed": true
+                      },
+                      {
+                        "label": "control.archive.carried",
+                        "passed": true,
+                        "note": "3 kept findings · 5 watches"
+                      }
+                    ],
+                    "carried_findings": 3,
+                    "carried_watches": 5,
+                    "completion_review_first": false,
+                    "passed": false
+                  },
+                  "reviews": {
+                    "findings": {
+                      "review_id": "R-0001",
+                      "epic_id": "relay-hardening",
+                      "register": "findings",
+                      "items": [
+                        {
+                          "item_id": "F-0004",
+                          "register": "findings",
+                          "statement": "Reconnect loses the last event",
+                          "rules": [
+                            "a fix must hold for every transport; covered by a test that drops the connection between delivery and cursor write"
+                          ],
+                          "origin": "landing of relay-reconnect (#211) · 2 days ago",
+                          "trust": "trusted",
+                          "state": "open",
+                          "proposal": "Promote to a plan: it needs a change across two modules"
+                        },
+                        {
+                          "item_id": "F-0005",
+                          "register": "findings",
+                          "statement": "The retry count is not bounded",
+                          "rules": [
+                            "bound the retries"
+                          ],
+                          "origin": "review comment of #212",
+                          "trust": "untrusted",
+                          "state": "kept"
+                        },
+                        {
+                          "item_id": "F-0006",
+                          "register": "findings",
+                          "statement": "A typo in the README",
+                          "rules": [],
+                          "origin": "the plan's own review",
+                          "trust": "trusted",
+                          "state": "dropped"
+                        }
+                      ],
+                      "decided": 2,
+                      "total": 3,
+                      "state": "item"
+                    },
+                    "watches": {
+                      "review_id": "R-0002",
+                      "epic_id": "relay-hardening",
+                      "register": "watches",
+                      "items": [
+                        {
+                          "item_id": "W-0001",
+                          "register": "watches",
+                          "statement": "The reconnect backoff grows without bound",
+                          "rules": [
+                            "check the backoff against the docs"
+                          ],
+                          "origin": "the epic's review",
+                          "trust": "trusted",
+                          "state": "watch"
+                        },
+                        {
+                          "item_id": "W-0002",
+                          "register": "watches",
+                          "statement": "The cursor file is not fsynced",
+                          "rules": [],
+                          "origin": "a later review",
+                          "trust": "trusted",
+                          "state": "kept"
+                        }
+                      ],
+                      "decided": 2,
+                      "total": 2,
+                      "state": "open"
+                    }
+                  }
+                },
+                {
+                  "epic_id": "relay-docs-epic",
+                  "state": "landing",
+                  "auto_start": false,
+                  "scope": 1,
+                  "running": 0,
+                  "overlap_max_files": 0,
+                  "resource": {
+                    "epic_id": "relay-docs-epic",
+                    "project_id": "pm-mcp-clients",
+                    "display_name": "pm-mcp-clients",
+                    "state": "landing",
+                    "auto_start": false,
+                    "overlap_max_files": 0,
+                    "scope": 1,
+                    "running": 0,
+                    "workstreams": [
+                      {
+                        "id": "WS-1",
+                        "name": "Docs",
+                        "open": true,
+                        "rows": [
+                          {
+                            "plan_id": "relay-docs",
+                            "title": "relay-docs",
+                            "status": "handed back",
+                            "pull_request_number": 218
+                          }
+                        ]
+                      }
+                    ],
+                    "sources": [
+                      "1 document"
+                    ],
+                    "landings": 1,
+                    "findings": {
+                      "new": 0,
+                      "open": 0,
+                      "kept": 0
+                    },
+                    "watches": {
+                      "new": 0,
+                      "open": 0,
+                      "kept": 0
+                    },
+                    "tokens": {
+                      "total": {
+                        "total": 0,
+                        "input": 0,
+                        "output": 0,
+                        "measured": false,
+                        "floor": false,
+                        "measured_tasks": 0,
+                        "not_measured_tasks": 0
+                      },
+                      "own": {
+                        "total": 0,
+                        "input": 0,
+                        "output": 0,
+                        "measured": false,
+                        "floor": false,
+                        "measured_tasks": 0,
+                        "not_measured_tasks": 0
+                      },
+                      "plans": [],
+                      "not_measured": true,
+                      "not_measured_count": 0
+                    },
+                    "events": [
+                      {
+                        "at": "2026-10-16T12:30:00Z",
+                        "text": "the ledger is landing"
+                      }
+                    ]
+                  },
+                  "archive_check": {
+                    "epic_id": "relay-docs-epic",
+                    "lines": [],
+                    "carried_findings": 0,
+                    "carried_watches": 0,
+                    "completion_review_first": true,
+                    "passed": false
+                  }
+                }
+              ],
+              "holds": [
+                {
+                  "hold_id": "H-0001",
+                  "subject_id": "relay-cursor-order",
+                  "subject_kind": "plan",
+                  "kind": "integrity_pause",
+                  "cause": "the plan's store file references.json changed outside the runtime",
+                  "attempts": 0,
+                  "file_path": "references.json",
+                  "recorded_size": 4812,
+                  "recorded_digest": "3f9a6b2cc21e",
+                  "current_size": 5034,
+                  "current_digest": "b70d41aa9a44",
+                  "acts": [
+                    "retry",
+                    "accept",
+                    "abort"
+                  ]
+                },
+                {
+                  "hold_id": "H-0002",
+                  "subject_id": "relay-docs",
+                  "subject_kind": "plan",
+                  "kind": "held",
+                  "cause": "waits: overlap with relay-auth-v2 (2 files)",
+                  "attempts": 1,
+                  "last_tried_at": "2026-10-16T10:14:00Z",
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                }
+              ],
+              "settings": [
+                {
+                  "plan_id": "fix-relay",
+                  "revision": 7,
+                  "values": [
+                    {
+                      "aspect": "landing",
+                      "value": "landing.pull-request",
+                      "origin": "project",
+                      "choices": [
+                        "landing.pull-request",
+                        "landing.main",
+                        "landing.files"
+                      ]
+                    },
+                    {
+                      "aspect": "method",
+                      "value": "method.test-first",
+                      "origin": "machine",
+                      "choices": [
+                        "method.test-first",
+                        "method.tests-after"
+                      ]
+                    },
+                    {
+                      "aspect": "asking",
+                      "value": "ask.key-points",
+                      "origin": "plan",
+                      "choices": [
+                        "ask.every-phase",
+                        "ask.key-points",
+                        "ask.questions-only"
+                      ]
+                    },
+                    {
+                      "aspect": "posture",
+                      "value": "standard",
+                      "origin": "plan"
+                    },
+                    {
+                      "aspect": "base",
+                      "value": "main",
+                      "origin": "plan"
+                    },
+                    {
+                      "aspect": "role.implement",
+                      "value": "Claude Code - sonnet-5.5",
+                      "origin": "plan"
+                    },
+                    {
+                      "aspect": "role.review",
+                      "value": "Codex - gpt-5.3",
+                      "origin": "project"
+                    },
+                    {
+                      "aspect": "integration.git",
+                      "value": "native",
+                      "origin": "project"
+                    },
+                    {
+                      "aspect": "provider.issues",
+                      "value": "GitHub",
+                      "origin": "project"
+                    }
+                  ]
+                }
+              ],
+              "chats": [
+                {
+                  "chat_id": "C-0001",
+                  "subject_id": "fix-relay",
+                  "subject_kind": "plan",
+                  "role": "replan",
+                  "scope": "plan",
+                  "state": "read-back",
+                  "turns": [
+                    {
+                      "role": "operator",
+                      "text": "Can the cursor test also cover the SSE transport?",
+                      "at": "2026-10-14T10:00:00Z",
+                      "untrusted": false
+                    },
+                    {
+                      "role": "replan",
+                      "text": "Yes. TASK-4 tests one transport only; I propose a second test.",
+                      "at": "2026-10-14T10:00:00Z",
+                      "untrusted": false
+                    }
+                  ],
+                  "proposal": {
+                    "summary": "a test per transport",
+                    "before": "TASK-4  cursor write order: a test for the websocket transport",
+                    "after": "TASK-4  cursor write order: a test per transport, websocket and SSE",
+                    "applies": "after the current task"
+                  }
+                },
+                {
+                  "chat_id": "C-0002",
+                  "subject_id": "relay-hardening",
+                  "subject_kind": "epic",
+                  "role": "decompose",
+                  "scope": "epic",
+                  "state": "turn",
+                  "turns": [
+                    {
+                      "role": "operator",
+                      "text": "Why does relay-docs wait?",
+                      "at": "2026-10-14T10:00:00Z",
+                      "untrusted": false
+                    },
+                    {
+                      "role": "decompose",
+                      "text": "Its surface shares pm-api/src/store with relay-auth-v2; it waits for that plan.",
+                      "at": "2026-10-14T10:00:00Z",
+                      "untrusted": false
+                    }
+                  ]
+                },
+                {
+                  "chat_id": "C-0003",
+                  "subject_id": "docs-typo",
+                  "subject_kind": "plan",
+                  "role": "replan",
+                  "scope": "archive",
+                  "state": "open",
+                  "turns": [
+                    {
+                      "role": "operator",
+                      "text": "Why was it cancelled?",
+                      "at": "2026-10-14T10:00:00Z",
+                      "untrusted": false
+                    },
+                    {
+                      "role": "replan",
+                      "text": "You cancelled it: replaced by relay-v2.",
+                      "at": "2026-10-14T10:00:00Z",
+                      "untrusted": false
+                    }
+                  ]
+                }
+              ]
+            },
+            "decisions": [
+              {
+                "id": "Q-007",
+                "revision": 1,
+                "title": "Resolve rebase conflict",
+                "header": "Conflict",
+                "subject": "plan fix-relay",
+                "scope": "plan",
+                "asking_phase": "execute",
+                "asking_role": "implement",
+                "blocks": "plan",
+                "reversibility": "reversible",
+                "description": "The change conflicts with main in RelayServer.java.",
+                "evidence": {
+                  "lines": "42-58",
+                  "summary": "both versions of the method",
+                  "file": "RelayServer.java"
+                },
+                "parts": [
+                  {
+                    "part_id": "1",
+                    "question": "How should the conflict be resolved?",
+                    "answer_type": "one_option",
+                    "options": [
+                      {
+                        "key": "1",
+                        "label": "Merge main into the branch",
+                        "tradeoff_description": "Preserves commit SHAs",
+                        "quorum_support": {
+                          "votes_count": 1,
+                          "total_votes": 3,
+                          "models_count": 1,
+                          "band": "clear_majority",
+                          "votes": [
+                            {
+                              "role": "quorum-b",
+                              "model": "gpt-4o",
+                              "confidence_percent": 70,
+                              "reason": "The branch was pushed; a rebase rewrites what others pulled."
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "key": "2",
+                        "label": "Rebase onto main",
+                        "tradeoff_description": "Keeps history linear",
+                        "quorum_support": {
+                          "votes_count": 2,
+                          "total_votes": 3,
+                          "models_count": 2,
+                          "band": "clear_majority",
+                          "dissent_summary": "the branch was pushed; a rebase rewrites what others pulled.",
+                          "votes": [
+                            {
+                              "role": "implement",
+                              "model": "claude-3.7-sonnet",
+                              "confidence_percent": 88,
+                              "reason": "Keeps git history linear"
+                            },
+                            {
+                              "role": "architecture",
+                              "model": "gemini-2.5-pro",
+                              "confidence_percent": 85,
+                              "reason": "Standard clean rebase"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "key": "3",
+                        "label": "Stop the plan and ask me later",
+                        "tradeoff_description": "Pauses execution"
+                      }
+                    ],
+                    "recommendation": "2",
+                    "recommendation_rationale": "Rebase onto main. Keeps the history linear.",
+                    "recommending_role": "implement",
+                    "allow_own_words": true,
+                    "allow_note": true
+                  }
+                ],
+                "delivered_at": "2026-10-16T14:02:00Z",
+                "is_waiver": false,
+                "plan": "fix-relay",
+                "project": "pm-mcp-clients"
+              },
+              {
+                "id": "Q-012",
+                "revision": 1,
+                "title": "How should the new store be introduced?",
+                "subject": "plan storage-v2",
+                "scope": "plan",
+                "asking_phase": "outline",
+                "asking_role": "outline",
+                "blocks": "plan",
+                "reversibility": "reversible",
+                "description": "How should the new store be introduced?",
+                "evidence": {
+                  "measurements": "current store size: 12MB"
+                },
+                "parts": [
+                  {
+                    "part_id": "1",
+                    "question": "Where does the data live?",
+                    "answer_type": "one_option",
+                    "options": [
+                      {
+                        "key": "1",
+                        "label": "A file per plan",
+                        "tradeoff_description": "Isolated files"
+                      },
+                      {
+                        "key": "2",
+                        "label": "One database for the machine",
+                        "tradeoff_description": "Central storage"
+                      }
+                    ],
+                    "recommendation": "1",
+                    "recommendation_rationale": "A file per plan. Simple isolation.",
+                    "recommending_role": "outline",
+                    "allow_own_words": true,
+                    "allow_note": false
+                  },
+                  {
+                    "part_id": "2",
+                    "question": "How is it migrated?",
+                    "answer_type": "one_option",
+                    "options": [
+                      {
+                        "key": "1",
+                        "label": "At the first start of the new release",
+                        "tradeoff_description": "Automatic migration"
+                      },
+                      {
+                        "key": "2",
+                        "label": "By a verb the operator runs",
+                        "tradeoff_description": "Manual control"
+                      }
+                    ],
+                    "recommendation": "1",
+                    "recommendation_rationale": "Automated transition.",
+                    "recommending_role": "outline",
+                    "dependency": "depends on part 1: A file per plan",
+                    "allow_own_words": true,
+                    "allow_note": false
+                  },
+                  {
+                    "part_id": "3",
+                    "question": "Which format?",
+                    "answer_type": "one_option",
+                    "options": [
+                      {
+                        "key": "1",
+                        "label": "JSON lines",
+                        "tradeoff_description": "Append-only text"
+                      },
+                      {
+                        "key": "2",
+                        "label": "SQLite per plan",
+                        "tradeoff_description": "Structured queries"
+                      }
+                    ],
+                    "recommendation": "1",
+                    "recommendation_rationale": "JSON lines matches repository standards.",
+                    "recommending_role": "outline",
+                    "allow_own_words": true,
+                    "allow_note": false
+                  }
+                ],
+                "delivered_at": "2026-10-16T14:30:00Z",
+                "is_waiver": false,
+                "plan": "storage-v2",
+                "project": "pm-mcp-clients"
+              },
+              {
+                "id": "Q-015",
+                "revision": 1,
+                "title": "Which reconnect ceiling?",
+                "header": "The epic's ceiling",
+                "subject": "epic relay-hardening",
+                "scope": "epic",
+                "asking_phase": "outline",
+                "asking_role": "decompose",
+                "blocks": "epic",
+                "reversibility": "costly",
+                "description": "The epic must fix the reconnect ceiling before its plans are cut.",
+                "evidence": {
+                  "epic": "relay-hardening"
+                },
+                "parts": [
+                  {
+                    "part_id": "1",
+                    "question": "Which reconnect ceiling applies to every plan of the epic?",
+                    "answer_type": "one_option",
+                    "options": [
+                      {
+                        "key": "1",
+                        "label": "Five minutes",
+                        "tradeoff_description": "One ceiling for the epic"
+                      },
+                      {
+                        "key": "2",
+                        "label": "One minute",
+                        "tradeoff_description": "Faster failure"
+                      }
+                    ],
+                    "recommendation": "1",
+                    "recommendation_rationale": "Five minutes matches the epic's done-when.",
+                    "recommending_role": "decompose",
+                    "allow_own_words": true,
+                    "allow_note": true
+                  }
+                ],
+                "delivered_at": "2026-10-16T14:50:00Z",
+                "is_waiver": false,
+                "project": "pm-mcp-clients"
+              }
+            ],
+            "decompositions": [
+              {
+                "epic_id": "relay-hardening",
+                "status": "draft",
+                "revision": 3,
+                "workstreams": [
+                  {
+                    "id": "WS-1",
+                    "name": "Reconnect",
+                    "description": "the reconnect work",
+                    "order": 1,
+                    "staged_plans": [
+                      {
+                        "plan_id": "relay-reconnect-backoff",
+                        "title": "relay-reconnect-backoff",
+                        "objective": "reconnect the relay with backoff",
+                        "expected_surface": [
+                          "pm-relay/src/reconnect"
+                        ],
+                        "dependencies": [],
+                        "status": "staged"
+                      },
+                      {
+                        "plan_id": "relay-cursor-order",
+                        "title": "relay-cursor-order",
+                        "objective": "order the cursors across the nodes",
+                        "expected_surface": [
+                          "pm-relay/src/cursor",
+                          "pm-api/src/cursor"
+                        ],
+                        "dependencies": [
+                          "relay-reconnect-backoff"
+                        ],
+                        "status": "staged"
+                      }
+                    ]
+                  },
+                  {
+                    "id": "WS-2",
+                    "name": "Authentication",
+                    "description": "the token work",
+                    "order": 2,
+                    "staged_plans": [
+                      {
+                        "plan_id": "relay-auth-v2",
+                        "title": "relay-auth-v2",
+                        "objective": "a token exchange the relay renews by itself",
+                        "expected_surface": [
+                          "pm-api/src/cursor"
+                        ],
+                        "dependencies": [],
+                        "status": "staged"
+                      },
+                      {
+                        "plan_id": "relay-token-rotation",
+                        "title": "relay-token-rotation",
+                        "objective": "rotate the relay token",
+                        "expected_surface": [
+                          "pm-relay/src/token"
+                        ],
+                        "dependencies": [
+                          "relay-auth-v2"
+                        ],
+                        "status": "staged"
+                      }
+                    ]
+                  }
+                ],
+                "findings": [
+                  {
+                    "severity": "error",
+                    "rule": "surface_overlap",
+                    "affected_plans": [
+                      "relay-cursor-order",
+                      "relay-auth-v2"
+                    ],
+                    "message": "surface overlaps relay-auth-v2 (pm-api/src/cursor)"
+                  }
+                ]
+              },
+              {
+                "epic_id": "storage-migration",
+                "status": "draft",
+                "revision": 1,
+                "workstreams": [
+                  {
+                    "id": "WS-1",
+                    "name": "Storage",
+                    "description": "the store work",
+                    "order": 1,
+                    "staged_plans": [
+                      {
+                        "plan_id": "storage-schema",
+                        "title": "storage-schema",
+                        "objective": "the new schema",
+                        "expected_surface": [
+                          "pm-api/src/store"
+                        ],
+                        "dependencies": [
+                          "storage-migrate"
+                        ],
+                        "status": "staged"
+                      },
+                      {
+                        "plan_id": "storage-migrate",
+                        "title": "storage-migrate",
+                        "objective": "migrate the store",
+                        "expected_surface": [
+                          "pm-relay/src/store"
+                        ],
+                        "dependencies": [
+                          "storage-schema"
+                        ],
+                        "status": "staged"
+                      }
+                    ]
+                  }
+                ],
+                "findings": [
+                  {
+                    "severity": "error",
+                    "rule": "dependency_cycle",
+                    "affected_plans": [
+                      "storage-schema",
+                      "storage-migrate",
+                      "storage-schema"
+                    ],
+                    "message": "the dependencies form a cycle: storage-schema -> storage-migrate -> storage-schema"
+                  }
+                ]
+              }
+            ],
+            "devices": [
+              {
+                "device_id": "dev-primary",
+                "label": "Primary Desktop Browser",
+                "created_at": "2026-09-20T09:00:00Z",
+                "last_used_at": "2026-10-20T08:42:00Z",
+                "paired_by": "pair",
+                "paired_from": "loopback"
+              },
+              {
+                "device_id": "dev-terminal",
+                "label": "Terminal Companion",
+                "created_at": "2026-09-22T11:30:00Z",
+                "last_used_at": "2026-10-20T07:58:00Z",
+                "paired_by": "open",
+                "paired_from": "lan"
+              }
+            ],
+            "web": {
+              "enabled": true,
+              "open": true,
+              "lan": true,
+              "lan_port": 7420,
+              "port": 7420
+            },
+            "reports": [
+              {
+                "id": "rep-0142",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "fix-relay"
+                },
+                "kind": "plan.ended",
+                "subject": "fix-relay ended: merged (#214)",
+                "subject_params": {
+                  "plan": "fix-relay",
+                  "outcome": "merged (#214)"
+                },
+                "created_at": "2026-10-16T11:25:00Z",
+                "sent_at": "2026-10-16T11:25:00Z",
+                "detail_link": "/api/v1/plans/fix-relay/completion"
+              },
+              {
+                "id": "rep-0143",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-token-store"
+                },
+                "kind": "plan.started",
+                "subject": "relay-token-store started by relay-hardening (2 of 3 at once)",
+                "subject_params": {
+                  "plan": "relay-token-store",
+                  "epic": "relay-hardening",
+                  "running": 2,
+                  "scope": 3,
+                  "by": "epic"
+                },
+                "created_at": "2026-10-16T11:21:00Z",
+                "sent_at": "2026-10-16T11:21:00Z",
+                "detail_link": "/api/v1/plans/relay-token-store"
+              },
+              {
+                "id": "rep-0144",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-docs"
+                },
+                "kind": "epic.waits_overlap",
+                "subject": "relay-docs waits: overlap with relay-auth-v2 (2 files)",
+                "subject_params": {
+                  "plan": "relay-docs",
+                  "other": "relay-auth-v2",
+                  "files": 2
+                },
+                "created_at": "2026-10-16T11:21:00Z",
+                "sent_at": "2026-10-16T11:21:00Z",
+                "detail_link": "/api/v1/epics/relay-hardening"
+              },
+              {
+                "id": "rep-0145",
+                "from": {
+                  "project_id": "pm-mcp-clients"
+                },
+                "kind": "system.cleanup_due",
+                "subject": "Cleanup is due: 12 candidates from 3 projects",
+                "subject_params": {
+                  "projects": 3,
+                  "candidates": 12
+                },
+                "created_at": "2026-10-16T09:00:00Z",
+                "sent_at": "2026-10-16T09:00:00Z",
+                "detail_link": "/api/v1/system/cleanup"
+              },
+              {
+                "id": "rep-0146",
+                "from": {
+                  "project_id": "pm-mcp-core"
+                },
+                "kind": "decision.closed_elsewhere",
+                "subject": "Q-009 was answered on the iPad",
+                "subject_params": {
+                  "question": "Q-009",
+                  "device": "iPad"
+                },
+                "created_at": "2026-10-15T18:40:00Z",
+                "sent_at": "2026-10-15T18:40:00Z",
+                "detail_link": "/api/v1/decisions/Q-009"
+              },
+              {
+                "id": "rep-0139",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "plan_id": "docs-typo"
+                },
+                "kind": "plan.ended",
+                "subject": "docs-typo ended: no change",
+                "subject_params": {
+                  "plan": "docs-typo",
+                  "outcome": "no change"
+                },
+                "created_at": "2026-10-16T09:02:00Z",
+                "sent_at": "2026-10-16T09:02:00Z",
+                "detail_link": "/api/v1/plans/docs-typo/completion",
+                "read_at": "2026-10-16T10:00:00Z",
+                "read_channel": "web",
+                "read_device": "Primary Desktop Browser"
+              }
+            ],
+            "projects": [
+              {
+                "project_id": "pm-mcp-clients",
+                "display_name": "plan-marshall/pm-mcp-clients",
+                "remote_url": "https://github.com/plan-marshall/pm-mcp-clients",
+                "readiness": "ready",
+                "needs_operator_count": 2,
+                "setup_needs_summary": "decision",
+                "active_plans_count": 3,
+                "active_epics_count": 1,
+                "last_active": "2026-10-17T10:04:00Z",
+                "is_favourite": true,
+                "is_released": false
+              },
+              {
+                "project_id": "pm-mcp-core",
+                "display_name": "plan-marshall/pm-mcp-core",
+                "remote_url": "https://github.com/plan-marshall/pm-mcp-core",
+                "readiness": "ready",
+                "needs_operator_count": 0,
+                "active_plans_count": 2,
+                "active_epics_count": 0,
+                "last_active": "2026-10-17T09:57:00Z",
+                "is_favourite": true,
+                "is_released": false
+              },
+              {
+                "project_id": "plan-marshall",
+                "display_name": "plan-marshall",
+                "remote_url": "https://github.com/plan-marshall/plan-marshall",
+                "readiness": "setup_needs",
+                "setup_needs_summary": "credential sonar",
+                "needs_operator_count": 1,
+                "active_plans_count": 0,
+                "active_epics_count": 0,
+                "last_active": "2026-10-16T10:00:00Z",
+                "is_favourite": false,
+                "is_released": false
+              }
+            ],
+            "being_added": [
+              {
+                "checkout_path": "~/git/cui-parent",
+                "current_step": "Identity",
+                "step_number": 2,
+                "total_steps": 10,
+                "continue_link": "/api/v1/entries/ent-cui/continue",
+                "abandon_link": "/api/v1/entries/ent-cui/abandon"
+              }
+            ]
+          }
+        },
+        "links": []
+      },
+      "links": {},
+      "events": []
+    }
+  },
+  "designer": {
+    "runtime_version": "0.9.0",
+    "projects": [
+      "pm-mcp-clients"
+    ],
+    "machine_units": [
+      {
+        "name": "landing.pull-request",
+        "group": "axis_variant",
+        "level_in_force": "machine",
+        "frontmatter": {
+          "display_name": "Landing Pull Request",
+          "description": "Lands the plan as a pull request.",
+          "type": "subworkflow",
+          "entries": [
+            "start"
+          ],
+          "exits": [
+            "merged",
+            "no_change"
+          ],
+          "author": "Oliver Wolff",
+          "release": "0.9.0",
+          "signed": false
+        },
+        "levels": [
+          {
+            "level": "machine",
+            "revision": 3,
+            "digest": "sha256:lp-m3",
+            "text": "workflow landing.pull-request version 3 format 1\n---\nname: Landing Pull Request\ndescription: Lands the plan as a pull request.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\n---\nstate landing.open\n  call git.commit_and_push\n  done -> merged\n"
+          }
+        ]
+      },
+      {
+        "name": "git.commit_and_push",
+        "group": "recipe",
+        "level_in_force": "machine",
+        "frontmatter": {
+          "display_name": "Commit and Push",
+          "description": "Commits the changes of the plan's worktree and pushes its branch.",
+          "type": "subworkflow",
+          "entries": [
+            "commit"
+          ],
+          "exits": [
+            "done",
+            "stepped_out"
+          ],
+          "author": "Oliver Wolff",
+          "release": "0.9.0",
+          "signed": false
+        },
+        "levels": [
+          {
+            "level": "machine",
+            "revision": 1,
+            "digest": "sha256:gcp-m1",
+            "text": "workflow git.commit_and_push version 1 format 1\n---\nname: Commit and Push\ndescription: Commits the changes and pushes the branch.\ntype: recipe\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry commit\nexit done\n---\nstate commit.push\n  done -> done\n"
+          }
+        ]
+      },
+      {
+        "name": "epic",
+        "group": "compiled_only",
+        "level_in_force": "default",
+        "levels": [
+          {
+            "level": "default",
+            "revision": 1,
+            "digest": "sha256:epic-d1",
+            "text": "workflow epic version 1 format 1\n"
+          }
+        ]
+      }
+    ],
+    "project_units": {
+      "pm-mcp-clients": [
+        {
+          "name": "phase-6-finalize",
+          "group": "project_owned",
+          "level_in_force": "project",
+          "frontmatter": {
+            "display_name": "Finalize",
+            "description": "Settles and reviews the plan's change, lands it.",
+            "type": "subworkflow",
+            "entries": [
+              "start",
+              "adopt"
+            ],
+            "exits": [
+              "merged",
+              "no_change"
+            ],
+            "author": "Oliver Wolff",
+            "release": "0.9.0",
+            "signed": false
+          },
+          "levels": [
+            {
+              "level": "project",
+              "revision": 4,
+              "digest": "sha256:pf6-p4",
+              "text": "workflow phase-6-finalize version 5 format 1\n---\nname: Finalize\ndescription: Settles and reviews the plan's change, lands it.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\nexit merged\n---\nstate finalize.review\n  done -> finalize.archive-plan\nstate finalize.archive-plan\n  call git.commit_and_push\n  done -> merged\n"
+            },
+            {
+              "level": "machine",
+              "revision": 2,
+              "digest": "sha256:pf6-m2",
+              "text": "workflow phase-6-finalize version 3 format 1\n---\nname: Finalize\ndescription: Settles the plan's change.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\nexit merged\n---\nstate finalize.review\n  done -> merged\n"
+            },
+            {
+              "level": "default",
+              "revision": 1,
+              "digest": "sha256:pf6-d1",
+              "text": "workflow phase-6-finalize version 1 format 1\n"
+            }
+          ]
+        },
+        {
+          "name": "remediation.ci-failure",
+          "group": "project_owned",
+          "level_in_force": "project",
+          "frontmatter": {
+            "display_name": "CI Failure",
+            "description": "Returns a plan to execute after a CI failure.",
+            "type": "subworkflow",
+            "entries": [
+              "start"
+            ],
+            "exits": [
+              "returned"
+            ],
+            "author": "Oliver Wolff",
+            "release": "0.9.0",
+            "signed": false
+          },
+          "levels": [
+            {
+              "level": "project",
+              "revision": 1,
+              "digest": "sha256:rcf-p1",
+              "text": "workflow remediation.ci-failure version 1 format 1\n---\nname: CI Failure\ndescription: Returns a plan to execute after a CI failure.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\nexit returned\n---\nstate remediation.fix\n  done -> returned\n"
+            }
+          ]
+        }
+      ]
+    },
+    "machine_blocks": [
+      {
+        "kind": "keyword",
+        "name": "state",
+        "summary": "A state of the unit, with its outcomes and transitions.",
+        "template": "state <name>\n  done -> <next>",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": [],
+        "used_in": [
+          "any unit body"
+        ],
+        "compiled_only": false
+      },
+      {
+        "kind": "primitive",
+        "name": "git.stage-and-commit",
+        "summary": "Stages and commits the worktree's changes.",
+        "template": "auto git.stage-and-commit",
+        "parameters": [
+          "message_mode enum[auto_deliverable|step_or_fallback]"
+        ],
+        "constraints": [],
+        "outcomes": [
+          "done (success)",
+          "failed"
+        ],
+        "used_in": [
+          "the auto clause of a state"
+        ],
+        "compiled_only": false
+      },
+      {
+        "kind": "guard",
+        "name": "depends_on_config",
+        "summary": "Holds the plan until a configuration key is present.",
+        "template": "guard depends_on_config key=<key>",
+        "parameters": [
+          "key string"
+        ],
+        "constraints": [
+          "the configuration key"
+        ],
+        "outcomes": [
+          "satisfied",
+          "missing"
+        ],
+        "used_in": [
+          "the guard clause of a state"
+        ],
+        "compiled_only": false
+      },
+      {
+        "kind": "link_relation",
+        "name": "opens",
+        "summary": "Opens the linked resource.",
+        "template": "link opens <target>",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": [],
+        "used_in": [
+          "the link clause of a state"
+        ],
+        "compiled_only": false
+      },
+      {
+        "kind": "condition",
+        "name": "in_worktree",
+        "summary": "True while the plan has a worktree.",
+        "template": "condition in_worktree",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": [
+          "true",
+          "false"
+        ],
+        "used_in": [
+          "the condition clause of a state"
+        ],
+        "compiled_only": false
+      },
+      {
+        "kind": "sub_workflow",
+        "name": "git.commit_and_push",
+        "summary": "Commits the changes of the plan's worktree and pushes its branch.",
+        "template": "call git.commit_and_push entry commit\n  done -> <next>\n  stepped_out -> <next>",
+        "parameters": [
+          "message_mode enum",
+          "push_mode enum"
+        ],
+        "constraints": [
+          "a push remote"
+        ],
+        "outcomes": [
+          "done (success)",
+          "stepped_out"
+        ],
+        "used_in": [
+          "the call clause of a state, in any unit kind"
+        ],
+        "compiled_only": false
+      },
+      {
+        "kind": "role",
+        "name": "implementer",
+        "summary": "The role that builds the plan's deliverables.",
+        "template": "role implementer",
+        "parameters": [],
+        "constraints": [
+          "a qualified model"
+        ],
+        "outcomes": [],
+        "used_in": [
+          "a task state and a consult"
+        ],
+        "compiled_only": false
+      },
+      {
+        "kind": "parameter",
+        "name": "message_mode",
+        "summary": "How the commit message is derived.",
+        "template": "declare message_mode enum[auto_deliverable|step_or_fallback]",
+        "parameters": [],
+        "constraints": [],
+        "outcomes": [],
+        "used_in": [
+          "the declare clause of a unit"
+        ],
+        "compiled_only": false
+      }
+    ],
+    "project_blocks": {
+      "pm-mcp-clients": [
+        {
+          "kind": "sub_workflow",
+          "name": "phase-6-finalize",
+          "summary": "Settles and reviews the plan's change, lands it.",
+          "template": "call phase-6-finalize entry start\n  merged -> <next>\n  no_change -> <next>",
+          "parameters": [],
+          "constraints": [],
+          "outcomes": [
+            "merged",
+            "no_change"
+          ],
+          "used_in": [
+            "the call clause of a state"
+          ],
+          "compiled_only": false
+        },
+        {
+          "kind": "role",
+          "name": "reviewer",
+          "summary": "The role that reviews the plan's change.",
+          "template": "role reviewer",
+          "parameters": [],
+          "constraints": [
+            "a qualified model"
+          ],
+          "outcomes": [],
+          "used_in": [
+            "a task state and a consult"
+          ],
+          "compiled_only": false
+        }
+      ]
+    }
+  },
+  "start_case": {
+    "project_id": "pm-mcp-clients",
+    "kind": "plan",
+    "state": "start.sources",
+    "landing": "landing.pull-request",
+    "documents_mode": "ask",
+    "lessons_available": true,
+    "local_changes": true,
+    "epic_auto_start": true,
+    "epic_auto_start_origin": "machine",
+    "parallelization_scope": 1,
+    "overlap_max_files": 0,
+    "title": "Showroom start: a plan from a description, a pull request, local changes and a lesson",
+    "sources": [
+      {
+        "source_id": "src-description-1",
+        "kind": "description",
+        "reference": "Make the relay reconnect survive a dropped cursor",
+        "state": "stored",
+        "trust": "trusted"
+      },
+      {
+        "source_id": "src-pr-1",
+        "kind": "pull_request",
+        "reference": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+        "title": "Add the Codeberg provider",
+        "state": "stored",
+        "trust": "untrusted",
+        "verdict": "clean",
+        "changed_files": [
+          {
+            "path": "src/main/java/de/planmarshall/api/start/SourceResource.java",
+            "additions": 42,
+            "deletions": 0,
+            "untrusted": true,
+            "operator_authored": false
+          },
+          {
+            "path": "pm-api/src/main/java/A.java",
+            "additions": 4,
+            "deletions": 1,
+            "untrusted": true,
+            "operator_authored": false
+          }
+        ]
+      },
+      {
+        "source_id": "src-local-1",
+        "kind": "local_changes",
+        "reference": "2 files changed",
+        "state": "stored",
+        "trust": "trusted",
+        "changed_files": [
+          {
+            "path": "pm-api/src/main/java/A.java",
+            "additions": 4,
+            "deletions": 1,
+            "untrusted": false,
+            "operator_authored": true
+          },
+          {
+            "path": "pm-api/src/main/java/B.java",
+            "additions": 2,
+            "deletions": 0,
+            "untrusted": false,
+            "operator_authored": true
+          }
+        ]
+      },
+      {
+        "source_id": "src-lesson-1",
+        "kind": "lesson",
+        "reference": "les-0009",
+        "title": "Keep the lesson store append-only",
+        "state": "stored",
+        "trust": "trusted"
+      }
+    ],
+    "recipes": [
+      {
+        "key": "agentfile-hygiene",
+        "name": "agentfile-hygiene",
+        "description": "classify and clean the agent files against the rubric",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": []
+      },
+      {
+        "key": "code-review",
+        "name": "code-review",
+        "description": "a structural and quality review of the current footprint",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "depth",
+            "value": "standard",
+            "options": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "lesson-cleanup",
+        "name": "lesson-cleanup",
+        "description": "turn one lesson into a slim, deterministic plan",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": []
+      },
+      {
+        "key": "audit",
+        "name": "audit",
+        "description": "audit the code against a request",
+        "origin": "project",
+        "takes_request": true,
+        "parameters": [
+          {
+            "name": "modules",
+            "value": "all 9",
+            "options": [
+              "all 9"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "no-modules",
+        "name": "no-modules",
+        "description": "a recipe whose parameter has no option",
+        "origin": "project",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "modules",
+            "options": [],
+            "proposed": false,
+            "available": false,
+            "reason": "none the recipe can work on"
+          }
+        ]
+      }
+    ],
+    "entry_id": "ent-showroom",
+    "chat": {
+      "role": "refine",
+      "available": true,
+      "turns": [
+        {
+          "role": "operator",
+          "text": "Keep the cursor write ordered, with a test per transport.",
+          "at": "2026-10-19T10:00:00Z"
+        },
+        {
+          "role": "refine",
+          "text": "A plan that writes the cursor before acknowledging, tested over websocket and SSE. Unclear: whether the fsync belongs in this plan.",
+          "at": "2026-10-19T10:00:05Z"
+        }
+      ],
+      "proposal": {
+        "summary": "An addition to the description",
+        "after": "The cursor is written before acknowledging and fsynced; each transport has a test.",
+        "applies": "the description"
+      }
+    }
+  }
+}
