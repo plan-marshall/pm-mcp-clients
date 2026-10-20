@@ -336,7 +336,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String FIXTURE_ONBOARD = "onboard";
     private static final String FIXTURE_SUMMARY = "summary";
     private static final String FIXTURE_LAN_CONFLICT = "lan_conflict";
-    private static final String FIXTURE_LOOPBACK_ONLY = "loopback_only";
+    private static final String FIELD_VERSION = "version";
+    private static final String FIELD_MACHINE = "machine";
+    private static final String FIELD_LISTENER = "listener";
+    private static final String FIELD_STEPS = "steps";
+    private static final String FIELD_COMPLETED = "completed";
+    private static final String FIELD_LAN = "lan";
+    private static final String FIELD_LAN_PORT = "lan_port";
+    private static final String FIELD_LAN_FINGERPRINT = "lan_fingerprint";
+    private static final String STATE_SETTINGS_PREFIX = "settings.";
+    private static final String ERR_LOOPBACK_ONLY = "loopback_only";
     private static final String FIELD_SCOPE_KIND = "kind";
     private static final String CONSENT_PREFIX = "consent:";
     private static final String CREDENTIAL_PREFIX = "credential:";
@@ -681,7 +690,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 devicePairedBy.put(device.deviceId(), device.pairedBy());
             }
             return true;
-        } catch (IOException | RuntimeException e) {
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Malformed facts.runtime.devices in state '"
                     + currentScenario.get().start() + "'", e);
         }
@@ -736,8 +747,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             lanListenerPort = DEFAULT_LAN_PORT;
             return;
         }
-        lanListenerOn = !Boolean.FALSE.equals(web.get("lan"));
-        var port = JsonTree.integer(web, "lan_port");
+        lanListenerOn = !Boolean.FALSE.equals(web.get(FIELD_LAN));
+        var port = JsonTree.integer(web, FIELD_LAN_PORT);
         lanListenerPort = port != null && port > 0 ? port : DEFAULT_LAN_PORT;
     }
 
@@ -787,40 +798,69 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var stateId = currentStateId.get();
         var runtime = stateRuntimeFixture(stateId);
-        if (runtime != null) {
-            copyStatusMember(status, runtime, KEY_STATUS);
-            copyStatusMember(status, runtime, "version");
-            copyStatusMember(status, runtime, "machine");
-            copyStatusMember(status, runtime, "listener");
-            copyStatusMember(status, runtime, "projects");
-            if (runtime.containsKey(FIXTURE_WEB)) {
-                if (runtime.get(FIXTURE_WEB) instanceof Map<?, ?> web) {
-                    var merged = new LinkedHashMap<String, Object>();
-                    if (status.get(FIXTURE_WEB) instanceof Map<?, ?> currentWeb) {
-                        currentWeb.forEach((key, value) -> merged.put(String.valueOf(key), value));
-                    }
-                    web.forEach((key, value) -> merged.put(String.valueOf(key), value));
-                    merged.put("lan", lanListenerOn);
-                    merged.put("lan_port", lanListenerPort);
-                    if (lanListenerOn) {
-                        merged.put("lan_fingerprint", CONST_LAN_FINGERPRINT);
-                    }
-                    status.put(FIXTURE_WEB, merged);
-                } else {
-                    status.remove(FIXTURE_WEB);
-                }
-            }
-        }
+        applyRuntimeMembers(status, runtime);
+        applyOnboardingProgress(status, stateId, runtime);
+    }
 
+    /**
+     * Copies the fixture's status, version, machine, listener, projects, and web members to the
+     * status representation. A {@code web} member of {@code null} removes the route's web object.
+     *
+     * @param status  the status representation to complete
+     * @param runtime the state's runtime fixture, may be {@code null}
+     */
+    private void applyRuntimeMembers(Map<String, Object> status, @Nullable Map<String, Object> runtime) {
+        if (runtime == null) {
+            return;
+        }
+        copyStatusMember(status, runtime, KEY_STATUS);
+        copyStatusMember(status, runtime, FIELD_VERSION);
+        copyStatusMember(status, runtime, FIELD_MACHINE);
+        copyStatusMember(status, runtime, FIELD_LISTENER);
+        copyStatusMember(status, runtime, CONST_PROJECTS);
+        if (!runtime.containsKey(FIXTURE_WEB)) {
+            return;
+        }
+        if (runtime.get(FIXTURE_WEB) instanceof Map<?, ?> web) {
+            status.put(FIXTURE_WEB, mergedWeb(web, status.get(FIXTURE_WEB)));
+        } else {
+            status.remove(FIXTURE_WEB);
+        }
+    }
+
+    private Map<String, Object> mergedWeb(Map<?, ?> web, @Nullable Object routeWeb) {
+        var merged = new LinkedHashMap<String, Object>();
+        if (routeWeb instanceof Map<?, ?> currentWeb) {
+            currentWeb.forEach((key, value) -> merged.put(String.valueOf(key), value));
+        }
+        web.forEach((key, value) -> merged.put(String.valueOf(key), value));
+        merged.put(FIELD_LAN, lanListenerOn);
+        merged.put(FIELD_LAN_PORT, lanListenerPort);
+        if (lanListenerOn) {
+            merged.put(FIELD_LAN_FINGERPRINT, CONST_LAN_FINGERPRINT);
+        }
+        return merged;
+    }
+
+    /**
+     * Writes the onboarding progress and the {@code onboarded} flag the current state implies.
+     *
+     * @param status  the status representation to complete
+     * @param stateId the current state
+     * @param runtime the state's runtime fixture, may be {@code null}
+     */
+    private static void applyOnboardingProgress(Map<String, Object> status, @Nullable String stateId,
+            @Nullable Map<String, Object> runtime) {
+        var progress = onboardingProgressFor(stateId);
         var onboard = runtime != null && runtime.get(FIXTURE_ONBOARD) instanceof Map<?, ?> fixture
                 ? fixture
-                : onboardingProgressFor(stateId);
+                : progress;
         if (onboard != null) {
             status.put(FIXTURE_ONBOARD, onboard);
-        } else {
-            status.remove(FIXTURE_ONBOARD);
         }
-        status.put(FIELD_ONBOARDED, machineOnboardedFor(stateId, runtime));
+        if ((runtime != null && runtime.get(FIELD_ONBOARDED) instanceof Boolean) || progress != null) {
+            status.put(FIELD_ONBOARDED, machineOnboardedFor(stateId, runtime));
+        }
     }
 
     private static void copyStatusMember(Map<String, Object> status, Map<String, Object> runtime, String member) {
@@ -840,17 +880,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (stateId == null) {
             return null;
         }
-        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.")) {
-            return Map.of("state", STATE_ONBOARD_COMPLETED, "step", 7, "steps", 7, "completed", true);
+        if (STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith(STATE_SETTINGS_PREFIX)) {
+            return progressOf(STATE_ONBOARD_COMPLETED, 7, true);
         }
         if (STATE_ONBOARD_SUMMARY.equals(stateId)) {
-            return Map.of("state", stateId, "step", 7, "steps", 7, "completed", false);
+            return progressOf(stateId, 7, false);
         }
         var aspect = MachineOnboardingState.aspectOf(stateId);
-        if (aspect == null) {
-            return null;
-        }
-        return Map.of("state", stateId, "step", aspect.step() - 1, "steps", 7, "completed", false);
+        return aspect == null ? null : progressOf(stateId, aspect.step() - 1, false);
+    }
+
+    private static Map<String, Object> progressOf(String stateId, int step, boolean completed) {
+        return Map.of(KEY_STATE, stateId, "step", step, FIELD_STEPS, 7, FIELD_COMPLETED, completed);
     }
 
     /**
@@ -863,7 +904,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (runtime != null && runtime.get(FIELD_ONBOARDED) instanceof Boolean onboarded) {
             return onboarded;
         }
-        return STATE_ONBOARD_COMPLETED.equals(stateId) || stateId.startsWith("settings.");
+        return stateId != null && (STATE_ONBOARD_COMPLETED.equals(stateId)
+                || stateId.startsWith(STATE_SETTINGS_PREFIX));
     }
 
     /**
@@ -1770,7 +1812,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 KEY_REASON, StreamClosedEvent.LISTENER_CLOSED.wire(),
                 KEY_DETAILS, "The network listener was turned off"
         ));
-        response.json(200, Map.of("lan", false, KEY_STATUS, "listener_off"));
+        response.json(200, Map.of(FIELD_LAN, false, KEY_STATUS, "listener_off"));
     }
 
     private void handleUpdateWebConfig(MockHttpRequest request, MockHttpResponse response) throws IOException {
@@ -1778,8 +1820,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-                if (parsed != null && parsed.containsKey("lan")) {
-                    lanListenerOn = Boolean.TRUE.equals(parsed.get("lan"));
+                if (parsed != null && parsed.containsKey(FIELD_LAN)) {
+                    lanListenerOn = Boolean.TRUE.equals(parsed.get(FIELD_LAN));
                 }
                 // cui-rewrite:disable InvalidExceptionUsageRecipe
             } catch (IOException | RuntimeException _) {
@@ -1791,7 +1833,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var resp = new LinkedHashMap<String, Object>();
         resp.put(FIELD_ENABLED, true);
-        resp.put("lan", lanListenerOn);
+        resp.put(FIELD_LAN, lanListenerOn);
         resp.put("port", 7420);
         resp.put("open", true);
         response.json(200, resp);
@@ -1806,10 +1848,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         resp.put("loopback_url", CONST_LOOPBACK_URL);
         resp.put("loopback_open", true);
         resp.put("lan_enabled", lanListenerOn);
-        resp.put("lan_port", lanListenerPort);
+        resp.put(FIELD_LAN_PORT, lanListenerPort);
         if (lanListenerOn) {
             resp.put("lan_url", lanListenerUrl());
-            resp.put("lan_fingerprint", CONST_LAN_FINGERPRINT);
+            resp.put(FIELD_LAN_FINGERPRINT, CONST_LAN_FINGERPRINT);
         }
         synchronized (devicesLock) {
             resp.put("paired_devices_count", pairedDevices.size());
@@ -1903,12 +1945,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (Boolean.TRUE.equals(map.get(FIELD_ONBOARDED))) {
             return true;
         }
-        if (map.get("onboard") instanceof Map<?, ?> onboard
+        if (map.get(FIXTURE_ONBOARD) instanceof Map<?, ?> onboard
                 && (STATE_ONBOARD_COMPLETED.equals(onboard.get(KEY_STATE))
-                || Boolean.TRUE.equals(onboard.get("completed")))) {
+                || Boolean.TRUE.equals(onboard.get(FIELD_COMPLETED)))) {
             return true;
         }
-        return map.get("machine") instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get(FIELD_ONBOARDED));
+        return map.get(FIELD_MACHINE) instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get(FIELD_ONBOARDED));
     }
 
     private boolean handleDeviceRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -1934,7 +1976,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if ("/api/v1/web".equals(path)) {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(FIELD_ENABLED, true);
-            resp.put("lan", lanListenerOn);
+            resp.put(FIELD_LAN, lanListenerOn);
             resp.put("port", 7420);
             resp.put("open", true);
             response.json(200, resp);
@@ -1961,42 +2003,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handlePutDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path, boolean isWeb) throws IOException {
         if (PATH_LAN_LISTENER.equals(path)) {
-            if (isWeb) {
-                response.json(403, cliOnly("Opening the network listener"));
-                return true;
-            }
-            var runtime = currentRuntimeFixture();
-            if (runtime != null && runtime.get(FIXTURE_LAN_CONFLICT) instanceof Map<?, ?> conflict) {
-                broadcastListenerChanged(ListenerState.PORT_OCCUPIED, extractLanPort(request));
-                response.json(409, Map.of(KEY_ERROR, ERR_WEB_LISTENER_CONFLICT, KEY_MESSAGE,
-                        String.valueOf(conflict.get(KEY_MESSAGE))));
-                return true;
-            }
-            var override = currentScenario.get().route("PUT", path);
-            if (override != null) {
-                handleRouteWithDynamicStatus(override, path, response);
-                if (override.status() == 409) {
-                    broadcastListenerChanged(ListenerState.PORT_OCCUPIED, extractLanPort(request));
-                }
-                return true;
-            }
-            handleOpenLanListener(request, response);
-            return true;
+            return handleLanListenerPut(request, response, isWeb);
         }
         if (path.startsWith(PATH_CREDENTIALS)) {
-            var runtime = currentRuntimeFixture();
-            if (runtime != null && Boolean.TRUE.equals(runtime.get(FIXTURE_LOOPBACK_ONLY))) {
-                response.json(403, Map.of(KEY_ERROR, FIXTURE_LOOPBACK_ONLY, KEY_MESSAGE,
-                        "A credential is entered on the loopback listener only"));
-                return true;
-            }
-            var override = currentScenario.get().route("PUT", path);
-            if (override != null) {
-                handleRouteWithDynamicStatus(override, path, response);
-                return true;
-            }
-            handleStoreCredential(response, path);
-            return true;
+            return handleCredentialPut(request, response, path);
         }
         if (path.startsWith(PATH_DEVICES_SLASH)) {
             handleRenameDevice(request, response, path);
@@ -2007,6 +2017,48 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         return false;
+    }
+
+    private boolean handleLanListenerPut(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        if (isWeb) {
+            response.json(403, cliOnly("Opening the network listener"));
+            return true;
+        }
+        var runtime = currentRuntimeFixture();
+        if (runtime != null && runtime.get(FIXTURE_LAN_CONFLICT) instanceof Map<?, ?> conflict) {
+            broadcastListenerChanged(ListenerState.PORT_OCCUPIED, extractLanPort(request));
+            response.json(409, Map.of(KEY_ERROR, ERR_WEB_LISTENER_CONFLICT, KEY_MESSAGE,
+                    String.valueOf(conflict.get(KEY_MESSAGE))));
+            return true;
+        }
+        var override = currentScenario.get().route("PUT", PATH_LAN_LISTENER);
+        if (override != null) {
+            handleRouteWithDynamicStatus(override, PATH_LAN_LISTENER, response);
+            if (override.status() == 409) {
+                broadcastListenerChanged(ListenerState.PORT_OCCUPIED, extractLanPort(request));
+            }
+            return true;
+        }
+        handleOpenLanListener(request, response);
+        return true;
+    }
+
+    private boolean handleCredentialPut(MockHttpRequest request, MockHttpResponse response, String path)
+            throws IOException {
+        var runtime = currentRuntimeFixture();
+        if (runtime != null && Boolean.TRUE.equals(runtime.get(ERR_LOOPBACK_ONLY))) {
+            response.json(403, Map.of(KEY_ERROR, ERR_LOOPBACK_ONLY, KEY_MESSAGE,
+                    "A credential is entered on the loopback listener only"));
+            return true;
+        }
+        var override = currentScenario.get().route("PUT", path);
+        if (override != null) {
+            handleRouteWithDynamicStatus(override, path, response);
+            return true;
+        }
+        handleStoreCredential(response, path);
+        return true;
     }
 
     private boolean handleDeleteDeviceRoutes(MockHttpRequest request, MockHttpResponse response, String path, boolean isWeb) throws IOException {
@@ -3203,7 +3255,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } catch (StartRegistry.ActRefused refused) {
             var status = switch (refused.error()) {
                 case ERR_INVALID_REQUEST, "invalid_arguments" -> 400;
-                case "loopback_only", ERR_CLI_ONLY -> 403;
+                case ERR_LOOPBACK_ONLY, ERR_CLI_ONLY -> 403;
                 case ERR_SCOPE_NOT_FOUND -> 404;
                 default -> 409;
             };
@@ -3264,7 +3316,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             response.json(200, listing.toMap());
         } catch (StartRegistry.ActRefused refused) {
-            var status = "loopback_only".equals(refused.error()) ? 403 : 400;
+            var status = ERR_LOOPBACK_ONLY.equals(refused.error()) ? 403 : 400;
             response.json(status, Map.of(KEY_ERROR, refused.error(), KEY_MESSAGE, refused.detail()));
         }
     }
@@ -4857,37 +4909,42 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(404, Map.of(KEY_ERROR, "plan_not_found", KEY_MESSAGE, "Completion report not found for plan: " + planId));
     }
 
+    /**
+     * Serves {@code GET /api/v1/status}: the route's representation with the live listener and
+     * device data, and the onboarding fixture of the current state where the scenario has one.
+     *
+     * @param route    the status route
+     * @param map      the route representation
+     * @param response the response
+     * @throws IOException on write failure
+     */
+    private void handleStatusRoute(RouteDefinition route, Map<?, ?> map, MockHttpResponse response)
+            throws IOException {
+        var copy = new LinkedHashMap<String, Object>();
+        for (var entry : map.entrySet()) {
+            if (FIXTURE_WEB.equals(entry.getKey()) && entry.getValue() instanceof Map<?, ?> webMap) {
+                copy.put(FIXTURE_WEB, mergedWeb(webMap, null));
+            } else {
+                copy.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+        applyStateRuntimeToStatus(copy);
+        copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
+        copy.put("listeners", listenerMaps());
+        synchronized (devicesLock) {
+            copy.put("paired_devices_count", pairedDevices.size());
+        }
+        if (drainingBy != null) {
+            copy.put("draining_by", drainingBy);
+            copy.put("can_withdraw", canWithdrawStop);
+        }
+        response.json(route.status(), copy);
+    }
+
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
         var rep = route.representation();
         if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map) {
-            var copy = new LinkedHashMap<String, Object>();
-            for (var entry : map.entrySet()) {
-                if ("web".equals(entry.getKey()) && entry.getValue() instanceof Map<?, ?> webMap) {
-                    var webCopy = new LinkedHashMap<String, Object>();
-                    for (var w : webMap.entrySet()) {
-                        webCopy.put(String.valueOf(w.getKey()), w.getValue());
-                    }
-                    webCopy.put("lan", lanListenerOn);
-                    webCopy.put("lan_port", lanListenerPort);
-                    if (lanListenerOn) {
-                        webCopy.put("lan_fingerprint", CONST_LAN_FINGERPRINT);
-                    }
-                    copy.put("web", webCopy);
-                } else {
-                    copy.put(String.valueOf(entry.getKey()), entry.getValue());
-                }
-            }
-            applyStateRuntimeToStatus(copy);
-            copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
-            copy.put("listeners", listenerMaps());
-            synchronized (devicesLock) {
-                copy.put("paired_devices_count", pairedDevices.size());
-            }
-            if (drainingBy != null) {
-                copy.put("draining_by", drainingBy);
-                copy.put("can_withdraw", canWithdrawStop);
-            }
-            response.json(route.status(), copy);
+            handleStatusRoute(route, map, response);
             return;
         }
         if (PATH_PROJECTS.equals(path) && rep instanceof Map<?, ?> map && map.get(CONST_PROJECTS) instanceof List<?> list) {
@@ -5082,7 +5139,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             case "initialize" -> response.json(200, jsonRpcResult(id, Map.of(
                     "protocolVersion", protocolVersionOf(params),
                     "capabilities", Map.of("tools", Map.of()),
-                    "serverInfo", Map.of("name", "pm-mock-runtime", "version", "0.1.0-SNAPSHOT"))));
+                    "serverInfo", Map.of("name", "pm-mock-runtime", FIELD_VERSION, "0.1.0-SNAPSHOT"))));
             case "tools/list" -> {
                 try (var events = response.events(200)) {
                     events.send(null, JsonTree.write(Map.of(
@@ -5587,37 +5644,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private Map<String, Object> mergeRepresentation(@Nullable StateDefinition state, @Nullable String stateId) {
         var body = new LinkedHashMap<String, Object>();
         if (state != null && state.representation() instanceof Map<?, ?> rep) {
-            var facts = JsonTree.asObject(rep.get(OperatorStateResource.FIELD_FACTS));
-            if (facts != null) {
-                for (var entry : facts.entrySet()) {
-                    if (!FIXTURE_RUNTIME.equals(entry.getKey()) && !FIXTURE_SUMMARY.equals(entry.getKey())) {
-                        body.put(entry.getKey(), entry.getValue());
-                    }
-                }
-                var summary = JsonTree.string(facts, FIXTURE_SUMMARY);
-                if (summary != null) {
-                    body.put(FIXTURE_SUMMARY, summary);
-                }
-            }
-            var scope = JsonTree.asObject(rep.get(OperatorStateResource.FIELD_SCOPE));
-            if (scope != null) {
-                var kind = JsonTree.string(scope, FIELD_SCOPE_KIND);
-                if (kind != null) {
-                    body.put(OperatorStateResource.FIELD_SCOPE, kind);
-                }
-            }
+            copyOperatorFacts(rep, body);
+            copyOperatorScope(rep, body);
             body.put("operator", rep);
         }
-        if (state != null && !state.links().isEmpty()) {
-            var links = new LinkedHashMap<String, Object>();
-            for (var entry : state.links().entrySet()) {
-                var link = entry.getValue();
-                var target = new LinkedHashMap<String, Object>();
-                target.put(KEY_HREF, link.href() != null ? link.href() : "/api/v1/onboarding/step");
-                target.put(KEY_METHOD, link.method());
-                target.put("next", link.next());
-                links.put(entry.getKey(), target);
-            }
+        var links = onboardingLinkMap(state);
+        if (!links.isEmpty()) {
             body.put(KEY_LINKS, links);
         }
         body.put(KEY_STATE, stateId);
@@ -5625,6 +5657,65 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put("auto", onboardingAuto);
         body.put("step_summaries", stepSummariesFor(stateId));
         return body;
+    }
+
+    /**
+     * Copies the operator state's facts to the flat members the onboarding clients read.
+     *
+     * @param representation the operator state representation
+     * @param body           the response body to complete
+     */
+    private static void copyOperatorFacts(Map<?, ?> representation, Map<String, Object> body) {
+        var facts = JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        if (facts == null) {
+            return;
+        }
+        for (var entry : facts.entrySet()) {
+            if (!FIXTURE_RUNTIME.equals(entry.getKey()) && !FIXTURE_SUMMARY.equals(entry.getKey())) {
+                body.put(entry.getKey(), entry.getValue());
+            }
+        }
+        var summary = JsonTree.string(facts, FIXTURE_SUMMARY);
+        if (summary != null) {
+            body.put(FIXTURE_SUMMARY, summary);
+        }
+    }
+
+    /**
+     * Copies the operator scope's kind to the flat {@code scope} member.
+     *
+     * @param representation the operator state representation
+     * @param body           the response body to complete
+     */
+    private static void copyOperatorScope(Map<?, ?> representation, Map<String, Object> body) {
+        var scope = JsonTree.asObject(representation.get(OperatorStateResource.FIELD_SCOPE));
+        if (scope == null) {
+            return;
+        }
+        var kind = JsonTree.string(scope, FIELD_SCOPE_KIND);
+        if (kind != null) {
+            body.put(OperatorStateResource.FIELD_SCOPE, kind);
+        }
+    }
+
+    /**
+     * @param state the state definition, may be {@code null}
+     * @return the state's scenario links keyed by operator link id, in order
+     */
+    private static Map<String, Object> onboardingLinkMap(@Nullable StateDefinition state) {
+        var links = new LinkedHashMap<String, Object>();
+        if (state == null) {
+            return links;
+        }
+        for (var entry : state.links().entrySet()) {
+            var link = entry.getValue();
+            var target = new LinkedHashMap<String, Object>();
+            target.put(KEY_HREF, link.href() != null ? link.href() : "/api/v1/onboarding/step");
+            target.put(KEY_METHOD, link.method());
+            target.put("next", link.next());
+            links.put(entry.getKey(), target);
+        }
+        return links;
     }
 
     /**
@@ -5642,7 +5733,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var current = MachineOnboardingState.aspectOf(stateId);
         var upTo = current != null ? current.step() - 1 : 0;
         if (STATE_ONBOARD_COMPLETED.equals(stateId) || STATE_ONBOARD_SUMMARY.equals(stateId)
-                || stateId.startsWith("settings.")) {
+                || stateId.startsWith(STATE_SETTINGS_PREFIX)) {
             upTo = 7;
         }
         if (upTo >= 1) {
@@ -5674,7 +5765,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return 0;
         }
         if (STATE_ONBOARD_COMPLETED.equals(stateId) || STATE_ONBOARD_SUMMARY.equals(stateId)
-                || stateId.startsWith("settings.")) {
+                || stateId.startsWith(STATE_SETTINGS_PREFIX)) {
             return 7;
         }
         var aspect = MachineOnboardingState.aspectOf(stateId);
@@ -5781,7 +5872,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var map = new LinkedHashMap<String, Object>();
         map.put("aspect", aspect.wireValue());
         map.put("step", aspect.step());
-        map.put("summary", summary);
+        map.put(FIXTURE_SUMMARY, summary);
         map.put("current", current);
         return map;
     }
@@ -6937,7 +7028,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
                 if (parsed != null) {
-                    var v = JsonTree.string(parsed, "version");
+                    var v = JsonTree.string(parsed, FIELD_VERSION);
                     if (v != null && !v.isBlank()) {
                         targetVersion = v;
                     }
@@ -6952,13 +7043,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             lifecycleState = RuntimeLifecycleState.UPGRADING;
             broadcastEvent("runtime.upgrading", Map.of(
                     "lifecycle_state", "upgrading",
-                    "version", targetVersion,
+                    FIELD_VERSION, targetVersion,
                     "step", "preparing"
             ));
             response.json(200, Map.of(
                     KEY_STATUS, "upgrading",
                     KEY_STATE, "upgrading",
-                    "version", targetVersion,
+                    FIELD_VERSION, targetVersion,
                     "step", "preparing"
             ));
         }
@@ -6983,7 +7074,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleCheckUpgradeRuntime(MockHttpResponse response) throws IOException {
         response.json(200, Map.of(
-                "version", "0.10.0",
+                FIELD_VERSION, "0.10.0",
                 "available", true,
                 "release_date", "2026-10-16",
                 "release_notes_url", "/api/v1/system/release-notes?version=0.10.0"
