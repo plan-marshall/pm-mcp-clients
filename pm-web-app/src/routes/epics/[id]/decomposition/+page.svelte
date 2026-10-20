@@ -6,8 +6,7 @@
   onMount(() => {
     const parts = window.location.pathname.split('/').filter(Boolean);
     const id = parts[1] ? decodeURIComponent(parts[1]) : '';
-    const project =
-      new URLSearchParams(window.location.search).get('project') ?? 'pm-mcp-clients';
+    const project = new URLSearchParams(window.location.search).get('project') ?? 'pm-mcp-clients';
     openEpicDecomposition(id, project);
   });
 </script>

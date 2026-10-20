@@ -66,7 +66,7 @@
       if (msg === 'network_offline') {
         runtimeStore.update((s) => ({ ...s, isOffline: true }));
       } else {
-        loadError = 'Failed to load system snapshot.';
+        loadError = $t('system.view.load_failed');
       }
     } finally {
       if (isMounted) isLoading = false;
@@ -118,7 +118,7 @@
       closeModal();
       void loadSnapshot(false);
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || 'Action failed';
+      actionError = (err as Error)?.message || $t('system.action.failed');
     } finally {
       isExecutingAction = false;
     }
@@ -130,16 +130,16 @@
       actionSuccess = '';
       await apiClient.checkUpgrade();
       void loadSnapshot(false);
-      actionSuccess = 'Update check completed.';
+      actionSuccess = $t('system.upgrade.check_done');
     } catch (err: unknown) {
-      actionError = (err as Error)?.message || 'Update check failed';
+      actionError = (err as Error)?.message || $t('system.upgrade.check_failed');
     }
   }
 
   function copyCommand(text: string) {
     if (navigator?.clipboard) {
       void navigator.clipboard.writeText(text);
-      actionSuccess = 'Copied to clipboard.';
+      actionSuccess = $t('system.action.copied');
       setTimeout(() => {
         actionSuccess = '';
       }, 3000);
@@ -197,7 +197,7 @@
     </div>
 
     <div class="system-header__controls">
-      <div class="window-selector" role="group" aria-label="Window selection">
+      <div class="window-selector" role="group" aria-label={$t('system.view.window_label')}>
         <button
           type="button"
           class="btn-toggle"
@@ -227,7 +227,7 @@
       <button
         type="button"
         class="refresh-btn"
-        aria-label="Refresh system view"
+        aria-label={$t('system.view.refresh')}
         onclick={() => loadSnapshot(true)}
       >
         ↻
@@ -249,21 +249,23 @@
 
   {#if isLoading && !snapshot}
     <div class="system-loading">
-      <Spinner size="2.5rem" label="Loading system dashboard…" />
+      <Spinner size="2.5rem" label={$t('system.view.loading')} />
     </div>
   {:else if loadError && !snapshot}
     <div class="notice-alert notice-alert--danger" role="alert">
       <p>{loadError}</p>
-      <Button variant="secondary" onclick={() => loadSnapshot(true)}>Retry</Button>
+      <Button variant="secondary" onclick={() => loadSnapshot(true)}
+        >{$t('web.common.retry')}</Button
+      >
     </div>
   {:else if $runtimeStore.isStopped}
-    <div class="stopped-panel" role="region" aria-label="Stopped runtime">
+    <div class="stopped-panel" role="region" aria-label={$t('system.stopped.region')}>
       <h2 class="stopped-title">{$t('system.stopped.title', { who: 'operator', time: 'now' })}</h2>
       <p class="stopped-desc">
         {$t('system.stopped.how', { command: 'pm-operator runtime start' })}
       </p>
       <div class="copy-box">
-        <code class="mono">pm-operator runtime start</code>
+        <code class="mono">{$t('system.stopped.command')}</code>
         <Button variant="secondary" onclick={() => copyCommand('pm-operator runtime start')}>
           {$t('system.stopped.copy')}
         </Button>
@@ -277,7 +279,7 @@
   {:else if snapshot}
     <!-- Cleanup Banner if due items exist -->
     {#if snapshot.cleanup && (snapshot.cleanup.plans_count > 0 || snapshot.cleanup.epics_count > 0 || snapshot.cleanup.logs_count > 0)}
-      <div class="cleanup-banner" role="region" aria-label="Cleanup banner">
+      <div class="cleanup-banner" role="region" aria-label={$t('system.cleanup.region')}>
         <div class="cleanup-banner__info">
           <span class="cleanup-banner__badge">🧹 {$t('system.cleanup.title')}</span>
           <span class="cleanup-banner__text">
@@ -315,7 +317,7 @@
 
         <div class="metrics-list">
           <div class="metric-row">
-            <span class="metric-label">Version</span>
+            <span class="metric-label">{$t('system.runtime.field.version')}</span>
             <span class="metric-value mono">
               pm-mcpd {snapshot.runtime.version}
               {#if snapshot.runtime.build_date}
@@ -329,7 +331,7 @@
 
           {#if snapshot.runtime.upgrade_available_version}
             <div class="metric-row metric-row--highlight">
-              <span class="metric-label">Update</span>
+              <span class="metric-label">{$t('system.runtime.field.update')}</span>
               <span class="metric-value">
                 <strong
                   >{$t('system.runtime.available', {
@@ -343,14 +345,14 @@
                     rel="noreferrer"
                     class="link-muted"
                   >
-                    Release notes
+                    {$t('system.runtime.release_notes')}
                   </a>
                 {/if}
               </span>
             </div>
           {:else}
             <div class="metric-row">
-              <span class="metric-label">Update</span>
+              <span class="metric-label">{$t('system.runtime.field.update')}</span>
               <span class="metric-value text-muted">
                 {$t('system.runtime.not_checked')}
                 <button type="button" class="btn-inline" onclick={handleCheckUpgrade}>
@@ -362,25 +364,26 @@
 
           {#if snapshot.runtime.uptime_formatted}
             <div class="metric-row">
-              <span class="metric-label">Uptime</span>
+              <span class="metric-label">{$t('system.runtime.field.uptime')}</span>
               <span class="metric-value">{snapshot.runtime.uptime_formatted}</span>
             </div>
           {/if}
 
           <div class="metric-row">
-            <span class="metric-label">Memory</span>
+            <span class="metric-label">{$t('system.runtime.field.memory')}</span>
             <span class="metric-value">
-              {formatBytes(snapshot.runtime.memory_used_bytes || 0)} in use of {formatBytes(
-                snapshot.runtime.memory_max_bytes || 0,
-              )}
-              {#if snapshot.runtime.memory_resident_bytes}
-                · {formatBytes(snapshot.runtime.memory_resident_bytes)} resident
-              {/if}
+              {$t('system.runtime.memory', {
+                used: formatBytes(snapshot.runtime.memory_used_bytes || 0),
+                max: formatBytes(snapshot.runtime.memory_max_bytes || 0),
+                resident: snapshot.runtime.memory_resident_bytes
+                  ? formatBytes(snapshot.runtime.memory_resident_bytes)
+                  : formatBytes(0),
+              })}
             </span>
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">CPU</span>
+            <span class="metric-label">{$t('system.runtime.field.cpu')}</span>
             <span class="metric-value">
               {#if snapshot.runtime.cpu_measured && snapshot.runtime.cpu_percent !== null}
                 {snapshot.runtime.cpu_percent} %
@@ -391,24 +394,26 @@
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">Store</span>
+            <span class="metric-label">{$t('system.runtime.field.store')}</span>
             <span class="metric-value">
-              {formatBytes(snapshot.runtime.machine_store_bytes || 0)} · {formatBytes(
-                snapshot.runtime.disk_free_bytes || 0,
-              )} free on disk
-              {#if snapshot.runtime.disk_measured_at}
-                (measured {snapshot.runtime.disk_measured_at})
-              {/if}
+              {$t('system.runtime.store', {
+                size: formatBytes(snapshot.runtime.machine_store_bytes || 0),
+                free: formatBytes(snapshot.runtime.disk_free_bytes || 0),
+                time: snapshot.runtime.disk_measured_at || $t('system.figure.unavailable'),
+              })}
             </span>
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">Listeners</span>
+            <span class="metric-label">{$t('system.runtime.field.listeners')}</span>
             <span class="metric-value">
-              socket · loopback {snapshot.runtime.loopback_address || 'off'}
-              {#if snapshot.runtime.lan_address}
-                · network {snapshot.runtime.lan_address} ({snapshot.runtime.lan_devices_count || 0} devices)
-              {/if}
+              {$t('system.runtime.listeners', {
+                loopback: snapshot.runtime.loopback_address ? 'open' : 'off',
+                loopback_address: snapshot.runtime.loopback_address || '',
+                lan: snapshot.runtime.lan_address ? 'open' : 'off',
+                lan_address: snapshot.runtime.lan_address || '',
+                devices: snapshot.runtime.lan_devices_count || 0,
+              })}
             </span>
           </div>
         </div>
@@ -420,14 +425,14 @@
           <h2 id="heading-work" class="card-title">{$t('system.work.title')}</h2>
           {#if snapshot.work.recovering_projects && snapshot.work.recovering_projects.length > 0}
             <span class="badge badge--warning">
-              recovering: {snapshot.work.recovering_projects.join(', ')}
+              {$t('system.work.recovering')}: {snapshot.work.recovering_projects.join(', ')}
             </span>
           {/if}
         </div>
 
         <div class="metrics-list">
           <div class="metric-row">
-            <span class="metric-label">Plans</span>
+            <span class="metric-label">{$t('system.work.field.plans')}</span>
             <div class="metric-value tags-row">
               {#if snapshot.work.plans_by_state && Object.keys(snapshot.work.plans_by_state).length > 0}
                 {#each Object.entries(snapshot.work.plans_by_state) as [st, count]}
@@ -442,7 +447,7 @@
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">Epics</span>
+            <span class="metric-label">{$t('system.work.field.epics')}</span>
             <div class="metric-value tags-row">
               {#if snapshot.work.epics_by_state && Object.keys(snapshot.work.epics_by_state).length > 0}
                 {#each Object.entries(snapshot.work.epics_by_state) as [st, count]}
@@ -457,15 +462,17 @@
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">Tasks</span>
+            <span class="metric-label">{$t('system.work.field.tasks')}</span>
             <span class="metric-value">
-              <strong>{snapshot.work.tasks_running || 0}</strong> running · {snapshot.work
-                .tasks_queued || 0} queued
+              {$t('system.work.tasks', {
+                running: snapshot.work.tasks_running || 0,
+                queued: snapshot.work.tasks_queued || 0,
+              })}
             </span>
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">Projects</span>
+            <span class="metric-label">{$t('system.work.field.projects')}</span>
             <span class="metric-value">
               {$t('system.work.projects', { count: snapshot.work.active_projects_count || 0 })}
             </span>
@@ -478,10 +485,11 @@
         <div class="card-header">
           <h2 id="heading-workers" class="card-title">{$t('system.workers.title')}</h2>
           <span class="badge">
-            {snapshot.workers.length} · {snapshot.workers.filter(
-              (w) => w.state.toLowerCase() === 'busy',
-            ).length} busy · {snapshot.workers.filter((w) => w.state.toLowerCase() === 'idle')
-              .length} idle
+            {$t('system.workers.count', {
+              count: snapshot.workers.length,
+              busy: snapshot.workers.filter((w) => w.state.toLowerCase() === 'busy').length,
+              idle: snapshot.workers.filter((w) => w.state.toLowerCase() === 'idle').length,
+            })}
           </span>
         </div>
 
@@ -489,17 +497,17 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>Role</th>
-                <th>Harness</th>
-                <th>Model</th>
-                <th>State</th>
-                <th>Current Item</th>
+                <th>{$t('system.workers.col.role')}</th>
+                <th>{$t('system.workers.col.harness')}</th>
+                <th>{$t('system.workers.col.model')}</th>
+                <th>{$t('system.workers.col.state')}</th>
+                <th>{$t('system.workers.col.current_item')}</th>
               </tr>
             </thead>
             <tbody>
               {#if snapshot.workers.length === 0}
                 <tr>
-                  <td colspan="5" class="text-muted text-center">No active workers.</td>
+                  <td colspan="5" class="text-muted text-center">{$t('system.workers.none')}</td>
                 </tr>
               {:else}
                 {#each snapshot.workers as w}
@@ -532,29 +540,33 @@
 
         <div class="metrics-list">
           <div class="metric-row">
-            <span class="metric-label">Build slots</span>
+            <span class="metric-label">{$t('system.jobs.field.build_slots')}</span>
             <span class="metric-value">
-              {snapshot.jobs.build?.slots_used || 0} of {snapshot.jobs.build?.slots_total || 0} slots
-              {#if snapshot.jobs.build?.queued && snapshot.jobs.build.queued > 0}
-                · {snapshot.jobs.build.queued} queued
-              {/if}
+              {$t('system.jobs.slots', {
+                kind: $t('system.jobs.field.build_slots'),
+                used: snapshot.jobs.build?.slots_used || 0,
+                total: snapshot.jobs.build?.slots_total || 1,
+                queued: snapshot.jobs.build?.queued || 0,
+              })}
             </span>
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">Test slots</span>
+            <span class="metric-label">{$t('system.jobs.field.test_slots')}</span>
             <span class="metric-value">
-              {snapshot.jobs.test?.slots_used || 0} of {snapshot.jobs.test?.slots_total || 0} slots
-              {#if snapshot.jobs.test?.queued && snapshot.jobs.test.queued > 0}
-                · {snapshot.jobs.test.queued} queued
-              {/if}
+              {$t('system.jobs.slots', {
+                kind: $t('system.jobs.field.test_slots'),
+                used: snapshot.jobs.test?.slots_used || 0,
+                total: snapshot.jobs.test?.slots_total || 1,
+                queued: snapshot.jobs.test?.queued || 0,
+              })}
             </span>
           </div>
 
           <div class="metric-row">
-            <span class="metric-label">Locks</span>
+            <span class="metric-label">{$t('system.jobs.field.locks')}</span>
             <span class="metric-value">
-              {snapshot.jobs.locks_held || 0} held
+              {$t('system.jobs.locks_held', { count: snapshot.jobs.locks_held || 0 })}
             </span>
           </div>
         </div>
@@ -570,7 +582,7 @@
             </span>
           </div>
 
-          <div class="group-selector" role="group" aria-label="Grouping selector">
+          <div class="group-selector" role="group" aria-label={$t('system.models.grouping')}>
             <button
               type="button"
               class="btn-toggle"
@@ -598,10 +610,16 @@
           <table class="data-table">
             <thead>
               <tr>
-                <th>{selectedGroupBy === 'model' ? 'Model' : 'Role'}</th>
-                <th>Calls</th>
-                <th>Tokens (in · out)</th>
-                <th>Status</th>
+                <th>
+                  {$t(
+                    selectedGroupBy === 'model'
+                      ? 'system.models.col.model'
+                      : 'system.models.col.role',
+                  )}
+                </th>
+                <th>{$t('system.models.col.calls')}</th>
+                <th>{$t('system.models.col.tokens')}</th>
+                <th>{$t('system.models.col.status')}</th>
               </tr>
             </thead>
             <tbody>
@@ -619,7 +637,9 @@
                     <td>
                       {#if m.tokens_unmeasured && m.tokens_total === 0}
                         <span class="text-muted">
-                          tokens not measured: not reported by {m.id.split(':')[0] || m.id}
+                          {$t('system.models.not_measured', {
+                            model: m.id.split(':')[0] || m.id,
+                          })}
                         </span>
                       {:else}
                         <span class="mono">
@@ -677,9 +697,12 @@
 
       <div class="modal-body">
         <div class="modal-running-notice">
-          <strong>Running now:</strong>
+          <strong>{$t('system.confirm.running_now')}</strong>
           <span>
-            {snapshot?.work.tasks_running || 0} tasks · {snapshot?.work.active_projects_count || 0} projects
+            {$t('system.confirm.running_what', {
+              tasks: snapshot?.work.tasks_running || 0,
+              projects: snapshot?.work.active_projects_count || 0,
+            })}
           </span>
         </div>
 

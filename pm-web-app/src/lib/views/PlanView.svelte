@@ -104,7 +104,7 @@
         }
       }
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load plan process';
+      errorMessage = (err as Error)?.message || $t('plan.view.load_failed');
     } finally {
       if (initial) isLoading = false;
     }
@@ -271,18 +271,24 @@
 <div class="plan-view" data-testid="plan-view">
   {#if isLoading}
     <div class="plan-view__loading" data-testid="plan-loading">
-      <Spinner size="2.5rem" label="Loading plan process…" />
+      <Spinner size="2.5rem" label={$t('plan.view.loading')} />
     </div>
   {:else if errorMessage}
     <div class="plan-view__error" role="alert" data-testid="plan-error">
       <p>{errorMessage}</p>
-      <Button variant="secondary" onclick={() => loadPlanProcess(true)}>Retry</Button>
+      <Button variant="secondary" onclick={() => loadPlanProcess(true)}
+        >{$t('web.common.retry')}</Button
+      >
     </div>
   {:else if plan}
     <!-- Path Navigation Header -->
     <header class="plan-header" data-testid="plan-header">
       <div class="plan-header__top">
-        <nav class="plan-breadcrumb mono" aria-label="Breadcrumb" data-testid="plan-breadcrumb">
+        <nav
+          class="plan-breadcrumb mono"
+          aria-label={$t('common.breadcrumb')}
+          data-testid="plan-breadcrumb"
+        >
           <button
             class="breadcrumb-link"
             onclick={goBackToOverview}
@@ -358,7 +364,11 @@
     <!-- Two-Panel Main Layout -->
     <div class="plan-content">
       <!-- Left: Process Tree -->
-      <section class="plan-tree-panel" aria-label="Process Tree" data-testid="process-tree">
+      <section
+        class="plan-tree-panel"
+        aria-label={$t('plan.view.tree_label')}
+        data-testid="process-tree"
+      >
         <div class="tree-container">
           {#each plan.nodes.filter((n) => n.state !== 'not_in_plan') as node}
             <div
@@ -369,7 +379,7 @@
                 <button
                   class="toggle-btn"
                   onclick={() => toggleNode(node.node_id)}
-                  aria-label="Toggle node"
+                  aria-label={$t('plan.view.toggle_node')}
                 >
                   <span class="node-glyph">{getNodeGlyph(node.state)}</span>
                   <span class="toggle-icon">
@@ -406,7 +416,7 @@
                           <button
                             class="toggle-btn"
                             onclick={() => toggleNode(subNode.node_id)}
-                            aria-label="Toggle sub-node"
+                            aria-label={$t('plan.view.toggle_sub_node')}
                           >
                             <span class="node-glyph">{getNodeGlyph(subNode.state)}</span>
                             <span class="toggle-icon">
@@ -510,10 +520,14 @@
       </section>
 
       <!-- Right: Worker Task Activity Inspector -->
-      <section class="plan-detail-panel" aria-label="Task Inspector" data-testid="task-inspector">
+      <section
+        class="plan-detail-panel"
+        aria-label={$t('plan.view.inspector_label')}
+        data-testid="task-inspector"
+      >
         {#if isLoadingActivity}
           <div class="detail-loading">
-            <Spinner size="2rem" label="Loading task activity…" />
+            <Spinner size="2rem" label={$t('plan.activity.loading')} />
           </div>
         {:else if taskActivity}
           <div class="task-inspector" data-testid="activity-feed">
@@ -550,7 +564,7 @@
             <!-- Activity Entries -->
             <div class="activity-entries">
               {#if taskActivity.entries.length === 0}
-                <div class="activity-empty text-muted">No activity entries yet.</div>
+                <div class="activity-empty text-muted">{$t('plan.activity.empty')}</div>
               {:else}
                 {#each taskActivity.entries as entry}
                   <div
@@ -592,7 +606,7 @@
           </div>
         {:else}
           <div class="no-task-selected text-muted">
-            <p>Select a task on the left to inspect its live activity.</p>
+            <p>{$t('plan.activity.select_task')}</p>
           </div>
         {/if}
       </section>

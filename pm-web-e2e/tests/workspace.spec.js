@@ -1,49 +1,71 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Workspace & System Flow', () => {
-  test.beforeEach(async ({ page }) => {
-    // Clear localStorage and pair with code
+test.describe('Routing, History & Frame', () => {
+  test.beforeEach(async ({ page, request }) => {
+    // Switch the mock runtime to the projects scenario
+    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'projects' },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    // Clear localStorage and pair with the scenario's code
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.goto('/#code=KXQB-MRTN');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+
+    // The explorer is the landing view when nothing needs the operator
+    await page.getByTestId('nav-projects-btn').click();
+    await expect(page.getByTestId('project-explorer-view')).toBeVisible();
   });
 
-  test('navigates to workspace projects and displays project table', async ({ page }) => {
-    const explorerBtn = page.getByRole('button', { name: 'Projects' });
-    await expect(explorerBtn).toBeVisible();
-    await explorerBtn.click();
-
-    // Verify workspace view is active and projects table is shown
-    await expect(page.locator('.workspace')).toBeVisible();
-    await expect(page.locator('.data-table')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Process Designer' })).toBeVisible();
+  test('lands on the project explorer with its own path, without the retired workspace', async ({
+    page,
+  }) => {
+    await expect(page).toHaveURL(/\/projects$/);
+    // The temporary workspace stub is gone: no tab bar of projects, plans, and system
+    await expect(page.locator('.workspace__tabs')).toHaveCount(0);
+    await expect(page.locator('.data-table')).toHaveCount(0);
+    await expect(page.getByTestId('add-project-btn')).toBeVisible();
   });
 
-  test('switches between projects, plans, and system tabs in workspace', async ({ page }) => {
-    const explorerBtn = page.getByRole('button', { name: 'Projects' });
-    await explorerBtn.click();
+  test('writes every view to the address bar and moves with browser history', async ({ page }) => {
+    const header = page.locator('.app-header');
+    await header.getByRole('button', { name: 'Running work' }).click();
+    await expect(page).toHaveURL(/\/overview$/);
 
-    // Switch to Plans tab
-    const plansTab = page.getByRole('button', { name: 'Plans' });
-    await plansTab.click();
-    await expect(page.locator('.data-table')).toContainText('PLN-001');
+    await header.getByRole('button', { name: 'Reports' }).click();
+    await expect(page).toHaveURL(/\/reports$/);
 
-    // Switch to System tab
-    const systemTab = page.getByRole('button', { name: 'System' });
-    await systemTab.click();
-    await expect(page.locator('.system-stats')).toBeVisible();
-    await expect(page.locator('.system-stats')).toContainText('mock-machine');
+    // The browser's back returns to the view before, not to `/`
+    await page.goBack();
+    await expect(page).toHaveURL(/\/overview$/);
+
+    await page.goForward();
+    await expect(page).toHaveURL(/\/reports$/);
   });
 
-  test('navigates to settings and displays paired devices and aspect re-runs', async ({ page }) => {
-    const settingsBtn = page.getByRole('button', { name: /Settings/i });
-    await expect(settingsBtn).toBeVisible();
-    await settingsBtn.click();
+  test('opens a deep link into the view it names', async ({ page }) => {
+    await page.goto('/system');
+    await expect(page).toHaveURL(/\/system$/);
+    await expect(page.getByTestId('system-view')).toBeVisible();
 
+    await page.goto('/settings/machine');
+    await expect(page).toHaveURL(/\/settings\/machine$/);
+    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+  });
+
+  test('navigates to the settings and the machine settings by their own paths', async ({
+    page,
+  }) => {
+    await page.getByRole('button', { name: 'Machine settings' }).click();
+    await expect(page).toHaveURL(/\/settings$/);
     await expect(page.locator('.settings-view')).toBeVisible();
-    await expect(page.getByText('Paired Devices')).toBeVisible();
-    await expect(page.getByText('Configuration Aspects')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Paired devices' })).toBeVisible();
+
+    await page.getByTestId('machine-settings-button').click();
+    await expect(page).toHaveURL(/\/settings\/machine$/);
+    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
   });
 
   test('toggles light/dark theme', async ({ page }) => {

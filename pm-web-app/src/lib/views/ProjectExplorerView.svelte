@@ -45,7 +45,7 @@
     try {
       explorer = await apiClient.getProjectExplorer();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to load projects';
+      errorMessage = (err as Error)?.message || $t('project.explorer.load_failed');
     } finally {
       isLoading = false;
     }
@@ -84,13 +84,13 @@
       await apiClient.toggleFavourite(project.project_id, !project.is_favourite);
       await loadExplorer();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || 'Failed to update favourite';
+      errorMessage = (err as Error)?.message || $t('project.explorer.favourite_failed');
     }
   }
 
   async function handleStartOnboarding() {
     if (!newProjectPath.trim()) {
-      addError = 'Checkout path is required';
+      addError = $t('project.adding.path_required');
       return;
     }
     isSubmittingAdd = true;
@@ -101,7 +101,7 @@
       newProjectPath = '';
       await loadExplorer();
     } catch (err: unknown) {
-      addError = (err as Error)?.message || 'Failed to start onboarding';
+      addError = (err as Error)?.message || $t('project.adding.start_failed');
     } finally {
       isSubmittingAdd = false;
     }
@@ -117,7 +117,7 @@
       releaseReason = '';
       await loadExplorer();
     } catch (err: unknown) {
-      releaseError = (err as Error)?.message || 'Failed to release project';
+      releaseError = (err as Error)?.message || $t('project.release.failed');
     } finally {
       isReleasing = false;
     }
@@ -134,9 +134,12 @@
     } catch (err: unknown) {
       const msg = (err as Error)?.message || '';
       if (msg.includes('scope_active') || msg.includes('409')) {
-        unenrolError = $t('project.release.refused', { project: unenrolTarget.display_name }) + '. ' + $t('project.release.refused_hint');
+        unenrolError =
+          $t('project.release.refused', { project: unenrolTarget.display_name }) +
+          '. ' +
+          $t('project.release.refused_hint');
       } else {
-        unenrolError = msg || 'Failed to unenrol project';
+        unenrolError = msg || $t('project.release.unenrol_failed');
       }
     } finally {
       isUnenrolling = false;
@@ -153,7 +156,7 @@
       abandonTarget = null;
       await loadExplorer();
     } catch (err: unknown) {
-      abandonError = (err as Error)?.message || 'Failed to abandon onboarding';
+      abandonError = (err as Error)?.message || $t('project.adding.abandon_failed');
     } finally {
       isAbandoning = false;
     }
@@ -164,17 +167,17 @@
     try {
       const diffMs = Date.now() - new Date(timeStr).getTime();
       const mins = Math.floor(diffMs / 60000);
-      if (mins < 1) return 'just now';
-      if (mins < 60) return `${mins} min ago`;
+      if (mins < 1) return $t('project.time.just_now');
+      if (mins < 60) return $t('project.time.minutes', { count: mins });
       const hours = Math.floor(mins / 60);
-      if (hours < 24) return `${hours} h ago`;
+      if (hours < 24) return $t('project.time.hours', { count: hours });
       const days = Math.floor(hours / 24);
-      if (days === 1) return 'yesterday';
-      if (days < 7) return `${days} d ago`;
+      if (days === 1) return $t('project.time.yesterday');
+      if (days < 7) return $t('project.time.days', { count: days });
       const weeks = Math.floor(days / 7);
-      if (weeks < 5) return `${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
+      if (weeks < 5) return $t('project.time.weeks', { count: weeks });
       const months = Math.floor(days / 30);
-      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+      return $t('project.time.months', { count: months });
     } catch {
       return timeStr;
     }
@@ -186,8 +189,7 @@
     if (!query) return [];
     return explorer.all_projects.filter(
       (p) =>
-        p.project_id.toLowerCase().includes(query) ||
-        p.display_name.toLowerCase().includes(query)
+        p.project_id.toLowerCase().includes(query) || p.display_name.toLowerCase().includes(query),
     );
   });
 
@@ -205,7 +207,7 @@
   <!-- Explorer Header -->
   <header class="explorer-header">
     <div class="explorer-header__title-row">
-      <h1 class="explorer-title">{$t('project.explorer.title') || 'Projects'}</h1>
+      <h1 class="explorer-title">{$t('project.explorer.title')}</h1>
       <Button
         variant="primary"
         onclick={() => {
@@ -214,7 +216,7 @@
         }}
         data-testid="add-project-btn"
       >
-        + {$t('project.explorer.add') || 'Add a project'}
+        + {$t('project.explorer.add')}
       </Button>
     </div>
 
@@ -224,16 +226,18 @@
         <input
           type="search"
           class="search-input"
-          placeholder={$t('project.explorer.filter') || 'Filter projects...'}
+          placeholder={$t('project.explorer.filter')}
           bind:value={filter}
           data-testid="project-filter-input"
-          aria-label={$t('project.explorer.filter') || 'Filter projects'}
+          aria-label={$t('project.explorer.filter')}
         />
         {#if filter}
           <button
             class="search-clear-btn"
-            aria-label="Clear filter"
-            onclick={() => { filter = ''; }}
+            aria-label={$t('project.explorer.clear_filter')}
+            onclick={() => {
+              filter = '';
+            }}
           >
             ✕
           </button>
@@ -241,15 +245,15 @@
       </div>
 
       <div class="explorer-sort">
-        <label for="sort-select" class="sort-label">Sort:</label>
+        <label for="sort-select" class="sort-label">{$t('project.explorer.sort_label')}</label>
         <select
           id="sort-select"
           class="sort-select"
           bind:value={sortBy}
           data-testid="project-sort-select"
         >
-          <option value="name">{$t('project.explorer.by_name') || 'by name'}</option>
-          <option value="most_used">{$t('project.explorer.most_used') || 'most used'}</option>
+          <option value="name">{$t('project.explorer.by_name')}</option>
+          <option value="most_used">{$t('project.explorer.most_used')}</option>
         </select>
       </div>
     </div>
@@ -257,31 +261,40 @@
 
   {#if isLoading && !explorer}
     <div class="explorer-loading" role="status">
-      <Spinner size="2.5rem" label="Loading projects…" />
+      <Spinner size="2.5rem" label={$t('project.explorer.loading')} />
     </div>
   {:else if errorMessage}
     <div class="alert alert--danger" role="alert">
       <span>{errorMessage}</span>
-      <Button variant="secondary" onclick={loadExplorer}>Retry</Button>
+      <Button variant="secondary" onclick={loadExplorer}>{$t('web.common.retry')}</Button>
     </div>
   {:else if explorer}
     <!-- Empty State -->
     {#if explorer.all_projects.length === 0 && explorer.being_added.length === 0}
       <div class="empty-state" data-testid="empty-projects-state">
-        <p class="empty-state__text">{$t('project.explorer.empty') || 'No project is enrolled yet.'}</p>
+        <p class="empty-state__text">{$t('project.explorer.empty')}</p>
         <Button
           variant="primary"
-          onclick={() => { showAddModal = true; }}
+          onclick={() => {
+            showAddModal = true;
+          }}
         >
-          + {$t('project.explorer.add') || 'Add a project'}
+          + {$t('project.explorer.add')}
         </Button>
       </div>
     {:else if filter.trim().length > 0}
       <!-- Filtered Matches Section -->
       <section class="explorer-section" data-testid="section-filtered-matches">
-        <h2 class="section-title">Matches for '{filter.trim()}' ({filteredProjects.length})</h2>
+        <h2 class="section-title">
+          {$t('project.explorer.matches', {
+            filter: filter.trim(),
+            count: filteredProjects.length,
+          })}
+        </h2>
         {#if filteredProjects.length === 0}
-          <p class="text-muted">No projects match '{filter.trim()}'.</p>
+          <p class="text-muted">
+            {$t('project.explorer.no_matches', { filter: filter.trim() })}
+          </p>
         {:else}
           <div class="project-grid">
             {#each filteredProjects as project (project.project_id)}
@@ -290,7 +303,9 @@
                   <button
                     class="fav-toggle-btn"
                     class:fav-toggle-btn--active={project.is_favourite}
-                    aria-label={project.is_favourite ? 'Remove from favourites' : 'Mark as favourite'}
+                    aria-label={project.is_favourite
+                      ? $t('project.action.unfavourite')
+                      : $t('project.action.favourite')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -323,11 +338,13 @@
                     class:badge--released={project.readiness === 'released'}
                   >
                     {#if project.readiness === 'ready'}
-                      {$t('project.state.ready') || 'ready'}
+                      {$t('project.state.ready')}
                     {:else if project.readiness === 'released'}
-                      {$t('project.state.released') || 'released'}
+                      {$t('project.state.released')}
                     {:else}
-                      {$t('project.state.setup_needs', { need: project.setup_needs_summary || 'setup' }) || `setup needs: ${project.setup_needs_summary || 'setup'}`}
+                      {$t('project.state.setup_needs', {
+                        need: project.setup_needs_summary || $t('project.state.setup'),
+                      })}
                     {/if}
                   </span>
 
@@ -338,7 +355,10 @@
                   {/if}
 
                   <span class="project-counts text-sm text-secondary">
-                    {project.active_plans_count} plans · {project.active_epics_count} epics
+                    {$t('project.explorer.counts', {
+                      plans: project.active_plans_count,
+                      epics: project.active_epics_count,
+                    })}
                   </span>
 
                   {#if project.last_active}
@@ -354,23 +374,29 @@
                     onclick={() => navigateTo('overview')}
                     data-testid="running-work-btn-{project.project_id}"
                   >
-                    {$t('project.action.running_work') || 'Running work'}
+                    {$t('project.action.running_work')}
                   </button>
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
-                      onclick={() => { releaseTarget = project; releaseError = null; }}
+                      onclick={() => {
+                        releaseTarget = project;
+                        releaseError = null;
+                      }}
                       data-testid="release-btn-{project.project_id}"
                     >
-                      {$t('project.action.release') || 'Release…'}
+                      {$t('project.action.release')}
                     </button>
                   {/if}
                   <button
                     class="btn-link text-danger"
-                    onclick={() => { unenrolTarget = project; unenrolError = null; }}
+                    onclick={() => {
+                      unenrolTarget = project;
+                      unenrolError = null;
+                    }}
                     data-testid="unenrol-btn-{project.project_id}"
                   >
-                    {$t('project.action.unenrol') || 'Unenrol…'}
+                    {$t('project.action.unenrol')}
                   </button>
                 </div>
               </article>
@@ -382,7 +408,7 @@
       <!-- 1. Being added Section -->
       {#if explorer.being_added.length > 0}
         <section class="explorer-section" data-testid="section-being-added">
-          <h2 class="section-title">{$t('project.adding.title') || 'Being added'}</h2>
+          <h2 class="section-title">{$t('project.adding.title')}</h2>
           <div class="project-grid">
             {#each explorer.being_added as being (being.checkout_path)}
               <div class="project-card being-added-card" data-testid="being-added-card">
@@ -393,25 +419,28 @@
                       step: being.step_number,
                       total: being.total_steps,
                       name: being.current_step,
-                    }) || `step ${being.step_number} of ${being.total_steps}: ${being.current_step}`}
+                    })}
                   </span>
                 </div>
                 <div class="being-added-card__actions">
                   <Button
                     variant="primary"
                     size="small"
-                    onclick={() => navigateTo('onboarding')}
+                    onclick={() => navigateTo('project-onboarding')}
                     data-testid="continue-onboarding-btn"
                   >
-                    {$t('project.adding.continue') || 'Continue'}
+                    {$t('project.adding.continue')}
                   </Button>
                   <Button
                     variant="secondary"
                     size="small"
-                    onclick={() => { abandonTarget = being; abandonError = null; }}
+                    onclick={() => {
+                      abandonTarget = being;
+                      abandonError = null;
+                    }}
                     data-testid="abandon-onboarding-btn"
                   >
-                    {$t('project.adding.abandon') || 'Abandon'}
+                    {$t('project.adding.abandon')}
                   </Button>
                 </div>
               </div>
@@ -423,14 +452,14 @@
       <!-- 2. Favourites Section -->
       {#if explorer.favourites.length > 0}
         <section class="explorer-section" data-testid="section-favourites">
-          <h2 class="section-title">★ {$t('project.explorer.favourites') || 'Favourites'}</h2>
+          <h2 class="section-title">★ {$t('project.explorer.favourites')}</h2>
           <div class="project-grid">
             {#each explorer.favourites as project (project.project_id)}
               <article class="project-card" data-testid="project-card-{project.project_id}">
                 <div class="project-card__header">
                   <button
                     class="fav-toggle-btn fav-toggle-btn--active"
-                    aria-label="Remove from favourites"
+                    aria-label={$t('project.action.unfavourite')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -463,11 +492,13 @@
                     class:badge--released={project.readiness === 'released'}
                   >
                     {#if project.readiness === 'ready'}
-                      {$t('project.state.ready') || 'ready'}
+                      {$t('project.state.ready')}
                     {:else if project.readiness === 'released'}
-                      {$t('project.state.released') || 'released'}
+                      {$t('project.state.released')}
                     {:else}
-                      {$t('project.state.setup_needs', { need: project.setup_needs_summary || 'setup' }) || `setup needs: ${project.setup_needs_summary || 'setup'}`}
+                      {$t('project.state.setup_needs', {
+                        need: project.setup_needs_summary || $t('project.state.setup'),
+                      })}
                     {/if}
                   </span>
 
@@ -478,7 +509,10 @@
                   {/if}
 
                   <span class="project-counts text-sm text-secondary">
-                    {project.active_plans_count} plans · {project.active_epics_count} epics
+                    {$t('project.explorer.counts', {
+                      plans: project.active_plans_count,
+                      epics: project.active_epics_count,
+                    })}
                   </span>
 
                   {#if project.last_active}
@@ -494,23 +528,29 @@
                     onclick={() => navigateTo('overview')}
                     data-testid="running-work-btn-{project.project_id}"
                   >
-                    {$t('project.action.running_work') || 'Running work'}
+                    {$t('project.action.running_work')}
                   </button>
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
-                      onclick={() => { releaseTarget = project; releaseError = null; }}
+                      onclick={() => {
+                        releaseTarget = project;
+                        releaseError = null;
+                      }}
                       data-testid="release-btn-{project.project_id}"
                     >
-                      {$t('project.action.release') || 'Release…'}
+                      {$t('project.action.release')}
                     </button>
                   {/if}
                   <button
                     class="btn-link text-danger"
-                    onclick={() => { unenrolTarget = project; unenrolError = null; }}
+                    onclick={() => {
+                      unenrolTarget = project;
+                      unenrolError = null;
+                    }}
                     data-testid="unenrol-btn-{project.project_id}"
                   >
-                    {$t('project.action.unenrol') || 'Unenrol…'}
+                    {$t('project.action.unenrol')}
                   </button>
                 </div>
               </article>
@@ -522,14 +562,14 @@
       <!-- 3. Recent Section -->
       {#if explorer.recent.length > 0}
         <section class="explorer-section" data-testid="section-recent">
-          <h2 class="section-title">{$t('project.explorer.recent') || 'Recent'}</h2>
+          <h2 class="section-title">{$t('project.explorer.recent')}</h2>
           <div class="project-grid">
             {#each explorer.recent as project (project.project_id)}
               <article class="project-card" data-testid="project-card-{project.project_id}">
                 <div class="project-card__header">
                   <button
                     class="fav-toggle-btn"
-                    aria-label="Mark as favourite"
+                    aria-label={$t('project.action.favourite')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -562,11 +602,13 @@
                     class:badge--released={project.readiness === 'released'}
                   >
                     {#if project.readiness === 'ready'}
-                      {$t('project.state.ready') || 'ready'}
+                      {$t('project.state.ready')}
                     {:else if project.readiness === 'released'}
-                      {$t('project.state.released') || 'released'}
+                      {$t('project.state.released')}
                     {:else}
-                      {$t('project.state.setup_needs', { need: project.setup_needs_summary || 'setup' }) || `setup needs: ${project.setup_needs_summary || 'setup'}`}
+                      {$t('project.state.setup_needs', {
+                        need: project.setup_needs_summary || $t('project.state.setup'),
+                      })}
                     {/if}
                   </span>
 
@@ -577,7 +619,10 @@
                   {/if}
 
                   <span class="project-counts text-sm text-secondary">
-                    {project.active_plans_count} plans · {project.active_epics_count} epics
+                    {$t('project.explorer.counts', {
+                      plans: project.active_plans_count,
+                      epics: project.active_epics_count,
+                    })}
                   </span>
 
                   {#if project.last_active}
@@ -593,23 +638,29 @@
                     onclick={() => navigateTo('overview')}
                     data-testid="running-work-btn-{project.project_id}"
                   >
-                    {$t('project.action.running_work') || 'Running work'}
+                    {$t('project.action.running_work')}
                   </button>
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
-                      onclick={() => { releaseTarget = project; releaseError = null; }}
+                      onclick={() => {
+                        releaseTarget = project;
+                        releaseError = null;
+                      }}
                       data-testid="release-btn-{project.project_id}"
                     >
-                      {$t('project.action.release') || 'Release…'}
+                      {$t('project.action.release')}
                     </button>
                   {/if}
                   <button
                     class="btn-link text-danger"
-                    onclick={() => { unenrolTarget = project; unenrolError = null; }}
+                    onclick={() => {
+                      unenrolTarget = project;
+                      unenrolError = null;
+                    }}
                     data-testid="unenrol-btn-{project.project_id}"
                   >
-                    {$t('project.action.unenrol') || 'Unenrol…'}
+                    {$t('project.action.unenrol')}
                   </button>
                 </div>
               </article>
@@ -622,7 +673,10 @@
       {#if explorer.all_projects.length > 0}
         <section class="explorer-section" data-testid="section-all-projects">
           <h2 class="section-title">
-            {$t('project.explorer.all') || 'All projects'} ({sortBy === 'name' ? $t('project.explorer.by_name') || 'by name' : $t('project.explorer.most_used') || 'most used'})
+            {$t('project.explorer.all')}
+            ({sortBy === 'name'
+              ? $t('project.explorer.by_name')
+              : $t('project.explorer.most_used')})
           </h2>
           <div class="project-grid">
             {#each sortedAllProjects as project (project.project_id)}
@@ -631,7 +685,9 @@
                   <button
                     class="fav-toggle-btn"
                     class:fav-toggle-btn--active={project.is_favourite}
-                    aria-label={project.is_favourite ? 'Remove from favourites' : 'Mark as favourite'}
+                    aria-label={project.is_favourite
+                      ? $t('project.action.unfavourite')
+                      : $t('project.action.favourite')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -664,11 +720,13 @@
                     class:badge--released={project.readiness === 'released'}
                   >
                     {#if project.readiness === 'ready'}
-                      {$t('project.state.ready') || 'ready'}
+                      {$t('project.state.ready')}
                     {:else if project.readiness === 'released'}
-                      {$t('project.state.released') || 'released'}
+                      {$t('project.state.released')}
                     {:else}
-                      {$t('project.state.setup_needs', { need: project.setup_needs_summary || 'setup' }) || `setup needs: ${project.setup_needs_summary || 'setup'}`}
+                      {$t('project.state.setup_needs', {
+                        need: project.setup_needs_summary || $t('project.state.setup'),
+                      })}
                     {/if}
                   </span>
 
@@ -679,7 +737,10 @@
                   {/if}
 
                   <span class="project-counts text-sm text-secondary">
-                    {project.active_plans_count} plans · {project.active_epics_count} epics
+                    {$t('project.explorer.counts', {
+                      plans: project.active_plans_count,
+                      epics: project.active_epics_count,
+                    })}
                   </span>
 
                   {#if project.last_active}
@@ -695,23 +756,29 @@
                     onclick={() => navigateTo('overview')}
                     data-testid="running-work-btn-{project.project_id}"
                   >
-                    {$t('project.action.running_work') || 'Running work'}
+                    {$t('project.action.running_work')}
                   </button>
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
-                      onclick={() => { releaseTarget = project; releaseError = null; }}
+                      onclick={() => {
+                        releaseTarget = project;
+                        releaseError = null;
+                      }}
                       data-testid="release-btn-{project.project_id}"
                     >
-                      {$t('project.action.release') || 'Release…'}
+                      {$t('project.action.release')}
                     </button>
                   {/if}
                   <button
                     class="btn-link text-danger"
-                    onclick={() => { unenrolTarget = project; unenrolError = null; }}
+                    onclick={() => {
+                      unenrolTarget = project;
+                      unenrolError = null;
+                    }}
                     data-testid="unenrol-btn-{project.project_id}"
                   >
-                    {$t('project.action.unenrol') || 'Unenrol…'}
+                    {$t('project.action.unenrol')}
                   </button>
                 </div>
               </article>
@@ -727,18 +794,20 @@
 {#if showAddModal}
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="add-project-modal">
     <div class="modal-card">
-      <h3 class="modal-title">{$t('project.explorer.add') || 'Add a project'}</h3>
+      <h3 class="modal-title">{$t('project.explorer.add')}</h3>
       <p class="modal-explain">
-        Enter the checkout path on this machine to begin onboarding.
+        {$t('project.adding.path_hint')}
       </p>
 
       <div class="modal-input-group">
-        <label for="new-project-path" class="text-sm">Checkout Path</label>
+        <label for="new-project-path" class="text-sm">
+          {$t('project.adding.path_label')}
+        </label>
         <input
           id="new-project-path"
           type="text"
           class="modal-input mono"
-          placeholder="/home/user/git/my-service"
+          placeholder={$t('project.adding.path_placeholder')}
           bind:value={newProjectPath}
           data-testid="new-project-path-input"
         />
@@ -753,10 +822,12 @@
       <div class="modal-actions">
         <Button
           variant="secondary"
-          onclick={() => { showAddModal = false; }}
+          onclick={() => {
+            showAddModal = false;
+          }}
           data-testid="cancel-add-project-btn"
         >
-          {$t('web.common.close') || 'Cancel'}
+          {$t('web.common.cancel')}
         </Button>
         <Button
           variant="primary"
@@ -764,7 +835,7 @@
           onclick={handleStartOnboarding}
           data-testid="confirm-add-project-btn"
         >
-          Start Onboarding
+          {$t('project.adding.start')}
         </Button>
       </div>
     </div>
@@ -775,27 +846,39 @@
 {#if releaseTarget}
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="release-modal">
     <div class="modal-card">
-      <h3 class="modal-title">{$t('project.release.title', { project: releaseTarget.display_name }) || `Release ${releaseTarget.display_name}?`}</h3>
-      
+      <h3 class="modal-title">
+        {$t('project.release.title', { project: releaseTarget.display_name })}
+      </h3>
+
       <div class="modal-explain">
-        <p><strong>{$t('project.release.what_ends') || 'What ends'}:</strong> {$t('project.release.ends', { plans: releaseTarget.active_plans_count, epics: releaseTarget.active_epics_count }) || `${releaseTarget.active_plans_count} plans, each ended as released and archived; ${releaseTarget.active_epics_count} epics, released with their plans and archived`}.</p>
-        <p><strong>{$t('project.release.what_stays') || 'What stays'}:</strong> {$t('project.release.stays') || "the repository: branches, worktrees, pull requests, and .marshall/ with the epics' ledgers, as they are"}.</p>
+        <p>
+          <strong>{$t('project.release.what_ends')}:</strong>
+          {$t('project.release.ends', {
+            plans: releaseTarget.active_plans_count,
+            epics: releaseTarget.active_epics_count,
+          })}.
+        </p>
+        <p><strong>{$t('project.release.what_stays')}:</strong> {$t('project.release.stays')}.</p>
       </div>
 
       <div class="modal-input-group">
-        <label for="release-reason" class="text-sm">{$t('project.release.reason') || 'Reason'}</label>
+        <label for="release-reason" class="text-sm">{$t('project.release.reason')}</label>
         <input
           id="release-reason"
           type="text"
           class="modal-input"
-          placeholder="Reason for releasing project"
+          placeholder={$t('project.release.reason_placeholder')}
           bind:value={releaseReason}
           data-testid="release-reason-input"
         />
       </div>
 
       {#if releaseError}
-        <div class="alert alert--danger modal-alert" role="alert" data-testid="release-error-banner">
+        <div
+          class="alert alert--danger modal-alert"
+          role="alert"
+          data-testid="release-error-banner"
+        >
           {releaseError}
         </div>
       {/if}
@@ -803,10 +886,12 @@
       <div class="modal-actions">
         <Button
           variant="secondary"
-          onclick={() => { releaseTarget = null; }}
+          onclick={() => {
+            releaseTarget = null;
+          }}
           data-testid="cancel-release-btn"
         >
-          {$t('project.release.keep') || 'Keep it'}
+          {$t('project.release.keep')}
         </Button>
         <Button
           variant="danger"
@@ -814,7 +899,7 @@
           onclick={handleConfirmRelease}
           data-testid="confirm-release-btn"
         >
-          {$t('project.release.action_release') || 'Release the project'}
+          {$t('project.release.action_release')}
         </Button>
       </div>
     </div>
@@ -825,13 +910,19 @@
 {#if unenrolTarget}
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="unenrol-modal">
     <div class="modal-card">
-      <h3 class="modal-title">Unenrol {unenrolTarget.display_name}?</h3>
+      <h3 class="modal-title">
+        {$t('project.release.unenrol_title', { project: unenrolTarget.display_name })}
+      </h3>
       <p class="modal-explain">
-        Its enrolment is removed and it leaves the list. Its checkout and repository stay as they are, and so does its archived work on this machine.
+        {$t('project.release.unenrol_explain')}
       </p>
 
       {#if unenrolError}
-        <div class="alert alert--danger modal-alert" role="alert" data-testid="unenrol-error-banner">
+        <div
+          class="alert alert--danger modal-alert"
+          role="alert"
+          data-testid="unenrol-error-banner"
+        >
           {unenrolError}
         </div>
       {/if}
@@ -839,10 +930,12 @@
       <div class="modal-actions">
         <Button
           variant="secondary"
-          onclick={() => { unenrolTarget = null; }}
+          onclick={() => {
+            unenrolTarget = null;
+          }}
           data-testid="cancel-unenrol-btn"
         >
-          {$t('project.release.keep') || 'Keep it'}
+          {$t('project.release.keep')}
         </Button>
         <Button
           variant="danger"
@@ -850,7 +943,7 @@
           onclick={handleConfirmUnenrol}
           data-testid="confirm-unenrol-btn"
         >
-          {$t('project.release.action_unenrol') || 'Unenrol the project'}
+          {$t('project.release.action_unenrol')}
         </Button>
       </div>
     </div>
@@ -861,9 +954,11 @@
 {#if abandonTarget}
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="abandon-modal">
     <div class="modal-card">
-      <h3 class="modal-title">Abandon adding {abandonTarget.checkout_path}?</h3>
+      <h3 class="modal-title">
+        {$t('project.adding.abandon_title', { path: abandonTarget.checkout_path })}
+      </h3>
       <p class="modal-explain">
-        {$t('project.adding.abandon_confirm', { path: abandonTarget.checkout_path }) || `Abandon adding ${abandonTarget.checkout_path}? Nothing was enrolled.`}
+        {$t('project.adding.abandon_confirm', { path: abandonTarget.checkout_path })}
       </p>
 
       {#if abandonError}
@@ -875,10 +970,12 @@
       <div class="modal-actions">
         <Button
           variant="secondary"
-          onclick={() => { abandonTarget = null; }}
+          onclick={() => {
+            abandonTarget = null;
+          }}
           data-testid="cancel-abandon-btn"
         >
-          Cancel
+          {$t('web.common.cancel')}
         </Button>
         <Button
           variant="danger"
@@ -886,7 +983,7 @@
           onclick={handleConfirmAbandon}
           data-testid="confirm-abandon-btn"
         >
-          Abandon
+          {$t('project.adding.abandon')}
         </Button>
       </div>
     </div>
@@ -1018,7 +1115,9 @@
     flex-direction: column;
     gap: var(--space-3);
     box-shadow: var(--shadow-sm);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition:
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
   }
 
   .project-card:hover {
@@ -1040,7 +1139,9 @@
     cursor: pointer;
     padding: 0 var(--space-1);
     line-height: 1;
-    transition: color 0.15s ease, transform 0.15s ease;
+    transition:
+      color 0.15s ease,
+      transform 0.15s ease;
   }
 
   .fav-toggle-btn:hover {

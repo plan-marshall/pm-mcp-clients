@@ -84,7 +84,9 @@
   }
 
   function surfaceOf(plan: StagedPlanRecord): string {
-    return plan.expected_surface.length ? plan.expected_surface.join(', ') : $t('decomposition.none');
+    return plan.expected_surface.length
+      ? plan.expected_surface.join(', ')
+      : $t('decomposition.none');
   }
 
   function changeMarker(plan: StagedPlanRecord): string | null {
@@ -171,11 +173,7 @@
     const after = planOf(readBack.after, planId);
     const rows: DiffRow[] = [];
     const pairs: Array<[string, string, string]> = [
-      [
-        $t('decomposition.objective'),
-        before?.objective ?? '',
-        after?.objective ?? '',
-      ],
+      [$t('decomposition.objective'), before?.objective ?? '', after?.objective ?? ''],
       [
         $t('decomposition.surface'),
         before ? before.expected_surface.join(', ') : '',
@@ -219,9 +217,7 @@
     return after.workstreams[0]?.staged_plans[0]?.plan_id ?? null;
   }
 
-  let erroredPlans = $derived(
-    new Set(errorFindings.flatMap((finding) => finding.affected_plans)),
-  );
+  let erroredPlans = $derived(new Set(errorFindings.flatMap((finding) => finding.affected_plans)));
 
   function backToEpic() {
     navigateTo('epic');
@@ -245,12 +241,12 @@
 <div class="decomposition" data-testid="epic-decomposition">
   {#if isLoading}
     <div class="decomposition__loading">
-      <Spinner size="2.5rem" label="Loading the decomposition…" />
+      <Spinner size="2.5rem" label={$t('decomposition.loading')} />
     </div>
   {:else if errorMessage}
     <div class="decomposition__error" role="alert" data-testid="decomposition-error">
       <p>{$t('decomposition.error', { cause: errorMessage })}</p>
-      <Button variant="secondary" onclick={() => load(true)}>Retry</Button>
+      <Button variant="secondary" onclick={() => load(true)}>{$t('web.common.retry')}</Button>
     </div>
   {:else if cut}
     <header class="decomposition__header">
@@ -306,12 +302,16 @@
                 <div class="plan__head">
                   <span class="plan__title">{plan.title}</span>
                   {#if plan.status === 'locked'}
-                    <span class="plan__tag" data-testid="plan-locked">{ $t('decomposition.locked') }</span>
+                    <span class="plan__tag" data-testid="plan-locked"
+                      >{$t('decomposition.locked')}</span
+                    >
                   {:else if changeMarker(plan)}
                     <span class="plan__tag" data-testid="plan-change">{changeMarker(plan)}</span>
                   {/if}
                   {#if droppedPlans.includes(plan.plan_id)}
-                    <span class="plan__tag plan__tag--dropped">{ $t('decomposition.change', { change: 'dropped' }) }</span>
+                    <span class="plan__tag plan__tag--dropped"
+                      >{$t('decomposition.change', { change: 'dropped' })}</span
+                    >
                   {/if}
                 </div>
                 <div class="plan__surface" data-testid="plan-surface-{plan.plan_id}">
@@ -330,13 +330,25 @@
                   </div>
                 {/each}
                 <div class="plan__actions">
-                  <button type="button" data-testid="plan-keep-{plan.plan_id}" onclick={() => keep(plan.plan_id)}>
+                  <button
+                    type="button"
+                    data-testid="plan-keep-{plan.plan_id}"
+                    onclick={() => keep(plan.plan_id)}
+                  >
                     {$t('decomposition.keep')}
                   </button>
-                  <button type="button" data-testid="plan-edit-{plan.plan_id}" onclick={() => openInstruct(plan.plan_id, 'edit')}>
+                  <button
+                    type="button"
+                    data-testid="plan-edit-{plan.plan_id}"
+                    onclick={() => openInstruct(plan.plan_id, 'edit')}
+                  >
                     {$t('decomposition.edit')}
                   </button>
-                  <button type="button" data-testid="plan-drop-{plan.plan_id}" onclick={() => drop(plan.plan_id)}>
+                  <button
+                    type="button"
+                    data-testid="plan-drop-{plan.plan_id}"
+                    onclick={() => drop(plan.plan_id)}
+                  >
                     {$t('decomposition.drop')}
                   </button>
                 </div>
@@ -364,7 +376,9 @@
           </ul>
         {/if}
         <div class="read-back__actions">
-          <Button onclick={acceptReadBack} data-testid="read-back-accept">{$t('decomposition.accept')}</Button>
+          <Button onclick={acceptReadBack} data-testid="read-back-accept"
+            >{$t('decomposition.accept')}</Button
+          >
           <button type="button" data-testid="read-back-discard" onclick={discardReadBack}>
             {$t('decomposition.discard')}
           </button>
@@ -399,7 +413,9 @@
 {#if instructOpen}
   <div class="instruct-modal" data-testid="instruct-modal" role="dialog" aria-modal="true">
     <div class="instruct-modal__panel">
-      <h2>{$t('decomposition.instruct.title', { plan: instructPlanId ?? $t('decomposition.add') })}</h2>
+      <h2>
+        {$t('decomposition.instruct.title', { plan: instructPlanId ?? $t('decomposition.add') })}
+      </h2>
       <textarea
         class="instruct-modal__input"
         data-testid="instruct-input"
@@ -407,7 +423,11 @@
         rows="3"
       ></textarea>
       <div class="instruct-modal__actions">
-        <Button onclick={submitInstruct} disabled={busy || instruction.trim().length === 0} data-testid="instruct-submit">
+        <Button
+          onclick={submitInstruct}
+          disabled={busy || instruction.trim().length === 0}
+          data-testid="instruct-submit"
+        >
           {$t('decomposition.instruct.prompt')}
         </Button>
         <button type="button" data-testid="instruct-cancel" onclick={() => (instructOpen = false)}>

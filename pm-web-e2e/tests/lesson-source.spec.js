@@ -11,13 +11,16 @@ async function pairOnLessonScenario(page, request) {
   await page.goto('/#code=KXQB-MRTN');
   await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-  const overviewNav = page.getByRole('button', { name: /Running work/i });
+  const overviewNav = page.locator('.app-header').getByRole('button', { name: /Running work/i });
   await expect(overviewNav).toBeVisible();
   await overviewNav.click();
   await expect(page.locator('.overview')).toBeVisible();
 
   // The scenario's plan-marshall asks for setup; select the ready project explicitly.
-  await page.locator('.project-list').getByRole('tab', { name: /pm-mcp-clients/i }).click();
+  await page
+    .locator('.project-list')
+    .getByRole('tab', { name: /pm-mcp-clients/i })
+    .click();
   await expect(page.locator('.project-title')).toContainText('pm-mcp-clients');
 }
 
@@ -25,7 +28,9 @@ async function openLessonModal(page) {
   await page.getByRole('button', { name: 'Start the plan' }).click();
   await page.getByTestId('start-from-lesson').click();
   await expect(page.getByTestId('lesson-modal')).toBeVisible();
-  await expect(page.getByTestId('lesson-title')).toContainText('Start from a lesson in pm-mcp-clients');
+  await expect(page.getByTestId('lesson-title')).toContainText(
+    'Start from a lesson in pm-mcp-clients',
+  );
 }
 
 test.describe('Web Client Lesson Sources (UC-STA-8)', () => {
