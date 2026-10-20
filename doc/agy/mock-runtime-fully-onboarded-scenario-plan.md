@@ -94,7 +94,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` on branch `feat/mock-runtime-fully-onboarded` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` on branch `feat/mock-runtime-fully-onboarded` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for scenario composition, `MockRuntimeEngine` alignment, and Java constants.
   - `pm-dev-java:java-security` for output safety and mock token/secret handling.
