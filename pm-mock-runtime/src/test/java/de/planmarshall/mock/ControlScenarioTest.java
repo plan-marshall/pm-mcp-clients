@@ -20,6 +20,7 @@ import java.util.Map;
 
 
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -28,7 +29,6 @@ import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.control.ChatState;
-import de.planmarshall.api.control.DecompositionResource;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.EpicWaitReason;
 import de.planmarshall.api.control.HoldRecord;
@@ -39,6 +39,7 @@ import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.TokenFigure;
 import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 
@@ -47,434 +48,386 @@ import de.planmarshall.api.json.JsonTree;
 class ControlScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
+    private static final String READY = StandardScenarios.RUNNING_WORK + "#control.ready";
 
-    @Test
-    @DisplayName("loads the control scenario and serves a running plan's actions")
-    void shouldServePlanActions() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
+    @Nested
+    @DisplayName("The actions of a plan")
+    class PlanActions {
 
-            assertEquals(StandardScenarios.CONTROL, runtime.currentScenarioName());
-            assertEquals("control.start", runtime.currentStateName());
+        @Test
+        @DisplayName("serves the running, waiting, held, paused, and ended states")
+        void everyPlanState() throws Exception {
+            try (var runtime = MockRuntime.start(READY)) {
+                assertEquals(StandardScenarios.RUNNING_WORK, runtime.currentScenarioName());
+                assertEquals("control.ready", runtime.currentStateName());
 
-            var res = client.send(HttpRequest.get("/api/v1/plans/fix-relay/actions").withHeader(AUTH_HEADER, auth));
-            assertEquals(200, res.status());
-            var actions = WorkActions.fromJson(new String(res.body()));
-            assertEquals("fix-relay", actions.subjectId());
-            assertEquals("plan", actions.subjectKind());
-            assertEquals("running", actions.state());
-            assertEquals("relay-hardening", actions.epicId());
-            assertTrue(actions.action("pause").available());
-            assertTrue(actions.action("cancel").available());
-            assertNull(actions.action("abandon"));
+                var running = actions(runtime, "fix-relay");
+                assertEquals("running", running.state());
+                assertEquals("relay-hardening", running.epicId());
+                assertTrue(running.action("pause").available());
+                assertTrue(running.action("cancel").available());
+                assertNull(running.action("abandon"));
 
-            // A held plan names its hold kind in its actions.
-            var heldRes = client.send(HttpRequest.get("/api/v1/plans/relay-docs/actions").withHeader(AUTH_HEADER, auth));
-            var heldActions = WorkActions.fromJson(new String(heldRes.body()));
-            assertEquals("held", heldActions.state());
-            assertEquals("held", heldActions.holdKind());
-        }
-    }
+                assertEquals("waiting", actions(runtime, "drop-legacy-api").state());
 
-    @Test
-    @DisplayName("pauses a plan at its point, then starts it again, broadcasting the transition")
-    void shouldPauseAndResumePlan() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
+                var held = actions(runtime, "relay-docs");
+                assertEquals("held", held.state());
+                assertEquals("held", held.holdKind());
+                assertTrue(held.action("cancel").available());
 
-            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader(AUTH_HEADER, auth))) {
-                assertTrue(exchange.isEventStream());
-                var sse = exchange.events();
-
-                var pauseBody = JsonTree.write(Map.of("point", "phase"));
-                var pauseRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/actions/pause", pauseBody)
-                        .withHeader(AUTH_HEADER, auth));
-                assertEquals(200, pauseRes.status());
-                var paused = WorkActions.fromJson(new String(pauseRes.body()));
-                assertEquals("pausing", paused.state());
-                assertEquals("phase", paused.pausingPoint());
+                var paused = actions(runtime, "relay-metrics");
+                assertEquals("paused", paused.state());
                 assertTrue(paused.action("start").available());
+                assertTrue(paused.action("abandon").available());
+                assertFalse(paused.action("chat").available());
+                assertEquals("no configuration of replan qualifies yet", paused.action("chat").reason());
 
-                var pausedEvent = sse.next();
-                assertNotNull(pausedEvent);
-                assertEquals("plan.paused", pausedEvent.event());
-                var pausedData = JsonTree.asObject(JsonTree.parse(pausedEvent.data()));
-                assertEquals("phase", JsonTree.string(pausedData, "point"));
+                var ended = actions(runtime, "docs-typo");
+                assertEquals("ended", ended.state());
+                assertEquals(List.of("chat"), ended.actions().stream()
+                        .map(ActionAvailability::action).toList());
+            }
+        }
 
-                var startRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/actions/start", "{}")
-                        .withHeader(AUTH_HEADER, auth));
-                assertEquals(200, startRes.status());
-                assertEquals("running", WorkActions.fromJson(new String(startRes.body())).state());
+        @Test
+        @DisplayName("pauses at now, after the task, and after the phase, and withdraws the pause")
+        void pausePointsAndWithdrawal() throws Exception {
+            for (var point : List.of("now", "task", "phase")) {
+                try (var runtime = MockRuntime.start(READY)) {
+                    var paused = WorkActions.fromJson(
+                            post(runtime, "/api/v1/plans/fix-relay/actions/pause",
+                                    JsonTree.write(Map.of("point", point))).bodyText());
+                    assertEquals("pausing", paused.state(), point);
+                    assertEquals(point, paused.pausingPoint(), point);
 
-                var resumedEvent = sse.next();
-                assertNotNull(resumedEvent);
-                assertEquals("plan.resumed", resumedEvent.event());
+                    var resumed = WorkActions.fromJson(
+                            post(runtime, "/api/v1/plans/fix-relay/actions/start", "{}").bodyText());
+                    assertEquals("running", resumed.state(), point);
+                    assertNull(resumed.pausingPoint(), point);
+                }
+            }
+
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK
+                         + "#control.pause-withdrawn")) {
+                assertEquals("running", actions(runtime, "fix-relay").state());
+            }
+        }
+
+        @Test
+        @DisplayName("cancels a plan with its reason, abandons a paused one, and ends a held one")
+        void ending() throws Exception {
+            try (var runtime = MockRuntime.start(READY)) {
+                var cancelled = WorkActions.fromJson(post(runtime,
+                        "/api/v1/plans/fix-relay/actions/cancel",
+                        JsonTree.write(Map.of("reason", "replaced by relay-v2", "close_pr", true)))
+                        .bodyText());
+                assertEquals("ended", cancelled.state());
+
+                var abandoned = WorkActions.fromJson(post(runtime,
+                        "/api/v1/plans/relay-metrics/actions/abandon",
+                        JsonTree.write(Map.of("reason", "no longer needed"))).bodyText());
+                assertEquals("ended", abandoned.state());
+
+                var heldEnded = post(runtime, "/api/v1/plans/relay-docs/actions/cancel",
+                        JsonTree.write(Map.of("reason", "the docs lane was dropped")));
+                assertEquals(200, heldEnded.status());
+                assertTrue(holds(runtime, "relay-docs").isEmpty());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("The holds")
+    class Holds {
+
+        @Test
+        @DisplayName("shows an integrity pause with its file and digests, still held after a retry")
+        void integrityPause() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.holds")) {
+                var holds = holds(runtime, "relay-cursor-order");
+                assertEquals(1, holds.size());
+                var hold = HoldRecord.fromMap(JsonTree.asObject(holds.getFirst()));
+                assertEquals("integrity_pause", hold.kind());
+                assertEquals("references.json", hold.filePath());
+                assertEquals(4812L, hold.recordedSize());
+                assertEquals(5034L, hold.currentSize());
+                assertTrue(hold.offers("accept"));
+                assertTrue(hold.offers("abort"));
+
+                var retry = resolve(runtime, "relay-cursor-order", "H-0001", "retry");
+                assertEquals(Boolean.FALSE, retry.get("released"));
+                assertNotNull(retry.get("cause"));
+                assertEquals("held", actions(runtime, "relay-cursor-order").state());
+
+                var accept = resolve(runtime, "relay-cursor-order", "H-0001", "accept");
+                assertEquals(Boolean.TRUE, accept.get("released"));
+                assertEquals("running", actions(runtime, "relay-cursor-order").state());
+            }
+        }
+
+        @Test
+        @DisplayName("aborts a plan from its integrity pause and ends it")
+        void abortFromIntegrityPause() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.holds")) {
+                var abort = resolve(runtime, "relay-cursor-order", "H-0001", "abort");
+                assertEquals(Boolean.TRUE, abort.get("released"));
+                assertEquals("ended", actions(runtime, "relay-cursor-order").state());
+            }
+        }
+
+        @Test
+        @DisplayName("releases a plan held for an overlap and leaves one an act does not resolve held")
+        void overlapHold() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.holds")) {
+                var hold = holds(runtime, "relay-docs").getFirst();
+                var record = HoldRecord.fromMap(JsonTree.asObject(hold));
+                assertEquals("held", record.kind());
+                assertEquals(List.of("retry", "end_plan"), record.acts());
+
+                var retry = resolve(runtime, "relay-docs", "H-0002", "retry");
+                assertEquals(Boolean.TRUE, retry.get("released"));
+                assertEquals("running", actions(runtime, "relay-docs").state());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("A plan's settings")
+    class Settings {
+
+        @Test
+        @DisplayName("guards the revision, applies a change, and refuses a value")
+        void revisionGuard() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.settings")) {
+                var settings = PlanSettingsRecord.fromJson(
+                        get(runtime, "/api/v1/plans/fix-relay/settings").bodyText());
+                assertEquals(7, settings.revision());
+                assertEquals("project", settings.value("landing").origin());
+                assertEquals("plan", settings.value("asking").origin());
+
+                var stale = put(runtime, "/api/v1/plans/fix-relay/settings",
+                        JsonTree.write(Map.of("aspect", "method", "value", "method.tests-after",
+                                "revision", 6)));
+                assertEquals(409, stale.status());
+                var conflict = PlanSettingsUpdateResult.fromJson(stale.bodyText());
+                assertTrue(conflict.conflict());
+                assertEquals("method.test-first", conflict.currentValue());
+
+                var applied = PlanSettingsUpdateResult.fromJson(put(runtime,
+                        "/api/v1/plans/fix-relay/settings",
+                        JsonTree.write(Map.of("aspect", "method", "value", "method.tests-after",
+                                "revision", 7))).bodyText());
+                assertTrue(applied.applied());
+                assertEquals(8, applied.revision());
+
+                var refused = put(runtime, "/api/v1/plans/fix-relay/settings",
+                        JsonTree.write(Map.of("aspect", "landing", "value", "landing.main",
+                                "revision", 8)));
+                assertEquals(400, refused.status());
+                assertEquals("refused", JsonTree.string(JsonTree.asObject(JsonTree.parse(refused.bodyText())),
+                        "error"));
+
+                var tooLate = put(runtime, "/api/v1/plans/docs-typo/settings",
+                        JsonTree.write(Map.of("aspect", "method", "value", "method.tests-after",
+                                "revision", 1)));
+                assertEquals(409, tooLate.status());
+                var late = PlanSettingsUpdateResult.fromJson(tooLate.bodyText());
+                assertFalse(late.applied());
+                assertEquals("ended", late.restoreState());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("The epic")
+    class Epic {
+
+        @Test
+        @DisplayName("serves the resource with its rows, waits, and archive check")
+        void resource() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
+                var epic = EpicResource.fromJson(get(runtime, "/api/v1/epics/relay-hardening").bodyText());
+                assertEquals("relay-hardening", epic.epicId());
+                assertEquals("pm-mcp-clients", epic.projectId());
+                assertEquals("running", epic.state());
+                assertTrue(epic.autoStart());
+                assertEquals(3, epic.scope());
+                assertEquals(2, epic.workstreams().size());
+
+                var auth = epic.workstreams().get(1);
+                assertEquals(EpicWaitReason.DEPENDENCY, auth.rows().get(1).waits());
+                assertEquals("relay-auth-v2", auth.rows().get(1).waitPlanId());
+                var docs = auth.rows().get(2);
+                assertEquals(EpicWaitReason.OVERLAP, docs.waits());
+                assertEquals(1, docs.overlapFiles().size());
+
+                var check = ArchiveCheck.fromJson(
+                        get(runtime, "/api/v1/epics/relay-hardening/archive-check").bodyText());
+                assertFalse(check.passed());
+                assertEquals(3, check.carriedFindings());
+                assertEquals(5, check.carriedWatches());
+                assertEquals("review-findings", check.lines().get(2).action());
+            }
+        }
+
+        @Test
+        @DisplayName("disables archive while the ledger lands and switches automatic to a named value")
+        void actionsAndAuto() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
+                var landing = WorkActions.fromJson(get(runtime,
+                        "/api/v1/epics/relay-docs-epic/actions").bodyText());
+                assertEquals("landing", landing.state());
+                assertFalse(landing.action("archive").available());
+                assertEquals("the ledger is landing", landing.action("archive").reason());
+
+                var autoOff = post(runtime, "/api/v1/epics/relay-hardening/actions/auto",
+                        JsonTree.write(Map.of("mode", "off")));
+                assertEquals(Boolean.FALSE, JsonTree.asObject(JsonTree.parse(autoOff.bodyText()))
+                        .get("auto_enabled"));
+                var autoOn = post(runtime, "/api/v1/epics/relay-hardening/actions/auto",
+                        JsonTree.write(Map.of("mode", "on")));
+                assertEquals(Boolean.TRUE, JsonTree.asObject(JsonTree.parse(autoOn.bodyText()))
+                        .get("auto_enabled"));
+            }
+        }
+
+        @Test
+        @DisplayName("serves a manual epic whose completion review runs first")
+        void manualEpicReviewFirst() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.archive")) {
+                var check = ArchiveCheck.fromJson(
+                        get(runtime, "/api/v1/epics/relay-docs-epic/archive-check").bodyText());
+                assertTrue(check.completionReviewFirst());
+            }
+        }
+
+        @Test
+        @DisplayName("serves tokens as a floor per plan, and not measured at all")
+        void tokens() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.tokens")) {
+                var tokens = JsonTree.asObject(JsonTree.parse(
+                        get(runtime, "/api/v1/epics/relay-hardening/tokens").body()));
+                assertEquals(Boolean.FALSE, tokens.get("not_measured"));
+                var figure = TokenFigure.fromMap(JsonTree.object(tokens, "total"));
+                assertEquals(3_860_000L, figure.total());
+                assertTrue(figure.floor());
+                assertEquals(1, figure.notMeasuredTasks());
+
+                assertEquals(1_400_000L, TokenFigure.fromJson(
+                        get(runtime, "/api/v1/plans/relay-reconnect-backoff/tokens").bodyText()).total());
+
+                var unmeasured = JsonTree.asObject(JsonTree.parse(
+                        get(runtime, "/api/v1/epics/relay-docs-epic/tokens").body()));
+                assertEquals(Boolean.TRUE, unmeasured.get("not_measured"));
+                assertFalse(TokenFigure.fromMap(JsonTree.object(unmeasured, "total")).measured());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("The chat")
+    class Chat {
+
+        @Test
+        @DisplayName("serves a plan's read-back, an epic's chat, and a read-only chat about ended work")
+        void chats() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.chat")) {
+                var chat = ChatReadBackResource.fromJson(
+                        get(runtime, "/api/v1/plans/fix-relay/chat").bodyText());
+                assertEquals("replan", chat.role());
+                assertEquals("plan", chat.scope());
+                assertEquals(ChatState.READ_BACK, chat.chatState());
+                assertTrue(chat.hasProposal());
+                assertEquals(2, chat.turns().size());
+
+                assertEquals("decompose", ChatReadBackResource.fromJson(
+                        get(runtime, "/api/v1/epics/relay-hardening/chat").bodyText()).role());
+
+                var ended = ChatReadBackResource.fromJson(
+                        get(runtime, "/api/v1/plans/docs-typo/chat").bodyText());
+                assertEquals("archive", ended.scope());
+                assertFalse(ended.hasProposal());
+            }
+        }
+
+        @Test
+        @DisplayName("applies a proposal once, refuses a second, and carries the chat on with a turn")
+        void proposalAndTurn() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.chat")) {
+                var accepted = ChatReadBackResource.fromJson(post(runtime,
+                        "/api/v1/plans/fix-relay/chat/proposal/accept", "{}").bodyText());
+                assertEquals(ChatState.APPLY, accepted.chatState());
+                assertFalse(accepted.hasProposal());
+
+                assertEquals(409, post(runtime, "/api/v1/plans/fix-relay/chat/proposal/accept",
+                        "{}").status());
+
+                var turned = ChatReadBackResource.fromJson(post(runtime,
+                        "/api/v1/plans/fix-relay/chat/turns",
+                        JsonTree.write(Map.of("text", "Make the test cover the SSE transport too.")))
+                        .bodyText());
+                assertEquals(ChatState.TURN, turned.chatState());
+                assertEquals(4, turned.turns().size());
+                assertTrue(turned.turns().get(2).isOperator());
+            }
+        }
+
+        @Test
+        @DisplayName("rejects a proposal and then has none left to apply")
+        void reject() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.chat")) {
+                var rejected = ChatReadBackResource.fromJson(post(runtime,
+                        "/api/v1/plans/fix-relay/chat/proposal/reject", "{}").bodyText());
+                assertFalse(rejected.hasProposal());
+                assertEquals(ChatState.TURN, rejected.chatState());
+                assertEquals(409, post(runtime, "/api/v1/plans/fix-relay/chat/proposal/accept",
+                        "{}").status());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("The review")
+    class Review {
+
+        @Test
+        @DisplayName("serves every disposition and marks an item from outside the machine untrusted")
+        void dispositions() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.review")) {
+                var review = ReviewResource.fromJson(get(runtime,
+                        "/api/v1/epics/relay-hardening/review?register=findings").bodyText());
+                assertEquals("findings", review.register());
+                assertEquals(2, review.decided());
+                assertEquals(3, review.total());
+                assertEquals(1, review.openItems().size());
+                assertEquals(ReviewDisposition.OPEN, review.item("F-0004").disposition());
+                assertTrue(review.item("F-0005").isUntrusted());
+                assertEquals(ReviewDisposition.DROPPED, review.item("F-0006").disposition());
+
+                var watches = ReviewResource.fromJson(get(runtime,
+                        "/api/v1/epics/relay-hardening/review?register=watches").bodyText());
+                assertEquals("watches", watches.register());
+                assertEquals(2, watches.items().size());
+            }
+        }
+
+        @Test
+        @DisplayName("defaults to the findings register and honours a later query parameter")
+        void defaults() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.review")) {
+                assertEquals("findings", ReviewResource.fromJson(
+                        get(runtime, "/api/v1/epics/relay-hardening/review").bodyText()).register());
+                assertEquals("watches", ReviewResource.fromJson(get(runtime,
+                        "/api/v1/epics/relay-hardening/review?limit=1&register=watches").bodyText())
+                        .register());
             }
         }
     }
 
     @Test
-    @DisplayName("cancels a plan with its reason")
-    void shouldCancelPlan() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader(AUTH_HEADER, auth))) {
-                var sse = exchange.events();
-                var body = JsonTree.write(Map.of("reason", "replaced by relay-v2"));
-                var res = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/actions/cancel", body)
-                        .withHeader(AUTH_HEADER, auth));
-                assertEquals(200, res.status());
-                assertEquals("ended", WorkActions.fromJson(new String(res.body())).state());
-
-                var event = sse.next();
-                assertNotNull(event);
-                assertEquals("plan.cancelled", event.event());
-                var data = JsonTree.asObject(JsonTree.parse(event.data()));
-                assertEquals("replaced by relay-v2", JsonTree.string(data, "reason"));
-            }
-        }
-    }
-
-    @Test
-    @DisplayName("lists an integrity pause and still holds after a retry, releasing after an accept")
-    void shouldResolveIntegrityHold() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var listRes = client.send(HttpRequest.get("/api/v1/plans/relay-cursor-order/holds").withHeader(AUTH_HEADER, auth));
-            assertEquals(200, listRes.status());
-            var holds = JsonTree.asArray(JsonTree.parse(listRes.body()));
-            assertNotNull(holds);
-            assertEquals(1, holds.size());
-            var hold = HoldRecord.fromMap(JsonTree.asObject(holds.getFirst()));
-            assertEquals("integrity_pause", hold.kind());
-            assertEquals("references.json", hold.filePath());
-            assertEquals(4812L, hold.recordedSize());
-            assertTrue(hold.offers("accept"));
-            assertTrue(hold.offers("abort"));
-
-            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader(AUTH_HEADER, auth))) {
-                var sse = exchange.events();
-
-                var retryRes = client.send(HttpRequest.json("POST",
-                        "/api/v1/plans/relay-cursor-order/holds/H-0001/resolve",
-                        JsonTree.write(Map.of("act", "retry")))
-                        .withHeader(AUTH_HEADER, auth));
-                assertEquals(200, retryRes.status());
-                var retryResult = JsonTree.asObject(JsonTree.parse(retryRes.body()));
-                assertEquals(Boolean.FALSE, retryResult.get("released"));
-                assertNotNull(JsonTree.string(retryResult, "cause"));
-
-                var changed = sse.next();
-                assertNotNull(changed);
-                assertEquals("hold.changed", changed.event());
-
-                var acceptRes = client.send(HttpRequest.json("POST",
-                        "/api/v1/plans/relay-cursor-order/holds/H-0001/resolve",
-                        JsonTree.write(Map.of("act", "accept")))
-                        .withHeader(AUTH_HEADER, auth));
-                assertEquals(200, acceptRes.status());
-                assertEquals(Boolean.TRUE, JsonTree.asObject(JsonTree.parse(acceptRes.body())).get("released"));
-
-                var cleared = sse.next();
-                assertNotNull(cleared);
-                assertEquals("hold.cleared", cleared.event());
-
-                // The plan goes on from where it rested.
-                var actionsRes = client.send(HttpRequest.get("/api/v1/plans/relay-cursor-order/actions").withHeader(AUTH_HEADER, auth));
-                assertEquals("running", WorkActions.fromJson(new String(actionsRes.body())).state());
-            }
-        }
-    }
-
-    @Test
-    @DisplayName("guards plan settings against a stale revision and refused landing")
-    void shouldGuardPlanSettings() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var getRes = client.send(HttpRequest.get("/api/v1/plans/fix-relay/settings").withHeader(AUTH_HEADER, auth));
-            assertEquals(200, getRes.status());
-            var settings = PlanSettingsRecord.fromJson(new String(getRes.body()));
-            assertEquals("fix-relay", settings.planId());
-            assertEquals(7, settings.revision());
-            assertEquals("project", settings.value("landing").origin());
-            assertEquals("plan", settings.value("asking").origin());
-
-            var staleBody = JsonTree.write(Map.of("aspect", "method", "value", "method.tests-after", "revision", 6));
-            var staleRes = client.send(HttpRequest.json("PUT", "/api/v1/plans/fix-relay/settings", staleBody)
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(409, staleRes.status());
-            var conflict = PlanSettingsUpdateResult.fromJson(new String(staleRes.body()));
-            assertTrue(conflict.conflict());
-            assertEquals("method.test-first", conflict.currentValue());
-
-            var applyBody = JsonTree.write(Map.of("aspect", "method", "value", "method.tests-after", "revision", 7));
-            var applyRes = client.send(HttpRequest.json("PUT", "/api/v1/plans/fix-relay/settings", applyBody)
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, applyRes.status());
-            var applied = PlanSettingsUpdateResult.fromJson(new String(applyRes.body()));
-            assertTrue(applied.applied());
-            assertEquals(8, applied.revision());
-
-            var refusedBody = JsonTree.write(Map.of("aspect", "landing", "value", "landing.main", "revision", 8));
-            var refusedRes = client.send(HttpRequest.json("PUT", "/api/v1/plans/fix-relay/settings", refusedBody)
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(400, refusedRes.status());
-            assertEquals("refused", JsonTree.string(JsonTree.asObject(JsonTree.parse(refusedRes.body())), "error"));
-        }
-    }
-
-    @Test
-    @DisplayName("serves epic actions with archive disabled while the ledger lands, and toggles automatic")
-    void shouldServeEpicActions() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var landingRes = client.send(HttpRequest.get("/api/v1/epics/relay-docs-epic/actions").withHeader(AUTH_HEADER, auth));
-            assertEquals(200, landingRes.status());
-            var landing = WorkActions.fromJson(new String(landingRes.body()));
-            assertEquals("epic", landing.subjectKind());
-            assertEquals("landing", landing.state());
-            ActionAvailability archive = landing.action("archive");
-            assertNotNull(archive);
-            assertFalse(archive.available());
-            assertEquals("the ledger is landing", archive.reason());
-
-            var runningRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/actions").withHeader(AUTH_HEADER, auth));
-            var running = WorkActions.fromJson(new String(runningRes.body()));
-            assertEquals("running", running.state());
-            assertTrue(running.action("next").available());
-            assertTrue(running.action("auto").available());
-
-            var autoBody = JsonTree.write(Map.of("enabled", false));
-            var autoRes = client.send(HttpRequest.json("POST", "/api/v1/epics/relay-hardening/actions/auto", autoBody)
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, autoRes.status());
-            assertEquals(Boolean.FALSE, JsonTree.asObject(JsonTree.parse(autoRes.body())).get("auto_enabled"));
-        }
-    }
-
-    @Test
-    @DisplayName("returns 404 for an action on an unknown plan")
-    void shouldReturn404ForUnknownPlan() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.json("POST", "/api/v1/plans/unknown-plan/actions/pause", "{}")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(404, res.status());
-        }
-    }
-
-    @Test
-    @DisplayName("serves the epic as a resource with its rows, waits, archive check, and tokens")
-    void shouldServeEpicResource() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_EPIC)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.get("/api/v1/epics/relay-hardening").withHeader(AUTH_HEADER, auth));
-            assertEquals(200, res.status());
-            var epic = EpicResource.fromJson(new String(res.body()));
-            assertEquals("relay-hardening", epic.epicId());
-            assertEquals("pm-mcp-clients", epic.projectId());
-            assertEquals("running", epic.state());
-            assertTrue(epic.autoStart());
-            assertEquals(3, epic.scope());
-            assertEquals(2, epic.workstreams().size());
-
-            var ws2 = epic.workstreams().get(1);
-            assertEquals("WS-2", ws2.id());
-            assertEquals(EpicWaitReason.DEPENDENCY, ws2.rows().get(1).waits());
-            assertEquals("relay-auth-v2", ws2.rows().get(1).waitPlanId());
-            var docs = ws2.rows().get(2);
-            assertEquals(EpicWaitReason.OVERLAP, docs.waits());
-            assertEquals("relay-auth-v2", docs.waitPlanId());
-            assertEquals(1, docs.overlapFiles().size());
-
-            // the archive check fails on the open findings and carries the kept ones
-            var checkRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/archive-check")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, checkRes.status());
-            var check = ArchiveCheck.fromJson(new String(checkRes.body()));
-            assertFalse(check.passed());
-            assertEquals(3, check.carriedFindings());
-            assertEquals(5, check.carriedWatches());
-            assertFalse(check.completionReviewFirst());
-            assertEquals("review-findings", check.lines().get(2).action());
-
-            // a manual epic runs its completion review first
-            var manualRes = client.send(HttpRequest.get("/api/v1/epics/relay-docs-epic/archive-check")
-                    .withHeader(AUTH_HEADER, auth));
-            assertTrue(ArchiveCheck.fromJson(new String(manualRes.body())).completionReviewFirst());
-        }
-    }
-
-    @Test
-    @DisplayName("serves the epic's tokens as a floor, per plan and for its own tasks")
-    void shouldServeTokens() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_TOKENS)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var epicRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/tokens")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, epicRes.status());
-            var tokens = JsonTree.asObject(JsonTree.parse(epicRes.body()));
-            assertEquals(Boolean.FALSE, tokens.get("not_measured"));
-            var figure = TokenFigure.fromMap(JsonTree.object(tokens, "total"));
-            assertEquals(3_860_000L, figure.total());
-            assertTrue(figure.floor());
-            assertEquals(1, figure.notMeasuredTasks());
-
-            var planRes = client.send(HttpRequest.get("/api/v1/plans/relay-reconnect-backoff/tokens")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, planRes.status());
-            assertEquals(1_400_000L, TokenFigure.fromJson(new String(planRes.body())).total());
-
-            // an epic whose model calls were not measured at all reports not_measured, never 0
-            var unmeasuredRes = client.send(HttpRequest.get("/api/v1/epics/relay-docs-epic/tokens")
-                    .withHeader(AUTH_HEADER, auth));
-            var unmeasured = JsonTree.asObject(JsonTree.parse(unmeasuredRes.body()));
-            assertEquals(Boolean.TRUE, unmeasured.get("not_measured"));
-            assertFalse(TokenFigure.fromMap(JsonTree.object(unmeasured, "total")).measured());
-        }
-    }
-
-    @Test
-    @DisplayName("serves the decomposition draft with its workstreams and plans")
-    void shouldServeControlDecomposition() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/decomposition")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, res.status());
-            var decomposition = DecompositionResource.fromJson(new String(res.body()));
-            assertEquals("relay-hardening", decomposition.epicId());
-            assertEquals(2, decomposition.workstreams().size());
-            assertEquals(4, decomposition.planCount());
-            assertEquals("relay-reconnect-backoff", decomposition.workstreams().getFirst().plans().getFirst().planId());
-            assertEquals(List.of("pm-relay/src/reconnect"),
-                    decomposition.workstreams().getFirst().plans().getFirst().surface());
-        }
-    }
-
-    @Test
-    @DisplayName("serves a chat with the planning role, its proposal, and a chat about ended work")
-    void shouldServeChat() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_CHAT)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.get("/api/v1/plans/fix-relay/chat").withHeader(AUTH_HEADER, auth));
-            assertEquals(200, res.status());
-            var chat = ChatReadBackResource.fromJson(new String(res.body()));
-            assertEquals("replan", chat.role());
-            assertEquals("plan", chat.scope());
-            assertEquals(ChatState.READ_BACK, chat.chatState());
-            assertTrue(chat.hasProposal());
-            assertEquals(2, chat.turns().size());
-
-            // rejecting the proposal drops it and moves the chat on
-            var rejectRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/reject", "{}")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, rejectRes.status());
-            var rejected = ChatReadBackResource.fromJson(new String(rejectRes.body()));
-            assertFalse(rejected.hasProposal());
-            assertEquals(ChatState.TURN, rejected.chatState());
-
-            // nothing is left to apply after a reject
-            var acceptAfterReject = client.send(HttpRequest.json("POST",
-                    "/api/v1/plans/fix-relay/chat/proposal/accept", "{}").withHeader(AUTH_HEADER, auth));
-            assertEquals(409, acceptAfterReject.status());
-
-            // the epic's chat is routed to decompose
-            var epicRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/chat").withHeader(AUTH_HEADER, auth));
-            assertEquals("decompose", ChatReadBackResource.fromJson(new String(epicRes.body())).role());
-
-            // a chat about ended work is read-only, about the archive
-            var endedRes = client.send(HttpRequest.get("/api/v1/plans/docs-typo/chat").withHeader(AUTH_HEADER, auth));
-            var ended = ChatReadBackResource.fromJson(new String(endedRes.body()));
-            assertEquals("archive", ended.scope());
-            assertFalse(ended.hasProposal());
-        }
-    }
-
-    @Test
-    @DisplayName("serves the findings and watches review with every disposition")
-    void shouldServeReview() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_REVIEW)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review?register=findings")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, res.status());
-            var review = ReviewResource.fromJson(new String(res.body()));
-            assertEquals("findings", review.register());
-            assertEquals(2, review.decided());
-            assertEquals(3, review.total());
-            assertEquals(1, review.openItems().size());
-            assertEquals(ReviewDisposition.OPEN, review.item("F-0004").disposition());
-            assertTrue(review.item("F-0005").isUntrusted());
-            assertEquals(ReviewDisposition.DROPPED, review.item("F-0006").disposition());
-
-            var watchesRes = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review?register=watches")
-                    .withHeader(AUTH_HEADER, auth));
-            var watches = ReviewResource.fromJson(new String(watchesRes.body()));
-            assertEquals("watches", watches.register());
-            assertEquals(2, watches.items().size());
-        }
-    }
-
-    @Test
-    @DisplayName("applies a chat proposal once and refuses a second, then carries the chat on with a turn")
-    void shouldChatTurnAndProposal() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL_CHAT)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var acceptRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, acceptRes.status());
-            var accepted = ChatReadBackResource.fromJson(new String(acceptRes.body()));
-            assertEquals(ChatState.APPLY, accepted.chatState());
-            assertFalse(accepted.hasProposal());
-
-            // there is nothing left to apply, so the second accept is refused
-            var second = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/proposal/accept", "{}")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(409, second.status());
-
-            var turnRes = client.send(HttpRequest.json("POST", "/api/v1/plans/fix-relay/chat/turns",
-                    JsonTree.write(Map.of("text", "Make the test cover the SSE transport too.")))
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, turnRes.status());
-            var turned = ChatReadBackResource.fromJson(new String(turnRes.body()));
-            assertEquals(ChatState.TURN, turned.chatState());
-            assertEquals(4, turned.turns().size());
-            assertTrue(turned.turns().get(2).isOperator());
-        }
-    }
-
-    @Test
-    @DisplayName("answers 404 for a control resource of an unknown subject")
-    void shouldAnswer404ForUnknownControlResource() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
+    @DisplayName("answers 404 for an unknown subject")
+    void unknownSubject() throws Exception {
+        try (var runtime = MockRuntime.start(READY)) {
             for (var path : List.of(
                     "/api/v1/epics/unknown-epic",
                     "/api/v1/epics/unknown-epic/tokens",
@@ -483,34 +436,44 @@ class ControlScenarioTest {
                     "/api/v1/epics/unknown-epic/review",
                     "/api/v1/plans/unknown-plan/tokens",
                     "/api/v1/plans/unknown-plan/chat")) {
-                var res = client.send(HttpRequest.get(path).withHeader(AUTH_HEADER, auth));
-                assertEquals(404, res.status(), path);
+                assertEquals(404, get(runtime, path).status(), path);
             }
-
-            var turn = client.send(HttpRequest.json("POST", "/api/v1/plans/unknown-plan/chat/turns", "{}")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(404, turn.status());
-            var proposal = client.send(HttpRequest.json("POST",
-                    "/api/v1/plans/unknown-plan/chat/proposal/reject", "{}").withHeader(AUTH_HEADER, auth));
-            assertEquals(404, proposal.status());
+            assertEquals(404, post(runtime, "/api/v1/plans/unknown-plan/actions/pause", "{}").status());
+            assertEquals(404, post(runtime, "/api/v1/plans/unknown-plan/chat/turns", "{}").status());
         }
     }
 
-    @Test
-    @DisplayName("defaults a review to the findings register and honours a later query parameter")
-    void shouldDefaultReviewRegister() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.CONTROL)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
+    private static WorkActions actions(MockRuntime runtime, String planId) throws Exception {
+        return WorkActions.fromJson(get(runtime, "/api/v1/plans/" + planId + "/actions").bodyText());
+    }
 
-            var defaulted = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals(200, defaulted.status());
-            assertEquals("findings", ReviewResource.fromJson(new String(defaulted.body())).register());
+    private static List<Object> holds(MockRuntime runtime, String planId) throws Exception {
+        var holds = JsonTree.asArray(JsonTree.parse(
+                get(runtime, "/api/v1/plans/" + planId + "/holds").body()));
+        assertNotNull(holds);
+        return List.copyOf(holds);
+    }
 
-            var second = client.send(HttpRequest.get("/api/v1/epics/relay-hardening/review?limit=1&register=watches")
-                    .withHeader(AUTH_HEADER, auth));
-            assertEquals("watches", ReviewResource.fromJson(new String(second.body())).register());
-        }
+    private static Map<String, Object> resolve(MockRuntime runtime, String planId, String holdId,
+            String act) throws Exception {
+        var response = post(runtime, "/api/v1/plans/" + planId + "/holds/" + holdId + "/resolve",
+                JsonTree.write(Map.of("act", act)));
+        assertEquals(200, response.status(), act);
+        return JsonTree.asObject(JsonTree.parse(response.body()));
+    }
+
+    private static HttpResponse get(MockRuntime runtime, String path) throws Exception {
+        return new UnixSocketHttpClient(runtime.socketPath())
+                .send(HttpRequest.get(path).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
+    }
+
+    private static HttpResponse post(MockRuntime runtime, String path, String body) throws Exception {
+        return new UnixSocketHttpClient(runtime.socketPath())
+                .send(HttpRequest.json("POST", path, body).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
+    }
+
+    private static HttpResponse put(MockRuntime runtime, String path, String body) throws Exception {
+        return new UnixSocketHttpClient(runtime.socketPath())
+                .send(HttpRequest.json("PUT", path, body).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
     }
 }

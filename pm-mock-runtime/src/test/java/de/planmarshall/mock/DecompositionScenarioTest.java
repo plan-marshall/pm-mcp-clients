@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.planmarshall.api.control.DecompositionResource;
 import de.planmarshall.api.decomposition.CheckSeverity;
 import de.planmarshall.api.decomposition.DecompositionCheckFinding;
 import de.planmarshall.api.decomposition.DecompositionCommitResult;
@@ -30,6 +31,7 @@ import de.planmarshall.api.decomposition.DecompositionState;
 import de.planmarshall.api.decomposition.EpicDecomposition;
 import de.planmarshall.api.decomposition.InstructAction;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 
@@ -38,19 +40,17 @@ import de.planmarshall.api.json.JsonTree;
 class DecompositionScenarioTest {
 
     private static final String BASE = "/api/v1/projects/pm-mcp-clients/epics/";
+    private static final String STATE = StandardScenarios.RUNNING_WORK + "#control.decomposition";
+    private static final String AUTH_HEADER = "Authorization";
 
     @Test
-    @DisplayName("loads the decomposition scenario and serves the drafted cut")
+    @DisplayName("loads the scenario and serves the drafted cut")
     void shouldLoadScenarioAndServeCut() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
+        try (var runtime = MockRuntime.start(STATE)) {
+            assertEquals(StandardScenarios.RUNNING_WORK, runtime.currentScenarioName());
+            assertEquals("control.decomposition", runtime.currentStateName());
 
-            assertEquals(StandardScenarios.DECOMPOSITION, runtime.currentScenarioName());
-            assertEquals("decomposition.review", runtime.currentStateName());
-
-            var res = client.send(HttpRequest.get(BASE + "relay-hardening/decomposition")
-                    .withHeader("Authorization", auth));
+            var res = get(runtime, BASE + "relay-hardening/decomposition");
             assertEquals(200, res.status());
 
             var cut = EpicDecomposition.fromJson(res.bodyText());
@@ -63,14 +63,27 @@ class DecompositionScenarioTest {
     }
 
     @Test
+    @DisplayName("serves the control view of the draft with its workstreams and plans")
+    void servesTheControlView() throws Exception {
+        try (var runtime = MockRuntime.start(STATE)) {
+            var res = get(runtime, "/api/v1/epics/relay-hardening/decomposition");
+            assertEquals(200, res.status());
+            var decomposition = DecompositionResource.fromJson(res.bodyText());
+            assertEquals("relay-hardening", decomposition.epicId());
+            assertEquals(2, decomposition.workstreams().size());
+            assertEquals(4, decomposition.planCount());
+            assertEquals("relay-reconnect-backoff",
+                    decomposition.workstreams().getFirst().plans().getFirst().planId());
+            assertEquals(List.of("pm-relay/src/reconnect"),
+                    decomposition.workstreams().getFirst().plans().getFirst().surface());
+        }
+    }
+
+    @Test
     @DisplayName("checks the surface disjointness and names the overlapping plans")
     void shouldCheckSurfaceDisjointness() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.json("POST", BASE + "relay-hardening/decomposition/check", "{}")
-                    .withHeader("Authorization", auth));
+        try (var runtime = MockRuntime.start(STATE)) {
+            var res = post(runtime, BASE + "relay-hardening/decomposition/check", "{}");
             assertEquals(200, res.status());
 
             var cut = EpicDecomposition.fromJson(res.bodyText());
@@ -87,12 +100,8 @@ class DecompositionScenarioTest {
     @Test
     @DisplayName("reports a dependency cycle")
     void shouldReportDependencyCycle() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.json("POST", BASE + "storage-migration/decomposition/check", "{}")
-                    .withHeader("Authorization", auth));
+        try (var runtime = MockRuntime.start(STATE)) {
+            var res = post(runtime, BASE + "storage-migration/decomposition/check", "{}");
             assertEquals(200, res.status());
 
             var cut = EpicDecomposition.fromJson(res.bodyText());
@@ -103,27 +112,20 @@ class DecompositionScenarioTest {
     }
 
     @Test
-    @DisplayName("instructs a rewrite and lets the checks pass afterwards")
+    @DisplayName("instructs a rewrite, reads it back, and lets the checks pass afterwards")
     void shouldInstructRewriteAndPassChecks() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
+        try (var runtime = MockRuntime.start(STATE)) {
             var instruct = new DecompositionInstructRequest("relay-auth-v2",
                     "Keep it out of pm-api: the exchange belongs into pm-relay.", InstructAction.EDIT);
-            var instructed = client.send(HttpRequest.json("POST", BASE + "relay-hardening/decomposition/instruct",
-                    instruct.toJson()).withHeader("Authorization", auth));
+            var instructed = post(runtime, BASE + "relay-hardening/decomposition/instruct",
+                    instruct.toJson());
             assertEquals(200, instructed.status());
 
             var rewritten = EpicDecomposition.fromJson(instructed.bodyText());
             assertEquals(DecompositionState.READ_BACK, rewritten.status());
-            var plan = rewritten.plan("relay-auth-v2");
-            assertEquals("relay-auth-v2", plan.planId());
-            assertTrue(plan.expectedSurface().getFirst().startsWith("pm-relay"));
-            assertEquals("relay-auth-v2", rewritten.plan("relay-auth-v2").planId());
+            assertTrue(rewritten.plan("relay-auth-v2").expectedSurface().getFirst().startsWith("pm-relay"));
 
-            var checked = client.send(HttpRequest.json("POST", BASE + "relay-hardening/decomposition/check", "{}")
-                    .withHeader("Authorization", auth));
+            var checked = post(runtime, BASE + "relay-hardening/decomposition/check", "{}");
             var afterCheck = EpicDecomposition.fromJson(checked.bodyText());
             assertTrue(afterCheck.everyCheckPasses());
             assertEquals(DecompositionState.REVIEW, afterCheck.status());
@@ -133,36 +135,31 @@ class DecompositionScenarioTest {
     @Test
     @DisplayName("refuses a commit while a check fails")
     void shouldRefuseCommitWhileCheckFails() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.json("POST", BASE + "relay-hardening/decomposition/commit", "{}")
-                    .withHeader("Authorization", auth));
+        try (var runtime = MockRuntime.start(STATE)) {
+            var res = post(runtime, BASE + "relay-hardening/decomposition/commit", "{}");
             assertEquals(409, res.status());
-            var body = JsonTree.asObject(JsonTree.parse(res.bodyText()));
-            assertEquals("checks_fail", JsonTree.string(body, "error"));
+            assertEquals("checks_fail", JsonTree.string(JsonTree.asObject(JsonTree.parse(res.bodyText())),
+                    "error"));
         }
     }
 
     @Test
     @DisplayName("commits an agreed cut and broadcasts the launchable plans")
     void shouldCommitAndBroadcast() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
+        try (var runtime = MockRuntime.start(STATE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
             var instruct = new DecompositionInstructRequest("relay-auth-v2",
                     "the exchange belongs into pm-relay instead", InstructAction.EDIT);
-            client.send(HttpRequest.json("POST", BASE + "relay-hardening/decomposition/instruct",
-                    instruct.toJson()).withHeader("Authorization", auth));
+            post(runtime, BASE + "relay-hardening/decomposition/instruct", instruct.toJson());
 
-            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events")
+                         .withHeader(AUTH_HEADER, auth))) {
                 assertTrue(exchange.isEventStream());
                 var sse = exchange.events();
 
-                var res = client.send(HttpRequest.json("POST", BASE + "relay-hardening/decomposition/commit", "{}")
-                        .withHeader("Authorization", auth));
+                var res = post(runtime, BASE + "relay-hardening/decomposition/commit", "{}");
                 assertEquals(200, res.status());
 
                 var result = DecompositionCommitResult.fromJson(res.bodyText());
@@ -184,42 +181,12 @@ class DecompositionScenarioTest {
     }
 
     @Test
-    @DisplayName("answers 404 for an epic without a decomposition")
-    void shouldRefuseUnknownEpic() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.get(BASE + "no-such-epic/decomposition")
-                    .withHeader("Authorization", auth));
-            assertEquals(404, res.status());
-        }
-    }
-
-    @Test
-    @DisplayName("answers 404 for an unknown project")
-    void shouldRefuseUnknownProject() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
-            var res = client.send(HttpRequest.get("/api/v1/projects/no-such-project/epics/relay-hardening/decomposition")
-                    .withHeader("Authorization", auth));
-            assertEquals(404, res.status());
-        }
-    }
-
-    @Test
     @DisplayName("adds a plan through an add instruction")
     void shouldAddPlan() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.DECOMPOSITION)) {
-            var client = new UnixSocketHttpClient(runtime.socketPath());
-            var auth = "Bearer " + runtime.token();
-
+        try (var runtime = MockRuntime.start(STATE)) {
             var instruct = new DecompositionInstructRequest(null, "add a docs plan for pm-relay",
                     InstructAction.ADD);
-            var res = client.send(HttpRequest.json("POST", BASE + "relay-hardening/decomposition/instruct",
-                    instruct.toJson()).withHeader("Authorization", auth));
+            var res = post(runtime, BASE + "relay-hardening/decomposition/instruct", instruct.toJson());
             assertEquals(200, res.status());
 
             var cut = EpicDecomposition.fromJson(res.bodyText());
@@ -227,5 +194,25 @@ class DecompositionScenarioTest {
             assertTrue(cut.workstreams().stream().flatMap(ws -> ws.stagedPlans().stream())
                     .anyMatch(plan -> "new".equals(plan.status())));
         }
+    }
+
+    @Test
+    @DisplayName("answers 404 for an epic without a decomposition and for an unknown project")
+    void refusesUnknownEpicAndProject() throws Exception {
+        try (var runtime = MockRuntime.start(STATE)) {
+            assertEquals(404, get(runtime, BASE + "no-such-epic/decomposition").status());
+            assertEquals(404, get(runtime,
+                    "/api/v1/projects/no-such-project/epics/relay-hardening/decomposition").status());
+        }
+    }
+
+    private static HttpResponse get(MockRuntime runtime, String path) throws Exception {
+        return new UnixSocketHttpClient(runtime.socketPath())
+                .send(HttpRequest.get(path).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
+    }
+
+    private static HttpResponse post(MockRuntime runtime, String path, String body) throws Exception {
+        return new UnixSocketHttpClient(runtime.socketPath())
+                .send(HttpRequest.json("POST", path, body).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
     }
 }

@@ -23,11 +23,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 @DisplayName("StandardScenarios")
 class StandardScenariosTest {
@@ -99,8 +102,8 @@ class StandardScenariosTest {
     }
 
     @Test
-    @DisplayName("registers exactly the control scenario resources")
-    void controlScenariosMatchResources() throws Exception {
+    @DisplayName("resolves every control scenario constant to the consolidated running-work scenario")
+    void controlScenariosResolveIntoRunningWork() throws Exception {
         var constants = new TreeSet<String>();
         for (var field : StandardScenarios.class.getDeclaredFields()) {
             if (Modifier.isStatic(field.getModifiers()) && field.getType() == String.class) {
@@ -120,7 +123,13 @@ class StandardScenariosTest {
             files.filter(path -> path.getFileName().toString().startsWith("control"))
                     .forEach(path -> resources.add(path.getFileName().toString().replace(".json", "")));
         }
-        assertEquals(constants, resources);
+        assertEquals(Set.of(), resources, "the control case files are consolidated into running-work.json");
+
+        var registry = new ScenarioRegistry();
+        for (var name : constants) {
+            var scenario = registry.resolve(name);
+            assertEquals(StandardScenarios.RUNNING_WORK, scenario.name(), name);
+        }
     }
 
     @Test

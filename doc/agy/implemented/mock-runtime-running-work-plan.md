@@ -56,15 +56,15 @@ Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`). Independent of 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-running-work` on branch `feat/mock-runtime-running-work` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/mock-runtime-running-work-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-running-work-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/mock-runtime-running-work-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-running-work-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/mock-runtime-running-work-plan-report.md` by orchestrator session.
@@ -85,20 +85,20 @@ Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`). Independent of 
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Overview, Process View & Intent States and Routes in `running-work.json`
-- [ ] **1.1 Overview States & Routes**:
+- [x] **1.1 Overview States & Routes**:
   - Populate `running-work.json` with `OperatorStateResource` states (`overview.running`, `overview.empty`, `overview.setup-only`, `overview.plan-ending`) and `GET /api/v1/overview` representations covering all 10 cases in `overview-contract.adoc`.
-- [ ] **1.2 Process View, Intent & Task Activity Routes**:
+- [x] **1.2 Process View, Intent & Task Activity Routes**:
   - Merge `plan-view.json` and `intent.json` routes (`/api/v1/plans/{id}/process`, `/api/v1/plans/{id}/intent`, `/api/v1/plans/{id}/outline`, `/api/v1/epics/{id}/process`, `/api/v1/epics/{id}/intent`, and `/api/v1/plans/{id}/tasks/{taskId}/activity`) and states (`process.running`, `process.loopback`, `process.nested-3-deep`, `process.pruned-lane`, `process.new-version`, `process.failed-tool`, `process.off-track`, `process.tokens-partial`, `process.tokens-none`, `intent.ready`) in `running-work.json`, with `EventEnvelope` events for live task activity and token updates.
 
 ### Phase 2: Decisions, Decomposition & Control Consolidation
-- [ ] **2.1 Decision States & Routes**:
+- [x] **2.1 Decision States & Routes**:
   - Consolidate `decisions.json` into `running-work.json` (`decisions.open`, `decisions.answered-elsewhere`, `decisions.withdrawn`) with full `DecisionEnvelope` fixtures covering blocking/non-blocking, single/multi-part, all reversibility levels, own-words interpretation, and waivers.
-- [ ] **2.2 Control & Decomposition States & Routes**:
+- [x] **2.2 Control & Decomposition States & Routes**:
   - Consolidate `decomposition.json` and the 9 `control*.json` files into `running-work.json` states (`control.ready`, `control.pause`, `control.holds`, `control.settings`, `control.epic`, `control.decomposition`, `control.chat`, `control.review`, `control.tokens`) and declarative routes, seeding `MockRuntimeEngine`'s stateful control maps from `running-work.json` routes rather than hardcoded Java literals.
   - Delete `plan-view.json`, `intent.json`, `decisions.json`, `decomposition.json`, and `control*.json`.
 
 ### Phase 3: Contract Verification Tests
-- [ ] **3.1 Expand Test Suites**:
+- [x] **3.1 Expand Test Suites**:
   - Update `RunningWorkScenarioTest`, `PlanViewScenarioTest`, `DecisionsScenarioTest`, `DecompositionScenarioTest`, and `ControlScenarioTest` to assert every required case in `overview-contract.adoc`, `process-contract.adoc`, `decision-contract.adoc`, and `control-contract.adoc`.
-- [ ] **3.2 Pre-Commit & Operational Gate**:
+- [x] **3.2 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).
