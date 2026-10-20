@@ -777,6 +777,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param status the status representation to complete
      */
     private void applyStateRuntimeToStatus(Map<String, Object> status) {
+        if (!StandardScenarios.ONBOARDING.equals(currentScenario.get().name())) {
+            // The legacy scenarios declare their status in the route; only the consolidated
+            // onboarding scenario derives it from the state it is in.
+            return;
+        }
         var stateId = currentStateId.get();
         var runtime = stateRuntimeFixture(stateId);
         if (runtime != null) {
