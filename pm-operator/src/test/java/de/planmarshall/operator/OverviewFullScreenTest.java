@@ -578,6 +578,9 @@ class OverviewFullScreenTest {
             var stream = activeStream.get();
             if (stream != null) {
                 try {
+                    stream.send("decision", "{\"project_id\":\"pm-mcp-clients\",\"type\":\"decision\",\"message\":\"waiver needed\"}");
+                    stream.send("report", "{\"project_id\":\"pm-mcp-clients\",\"type\":\"report\",\"count\":3}");
+                    stream.send("hold.requested", "{\"project_id\":\"pm-mcp-clients\",\"type\":\"hold.requested\"}");
                     stream.send("phase.changed", "{\"project_id\":\"pm-mcp-clients\",\"plan_id\":\"pln-console-history\",\"phase\":\"execute\"}");
                 } catch (IOException _) {
                     // ignore if closed
@@ -817,6 +820,72 @@ class OverviewFullScreenTest {
             // Return with Esc
             virtual.type("\u001b");
             await(() -> virtual.screen().lines().stream().noneMatch(l -> l.contains("Relay drops events on reconnect")));
+            delay(100L);
+
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("supports direct project startup with by-epic and direct ended startup")
+    void shouldSupportDirectProjectAndEndedStartup() throws Exception {
+        // 1. Direct project startup with by-epic (depth == 1)
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var app = new OverviewFullScreenApp(context, virtual.terminal(),
+                                new OverviewFullScreenApp.InitialSelection("pm-mcp-clients", "epic", false), clock,
+                                new OverviewStateStore(context.stateDirectory()),
+                                new ConsoleNoticeBuffer());
+
+            var out = new StringWriter();
+            var thread = new Thread(() -> {
+                try {
+                    app.run(new PrintWriter(out));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(l -> l.contains("by epic")));
+
+            // Switch view with Tab at depth 1 (replaceRoot)
+            virtual.type("\t");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("by plan")));
+
+            // Move to plan with epic and jump to epic at depth 1 (replaceRoot)
+            virtual.type("j");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("Overview resource")));
+            virtual.type("e");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("by epic")));
+
+            virtual.type("q");
+            join(thread);
+        }
+
+        // 2. Direct ended startup (loadInitialEnded)
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var app = new OverviewFullScreenApp(context, virtual.terminal(),
+                                new OverviewFullScreenApp.InitialSelection("pm-mcp-clients", null, true), clock,
+                                new OverviewStateStore(context.stateDirectory()),
+                                new ConsoleNoticeBuffer());
+
+            var out = new StringWriter();
+            var thread = new Thread(() -> {
+                try {
+                    app.run(new PrintWriter(out));
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(l -> l.contains("Relay drops events on reconnect")));
+
+            virtual.type("\u001b");
+            await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-core")));
             delay(100L);
 
             virtual.type("q");
