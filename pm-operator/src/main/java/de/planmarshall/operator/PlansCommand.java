@@ -10,10 +10,17 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -21,8 +28,10 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
 
 /**
- * {@code pm-operator plans}: opens the overview of running work across projects.
- * Where the full-screen view is not available or non-interactive, prints the status tree.
+ * {@code pm-operator plans}: opens the full-screen overview across projects
+ * ({@code doc/design/terminal-client/15-overview.adoc}).
+ * Where full-screen is not available, below minimum width, or non-interactive, falls back to
+ * the {@link StatusCommand} tree output.
  */
 @Command(name = "plans", description = "Shows the overview of running work across projects.")
 @OperatorVerb
@@ -51,11 +60,56 @@ public final class PlansCommand implements Callable<Integer> {
     boolean ended;
 
     PlansCommand(OperatorContext context) {
-        this.context = context;
+        this.context = Objects.requireNonNull(context, "context");
     }
 
     @Override
     public Integer call() throws IOException {
+        var out = spec.commandLine().getOut();
+
+        Terminal terminal = null;
+        try {
+            terminal = context.createTerminal();
+        } catch (IOException _) {
+            // terminal unavailable
+        }
+
+        boolean canOpen = !json && terminal != null
+                            && TuiScreenDriver.canOpenFullScreen(context, terminal, 1);
+
+        if (canOpen) {
+            String effectiveBy = by;
+            if (byEpic) {
+                effectiveBy = "epic";
+            }
+            var app = new OverviewFullScreenApp(context, terminal, project, effectiveBy, ended);
+            var result = app.run(out);
+            if (result != TuiScreenDriver.Result.TOO_NARROW) {
+                return 0;
+            }
+
+            // Below 60 columns: result == TOO_NARROW.
+            // app.run(out) wrote operator.overview.too_narrow to terminal.writer().
+            return runStatusFallback(terminal, out);
+        }
+
+        return delegateToStatus(out);
+    }
+
+    private int runStatusFallback(Terminal terminal, PrintWriter out) throws IOException {
+        int exitCode = delegateToStatus(terminal.writer());
+        terminal.writer().flush();
+        if (out != terminal.writer()) {
+            var locale = context.clientEnvironment().locale();
+            var tooNarrow = MessageCatalogue.format(locale, "operator.overview.too_narrow", Map.of());
+            out.println(tooNarrow);
+            delegateToStatus(out);
+            out.flush();
+        }
+        return exitCode;
+    }
+
+    private int delegateToStatus(PrintWriter targetOut) throws IOException {
         boolean overviewAvailable;
         try {
             overviewAvailable = context.runtime(false).send(HttpRequest.get("/api/v1/projects")).status() == 200;

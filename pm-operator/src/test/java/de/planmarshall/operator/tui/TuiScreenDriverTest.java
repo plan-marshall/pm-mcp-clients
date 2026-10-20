@@ -207,8 +207,9 @@ class TuiScreenDriverTest {
             await(() -> virtual.alternateScreenActive()
                                 && virtual.screen().lines().stream().anyMatch(line -> line.contains("row number 0")));
 
-            virtual.type("/\n");
+            virtual.type("/");
             await(() -> !virtual.alternateScreenActive());
+            virtual.type("\n");
             await(() -> virtual.alternateScreenActive()
                                 && virtual.screen().lines().stream().anyMatch(line -> line.contains("row number 0")));
             var text = String.join("\n", virtual.screen().lines());

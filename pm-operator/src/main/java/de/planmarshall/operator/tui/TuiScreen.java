@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  * @param reportsCount  the number of unread reports
  */
 public record TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
-                        String filter, boolean help, boolean connected, int reportsCount) {
+String filter, boolean help, boolean connected, int reportsCount) {
 
     /**
      * @param breadcrumb    the header's left side

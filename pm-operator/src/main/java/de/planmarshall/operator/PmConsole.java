@@ -59,7 +59,7 @@ public final class PmConsole {
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
     private final List<String> badges = new CopyOnWriteArrayList<>();
-    private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
+    private final ConsoleNoticeBuffer noticeBuffer;
 
     private volatile @Nullable String activePairingCode;
     private volatile @Nullable String activePairingUrl;
@@ -71,6 +71,7 @@ public final class PmConsole {
      */
     public PmConsole(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
+        this.noticeBuffer = context.noticeBuffer();
     }
 
     private String locale() {

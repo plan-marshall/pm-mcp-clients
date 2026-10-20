@@ -63,6 +63,7 @@ public final class OperatorContext {
     private final DirectFileAccess directFiles;
     private final TerminalProvider terminalProvider;
     private final BrowserOpener browserOpener;
+    private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
 
     /**
      * Creates an operator context assuming an interactive terminal and capturing client environment.
@@ -157,6 +158,11 @@ public final class OperatorContext {
     /** @return the state directory manager */
     public OperatorStateDirectory stateDirectory() {
         return stateDirectory;
+    }
+
+    /** @return the buffer holding notices while a full-screen view is active */
+    public ConsoleNoticeBuffer noticeBuffer() {
+        return noticeBuffer;
     }
 
     /** @return the direct file access enforcer */

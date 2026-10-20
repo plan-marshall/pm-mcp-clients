@@ -61,15 +61,15 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` on branch `feat/cli-fullscreen-overview` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/cli-fullscreen-overview-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-overview-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/cli-fullscreen-overview-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-overview-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-overview-plan-report.md` by orchestrator session.
@@ -92,42 +92,42 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Catalogue & `running-work` Scenario Verification
-- [ ] **1.1 Message Catalogue & Scenario Audit**:
+- [x] **1.1 Message Catalogue & Scenario Audit**:
   - Verify all keys in `doc/design/shared/plan-overview.adoc#texts` and `doc/design/terminal-client/15-overview.adoc#overview-texts` exist in `overview.{en,de}.properties` and `operator.{en,de}.properties`, and verify the `overview.*` states in `running-work.json` (delivered by `mock-runtime-running-work-plan.md`).
 
 ### Phase 2: Overview View Models (`de.planmarshall.operator.overview`)
-- [ ] **2.1 `ProjectsOverviewLevel`**:
+- [x] **2.1 `ProjectsOverviewLevel`**:
   - Build rows from `ProjectOverviewResponse` and unread report count (`GET /api/v1/reports`), sorting attention projects first (`! <count>`), then active projects, then `setup needs you`.
   - Implement key handlers: `↑`/`↓`/`k`/`j`, `PgUp`/`PgDn`/`g`/`G`, `Enter`/`→`/`l` (push `ProjectWorkLevel`), `E` (push `EndedWorkLevel`), `/` filter, `r` reload, `?` help/details, `q` exit.
-- [ ] **2.2 `ProjectWorkLevel` (By Plan & By Epic)**:
+- [x] **2.2 `ProjectWorkLevel` (By Plan & By Epic)**:
   - Build `BY_PLAN` rows from `ProjectDetailResponse` (plans with attention markers, phase, state, durations, task counts, epic label, off-track signal, PR number, plus `alongside` landings and setup row).
   - Build `BY_EPIC` rows from `ProjectDetailResponse` (epics with running/staged counts, durations, plan progress, nested child plan rows `├─`/`└─`, and `without epic` plans).
   - Implement `Tab` view toggle preserving selected plan/epic ID, `e` jump to parent epic in `BY_EPIC` view, `!` hand-off to `AnswerCommand` for the waiting item, `Enter` to open plan/epic view, `E` to push `EndedWorkLevel`, and `Esc`/`←`/`h` to pop back to `ProjectsOverviewLevel`.
-- [ ] **2.3 `EndedWorkLevel`**:
+- [x] **2.3 `EndedWorkLevel`**:
   - Build ended work rows from `EndedWorkPage` (`GET /api/v1/projects/{id}/ended?page=1`), loading subsequent pages on scroll when `hasOlder()` is true.
   - Implement `/` filter, `?` details (including PR URL and full reason), and `Esc`/`←`/`h` back to the caller level.
 
 ### Phase 3: Layout, Responsive Widths & `PlansCommand` Wiring
-- [ ] **3.1 Responsive Row Formatting**:
+- [x] **3.1 Responsive Row Formatting**:
   - At `>= 100` columns, render two-line plan/epic rows (main line + detail line); at `60..99` columns, omit the detail line and surface it in `?` help/details; at `< 60` columns, print `operator.overview.too_narrow` and delegate to `StatusCommand`.
   - Format PR numbers (`#214`) with OSC 8 hyperlinks when supported by the terminal, and always include the plain URL in `?` row details.
-- [ ] **3.2 `PlansCommand` & `PmConsole` Integration**:
+- [x] **3.2 `PlansCommand` & `PmConsole` Integration**:
   - Update `PlansCommand` to launch `OverviewFullScreenApp` via `TuiScreenDriver` when `canOpenFullScreen` is true, passing `--project`, `--by` / `--by-epic`, and `--ended` as initial state overrides; otherwise delegate to `StatusCommand`.
 
 ### Phase 4: Live Updates, Held Notices & `overview.json` Persistence
-- [ ] **4.1 Live Event Loop**:
+- [x] **4.1 Live Event Loop**:
   - Connect SSE listener while `plans` is open; on `project.*`, `phase.changed`, `activity.changed`, `needs_operator.changed`, `hold.*`, `condition.*`, `epic.row_changed`, `task.off_track`, refresh affected model data, keep selection anchored by ID (or nearest neighbour if removed), and mark `TuiScreenDriver` dirty.
-- [ ] **4.2 State Restoration & Saving**:
+- [x] **4.2 State Restoration & Saving**:
   - On `plans` startup (when no CLI `--project` flag is given), read `OverviewSavedState` from `OverviewStateStore` and open directly at the stored project, view (`by plan` / `by epic`), and selected plan/epic ID; fall back to `ProjectsOverviewLevel` if the stored project/item is no longer active.
   - On `q` exit, save current `(projectId, projectView, selectedId)` to `OverviewStateStore` and flush `ConsoleNoticeBuffer` (`operator.overview.meanwhile`).
 
 ### Phase 5: Screen Tests & Integration Verification
-- [ ] **5.1 `OverviewFullScreenTest` (`VirtualScreenTerminal`)**:
+- [x] **5.1 `OverviewFullScreenTest` (`VirtualScreenTerminal`)**:
   - Assert `ProjectsOverviewLevel` layout, header, `▶` selection, `!` badges, and footer keys at `120x30`.
   - Assert `Enter` into `pm-mcp-clients`, `Tab` switching between `by plan` and `by epic` keeping selection, `e` jumping from a plan to its epic, and `/` filtering rows and clearing on `Esc`.
   - Assert `E` opening `EndedWorkLevel`, scrolling to load page 2, and `Esc` returning to the exact caller level.
   - Assert width thresholds: `80x24` omits detail lines (`?` shows them); `50x20` prints `operator.overview.too_narrow` and the tree fallback.
   - Assert live SSE update reordering rows while keeping selection on the selected plan ID, and `q` restoring the alternate screen and printing `While the overview was open: ...`.
   - Assert persistence round-trip via `overview.json` and fallback when the saved plan has ended.
-- [ ] **5.2 `PmOperatorProcessIT` & Pre-Commit Gate**:
+- [x] **5.2 `PmOperatorProcessIT` & Pre-Commit Gate**:
   - Add process integration test in `PmOperatorProcessIT` for `plans` and run `./mvnw verify -Ppre-commit`.
