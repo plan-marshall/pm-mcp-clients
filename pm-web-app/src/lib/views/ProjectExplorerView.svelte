@@ -107,6 +107,25 @@
     }
   }
 
+  /**
+   * The id of the entry a continuation link names.
+   *
+   * A being-added project continues as a start entry (`/api/v1/entries/{id}/continue`), so the
+   * web app addresses it by its canonical entry route rather than the generic onboarding screen.
+   *
+   * @param link the entry's `continue_link`
+   * @returns the entry id, or `null` when the link names none
+   */
+  function entryIdOf(link?: string | null): string | null {
+    const match = /\/entries\/([^/]+)\//.exec(link ?? '');
+    if (!match?.[1]) return null;
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return null;
+    }
+  }
+
   async function handleConfirmRelease() {
     if (!releaseTarget) return;
     isReleasing = true;
@@ -427,11 +446,12 @@
                     variant="primary"
                     size="small"
                     onclick={() => {
-                      runtimeStore.update((s) => ({
-                        ...s,
-                        onboardingContinueLink: being.continue_link ?? null,
-                      }));
-                      navigateTo('project-onboarding');
+                      const entryId = entryIdOf(being.continue_link);
+                      if (entryId) {
+                        navigateTo('start', { entryId });
+                      } else {
+                        navigateTo('project-onboarding');
+                      }
                     }}
                     data-testid="continue-onboarding-btn"
                   >

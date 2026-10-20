@@ -12,7 +12,6 @@
   import {
     runtimeStore,
     navigateTo,
-    loadOnboardingLink,
     loadOnboardingState,
     stepOnboarding,
     startOnboardingAuto,
@@ -26,10 +25,7 @@
 
   onMount(async () => {
     // Pull the state the runtime reports; a machine that is not paired keeps the local one.
-    // A project onboarding the operator continued from the explorer names its run by its link.
-    const state = $runtimeStore.onboardingContinueLink
-      ? await loadOnboardingLink($runtimeStore.onboardingContinueLink)
-      : await loadOnboardingState();
+    const state = await loadOnboardingState();
     loadFailed = state === null && $runtimeStore.isPaired;
   });
 
