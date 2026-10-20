@@ -9,6 +9,7 @@
   import HarnessChoice from '../components/HarnessChoice.svelte';
   import ModelsChoice from '../components/ModelsChoice.svelte';
   import AspectChoice from '../components/AspectChoice.svelte';
+  import ProjectOnboardingView from './ProjectOnboardingView.svelte';
   import {
     runtimeStore,
     navigateTo,
@@ -16,6 +17,7 @@
     stepOnboarding,
     startOnboardingAuto,
     completedStepNumbers,
+    requestedOnboardingStep,
   } from '../stores/runtime';
   import type { HypermediaLink } from '../api/client';
 
@@ -27,7 +29,17 @@
     // Pull the state the runtime reports; a machine that is not paired keeps the local one.
     const state = await loadOnboardingState();
     loadFailed = state === null && $runtimeStore.isPaired;
+    // A `Change` on the machine settings names the aspect's step; a reload repeats it from the
+    // address bar, so both open the onboarding at the same aspect.
+    const requested = requestedOnboardingStep(7);
+    if (requested !== null) {
+      selectedStep = requested;
+      // The step is consumed once, so a later visit opens the onboarding where it stands.
+      runtimeStore.update((s) => ({ ...s, onboardingStep: null }));
+    }
   });
+
+  $: isProjectOnboarding = $runtimeStore.currentRoute === 'project-onboarding';
 
   $: onboardingState = $runtimeStore.onboarding;
   $: currentState = onboardingState ?? $runtimeStore.currentState;
@@ -218,457 +230,233 @@
   }
 </script>
 
-<div class="onboarding" data-testid="onboarding-view">
-  <StepBar
-    {activeStep}
-    completedSteps={doneSteps}
-    {selectedStep}
-    summaries={stepSummaries}
-    onSelectStep={selectStep}
+{#if isProjectOnboarding}
+  <ProjectOnboardingView
+    projectId={$runtimeStore.selectedProjectId ?? null}
+    onboardingId={$runtimeStore.selectedOnboardingId ?? null}
   />
+{:else}
+  <div class="onboarding" data-testid="onboarding-view">
+    <StepBar
+      {activeStep}
+      completedSteps={doneSteps}
+      {selectedStep}
+      summaries={stepSummaries}
+      onSelectStep={selectStep}
+    />
 
-  <main class="onboarding__main">
-    <div class="onboarding__container">
-      {#if loadFailed}
-        <div class="state-card" role="alert">
-          <h1 class="state-card__title">{$t('onboard.error.no_state')}</h1>
-          <div class="state-card__actions">
-            <Button
-              variant="secondary"
-              on:click={async () => {
-                const state = await loadOnboardingState();
-                loadFailed = state === null && $runtimeStore.isPaired;
-              }}
-            >
-              {$t('onboard.error.retry')}
-            </Button>
+    <main class="onboarding__main">
+      <div class="onboarding__container">
+        {#if loadFailed}
+          <div class="state-card" role="alert">
+            <h1 class="state-card__title">{$t('onboard.error.no_state')}</h1>
+            <div class="state-card__actions">
+              <Button
+                variant="secondary"
+                on:click={async () => {
+                  const state = await loadOnboardingState();
+                  loadFailed = state === null && $runtimeStore.isPaired;
+                }}
+              >
+                {$t('onboard.error.retry')}
+              </Button>
+            </div>
           </div>
-        </div>
-      {:else if isCompleted}
-        <div class="state-card">
-          <div class="state-card__header">
-            <span class="badge-success" aria-hidden="true">✓</span>
-            <h1 class="state-card__title">{$t('onboard.completed.title')}</h1>
-            <p class="state-card__summary">
-              {stringField('summary') || $t('onboard.completed.summary')}
-            </p>
-          </div>
+        {:else if isCompleted}
+          <div class="state-card">
+            <div class="state-card__header">
+              <span class="badge-success" aria-hidden="true">✓</span>
+              <h1 class="state-card__title">{$t('onboard.completed.title')}</h1>
+              <p class="state-card__summary">
+                {stringField('summary') || $t('onboard.completed.summary')}
+              </p>
+            </div>
 
-          {#if doneSteps.length > 0}
-            <ul class="completed-list" data-testid="completed-steps">
-              {#each doneSteps as step}
-                <li class="completed-row">
-                  <span class="completed-row__check" aria-hidden="true">✓</span>
-                  <span class="completed-row__name">{$t(`onboard.step.${stepKey(step)}`)}</span>
-                  <span class="completed-row__value">
-                    {stepSummaries[String(step)] ?? $t('onboard.completed.no_summary')}
-                  </span>
+            {#if doneSteps.length > 0}
+              <ul class="completed-list" data-testid="completed-steps">
+                {#each doneSteps as step}
+                  <li class="completed-row">
+                    <span class="completed-row__check" aria-hidden="true">✓</span>
+                    <span class="completed-row__name">{$t(`onboard.step.${stepKey(step)}`)}</span>
+                    <span class="completed-row__value">
+                      {stepSummaries[String(step)] ?? $t('onboard.completed.no_summary')}
+                    </span>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+
+            <p class="state-card__next">{$t('onboard.completed.next')}</p>
+
+            <div class="state-card__actions state-card__actions--center">
+              <Button variant="secondary" on:click={() => navigateTo('machine-settings')}>
+                {$t('onboard.completed.machine_settings')}
+              </Button>
+              <Button variant="primary" on:click={() => navigateTo('projects')}>
+                {$t('onboard.completed.to_projects')}
+              </Button>
+            </div>
+          </div>
+        {:else if isConsentState}
+          <ConsentBox
+            title={stringField('summary') ?? $t('common.consent.yes')}
+            looksFor={stringField('looks_for')}
+            inDir={stringField('in')}
+            runs={stringField('runs')}
+            never={stringField('never')}
+            tokens={stringField('tokens')}
+            canRemember={currentState?.kind !== 'auto_run' &&
+              currentState?.kind !== 'verify_harness_profile'}
+            busy={isSubmitting}
+            primaryLabel={consentAction()}
+            onAccept={handleConsentAccept}
+            onDecline={handleConsentDecline}
+          />
+        {:else if isModelWorking}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.step.models')}
+              </h1>
+            </div>
+            <div class="model-working">
+              <Spinner size="2rem" />
+              <div class="model-working__details">
+                <p class="model-working__status">
+                  {$t('common.model.working', {
+                    role: stringField('role') ?? 'steward',
+                    harness: stringField('harness') ?? '',
+                    model: stringField('model') ?? '',
+                  })}
+                </p>
+                {#if stringField('tokens')}
+                  <p class="model-working__estimate">{stringField('tokens')}</p>
+                {/if}
+              </div>
+            </div>
+            <p class="model-working__note">{$t('common.model.leave_note')}</p>
+            {#if offeredLinks.length > 0}
+              <div class="state-card__actions">
+                {#each offeredLinks as { id, link }}
+                  <Button
+                    variant="secondary"
+                    loading={isSubmitting}
+                    on:click={() => handleLinkClick(id, link)}
+                  >
+                    {$t('common.model.continue_without')}
+                  </Button>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        {:else if stateId === 'onboard.mode' || stateId === 'onboard.entry'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">{$t('onboard.entry.title')}</h1>
+              <p class="state-card__summary">{$t('onboard.entry.intro')}</p>
+            </div>
+
+            <ol class="steps-overview" data-testid="steps-overview">
+              {#each [1, 2, 3, 4, 5, 6, 7] as step}
+                <li>
+                  <strong>{step}. {$t(`onboard.step.${stepKey(step)}`)}</strong>
+                  ─ {$t(`onboard.entry.step.${stepKey(step)}`)}
                 </li>
               {/each}
-            </ul>
-          {/if}
+            </ol>
 
-          <p class="state-card__next">{$t('onboard.completed.next')}</p>
+            <p class="state-card__next">{$t('onboard.entry.stop')}</p>
 
-          <div class="state-card__actions state-card__actions--center">
-            <Button variant="secondary" on:click={() => navigateTo('machine-settings')}>
-              {$t('onboard.completed.machine_settings')}
-            </Button>
-            <Button variant="primary" on:click={() => navigateTo('projects')}>
-              {$t('onboard.completed.to_projects')}
-            </Button>
-          </div>
-        </div>
-      {:else if isConsentState}
-        <ConsentBox
-          title={stringField('summary') ?? $t('common.consent.yes')}
-          looksFor={stringField('looks_for')}
-          inDir={stringField('in')}
-          runs={stringField('runs')}
-          never={stringField('never')}
-          tokens={stringField('tokens')}
-          canRemember={currentState?.kind !== 'auto_run' &&
-            currentState?.kind !== 'verify_harness_profile'}
-          busy={isSubmitting}
-          primaryLabel={consentAction()}
-          onAccept={handleConsentAccept}
-          onDecline={handleConsentDecline}
-        />
-      {:else if isModelWorking}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.step.models')}
-            </h1>
-          </div>
-          <div class="model-working">
-            <Spinner size="2rem" />
-            <div class="model-working__details">
-              <p class="model-working__status">
-                {$t('common.model.working', {
-                  role: stringField('role') ?? 'steward',
-                  harness: stringField('harness') ?? '',
-                  model: stringField('model') ?? '',
-                })}
-              </p>
-              {#if stringField('tokens')}
-                <p class="model-working__estimate">{stringField('tokens')}</p>
-              {/if}
-            </div>
-          </div>
-          <p class="model-working__note">{$t('common.model.leave_note')}</p>
-          {#if offeredLinks.length > 0}
             <div class="state-card__actions">
-              {#each offeredLinks as { id, link }}
-                <Button
-                  variant="secondary"
-                  loading={isSubmitting}
-                  on:click={() => handleLinkClick(id, link)}
-                >
-                  {$t('common.model.continue_without')}
+              {#if offeredLinks.length > 0}
+                {#each offeredLinks as { id, link, isPrimary }}
+                  <Button
+                    variant={isPrimary ? 'primary' : 'secondary'}
+                    loading={isSubmitting}
+                    on:click={() => handleLinkClick(id, link)}
+                  >
+                    {#if id === 'auto'}
+                      {$t('onboard.mode.auto')}
+                    {:else if id === 'begin'}
+                      {$t('onboard.mode.guided')}
+                    {:else}
+                      {linkLabel(id)}
+                    {/if}
+                  </Button>
+                {/each}
+              {:else}
+                <Button variant="secondary" loading={isSubmitting} on:click={handleAuto}>
+                  {$t('onboard.mode.auto')}
                 </Button>
-              {/each}
-            </div>
-          {/if}
-        </div>
-      {:else if stateId === 'onboard.mode' || stateId === 'onboard.entry'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">{$t('onboard.entry.title')}</h1>
-            <p class="state-card__summary">{$t('onboard.entry.intro')}</p>
-          </div>
-
-          <ol class="steps-overview" data-testid="steps-overview">
-            {#each [1, 2, 3, 4, 5, 6, 7] as step}
-              <li>
-                <strong>{step}. {$t(`onboard.step.${stepKey(step)}`)}</strong>
-                ─ {$t(`onboard.entry.step.${stepKey(step)}`)}
-              </li>
-            {/each}
-          </ol>
-
-          <p class="state-card__next">{$t('onboard.entry.stop')}</p>
-
-          <div class="state-card__actions">
-            {#if offeredLinks.length > 0}
-              {#each offeredLinks as { id, link, isPrimary }}
                 <Button
-                  variant={isPrimary ? 'primary' : 'secondary'}
+                  variant="primary"
                   loading={isSubmitting}
-                  on:click={() => handleLinkClick(id, link)}
+                  on:click={() =>
+                    void handleLinkClick('begin', { href: '/api/v1/onboarding/language' })}
                 >
-                  {#if id === 'auto'}
-                    {$t('onboard.mode.auto')}
-                  {:else if id === 'begin'}
-                    {$t('onboard.mode.guided')}
-                  {:else}
-                    {linkLabel(id)}
-                  {/if}
+                  {$t('onboard.mode.guided')}
                 </Button>
-              {/each}
-            {:else}
-              <Button variant="secondary" loading={isSubmitting} on:click={handleAuto}>
-                {$t('onboard.mode.auto')}
-              </Button>
-              <Button
-                variant="primary"
-                loading={isSubmitting}
-                on:click={() =>
-                  void handleLinkClick('begin', { href: '/api/v1/onboarding/language' })}
-              >
-                {$t('onboard.mode.guided')}
-              </Button>
-            {/if}
-          </div>
-        </div>
-      {:else if stateId === 'language.choose'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.language.choose.title')}
-            </h1>
-            <p class="state-card__summary">{$t('onboard.language.choose.intro')}</p>
-          </div>
-          <LanguageChoice
-            current={{
-              interface: stringField('interface') ?? 'en',
-              model: stringField('model') ?? 'same',
-            }}
-            busy={isSubmitting}
-            onRecord={() => {
-              const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-              if (target) void handleLinkClick(target.id, target.link);
-            }}
-          />
-        </div>
-      {:else if stateId === 'harness.choose'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.harness.choose.title')}
-            </h1>
-          </div>
-          <HarnessChoice
-            harnesses={arrayField('harnesses')}
-            busy={isSubmitting}
-            onCheck={() => {
-              const target = linkBy('choose', 'check') ?? offeredLinks[offeredLinks.length - 1];
-              if (target) void handleLinkClick(target.id, target.link);
-            }}
-          />
-        </div>
-      {:else if stateId === 'harness.blocked'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.harness.blocked.title', { name: '' })}
-            </h1>
-          </div>
-          <dl class="detail-list">
-            {#if stringField('cause')}
-              <div class="detail-row">
-                <dt>{$t('onboard.harness.probe.cause', { cause: '' }).replace(/:?\s*$/, '')}</dt>
-                <dd>{stringField('cause')}</dd>
-              </div>
-            {/if}
-            {#if stringField('fix')}
-              <div class="detail-row">
-                <dt>{$t('onboard.harness.probe.fix', { fix: '' }).replace(/:?\s*$/, '')}</dt>
-                <dd class="mono">{stringField('fix')}</dd>
-              </div>
-            {/if}
-          </dl>
-          <div class="state-card__actions">
-            {#each offeredLinks as { id, link, isPrimary }}
-              <Button
-                variant={isPrimary ? 'primary' : 'secondary'}
-                loading={isSubmitting}
-                on:click={() => handleLinkClick(id, link)}
-              >
-                {linkLabel(id)}
-              </Button>
-            {/each}
-          </div>
-        </div>
-      {:else if stateId === 'harness.confirm' || stateId === 'harness.add-confirm'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.harness.confirm.title', { count: 0 })}
-            </h1>
-          </div>
-          {#if stringField('default')}
-            <p class="state-card__summary">
-              {$t('onboard.harness.choose.default_label')}:
-              <span class="mono">
-                {stringField('default')}
-              </span>
-            </p>
-          {/if}
-          <div class="state-card__actions">
-            {#each offeredLinks as { id, link, isPrimary }}
-              <Button
-                variant={isPrimary ? 'primary' : 'secondary'}
-                loading={isSubmitting}
-                on:click={() => handleLinkClick(id, link)}
-              >
-                {linkLabel(id)}
-              </Button>
-            {/each}
-          </div>
-        </div>
-      {:else if stateId === 'catalogue.select'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.catalogue.select.title')}
-            </h1>
-          </div>
-          <ModelsChoice
-            models={arrayField('models')}
-            harnessNames={harnessNames()}
-            busy={isSubmitting}
-            onRecord={() => {
-              const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-              if (target) void handleLinkClick(target.id, target.link);
-            }}
-          />
-        </div>
-      {:else if stateId === 'roles.review'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.roles.review.title')}
-            </h1>
-          </div>
-          <AspectChoice
-            kind="roles"
-            roles={arrayField('roles')}
-            busy={isSubmitting}
-            onRecord={() => {
-              const target = linkBy('accept', 'record') ?? offeredLinks[offeredLinks.length - 1];
-              if (target) void handleLinkClick(target.id, target.link);
-            }}
-          />
-        </div>
-      {:else if stateId === 'store.choose'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.store.choose.title')}
-            </h1>
-          </div>
-          <AspectChoice
-            kind="store"
-            stores={arrayField('stores')}
-            busy={isSubmitting}
-            onRecord={(choice) => {
-              const target = linkBy(String(choice), 'os', 'file') ?? offeredLinks[0];
-              if (target) void handleLinkClick(target.id, target.link);
-            }}
-          />
-        </div>
-      {:else if stateId === 'providers.select'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.providers.select.title')}
-            </h1>
-          </div>
-          <AspectChoice
-            kind="providers"
-            providers={arrayField('providers')}
-            busy={isSubmitting}
-            onRecord={() => {
-              const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-              if (target) void handleLinkClick(target.id, target.link);
-            }}
-          />
-        </div>
-      {:else if stateId === 'providers.failed'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.providers.failed.title')}
-            </h1>
-          </div>
-          <dl class="detail-list">
-            {#if stringField('provider')}
-              <div class="detail-row">
-                <dt>{$t('onboard.providers.select.title')}</dt>
-                <dd>{stringField('provider')}</dd>
-              </div>
-            {/if}
-            {#if stringField('cause')}
-              <div class="detail-row">
-                <dt>{$t('onboard.harness.probe.cause', { cause: '' }).replace(/:?\s*$/, '')}</dt>
-                <dd>{stringField('cause')}</dd>
-              </div>
-            {/if}
-            {#if stringField('fix')}
-              <div class="detail-row">
-                <dt>{$t('onboard.harness.probe.fix', { fix: '' }).replace(/:?\s*$/, '')}</dt>
-                <dd class="mono">{stringField('fix')}</dd>
-              </div>
-            {/if}
-          </dl>
-          <div class="state-card__actions">
-            {#each offeredLinks as { id, link, isPrimary }}
-              <Button
-                variant={isPrimary ? 'primary' : 'secondary'}
-                loading={isSubmitting}
-                on:click={() => handleLinkClick(id, link)}
-              >
-                {linkLabel(id)}
-              </Button>
-            {/each}
-          </div>
-        </div>
-      {:else if stateId === 'defaults.review'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.defaults.review.title')}
-            </h1>
-          </div>
-          <AspectChoice
-            kind="defaults"
-            planDefaults={{
-              landing: stringField('landing') ?? '',
-              method: stringField('method') ?? '',
-              asking: stringField('asking') ?? '',
-              posture: stringField('posture'),
-            }}
-            busy={isSubmitting}
-            onRecord={() => {
-              const target = linkBy('accept', 'set') ?? offeredLinks[offeredLinks.length - 1];
-              if (target) void handleLinkClick(target.id, target.link);
-            }}
-          />
-        </div>
-      {:else if stateId === 'auto.result'}
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.auto.result.title')}
-            </h1>
-          </div>
-          <table class="result-table" data-testid="auto-result">
-            <thead>
-              <tr>
-                <th>{$t('onboard.auto.result.aspect')}</th>
-                <th>{$t('onboard.auto.result.value')}</th>
-                <th>{$t('onboard.auto.result.reason')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {#each arrayField<Record<string, string>>('results') as result}
-                <tr>
-                  <td>{$t(`onboard.step.${result.aspect ?? ''}`)}</td>
-                  <td>{result.value}</td>
-                  <td>{$t(`onboard.auto.reason.${result.reason ?? 'default'}`)}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-          <div class="state-card__actions">
-            {#each offeredLinks as { id, link, isPrimary }}
-              <Button
-                variant={isPrimary ? 'primary' : 'secondary'}
-                loading={isSubmitting}
-                on:click={() => handleLinkClick(id, link)}
-              >
-                {linkLabel(id)}
-              </Button>
-            {/each}
-          </div>
-        </div>
-      {:else}
-        <!-- A state without a screen of its own: what it reports, and one control per link. -->
-        <div class="state-card">
-          <div class="state-card__header">
-            <h1 class="state-card__title">
-              {stringField('summary') || $t('onboard.state.details')}
-            </h1>
-            {#if stringField('scope')}
-              <p class="state-card__scope mono">
-                {$t(`onboard.scope.${stringField('scope')}`)} · {stateId}
-              </p>
-            {/if}
-          </div>
-
-          <div class="state-card__body">
-            {#each Object.entries(currentState ?? {}) as [key, value]}
-              {#if !['state', 'scope', 'summary', 'links', '_links', 'completed_steps', 'auto'].includes(key) && typeof value === 'string'}
-                <p class="state-card__text">{value}</p>
               {/if}
-            {/each}
+            </div>
           </div>
-
-          <div class="state-card__actions">
-            {#if offeredLinks.length === 0}
-              <p class="state-card__next">{$t('onboard.state.no_links')}</p>
-            {:else}
+        {:else if stateId === 'language.choose'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.language.choose.title')}
+              </h1>
+              <p class="state-card__summary">{$t('onboard.language.choose.intro')}</p>
+            </div>
+            <LanguageChoice
+              current={{
+                interface: stringField('interface') ?? 'en',
+                model: stringField('model') ?? 'same',
+              }}
+              busy={isSubmitting}
+              onRecord={() => {
+                const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
+                if (target) void handleLinkClick(target.id, target.link);
+              }}
+            />
+          </div>
+        {:else if stateId === 'harness.choose'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.harness.choose.title')}
+              </h1>
+            </div>
+            <HarnessChoice
+              harnesses={arrayField('harnesses')}
+              busy={isSubmitting}
+              onCheck={() => {
+                const target = linkBy('choose', 'check') ?? offeredLinks[offeredLinks.length - 1];
+                if (target) void handleLinkClick(target.id, target.link);
+              }}
+            />
+          </div>
+        {:else if stateId === 'harness.blocked'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.harness.blocked.title', { name: '' })}
+              </h1>
+            </div>
+            <dl class="detail-list">
+              {#if stringField('cause')}
+                <div class="detail-row">
+                  <dt>{$t('onboard.harness.probe.cause', { cause: '' }).replace(/:?\s*$/, '')}</dt>
+                  <dd>{stringField('cause')}</dd>
+                </div>
+              {/if}
+              {#if stringField('fix')}
+                <div class="detail-row">
+                  <dt>{$t('onboard.harness.probe.fix', { fix: '' }).replace(/:?\s*$/, '')}</dt>
+                  <dd class="mono">{stringField('fix')}</dd>
+                </div>
+              {/if}
+            </dl>
+            <div class="state-card__actions">
               {#each offeredLinks as { id, link, isPrimary }}
                 <Button
                   variant={isPrimary ? 'primary' : 'secondary'}
@@ -678,13 +466,244 @@
                   {linkLabel(id)}
                 </Button>
               {/each}
-            {/if}
+            </div>
           </div>
-        </div>
-      {/if}
-    </div>
-  </main>
-</div>
+        {:else if stateId === 'harness.confirm' || stateId === 'harness.add-confirm'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.harness.confirm.title', { count: 0 })}
+              </h1>
+            </div>
+            {#if stringField('default')}
+              <p class="state-card__summary">
+                {$t('onboard.harness.choose.default_label')}:
+                <span class="mono">
+                  {stringField('default')}
+                </span>
+              </p>
+            {/if}
+            <div class="state-card__actions">
+              {#each offeredLinks as { id, link, isPrimary }}
+                <Button
+                  variant={isPrimary ? 'primary' : 'secondary'}
+                  loading={isSubmitting}
+                  on:click={() => handleLinkClick(id, link)}
+                >
+                  {linkLabel(id)}
+                </Button>
+              {/each}
+            </div>
+          </div>
+        {:else if stateId === 'catalogue.select'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.catalogue.select.title')}
+              </h1>
+            </div>
+            <ModelsChoice
+              models={arrayField('models')}
+              harnessNames={harnessNames()}
+              busy={isSubmitting}
+              onRecord={() => {
+                const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
+                if (target) void handleLinkClick(target.id, target.link);
+              }}
+            />
+          </div>
+        {:else if stateId === 'roles.review'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.roles.review.title')}
+              </h1>
+            </div>
+            <AspectChoice
+              kind="roles"
+              roles={arrayField('roles')}
+              busy={isSubmitting}
+              onRecord={() => {
+                const target = linkBy('accept', 'record') ?? offeredLinks[offeredLinks.length - 1];
+                if (target) void handleLinkClick(target.id, target.link);
+              }}
+            />
+          </div>
+        {:else if stateId === 'store.choose'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.store.choose.title')}
+              </h1>
+            </div>
+            <AspectChoice
+              kind="store"
+              stores={arrayField('stores')}
+              busy={isSubmitting}
+              onRecord={(choice) => {
+                const target = linkBy(String(choice), 'os', 'file') ?? offeredLinks[0];
+                if (target) void handleLinkClick(target.id, target.link);
+              }}
+            />
+          </div>
+        {:else if stateId === 'providers.select'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.providers.select.title')}
+              </h1>
+            </div>
+            <AspectChoice
+              kind="providers"
+              providers={arrayField('providers')}
+              busy={isSubmitting}
+              onRecord={() => {
+                const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
+                if (target) void handleLinkClick(target.id, target.link);
+              }}
+            />
+          </div>
+        {:else if stateId === 'providers.failed'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.providers.failed.title')}
+              </h1>
+            </div>
+            <dl class="detail-list">
+              {#if stringField('provider')}
+                <div class="detail-row">
+                  <dt>{$t('onboard.providers.select.title')}</dt>
+                  <dd>{stringField('provider')}</dd>
+                </div>
+              {/if}
+              {#if stringField('cause')}
+                <div class="detail-row">
+                  <dt>{$t('onboard.harness.probe.cause', { cause: '' }).replace(/:?\s*$/, '')}</dt>
+                  <dd>{stringField('cause')}</dd>
+                </div>
+              {/if}
+              {#if stringField('fix')}
+                <div class="detail-row">
+                  <dt>{$t('onboard.harness.probe.fix', { fix: '' }).replace(/:?\s*$/, '')}</dt>
+                  <dd class="mono">{stringField('fix')}</dd>
+                </div>
+              {/if}
+            </dl>
+            <div class="state-card__actions">
+              {#each offeredLinks as { id, link, isPrimary }}
+                <Button
+                  variant={isPrimary ? 'primary' : 'secondary'}
+                  loading={isSubmitting}
+                  on:click={() => handleLinkClick(id, link)}
+                >
+                  {linkLabel(id)}
+                </Button>
+              {/each}
+            </div>
+          </div>
+        {:else if stateId === 'defaults.review'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.defaults.review.title')}
+              </h1>
+            </div>
+            <AspectChoice
+              kind="defaults"
+              planDefaults={{
+                landing: stringField('landing') ?? '',
+                method: stringField('method') ?? '',
+                asking: stringField('asking') ?? '',
+                posture: stringField('posture'),
+              }}
+              busy={isSubmitting}
+              onRecord={() => {
+                const target = linkBy('accept', 'set') ?? offeredLinks[offeredLinks.length - 1];
+                if (target) void handleLinkClick(target.id, target.link);
+              }}
+            />
+          </div>
+        {:else if stateId === 'auto.result'}
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.auto.result.title')}
+              </h1>
+            </div>
+            <table class="result-table" data-testid="auto-result">
+              <thead>
+                <tr>
+                  <th>{$t('onboard.auto.result.aspect')}</th>
+                  <th>{$t('onboard.auto.result.value')}</th>
+                  <th>{$t('onboard.auto.result.reason')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each arrayField<Record<string, string>>('results') as result}
+                  <tr>
+                    <td>{$t(`onboard.step.${result.aspect ?? ''}`)}</td>
+                    <td>{result.value}</td>
+                    <td>{$t(`onboard.auto.reason.${result.reason ?? 'default'}`)}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+            <div class="state-card__actions">
+              {#each offeredLinks as { id, link, isPrimary }}
+                <Button
+                  variant={isPrimary ? 'primary' : 'secondary'}
+                  loading={isSubmitting}
+                  on:click={() => handleLinkClick(id, link)}
+                >
+                  {linkLabel(id)}
+                </Button>
+              {/each}
+            </div>
+          </div>
+        {:else}
+          <!-- A state without a screen of its own: what it reports, and one control per link. -->
+          <div class="state-card">
+            <div class="state-card__header">
+              <h1 class="state-card__title">
+                {stringField('summary') || $t('onboard.state.details')}
+              </h1>
+              {#if stringField('scope')}
+                <p class="state-card__scope mono">
+                  {$t(`onboard.scope.${stringField('scope')}`)} · {stateId}
+                </p>
+              {/if}
+            </div>
+
+            <div class="state-card__body">
+              {#each Object.entries(currentState ?? {}) as [key, value]}
+                {#if !['state', 'scope', 'summary', 'links', '_links', 'completed_steps', 'auto'].includes(key) && typeof value === 'string'}
+                  <p class="state-card__text">{value}</p>
+                {/if}
+              {/each}
+            </div>
+
+            <div class="state-card__actions">
+              {#if offeredLinks.length === 0}
+                <p class="state-card__next">{$t('onboard.state.no_links')}</p>
+              {:else}
+                {#each offeredLinks as { id, link, isPrimary }}
+                  <Button
+                    variant={isPrimary ? 'primary' : 'secondary'}
+                    loading={isSubmitting}
+                    on:click={() => handleLinkClick(id, link)}
+                  >
+                    {linkLabel(id)}
+                  </Button>
+                {/each}
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div>
+    </main>
+  </div>
+{/if}
 
 <style>
   .onboarding {

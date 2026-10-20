@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ProjectExplorerView from './ProjectExplorerView.svelte';
 import { runtimeStore } from '../stores/runtime';
@@ -16,6 +17,18 @@ describe('ProjectExplorerView component', () => {
         active_plans_count: 3,
         active_epics_count: 1,
         last_active: '2026-10-17T10:04:00Z',
+        is_favourite: true,
+        is_released: false,
+      },
+      {
+        project_id: 'pm-mcp-core',
+        display_name: 'pm-mcp-core',
+        remote_url: 'https://github.com/plan-marshall/pm-mcp-core',
+        readiness: 'ready',
+        needs_operator_count: 0,
+        active_plans_count: 2,
+        active_epics_count: 0,
+        last_active: '2026-10-17T09:57:00Z',
         is_favourite: true,
         is_released: false,
       },
@@ -120,6 +133,27 @@ describe('ProjectExplorerView component', () => {
     vi.spyOn(apiClient, 'unenrolProject').mockResolvedValue();
     vi.spyOn(apiClient, 'abandonOnboarding').mockResolvedValue();
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'reorderFavouriteProjects').mockResolvedValue({
+      status: 'ok',
+      project_ids: [],
+    });
+    vi.spyOn(apiClient, 'getProjectSettings').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      revision: 7,
+      values: [
+        {
+          aspect: 'landing',
+          value: 'landing.main',
+          origin: 'team',
+          choices: ['landing.main', 'landing.files', 'landing.pull-request'],
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValue({
+      applied: true,
+      conflict: false,
+      revision: 8,
+    });
   });
 
   it('renders 4-part explorer view with being added, favourites, recent, and all projects', async () => {
@@ -254,5 +288,205 @@ describe('ProjectExplorerView component', () => {
     await waitFor(() => {
       expect(apiClient.abandonOnboarding).toHaveBeenCalledWith('/api/v1/entries/ent-cui/abandon');
     });
+  });
+
+  it('moves a favourite down and persists the new order', async () => {
+    const reorderSpy = vi.spyOn(apiClient, 'reorderFavouriteProjects').mockResolvedValue({
+      status: 'ok',
+      project_ids: ['pm-mcp-core', 'pm-mcp-clients'],
+    });
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('favourite-down-pm-mcp-clients')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('favourite-down-pm-mcp-clients'));
+
+    await waitFor(() => {
+      expect(reorderSpy).toHaveBeenCalledWith(['pm-mcp-core', 'pm-mcp-clients']);
+    });
+  });
+
+  it('moves a favourite up with its control and by dropping it on the one above', async () => {
+    const reorderSpy = vi.spyOn(apiClient, 'reorderFavouriteProjects').mockResolvedValue({
+      status: 'ok',
+      project_ids: ['pm-mcp-core', 'pm-mcp-clients'],
+    });
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('favourite-up-pm-mcp-core')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('favourite-up-pm-mcp-core'));
+
+    await waitFor(() => {
+      expect(reorderSpy).toHaveBeenCalledWith(['pm-mcp-core', 'pm-mcp-clients']);
+    });
+  });
+
+  it('reorders favourites by drag and drop', async () => {
+    const reorderSpy = vi.spyOn(apiClient, 'reorderFavouriteProjects').mockResolvedValue({
+      status: 'ok',
+      project_ids: ['pm-mcp-core', 'pm-mcp-clients'],
+    });
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-card-pm-mcp-core')).toBeInTheDocument();
+    });
+
+    await fireEvent.dragStart(screen.getByTestId('project-card-pm-mcp-core'));
+    await fireEvent.drop(screen.getByTestId('project-card-pm-mcp-clients'));
+
+    await waitFor(() => {
+      expect(reorderSpy).toHaveBeenCalledWith(['pm-mcp-core', 'pm-mcp-clients']);
+    });
+  });
+
+  it('restores the old order when the runtime refuses the new one', async () => {
+    vi.spyOn(apiClient, 'reorderFavouriteProjects').mockRejectedValue(new Error('HTTP 409'));
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('favourite-down-pm-mcp-clients')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('favourite-down-pm-mcp-clients'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('The new order of the favourites could not be saved'),
+      ).toBeInTheDocument();
+    });
+    // The refused order is rolled back: the first card is the one that was moved down.
+    const cards = screen
+      .getByTestId('section-favourites')
+      .querySelectorAll('[data-testid^="project-card-"]');
+    expect(cards[0]).toHaveAttribute('data-testid', 'project-card-pm-mcp-clients');
+  });
+
+  it('opens the project setup drawer and saves against the revision it was read at', async () => {
+    const saveSpy = vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValue({
+      applied: true,
+      conflict: false,
+      revision: 8,
+    });
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-drawer')).toBeInTheDocument();
+      expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
+    });
+
+    await fireEvent.change(screen.getByTestId('setting-input-landing'), {
+      target: { value: 'landing.files' },
+    });
+    await fireEvent.click(screen.getByTestId('save-setting-landing'));
+
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledWith('pm-mcp-clients', 'landing', 'landing.files', 7);
+    });
+  });
+
+  it('shows the other client’s value on a conflict and applies the change again', async () => {
+    const saveSpy = vi
+      .spyOn(apiClient, 'saveProjectSettings')
+      .mockResolvedValueOnce({
+        applied: false,
+        conflict: true,
+        revision: 9,
+        current_value: 'landing.files',
+      })
+      .mockResolvedValueOnce({ applied: true, conflict: false, revision: 10 });
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
+    });
+    await fireEvent.change(screen.getByTestId('setting-input-landing'), {
+      target: { value: 'landing.pull-request' },
+    });
+    await fireEvent.click(screen.getByTestId('save-setting-landing'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-conflict')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('project-conflict')).toHaveTextContent('landing.files');
+    expect(screen.getByTestId('project-conflict')).toHaveTextContent('landing.pull-request');
+
+    await fireEvent.click(screen.getByTestId('project-conflict-apply'));
+
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenLastCalledWith(
+        'pm-mcp-clients',
+        'landing',
+        'landing.pull-request',
+        9,
+      );
+    });
+  });
+
+  it('keeps the current value on a conflict without writing again', async () => {
+    const saveSpy = vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValue({
+      applied: false,
+      conflict: true,
+      revision: 9,
+      current_value: 'landing.files',
+    });
+
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-setting-landing')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByTestId('save-setting-landing'));
+    await waitFor(() => {
+      expect(screen.getByTestId('project-conflict')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('project-conflict-keep'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('project-conflict')).not.toBeInTheDocument();
+    });
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the project onboarding route from adding and from continuing a run', async () => {
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-project-btn')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('add-project-btn'));
+    expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
+
+    await fireEvent.click(screen.getByTestId('continue-onboarding-btn'));
+    expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
+    expect(get(runtimeStore).selectedOnboardingId).toBe('~/git/cui-parent');
   });
 });

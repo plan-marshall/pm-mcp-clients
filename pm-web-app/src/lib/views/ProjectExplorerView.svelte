@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
-  import { runtimeStore, navigateTo } from '../stores/runtime';
+  import { runtimeStore, navigateTo, openProjectOnboarding } from '../stores/runtime';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import {
@@ -9,6 +9,9 @@
     type ProjectExplorer,
     type EnrolledProject,
     type BeingAddedProject,
+    type ProjectSettingsConflict,
+    type ProjectSettingsRecord,
+    type ProjectSettingsValue,
   } from '../api/client';
 
   let explorer = $state<ProjectExplorer | null>(null);
@@ -18,11 +21,20 @@
   let filter = $state('');
   let sortBy = $state<'name' | 'most_used'>('name');
 
-  // Modals state
-  let showAddModal = $state(false);
-  let newProjectPath = $state('');
-  let isSubmittingAdd = $state(false);
-  let addError = $state<string | null>(null);
+  // Favourites ordering: the id being dragged, and whether a write is in flight.
+  let dragId = $state<string | null>(null);
+  let isReordering = $state(false);
+  let reorderError = $state('');
+
+  // Project setup drawer (UC-PRJ-1, the project's own values).
+  let settingsTarget = $state<EnrolledProject | null>(null);
+  let settings = $state<ProjectSettingsRecord | null>(null);
+  let settingsLoading = $state(false);
+  let settingsError = $state('');
+  let settingsNotice = $state('');
+  let settingsDrafts = $state<Record<string, string>>({});
+  let savingAspect = $state<string | null>(null);
+  let settingsConflict = $state<ProjectSettingsConflict | null>(null);
 
   let releaseTarget = $state<EnrolledProject | null>(null);
   let releaseReason = $state('');
@@ -89,41 +101,16 @@
   }
 
   async function handleStartOnboarding() {
-    if (!newProjectPath.trim()) {
-      addError = $t('project.adding.path_required');
-      return;
-    }
-    isSubmittingAdd = true;
-    addError = null;
-    try {
-      await apiClient.startProjectOnboarding(newProjectPath.trim());
-      showAddModal = false;
-      newProjectPath = '';
-      await loadExplorer();
-    } catch (err: unknown) {
-      addError = (err as Error)?.message || $t('project.adding.start_failed');
-    } finally {
-      isSubmittingAdd = false;
-    }
+    openProjectOnboarding();
   }
 
   /**
-   * The id of the entry a continuation link names.
+   * Opens the run a being-added project waits at, on the project onboarding route.
    *
-   * A being-added project continues as a start entry (`/api/v1/entries/{id}/continue`), so the
-   * web app addresses it by its canonical entry route rather than the generic onboarding screen.
-   *
-   * @param link the entry's `continue_link`
-   * @returns the entry id, or `null` when the link names none
+   * @param being the explorer's report of the run
    */
-  function entryIdOf(link?: string | null): string | null {
-    const match = /\/entries\/([^/]+)\//.exec(link ?? '');
-    if (!match?.[1]) return null;
-    try {
-      return decodeURIComponent(match[1]);
-    } catch {
-      return null;
-    }
+  function handleContinueOnboarding(being: BeingAddedProject) {
+    openProjectOnboarding(being.checkout_path);
   }
 
   async function handleConfirmRelease() {
@@ -144,17 +131,18 @@
 
   async function handleConfirmUnenrol() {
     if (!unenrolTarget) return;
+    const target = unenrolTarget;
     isUnenrolling = true;
     unenrolError = null;
     try {
-      await apiClient.unenrolProject(unenrolTarget.project_id);
+      await apiClient.unenrolProject(target.project_id);
       unenrolTarget = null;
       await loadExplorer();
     } catch (err: unknown) {
       const msg = (err as Error)?.message || '';
       if (msg.includes('scope_active') || msg.includes('409')) {
         unenrolError =
-          $t('project.release.refused', { project: unenrolTarget.display_name }) +
+          $t('project.release.refused', { project: target.display_name }) +
           '. ' +
           $t('project.release.refused_hint');
       } else {
@@ -178,6 +166,196 @@
       abandonError = (err as Error)?.message || $t('project.adding.abandon_failed');
     } finally {
       isAbandoning = false;
+    }
+  }
+
+  /**
+   * Moves one favourite to another position and persists the operator's order.
+   *
+   * @param fromIndex the favourite's current index
+   * @param toIndex the index it takes
+   */
+  function moveFavourite(fromIndex: number, toIndex: number): void {
+    if (!explorer || isReordering) return;
+    if (toIndex < 0 || toIndex >= explorer.favourites.length || fromIndex === toIndex) return;
+    const next = [...explorer.favourites];
+    const [moved] = next.splice(fromIndex, 1);
+    if (!moved) return;
+    next.splice(toIndex, 0, moved);
+    void persistFavouriteOrder(next);
+  }
+
+  /**
+   * @param index the favourite's index
+   * @param delta `-1` to move it up, `1` to move it down
+   */
+  function moveFavouriteBy(index: number, delta: number): void {
+    moveFavourite(index, index + delta);
+  }
+
+  /**
+   * @param event the drag event
+   * @param projectId the favourite being dragged
+   */
+  function startFavouriteDrag(event: DragEvent, projectId: string): void {
+    dragId = projectId;
+    event.dataTransfer?.setData('text/plain', projectId);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  /**
+   * Drops a favourite onto another, taking the dropped-on favourite's position.
+   *
+   * @param event the drop event
+   * @param targetId the favourite it was dropped on
+   */
+  function dropFavourite(event: DragEvent, targetId: string): void {
+    event.preventDefault();
+    const sourceId = dragId ?? event.dataTransfer?.getData('text/plain') ?? '';
+    dragId = null;
+    if (!explorer || !sourceId || sourceId === targetId) return;
+    const from = explorer.favourites.findIndex((project) => project.project_id === sourceId);
+    const to = explorer.favourites.findIndex((project) => project.project_id === targetId);
+    if (from < 0 || to < 0) return;
+    moveFavourite(from, to);
+  }
+
+  /**
+   * Writes the new order, and restores the old one when the runtime refuses it.
+   *
+   * @param next the favourites in their new order
+   */
+  async function persistFavouriteOrder(next: EnrolledProject[]): Promise<void> {
+    if (!explorer) return;
+    const previous = explorer;
+    explorer = { ...explorer, favourites: next };
+    isReordering = true;
+    reorderError = '';
+    try {
+      await apiClient.reorderFavouriteProjects(next.map((project) => project.project_id));
+    } catch {
+      explorer = previous;
+      reorderError = $t('project.explorer.reorder_failed');
+    } finally {
+      isReordering = false;
+    }
+  }
+
+  /**
+   * Opens the setup drawer of a project: its own values, at the revision they were read at.
+   *
+   * @param project the project
+   */
+  async function openSetup(project: EnrolledProject): Promise<void> {
+    settingsTarget = project;
+    settings = null;
+    settingsDrafts = {};
+    settingsError = '';
+    settingsNotice = '';
+    settingsConflict = null;
+    await loadProjectSettings(project.project_id);
+  }
+
+  function closeSetup(): void {
+    settingsTarget = null;
+    settings = null;
+    settingsConflict = null;
+  }
+
+  /**
+   * @param projectId the project whose values are read
+   */
+  async function loadProjectSettings(projectId: string): Promise<void> {
+    settingsLoading = true;
+    settingsError = '';
+    try {
+      const loaded = await apiClient.getProjectSettings(projectId);
+      if (!settingsTarget || settingsTarget.project_id !== projectId) return;
+      settings = loaded;
+      const drafts: Record<string, string> = {};
+      for (const value of loaded.values) {
+        drafts[value.aspect] = value.value ?? '';
+      }
+      settingsDrafts = drafts;
+    } catch {
+      settingsError = $t('project.settings.load_failed');
+    } finally {
+      settingsLoading = false;
+    }
+  }
+
+  /**
+   * Saves one value against the revision the drawer was opened with.
+   *
+   * @param value the aspect being saved
+   */
+  async function saveSetting(value: ProjectSettingsValue): Promise<void> {
+    if (!settings || !settingsTarget) return;
+    await applyProjectSetting(value.aspect, settingsDrafts[value.aspect] ?? '', settings.revision);
+  }
+
+  /**
+   * Applies one value, and opens the conflict card instead of overwriting a value that changed in
+   * another client.
+   *
+   * @param aspect the value's aspect
+   * @param wanted this browser's choice
+   * @param revision the revision the change is sent against
+   */
+  async function applyProjectSetting(
+    aspect: string,
+    wanted: string,
+    revision: number,
+  ): Promise<void> {
+    if (!settingsTarget) return;
+    savingAspect = aspect;
+    settingsError = '';
+    settingsNotice = '';
+    settingsConflict = null;
+    try {
+      const result = await apiClient.saveProjectSettings(
+        settingsTarget.project_id,
+        aspect,
+        wanted,
+        revision,
+      );
+      if (result.conflict) {
+        settingsConflict = {
+          aspect,
+          currentValue: result.current_value ?? '',
+          wantedValue: wanted,
+          revision: result.revision,
+        };
+        return;
+      }
+      if (!result.applied) {
+        settingsError = $t('project.settings.update_failed');
+        return;
+      }
+      settingsNotice = $t('project.settings.saved');
+      await loadProjectSettings(settingsTarget.project_id);
+    } catch {
+      settingsError = $t('project.settings.update_failed');
+    } finally {
+      savingAspect = null;
+    }
+  }
+
+  /** Applies this browser's choice again, on the revision the other client left behind. */
+  async function applyConflictAgain(): Promise<void> {
+    if (!settingsConflict) return;
+    const { aspect, wantedValue, revision } = settingsConflict;
+    settingsConflict = null;
+    await applyProjectSetting(aspect, wantedValue, revision);
+  }
+
+  /** Keeps the other client's value and closes the card, without writing anything. */
+  function keepCurrentValue(): void {
+    settingsConflict = null;
+    if (settingsTarget) {
+      void loadProjectSettings(settingsTarget.project_id);
     }
   }
 
@@ -227,14 +405,7 @@
   <header class="explorer-header">
     <div class="explorer-header__title-row">
       <h1 class="explorer-title">{$t('project.explorer.title')}</h1>
-      <Button
-        variant="primary"
-        onclick={() => {
-          showAddModal = true;
-          addError = null;
-        }}
-        data-testid="add-project-btn"
-      >
+      <Button variant="primary" onclick={handleStartOnboarding} data-testid="add-project-btn">
         + {$t('project.explorer.add')}
       </Button>
     </div>
@@ -288,16 +459,17 @@
       <Button variant="secondary" onclick={loadExplorer}>{$t('web.common.retry')}</Button>
     </div>
   {:else if explorer}
+    {#if reorderError}
+      <div class="alert alert--danger" role="alert" data-testid="reorder-error">
+        {reorderError}
+      </div>
+    {/if}
+
     <!-- Empty State -->
     {#if explorer.all_projects.length === 0 && explorer.being_added.length === 0}
       <div class="empty-state" data-testid="empty-projects-state">
         <p class="empty-state__text">{$t('project.explorer.empty')}</p>
-        <Button
-          variant="primary"
-          onclick={() => {
-            showAddModal = true;
-          }}
-        >
+        <Button variant="primary" onclick={handleStartOnboarding}>
           + {$t('project.explorer.add')}
         </Button>
       </div>
@@ -395,6 +567,13 @@
                   >
                     {$t('project.action.running_work')}
                   </button>
+                  <button
+                    class="btn-link"
+                    onclick={() => openSetup(project)}
+                    data-testid="setup-btn-{project.project_id}"
+                  >
+                    {$t('project.action.setup')}
+                  </button>
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
@@ -430,7 +609,6 @@
           <h2 class="section-title">{$t('project.adding.title')}</h2>
           <div class="project-grid">
             {#each explorer.being_added as being (being.checkout_path)}
-              {@const continueEntryId = entryIdOf(being.continue_link)}
               <div class="project-card being-added-card" data-testid="being-added-card">
                 <div class="being-added-card__info">
                   <span class="mono text-sm checkout-path">{being.checkout_path}</span>
@@ -443,16 +621,14 @@
                   </span>
                 </div>
                 <div class="being-added-card__actions">
-                  {#if continueEntryId}
-                    <Button
-                      variant="primary"
-                      size="small"
-                      onclick={() => navigateTo('start', { entryId: continueEntryId })}
-                      data-testid="continue-onboarding-btn"
-                    >
-                      {$t('project.adding.continue')}
-                    </Button>
-                  {/if}
+                  <Button
+                    variant="primary"
+                    size="small"
+                    onclick={() => handleContinueOnboarding(being)}
+                    data-testid="continue-onboarding-btn"
+                  >
+                    {$t('project.adding.continue')}
+                  </Button>
                   <Button
                     variant="secondary"
                     size="small"
@@ -476,8 +652,37 @@
         <section class="explorer-section" data-testid="section-favourites">
           <h2 class="section-title">★ {$t('project.explorer.favourites')}</h2>
           <div class="project-grid">
-            {#each explorer.favourites as project (project.project_id)}
-              <article class="project-card" data-testid="project-card-{project.project_id}">
+            {#each explorer.favourites as project, index (project.project_id)}
+              <article
+                class="project-card project-card--draggable"
+                draggable="true"
+                ondragstart={(event) => startFavouriteDrag(event, project.project_id)}
+                ondragover={(event) => event.preventDefault()}
+                ondrop={(event) => dropFavourite(event, project.project_id)}
+                data-testid="project-card-{project.project_id}"
+              >
+                <div class="favourite-order" data-testid="favourite-order-{project.project_id}">
+                  <button
+                    type="button"
+                    class="order-btn"
+                    disabled={index === 0 || isReordering}
+                    aria-label={`${$t('project.explorer.move_up')} ${project.display_name}`}
+                    onclick={() => moveFavouriteBy(index, -1)}
+                    data-testid="favourite-up-{project.project_id}"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    class="order-btn"
+                    disabled={index === explorer.favourites.length - 1 || isReordering}
+                    aria-label={`${$t('project.explorer.move_down')} ${project.display_name}`}
+                    onclick={() => moveFavouriteBy(index, 1)}
+                    data-testid="favourite-down-{project.project_id}"
+                  >
+                    ↓
+                  </button>
+                </div>
                 <div class="project-card__header">
                   <button
                     class="fav-toggle-btn fav-toggle-btn--active"
@@ -551,6 +756,13 @@
                     data-testid="running-work-btn-{project.project_id}"
                   >
                     {$t('project.action.running_work')}
+                  </button>
+                  <button
+                    class="btn-link"
+                    onclick={() => openSetup(project)}
+                    data-testid="setup-btn-{project.project_id}"
+                  >
+                    {$t('project.action.setup')}
                   </button>
                   {#if !project.is_released}
                     <button
@@ -661,6 +873,13 @@
                     data-testid="running-work-btn-{project.project_id}"
                   >
                     {$t('project.action.running_work')}
+                  </button>
+                  <button
+                    class="btn-link"
+                    onclick={() => openSetup(project)}
+                    data-testid="setup-btn-{project.project_id}"
+                  >
+                    {$t('project.action.setup')}
                   </button>
                   {#if !project.is_released}
                     <button
@@ -780,6 +999,13 @@
                   >
                     {$t('project.action.running_work')}
                   </button>
+                  <button
+                    class="btn-link"
+                    onclick={() => openSetup(project)}
+                    data-testid="setup-btn-{project.project_id}"
+                  >
+                    {$t('project.action.setup')}
+                  </button>
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
@@ -812,59 +1038,7 @@
   {/if}
 </div>
 
-<!-- 1. Add Project Modal -->
-{#if showAddModal}
-  <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="add-project-modal">
-    <div class="modal-card">
-      <h3 class="modal-title">{$t('project.explorer.add')}</h3>
-      <p class="modal-explain">
-        {$t('project.adding.path_hint')}
-      </p>
-
-      <div class="modal-input-group">
-        <label for="new-project-path" class="text-sm">
-          {$t('project.adding.path_label')}
-        </label>
-        <input
-          id="new-project-path"
-          type="text"
-          class="modal-input mono"
-          placeholder={$t('project.adding.path_placeholder')}
-          bind:value={newProjectPath}
-          data-testid="new-project-path-input"
-        />
-      </div>
-
-      {#if addError}
-        <div class="alert alert--danger modal-alert" role="alert">
-          {addError}
-        </div>
-      {/if}
-
-      <div class="modal-actions">
-        <Button
-          variant="secondary"
-          onclick={() => {
-            showAddModal = false;
-          }}
-          data-testid="cancel-add-project-btn"
-        >
-          {$t('web.common.cancel')}
-        </Button>
-        <Button
-          variant="primary"
-          loading={isSubmittingAdd}
-          onclick={handleStartOnboarding}
-          data-testid="confirm-add-project-btn"
-        >
-          {$t('project.adding.start')}
-        </Button>
-      </div>
-    </div>
-  </div>
-{/if}
-
-<!-- 2. Release Project Modal -->
+<!-- 1. Release Project Modal -->
 {#if releaseTarget}
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="release-modal">
     <div class="modal-card">
@@ -931,7 +1105,7 @@
   </div>
 {/if}
 
-<!-- 3. Unenrol Project Modal -->
+<!-- 2. Unenrol Project Modal -->
 {#if unenrolTarget}
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="unenrol-modal">
     <div class="modal-card">
@@ -975,7 +1149,7 @@
   </div>
 {/if}
 
-<!-- 4. Abandon Onboarding Modal -->
+<!-- 3. Abandon Onboarding Modal -->
 {#if abandonTarget}
   <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="abandon-modal">
     <div class="modal-card">
@@ -1011,6 +1185,127 @@
           {$t('project.adding.abandon')}
         </Button>
       </div>
+    </div>
+  </div>
+{/if}
+
+<!-- 4. Project Setup Drawer -->
+{#if settingsTarget}
+  <div
+    class="drawer-backdrop"
+    role="presentation"
+    onclick={(event) => {
+      if (event.target === event.currentTarget) closeSetup();
+    }}
+    data-testid="setup-drawer-backdrop"
+  >
+    <div
+      class="setup-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-label={$t('project.settings.title', { project: settingsTarget.display_name })}
+      data-testid="setup-drawer"
+    >
+      <header class="setup-drawer__header">
+        <h2 class="setup-drawer__title">
+          {$t('project.settings.title', { project: settingsTarget.display_name })}
+        </h2>
+        <Button variant="ghost" onclick={closeSetup} data-testid="close-setup-btn">
+          {$t('project.settings.close')}
+        </Button>
+      </header>
+
+      {#if settingsLoading}
+        <p class="text-muted" role="status">{$t('project.settings.loading')}</p>
+      {:else if settingsError}
+        <div class="alert alert--danger" role="alert" data-testid="setup-error">
+          <span>{settingsError}</span>
+          <Button
+            variant="secondary"
+            onclick={() => loadProjectSettings(settingsTarget?.project_id ?? '')}
+          >
+            {$t('web.common.retry')}
+          </Button>
+        </div>
+      {:else if settings}
+        {#if settingsNotice}
+          <p class="notice-text" data-testid="setup-notice">{settingsNotice}</p>
+        {/if}
+
+        {#if settingsConflict}
+          <div class="alert alert--warning" role="alert" data-testid="project-conflict">
+            <p class="conflict-line">
+              {$t('common.conflict.changed', { value: settingsConflict.currentValue })}
+            </p>
+            <p class="conflict-line">
+              {$t('common.conflict.yours')}: {settingsConflict.wantedValue}
+            </p>
+            <div class="conflict-actions">
+              <Button
+                variant="ghost"
+                onclick={keepCurrentValue}
+                data-testid="project-conflict-keep"
+              >
+                {$t('common.conflict.keep')}
+              </Button>
+              <Button
+                variant="primary"
+                onclick={applyConflictAgain}
+                data-testid="project-conflict-apply"
+              >
+                {$t('common.conflict.apply_again')}
+              </Button>
+            </div>
+          </div>
+        {/if}
+
+        <h3 class="setup-drawer__section">{$t('project.settings.values')}</h3>
+        {#if settings.values.length === 0}
+          <p class="text-muted">{$t('project.settings.empty')}</p>
+        {:else}
+          <ul class="setting-list">
+            {#each settings.values as value (value.aspect)}
+              {@const choices = value.choices}
+              <li class="setting-row" data-aspect={value.aspect}>
+                <label class="setting-row__label" for="setting-{value.aspect}">
+                  {value.aspect}
+                  <span class="setting-row__origin">
+                    {$t('project.settings.origin', { origin: value.origin })}
+                  </span>
+                </label>
+                {#if choices && choices.length > 0}
+                  <select
+                    id="setting-{value.aspect}"
+                    class="modal-input"
+                    bind:value={settingsDrafts[value.aspect]}
+                    data-testid="setting-input-{value.aspect}"
+                  >
+                    {#each choices as option}
+                      <option value={option}>{option}</option>
+                    {/each}
+                  </select>
+                {:else}
+                  <input
+                    id="setting-{value.aspect}"
+                    type="text"
+                    class="modal-input"
+                    bind:value={settingsDrafts[value.aspect]}
+                    data-testid="setting-input-{value.aspect}"
+                  />
+                {/if}
+                <Button
+                  variant="secondary"
+                  loading={savingAspect === value.aspect}
+                  onclick={() => saveSetting(value)}
+                  data-testid="save-setting-{value.aspect}"
+                >
+                  {$t('project.settings.save')}
+                </Button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
     </div>
   </div>
 {/if}
@@ -1415,6 +1710,127 @@
     border: 1px solid var(--color-danger-border);
   }
 
+  .alert--warning {
+    background-color: var(--color-warning-subtle);
+    color: var(--color-warning);
+    border: 1px solid var(--color-warning-border);
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notice-text {
+    font-size: var(--text-sm);
+    color: var(--color-primary);
+    margin-bottom: var(--space-3);
+  }
+
+  /* Favourites ordering */
+  .project-card--draggable {
+    cursor: grab;
+  }
+
+  .favourite-order {
+    display: flex;
+    gap: var(--space-1);
+    justify-content: flex-end;
+  }
+
+  .order-btn {
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+
+  .order-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Project setup drawer */
+  .drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgb(0 0 0 / 0.5);
+    display: flex;
+    justify-content: flex-end;
+    z-index: 100;
+  }
+
+  .setup-drawer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: min(30rem, 100%);
+    height: 100%;
+    padding: var(--space-5);
+    overflow-y: auto;
+    background-color: var(--color-bg-surface);
+    border-left: 1px solid var(--color-border);
+  }
+
+  .setup-drawer__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .setup-drawer__title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .setup-drawer__section {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .conflict-line {
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+  }
+
+  .conflict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .setting-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .setting-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .setting-row__label {
+    grid-column: 1 / -1;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-secondary);
+  }
+
+  .setting-row__origin {
+    margin-left: var(--space-2);
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
   /* Mobile responsiveness down to 320px */
   @media (max-width: 600px) {
     .project-explorer {
@@ -1443,6 +1859,16 @@
     .modal-card {
       width: 95%;
       padding: var(--space-4);
+    }
+
+    .setup-drawer {
+      width: 100%;
+      padding: var(--space-4);
+    }
+
+    .setting-row {
+      grid-template-columns: 1fr;
+      align-items: stretch;
     }
   }
 </style>
