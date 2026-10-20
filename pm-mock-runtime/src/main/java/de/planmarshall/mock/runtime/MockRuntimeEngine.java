@@ -452,6 +452,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Object eventLock = new Object();
     private final Map<String, Deque<BufferedEvent>> eventBuffers = new HashMap<>();
     private final Map<String, Long> streamSequences = new HashMap<>();
+    /** Frames broadcast between stream registration and the end of its replay, in arrival order. */
+    private final Map<MockEventStream, List<FramedEvent>> pendingFrames = new ConcurrentHashMap<>();
+    private final Set<MockEventStream> readyStreams = ConcurrentHashMap.newKeySet();
+    private final Map<MockEventStream, ReplayPlan> replayPlans = new ConcurrentHashMap<>();
     private final List<ScheduledFuture<?>> pendingTasks = new ArrayList<>();
 
     /**
@@ -462,6 +466,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param json  the serialized envelope
      */
     private record BufferedEvent(long id, String event, String json) {
+    }
+
+    /**
+     * The replay a new stream owes before live delivery starts.
+     *
+     * @param events the buffered events after {@code Last-Event-ID}
+     * @param reset  {@code true} when the id is stale and a {@code reset} is owed instead
+     */
+    private record ReplayPlan(List<BufferedEvent> events, boolean reset) {
     }
 
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
@@ -807,8 +820,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
             }
+            // Send under the same lock that assigned the ids: two broadcasts cannot interleave their
+            // frames and make a stream's ids go backwards.
+            framed.forEach(this::writeOrDrop);
         }
-        framed.forEach(this::writeOrDrop);
     }
 
     /**
@@ -821,11 +836,28 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void writeOrDrop(FramedEvent framed) {
+        synchronized (eventLock) {
+            if (!readyStreams.contains(framed.stream())) {
+                pendingFrames.computeIfAbsent(framed.stream(), key -> new ArrayList<>()).add(framed);
+                return;
+            }
+            tryWrite(framed);
+        }
+    }
+
+    private void tryWrite(FramedEvent framed) {
         try {
             framed.stream().sendJson(framed.event(), framed.id(), framed.json());
         } catch (IOException _) {
-            activeStreams.remove(framed.stream());
+            dropStream(framed.stream());
         }
+    }
+
+    private void dropStream(MockEventStream stream) {
+        activeStreams.remove(stream);
+        readyStreams.remove(stream);
+        pendingFrames.remove(stream);
+        replayPlans.remove(stream);
     }
 
     private static Map<String, Object> payloadOf(Object data) {
@@ -4905,38 +4937,37 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException on write failure
      */
     private void handleEventStream(MockHttpRequest request, MockHttpResponse response, String scope) throws IOException {
-        var stream = response.events(200, created -> created.scope(scope));
-
         var lastEventId = parseLastEventId(request.header("Last-Event-ID"));
-        // The replay snapshot, the registration, and the replay writes share one lock section: a
-        // broadcast either lands in the buffer and the replay, or is delivered live after the
-        // replay, never both and never out of order.
+        // Register before the head is written, so a broadcast that the client issues right after it
+        // reads the head is queued for this stream instead of being missed. The snapshot is taken in
+        // the same lock section as the registration: a broadcast either lands in the buffer and the
+        // replay, or is queued live after it, never both.
+        var stream = response.events(200, created -> {
+            created.scope(scope);
+            synchronized (eventLock) {
+                replayPlans.put(created, replayPlanFor(scope, lastEventId));
+                activeStreams.put(created, scope);
+            }
+        });
+
         synchronized (eventLock) {
-            var replay = new ArrayList<BufferedEvent>();
-            var reset = false;
-            if (lastEventId != null) {
-                var buffer = eventBuffers.get(scope);
-                var found = buffer != null && buffer.stream().anyMatch(item -> item.id() == lastEventId);
-                if (found) {
-                    for (var item : buffer) {
-                        if (item.id() > lastEventId) {
-                            replay.add(item);
-                        }
-                    }
+            var plan = replayPlans.remove(stream);
+            if (plan != null) {
+                if (plan.reset()) {
+                    var resetId = nextBufferedReset(scope);
+                    tryWrite(new FramedEvent(stream, resetId, EventName.RESET.wire(),
+                            envelopeJson(EventName.RESET.wire(), resetId, resetScopeOf(scope),
+                                    new LinkedHashMap<>())));
                 } else {
-                    reset = true;
+                    for (var item : plan.events()) {
+                        tryWrite(new FramedEvent(stream, item.id(), item.event(), item.json()));
+                    }
                 }
             }
-            activeStreams.put(stream, scope);
-            if (reset) {
-                var resetId = nextBufferedReset(scope);
-                writeOrDrop(new FramedEvent(stream, resetId, EventName.RESET.wire(),
-                        envelopeJson(EventName.RESET.wire(), resetId, resetScopeOf(scope),
-                                new LinkedHashMap<>())));
-            } else {
-                for (var item : replay) {
-                    writeOrDrop(new FramedEvent(stream, item.id(), item.event(), item.json()));
-                }
+            readyStreams.add(stream);
+            var queued = pendingFrames.remove(stream);
+            if (queued != null) {
+                queued.forEach(this::tryWrite);
             }
         }
 
@@ -4946,7 +4977,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 sendActivitySeed(stream, scope);
             }
         } catch (IOException _) {
-            activeStreams.remove(stream);
+            dropStream(stream);
             return;
         }
 
@@ -4959,7 +4990,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 break;
             }
         }
-        activeStreams.remove(stream);
+        dropStream(stream);
+    }
+
+    /**
+     * Computes the replay a stream owes. Must be called under {@link #eventLock}, in the same section
+     * that registers the stream.
+     */
+    private ReplayPlan replayPlanFor(String scope, Long lastEventId) {
+        if (lastEventId == null) {
+            return new ReplayPlan(List.of(), false);
+        }
+        var buffer = eventBuffers.get(scope);
+        var found = buffer != null && buffer.stream().anyMatch(item -> item.id() == lastEventId);
+        if (!found) {
+            return new ReplayPlan(List.of(), true);
+        }
+        var replay = new ArrayList<BufferedEvent>();
+        for (var item : buffer) {
+            if (item.id() > lastEventId) {
+                replay.add(item);
+            }
+        }
+        return new ReplayPlan(List.copyOf(replay), false);
     }
 
     private static Long parseLastEventId(String header) {
@@ -5035,7 +5088,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         try {
             stream.sendJson("task.activity", id, envelope);
         } catch (IOException _) {
-            activeStreams.remove(stream);
+            dropStream(stream);
         }
     }
 
@@ -7505,6 +7558,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
             activeStreams.clear();
+            readyStreams.clear();
+            pendingFrames.clear();
+            replayPlans.clear();
         }
     }
 }

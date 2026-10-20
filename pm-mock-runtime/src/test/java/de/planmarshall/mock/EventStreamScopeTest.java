@@ -18,6 +18,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
@@ -31,6 +32,7 @@ import de.planmarshall.api.json.JsonTree;
  */
 @DisplayName("Scoped event streams")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
 class EventStreamScopeTest {
 
     @Test
