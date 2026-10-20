@@ -22,9 +22,9 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Mock** | [`mock-runtime-foundation-and-consolidation-plan.md`](mock-runtime-foundation-and-consolidation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-foundation` | `feat/mock-foundation` | Ready to execute (Step 1 complete) |
-| **CLI** | [`cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-foundation` | `feat/cli-fullscreen-foundation` | Ready to execute (Step 1 complete) |
-| **Web** | [`web-foundation-routing-and-catalogue-plan.md`](web-foundation-routing-and-catalogue-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-foundation` | `feat/web-foundation-routing-and-catalogue` | Ready to execute (Step 1 complete) |
+| **Mock** | [`mock-runtime-foundation-and-consolidation-plan.md`](mock-runtime-foundation-and-consolidation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-foundation` | `feat/mock-foundation` | Active (PR #125 under review / CI) |
+| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | Next up for worktree allocation | `feat/cli-fullscreen-overview` | Ready to launch (Foundation verified in PR #124) |
+| **Web** | [`web-foundation-routing-and-catalogue-plan.md`](web-foundation-routing-and-catalogue-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-foundation` | `feat/web-foundation-routing-and-catalogue` | Active (PR #126 under review / CI) |
 
 ---
 
@@ -41,9 +41,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Migrates projects, starting work, reports, and system views into standard scenarios)*
 
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)
-1. **Foundation (Active)**: `cli-fullscreen-foundation-plan.md`
+1. **Foundation (Landed & Verified)**: [`cli-fullscreen-foundation-plan.md`](implemented/cli-fullscreen-foundation-plan.md) ([Report](verified/cli-fullscreen-foundation-plan-report.md) — PR #124, commit `e3ae1c0`)
    *(Terminal screen harness, raw mode safety, resize signal traps, notice-holding)*
-2. **Overview**: `cli-fullscreen-overview-plan.md`
+2. **Overview (Next Active)**: `cli-fullscreen-overview-plan.md`
 3. **Plan View**: `cli-fullscreen-plan-view-plan.md`
 4. **Projects**: `cli-fullscreen-projects-plan.md`
 5. **Reports & System**: `cli-fullscreen-reports-system-plan.md`
