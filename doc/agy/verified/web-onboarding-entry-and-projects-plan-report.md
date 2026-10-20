@@ -1,9 +1,9 @@
 # Completion Report: `web-onboarding-entry-and-projects`
 
-Implementation plan: [`doc/agy/implemented/web-onboarding-entry-and-projects-plan.md`](implemented/web-onboarding-entry-and-projects-plan.md)
+Implementation plan: [`doc/agy/implemented/web-onboarding-entry-and-projects-plan.md`](../implemented/web-onboarding-entry-and-projects-plan.md)
 Branch: `feat/web-onboarding-entry-and-projects`
 Worktree: `/Users/oliver/git/worktrees/pm-mcp-clients-web-onboarding-projects`
-Governing SOP: [`doc/agy/runbook.md`](runbook.md)
+Governing SOP: [`doc/agy/runbook.md`](../runbook.md)
 
 ---
 
@@ -114,29 +114,28 @@ The Playwright suite ran against a live `pm-mock-runtime` on port 7420 with the 
 - The build includes `npm ci`, the production SPA build, the complete Vitest suite, and ESLint in
   both web modules.
 
-### Deviations and notes
+---
 
-1. **Step taxonomy follows the design, not the plan's prose list.** The plan's §2 names ten steps
-   (identity, build system, skill domains, quality gates, …). The normative local design
-   (`doc/design/shared/project-onboarding.adoc#steps`) and the existing catalogue define the ten
-   steps as Checkout, Identity, Enrolment, Own settings, Team settings, Architecture, Landing,
-   Roles, Descriptions, Commit. The view follows the design so it renders the texts the catalogue
-   already ships and stays traceable to UC-PRJ-1. The build environment the plan asks for on
-   step 2 is shown on the identity/enrolment steps, where the design places it.
-2. **Favourite order uses the documented endpoint.** The plan's §2.2 names
-   `PUT /api/v1/projects/favourites/order`; `project-contract.adoc` and the mock runtime implement
-   `PUT /api/v1/explorer/favourites`. `apiClient.reorderFavouriteProjects()` keeps the plan's call
-   site but writes through the contract endpoint, so the feature works against the runtime that
-   exists.
-3. **Runtime-side endpoints are ahead of the local mock.** `GET /api/v1/projects/{id}/onboarding`,
-   `POST /api/v1/projects/{id}/onboarding/step` and the project settings endpoints are owned by the
-   prerequisite `mock-runtime-projects-and-start` plan, which has not landed yet. The web client
-   and views implement the contract, and degrade with a catalogue error and a retry where the mock
-   runtime does not yet answer. The E2E flows that are reachable today — adding, continuing,
-   favourite reordering — pass; the onboarding and settings-conflict behaviours are proven by the
-   component tests' mocked contract.
-4. **Pre-commit OpenRewrite baseline drift.** `verify -Ppre-commit` (parent `pm-mcp-parent:0.1.1`)
-   rewrites import grouping and record-parameter indentation across the whole existing Java tree,
-   unrelated to this change. Those rewrites were reverted to keep this PR scoped; the gate itself
-   passed. A repository-wide formatting pass should land separately before the recipe is treated as
-   a zero-diff gate.
+## 6. Post-Landing Verification Audit (Step 8: PASSED)
+
+In accordance with [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md), the orchestrator session conducted an active, independent 4-pillar verification audit of PR #132 landed at commit `cff749e` on `main`:
+
+### Pillar 1: Specification & Contract Conformance Matrix (Traceability Audit)
+- **10-Step Project Onboarding**: Verified `ProjectOnboardingView.svelte` implements the full 10-step sequence with captured build environment display, conflict card resolution, setup question chat drawer, and graceful degraded states.
+- **Favourite Reordering**: Verified move-up / move-down and drag-and-drop ordering in `ProjectExplorerView.svelte` writing to `PUT /api/v1/explorer/favourites` with rollback on refusal.
+- **Settings Conflict & Direct Aspect Jump**: Verified `MachineSettingsView.svelte` aspect jump to `/onboarding?step={n}`, settings revision conflict resolution with `expected_revision`, and `SettingsView.svelte` back navigation.
+- **Zero Stubs / Placeholders**: Codebase contains zero `WorkspaceView` remnants, zero mock stubs, and zero unhandled placeholder routes.
+
+### Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans
+- **Zero Fallback Dictionaries**: Verified `git grep "fallbackMessages" pm-web-app/` returns 0 results in production code.
+- **Catalogue Purity**: Ran `npm test -- catalogue.test.ts` in `pm-web-app` — 6/6 tests passed. All 39 new keys exist in both English and German properties bundles.
+- **Unit & Route Suite**: Ran full Vitest suite in `pm-web-app`: 42 test files passed, 274 tests passed, 0 failures.
+- **Production Static Build**: Ran `npm run build` in `pm-web-app` — compiled static SPA cleanly.
+
+### Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight
+- **E2E Playwright Suite**: Ran `npx playwright test tests/projects.spec.js tests/onboarding.spec.js tests/devices.spec.js tests/entry.spec.js` against live mock runtime: **25 passed (22.6s)**.
+
+### Pillar 4: Independent Diff & AST Verification (Adversarial Audit)
+- **Attribution**: Commit `cff749e` verified with mandatory trailer:
+  `Co-Authored-By: plan-marshall <noreply@cuioss.de>`
+- **Boundary Discipline**: Changes strictly confined to `pm-web-app`, `pm-web-e2e`, and `pm-api` message properties. No unrelated module drift.

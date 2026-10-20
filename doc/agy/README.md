@@ -22,9 +22,9 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Mock** | [`mock-runtime-onboarding-and-entry-plan.md`](mock-runtime-onboarding-and-entry-plan.md) | Next up for worktree allocation | `feat/mock-onboarding-and-entry` | Ready to launch (Foundation verified in PR #125) |
-| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` | `feat/cli-fullscreen-overview` | Active (in flight) |
-| **Web** | [`web-onboarding-entry-and-projects-plan.md`](web-onboarding-entry-and-projects-plan.md) | Next up for worktree allocation | `feat/web-onboarding-entry-and-projects` | Ready to launch (Foundation verified in PR #126) |
+| **Mock** | [`mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-running-work` | `feat/mock-runtime-running-work` | Ready to launch (Wave 2b) |
+| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` | `feat/cli-fullscreen-overview` | Active (PR #130) |
+| **Web** | [`web-overview-plan-and-epic-view-plan.md`](web-overview-plan-and-epic-view-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-overview-plan-view` | `feat/web-overview-plan-and-epic-view` | Ready to launch (Wave 3) |
 
 ---
 
@@ -35,15 +35,17 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 ### Stream A: Mock Runtime Remediation (`pm-mock-runtime`)
 1. **Foundation (Landed & Verified)**: [`mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md) ([Report](verified/mock-runtime-foundation-and-consolidation-plan-report.md) — PR #125, commit `589bfaf`)
    *(Core engine, closed schema, scoped SSE replay, JSON-RPC `/mcp`, 5-scenario architecture)*
-2. **Wave 2 (Next Active)**: `mock-runtime-onboarding-and-entry-plan.md` & `mock-runtime-running-work-plan.md`
-   *(Migrates onboarding, paired devices, and running-work fixtures into standard scenarios)*
-3. **Wave 3**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
+2. **Wave 2a (Landed & Verified)**: [`mock-runtime-onboarding-and-entry-plan.md`](implemented/mock-runtime-onboarding-and-entry-plan.md) ([Report](verified/mock-runtime-onboarding-and-entry-plan-report.md) — PR #131, commit `77f75eb`)
+   *(Consolidated 23 scenario files into 80-state onboarding.json; full OperatorStateResource closure)*
+3. **Wave 2b (Next Active)**: `mock-runtime-running-work-plan.md`
+   *(Consolidates running-work, plan-view, decisions, and control files into rich running-work.json)*
+4. **Wave 3**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
    *(Migrates projects, starting work, reports, and system views into standard scenarios)*
 
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)
 1. **Foundation (Landed & Verified)**: [`cli-fullscreen-foundation-plan.md`](implemented/cli-fullscreen-foundation-plan.md) ([Report](verified/cli-fullscreen-foundation-plan-report.md) — PR #124, commit `e3ae1c0`)
    *(Terminal screen harness, raw mode safety, resize signal traps, notice-holding)*
-2. **Overview (Next Active)**: `cli-fullscreen-overview-plan.md`
+2. **Overview (Active in PR #130)**: `cli-fullscreen-overview-plan.md`
 3. **Plan View**: `cli-fullscreen-plan-view-plan.md`
 4. **Projects**: `cli-fullscreen-projects-plan.md`
 5. **Reports & System**: `cli-fullscreen-reports-system-plan.md`
@@ -52,8 +54,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 ### Stream C: Web Client Completion (`pm-web-app`)
 1. **Foundation (Landed & Verified)**: [`web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md) ([Report](verified/web-foundation-routing-and-catalogue-plan-report.md) — PR #126, commit `6b3defb`)
    *(Design spec completion, full URL routing/history, elimination of fallbackMessages, retirement of WorkspaceView)*
-2. **Onboarding, Entry & Projects (Next Active)**: `web-onboarding-entry-and-projects-plan.md`
-3. **Overview, Plan & Epic View**: `web-overview-plan-and-epic-view-plan.md`
+2. **Onboarding, Entry & Projects (Landed & Verified)**: [`web-onboarding-entry-and-projects-plan.md`](implemented/web-onboarding-entry-and-projects-plan.md) ([Report](verified/web-onboarding-entry-and-projects-plan-report.md) — PR #132, commit `cff749e`)
+   *(10-step project onboarding, build environment display, favourite ordering, setup conflict resolution)*
+3. **Overview, Plan & Epic View (Next Active)**: `web-overview-plan-and-epic-view-plan.md`
 4. **Decisions & Actions**: `web-decisions-and-actions-plan.md`
 5. **Reports, System & Designer**: `web-reports-system-and-designer-plan.md`
 
