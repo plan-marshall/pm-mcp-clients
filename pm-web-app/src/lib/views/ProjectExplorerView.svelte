@@ -574,6 +574,15 @@
                   >
                     {$t('project.action.setup')}
                   </button>
+                  {#if project.readiness === 'setup_needs'}
+                    <button
+                      class="btn-link"
+                      onclick={() => openProjectOnboarding(null, project.project_id)}
+                      data-testid="continue-setup-btn-{project.project_id}"
+                    >
+                      {$t('project.action.continue_setup')}
+                    </button>
+                  {/if}
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
@@ -764,6 +773,15 @@
                   >
                     {$t('project.action.setup')}
                   </button>
+                  {#if project.readiness === 'setup_needs'}
+                    <button
+                      class="btn-link"
+                      onclick={() => openProjectOnboarding(null, project.project_id)}
+                      data-testid="continue-setup-btn-{project.project_id}"
+                    >
+                      {$t('project.action.continue_setup')}
+                    </button>
+                  {/if}
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
@@ -881,6 +899,15 @@
                   >
                     {$t('project.action.setup')}
                   </button>
+                  {#if project.readiness === 'setup_needs'}
+                    <button
+                      class="btn-link"
+                      onclick={() => openProjectOnboarding(null, project.project_id)}
+                      data-testid="continue-setup-btn-{project.project_id}"
+                    >
+                      {$t('project.action.continue_setup')}
+                    </button>
+                  {/if}
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"
@@ -1006,6 +1033,15 @@
                   >
                     {$t('project.action.setup')}
                   </button>
+                  {#if project.readiness === 'setup_needs'}
+                    <button
+                      class="btn-link"
+                      onclick={() => openProjectOnboarding(null, project.project_id)}
+                      data-testid="continue-setup-btn-{project.project_id}"
+                    >
+                      {$t('project.action.continue_setup')}
+                    </button>
+                  {/if}
                   {#if !project.is_released}
                     <button
                       class="btn-link text-danger"

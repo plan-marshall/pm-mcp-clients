@@ -67,6 +67,7 @@
   let chatOpen = $state(false);
   let chatDraft = $state('');
   let isChatting = $state(false);
+  let confirmAbandon = $state(false);
 
   const currentStep = $derived(stepOf(run));
   const isNewRun = $derived(!projectId && !run);
@@ -321,9 +322,10 @@
     await load();
   }
 
-  /** Abandons a pre-enrolment run; nothing was enrolled. */
+  /** Abandons a pre-enrolment run, after the operator confirmed that nothing was enrolled. */
   async function abandonRun(): Promise<void> {
     if (!beingAdded) return;
+    confirmAbandon = false;
     try {
       await apiClient.abandonOnboarding(beingAdded.abandon_link || beingAdded.checkout_path);
       navigateTo('projects');
@@ -608,7 +610,11 @@
               {$t('project.adding.continue')}
             </Button>
             {#if beingAdded}
-              <Button variant="danger" on:click={abandonRun} data-testid="project-abandon">
+              <Button
+                variant="danger"
+                on:click={() => (confirmAbandon = true)}
+                data-testid="project-abandon"
+              >
                 {$t('project.adding.abandon')}
               </Button>
             {/if}
@@ -681,6 +687,31 @@
       {#if isChatting}
         <p class="chat-drawer__waiting">{$t('project.chat.waiting')}</p>
       {/if}
+    </div>
+  </div>
+{/if}
+
+{#if confirmAbandon && beingAdded}
+  <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="project-abandon-modal">
+    <div class="modal-card">
+      <h2 class="modal-title">
+        {$t('project.adding.abandon_title', { path: beingAdded.checkout_path })}
+      </h2>
+      <p class="modal-explain">
+        {$t('project.adding.abandon_confirm', { path: beingAdded.checkout_path })}
+      </p>
+      <div class="modal-actions">
+        <Button
+          variant="secondary"
+          on:click={() => (confirmAbandon = false)}
+          data-testid="project-abandon-cancel"
+        >
+          {$t('web.common.cancel')}
+        </Button>
+        <Button variant="danger" on:click={abandonRun} data-testid="project-abandon-confirm">
+          {$t('project.adding.abandon')}
+        </Button>
+      </div>
     </div>
   </div>
 {/if}
@@ -957,6 +988,48 @@
     z-index: 100;
   }
 
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgb(0 0 0 / 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-4);
+    z-index: 110;
+  }
+
+  .modal-card {
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    max-width: 32rem;
+    width: 100%;
+    box-shadow: var(--shadow-md);
+  }
+
+  .modal-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-2);
+  }
+
+  .modal-explain {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    margin-bottom: var(--space-5);
+  }
+
+  .modal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-3);
+  }
+
   .chat-drawer {
     display: flex;
     flex-direction: column;
@@ -1053,6 +1126,11 @@
     .build-env__variable {
       grid-template-columns: 1fr;
       gap: 0;
+    }
+
+    .modal-actions {
+      flex-direction: column-reverse;
+      align-items: stretch;
     }
   }
 </style>

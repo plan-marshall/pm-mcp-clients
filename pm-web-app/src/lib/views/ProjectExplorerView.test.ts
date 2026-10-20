@@ -489,4 +489,19 @@ describe('ProjectExplorerView component', () => {
     expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
     expect(get(runtimeStore).selectedOnboardingId).toBe('~/git/cui-parent');
   });
+
+  it('continues an enrolled project’s setup by its project id', async () => {
+    render(ProjectExplorerView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('continue-setup-btn-plan-marshall')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('continue-setup-btn-plan-marshall'));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('project-onboarding');
+    expect(state.selectedProjectId).toBe('plan-marshall');
+    expect(state.selectedOnboardingId).toBeNull();
+  });
 });

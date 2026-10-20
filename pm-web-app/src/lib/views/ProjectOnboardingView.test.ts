@@ -198,7 +198,7 @@ describe('ProjectOnboardingView component', () => {
     expect(screen.getByTestId('project-continue')).toBeInTheDocument();
   });
 
-  it('abandons a pre-enrolment run after the operator confirms', async () => {
+  it('abandons a pre-enrolment run only after the operator confirms', async () => {
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(BEING_ADDED);
     const abandonSpy = vi.spyOn(apiClient, 'abandonOnboarding').mockResolvedValue();
 
@@ -206,6 +206,11 @@ describe('ProjectOnboardingView component', () => {
 
     await waitFor(() => expect(screen.getByTestId('project-abandon')).toBeInTheDocument());
     await fireEvent.click(screen.getByTestId('project-abandon'));
+
+    expect(screen.getByTestId('project-abandon-modal')).toBeInTheDocument();
+    expect(abandonSpy).not.toHaveBeenCalled();
+
+    await fireEvent.click(screen.getByTestId('project-abandon-confirm'));
 
     expect(abandonSpy).toHaveBeenCalledWith('/api/v1/entries/ent-cui/abandon');
   });

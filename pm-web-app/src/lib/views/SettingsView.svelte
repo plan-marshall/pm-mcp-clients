@@ -212,7 +212,15 @@
       >
         {$t('web.settings.page.title')}
       </Button>
-      <Button variant="secondary" on:click={() => goBack()} data-testid="settings-back-button">
+      <Button
+        variant="secondary"
+        on:click={() => {
+          if (!goBack()) {
+            navigateTo('projects');
+          }
+        }}
+        data-testid="settings-back-button"
+      >
         {$t('web.common.back')}
       </Button>
     </div>

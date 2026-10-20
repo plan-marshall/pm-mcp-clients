@@ -31,7 +31,7 @@
     loadFailed = state === null && $runtimeStore.isPaired;
     // A `Change` on the machine settings names the aspect's step; a reload repeats it from the
     // address bar, so both open the onboarding at the same aspect.
-    const requested = requestedOnboardingStep(7);
+    const requested = requestedOnboardingStep(STEP_KEYS.length);
     if (requested !== null) {
       selectedStep = requested;
       // The step is consumed once, so a later visit opens the onboarding where it stands.

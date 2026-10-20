@@ -520,4 +520,23 @@ describe('ApiClient', () => {
     expect(lastBody).toEqual({ project_ids: ['pm-mcp-core', 'pm-mcp-clients'] });
     expect(result.project_ids).toEqual(['pm-mcp-core', 'pm-mcp-clients']);
   });
+
+  it('clears the pairing when a conflict-capable call is refused with 401', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_revoked');
+    const onRevoked = vi.fn();
+    client.setOnRevoked(onRevoked);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'unauthorized' }),
+    });
+
+    // Act & Assert
+    await expect(
+      client.saveProjectSettings('pm-mcp-clients', 'landing', 'landing.files', 7),
+    ).rejects.toThrow('unauthorized');
+    expect(onRevoked).toHaveBeenCalledWith('unauthorized');
+    expect(client.isPaired()).toBe(false);
+  });
 });

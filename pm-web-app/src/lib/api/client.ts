@@ -2432,11 +2432,22 @@ export class ApiClient {
     if (secret) {
       headers['Authorization'] = `Bearer ${secret}`;
     }
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers,
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers,
+        body: JSON.stringify(body),
+      });
+    } catch {
+      this.onOfflineCallback?.();
+      throw new Error('network_offline');
+    }
+    if (res.status === 401) {
+      this.clearAuth();
+      this.onRevokedCallback?.('unauthorized');
+      throw new Error('unauthorized');
+    }
     if (res.status === 409 || res.ok) {
       return (await res.json()) as T;
     }
