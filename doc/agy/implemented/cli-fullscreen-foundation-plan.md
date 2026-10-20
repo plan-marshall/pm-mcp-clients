@@ -58,17 +58,17 @@ This plan is the **Wave 1 Foundation** for all subsequent terminal full-screen p
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-foundation` on branch `feat/cli-fullscreen-foundation` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-foundation` on branch `feat/cli-fullscreen-foundation` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/cli-fullscreen-foundation-plan-report.md`), initial plan moved to `doc/agy/implemented/cli-fullscreen-foundation-plan.md`, and package status updated in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/cli-fullscreen-foundation-plan-report.md`), initial plan moved to `doc/agy/implemented/cli-fullscreen-foundation-plan.md`, and package status updated in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-foundation-plan-report.md` by orchestrator session.
 
@@ -90,54 +90,54 @@ This plan is the **Wave 1 Foundation** for all subsequent terminal full-screen p
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Traceability, Design Alignment & Plan Index Hygiene
-- [ ] **1.1 Cross-View Design Clarifications**: Update `doc/design/terminal-client/15-overview.adoc` and `04-console.adoc` to explicitly define:
+- [x] **1.1 Cross-View Design Clarifications**: Update `doc/design/terminal-client/15-overview.adoc` and `04-console.adoc` to explicitly define:
   - Level stack navigation between Overview (`plans`), Explorer (`projects`), Plan View, Epic View, Reports (`R`), and System (`S`), and how `Esc` pops to the caller level.
   - Narrow-terminal rules across all views (`< 60` columns prints scrollback fallback; `< 80` / `< 100` omits detail lines; `?` displays full row details; single-line width truncation with `…`).
   - Header connection state on SSE disconnect/reconnect (`● connected` vs reconnecting indicator) and automatic snapshot refresh on reconnect.
   - Dialogue hand-off lifecycle: exiting alternate screen before running a `LineReader` dialogue and re-entering alternate screen (with fresh snapshot) when returning.
-- [ ] **1.2 Fix Broken Plan Links**:
+- [x] **1.2 Fix Broken Plan Links**:
   - Fix the 6 broken links in `doc/plans/README.adoc` (`cli-onboarding.adoc`, `cli-plan-view.adoc`, `web-plan-view.adoc`).
   - Fix the 386 broken relative links inside `doc/plans/implemented/*.adoc` caused by moving files one directory deeper.
 
 ### Phase 2: `pm-api` Common TUI Catalogue Keys & CLI Defect Fixes
-- [ ] **2.1 Fix `{time}` Arrival Notice Bug**:
+- [x] **2.1 Fix `{time}` Arrival Notice Bug**:
   - Write a failing unit test in `EntryFlowTest` asserting that `printReportsArrivalNotice` formats `report.arrival.line` with no unresolved `{time}` placeholder.
   - Fix `EntryFlow.printReportsArrivalNotice` to pass `"time", since` in `Map.of("count", page.unreadCount(), "time", since)`.
   - Update `pm-operator/src/test/resources/transcript/console-status.transcript` line 3.
-- [ ] **2.2 CLI Flag Drift Cleanup**:
+- [x] **2.2 CLI Flag Drift Cleanup**:
   - Align `PlanCommand` / `EpicCommand` `--depth` option with `--depth <n>` (integer depth, preserving legacy aliases if any existing test uses them) per `16-plan-view.adoc#tree`.
   - Clean up unused `--watch` fields on commands where the design does not specify `--watch`, keeping `--watch` where specified (`status`, `system`, `plan --activity`).
-- [ ] **2.3 Common TUI Message Keys**:
+- [x] **2.3 Common TUI Message Keys**:
   - Ensure all shared keys in `15-overview.adoc#overview-texts` (`operator.overview.keys.*`, `operator.overview.more_above`, `operator.overview.more_below`, `operator.overview.connected`, `operator.overview.meanwhile`, `operator.overview.too_narrow`) exist in `pm-api/src/main/resources/messages/operator.{en,de}.properties` with matching ICU placeholders.
   - Add unit test assertions in `ConsoleTextsTest` / `OverviewCatalogueTest`.
 
 ### Phase 3: Full-Screen TUI Engine (`de.planmarshall.operator.tui`)
-- [ ] **3.1 View Model & Stack Abstractions**:
+- [x] **3.1 View Model & Stack Abstractions**:
   - Implement `TuiLevel`, `TuiRow`, `TuiKeyBinding`, `TuiKeyRegistry`, and `TuiViewStack` as pure Java 25 classes/records independent of JLine terminal I/O.
   - Support `/` filter mode (`Esc` clears filter before popping level), `?` help/detail overlay toggle, and selection anchored by row ID across model refreshes.
-- [ ] **3.2 Layout & Width-Safe Renderer (`TuiLayout`)**:
+- [x] **3.2 Layout & Width-Safe Renderer (`TuiLayout`)**:
   - Render standard 3-region screen: header (`<Breadcrumb> ... ● connected` + horizontal rule), scrollable body with `▶` and ANSI reverse-video on the selected row plus `↑ n more` / `↓ n more` scroll indicators, and footer rule + key hints from `TuiKeyRegistry`.
   - Sanitize all dynamic text through `OutputSafety.stripControlSequences` and truncate to terminal column width without splitting surrogate pairs or wide glyphs.
-- [ ] **3.3 JLine 4 Display Driver (`TuiScreenDriver`)**:
+- [x] **3.3 JLine 4 Display Driver (`TuiScreenDriver`)**:
   - Manage alternate screen (`Capability.enter_ca_mode` / `exit_ca_mode`), cursor visibility, keypad mode, raw mode, and `Signal.WINCH` handler.
   - Single drawing loop polling `BindingReader.readBinding(keyMap, null, false)` with short timeout / dirty flag wakeup for live SSE updates; restore all terminal state in `finally` even when runtime or rendering throws an exception.
 
 ### Phase 4: Held Notices, `console.full_screen`, and `overview.json` Persistence
-- [ ] **4.1 Held Notices in `PmConsole`**:
+- [x] **4.1 Held Notices in `PmConsole`**:
   - Add `ConsoleNoticeBuffer` to `PmConsole`: while a full-screen view is active, queue incoming notices (decisions, reports) instead of calling `reader.printAbove`, and on view exit print `operator.overview.meanwhile` if any arrived.
-- [ ] **4.2 State Persistence (`OverviewStateStore`)**:
+- [x] **4.2 State Persistence (`OverviewStateStore`)**:
   - Add `overviewFile()` (`$XDG_STATE_HOME/pm-operator/overview.json`) to `OperatorStateDirectory`.
   - Implement Jackson streaming read/write for `OverviewSavedState` (`projectId`, `projectView`, `selectedId`, `systemWindow`, `systemGroupBy`, `systemProjectId`) using atomic write and `OperatorStateDirectory` permission checks.
-- [ ] **4.3 Full-Screen Eligibility Gate**:
+- [x] **4.3 Full-Screen Eligibility Gate**:
   - Implement `TuiScreenDriver.canOpenFullScreen(OperatorContext, Terminal, int minColumns)` checking `context.isInteractiveTerminal()`, terminal type (`!= dumb`), `console.full_screen` setting (default `true`), `NO_COLOR` compatibility, and terminal width `>= minColumns`.
 
 ### Phase 5: Virtual-Terminal Screen-Test Harness & Verification
-- [ ] **5.1 `VirtualScreenTerminal` Test Harness**:
+- [x] **5.1 `VirtualScreenTerminal` Test Harness**:
   - Implement a reusable test helper in `pm-operator/src/test/java/de/planmarshall/operator/tui/` wrapping an `ExternalTerminal` with scripted key input, resize simulation, and screen snapshot extraction (plain lines + selected/inverted row index + alternate-screen enter/exit tracking).
-- [ ] **5.2 Framework Unit & Screen Tests**:
+- [x] **5.2 Framework Unit & Screen Tests**:
   - Test `TuiViewStack` push/pop/jump and filter/help overlays.
   - Test `TuiKeyRegistry` collision detection and footer generation.
   - Test `TuiScreenDriver` on `VirtualScreenTerminal` at `120x30`, `80x24`, and `< 60` columns (asserting fallback and `too_narrow` message), resize redraw on `WINCH`, and guaranteed `exit_ca_mode` restoration when an exception is thrown mid-render.
   - Test `OverviewStateStore` round-trip and corrupt-file fallback, and `ConsoleNoticeBuffer` `meanwhile` summary formatting.
-- [ ] **5.3 Pre-Commit & Operational Gate**:
+- [x] **5.3 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).

@@ -75,6 +75,13 @@ public final class OperatorStateDirectory {
     }
 
     /**
+     * @return the overview state file {@code <root>/overview.json}
+     */
+    public Path overviewFile() {
+        return root.resolve("overview.json");
+    }
+
+    /**
      * Ensures the directory exists with mode {@code 0700} and no symbolic links.
      *
      * @return the verified root path

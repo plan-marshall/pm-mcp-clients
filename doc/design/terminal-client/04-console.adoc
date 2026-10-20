@@ -141,6 +141,25 @@ The first valid answer wins, from the web app or the console (the channels `web`
 * The console reconnects to the event stream with `Last-Event-ID` and the delay the runtime names (`retry:`), backing off with jitter after repeated failures; it starts the runtime on demand like every verb.
 * While the runtime cannot be reached, the prompt shows `(reconnecting)` and one line says why; the typed text stays.
 * After a reconnect it always reads the state again (the open questions, a running dialogue's state), because a restarted runtime holds no events to replay, and prints one line: `✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 2 plans running.`
+* While a full-screen view is open, the same state is shown in its header instead of at the prompt: `● connected` while the stream is open and `○ reconnecting` (the text `operator.console.badge.reconnecting`) while it is not; on reconnect the view reads its whole snapshot again and redraws, as xref:15-overview.adoc#full-screen-connection[The Overview, The Header's Connection State] says.
+
+[#console-dialogue-handoff]
+=== A Dialogue out of the Full-Screen View
+
+The full-screen view and the console's dialogues do not own the terminal at the same time. When an
+act of the view starts a dialogue (a decision with `!`, an action with `a`, a chat, or a verb the
+view hands off), the view:
+
+1. restores the cursor and leaves the alternate screen, so the dialogue is printed into the normal
+   scrollback and scrolls, copies, and reads with a screen reader like every other dialogue;
+2. runs the dialogue on the console's own `LineReader`, with its prompts and its notice handling;
+3. on a normal return, enters the alternate screen again, reads a fresh snapshot, and draws the
+   level it left, with the selection it had.
+
+An error or an interrupt in the dialogue leaves the terminal in the normal screen; the view is not
+re-entered, and the console reports the error at the prompt as it does for any verb. The view's
+`finally` always restores the terminal state, so a terminal is never left in the alternate screen,
+with the cursor hidden, or in keypad application mode.
 
 [#console-keys]
 === Keys of the Console

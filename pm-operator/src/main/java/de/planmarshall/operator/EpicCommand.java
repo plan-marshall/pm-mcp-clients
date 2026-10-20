@@ -67,13 +67,6 @@ public final class EpicCommand implements Callable<Integer> {
     @Option(names = "--all", description = "Show all details")
     boolean all;
 
-    @Option(names = "--depth", description = "Process tree depth: compact, standard, full")
-    @Nullable
-    String depth;
-
-    @Option(names = "--watch", description = "Watch updates")
-    boolean watch;
-
     EpicCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
     }
@@ -86,9 +79,6 @@ public final class EpicCommand implements Callable<Integer> {
 
         if (epicId != null && !epicId.isBlank()) {
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/process";
-            if (depth != null) {
-                path += "?depth=" + depth;
-            }
             var response = runtime.send(HttpRequest.get(path));
             if (response.status() == 404) {
                 // Fallback to direct /api/v1/epics/{epicId}

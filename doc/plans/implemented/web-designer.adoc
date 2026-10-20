@@ -4,14 +4,14 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `web-designer`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3] (the web app only; the terminal client has no counterpart); no roadmap milestone yet
+Serves:: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3] (the web app only; the terminal client has no counterpart); no roadmap milestone yet
 Where:: `pm-web-app`
-Part of:: link:epic-clients.adoc[the client work]
+Part of:: link:../epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What
 
-* *Layout first*: the package lays out link:../design/web-app/process-designer.adoc[the design] in the design system of `web-design` and has the operator accept it before building it. The text pane is plain text with line numbers; an editor component beyond that is a dependency asked for first.
+* *Layout first*: the package lays out link:../../design/web-app/process-designer.adoc[the design] in the design system of `web-design` and has the operator accept it before building it. The text pane is plain text with line numbers; an editor component beyond that is a dependency asked for first.
 * The route `/designer` and its ways in: a project's setup (_Process_), a phase or sub-workflow node of the plan view, the machine settings (_Workflow units of this machine_).
 * The input: an uploaded file read in the browser, a pasted text, an installed unit with its levels; the draft kept in the browser of the device, restored on reload, and the question on leaving it changed.
 * The text and the structure side by side, kept in step from the runtime's parse, the selection following both ways; the building blocks of the project's catalogue with search and insert.
@@ -22,11 +22,11 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../../design/README.adoc[`doc/design/`]).
 
-* Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]
+* Use case: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]
 * Specification: the sections link:designer-contract.adoc[`designer-contract`] implements in the contract, which this package shows
-* Design: link:../design/web-app/process-designer.adoc[Web App, Process Designer]; link:../design/shared/plan-view.adoc[Plan View] (the structure and the composed process); the web app's views of `web-design`
+* Design: link:../../design/web-app/process-designer.adoc[Web App, Process Designer]; link:../../design/shared/plan-view.adoc[Plan View] (the structure and the composed process); the web app's views of `web-design`
 
 == Done When
 

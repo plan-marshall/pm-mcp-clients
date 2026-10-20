@@ -18,6 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 
+import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.tui.TuiKeyAction;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -78,6 +81,24 @@ class ConsoleTextsTest {
             assertNotNull(ConsoleNotice.fromEventMap("de", event), "no notice for " + event);
             assertNotNull(ConsoleNotice.fromEventMap("en", event), "no notice for " + event);
         }
+    }
+
+    @Test
+    @DisplayName("the shared overview keys render in both languages")
+    void overviewKeys() {
+        for (var action : TuiKeyAction.values()) {
+            var key = action.textKey();
+            var en = MessageCatalogue.format("en", key, Map.of("view", "by epic", "count", 2,
+                                "events", "1 decision", "name", "fix-relay"));
+            var de = MessageCatalogue.format("de", key, Map.of("view", "nach Epic", "count", 2,
+                                "events", "1 Entscheidung", "name", "fix-relay"));
+            assertNotEquals(key, en, key);
+            assertNotEquals(key, de, key);
+        }
+        assertEquals("2 more", MessageCatalogue.format("en", "operator.overview.more_above", Map.of("count", 2)));
+        assertEquals("2 weitere", MessageCatalogue.format("de", "operator.overview.more_below", Map.of("count", 2)));
+        assertEquals("5 reports", MessageCatalogue.format("en", "operator.overview.keys.reports", Map.of("count", 5)));
+        assertEquals("5 Berichte", MessageCatalogue.format("de", "operator.overview.keys.reports", Map.of("count", 5)));
     }
 
     @Test

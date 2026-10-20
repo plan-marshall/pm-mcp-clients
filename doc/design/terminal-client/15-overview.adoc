@@ -140,6 +140,201 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 |leave the view to the prompt
 |===
 
+[#full-screen-levels]
+=== Levels, Roots, and Returning
+
+The full-screen view is one stack of levels; every view of this client is a level of it, and the
+keys that open a level are the same everywhere. There are two roots: `projects` (the Explorer,
+xref:17-projects.adoc[Projects]) and `plans` (the Overview of this part). A root is the bottom of the
+stack and has no level below it.
+
+[cols="2,4,3",options="header"]
+|===
+|Key / Act |From |Opens
+
+|`plans`, `status --by plan`
+|the prompt
+|the root `plans` (Overview, by plan)
+
+|`projects`, `Esc` on the `plans` root
+|the prompt / the root
+|the root `projects` (Explorer); `Esc` on a root stays there
+
+|`Enter`, `→`, `l`
+|the `projects` root
+|the selected project's level, by plan
+
+|`Enter`, `→`, `l`
+|a project, a plan, or an epic level
+|the plan view (xref:16-plan-view.adoc[The Plan View]) or the epic view
+
+|`e`
+|a plan of the projects level
+|its epic, in the view by epic (`Tab` keeps the selection)
+
+|`S`
+|every level
+|the system level (xref:25-system.adoc#full-screen[System, Full Screen])
+
+|`R`
+|every level
+|the level of the unread reports (xref:24-reports.adoc#full-screen[Reports, In the Full-Screen View])
+
+|`E`
+|the `projects` root or a project level
+|the ended work of the selected or shown project (<<ended>>)
+
+|`Esc`, `←`, `h`
+|every level but a root
+|the level that opened it, with its selection, filter, and scroll position unchanged
+|===
+
+* `Esc` pops exactly one level. It first clears an open `/` filter or closes the `?` overlay; only a
+  second `Esc` pops. A level opened by `S`, `R`, or `E` returns to the level it was opened from, not
+  to a root, so the operator never loses the row they were on.
+* `q` leaves the whole view from any level and returns to the prompt.
+* The stack belongs to the model, not to the drawing: a level is a record of its kind, its parent,
+  and its selection by row id (`TuiViewStack`). The drawing library never owns navigation state.
+
+[#full-screen-key-registry]
+=== The Key Registry
+
+Every level declares its bindings in one registry (`TuiKeyRegistry`); the footer is generated from
+it, so the footer can never advertise a key the level does not bind, and two actions can never bind
+the same key within a level. The registry is the table below, read as: a key applies on the listed
+levels and nowhere else.
+
+[cols="2,3,2",options="header"]
+|===
+|Key |Action (text key) |Levels
+
+|`↑` `↓`, `k` `j`
+|move (`operator.overview.keys.move`)
+|all
+
+|`PgUp` `PgDn`, `g` `G`
+|page, first/last
+|all
+
+|`Enter`, `→`, `l`
+|open (`operator.overview.keys.open`)
+|all but a leaf
+
+|`Esc`, `←`, `h`
+|back (`operator.overview.keys.back`)
+|all but the filter/help overlay, which consume the first `Esc`
+
+|`Tab`
+|switch view (`operator.overview.keys.switch_view`)
+|project levels (`by plan` / `by epic`)
+
+|`e`
+|epic (`operator.overview.keys.epic`)
+|plan rows of the projects level
+
+|`a`
+|actions (`operator.overview.keys.actions`)
+|plan and epic rows
+
+|`!`
+|what waits (`operator.overview.keys.waits`)
+|rows with a `!` marker
+
+|`E`
+|ended work (`operator.overview.keys.ended`)
+|`projects` root and project levels
+
+|`S`
+|system (`operator.overview.keys.system`)
+|all
+
+|`R`
+|reports (`operator.overview.keys.reports`)
+|all
+
+|`/`
+|filter (`operator.overview.keys.filter`)
+|all
+
+|`r`
+|reload (`operator.overview.keys.reload`)
+|all
+
+|`?`
+|help and row details (`operator.overview.keys.help`)
+|all
+
+|`q`
+|leave (`operator.overview.keys.leave`)
+|all
+|===
+
+A key the registry does not bind on a level is not drawn in that level's footer. The guard test
+`TuiKeyRegistryTest` fails for a footer key without a binding and for two bindings of one key on one
+level.
+
+[#full-screen-narrow]
+=== Narrow Terminals
+
+The same thresholds hold in every view of the terminal:
+
+[cols="2,4",options="header"]
+|===
+|Width |What is drawn
+
+|`>= 100` columns
+|the full layout: header, row line, and the details line below each row
+
+|`>= 80` and `< 100`
+|row line only; the details line is left out, and `?` on the row prints it
+
+|`>= 60` and `< 80`
+|row line only, truncated to the width; the footer keeps the keys that apply
+
+|`< 60` columns
+|the view does not open: the command prints `operator.overview.too_narrow` and then the tree as
+ `status` does (<<status-tree>>)
+|===
+
+* Every cell is truncated to the terminal's column width without splitting a surrogate pair or a
+  wide glyph; a truncated cell ends in `…` (`U+2026`). A cell's display width is its number of
+  columns, not its number of `char`s.
+* `?` always shows the full row details, whatever the width, and the same text the details line
+  would show on a wide terminal.
+* A window resize (`WINCH`) redraws at the new width; crossing a threshold changes the shape of the
+  screen as the table says, without leaving the level.
+
+[#full-screen-connection]
+=== The Header's Connection State
+
+The header's right side is the connection to the runtime:
+
+* `● connected` (`operator.overview.connected`) while the event stream is open.
+* `○ reconnecting` (`operator.console.badge.reconnecting`) while it is not; the last snapshot stays
+  on screen and no row is removed for being unreachable.
+* On reconnect the client reads the whole snapshot again (the open levels' pages, the needs
+  counters, and the reports count) and redraws once; it never replays the missed events as notices,
+  because a restarted runtime holds no events to replay. The selection stays on its row id, or on
+  the nearest row when the id is gone.
+* `q` while disconnected leaves the view as usual; the console then prints the reconnecting state at
+  its prompt (xref:04-console.adoc#connection[The Console, Connection]).
+
+[#full-screen-dialogue]
+=== Handing Off to a Dialogue
+
+A dialogue is line-oriented and owns the terminal: the full-screen view leaves the alternate screen
+before it starts a `LineReader` dialogue, and re-enters it when the dialogue returns.
+
+* The view first draws the cursor normally and leaves the alternate screen
+  (`exit_ca_mode`), so the dialogue runs on the ordinary scrollback as every dialogue does.
+* When the dialogue returns, the view enters the alternate screen again, reads a fresh snapshot
+  (because the dialogue may have changed what it shows), and redraws the same level with the same
+  selection.
+* A notice that arrives while the dialogue runs is printed by the dialogue's own notice handling,
+  not held by the view; the view's notice buffer is inactive while it is suspended.
+* An exception in the dialogue is the dialogue's to report; the view still restores the terminal in
+  its `finally` and re-enters the alternate screen only on a normal return.
+
 [#full-screen-live]
 === Live, and Leaving
 
@@ -276,6 +471,14 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |`operator.overview.keys.leave`
 |leave
 |verlasse
+
+|`operator.overview.keys.reload`
+|reload
+|neu laden
+
+|`operator.overview.keys.system`
+|system
+|System
 
 |`operator.overview.more_above`
 |{count} more

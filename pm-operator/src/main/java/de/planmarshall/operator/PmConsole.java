@@ -59,6 +59,7 @@ public final class PmConsole {
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
     private final List<String> badges = new CopyOnWriteArrayList<>();
+    private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
 
     private volatile @Nullable String activePairingCode;
     private volatile @Nullable String activePairingUrl;
@@ -387,14 +388,17 @@ public final class PmConsole {
         var locale = locale();
         var notice = ConsoleNotice.fromEventMap(locale, eventMap);
         if (notice != null) {
-            reader.printAbove(notice);
+            var category = categoryOf(eventMap);
+            if (!noticeBuffer.hold(category, countOf(eventMap, category))) {
+                reader.printAbove(notice);
+            }
             notifyOperator(reader.getTerminal(), eventMap);
         }
         var name = eventName != null ? eventName : "";
         var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
         if ("device.paired".equals(name) || "paired".equals(type)) {
             var label = JsonTree.string(eventMap, "label");
-            reader.printAbove(MessageCatalogue.format(locale, "operator.console.paired",
+            printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.paired",
                                 Map.of("label", TerminalSanitizer.sanitize(label != null ? label : "local"))));
             if ("device.paired".equals(name)) {
                 issueFreshCodeAbove(reader);
@@ -403,6 +407,64 @@ public final class PmConsole {
             activePairingCode = JsonTree.string(eventMap, "code");
             activePairingUrl = JsonTree.string(eventMap, "url");
         }
+    }
+
+    private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
+        if (category == ConsoleNoticeBuffer.Category.REPORT
+                            && eventMap.get("count") instanceof Number number && number.intValue() > 1) {
+            return Math.min(number.intValue(), 10_000);
+        }
+        return 1;
+    }
+
+    /**
+     * Prints a line above the prompt, or keeps it for the end of the full-screen view.
+     *
+     * @param reader the line reader
+     * @param line   the line to print
+     */
+    private void printAboveOrHold(LineReader reader, String line) {
+        if (!noticeBuffer.holdLine(line)) {
+            reader.printAbove(line);
+        }
+    }
+
+    private static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
+        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        return switch (type) {
+            case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "report", "report.sent" -> ConsoleNoticeBuffer.Category.REPORT;
+            default -> ConsoleNoticeBuffer.Category.NEED;
+        };
+    }
+
+    /**
+     * @return the buffer that holds notices while a full-screen view is open
+     */
+    public ConsoleNoticeBuffer noticeBuffer() {
+        return noticeBuffer;
+    }
+
+    /** Marks the start of a full-screen view: notices are held instead of printed above it. */
+    public void enterFullScreen() {
+        noticeBuffer.activate();
+    }
+
+    /**
+     * Marks the end of a full-screen view and prints one line of what arrived meanwhile.
+     *
+     * @param out the console's writer
+     */
+    public void leaveFullScreen(PrintWriter out) {
+        noticeBuffer.deactivate();
+        var drained = noticeBuffer.drain(locale());
+        if (!drained.summary().isEmpty()) {
+            out.println(drained.summary());
+        }
+        for (var line : drained.lines()) {
+            out.println(line);
+        }
+        out.flush();
     }
 
     private void notifyOperator(Terminal terminal, Map<String, Object> eventMap) {
@@ -433,12 +495,12 @@ public final class PmConsole {
             activePairingCode = pairing.code();
             activePairingUrl = pairing.url();
             var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
-            reader.printAbove(MessageCatalogue.format(locale, "operator.console.new_code_above",
+            printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.new_code_above",
                                 Map.of("code", pairing.code(), "time", validUntil)));
-            reader.printAbove(MessageCatalogue.format(locale, "operator.console.url_indent",
+            printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.url_indent",
                                 Map.of("url", pairing.url())));
         } catch (IOException e) {
-            reader.printAbove(MessageCatalogue.format(locale, "operator.console.code_failed_fresh",
+            printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.code_failed_fresh",
                                 Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
         }
     }

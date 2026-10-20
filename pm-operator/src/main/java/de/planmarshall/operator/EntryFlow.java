@@ -244,8 +244,9 @@ public final class EntryFlow {
                 var page = ReportsPage.fromJson(response.bodyText());
                 if (page.unreadCount() > 0) {
                     var since = page.oldestUnreadTime() != null ? page.oldestUnreadTime() : "";
-                    var arrivalLine = MessageCatalogue.format("report.arrival.line",
-                                        Map.of("count", page.unreadCount(), "since", since));
+                    var arrivalLine = MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "report.arrival.line",
+                                        Map.of("count", page.unreadCount(), "time", since));
                     var hint = MessageCatalogue.get("operator.reports.arrival_hint");
                     out.println("\u25aa " + arrivalLine + " \u00b7 " + hint);
                 }
