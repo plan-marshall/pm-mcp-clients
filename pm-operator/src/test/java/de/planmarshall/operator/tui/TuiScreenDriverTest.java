@@ -86,6 +86,20 @@ class TuiScreenDriverTest {
         };
     }
 
+    private static TuiScreenDriver.KeyHandler filteringHandler(TuiViewStack stack) {
+        return new TuiScreenDriver.KeyHandler() {
+            @Override
+            public boolean handle(TuiKeyAction action) {
+                return handler(stack).handle(action);
+            }
+
+            @Override
+            public void filter(String text) {
+                stack.filter(text);
+            }
+        };
+    }
+
     private static void await(BooleanSupplier condition) throws InterruptedException {
         var deadline = System.nanoTime() + 5_000_000_000L;
         while (!condition.getAsBoolean()) {
@@ -171,6 +185,35 @@ class TuiScreenDriverTest {
                                 () -> assertTrue(text.contains("row number 0"), text),
                                 () -> assertFalse(text.contains("details of row 0"), text)
             );
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("the filter hand-off redraws the view after the dialogue returns")
+    void filterHandoffRedraws() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var stack = stack(3);
+            var thread = new Thread(() -> {
+                try {
+                    new TuiScreenDriver(virtual.terminal(), "en")
+                                        .run(() -> screen(stack, true), filteringHandler(stack));
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(line -> line.contains("row number 0")));
+
+            virtual.type("/\n");
+            await(() -> !virtual.alternateScreenActive());
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(line -> line.contains("row number 0")));
+            var text = String.join("\n", virtual.screen().lines());
+            assertTrue(text.contains("row number 0"), text);
+
             virtual.type("q");
             join(thread);
         }

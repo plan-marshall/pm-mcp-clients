@@ -215,6 +215,9 @@ public final class TuiScreenDriver {
                     suspend(display);
                     filter(handler);
                     resume(display);
+                    // The alternate screen was left and entered again; its content is gone even
+                    // when the model did not change, so the next turn must draw a full frame.
+                    previous = null;
                     continue;
                 }
                 running = handler.handle(action);
