@@ -764,6 +764,10 @@ export function adoptRouteFromLocation(): AppRoute | null {
     runtimeStore.update((s) => ({
       ...s,
       currentRoute: match.route,
+      // The reports route keeps its plan in the query, so a reload or the browser's back
+      // between two reports opens the one the address names.
+      selectedReportDetailPlanId:
+        match.route === 'reports' ? new URLSearchParams(window.location.search).get('plan') : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       startProjectId: match.projectId ?? s.startProjectId ?? null,

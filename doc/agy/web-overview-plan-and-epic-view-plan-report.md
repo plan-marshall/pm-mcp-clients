@@ -12,7 +12,7 @@
 
 The web client now carries the caller's navigation context into the plan and epic views and back out of them again. A plan opened from Running Work, an epic, Ended Work, or a report returns to that exact view on **Back**; its project and parent epic are each one step away. Running Work remembers what the operator was looking at (project, by-plan/by-epic mode, Ended Work page) across those trips, and can be set as the browser's explicit start page. Plans expose their token figure with the catalogue-formatted coverage, a one-step breakdown by phase and role with raw components, and — when ended — how and when they ended with a one-step completion report. Ended Work rows open either the item's view or, for a plan, its completion report.
 
-All 284 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests pass, and `./mvnw verify -Ppre-commit` completed with `BUILD SUCCESS` across the reactor.
+All 285 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests pass, and `./mvnw verify -Ppre-commit` completed with `BUILD SUCCESS` across the reactor.
 
 ---
 
@@ -22,7 +22,7 @@ All 284 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 
 | File | Change |
 |---|---|
-| `src/lib/stores/runtime.ts` | Exported `rememberedStartRoute()` and added `setRememberedStartRoute()`; removed the implicit "last landing route becomes the start page" write so only an explicit choice is remembered. Added `openEndedPlanView()`, `openCompletionReport()`, and `openProjectInExplorer()`; `openPlanView()` clears stale ended-plan context; `applyRoute()` carries the reports route's `reportPlanId` and no longer writes `pm_start_route` implicitly; `routeParamsOf()` carries the report's plan; `syncUrl()` no longer rewrites an address whose path and query already match. |
+| `src/lib/stores/runtime.ts` | Exported `rememberedStartRoute()` and added `setRememberedStartRoute()`; removed the implicit "last landing route becomes the start page" write so only an explicit choice is remembered. Added `openEndedPlanView()`, `openCompletionReport()`, and `openProjectInExplorer()`; `openPlanView()` clears stale ended-plan context; `applyRoute()` carries the reports route's `reportPlanId` and the explorer's project, `adoptRouteFromLocation()` reads `?plan=` on a reload or popstate, and no longer writes `pm_start_route` implicitly; `routeParamsOf()` carries the report's plan; `syncUrl()` no longer rewrites an address whose path and query already match. |
 | `src/lib/routes.ts` | `RouteParams.reportPlanId` and `pathForRoute('reports', …)` producing `/reports?plan={id}`. |
 | `src/lib/api/client.ts` | Optional `ProcessTokens.by_phase` / `by_role`, `ProcessEndedInfo`, and `ProcessTree.ended` — forward-compatible with the runtime's process resource. |
 | `src/lib/views/PlanView.svelte` | Caller-aware **Back** (`goBack()` with Running Work fallback); project breadcrumb opens `/projects?project={id}`; epic breadcrumb unchanged; token line uses `common.tokens.coverage`/`not_measured` in both languages; one-step **By phase and role** disclosure with `input`, `cached`, `output`, `total` tables; ended-plan banner (`plan.view.ended`, end time, reason) with a one-step completion-report action; completion-resource fallback for the breakdown of an ended plan. |
@@ -44,6 +44,7 @@ All 284 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 |---|---|
 | `pm-web-app/src/lib/views/PlanView.test.ts` | Caller-aware Back; epic and project one-step links; token line floor/coverage; breakdown disclosure from the process resource and from the completion resource; ended-plan banner and one-step completion report. |
 | `pm-web-app/src/lib/views/EpicView.test.ts` | Back to the opening plan and then to Running Work; project one-step link. |
+| `pm-web-app/src/lib/views/ReportsView.test.ts` | The reports route follows its `?plan=` detail across store changes while mounted. |
 | `pm-web-app/src/lib/views/OverviewView.test.ts` | Start-page toggle persistence; ended plan → plan view with ended context; ended plan → completion report; Ended Work page restored; project named by another view selected. |
 | `pm-web-e2e/tests/plan-view.spec.js` | Caller-aware Back through plan → epic → plan → Running Work; project explorer landing at `/projects?project=…`; token-breakdown disclosure; activity assertions aligned with the scenario's seven entries. |
 | `pm-web-e2e/tests/overview.spec.js` | Ended plan view and one-step completion report with Ended Work restored on return; start-page toggle survives a reload. |
@@ -54,7 +55,7 @@ All 284 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 
 | Gate | Command | Result |
 |---|---|---|
-| Web unit/component tests | `cd pm-web-app && npm test` | **284 passed**, 42 files |
+| Web unit/component tests | `cd pm-web-app && npm test` | **285 passed**, 42 files |
 | Web lint | `cd pm-web-app && npm run lint` | clean |
 | Targeted E2E | `cd pm-web-e2e && npx playwright test tests/overview.spec.js tests/plan-view.spec.js` | **10 passed** |
 | Pre-commit gate | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** (7:25 min, all 7 modules) |
@@ -98,7 +99,7 @@ All 284 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 3. **Project link.** The plan names `ProjectExplorerView` and `/projects?project={id}`; the explorer now reads that query and filters to the project. This is a small additive change outside the view-ownership list, required for the link to land on the project's detail.
 4. **Pre-commit formatting churn.** The registry-served parent's OpenRewrite run realigned unrelated Java files (blank lines after imports). Those unrelated edits were reverted so the PR carries only this plan's footprint; the gate itself completed successfully. This is an upstream parent-artifact drift, not a source change of this plan.
 5. **E2E activity assertion.** The existing `plan-view.spec.js` array assertion no longer matched the scenario's seven activity entries; it now asserts the first three entries individually, preserving the intent.
-6. **Sourcery AI budget.** Sourcery skipped its review because the account's seven-day diff-character budget (2,500,000) was exhausted; the PR carries no `skip-bot-review` label. CodeRabbit reviewed the change and every finding was addressed in `2332bd1`.
+6. **Sourcery AI budget.** Sourcery skipped its review because the account's seven-day diff-character budget (2,500,000) was exhausted; the PR carries no `skip-bot-review` label. CodeRabbit reviewed the change and every finding was addressed in `2332bd1` and the follow-up commit for the reports-route sync.
 7. **Report location.** The report stays in `doc/agy/`; moving it to `doc/agy/verified/` is Step 8 and belongs to the orchestrator.
 
 ---

@@ -16,6 +16,7 @@
   let errorMessage = $state('');
 
   let activeDetailPlanId = $state<string | null>(null);
+  let syncedRouteReportPlan: string | null | undefined;
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -77,9 +78,23 @@
     syncUrl('/reports', true);
   }
 
+  // The reports route stays the same while its detail changes (a header visit to Reports, the
+  // browser's back between two reports). Follow the store so the view does not keep a plan the
+  // address no longer names.
+  $effect(() => {
+    if ($runtimeStore.currentRoute !== 'reports') return;
+    const routePlan = $runtimeStore.selectedReportDetailPlanId ?? null;
+    if (routePlan === syncedRouteReportPlan) return;
+    syncedRouteReportPlan = routePlan;
+    activeDetailPlanId = routePlan;
+  });
+
   onMount(async () => {
     isMounted = true;
-    activeDetailPlanId = requestedReportPlan();
+    const initialPlan = requestedReportPlan();
+    activeDetailPlanId = initialPlan;
+    syncedRouteReportPlan = initialPlan;
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: initialPlan }));
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });

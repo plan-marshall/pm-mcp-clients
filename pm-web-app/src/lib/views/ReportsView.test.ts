@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ReportsView from './ReportsView.svelte';
 import { runtimeStore } from '../stores/runtime';
-import { apiClient, type ReportItem, type ReportsPage } from '../api/client';
+import {
+  apiClient,
+  type PlanCompletionReport,
+  type ReportItem,
+  type ReportsPage,
+} from '../api/client';
 
 describe('ReportsView component', () => {
   const mockReports: ReportItem[] = [
@@ -94,6 +99,43 @@ describe('ReportsView component', () => {
 
     // Check sent delay display
     expect(screen.getByText('today 09:02 · sent today 09:40')).toBeInTheDocument();
+  });
+
+  it('follows the route report plan while the reports route stays mounted', async () => {
+    const completion = {
+      plan_id: 'fix-relay',
+      title: 'fix-relay',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      outcome: 'merged',
+      started_at: '2026-10-16T08:40:00Z',
+      ended_at: '2026-10-16T11:20:00Z',
+      duration_seconds: 9600,
+      paused_seconds: 0,
+      deliverables: [],
+      replanning_records: [],
+      decision_records: [],
+    } as unknown as PlanCompletionReport;
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(completion);
+
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
+
+    render(ReportsView);
+
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    // A plain visit to the reports route closes the detail it no longer names.
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).toBeNull();
+    });
+
+    // A back or forward step to another report opens that report.
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'docs-typo' }));
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
   });
 
   it('marks a single report read when clicking Mark read', async () => {
