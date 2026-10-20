@@ -99,54 +99,6 @@
     </div>
   {/if}
 
-  {#if $runtimeStore.unreadReportsArrivalNotice}
-    <div class="reports-arrival-banner" role="status">
-      <span>{$runtimeStore.unreadReportsArrivalNotice}</span>
-      <button
-        class="reports-arrival-btn"
-        onclick={() => {
-          navigateTo('reports');
-          runtimeStore.update((s) => ({ ...s, unreadReportsArrivalNotice: null }));
-        }}
-      >
-        {$t('report.arrival.show')}
-      </button>
-      <button
-        class="reports-arrival-close"
-        aria-label={$t('web.frame.close_notice')}
-        onclick={() => {
-          runtimeStore.update((s) => ({ ...s, unreadReportsArrivalNotice: null }));
-        }}
-      >
-        ✕
-      </button>
-    </div>
-  {/if}
-
-  {#if $runtimeStore.newDecisionArrivalNotice}
-    <div class="reports-arrival-banner decisions-arrival-banner" role="status">
-      <span>{$runtimeStore.newDecisionArrivalNotice}</span>
-      <button
-        class="reports-arrival-btn"
-        onclick={() => {
-          navigateTo('decisions');
-          runtimeStore.update((s) => ({ ...s, newDecisionArrivalNotice: null }));
-        }}
-      >
-        {$t('decisions.arrival.show_them')}
-      </button>
-      <button
-        class="reports-arrival-close"
-        aria-label={$t('web.frame.close_notice')}
-        onclick={() => {
-          runtimeStore.update((s) => ({ ...s, newDecisionArrivalNotice: null }));
-        }}
-      >
-        ✕
-      </button>
-    </div>
-  {/if}
-
   {#if $runtimeStore.isDraining}
     <div class="draining-banner" role="status">
       <span class="draining-text">
@@ -402,19 +354,6 @@
     flex-direction: column;
   }
 
-  .reports-arrival-banner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-3);
-    padding: var(--space-2) var(--space-4);
-    background-color: var(--color-primary-subtle);
-    color: var(--color-primary);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    border-bottom: 1px solid var(--color-border);
-  }
-
   .draining-banner {
     display: flex;
     align-items: center;
@@ -454,27 +393,6 @@
   .draining-btn--withdraw {
     background-color: transparent;
     color: inherit;
-  }
-
-  .reports-arrival-btn {
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    text-decoration: underline;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .reports-arrival-close {
-    background: none;
-    border: none;
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    padding: 0 var(--space-1);
-    margin-left: var(--space-2);
   }
 
   .reports-badge {

@@ -11,6 +11,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "prepare": "svelte-kit sync",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
