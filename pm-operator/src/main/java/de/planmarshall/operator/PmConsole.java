@@ -59,7 +59,7 @@ public final class PmConsole {
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
     private final List<String> badges = new CopyOnWriteArrayList<>();
-    private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
+    private final ConsoleNoticeBuffer noticeBuffer;
 
     private volatile @Nullable String activePairingCode;
     private volatile @Nullable String activePairingUrl;
@@ -71,6 +71,7 @@ public final class PmConsole {
      */
     public PmConsole(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
+        this.noticeBuffer = context.noticeBuffer();
     }
 
     private String locale() {
@@ -84,6 +85,7 @@ public final class PmConsole {
      * @throws IOException on fatal console or terminal error
      */
     public int run() throws IOException {
+        context.setConsoleActive(true);
         var terminal = context.createTerminal();
         var out = new PrintWriter(terminal.writer(), true);
 
@@ -119,6 +121,7 @@ public final class PmConsole {
         try {
             runRepl(out, reader);
         } finally {
+            context.setConsoleActive(false);
             running.set(false);
             sseThread.interrupt();
             out.flush();

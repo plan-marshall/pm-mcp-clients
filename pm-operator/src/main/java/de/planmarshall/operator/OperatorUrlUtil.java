@@ -16,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 /**
  * Utility methods for URL encoding and safe path/query construction across operator commands.
  */
-final class OperatorUrlUtil {
+public final class OperatorUrlUtil {
 
     private OperatorUrlUtil() {
     }
@@ -29,7 +29,7 @@ final class OperatorUrlUtil {
      * @param segment the raw path segment
      * @return the percent-encoded path segment
      */
-    static String encodePathSegment(String segment) {
+    public static String encodePathSegment(String segment) {
         if (segment.isEmpty()) {
             return "";
         }

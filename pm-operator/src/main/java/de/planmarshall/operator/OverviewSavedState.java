@@ -34,8 +34,8 @@ import com.fasterxml.jackson.core.JsonToken;
  * @param systemProjectId the project the system view showed, or {@code null}
  */
 public record OverviewSavedState(@Nullable String projectId, @Nullable String projectView,
-                                 @Nullable String selectedId, @Nullable String systemWindow,
-                                 @Nullable String systemGroupBy, @Nullable String systemProjectId) {
+@Nullable String selectedId, @Nullable String systemWindow,
+@Nullable String systemGroupBy, @Nullable String systemProjectId) {
 
     /** The views a project can be shown in. */
     public static final Set<String> PROJECT_VIEWS = Set.of("plan", "epic");
