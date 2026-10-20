@@ -22,9 +22,9 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Mock** | [`mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-running-work` | `feat/mock-runtime-running-work` | Ready to launch (Wave 2b) |
-| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` | `feat/cli-fullscreen-overview` | Active (PR #130) |
-| **Web** | [`web-overview-plan-and-epic-view-plan.md`](web-overview-plan-and-epic-view-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-overview-plan-view` | `feat/web-overview-plan-and-epic-view` | Ready to launch (Wave 3) |
+| **Mock** | [`mock-runtime-fully-onboarded-scenario-plan.md`](mock-runtime-fully-onboarded-scenario-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` | `feat/mock-runtime-fully-onboarded` | Ready to launch (Showroom) |
+| **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Ready to launch |
+| **Web** | [`web-arrival-banners-and-i18n-cache-plan.md`](web-arrival-banners-and-i18n-cache-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-banners-and-i18n-cache` | `feat/web-banners-and-i18n-cache` | Ready to launch |
 
 ---
 
@@ -37,9 +37,11 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Core engine, closed schema, scoped SSE replay, JSON-RPC `/mcp`, 5-scenario architecture)*
 2. **Wave 2a (Landed & Verified)**: [`mock-runtime-onboarding-and-entry-plan.md`](implemented/mock-runtime-onboarding-and-entry-plan.md) ([Report](verified/mock-runtime-onboarding-and-entry-plan-report.md) — PR #131, commit `77f75eb`)
    *(Consolidated 23 scenario files into 80-state onboarding.json; full OperatorStateResource closure)*
-3. **Wave 2b (Next Active)**: `mock-runtime-running-work-plan.md`
-   *(Consolidates running-work, plan-view, decisions, and control files into rich running-work.json)*
-4. **Wave 3**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
+3. **Wave 2b (Landed & Verified)**: [`mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) ([Report](verified/mock-runtime-running-work-plan-report.md) — PR #136, commit `49d0ef6`)
+   *(Consolidated running-work, plan-view, decisions, and control files into rich running-work.json)*
+4. **Fully Onboarded Showroom Scenario (Active)**: [`mock-runtime-fully-onboarded-scenario-plan.md`](mock-runtime-fully-onboarded-scenario-plan.md)
+   *(Omni-domain showroom scenario with all UI views, projects, running work, decisions, reports, system, settings, start, and designer active simultaneously)*
+5. **Wave 3 Consolidation**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
    *(Migrates projects, starting work, reports, and system views into standard scenarios)*
 
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)
@@ -47,19 +49,22 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Terminal screen harness, raw mode safety, resize signal traps, notice-holding)*
 2. **Overview (Landed & Verified)**: [`cli-fullscreen-overview-plan.md`](implemented/cli-fullscreen-overview-plan.md) ([Report](verified/cli-fullscreen-overview-plan-report.md) — PR #130, commit `ad06ef3`)
    *(Full-screen overview across projects, Level 1 Projects level, Level 2 Project detail by-plan & by-epic, Level 3 Ended work with pagination, OSC 8 PR links, live SSE updates, 0600 state persistence)*
-3. **Plan View (Next Active)**: `cli-fullscreen-plan-view-plan.md`
-4. **Projects**: `cli-fullscreen-projects-plan.md`
-5. **Reports & System**: `cli-fullscreen-reports-system-plan.md`
-6. **Actions & Controlling**: `cli-fullscreen-actions-plan.md`
+3. **Plan View (Landed & Verified)**: [`cli-fullscreen-plan-view-plan.md`](implemented/cli-fullscreen-plan-view-plan.md) ([Report](verified/cli-fullscreen-plan-view-plan-report.md) — PR #137, commit `a057c1f`)
+   *(Full-screen Plan View Level 3, 6-phase expandable tree, worker live activity plain-text stream, token split, and 1-key cross-level jumps)*
+4. **Actions & Controlling (Active)**: [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md)
+5. **Projects**: `cli-fullscreen-projects-plan.md`
+6. **Reports & System**: `cli-fullscreen-reports-system-plan.md`
 
 ### Stream C: Web Client Completion (`pm-web-app`)
 1. **Foundation (Landed & Verified)**: [`web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md) ([Report](verified/web-foundation-routing-and-catalogue-plan-report.md) — PR #126, commit `6b3defb`)
    *(Design spec completion, full URL routing/history, elimination of fallbackMessages, retirement of WorkspaceView)*
 2. **Onboarding, Entry & Projects (Landed & Verified)**: [`web-onboarding-entry-and-projects-plan.md`](implemented/web-onboarding-entry-and-projects-plan.md) ([Report](verified/web-onboarding-entry-and-projects-plan-report.md) — PR #132, commit `cff749e`)
    *(10-step project onboarding, build environment display, favourite ordering, setup conflict resolution)*
-3. **Overview, Plan & Epic View (Next Active)**: `web-overview-plan-and-epic-view-plan.md`
-4. **Decisions & Actions**: `web-decisions-and-actions-plan.md`
-5. **Reports, System & Designer**: `web-reports-system-and-designer-plan.md`
+3. **Overview, Plan & Epic View (Landed & Verified)**: [`web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) ([Report](verified/web-overview-plan-and-epic-view-plan-report.md) — PR #134, commit `aad7e44`)
+4. **Arrival Banners & i18n Cache (Active)**: [`web-arrival-banners-and-i18n-cache-plan.md`](web-arrival-banners-and-i18n-cache-plan.md)
+   *(Complete removal of redundant top arrival notice banners; localStorage catalogue caching with SWR, synchronous hydration, and missing-key shielding)*
+5. **Decisions & Actions**: `web-decisions-and-actions-plan.md`
+6. **Reports, System & Designer**: `web-reports-system-and-designer-plan.md`
 
 ---
 
