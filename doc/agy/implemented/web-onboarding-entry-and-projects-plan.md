@@ -70,14 +70,14 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-onboarding-projects` on branch `feat/web-onboarding-entry-and-projects` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `pm-dev-frontend-javascript` for `ProjectOnboardingView.svelte` and `ProjectExplorerView.svelte`.
   - `pm-dev-frontend-css` for responsive layout and step bar styling.
   - `persona-module-tester` & `pm-dev-frontend-jest-testing` for Vitest component tests and Playwright E2E tests.
   - `persona-code-reviewer` for finding evaluation & bot review resolution.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/web-onboarding-entry-and-projects-plan-report.md`) and initial plan moved to `doc/agy/implemented/web-onboarding-entry-and-projects-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/web-onboarding-entry-and-projects-plan-report.md`) and initial plan moved to `doc/agy/implemented/web-onboarding-entry-and-projects-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-onboarding-entry-and-projects-plan-report.md` by orchestrator session.
@@ -99,21 +99,21 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 6. Phased Technical Recipe
 
 ### Phase 1: 10-Step Project Onboarding View (`ProjectOnboardingView.svelte`)
-- [ ] **1.1 Build `ProjectOnboardingView.svelte`**:
+- [x] **1.1 Build `ProjectOnboardingView.svelte`**:
   - Render the 10 project onboarding steps with `StepBar.svelte`, displaying the terminal-captured build environment on step 2, handling concurrent `conflict` responses (`Keep current` / `Apply again`), and providing the setup question chat drawer (or disabled reason when the role is unconfigured).
   - Connect "Add Project" and "Continue setup" in `ProjectExplorerView.svelte` to `/projects/onboard`.
 
 ### Phase 2: Favourites Reordering & Settings Conflict in `ProjectExplorerView.svelte`
-- [ ] **2.1 Favourites Reordering**:
+- [x] **2.1 Favourites Reordering**:
   - Add up/down reorder buttons and drag-and-drop ordering for starred projects in `ProjectExplorerView.svelte`, persisting via `apiClient.reorderFavouriteProjects(orderedIds)`.
-- [ ] **2.2 Project Settings Conflict Dialogue**:
+- [x] **2.2 Project Settings Conflict Dialogue**:
   - Handle `conflict: true` in `saveProjectSettings()` by presenting `current_value` vs `wanted_value` with **Keep current** and **Apply again** buttons.
 
 ### Phase 3: Machine Settings Direct Aspect Selection & Back Navigation
-- [ ] **3.1 Direct Aspect Jump**:
+- [x] **3.1 Direct Aspect Jump**:
   - Update `MachineSettingsView.svelte` and `OnboardingView.svelte` so clicking `Change` on an aspect opens `OnboardingView` directly at that aspect's step.
   - Update `SettingsView.svelte` `Back` button to call `goBack()`.
 
 ### Phase 4: Verification
-- [ ] **4.1 Unit & E2E Tests**:
+- [x] **4.1 Unit & E2E Tests**:
   - Run `cd pm-web-app && npm test`, `cd pm-web-e2e && npx playwright test tests/projects.spec.js tests/onboarding.spec.js tests/devices.spec.js tests/entry.spec.js`, and `./mvnw verify -Ppre-commit`.
