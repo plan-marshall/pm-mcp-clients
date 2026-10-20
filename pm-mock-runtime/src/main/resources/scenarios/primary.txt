@@ -1,0 +1,7 @@
+# The five canonical mock-runtime scenarios, in launcher order.
+# Read by StandardScenarios.PRIMARY_SCENARIOS and by start.sh; keep them in sync through this file.
+onboarding
+running-work
+projects-and-start
+reports-and-system
+designer

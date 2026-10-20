@@ -9,6 +9,11 @@
  */
 package de.planmarshall.mock;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -425,13 +430,36 @@ public final class StandardScenarios {
 
     /**
      * Unmodifiable list of the five canonical scenarios, in the order the launcher presents them.
+     * The list is loaded from {@code scenarios/primary.txt}, the one file {@code start.sh} reads too,
+     * so the Java catalog and the interactive menu cannot drift apart.
      */
-    public static final List<String> PRIMARY_SCENARIOS = List.of(
-            ONBOARDING,
-            RUNNING_WORK,
-            PROJECTS_AND_START,
-            REPORTS_AND_SYSTEM,
-            DESIGNER);
+    public static final List<String> PRIMARY_SCENARIOS = loadPrimaryScenarios();
+
+    /**
+     * @return the primary scenario names in launcher order
+     */
+    private static List<String> loadPrimaryScenarios() {
+        var resource = "scenarios/primary.txt";
+        var expectedCount = 5;
+        try (var in = StandardScenarios.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                throw new IllegalStateException("Missing classpath resource " + resource);
+            }
+            try (var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                var names = reader.lines()
+                        .map(String::trim)
+                        .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                        .toList();
+                if (names.size() != expectedCount) {
+                    throw new IllegalStateException("Expected " + expectedCount
+                            + " primary scenarios in " + resource + ", found " + names.size());
+                }
+                return names;
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read " + resource, e);
+        }
+    }
 
     /**
      * Unmodifiable list of all delivered standard scenario names. The entry cases are derived from

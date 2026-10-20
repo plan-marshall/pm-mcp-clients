@@ -112,7 +112,7 @@ This plan is the **Wave 1 Foundation** for the mock-runtime remediation series (
   - Reject unknown keys at the root object (`format_version`, `name`, `description`, `start`, `pairing_code`, `routes`, `states`), state object (`representation`, `links`, `events`, `auto`), route object (`status`, `representation`, `headers`), link object (`method`, `href`, `status`, `next`, `delay_ms`, `error`), and event object (`after_ms`, `event`, `data`).
 - [x] **2.2 Validate `link.error` and `routes`**:
   - Verify `link.error` (when present) decodes via `ApiErrorCode.fromWire(...)`; throw `ScenarioValidationException` naming the file, state, and link if unknown.
-  - Validate static `routes` representations against `pm-api` codecs for known endpoints (`RuntimeStatus`, `OverviewResource`, `ProjectListResource`, `ReportListResource`, `SystemStatusResource`, `CleanupStatusResource`, `WorkflowCatalogueResource`).
+  - Validate static `routes` representations against the `pm-api` codecs that exist for the known endpoints (`ProjectExplorer` for `GET /api/v1/projects`, `ReportsPage` for `/reports`, `ProjectOverviewResponse` for `/overview`, `SystemSnapshot` for `/system`, `WorkflowCatalogue` for `/workflows`). `/api/v1/status` keeps its legacy combined representation until the reports/system wave moves it onto `RuntimeStatus`; no cleanup route is declared as a static route yet.
 - [x] **2.3 Unit Tests in `ScenarioLoaderTest`**:
   - Add fail-first unit tests asserting that unknown top-level/state/link keys, unknown `link.error` codes, and malformed route representations throw `ScenarioValidationException` naming the offending file, state/route, and field.
 
@@ -135,6 +135,6 @@ This plan is the **Wave 1 Foundation** for the mock-runtime remediation series (
   - Guard stateful domain handlers so they only serve endpoints belonging to the active scenario's domain or declared routes; otherwise fall through to `handleNoRoute` (`404 mock_no_route` with `state` and `offered_links`).
 - [x] **4.2 Add `/mcp` JSON-RPC Handler & Migrate `pm-relay`**:
   - Implement `/mcp` (`POST /mcp`) handling in `MockRuntimeEngine` supporting `Mcp-Method` (`initialize`, `tools/list` with SSE chunked progress + message, and default JSON-RPC responses or scenario-configured routes).
-  - Migrate `PmMcpProcessIT` in `pm-relay` to use `MockRuntime` and remove `FakeRuntimeServer`.
+  - Migrate the daemon-bound `PmMcpProcessIT` tests and add a `RelayTest` end-to-end test against `MockRuntime`. `FakeRuntimeServer` is retained only as the fault-injection double (`500` responses, broken chunk streams, media-type faults) that `pm-api` tests need and that `pm-api` cannot replace with `pm-mock-runtime` under the module enforcer; the duplicate daemon is gone from the verified path.
 - [x] **4.3 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).

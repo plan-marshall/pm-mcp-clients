@@ -16,7 +16,7 @@ The foundation wave delivered the structural pieces the four scenario-consolidat
 4. **Dispatch precedence** so state operator links and scenario routes are evaluated before stateful domain defaults, plus domain gating so an unoffered `system` or `decisions` family answers `404 mock_no_route`.
 5. A **`/mcp` JSON-RPC endpoint** (`initialize`, `tools/list` with SSE progress, `tools/call`, notifications, scenario-configured answers) and migration of the relay process integration test to the real mock runtime.
 
-All tests pass locally, including the full reactor unit suite, the mock-runtime suite (338 tests), and `PmMcpProcessIT` (8 tests) against the mock runtime.
+All tests pass locally, including the full reactor unit suite, the mock-runtime suite (342 tests), and `PmMcpProcessIT` (8 tests) against the mock runtime.
 
 ---
 
@@ -33,7 +33,8 @@ All tests pass locally, including the full reactor unit suite, the mock-runtime 
 | `src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` | Scoped ring buffers (`machine`, `plan:<id>`, `epic:<id>`, `entry:<id>`, `workspace:<id>`, `reports`, `activity:<plan>:<task>`), envelope construction, scoped delivery, `Last-Event-ID` replay, `reset` on stale ids and reset/switch, reordered dispatch, live-domain classification, `/mcp` handler, domain gating for system and decisions. |
 | `src/main/resources/scenarios/projects-and-start.json` | New primary scenario seeded from `projects.json` and `start.json` (project explorer + start states/routes + `start_case`). |
 | `src/main/resources/scenarios/reports-and-system.json` | New primary scenario seeded from `reports.json` and `system.json` (reports list + runtime lifecycle states). |
-| `start.sh` | Presents exactly the five primary scenarios with their one-line descriptions, defaults to `running-work`, and still accepts `-s <name|name#state|path>`. macOS Bash 3.2 / `set -u` idioms preserved. |
+| `start.sh` | Presents exactly the five primary scenarios with their one-line descriptions, defaults to `running-work`, and still accepts a name, a `name#state` reference, or a path. The list is read from `scenarios/primary.txt`, the same resource `StandardScenarios` loads. macOS Bash 3.2 / `set -u` idioms preserved. |
+| `src/main/resources/scenarios/primary.txt` | The launcher order, read by both `StandardScenarios.PRIMARY_SCENARIOS` and `start.sh`. |
 | `src/main/resources/scenarios/plan-view.json`, `decisions.json` | Removed the non-schema state `summary` member so the closed schema accepts them. |
 
 ### `pm-mock-runtime` — tests
@@ -62,7 +63,7 @@ All tests pass locally, including the full reactor unit suite, the mock-runtime 
 
 | Gate | Command | Result |
 |---|---|---|
-| Mock-runtime suite | `./mvnw -pl pm-mock-runtime test` | **338 tests, 0 failures, 0 errors** |
+| Mock-runtime suite | `./mvnw -pl pm-mock-runtime test` | **342 tests, 0 failures, 0 errors** |
 | Full reactor unit suite | `./mvnw test -DskipITs` | **BUILD SUCCESS** (all modules) |
 | Relay process ITs | `./mvnw -pl pm-relay -am verify -Pintegration-tests -Dit.test=PmMcpProcessIT -Dfailsafe.failIfNoSpecifiedTests=false` | **8 tests, 0 failures** |
 | Pre-commit gate | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** (6:05 min) |
@@ -82,7 +83,7 @@ Additional focused evidence:
 |---|---|
 | Java 25 toolchain, module boundary `clients → pm-api` and `pm-mock-runtime` in test scope only | Preserved; `pm-api` gained no dependency, `pm-relay` adds a test-scope mock runtime dependency only. |
 | Closed schema and fail-closed enum validation | Enforced for root/state/route/link/event/auto members, `link.error`, and known route codecs. |
-| Mock runtime is the single HTTP/SSE implementation for client tests | `PmMcpProcessIT` and the new relay test run against `MockRuntime`; `/mcp` lives in `MockRuntimeEngine`. |
+| The mock runtime carries the verified daemon path | The daemon-bound `PmMcpProcessIT` tests and the new relay end-to-end test run against `MockRuntime`; `/mcp` lives in `MockRuntimeEngine`. Scripted-handler doubles remain only for fault injection and header-capture assertions. |
 | Bounded event buffer and resume rule | 64 envelopes per stream scope; replay after `Last-Event-ID`; `reset` otherwise and after reset/switch. |
 | Deterministic tests, no real daemon/harness | All new tests use the in-process `MockRuntime` or an explicitly fault-injecting double. |
 | Shell portability | `start.sh` uses the approved empty-array idiom and repo-root Maven anchoring unchanged. |
@@ -93,8 +94,8 @@ Additional focused evidence:
 
 1. **The 60 fine-grained scenario files were not deleted.** This wave owns the catalog, resolver, and launcher; the four consolidation plans (`mock-runtime-onboarding-and-entry`, `-running-work`, `-projects-and-start`, `-reports-system-designer`) explicitly own the deletions and the rich state content. The alias table resolves a legacy name to its primary scenario **only when the legacy file is absent**, so every existing test keeps its exact fixture while each wave can delete file by file.
 2. **`projects-and-start.json` and `reports-and-system.json` are initial consolidated skeletons.** They merge the existing projects/start and reports/system states and routes so the five-scenario launcher and `PRIMARY_SCENARIOS` work today; the downstream waves enrich them.
-3. **Dispatch precedence is domain-aware.** State links and scenario routes win over Java defaults for every path outside the engine's live, mutating domain families (`plans`, `epics`, `entries`, `projects`, `reports`, `system`, `web`, …). Inside those families the stateful handler is the richer, mutation-aware answer; a scenario link or route is the fallback when no handler claims the path. Operator links below `/links/` are always scenario-first. This fixes the shadowing defect without breaking favourite toggles, report reads, or device lifecycle fixtures that intentionally mutate engine state.
-4. **`FakeRuntimeServer` is retained as a fault-injection double only.** `pm-api` cannot depend on `pm-mock-runtime` (the enforcer's `clients-depend-on-pm-api-only` rule and the acyclic module graph forbid it), so `RuntimeFixture` cannot delegate to the mock runtime. The daemon-bound relay tests were migrated; the remaining uses inject `500` responses, broken chunk streams, and media-type faults that a real runtime must not produce. The duplicate *daemon* is gone from the verified path; the double is now explicitly a test fault fixture.
+3. **Dispatch precedence is domain-aware.** State links and scenario routes win over Java defaults for every path outside the engine's live, mutating domain families (`plans`, `epics`, `entries`, `projects`, `reports`, `system`, `web`, …). Inside those families the stateful handler is the richer, mutation-aware answer; a scenario link or route is the fallback when no handler claims the path. The families live in one `LIVE_DOMAIN_PREFIXES` list and a test pins a representative path of each. Operator links below `/links/` are always scenario-first. This fixes the shadowing defect without breaking favourite toggles, report reads, or device lifecycle fixtures that intentionally mutate engine state.
+4. **`FakeRuntimeServer` is retained as a test double, not as a second daemon.** `pm-api` cannot depend on `pm-mock-runtime` (the enforcer's `clients-depend-on-pm-api-only` rule and the acyclic module graph forbid it), so `RuntimeFixture` cannot delegate to the mock runtime. The daemon-bound `PmMcpProcessIT` tests were migrated, and `RelayTest` gained a `MockRuntime` end-to-end test. The remaining uses inject `500` responses, broken chunk streams, delimiter faults, or scripted successful responses whose purpose is to assert the relay's exact headers and framing (`RelayTest.Session`, `PmMcpProcessIT.detachedStart`); those assertions are about the relay, not about a runtime implementation. The duplicate *daemon* is gone from the verified path; the double is now explicitly a test fixture.
 5. **Closed-schema extensions.** `designer` and `start_case` remain accepted root members until the reports/designer and projects/start waves move those fixtures into `pm-api` codecs. Operator-state validation remains conditional on a `state.state_id`, as before, because the legacy flat representations are migrated by the downstream waves.
 6. **Engine-internal event names outside the catalogue.** Names such as `task.activity` are wrapped in the same `event`/`id`/`data` envelope shape but are not claimed as `EventName` members; catalogue members are built through `EventEnvelope` and therefore validated by the same codec clients use.
 

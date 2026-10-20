@@ -123,9 +123,24 @@ done
 FINAL_ARGS=()
 
 if [ "$HAS_SCENARIO" = false ]; then
-    # The five canonical scenarios of the consolidated catalog. The fine-grained case files still
-    # exist during migration but are deliberately not offered here; -s <name> reaches any of them.
-    scenarios=("onboarding" "running-work" "projects-and-start" "reports-and-system" "designer")
+    # The five canonical scenarios of the consolidated catalog come from the same resource the Java
+    # catalog reads (StandardScenarios.PRIMARY_SCENARIOS), so the menu cannot drift from it. The
+    # fine-grained case files still exist during migration but are deliberately not offered here;
+    # -s <name> reaches any of them.
+    PRIMARY_FILE="$SCENARIOS_DIR/primary.txt"
+    scenarios=()
+    if [ -f "$PRIMARY_FILE" ]; then
+        while IFS= read -r line; do
+            case "$line" in
+                ''|'#'*) continue ;;
+            esac
+            scenarios+=("$line")
+        done < "$PRIMARY_FILE"
+    fi
+    if [ ${#scenarios[@]} -eq 0 ]; then
+        echo "Error: no primary scenarios in $PRIMARY_FILE" >&2
+        exit 1
+    fi
 
     # Reads the one-line description from a scenario file, without requiring jq or python.
     scenario_description() {
@@ -135,7 +150,7 @@ if [ "$HAS_SCENARIO" = false ]; then
 
     echo ""
     echo "No scenario specified. Available scenarios:"
-    default_idx=2
+    default_idx=1
     for i in "${!scenarios[@]}"; do
         idx=$((i + 1))
         name="${scenarios[$i]}"

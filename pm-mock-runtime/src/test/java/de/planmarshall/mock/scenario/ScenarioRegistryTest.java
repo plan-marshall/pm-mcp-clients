@@ -143,7 +143,26 @@ class ScenarioRegistryTest {
         assertEquals("onboarding#harness.blocked", aliases.get("onboarding-harness-not-logged-in"));
         assertEquals("projects-and-start#start.sources", aliases.get("start"));
         assertEquals("reports-and-system#reports.list", aliases.get("reports"));
-        assertEquals("designer#designer.ready", aliases.get("designer"));
+        assertNull(aliases.get("designer"), "a primary scenario needs no alias");
+    }
+
+    @Test
+    @DisplayName("an alias does not overwrite the primary scenario's own start state")
+    void aliasDoesNotOverwritePrimaryStart() {
+        registry.registerLegacyAlias("ghost-start", StandardScenarios.PROJECTS_AND_START
+                + "#start.sources");
+        assertEquals("start.sources", registry.resolve("ghost-start").start());
+
+        var primary = registry.resolve(StandardScenarios.PROJECTS_AND_START);
+        assertEquals("projects.explorer", primary.start(),
+                "the alias must be cached under its own name only");
+    }
+
+    @Test
+    @DisplayName("refuses a self-referencing alias")
+    void refusesSelfAlias() {
+        assertThrows(IllegalArgumentException.class,
+                () -> registry.registerLegacyAlias("designer", "designer#designer.ready"));
     }
 
     @Test

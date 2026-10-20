@@ -1056,28 +1056,39 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param path the request path
      * @return {@code true} when a stateful domain handler owns the family
      */
-    private static boolean isLiveDomainPath(String path) {
-        return path.startsWith("/api/v1/reports")
-                || path.startsWith("/api/v1/plans")
-                || path.startsWith("/api/v1/epics")
-                || path.startsWith("/api/v1/entries")
-                || path.startsWith("/api/v1/projects")
-                || path.startsWith("/api/v1/project-onboardings")
-                || path.startsWith("/api/v1/explorer")
-                || path.startsWith("/api/v1/overview")
-                || path.startsWith("/api/v1/workflows")
-                || path.startsWith("/api/v1/decisions")
-                || path.startsWith("/api/v1/system")
-                || path.startsWith("/api/v1/recipes")
-                || path.startsWith("/api/v1/intake")
-                || path.startsWith("/api/v1/onboarding")
-                || path.startsWith("/api/v1/web/")
-                || path.startsWith("/api/v1/status/")
-                || path.startsWith("/api/v1/enrol")
-                || path.startsWith("/api/v1/credentials")
-                || path.startsWith("/api/v1/machine/decisions")
-                || path.startsWith("/api/v1/machine/settings");
+    static boolean isLiveDomainPath(String path) {
+        return LIVE_DOMAIN_PREFIXES.stream().anyMatch(path::startsWith);
     }
+
+    /**
+     * The path families owned by the stateful domain handlers, in one place. A family appears here
+     * exactly when {@link #handleDynamicRoutes} has a handler for it; a representative path of every
+     * family is asserted in {@code MockRuntimeEngineTest} so a new family cannot be forgotten.
+     */
+    private static final List<String> LIVE_DOMAIN_PREFIXES = List.of(
+            "/api/v1/reports",
+            "/api/v1/plans",
+            "/api/v1/epics",
+            "/api/v1/entries",
+            "/api/v1/projects",
+            "/api/v1/project-onboardings",
+            "/api/v1/explorer",
+            "/api/v1/overview",
+            "/api/v1/workflows",
+            "/api/v1/decisions",
+            "/api/v1/questions",
+            "/api/v1/system",
+            "/api/v1/operator/runtime",
+            "/api/v1/runtime",
+            "/api/v1/recipes",
+            "/api/v1/intake",
+            "/api/v1/onboarding",
+            "/api/v1/web",
+            "/api/v1/status/",
+            "/api/v1/enrol",
+            "/api/v1/credentials",
+            "/api/v1/machine/decisions",
+            "/api/v1/machine/settings");
 
     private boolean handleDynamicRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
             throws IOException {
@@ -4807,13 +4818,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             message = JsonTree.asObject(JsonTree.parse(body));
             // cui-rewrite:disable InvalidExceptionUsageRecipe
         } catch (IOException | RuntimeException _) {
-            response.json(200, Map.of("jsonrpc", "2.0", "id", null,
-                    "error", Map.of("code", -32700, "message", "parse_error")));
+            response.json(200, jsonRpcError(null, -32700, "parse_error"));
             return;
         }
         if (message == null) {
-            response.json(200, Map.of("jsonrpc", "2.0", "id", null,
-                    "error", Map.of("code", -32600, "message", "invalid_request")));
+            response.json(200, jsonRpcError(null, -32600, "invalid_request"));
             return;
         }
 
@@ -4825,8 +4834,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var params = JsonTree.object(message, "params");
 
         if (method == null || method.isBlank()) {
-            response.json(200, Map.of("jsonrpc", "2.0", "id", id == null ? "" : id,
-                    "error", Map.of("code", -32600, "message", "invalid_request")));
+            response.json(200, jsonRpcError(id, -32600, "invalid_request"));
             return;
         }
 
@@ -4842,36 +4850,41 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         switch (method) {
-            case "initialize" -> response.json(200, Map.of(
-                    "jsonrpc", "2.0",
-                    "id", id == null ? "" : id,
-                    "result", Map.of(
-                            "protocolVersion", protocolVersionOf(params),
-                            "capabilities", Map.of("tools", Map.of()),
-                            "serverInfo", Map.of("name", "pm-mock-runtime", "version", "0.1.0-SNAPSHOT"))));
+            case "initialize" -> response.json(200, jsonRpcResult(id, Map.of(
+                    "protocolVersion", protocolVersionOf(params),
+                    "capabilities", Map.of("tools", Map.of()),
+                    "serverInfo", Map.of("name", "pm-mock-runtime", "version", "0.1.0-SNAPSHOT"))));
             case "tools/list" -> {
                 try (var events = response.events(200)) {
                     events.send(null, JsonTree.write(Map.of(
                             "jsonrpc", "2.0",
                             "method", "notifications/progress",
                             "params", Map.of("progress", 1, "total", 1))));
-                    events.send("message", JsonTree.write(Map.of(
-                            "jsonrpc", "2.0",
-                            "id", id == null ? "" : id,
-                            "result", Map.of("tools", List.of(Map.of(
+                    events.send("message", JsonTree.write(jsonRpcResult(id, Map.of(
+                            "tools", List.of(Map.of(
                                     "name", "pm_wait",
                                     "inputSchema", Map.of("type", "object", "properties", Map.of())))))));
                 }
             }
-            case "tools/call" -> response.json(200, Map.of(
-                    "jsonrpc", "2.0",
-                    "id", id == null ? "" : id,
-                    "result", Map.of("content", List.of())));
-            default -> response.json(200, Map.of(
-                    "jsonrpc", "2.0",
-                    "id", id == null ? "" : id,
-                    "result", Map.of()));
+            case "tools/call" -> response.json(200, jsonRpcResult(id, Map.of("content", List.of())));
+            default -> response.json(200, jsonRpcResult(id, Map.of()));
         }
+    }
+
+    private static Map<String, Object> jsonRpcResult(Object id, Object result) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("jsonrpc", "2.0");
+        body.put("id", id);
+        body.put("result", result);
+        return body;
+    }
+
+    private static Map<String, Object> jsonRpcError(Object id, int code, String message) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("jsonrpc", "2.0");
+        body.put("id", id);
+        body.put("error", Map.of("code", code, "message", message));
+        return body;
     }
 
     private static String protocolVersionOf(Map<String, Object> params) {
@@ -4892,15 +4905,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException on write failure
      */
     private void handleEventStream(MockHttpRequest request, MockHttpResponse response, String scope) throws IOException {
-        var stream = response.events(200, created -> {
-            created.scope(scope);
-            activeStreams.put(created, scope);
-        });
+        var stream = response.events(200, created -> created.scope(scope));
 
         var lastEventId = parseLastEventId(request.header("Last-Event-ID"));
-        var replay = new ArrayList<BufferedEvent>();
-        var reset = false;
+        // The replay snapshot, the registration, and the replay writes share one lock section: a
+        // broadcast either lands in the buffer and the replay, or is delivered live after the
+        // replay, never both and never out of order.
         synchronized (eventLock) {
+            var replay = new ArrayList<BufferedEvent>();
+            var reset = false;
             if (lastEventId != null) {
                 var buffer = eventBuffers.get(scope);
                 var found = buffer != null && buffer.stream().anyMatch(item -> item.id() == lastEventId);
@@ -4914,9 +4927,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     reset = true;
                 }
             }
-        }
-
-        try {
+            activeStreams.put(stream, scope);
             if (reset) {
                 var resetId = nextBufferedReset(scope);
                 writeOrDrop(new FramedEvent(stream, resetId, EventName.RESET.wire(),
@@ -4927,6 +4938,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     writeOrDrop(new FramedEvent(stream, item.id(), item.event(), item.json()));
                 }
             }
+        }
+
+        try {
             stream.sendComment("connected to mock runtime");
             if (scope.startsWith(STREAM_ACTIVITY_PREFIX)) {
                 sendActivitySeed(stream, scope);
@@ -5034,15 +5048,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var framed = new ArrayList<FramedEvent>();
         synchronized (eventLock) {
             eventBuffers.clear();
-            streamSequences.clear();
+            // Sequences stay monotonic across a reset: a client that reconnects with an old id must
+            // not find that id in the new buffer and mistake the new scenario's events for a replay.
+            var resetEvents = new HashMap<String, BufferedEvent>();
             for (var entry : activeStreams.entrySet()) {
                 var scope = entry.getValue();
-                var id = nextStreamId(scope);
-                var envelope = envelopeJson(EventName.RESET.wire(), id, resetScopeOf(scope),
-                        new LinkedHashMap<>());
-                eventBuffers.computeIfAbsent(scope, key -> new ArrayDeque<>())
-                        .addLast(new BufferedEvent(id, EventName.RESET.wire(), envelope));
-                framed.add(new FramedEvent(entry.getKey(), id, EventName.RESET.wire(), envelope));
+                var reset = resetEvents.computeIfAbsent(scope, key -> {
+                    var id = nextStreamId(key);
+                    var envelope = envelopeJson(EventName.RESET.wire(), id, resetScopeOf(key),
+                            new LinkedHashMap<>());
+                    var buffered = new BufferedEvent(id, EventName.RESET.wire(), envelope);
+                    eventBuffers.computeIfAbsent(key, ignored -> new ArrayDeque<>()).addLast(buffered);
+                    return buffered;
+                });
+                framed.add(new FramedEvent(entry.getKey(), reset.id(), reset.event(), reset.json()));
             }
         }
         framed.forEach(this::writeOrDrop);

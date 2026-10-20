@@ -11,11 +11,15 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -64,6 +68,22 @@ class StandardScenariosTest {
                 "reports-and-system", "designer"));
         assertEquals("projects-and-start", StandardScenarios.PROJECTS_AND_START);
         assertEquals("reports-and-system", StandardScenarios.REPORTS_AND_SYSTEM);
+    }
+
+    @Test
+    @DisplayName("the primary list is the one resource the launcher reads too")
+    void primaryListComesFromTheSharedResource() throws Exception {
+        try (var in = getClass().getResourceAsStream("/scenarios/primary.txt")) {
+            assertNotNull(in);
+            try (var reader = new BufferedReader(
+                         new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                var names = reader.lines()
+                        .map(String::trim)
+                        .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                        .toList();
+                assertEquals(StandardScenarios.PRIMARY_SCENARIOS, names);
+            }
+        }
     }
 
     @Test

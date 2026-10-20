@@ -68,6 +68,9 @@ public final class ScenarioRegistry {
     public ScenarioRegistry registerLegacyAlias(String legacyName, String target) {
         Objects.requireNonNull(legacyName, "legacyName");
         Objects.requireNonNull(target, "target");
+        if (legacyName.equals(scenarioNameOf(target))) {
+            throw new IllegalArgumentException("Alias '" + legacyName + "' must not target itself");
+        }
         legacyAliases.put(legacyName, target);
         return this;
     }
@@ -114,7 +117,22 @@ public final class ScenarioRegistry {
             return resolved;
         }
 
-        var loaded = loadDirectOrAliased(nameOrPath);
+        Scenario loaded;
+        try {
+            loaded = ScenarioLoader.load(nameOrPath);
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IllegalArgumentException missing) {
+            var target = legacyAliases.get(nameOrPath);
+            if (target == null) {
+                throw missing;
+            }
+            // An alias returns a scenario copy whose start is the alias state; caching it under the
+            // primary name would make the primary scenario's start depend on which name resolved
+            // first. Cache it under the alias only.
+            loaded = resolve(target);
+            cache.put(nameOrPath, loaded);
+            return loaded;
+        }
         cache.put(loaded.name(), loaded);
         cache.putIfAbsent(nameOrPath, loaded);
         return loaded;
@@ -143,19 +161,6 @@ public final class ScenarioRegistry {
      */
     public void clear() {
         cache.clear();
-    }
-
-    private Scenario loadDirectOrAliased(String nameOrPath) {
-        try {
-            return ScenarioLoader.load(nameOrPath);
-            // cui-rewrite:disable InvalidExceptionUsageRecipe
-        } catch (IllegalArgumentException missing) {
-            var target = legacyAliases.get(nameOrPath);
-            if (target == null) {
-                throw missing;
-            }
-            return resolve(target);
-        }
     }
 
     private static Scenario atState(Scenario base, String stateId, String reference) {
@@ -279,8 +284,7 @@ public final class ScenarioRegistry {
             registry.registerLegacyAlias("reports", "reports-and-system#reports.list");
             registry.registerLegacyAlias("system", "reports-and-system#system.ready");
 
-            // Scenario 5: designer.
-            registry.registerLegacyAlias("designer", "designer#designer.ready");
+            // Scenario 5 (designer) is a primary scenario already; it needs no alias.
         }
     }
 }
