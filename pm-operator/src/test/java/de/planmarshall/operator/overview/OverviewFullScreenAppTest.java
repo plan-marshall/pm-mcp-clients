@@ -507,7 +507,7 @@ class OverviewFullScreenAppTest {
     }
 
     @Test
-    @DisplayName("keyHandler covers view switching, jump to epic, drill-down, and ended work")
+    @DisplayName("keyHandler covers view switching, jump to epic, and drill-down")
     void testKeyHandlerViewsAndDrillDown() throws IOException {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
@@ -544,6 +544,23 @@ class OverviewFullScreenAppTest {
         assertTrue(handler.handle(TuiKeyAction.OPEN));
         assertEquals(TuiLevel.Kind.PLAN, app.stack().level().kind());
         assertTrue(handler.handle(TuiKeyAction.BACK));
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+    }
+
+    @Test
+    @DisplayName("keyHandler covers ended work navigation and filtering")
+    void testKeyHandlerEndedWork() throws IOException {
+        var virtual = VirtualScreenTerminal.create(120, 30);
+        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
+        var runtime = createContext(virtual).runtime(false);
+        app.loadInitialData(runtime);
+
+        var handler = app.keyHandler();
+
+        // Open selected project
+        app.stack().first();
+        assertTrue(handler.handle(TuiKeyAction.OPEN));
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
 
         // Open ended level from project
         assertTrue(handler.handle(TuiKeyAction.ENDED));
@@ -570,5 +587,6 @@ class OverviewFullScreenAppTest {
         assertTrue(handler.handle(TuiKeyAction.ENDED));
         assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
         assertTrue(handler.handle(TuiKeyAction.BACK));
+        assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
     }
 }
