@@ -85,6 +85,7 @@ public final class PmConsole {
      * @throws IOException on fatal console or terminal error
      */
     public int run() throws IOException {
+        context.setConsoleActive(true);
         var terminal = context.createTerminal();
         var out = new PrintWriter(terminal.writer(), true);
 
@@ -120,6 +121,7 @@ public final class PmConsole {
         try {
             runRepl(out, reader);
         } finally {
+            context.setConsoleActive(false);
             running.set(false);
             sseThread.interrupt();
             out.flush();

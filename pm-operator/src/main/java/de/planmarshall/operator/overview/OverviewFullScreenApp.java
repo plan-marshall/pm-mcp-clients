@@ -213,11 +213,21 @@ public final class OverviewFullScreenApp {
                 var page = ReportsPage.fromJson(response.bodyText());
                 unreadReports.set(page.unreadCount());
             }
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        } catch (IOException | IllegalArgumentException _) {
             // unread count defaults to 0
         }
+    }
+
+    private boolean isCurrentProjectSetupNeedingOperator() {
+        if (currentProjectDetail == null || cachedProjects == null) {
+            return false;
+        }
+        var currentProjectId = currentProjectDetail.projectId();
+        return cachedProjects.projects().stream()
+                            .filter(p -> p.projectId().equals(currentProjectId))
+                            .findFirst()
+                            .map(ProjectSummary::setupNeedsOperator)
+                            .orElse(false);
     }
 
     private void openProject(RuntimeClient runtime, String projectId, boolean byEpic, @Nullable String selectedId) {
@@ -228,12 +238,7 @@ public final class OverviewFullScreenApp {
                 var detail = ProjectDetailResponse.fromJson(response.bodyText());
                 currentProjectDetail = detail;
                 currentByEpic = byEpic;
-                boolean setupNeeds = cachedProjects != null && cachedProjects.projects().stream()
-                                    .filter(p -> p.projectId().equals(projectId))
-                                    .findFirst()
-                                    .map(ProjectSummary::setupNeedsOperator)
-                                    .orElse(false);
-                var levelModel = new ProjectWorkLevel(detail, byEpic, setupNeeds);
+                var levelModel = new ProjectWorkLevel(detail, byEpic, isCurrentProjectSetupNeedingOperator());
                 var rows = levelModel.rows(locale, clock, false);
                 stack.push(levelModel.level(locale), rows, selectedId);
             }
@@ -323,7 +328,7 @@ public final class OverviewFullScreenApp {
         }
 
         var notice = ConsoleNotice.fromEventMap(locale, eventMap);
-        if (notice != null) {
+        if (notice != null && !context.isConsoleActive()) {
             var category = categoryOf(eventMap);
             int count = countOf(eventMap, category);
             noticeBuffer.hold(category, count);
@@ -347,39 +352,61 @@ public final class OverviewFullScreenApp {
                             || type.startsWith("hold.") || type.startsWith("condition.") || "reset".equals(type);
     }
 
-    private synchronized void refreshActiveLevels() {
+    private void refreshActiveLevels() {
+        TuiLevel.Kind targetKind;
+        String targetProjectId;
+        synchronized (this) {
+            var lvl = stack.level();
+            targetKind = lvl != null ? lvl.kind() : null;
+            targetProjectId = lvl != null ? lvl.id() : null;
+        }
+        if (targetKind == null) {
+            return;
+        }
+
         try {
             var runtime = context.runtime(false);
             fetchProjects(runtime);
             fetchUnreadReports(runtime);
 
-            var projects = cachedProjects != null ? cachedProjects.projects() : List.<ProjectSummary>of();
-            var kind = stack.level().kind();
+            ProjectDetailResponse fetchedDetail = null;
+            EndedWorkPage fetchedEnded = null;
 
-            if (kind == TuiLevel.Kind.OVERVIEW) {
-                var levelModel = new ProjectsOverviewLevel(projects);
-                stack.refresh(levelModel.rows(locale, clock));
-            } else if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-                var projectId = stack.level().id();
-                if (projectId != null) {
-                    var response = runtime.send(HttpRequest.get("/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId)));
+            if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
+                if (targetProjectId != null) {
+                    var response = runtime.send(HttpRequest.get("/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(targetProjectId)));
                     if (response.status() == 200) {
-                        currentProjectDetail = ProjectDetailResponse.fromJson(response.bodyText());
-                        boolean setupNeeds = cachedProjects != null && cachedProjects.projects().stream()
-                                            .filter(p -> p.projectId().equals(projectId))
-                                            .findFirst()
-                                            .map(ProjectSummary::setupNeedsOperator)
-                                            .orElse(false);
-                        var levelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic, setupNeeds);
-                        stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
+                        fetchedDetail = ProjectDetailResponse.fromJson(response.bodyText());
                     }
                 }
-            } else if (kind == TuiLevel.Kind.ENDED) {
-                var projectId = stack.level().id();
-                if (projectId != null && currentEndedLevel != null) {
-                    var response = runtime.send(HttpRequest.get("/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(projectId) + "/ended?page=1"));
+            } else if (targetKind == TuiLevel.Kind.ENDED) {
+                if (targetProjectId != null) {
+                    var response = runtime.send(HttpRequest.get("/api/v1/projects/" + OperatorUrlUtil.encodePathSegment(targetProjectId) + "/ended?page=1"));
                     if (response.status() == 200) {
-                        currentEndedLevel = new EndedWorkLevel(EndedWorkPage.fromJson(response.bodyText()));
+                        fetchedEnded = EndedWorkPage.fromJson(response.bodyText());
+                    }
+                }
+            }
+
+            synchronized (this) {
+                var currentLvl = stack.level();
+                if (currentLvl == null || currentLvl.kind() != targetKind || !Objects.equals(currentLvl.id(), targetProjectId)) {
+                    return;
+                }
+
+                if (targetKind == TuiLevel.Kind.OVERVIEW) {
+                    var projects = cachedProjects != null ? cachedProjects.projects() : List.<ProjectSummary>of();
+                    var levelModel = new ProjectsOverviewLevel(projects);
+                    stack.refresh(levelModel.rows(locale, clock));
+                } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
+                    if (fetchedDetail != null) {
+                        currentProjectDetail = fetchedDetail;
+                        var levelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic, isCurrentProjectSetupNeedingOperator());
+                        stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
+                    }
+                } else if (targetKind == TuiLevel.Kind.ENDED) {
+                    if (fetchedEnded != null && currentEndedLevel != null) {
+                        currentEndedLevel.refreshFirstPage(fetchedEnded);
                         stack.refresh(currentEndedLevel.rows(locale, clock, stack.helpVisible()));
                     }
                 }
@@ -439,7 +466,7 @@ public final class OverviewFullScreenApp {
     private final class OverviewKeyHandler implements TuiScreenDriver.KeyHandler {
 
         @Override
-        public boolean handle(TuiKeyAction action) {
+        public synchronized boolean handle(TuiKeyAction action) {
             switch (action) {
                 case MOVE_UP -> {
                     stack.move(-1);
@@ -487,7 +514,7 @@ public final class OverviewFullScreenApp {
         }
 
         @Override
-        public void filter(String text) {
+        public synchronized void filter(String text) {
             stack.filter(text);
         }
 
@@ -495,7 +522,7 @@ public final class OverviewFullScreenApp {
             var kind = stack.level().kind();
             if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
                 if (currentProjectDetail != null) {
-                    var levelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic);
+                    var levelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic, isCurrentProjectSetupNeedingOperator());
                     stack.refresh(levelModel.rows(locale, clock, stack.helpVisible()));
                 }
             } else if (kind == TuiLevel.Kind.ENDED) {
@@ -517,7 +544,7 @@ public final class OverviewFullScreenApp {
             var sel = stack.selected();
             var selectedId = sel != null ? sel.id() : null;
             var currentFilter = stack.filter();
-            var newLevelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic);
+            var newLevelModel = new ProjectWorkLevel(currentProjectDetail, currentByEpic, isCurrentProjectSetupNeedingOperator());
             var newLevel = newLevelModel.level(locale);
             var newRows = newLevelModel.rows(locale, clock, stack.helpVisible());
 
@@ -552,7 +579,7 @@ public final class OverviewFullScreenApp {
 
             currentByEpic = true;
             var currentFilter = stack.filter();
-            var newLevelModel = new ProjectWorkLevel(currentProjectDetail, true);
+            var newLevelModel = new ProjectWorkLevel(currentProjectDetail, true, isCurrentProjectSetupNeedingOperator());
             var newLevel = newLevelModel.level(locale);
             var newRows = newLevelModel.rows(locale, clock, stack.helpVisible());
 

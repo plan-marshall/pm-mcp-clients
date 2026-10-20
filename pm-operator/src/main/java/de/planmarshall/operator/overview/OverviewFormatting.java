@@ -17,6 +17,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -133,7 +134,7 @@ public final class OverviewFormatting {
             var project = projects.get(i);
             indexed.add(new Indexed<>(project, i, needsOperator(project), project.lastActivityAt()));
         }
-        indexed.sort(OverviewFormatting::compareProjects);
+        indexed.sort(OverviewFormatting::compareIndexed);
         return indexed.stream().map(Indexed::item).toList();
     }
 
@@ -175,21 +176,12 @@ public final class OverviewFormatting {
         return indexed.stream().map(Indexed::item).toList();
     }
 
-    private static int compareProjects(Indexed<ProjectSummary> a, Indexed<ProjectSummary> b) {
-        if (a.needsOperator != b.needsOperator) {
-            return a.needsOperator ? -1 : 1;
-        }
-        if (a.instant != null && b.instant != null && !a.instant.equals(b.instant)) {
-            return b.instant.compareTo(a.instant);
-        }
-        return Integer.compare(a.index, b.index);
-    }
-
     private static <T> int compareIndexed(Indexed<T> a, Indexed<T> b) {
-        if (a.needsOperator != b.needsOperator) {
-            return a.needsOperator ? -1 : 1;
-        }
-        return Integer.compare(a.index, b.index);
+        return Comparator.<Indexed<T>, Boolean>comparing(i -> !i.needsOperator())
+                            .thenComparing(Indexed::instant,
+                                                Comparator.nullsLast(Comparator.<Instant>reverseOrder()))
+                            .thenComparingInt(Indexed::index)
+                            .compare(a, b);
     }
 
     /**
@@ -333,6 +325,9 @@ public final class OverviewFormatting {
             return german ? "vor " + hours + " Std." : hours + " h ago";
         }
         long days = hours / 24L;
+        if (days == 1L) {
+            return german ? "vor 1 Tag" : "1 day ago";
+        }
         return german ? "vor " + days + " Tagen" : days + " days ago";
     }
 

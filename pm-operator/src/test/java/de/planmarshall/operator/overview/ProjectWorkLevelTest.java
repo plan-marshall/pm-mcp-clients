@@ -143,6 +143,22 @@ class ProjectWorkLevelTest {
     }
 
     @Test
+    @DisplayName("by-epic rows include plans with unreferenced or closed epicId in without epic group")
+    void byEpicRowsWithUnreferencedEpicId() {
+        var orphanWithClosedEpic = new ActivePlanSummary("pln-3", "Plan of Closed Epic", "refine", "running",
+                            null, baseInstant.minusSeconds(50), baseInstant.minusSeconds(300),
+                            0, 0, "epc-closed", null, null, null, null, null, null);
+
+        var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(orphanWithClosedEpic), List.of(), List.of());
+        var level = new ProjectWorkLevel(detail, true);
+        var rows = level.rows("en", clock, false);
+
+        assertEquals(2, rows.size());
+        assertEquals(ProjectWorkLevel.GROUP_WITHOUT_EPIC_ID, rows.get(0).id());
+        assertEquals("pln-3", rows.get(1).id());
+    }
+
+    @Test
     @DisplayName("alongside landings and setup rows are rendered under alongside header")
     void alongsideAndSetupRows() {
         var landing1 = new AlongsideLanding("auth", "running", null, "unit", null);

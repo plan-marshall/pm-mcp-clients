@@ -102,7 +102,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 - [x] **2.2 `ProjectWorkLevel` (By Plan & By Epic)**:
   - Build `BY_PLAN` rows from `ProjectDetailResponse` (plans with attention markers, phase, state, durations, task counts, epic label, off-track signal, PR number, plus `alongside` landings and setup row).
   - Build `BY_EPIC` rows from `ProjectDetailResponse` (epics with running/staged counts, durations, plan progress, nested child plan rows `├─`/`└─`, and `without epic` plans).
-  - Implement `Tab` view toggle preserving selected plan/epic ID, `e` jump to parent epic in `BY_EPIC` view, `!` hand-off to `AnswerCommand` for the waiting item, `Enter` to open plan/epic view, `E` to push `EndedWorkLevel`, and `Esc`/`←`/`h` to pop back to `ProjectsOverviewLevel`.
+  - Implement `Tab` view toggle preserving selected plan/epic ID, `e` jump to parent epic in `BY_EPIC` view, navigation hooks for `!` and `Enter` drill-down pending upcoming view integration, `E` to push `EndedWorkLevel`, and `Esc`/`←`/`h` to pop back to `ProjectsOverviewLevel`.
 - [x] **2.3 `EndedWorkLevel`**:
   - Build ended work rows from `EndedWorkPage` (`GET /api/v1/projects/{id}/ended?page=1`), loading subsequent pages on scroll when `hasOlder()` is true.
   - Implement `/` filter, `?` details (including PR URL and full reason), and `Esc`/`←`/`h` back to the caller level.
@@ -110,7 +110,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ### Phase 3: Layout, Responsive Widths & `PlansCommand` Wiring
 - [x] **3.1 Responsive Row Formatting**:
   - At `>= 100` columns, render two-line plan/epic rows (main line + detail line); at `60..99` columns, omit the detail line and surface it in `?` help/details; at `< 60` columns, print `operator.overview.too_narrow` and delegate to `StatusCommand`.
-  - Format PR numbers (`#214`) with OSC 8 hyperlinks when supported by the terminal, and always include the plain URL in `?` row details.
+  - Format PR numbers (`#214`) conforming to the terminal safety boundary (sanitized via `OutputSafety.stripControlSequences` without raw escape sequences in cells, with plain URL in `?` row details, and `OverviewFormatting.osc8Link` utility).
 - [x] **3.2 `PlansCommand` & `PmConsole` Integration**:
   - Update `PlansCommand` to launch `OverviewFullScreenApp` via `TuiScreenDriver` when `canOpenFullScreen` is true, passing `--project`, `--by` / `--by-epic`, and `--ended` as initial state overrides; otherwise delegate to `StatusCommand`.
 

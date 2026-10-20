@@ -154,6 +154,21 @@ class OverviewFormattingTest {
         assertEquals("vor 2 Min.", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(120), clock));
         assertEquals("3 h ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(10800), clock));
         assertEquals("vor 3 Std.", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(10800), clock));
+        assertEquals("1 day ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 + 3600), clock));
+        assertEquals("vor 1 Tag", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 + 3600), clock));
+        assertEquals("3 days ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 * 3), clock));
+        assertEquals("vor 3 Tagen", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 * 3), clock));
+    }
+
+    @Test
+    @DisplayName("sortPlans and sortProjects comparator is transitive with null instants")
+    void sortComparatorTransitivity() {
+        var p1 = new ProjectSummary("p1", "With Instant 10", 1, 0, 0, null, false, baseInstant.minusSeconds(100));
+        var p2 = new ProjectSummary("p2", "Null Instant", 1, 0, 0, null, false, null);
+        var p3 = new ProjectSummary("p3", "With Instant 20", 1, 0, 0, null, false, baseInstant.minusSeconds(50));
+
+        var sorted = OverviewFormatting.sortProjects(List.of(p1, p2, p3));
+        assertEquals(List.of("p3", "p1", "p2"), sorted.stream().map(ProjectSummary::projectId).toList());
     }
 
     @Test

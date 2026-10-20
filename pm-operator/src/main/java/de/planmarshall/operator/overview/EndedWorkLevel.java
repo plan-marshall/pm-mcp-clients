@@ -11,7 +11,9 @@ package de.planmarshall.operator.overview;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -94,6 +96,29 @@ public final class EndedWorkLevel {
     }
 
     /**
+     * Refreshes the first page of items, preserving any previously loaded older pages.
+     *
+     * @param freshPage page 1 response
+     */
+    public void refreshFirstPage(EndedWorkPage freshPage) {
+        Objects.requireNonNull(freshPage, "freshPage");
+        this.totalPages = Math.max(this.totalPages, freshPage.totalPages());
+        this.hasNewer = freshPage.hasNewer();
+        if (this.currentPage <= 1) {
+            this.hasOlder = freshPage.hasOlder();
+        }
+        var existingById = new LinkedHashMap<String, EndedWorkItem>();
+        for (var item : freshPage.items()) {
+            existingById.put(item.id(), item);
+        }
+        for (var item : items) {
+            existingById.putIfAbsent(item.id(), item);
+        }
+        items.clear();
+        items.addAll(existingById.values());
+    }
+
+    /**
      * Creates the {@link TuiLevel} representation.
      *
      * @param locale target locale
@@ -131,10 +156,16 @@ public final class EndedWorkLevel {
 
             String outcomeText;
             if (isEpic) {
-                var reason = item.terminalReason() != null ? item.terminalReason() : "completed";
+                var rawReason = item.terminalReason() != null
+                                    ? item.terminalReason().trim().toLowerCase(Locale.ROOT).replace('-', '_')
+                                    : "completed";
+                var reason = OverviewFormatting.clean(rawReason);
                 outcomeText = MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", reason));
             } else {
-                var outcome = item.outcome() != null ? item.outcome() : "completed";
+                var rawOutcome = item.outcome() != null
+                                    ? item.outcome().trim().toLowerCase(Locale.ROOT).replace('-', '_')
+                                    : "completed";
+                var outcome = OverviewFormatting.clean(rawOutcome);
                 outcomeText = MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", outcome));
             }
 

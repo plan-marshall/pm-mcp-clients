@@ -53,9 +53,10 @@ public final class ProjectsOverviewLevel {
      * @return the root overview level
      */
     public static TuiLevel level(String locale) {
+        var projectsLabel = MessageCatalogue.format(locale, "system.work.field.projects", Map.of()).toLowerCase(Locale.ROOT);
         var title = MessageCatalogue.format(locale, "overview.running.title", Map.of())
                             + " \u00b7 "
-                            + (locale.toLowerCase(Locale.ROOT).startsWith("de") ? "Projekte" : "projects");
+                            + projectsLabel;
         return TuiLevel.root(TuiLevel.Kind.OVERVIEW, title);
     }
 

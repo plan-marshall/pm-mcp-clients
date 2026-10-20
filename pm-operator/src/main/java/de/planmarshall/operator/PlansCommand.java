@@ -11,14 +11,12 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
-import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
@@ -97,16 +95,8 @@ public final class PlansCommand implements Callable<Integer> {
     }
 
     private int runStatusFallback(Terminal terminal, PrintWriter out) throws IOException {
-        int exitCode = delegateToStatus(terminal.writer());
         terminal.writer().flush();
-        if (out != terminal.writer()) {
-            var locale = context.clientEnvironment().locale();
-            var tooNarrow = MessageCatalogue.format(locale, "operator.overview.too_narrow", Map.of());
-            out.println(tooNarrow);
-            delegateToStatus(out);
-            out.flush();
-        }
-        return exitCode;
+        return delegateToStatus(out);
     }
 
     private int delegateToStatus(PrintWriter targetOut) throws IOException {

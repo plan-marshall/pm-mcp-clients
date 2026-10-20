@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
@@ -152,9 +153,10 @@ public final class ProjectWorkLevel {
             }
         }
 
-        // Plans without an epic
+        // Plans without an active epic
+        var epicIds = detail.epics().stream().map(ActiveEpicSummary::epicId).collect(Collectors.toSet());
         var withoutEpic = detail.plans().stream()
-                            .filter(p -> p.epicId() == null || p.epicId().isBlank())
+                            .filter(p -> p.epicId() == null || p.epicId().isBlank() || !epicIds.contains(p.epicId()))
                             .toList();
         if (!withoutEpic.isEmpty()) {
             var header = MessageCatalogue.format(locale, "overview.group.without_epic", Map.of());

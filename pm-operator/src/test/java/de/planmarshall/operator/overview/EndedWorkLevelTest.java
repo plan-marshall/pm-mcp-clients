@@ -112,4 +112,45 @@ class EndedWorkLevelTest {
         assertEquals(2, level.items().size());
         assertEquals("pln-2", level.items().get(1).id());
     }
+
+    @Test
+    @DisplayName("localizes outcomes in German and sanitizes raw reason tokens")
+    void germanOutcomeLocalization() {
+        var planItem = new EndedWorkItem("pln-1", "plan", "Plan Clean", "no-change", null,
+                            null, null, null, baseInstant.minusSeconds(3600));
+        var epicItem = new EndedWorkItem("epc-1", "epic", "Epic Cancelled", null, "cancelled",
+                            null, null, null, baseInstant.minusSeconds(7200));
+
+        var page = new EndedWorkPage("proj-a", List.of(planItem, epicItem), 1, 1, false, false);
+        var level = new EndedWorkLevel(page);
+        var rows = level.rows("de", clock, false);
+
+        assertEquals(2, rows.size());
+        assertTrue(rows.get(0).line().contains("ohne Änderung"));
+        assertTrue(rows.get(1).line().contains("abgebrochen"));
+    }
+
+    @Test
+    @DisplayName("refreshFirstPage preserves older items while updating page 1")
+    void refreshFirstPagePreservesOlder() {
+        var item1 = new EndedWorkItem("pln-1", "plan", "Plan 1", "merged", null, null, null, null, baseInstant.minusSeconds(3600));
+        var item2 = new EndedWorkItem("pln-2", "plan", "Plan 2", "abandoned", null, null, null, null, baseInstant.minusSeconds(7200));
+
+        var page1 = new EndedWorkPage("proj-a", List.of(item1), 1, 2, false, true);
+        var level = new EndedWorkLevel(page1);
+
+        var page2 = new EndedWorkPage("proj-a", List.of(item2), 2, 2, true, false);
+        level.appendOlderPage(page2);
+        assertEquals(2, level.items().size());
+
+        // Refresh with fresh item 0 on page 1
+        var item0 = new EndedWorkItem("pln-0", "plan", "Plan Fresh", "merged", null, null, null, null, baseInstant.minusSeconds(60));
+        var freshPage1 = new EndedWorkPage("proj-a", List.of(item0, item1), 1, 2, false, true);
+        level.refreshFirstPage(freshPage1);
+
+        assertEquals(3, level.items().size());
+        assertEquals("pln-0", level.items().get(0).id());
+        assertEquals("pln-1", level.items().get(1).id());
+        assertEquals("pln-2", level.items().get(2).id());
+    }
 }
