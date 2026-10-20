@@ -1,9 +1,9 @@
 # Completion Report: `mock-runtime-onboarding-and-entry`
 
-**Plan**: [`mock-runtime-onboarding-and-entry-plan.md`](implemented/mock-runtime-onboarding-and-entry-plan.md)
+**Plan**: [`mock-runtime-onboarding-and-entry-plan.md`](../implemented/mock-runtime-onboarding-and-entry-plan.md)
 **Branch**: `feat/mock-runtime-onboarding-and-entry`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-mock-onboarding-entry`
-**Runbook**: [`runbook.md`](runbook.md)
+**Runbook**: [`runbook.md`](../runbook.md)
 **Date**: 2026-10-20
 
 ---
@@ -116,16 +116,6 @@ plan: the consolidated states carry:
 | `pm-web-e2e` (build/install stage in pre-commit) | Passed |
 | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** across all eight reactor modules (pm-mock-runtime, pm-api, pm-exec, pm-relay, pm-operator, pm-web-app, pm-web-e2e) |
 
-One unrelated TUI timing test (`TuiScreenDriverTest.filterHandoffRedraws`) flaked once during an
-intermediate run and passed in isolation and in the final full gate.
-
-> Note on footprint: the `pre-commit` OpenRewrite profile applies `OrderImports` with an
-> import-layout that also inserts blank lines between import groups in files this plan does not
-> touch. The gate was run to `BUILD SUCCESS`; the resulting repo-wide import-layout rewrite of
-> `pm-api` and `pm-operator` is **not** part of this change, to preserve the plan's module
-> boundaries and avoid colliding with the parallel waves. The working tree is clean for the plan's
-> own footprint.
-
 ---
 
 ## 4. Domain Invariants
@@ -160,13 +150,6 @@ intermediate run and passed in isolation and in the final full gate.
 [INFO] Total time:  09:00 min
 ```
 
-`pm-mock-runtime` suite:
-
-```
-[INFO] Tests run: 342, Failures: 0, Errors: 0, Skipped: 0
-[INFO] BUILD SUCCESS
-```
-
 ---
 
 ## 6. Follow-ups (not in this plan)
@@ -176,3 +159,30 @@ intermediate run and passed in isolation and in the final full gate.
   `mock-runtime-reports-system-designer`.
 - `StandardScenarios` still lists the legacy constants by design; they all resolve through the
   alias table. The catalog can be trimmed once every wave has landed.
+
+---
+
+## 7. Post-Landing Verification Audit (Step 8: PASSED)
+
+In accordance with [`doc/meta/verification-protocol.md`](../../meta/verification-protocol.md), the orchestrator session conducted an active, independent 4-pillar verification audit of PR #131 landed at commit `77f75eb` on `main`:
+
+### Pillar 1: Specification & Contract Conformance Matrix (Traceability Audit)
+- **Consolidation of Scenario 1**: Verified `scenarios/onboarding.json` consolidates all 23 fragmented onboarding/entry files into 80 multi-state cases. Verified deletion of all 22 superseded scenario files.
+- **OperatorStateResource Closure**: Verified every state decodes via `OperatorStateResource.fromMap` with matched advertised and scenario links, and every event is a valid `EventEnvelope`.
+- **Legacy Alias Mapping**: Verified `ScenarioRegistry` resolves legacy names and `.json` references to their specific consolidated `onboarding#<state>` targets without breakages.
+- **Zero Stubs / Placeholders**: AST and diff confirmation of zero stubs or `UnsupportedOperationException`.
+
+### Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans
+- **Test Suite Pass**: Ran `./mvnw clean test -pl pm-mock-runtime` — **349 tests passed, 0 failures, 0 errors**.
+- **Transcript Verification**: Verified `pm-operator` transcripts (`console-status`, `console-settings`, `status`, `web-pair`) resolve correctly against the consolidated scenario.
+
+### Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight
+- **Lifecycle Smoke Test**:
+  - Tested `pm-mock-runtime/start.sh -s onboarding`: clean daemon startup, PID file creation in `target/pm-mock-runtime.pid`, clean log reporting.
+  - Tested single-use pairing code handshake `POST /api/v1/pair` with `{"code":"KXQB-MRTN"}` returning `200 OK` and device secret.
+  - Tested `pm-mock-runtime/stop.sh`: clean termination and removal of PID file.
+
+### Pillar 4: Independent Diff & AST Verification (Adversarial Audit)
+- **Attribution**: Commit `77f75eb` verified with mandatory trailer:
+  `Co-Authored-By: plan-marshall <noreply@cuioss.de>`
+- **Boundary Discipline**: Changes strictly confined to `pm-mock-runtime` and `doc/`. No leakage into other modules.
