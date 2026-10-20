@@ -221,6 +221,9 @@ public final class TuiLayout {
     }
 
     private List<AttributedString> viewport(List<BodyLine> lines, TuiScreen screen, int width, int height) {
+        if (height <= 0) {
+            return List.of();
+        }
         int total = lines.size();
         if (total <= height) {
             var filled = new ArrayList<AttributedString>(height);
@@ -244,25 +247,37 @@ public final class TuiLayout {
         for (int i = start; i < total && lines.get(i).rowIndex == selected; i++) {
             end = i;
         }
+        // The indicators take the first and the last line, so the selection is fitted into the
+        // lines between them. A body of one or two lines has no room for an indicator.
+        boolean indicators = height >= 3;
+        int inner = indicators ? height - 2 : height;
         int offset = 0;
-        if (end >= height) {
-            offset = end - height + 1;
+        if (end >= inner) {
+            offset = end - inner + 1;
         }
         if (start < offset) {
             offset = start;
         }
-        offset = Math.max(0, Math.min(offset, total - height));
+        offset = Math.max(0, Math.min(offset, Math.max(0, total - inner)));
+
         var view = new ArrayList<AttributedString>(height);
-        for (int i = 0; i < height; i++) {
-            view.add(lines.get(offset + i).text);
+        if (indicators) {
+            int above = rowsAbove(lines, offset);
+            view.add(above > 0
+                                ? new AttributedString(truncate(indicator("operator.overview.more_above", above), width))
+                                : AttributedString.EMPTY);
         }
-        int above = rowsAbove(lines, offset);
-        int below = rowsBelow(lines, offset + height, total, screen.rows().size());
-        if (above > 0) {
-            view.set(0, new AttributedString(truncate(indicator("operator.overview.more_above", above), width)));
+        for (int i = 0; i < inner; i++) {
+            view.add(offset + i < total ? lines.get(offset + i).text : AttributedString.EMPTY);
         }
-        if (below > 0) {
-            view.set(height - 1, new AttributedString(truncate(indicator("operator.overview.more_below", below), width)));
+        while (view.size() < (indicators ? height - 1 : height)) {
+            view.add(AttributedString.EMPTY);
+        }
+        if (indicators) {
+            int below = rowsBelow(lines, offset + inner, total);
+            view.add(below > 0
+                                ? new AttributedString(truncate(indicator("operator.overview.more_below", below), width))
+                                : AttributedString.EMPTY);
         }
         return view;
     }
@@ -272,37 +287,23 @@ public final class TuiLayout {
     }
 
     private static int rowsAbove(List<BodyLine> lines, int offset) {
-        int first = lines.get(offset).rowIndex;
-        if (first < 0) {
-            return 0;
-        }
-        int rows = 0;
-        for (int i = 0; i < offset; i++) {
-            if (lines.get(i).rowIndex >= 0 && (i == 0 || lines.get(i - 1).rowIndex != lines.get(i).rowIndex)) {
-                rows++;
-            }
-        }
-        return rows;
+        return distinctRows(lines, 0, Math.min(offset, lines.size()));
     }
 
-    private static int rowsBelow(List<BodyLine> lines, int offset, int total, int rowCount) {
-        if (offset >= total) {
-            return 0;
-        }
-        int last = lines.get(total - 1).rowIndex;
-        if (last < 0) {
-            return 0;
-        }
+    private static int rowsBelow(List<BodyLine> lines, int from, int total) {
+        return distinctRows(lines, Math.min(from, total), total);
+    }
+
+    private static int distinctRows(List<BodyLine> lines, int from, int to) {
         int rows = 0;
-        int lastCounted = -1;
-        for (int i = offset; i < total; i++) {
+        int previous = Integer.MIN_VALUE;
+        for (int i = from; i < to && i < lines.size(); i++) {
             int rowIndex = lines.get(i).rowIndex;
-            if (rowIndex >= 0 && rowIndex != lastCounted) {
+            if (rowIndex >= 0 && rowIndex != previous) {
                 rows++;
-                lastCounted = rowIndex;
             }
+            previous = rowIndex;
         }
-        int hidden = rowCount - rows;
-        return Math.max(0, hidden);
+        return rows;
     }
 }

@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.tui.TuiKeyAction;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -85,16 +86,8 @@ class ConsoleTextsTest {
     @Test
     @DisplayName("the shared overview keys render in both languages")
     void overviewKeys() {
-        for (var key : List.of("operator.overview.keys.move", "operator.overview.keys.open",
-                            "operator.overview.keys.back", "operator.overview.keys.filter",
-                            "operator.overview.keys.epic", "operator.overview.keys.waits",
-                            "operator.overview.keys.switch_view", "operator.overview.keys.help",
-                            "operator.overview.keys.leave", "operator.overview.keys.actions",
-                            "operator.overview.keys.ended", "operator.overview.keys.reload",
-                            "operator.overview.keys.system", "operator.overview.more_above",
-                            "operator.overview.more_below", "operator.overview.connected",
-                            "operator.overview.meanwhile", "operator.overview.too_narrow",
-                            "operator.overview.ended_view_chat")) {
+        for (var action : TuiKeyAction.values()) {
+            var key = action.textKey();
             var en = MessageCatalogue.format("en", key, Map.of("view", "by epic", "count", 2,
                                 "events", "1 decision", "name", "fix-relay"));
             var de = MessageCatalogue.format("de", key, Map.of("view", "nach Epic", "count", 2,

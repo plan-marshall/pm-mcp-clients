@@ -13,8 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.message.MessageCatalogue;
 
@@ -25,10 +23,12 @@ import de.planmarshall.api.message.MessageCatalogue;
  * <p>A notice printed above the prompt while the alternate screen is active would corrupt the
  * view. The console therefore offers every notice here first: while the buffer is active the
  * notice is only counted, and when the view leaves, one coalesced line says what arrived
- * meanwhile, the {@code operator.overview.meanwhile} text.
+ * meanwhile, the {@code operator.overview.meanwhile} text. A line that is not a counted notice —
+ * the pairing confirmation and a fresh code — is kept verbatim and printed after that line.
  *
- * <p>The buffer is safe to use from the event-stream thread and from the view's thread: the
- * counters are atomic, and reading and clearing them happens at the moment the view leaves.
+ * <p>The buffer is used from the event-stream thread and from the console thread. The whole
+ * transition — accepting a notice and draining the buffer when the view leaves — is guarded by one
+ * lock, so a notice cannot be accepted after the drain has read the counters and then be dropped.
  */
 public final class ConsoleNoticeBuffer {
 
@@ -42,84 +42,134 @@ public final class ConsoleNoticeBuffer {
         NEED
     }
 
-    private final AtomicBoolean active = new AtomicBoolean(false);
-    private final AtomicInteger decisions = new AtomicInteger();
-    private final AtomicInteger reports = new AtomicInteger();
-    private final AtomicInteger needs = new AtomicInteger();
+    /**
+     * What the buffer held when the view left.
+     *
+     * @param summary the localized meanwhile line, empty when nothing was held
+     * @param lines   the lines kept verbatim, in arrival order
+     */
+    public record Drained(String summary, List<String> lines) {
 
-    /** Opens the buffer: from now on notices are held instead of printed. */
-    public void activate() {
-        active.set(true);
+        /**
+         * @param summary the meanwhile line
+         * @param lines   the verbatim lines
+         */
+        public Drained {
+            Objects.requireNonNull(summary, "summary");
+            lines = List.copyOf(lines);
+        }
     }
 
-    /** Closes the buffer: notices are printed again. The held counts stay until drained. */
-    public void deactivate() {
-        active.set(false);
+    private boolean active;
+    private int decisions;
+    private int reports;
+    private int needs;
+    private final List<String> deferred = new ArrayList<>();
+
+    /** Opens the buffer: from now on notices are held instead of printed. */
+    public synchronized void activate() {
+        active = true;
+    }
+
+    /** Closes the buffer: notices are printed again. The held items stay until drained. */
+    public synchronized void deactivate() {
+        active = false;
     }
 
     /** @return {@code true} while a full-screen view is open */
-    public boolean isActive() {
-        return active.get();
+    public synchronized boolean isActive() {
+        return active;
     }
 
     /**
-     * Offers a notice to the buffer.
+     * Offers one notice to the buffer.
      *
      * @param category the kind of item
      * @return {@code true} when the notice was held and must not be printed; {@code false} when the
      *         caller is to print it
      */
     public boolean hold(Category category) {
+        return hold(category, 1);
+    }
+
+    /**
+     * Offers {@code count} notices of one kind to the buffer.
+     *
+     * @param category the kind of item
+     * @param count    how many items the notice represents, at least one
+     * @return {@code true} when the notices were held
+     */
+    public synchronized boolean hold(Category category, int count) {
         Objects.requireNonNull(category, "category");
-        if (!active.get()) {
+        if (!active) {
             return false;
         }
+        int items = Math.max(1, count);
         switch (category) {
-            case DECISION -> decisions.incrementAndGet();
-            case REPORT -> reports.incrementAndGet();
-            case NEED -> needs.incrementAndGet();
+            case DECISION -> decisions += items;
+            case REPORT -> reports += items;
+            case NEED -> needs += items;
         }
         return true;
     }
 
     /**
-     * @return {@code true} when at least one notice was held since the last drain
+     * Keeps a line verbatim while the view is open.
+     *
+     * @param line the line to print after the view leaves
+     * @return {@code true} when the line was held; {@code false} when the caller is to print it
      */
-    public boolean hasHeldNotices() {
-        return decisions.get() > 0 || reports.get() > 0 || needs.get() > 0;
+    public synchronized boolean holdLine(String line) {
+        if (!active) {
+            return false;
+        }
+        deferred.add(Objects.requireNonNull(line, "line"));
+        return true;
     }
 
     /**
-     * Builds the one line of what arrived meanwhile and clears the buffer.
-     *
-     * @param locale the interface locale
-     * @return the line, or an empty string when nothing arrived
+     * @return {@code true} when at least one item or line was held since the last drain
      */
-    public String drainSummary(String locale) {
-        int decisionCount = decisions.getAndSet(0);
-        int reportCount = reports.getAndSet(0);
-        int needCount = needs.getAndSet(0);
-        var parts = new ArrayList<String>();
-        if (decisionCount > 0) {
-            parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.decisions",
-                                Map.of("count", decisionCount)));
-        }
-        if (reportCount > 0) {
-            parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.reports",
-                                Map.of("count", reportCount)));
-        }
-        if (needCount > 0) {
-            parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.needs",
-                                Map.of("count", needCount)));
-        }
-        return summarize(locale, parts);
+    public synchronized boolean hasHeldNotices() {
+        return decisions > 0 || reports > 0 || needs > 0 || !deferred.isEmpty();
     }
 
-    /** Clears the held notices without printing them. */
-    public void clear() {
-        decisions.set(0);
-        reports.set(0);
-        needs.set(0);
+    /**
+     * Builds the one line of what arrived meanwhile, returns the verbatim lines, and clears the
+     * buffer in the same transition.
+     *
+     * @param locale the interface locale
+     * @return the meanwhile summary and the verbatim lines
+     */
+    public synchronized Drained drain(String locale) {
+        var parts = new ArrayList<String>();
+        if (decisions > 0) {
+            parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.decisions",
+                                Map.of("count", decisions)));
+        }
+        if (reports > 0) {
+            parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.reports",
+                                Map.of("count", reports)));
+        }
+        if (needs > 0) {
+            parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.needs",
+                                Map.of("count", needs)));
+        }
+        var lines = List.copyOf(deferred);
+        var summary = summarize(locale, parts);
+        decisions = 0;
+        reports = 0;
+        needs = 0;
+        deferred.clear();
+        return new Drained(summary, lines);
+    }
+
+    /** Clears the held items without printing them. */
+    public synchronized void clear() {
+        decisions = 0;
+        reports = 0;
+        needs = 0;
+        deferred.clear();
     }
 
     /**

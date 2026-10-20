@@ -129,6 +129,16 @@ class TuiLayoutTest {
     }
 
     @Test
+    @DisplayName("the scroll indicators never hide the selected row")
+    void indicatorsKeepSelectionVisible() {
+        for (int selected : List.of(0, 25, 39)) {
+            var text = String.join("\n", layout.render(screen(selected, 40), 80, 12).stream()
+                                .map(Object::toString).toList());
+            assertTrue(text.contains("\u25b6 row number " + selected), text);
+        }
+    }
+
+    @Test
     @DisplayName("the filter bar shows the filter text")
     void filterBar() {
         var filtered = new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW,

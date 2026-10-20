@@ -47,6 +47,9 @@ public final class TuiScreenDriver {
     /** The longest wait for a key before the view looks for a changed model again. */
     static final long POLL_MILLIS = 250L;
 
+    /** How long an {@code Esc} waits for the rest of a terminal sequence before it acts. */
+    static final long AMBIGUOUS_TIMEOUT_MILLIS = 100L;
+
     /** What a run of the driver ended with. */
     public enum Result {
         /** The handler asked to leave the view. */
@@ -205,7 +208,7 @@ public final class TuiScreenDriver {
                     continue;
                 }
                 var action = reader.readBinding(keyMap, null, false);
-                if (action == null) {
+                if (action == null || !boundOn(screen.kind(), action)) {
                     continue;
                 }
                 if (action == TuiKeyAction.FILTER) {
@@ -264,8 +267,15 @@ public final class TuiScreenDriver {
         terminal.flush();
     }
 
-    private KeyMap<TuiKeyAction> keyMap() {
+    private static boolean boundOn(TuiLevel.Kind kind, TuiKeyAction action) {
+        return TuiKeyRegistry.bindings(kind).stream().anyMatch(binding -> binding.action() == action);
+    }
+
+    KeyMap<TuiKeyAction> keyMap() {
         var map = new KeyMap<TuiKeyAction>();
+        // A lone Esc is also the prefix of the arrow and page sequences; the terminal sends a
+        // sequence in one write, so a short wait tells them apart without a visible lag on Esc.
+        map.setAmbiguousTimeout(AMBIGUOUS_TIMEOUT_MILLIS);
         for (var binding : allBindings()) {
             map.bindIfNotBound(binding.action(), binding.trigger());
         }

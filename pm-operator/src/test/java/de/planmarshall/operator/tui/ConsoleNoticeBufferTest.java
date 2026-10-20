@@ -47,7 +47,7 @@ class ConsoleNoticeBufferTest {
         assertTrue(buffer.hold(ConsoleNoticeBuffer.Category.REPORT));
         assertTrue(buffer.hasHeldNotices());
 
-        var summary = buffer.drainSummary("en");
+        var summary = buffer.drain("en").summary();
         assertAll(
                             () -> assertEquals("While the overview was open: 1 decision arrived, 2 new reports.",
                                                 summary),
@@ -62,7 +62,7 @@ class ConsoleNoticeBufferTest {
         var buffer = new ConsoleNoticeBuffer();
         buffer.activate();
         buffer.hold(ConsoleNoticeBuffer.Category.NEED);
-        assertEquals("While the overview was open: 1 item waits.", buffer.drainSummary("en"));
+        assertEquals("While the overview was open: 1 item waits.", buffer.drain("en").summary());
     }
 
     @Test
@@ -73,14 +73,14 @@ class ConsoleNoticeBufferTest {
         buffer.hold(ConsoleNoticeBuffer.Category.DECISION);
         buffer.hold(ConsoleNoticeBuffer.Category.REPORT);
         assertEquals("W\u00e4hrend die \u00dcbersicht offen war: 1 Entscheidung kam, 1 neuer Bericht.",
-                            buffer.drainSummary("de"));
+                            buffer.drain("de").summary());
     }
 
     @Test
     @DisplayName("nothing arrived means no line at all")
     void emptySummary() {
         assertAll(
-                            () -> assertEquals("", new ConsoleNoticeBuffer().drainSummary("en")),
+                            () -> assertEquals("", new ConsoleNoticeBuffer().drain("en").summary()),
                             () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", List.of())),
                             () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", null))
         );
@@ -94,6 +94,38 @@ class ConsoleNoticeBufferTest {
         buffer.hold(ConsoleNoticeBuffer.Category.DECISION);
         buffer.clear();
         assertFalse(buffer.hasHeldNotices());
+    }
+
+    @Test
+    @DisplayName("a coalesced report count is kept")
+    void countsCoalescedReports() {
+        var buffer = new ConsoleNoticeBuffer();
+        buffer.activate();
+        buffer.hold(ConsoleNoticeBuffer.Category.REPORT, 3);
+        assertEquals("While the overview was open: 3 new reports.", buffer.drain("en").summary());
+    }
+
+    @Test
+    @DisplayName("a verbatim line is kept and drained after the summary")
+    void keepsVerbatimLines() {
+        var buffer = new ConsoleNoticeBuffer();
+        buffer.activate();
+        buffer.hold(ConsoleNoticeBuffer.Category.NEED);
+        assertTrue(buffer.holdLine("paired: iPad"));
+        assertTrue(buffer.holdLine("Code ABCD, valid until 12:00"));
+        var drained = buffer.drain("en");
+        assertAll(
+                            () -> assertEquals("While the overview was open: 1 item waits.", drained.summary()),
+                            () -> assertEquals(List.of("paired: iPad", "Code ABCD, valid until 12:00"),
+                                                drained.lines()),
+                            () -> assertFalse(buffer.hasHeldNotices())
+        );
+    }
+
+    @Test
+    @DisplayName("a line offered while the view is closed is printed by the caller")
+    void closedBufferRejectsLine() {
+        assertFalse(new ConsoleNoticeBuffer().holdLine("line"));
     }
 
     @Test

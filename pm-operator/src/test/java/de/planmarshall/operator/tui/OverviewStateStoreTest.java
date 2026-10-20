@@ -143,10 +143,10 @@ class OverviewStateStoreTest {
         @Test
         @DisplayName("a symbolic link is not followed")
         void refusesSymlink() throws Exception {
-            var store = store();
-            Files.createDirectories(store.file().getParent());
+            var store = emptyStrictStore();
             var target = tempDir.resolve("elsewhere.json");
             Files.writeString(target, "{\"project_id\":\"p1\"}", StandardCharsets.UTF_8);
+            Files.setPosixFilePermissions(target, PosixFilePermissions.fromString("rw-------"));
             Files.createSymbolicLink(store.file(), target);
             assertTrue(store.read().isEmpty());
         }
@@ -154,8 +154,7 @@ class OverviewStateStoreTest {
         @Test
         @DisplayName("a file with group or other permissions is not trusted")
         void refusesLoosePermissions() throws Exception {
-            var store = store();
-            Files.createDirectories(store.file().getParent());
+            var store = emptyStrictStore();
             Files.writeString(store.file(), "{\"project_id\":\"p1\"}", StandardCharsets.UTF_8);
             Files.setPosixFilePermissions(store.file(), PosixFilePermissions.fromString("rw-r--r--"));
             assertTrue(store.read().isEmpty());

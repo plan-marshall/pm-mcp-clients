@@ -303,7 +303,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/api-contract.adoc[`api-contract`]
 |Milestones 8, 10, 11, and 12
 
-|link:../agy/implemented/cli-fullscreen-foundation-plan.adoc[`cli-fullscreen-foundation`]
+|link:../agy/implemented/cli-fullscreen-foundation-plan.md[`cli-fullscreen-foundation`]
 |The full-screen TUI framework (`de.planmarshall.operator.tui`), the virtual-terminal screen-test harness, the cross-view design and key registry, and the CLI/config hygiene the TUI review found
 |`done`
 |link:implemented/cli-overview.adoc[`cli-overview`]; link:implemented/cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-projects.adoc[`cli-projects`]; link:implemented/cli-reports.adoc[`cli-reports`]; link:implemented/cli-system.adoc[`cli-system`]
@@ -326,7 +326,7 @@ scrollback form it delivered.
 
 |`cli-overview`
 |the frame, levels, key registry, narrow fallback, and the overview itself
-|link:../agy/implemented/cli-fullscreen-foundation-plan.adoc[`cli-fullscreen-foundation`] (frame); `cli-fullscreen-overview` (the overview)
+|link:../agy/implemented/cli-fullscreen-foundation-plan.md[`cli-fullscreen-foundation`] (frame); `cli-fullscreen-overview` (the overview)
 
 |`cli-plan-view`
 |the plan view as a level of the frame

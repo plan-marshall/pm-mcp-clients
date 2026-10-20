@@ -1,6 +1,6 @@
 # Completion Report: `cli-fullscreen-foundation` (Terminal Full-Screen TUI Framework, Screen Test Harness & Hygiene)
 
-**Status:** Implemented, verified, and ready for landing
+**Status:** Implemented and verified; PR #124 is open and under review (Step 8 is reserved for the orchestrator)
 **Plan:** [`doc/agy/implemented/cli-fullscreen-foundation-plan.md`](implemented/cli-fullscreen-foundation-plan.md)
 **Branch:** `feat/cli-fullscreen-foundation`
 **Governed by:** [`doc/agy/runbook.md`](../runbook.md) and [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md)
@@ -124,7 +124,7 @@ The `operator.overview.*` texts live in the `overview` area, which is the existi
 | Gate | Result |
 |---|---|
 | `./mvnw -pl pm-operator -am test` | **PASS** — pm-api, pm-mock-runtime, and pm-operator suites green (641 tests in the first full run; the new harness tests added afterwards are part of the pre-commit run). |
-| `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** — all seven modules: `pm-api`, `pm-exec`, `pm-relay`, `pm-mock-runtime`, `pm-operator`, `pm-web-app`, `pm-web-e2e`. OpenRewrite, license headers, Checkstyle, Enforcer, Javadoc, and the unit suites passed. Total time 06:43 min. |
+| `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** — all seven modules: `pm-api`, `pm-exec`, `pm-relay`, `pm-mock-runtime`, `pm-operator`, `pm-web-app`, `pm-web-e2e`. OpenRewrite, license headers, Checkstyle, Enforcer, Javadoc, and the unit suites passed. First run 06:43 min; the re-run after the review findings 05:52 min. |
 | Transcript `console-status` | Updated and green; the arrival line now carries the instant, masked as `<timestamp>` by the transcript normalizer. |
 | Screen tests | 120×30, 80×24, and 50×20 virtual terminals; resize and exception restoration. |
 
@@ -169,7 +169,7 @@ protocol (*no unintended reverts / boundary discipline*). The gate itself had al
 [INFO] ------------------------------------------------------------------------
 [INFO] BUILD SUCCESS
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  06:43 min
+[INFO] Total time:  05:52 min
 ```
 
 ### Deliberate decisions
@@ -187,3 +187,32 @@ protocol (*no unintended reverts / boundary discipline*). The gate itself had al
   production-complete; the overview, plan, project, report, and system levels are deliberately the
   next five plans, as the plan's concurrency section states. The driver is exercised through the
   virtual terminal, and the console hook is exercised through `PmConsoleBehaviourTest`.
+
+---
+
+## 6. Automated Review Findings (100% resolved)
+
+CodeRabbit's first review posted 12 findings; all were accepted and fixed in the follow-up
+commits, none was refuted.
+
+| # | Finding | Resolution |
+|---|---|---|
+| 1 | Report said "ready for landing" while the workflow was not landed | Status now says "PR #124 is open and under review"; steps 6 and 7 stay unchecked until the merge |
+| 2 | `doc/plans/README.adoc` linked the new plan as `.adoc` | Both links now target the `.md` file |
+| 3 | `ConsoleNoticeBuffer` could lose a notice between `hold` and the exit drain | `hold`, `holdLine`, `deactivate`, and the new atomic `drain` are `synchronized`; the transition cannot interleave |
+| 4 | `plan --depth 0` silently used the default | A picocli `ITypeConverter` rejects a non-positive or non-numeric value at parse time (exit 2, catalogue text); a test covers both |
+| 5 | `report.sent` with `count: 3` was counted once | `hold(Category, count)` receives the validated event count (capped at 10 000) |
+| 6 | The `device.paired` message and a fresh code bypassed the buffer | `printAboveOrHold` defers those lines verbatim; `Drained` returns them after the meanwhile line, and a test covers it |
+| 7 | `PAGE_UP`/`PAGE_DOWN`/`FIRST`/`LAST` had no catalogue text | Added `operator.overview.keys.{page,first,last}` in EN/DE; `ConsoleTextsTest` now iterates every `TuiKeyAction` |
+| 8 | Scroll indicators could overwrite the selected row | The viewport reserves the first and last body lines for the indicators and fits the selection into the lines between them; a regression test covers rows 0, 25, and 39 at 80×12 |
+| 9 | `rowsBelow` returned rows above plus visible | Replaced by `distinctRows(lines, from, total)`, which counts only the rows below the window |
+| 10 | The driver dispatched actions a level does not bind | `boundOn(screen.kind(), action)` drops them before the handler; a test sends `e` on the overview |
+| 11 | A lone `Esc` waited the 1 s default ambiguity timeout | `KeyMap.setAmbiguousTimeout(100 ms)`; a test asserts the configured value |
+| 12 | The file-level security tests never reached `verifyFile` | Both tests now create the `0700` directory first, so only the symlink or the `0644` file can make the read fall back |
+
+### Additional tests added for the review
+
+`PlanCommandTest.depthMustBePositive`, `ConsoleNoticeBufferTest.countsCoalescedReports`,
+`keepsVerbatimLines`, `closedBufferRejectsLine`, `TuiLayoutTest.indicatorsKeepSelectionVisible`,
+`TuiScreenDriverTest.unboundKeyIsDropped` and `escapeHasShortAmbiguityTimeout`, and the tightened
+`OverviewStateStoreTest` security tests.

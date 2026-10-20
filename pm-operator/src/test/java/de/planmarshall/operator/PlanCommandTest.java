@@ -86,6 +86,21 @@ class PlanCommandTest {
     }
 
     @Test
+    @DisplayName("an explicit non-positive or non-numeric --depth is refused at parse time")
+    void depthMustBePositive() {
+        int zero = execute("plan", "p-001", "--depth", "0");
+        var zeroError = err.toString();
+        err.getBuffer().setLength(0);
+        int text = execute("plan", "p-001", "--depth", "two");
+        assertAll(
+                            () -> assertEquals(2, zero, zeroError),
+                            () -> assertTrue(zeroError.contains("at least 1"), zeroError),
+                            () -> assertEquals(2, text, err.toString()),
+                            () -> assertTrue(err.toString().contains("at least 1"), err.toString())
+        );
+    }
+
+    @Test
     @DisplayName("plan list reports no running plans when empty")
     void planListEmpty() throws Exception {
         fixture.start((request, response) -> {

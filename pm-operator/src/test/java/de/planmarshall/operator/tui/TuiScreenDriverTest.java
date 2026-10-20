@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import org.jline.terminal.impl.DumbTerminal;
@@ -172,6 +173,33 @@ class TuiScreenDriverTest {
             );
             virtual.type("q");
             join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("a key the level does not bind never reaches the handler")
+    void unboundKeyIsDropped() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var stack = stack(3);
+            var seen = new CopyOnWriteArrayList<TuiKeyAction>();
+            virtual.type("eq");
+            new TuiScreenDriver(virtual.terminal(), "en").run(() -> screen(stack, true), action -> {
+                seen.add(action);
+                return action != TuiKeyAction.LEAVE;
+            });
+            assertAll(
+                                () -> assertFalse(seen.contains(TuiKeyAction.EPIC), seen.toString()),
+                                () -> assertTrue(seen.contains(TuiKeyAction.LEAVE), seen.toString())
+            );
+        }
+    }
+
+    @Test
+    @DisplayName("a lone Esc is resolved after a short ambiguity wait")
+    void escapeHasShortAmbiguityTimeout() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var driver = new TuiScreenDriver(virtual.terminal(), "en");
+            assertEquals(TuiScreenDriver.AMBIGUOUS_TIMEOUT_MILLIS, driver.keyMap().getAmbiguousTimeout());
         }
     }
 
