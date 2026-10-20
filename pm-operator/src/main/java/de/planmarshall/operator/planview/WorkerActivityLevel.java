@@ -36,7 +36,6 @@ public final class WorkerActivityLevel {
     public static final String SUBHEADER_ROW_ID = "activity:subheader";
     private static final String ENTRY_PREFIX = "activity:entry:";
     private static final String INDENT = "  ";
-    private static final int KIND_WIDTH = 9;
     private static final String KEY_SEPARATOR = "  ";
 
     private TaskActivity activity;
@@ -126,11 +125,10 @@ public final class WorkerActivityLevel {
     }
 
     /**
-     * @param locale the interface locale
      * @return the row a live update should keep at the bottom
      */
-    public String lastRowId(String locale) {
-        var rows = rows(locale);
+    public String lastRowId() {
+        var rows = rows("en");
         return rows.isEmpty() ? SUBHEADER_ROW_ID : rows.getLast().id();
     }
 

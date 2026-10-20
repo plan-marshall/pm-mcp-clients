@@ -9,12 +9,14 @@
  */
 package de.planmarshall.operator.planview;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.stream.Collectors;
 
 import de.planmarshall.api.report.PlanCompletionReport;
+import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +43,7 @@ class PlanCompletionLevelTest {
 
     private static String text() throws Exception {
         var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT));
-        return level.rows("en").stream().map(row -> row.line()).collect(Collectors.joining("\n"));
+        return level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
     }
 
     @Test
@@ -59,13 +61,36 @@ class PlanCompletionLevelTest {
         assertTrue(text.contains("2 / 17"), text);
     }
 
+
+    @Test
+    @DisplayName("a minimal report shows the raw time and omits the empty sections")
+    void minimalReport() throws Exception {
+        var minimal = """
+                            {
+                              "plan_id": "docs-typo", "title": "Docs", "outcome": "no_change",
+                              "started_at": "2026-10-18T10:00:00Z", "ended_at": "2026-10-18T10:05:00Z",
+                              "ended": "5 min ago", "ran": "5 min",
+                              "duration_seconds": 300
+                            }
+                            """;
+        var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(minimal));
+        var text = level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+        assertAll(
+                            () -> assertTrue(text.contains("2 d ago"), text),
+                            () -> assertTrue(text.contains("5 min"), text),
+                            () -> assertFalse(text.contains("Deliverables"), text),
+                            () -> assertFalse(text.contains("Decisions"), text),
+                            () -> assertFalse(text.contains("Tokens"), text)
+        );
+    }
+
     @Test
     @DisplayName("a control sequence in a runtime text is stripped")
     void sanitizes() throws Exception {
         var injected = REPORT.replace("the relay transport is hardened",
                             "\\u001B[31mthe relay transport is hardened\\u001B[0m");
         var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(injected));
-        var text = level.rows("en").stream().map(row -> row.line()).collect(Collectors.joining("\n"));
+        var text = level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
         assertFalse(text.contains("\u001B[31m"), "control sequence must be stripped");
         assertTrue(text.contains("the relay transport is hardened"));
     }

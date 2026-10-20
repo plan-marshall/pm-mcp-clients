@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import de.planmarshall.api.process.ProcessTree;
+import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -75,7 +76,7 @@ class PlanViewLevelTest {
     }
 
     private static List<String> ids(PlanViewLevel view) {
-        return view.rows("en").stream().map(row -> row.id()).toList();
+        return view.rows("en").stream().map(TuiRow::id).toList();
     }
 
     @Test
@@ -83,7 +84,7 @@ class PlanViewLevelTest {
     void opensCurrentPath() throws Exception {
         var view = view();
         var rows = view.rows("en");
-        var text = rows.stream().map(row -> row.line()).collect(Collectors.joining("\n"));
+        var text = rows.stream().map(TuiRow::line).collect(Collectors.joining("\n"));
         assertAll(
                             () -> assertEquals("task:TASK-003", view.initialRowId()),
                             () -> assertTrue(ids(view).contains("node:execute")),
@@ -159,7 +160,7 @@ class PlanViewLevelTest {
         var view = view();
         assertFalse(view.tokensVisible());
         view.toggleTokens();
-        var text = view.rows("en").stream().map(row -> row.line()).collect(Collectors.joining("\n"));
+        var text = view.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
         assertAll(
                             () -> assertTrue(view.tokensVisible()),
                             () -> assertTrue(text.contains("by phase")),
@@ -189,6 +190,93 @@ class PlanViewLevelTest {
         var view = new PlanViewLevel(ProcessTree.fromJson(tree));
         assertFalse(view.footer("en").contains("e epic"), view.footer("en"));
         assertNull(view.epicId());
+    }
+
+
+    @Test
+    @DisplayName("a later process replaces the tree while the expansion and the path stay")
+    void updatesTree() throws Exception {
+        var view = view();
+        var fresh = ProcessTree.fromJson(TREE.replace(
+                            "\"current_position_path\": [\"execute\", \"execute.envelope\", \"TASK-003\"]",
+                            "\"current_position_path\": [\"finalize\"]"));
+        view.update(fresh);
+        assertEquals("node:finalize", view.jumpToActive());
+        assertTrue(ids(view).contains("node:execute.envelope"));
+    }
+
+    @Test
+    @DisplayName("rows of a plan with no epic and no tokens still render the plan header")
+    void noEpicNoTokens() throws Exception {
+        var tree = """
+                            {"plan_id":"docs-typo","title":"Docs",
+                              "project":{"project_id":"pm-mcp-clients"},
+                              "current_phase":"execute","phase_state":"running",
+                              "tokens_so_far":{"total":0,"input":0,"output":0,"none_yet":true},
+                              "nodes":[{"node_id":"execute","title":"phase execute","kind":"phase",
+                                        "state":"running"}],
+                              "current_position_path":["execute"]}
+                            """;
+        var view = new PlanViewLevel(ProcessTree.fromJson(tree));
+        var text = view.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+        assertAll(
+                            () -> assertTrue(text.contains("none yet"), text),
+                            () -> assertTrue(view.breadcrumb("en", "node:execute").contains("docs-typo")),
+                            () -> assertFalse(view.footer("en").contains("e epic"))
+        );
+    }
+
+    @Test
+    @DisplayName("unknown, summary and null rows are not tasks, nodes, or waits")
+    void lookups() throws Exception {
+        var view = view();
+        assertAll(
+                            () -> assertNull(view.taskIdOf(null)),
+                            () -> assertNull(view.taskIdOf("node:execute")),
+                            () -> assertNull(view.taskIdOf("task:UNKNOWN")),
+                            () -> assertNull(view.waitingPlanOf(null)),
+                            () -> assertNull(view.waitingPlanOf("task:TASK-003")),
+                            () -> assertNull(view.waitingPlanOf("node:unknown")),
+                            () -> assertNull(view.closeRow(null)),
+                            () -> assertNull(view.closeRow("summary:plan")),
+                            () -> assertNull(view.nodeIdOfTask("UNKNOWN"))
+        );
+    }
+
+    @Test
+    @DisplayName("open all without a selection opens the whole tree")
+    void expandAllWithoutSelection() throws Exception {
+        var view = view();
+        view.closeRow("node:execute.envelope");
+        view.expandAll(null);
+        assertTrue(ids(view).contains("task:TASK-001"));
+    }
+
+    @Test
+    @DisplayName("a leaf job renders its kind, status, duration and outcome")
+    void leafJob() throws Exception {
+        var tree = TREE.replace("\"node_id\": \"finalize\", \"title\": \"phase finalize\", \"kind\": \"phase\", \"state\": \"planned\"",
+                            "\"node_id\": \"finalize\", \"title\": \"phase finalize\", \"kind\": \"phase\", \"state\": \"running\","
+                                                + " \"leaf_job\": {\"kind\": \"compile\", \"status\": \"done\", \"outcome\": \"success\","
+                                                + " \"duration_seconds\": 45}");
+        var view = new PlanViewLevel(ProcessTree.fromJson(tree));
+        view.expandAll(null);
+        var text = view.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+        assertTrue(text.contains("compile"), text);
+        assertTrue(text.contains("success"), text);
+    }
+
+    @Test
+    @DisplayName("an ended plan's summary names the outcome, the time and the reason")
+    void endedSummary() throws Exception {
+        var view = new PlanViewLevel(ProcessTree.fromJson(TREE),
+                            new PlanViewLevel.EndedInfo("cancelled", "replaced", "2 d ago"));
+        var text = view.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+        assertAll(
+                            () -> assertTrue(text.contains("cancelled"), text),
+                            () -> assertTrue(text.contains("2 d ago"), text),
+                            () -> assertTrue(text.contains("replaced"), text)
+        );
     }
 
     @Test

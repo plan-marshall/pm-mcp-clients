@@ -27,24 +27,17 @@ import de.planmarshall.operator.tui.TuiRow;
  * <p>It is read-only: the report's outcome, reason, deliverables, decisions and tokens are shown
  * as they were recorded, and every runtime text is sanitized first.
  */
-public final class PlanCompletionLevel {
+public record PlanCompletionLevel(PlanCompletionReport report) {
 
     private static final String INDENT = "  ";
     private static final String LABEL_WIDTH = "%-16s";
     private static final String KEY_SEPARATOR = ": ";
 
-    private final PlanCompletionReport report;
-
     /**
      * @param report the plan's completion report
      */
-    public PlanCompletionLevel(PlanCompletionReport report) {
-        this.report = Objects.requireNonNull(report, "report");
-    }
-
-    /** @return the completion report */
-    public PlanCompletionReport report() {
-        return report;
+    public PlanCompletionLevel {
+        Objects.requireNonNull(report, "report");
     }
 
     /**

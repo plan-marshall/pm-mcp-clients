@@ -62,12 +62,13 @@ untouched. `doc/plans/README.adoc` is untouched as required by the plan invarian
 
 | Test | Coverage |
 |---|---|
-| `PlanViewLevelTest` | Opens the current path, breadcrumb, open/close/parent, open-all, `.`, `n`, `t`, ended footer, no-epic footer, waiting node hand-off. |
-| `WorkerActivityLevelTest` | Head, entries, off-track banner, control-sequence stripping, empty stream and last-row anchor. |
-| `PlanCompletionLevelTest` | Outcome, reason, deliverables, decisions, tokens, sanitization. |
-| `PlanViewCatalogueTest` | Every terminal plan-view key in EN and DE; all `plan-view` scenario process states against the closed `NodeState` list. |
-| `PlanViewFullScreenTest` (10 screen tests) | Direct `plan <id>` open, tree keys, lane toggle, token toggle, worker activity with an injected ANSI sequence, `p`/`e` jumps, Overview open and `Esc` return, ended plan and `c`, live SSE selection anchoring, and the narrow-terminal scrollback fallback. |
-| `PlanViewTranscriptTest` + `plan-view.transcript` | The scrollback `plan fix-relay --all` transcript against the `plan-view` mock scenario. |
+| `PlanViewLevelTest` (16) | Opens the current path, breadcrumb, open/close/parent, open-all, `.`, `n`, `t`, ended footer, no-epic footer, waiting node hand-off. |
+| `WorkerActivityLevelTest` (7) | Head, entries, off-track banner, control-sequence stripping, empty stream and last-row anchor. |
+| `PlanCompletionLevelTest` (3) | Outcome, reason, deliverables, decisions, tokens, sanitization. |
+| `PlanViewCatalogueTest` (2) | Every terminal plan-view key in EN and DE; all `plan-view` scenario process states against the closed `NodeState` list. |
+| `PlanViewFullScreenTest` (12 screen tests) | Direct `plan <id>` open, tree keys, lane toggle, token toggle, worker activity with an injected ANSI sequence, `p`/`e` jumps, Overview open and `Esc` return, ended plan and `c`, live SSE selection anchoring, and the narrow-terminal scrollback fallback. |
+| `PlanViewFormattingTest` (8) | The state, phase, token, task and off-track formatting branches. |
+| `PlanViewTranscriptTest` + `plan-view.transcript` (1) | The scrollback `plan fix-relay --all` transcript against the `plan-view` mock scenario. |
 | `NativeTranscriptIT` | The same transcript on the native binary when `-Pnative` has built it. |
 
 ---
@@ -78,8 +79,8 @@ untouched. `doc/plans/README.adoc` is untouched as required by the plan invarian
   (`pm-api`, `pm-exec`, `pm-mock-runtime`, `pm-relay`, `pm-operator`, `pm-web-app`,
   `pm-web-e2e`). OpenRewrite, license headers, checkstyle, enforcer rules, Javadoc, and the full
   unit-test suite passed.
-- `pm-operator` surefire summary: **741 tests, 0 failures, 0 errors, 0 skipped**.
-- New tests: 30 (10 plan-level, 10 screen, 5 activity, 2 completion, 2 catalogue, 1 transcript).
+- `pm-operator` surefire summary: **760 tests, 0 failures, 0 errors, 0 skipped**.
+- New tests: 49 (16 plan-level, 12 screen, 8 formatting, 7 activity, 3 completion, 2 catalogue, 1 transcript).
 - The transcript was recorded with `-Dpm.transcript.update=true` and re-run in compare mode.
 
 > **Pre-commit workspace note:** the repository-wide OpenRewrite pass also reformats a large set

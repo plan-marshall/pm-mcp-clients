@@ -220,9 +220,6 @@ public final class PlanCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
-        if (terminal == null) {
-            return null;
-        }
         try {
             if (!TuiScreenDriver.canOpenFullScreen(
                                 context, terminal, TuiLayout.MIN_COLUMNS)) {

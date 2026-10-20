@@ -10,12 +10,14 @@
 package de.planmarshall.operator.planview;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.stream.Collectors;
 
 import de.planmarshall.api.process.TaskActivity;
+import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,7 +53,7 @@ class WorkerActivityLevelTest {
     }
 
     private static String text(WorkerActivityLevel level) {
-        return level.rows("en").stream().map(row -> row.line()).collect(Collectors.joining("\n"));
+        return level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
     }
 
     @Test
@@ -102,6 +104,52 @@ class WorkerActivityLevelTest {
         );
     }
 
+
+    @Test
+    @DisplayName("a live update replaces the stream and keeps the task id")
+    void updates() throws Exception {
+        var level = level();
+        var fresh = TaskActivity.fromJson(ACTIVITY.replace("14:02:11", "14:09:00"));
+        level.update(fresh);
+        assertAll(
+                            () -> assertTrue(text(level).contains("14:09:00")),
+                            () -> assertTrue(level.breadcrumb("en").startsWith("fix-relay")),
+                            () -> assertTrue(level.breadcrumb("en").endsWith("TASK-003")),
+                            () -> assertEquals("fix-relay", level.planId()),
+                            () -> assertEquals("execute.envelope", level.nodeId()),
+                            () -> assertEquals("TASK-003", level.taskId())
+        );
+    }
+
+    @Test
+    @DisplayName("the gap and the server-only note are named, and the rich kinds render")
+    void gapServerOnlyAndKinds() throws Exception {
+        var json = """
+                            {
+                              "task_id": "TASK-9", "role": "audit", "harness": "opencode", "model": "deepseek",
+                              "attempt": 2, "duration_seconds": 120, "tokens_so_far": 100,
+                              "entries": [
+                                {"timestamp": "12:00:00", "kind": "file_changed", "files": ["pom.xml", "README.md"]},
+                                {"timestamp": "12:00:01", "kind": "link", "tool_target": "submit:TASK-9"},
+                                {"timestamp": "12:00:02", "kind": "answer_ack", "content": "received"},
+                                {"timestamp": "12:00:03", "kind": "tool_call", "tool_name": "pytest",
+                                 "tool_target": "tests/"}
+                              ],
+                              "server_only": true, "gap_count": 3
+                            }
+                            """;
+        var level = new WorkerActivityLevel("fix-relay", "execute", TaskActivity.fromJson(json));
+        var text = text(level);
+        assertAll(
+                            () -> assertTrue(text.contains("3 older entries gave way"), text),
+                            () -> assertTrue(text.contains("This harness reports no steps"), text),
+                            () -> assertTrue(text.contains("pom.xml, README.md"), text),
+                            () -> assertTrue(text.contains("submit:TASK-9"), text),
+                            () -> assertTrue(text.contains("answer received"), text),
+                            () -> assertTrue(text.contains("pytest tests/"), text)
+        );
+    }
+
     @Test
     @DisplayName("an empty stream says so, and the last row is the newest entry")
     void emptyAndLastRow() throws Exception {
@@ -109,6 +157,6 @@ class WorkerActivityLevelTest {
                             TaskActivity.fromJson("{\"task_id\":\"T-1\",\"entries\":[]}"));
         assertTrue(text(empty).contains("No activity entries yet."));
         var level = level();
-        assertTrue(level.lastRowId("en").startsWith("activity:entry:"));
+        assertTrue(level.lastRowId().startsWith("activity:entry:"));
     }
 }

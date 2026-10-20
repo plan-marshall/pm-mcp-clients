@@ -339,6 +339,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
+    @SuppressWarnings("java:S2637")
     void openPlanAsRoot(RuntimeClient runtime, String planId, @Nullable EndedInfo ended) {
         if (!fetchPlan(runtime, planId, ended)) {
             return;
@@ -374,75 +375,6 @@ public final class OverviewFullScreenApp {
         } catch (IOException | IllegalArgumentException _) {
             return false;
         }
-    }
-
-    private boolean openActivity(RuntimeClient runtime, String planId, String taskId) {
-        var view = currentPlanView.get();
-        if (view == null) {
-            return false;
-        }
-        try {
-            var path = PLANS_API_PREFIX + OperatorUrlUtil.encodePathSegment(planId)
-                                + "/tasks/" + OperatorUrlUtil.encodePathSegment(taskId) + "/activity";
-            var response = runtime.send(HttpRequest.get(path));
-            if (response.status() != 200) {
-                return false;
-            }
-            var activity = new WorkerActivityLevel(planId, view.nodeIdOfTask(taskId), TaskActivity.fromJson(response.bodyText()));
-            currentActivity.set(activity);
-            activityFollow.set(true);
-            var level = TuiLevel.of(TuiLevel.Kind.PLAN_ACTIVITY, planId + "/" + taskId,
-                                activity.breadcrumb(locale));
-            var rows = activity.rows(locale);
-            stack.push(level, rows, rows.isEmpty() ? null : rows.getLast().id());
-            return true;
-        } catch (IOException | IllegalArgumentException _) {
-            return false;
-        }
-    }
-
-    private boolean openCompletion(RuntimeClient runtime, String planId) {
-        try {
-            var path = PLANS_API_PREFIX + OperatorUrlUtil.encodePathSegment(planId) + "/completion";
-            var response = runtime.send(HttpRequest.get(path));
-            if (response.status() != 200) {
-                return false;
-            }
-            var report = PlanCompletionReport.fromJson(response.bodyText());
-            var levelModel = new PlanCompletionLevel(report);
-            currentCompletion.set(levelModel);
-            stack.push(TuiLevel.of(TuiLevel.Kind.PLAN_COMPLETION, planId, levelModel.breadcrumb(locale)),
-                                levelModel.rows(locale), null);
-            return true;
-        } catch (IOException | IllegalArgumentException _) {
-            return false;
-        }
-    }
-
-    private void jumpToPlanProject(RuntimeClient runtime) {
-        var view = currentPlanView.get();
-        if (view == null) {
-            return;
-        }
-        if (belowIsProject(TuiLevel.Kind.PROJECT_BY_PLAN, view.projectId())) {
-            stack.back();
-            return;
-        }
-        openProject(runtime, view.projectId(), false, null);
-    }
-
-    private void jumpToPlanEpic(RuntimeClient runtime) {
-        var view = currentPlanView.get();
-        if (view == null || view.epicId() == null) {
-            return;
-        }
-        // When the plan was opened from its epic's view, e returns to that view: it is the level
-        // below the plan.
-        if (belowIsProject(TuiLevel.Kind.PROJECT_BY_EPIC, view.projectId())) {
-            stack.back();
-            return;
-        }
-        openProject(runtime, view.projectId(), true, view.epicId());
     }
 
     private boolean belowIsProject(TuiLevel.Kind kind, String projectId) {
@@ -669,7 +601,7 @@ public final class OverviewFullScreenApp {
         }
         try {
             var response = runtime.send(HttpRequest.get(PLANS_API_PREFIX
-                                + OperatorUrlUtil.encodePathSegment(level.id()) + "/process"));
+                                + OperatorUrlUtil.encodePathSegment(level.id() != null ? level.id() : "") + "/process"));
             if (response.status() != 200) {
                 return;
             }
@@ -840,17 +772,13 @@ public final class OverviewFullScreenApp {
                 case SWITCH_VIEW -> switchView();
                 case EPIC -> jumpToEpic();
                 case OPEN -> {
-                    if (!openSelected()) {
-                        return false;
-                    }
+                    return openSelected();
                 }
                 case CLOSE -> closePlanRow();
                 case ENDED -> openEndedLevel();
                 case RELOAD -> refreshActiveLevels();
                 case BACK -> {
-                    if (!handleBack()) {
-                        return false;
-                    }
+                    return handleBack();
                 }
                 case LEAVE -> {
                     return false;
@@ -1057,6 +985,75 @@ public final class OverviewFullScreenApp {
             }
         }
 
+        private boolean openActivity(RuntimeClient runtime, String planId, String taskId) {
+            var view = currentPlanView.get();
+            if (view == null) {
+                return false;
+            }
+            try {
+                var path = PLANS_API_PREFIX + OperatorUrlUtil.encodePathSegment(planId)
+                                    + "/tasks/" + OperatorUrlUtil.encodePathSegment(taskId) + "/activity";
+                var response = runtime.send(HttpRequest.get(path));
+                if (response.status() != 200) {
+                    return false;
+                }
+                var activity = new WorkerActivityLevel(planId, view.nodeIdOfTask(taskId), TaskActivity.fromJson(response.bodyText()));
+                currentActivity.set(activity);
+                activityFollow.set(true);
+                var level = TuiLevel.of(TuiLevel.Kind.PLAN_ACTIVITY, planId + "/" + taskId,
+                                    activity.breadcrumb(locale));
+                var rows = activity.rows(locale);
+                stack.push(level, rows, rows.isEmpty() ? null : rows.getLast().id());
+                return true;
+            } catch (IOException | IllegalArgumentException _) {
+                return false;
+            }
+        }
+
+        private boolean openCompletion(RuntimeClient runtime, String planId) {
+            try {
+                var path = PLANS_API_PREFIX + OperatorUrlUtil.encodePathSegment(planId) + "/completion";
+                var response = runtime.send(HttpRequest.get(path));
+                if (response.status() != 200) {
+                    return false;
+                }
+                var report = PlanCompletionReport.fromJson(response.bodyText());
+                var levelModel = new PlanCompletionLevel(report);
+                currentCompletion.set(levelModel);
+                stack.push(TuiLevel.of(TuiLevel.Kind.PLAN_COMPLETION, planId, levelModel.breadcrumb(locale)),
+                                    levelModel.rows(locale), null);
+                return true;
+            } catch (IOException | IllegalArgumentException _) {
+                return false;
+            }
+        }
+
+        private void jumpToPlanProject(RuntimeClient runtime) {
+            var view = currentPlanView.get();
+            if (view == null) {
+                return;
+            }
+            if (belowIsProject(TuiLevel.Kind.PROJECT_BY_PLAN, view.projectId())) {
+                stack.back();
+                return;
+            }
+            openProject(runtime, view.projectId(), false, null);
+        }
+
+        private void jumpToPlanEpic(RuntimeClient runtime) {
+            var view = currentPlanView.get();
+            if (view == null || view.epicId() == null) {
+                return;
+            }
+            // When the plan was opened from its epic's view, e returns to that view: it is the level
+            // below the plan.
+            if (belowIsProject(TuiLevel.Kind.PROJECT_BY_EPIC, view.projectId())) {
+                stack.back();
+                return;
+            }
+            openProject(runtime, view.projectId(), true, view.epicId());
+        }
+
         private void refreshPlanRows() {
             var view = currentPlanView.get();
             if (view != null) {
@@ -1139,11 +1136,6 @@ public final class OverviewFullScreenApp {
             }
         }
 
-        private boolean isPlanLevel() {
-            var lvl = stack.level();
-            return lvl != null && lvl.kind() == TuiLevel.Kind.PLAN;
-        }
-
         private boolean isActivityLevel() {
             var lvl = stack.level();
             return lvl != null && lvl.kind() == TuiLevel.Kind.PLAN_ACTIVITY;
@@ -1155,7 +1147,7 @@ public final class OverviewFullScreenApp {
             if (isEpic) {
                 // An epic's view is the project's work grouped by epic, with the epic selected.
                 try {
-                    openProject(context.runtime(true), detail != null ? detail.projectId() : "", true, itemId);
+                    openProject(context.runtime(true), detail.projectId(), true, itemId);
                 } catch (IOException _) {
                     // best effort
                 }

@@ -54,9 +54,16 @@ public final class PlanViewLevel {
 
     private static final String DETAIL_PREFIX = "detail:";
     private static final String TOKENS_PREFIX = "tokens:";
-    private static final String EXPANDED = "\u25be ";
+    private static final String EXPANDED_MARKER = "\u25be ";
     private static final String COLLAPSED = "\u25b8 ";
     private static final String NO_CHILDREN = "  ";
+    private static final String KIND_PHASE = "phase";
+    private static final String KIND_SUB_WORKFLOW = "sub_workflow";
+    private static final String ARG_TOTAL = "total";
+    private static final String ARG_DONE = "done";
+    private static final String ARG_PHASE = "phase";
+    private static final String STATUS_DONE = "done";
+    private static final String STATUS_SUBMITTED = "submitted";
     private static final String DETAIL_INDENT = "    ";
     private static final String CHILD_INDENT = "  ";
 
@@ -80,7 +87,7 @@ public final class PlanViewLevel {
 
     private ProcessTree tree;
     private final @Nullable EndedInfo ended;
-    private final Set<String> expanded = new HashSet<>();
+    private final Set<String> expandedNodes = new HashSet<>();
     private final Map<String, ProcessNode> nodesById = new LinkedHashMap<>();
     private final Map<String, LeafTask> tasksById = new LinkedHashMap<>();
     private final Map<String, String> parentNodeByNode = new LinkedHashMap<>();
@@ -240,10 +247,10 @@ public final class PlanViewLevel {
         if (node == null || !hasChildren(node)) {
             return false;
         }
-        if (expanded.contains(node.nodeId())) {
-            expanded.remove(node.nodeId());
+        if (expandedNodes.contains(node.nodeId())) {
+            expandedNodes.remove(node.nodeId());
         } else {
-            expanded.add(node.nodeId());
+            expandedNodes.add(node.nodeId());
         }
         return true;
     }
@@ -260,7 +267,7 @@ public final class PlanViewLevel {
         }
         if (rowId.startsWith(NODE_PREFIX)) {
             var nodeId = rowId.substring(NODE_PREFIX.length());
-            if (expanded.remove(nodeId)) {
+            if (expandedNodes.remove(nodeId)) {
                 return null;
             }
             var parent = parentNodeByNode.get(nodeId);
@@ -394,11 +401,11 @@ public final class PlanViewLevel {
         var path = tree.currentPositionPath();
         for (var id : path) {
             if (nodesById.containsKey(id)) {
-                expanded.add(id);
+                expandedNodes.add(id);
             } else if (tasksById.containsKey(id)) {
                 var owner = ownerNodeByTask.get(id);
                 if (owner != null) {
-                    expanded.add(owner);
+                    expandedNodes.add(owner);
                 }
             }
         }
@@ -407,7 +414,7 @@ public final class PlanViewLevel {
         }
         for (var node : tree.nodes()) {
             if (NodeState.fromValue(node.state()) == NodeState.RUNNING) {
-                expanded.add(node.nodeId());
+                expandedNodes.add(node.nodeId());
             }
         }
     }
@@ -435,7 +442,7 @@ public final class PlanViewLevel {
         if (!hasChildren(node)) {
             return;
         }
-        expanded.add(node.nodeId());
+        expandedNodes.add(node.nodeId());
         for (var sub : node.subNodes()) {
             expandRecursively(sub);
         }
@@ -443,7 +450,7 @@ public final class PlanViewLevel {
 
     private TuiRow summaryRow(String locale) {
         var state = MessageCatalogue.format(locale, "plan.view.state", Map.of(
-                            "phase", PlanViewFormatting.clean(tree.currentPhase()),
+                            ARG_PHASE, PlanViewFormatting.clean(tree.currentPhase()),
                             "state", PlanViewFormatting.phaseState(locale, tree.phaseState())));
         var parts = new ArrayList<String>();
         parts.add(PlanViewFormatting.clean(tree.planId()));
@@ -512,7 +519,7 @@ public final class PlanViewLevel {
         rows.add(TuiRow.leaf(TOKENS_PREFIX + "coverage",
                             MessageCatalogue.format(locale, "operator.plan.tokens.coverage", Map.of(
                                                 "unmeasured", unmeasured,
-                                                "total", tokens.tasksTotal()))));
+                                                ARG_TOTAL, tokens.tasksTotal()))));
         rows.add(TuiRow.leaf(TOKENS_PREFIX + "components",
                             MessageCatalogue.format(locale, "operator.plan.tokens.components", Map.of(
                                                 "input", TokenFormat.formatTokens(tokens.input(), tokens.floor(), locale),
@@ -539,7 +546,7 @@ public final class PlanViewLevel {
             return;
         }
         boolean children = hasChildren(node);
-        boolean open = expanded.contains(node.nodeId());
+        boolean open = expandedNodes.contains(node.nodeId());
         var line = nodeLine(node, depth, children, open, locale);
         rows.add(new TuiRow(NODE_PREFIX + node.nodeId(), line, null,
                             state == NodeState.WAITING_FOR_OPERATOR, children));
@@ -549,12 +556,12 @@ public final class PlanViewLevel {
         var childIndent = CHILD_INDENT.repeat(depth + 1);
         if (!node.leafTasks().isEmpty()) {
             long done = node.leafTasks().stream()
-                                .filter(task -> "done".equalsIgnoreCase(task.status())
-                                                    || "submitted".equalsIgnoreCase(task.status()))
+                                .filter(task -> STATUS_DONE.equalsIgnoreCase(task.status())
+                                                    || STATUS_SUBMITTED.equalsIgnoreCase(task.status()))
                                 .count();
             rows.add(TuiRow.leaf(DETAIL_PREFIX + node.nodeId() + ":tasks",
                                 childIndent + MessageCatalogue.format(locale, "plan.leaf.tasks_done",
-                                                    Map.of("done", done, "total", node.leafTasks().size()))));
+                                                    Map.of(ARG_DONE, done, ARG_TOTAL, node.leafTasks().size()))));
             for (var task : node.leafTasks()) {
                 rows.add(TuiRow.leaf(TASK_PREFIX + task.taskId(),
                                     childIndent + PlanViewFormatting.withGlyph(taskGlyph(task.status()),
@@ -574,7 +581,7 @@ public final class PlanViewLevel {
     private String nodeLine(ProcessNode node, int depth, boolean children, boolean open, String locale) {
         var state = NodeState.fromValue(node.state());
         var indent = CHILD_INDENT.repeat(depth);
-        var expand = children ? (open ? EXPANDED : COLLAPSED) : NO_CHILDREN;
+        var expand = expandMarker(children, open);
         var stateLabel = PlanViewFormatting.nodeState(locale, state, node.runCount(), node.currentRun());
         var title = nodeTitle(node, locale);
         var info = nodeInfo(node, locale);
@@ -600,16 +607,23 @@ public final class PlanViewLevel {
         }
         if (!node.leafTasks().isEmpty()) {
             long done = node.leafTasks().stream()
-                                .filter(task -> "done".equalsIgnoreCase(task.status())
-                                                    || "submitted".equalsIgnoreCase(task.status()))
+                                .filter(task -> STATUS_DONE.equalsIgnoreCase(task.status())
+                                                    || STATUS_SUBMITTED.equalsIgnoreCase(task.status()))
                                 .count();
             parts.add(MessageCatalogue.format(locale, "plan.leaf.tasks_done",
-                                Map.of("done", done, "total", node.leafTasks().size())));
+                                Map.of(ARG_DONE, done, ARG_TOTAL, node.leafTasks().size())));
         }
         if (node.waitsFor() != null && !node.waitsFor().isBlank()) {
             parts.add(PlanViewFormatting.clean(node.waitsFor()));
         }
         return String.join(PlanViewFormatting.DOT_SEPARATOR, parts);
+    }
+
+    private static String expandMarker(boolean children, boolean open) {
+        if (!children) {
+            return NO_CHILDREN;
+        }
+        return open ? EXPANDED_MARKER : COLLAPSED;
     }
 
     private static String jobLine(String locale, LeafJob job) {
@@ -630,7 +644,7 @@ public final class PlanViewLevel {
             return NodeState.PLANNED.glyph();
         }
         return switch (status.toLowerCase(Locale.ROOT)) {
-            case "done", "submitted" -> NodeState.DONE.glyph();
+            case STATUS_DONE, STATUS_SUBMITTED -> NodeState.DONE.glyph();
             case "running" -> NodeState.RUNNING.glyph();
             case "waiting", "waiting_for_you" -> NodeState.WAITING_FOR_OPERATOR.glyph();
             case "failed" -> NodeState.FAILED.glyph();
@@ -640,11 +654,11 @@ public final class PlanViewLevel {
 
     private static String nodeTitle(ProcessNode node, String locale) {
         var title = PlanViewFormatting.clean(node.title());
-        if ("phase".equals(node.kind())) {
-            title = stripPrefix(title, "phase");
+        if (KIND_PHASE.equals(node.kind())) {
+            title = stripPrefix(title, KIND_PHASE);
             return MessageCatalogue.format(locale, "plan.node.kind.phase", Map.of()) + " " + title;
         }
-        if ("sub_workflow".equals(node.kind())) {
+        if (KIND_SUB_WORKFLOW.equals(node.kind())) {
             title = stripPrefix(title, "sub-workflow");
             return "\u21b3 " + MessageCatalogue.format(locale, "plan.node.kind.sub_workflow", Map.of()) + " " + title;
         }
@@ -653,10 +667,10 @@ public final class PlanViewLevel {
 
     private static String stripKindTitle(ProcessNode node) {
         var title = PlanViewFormatting.clean(node.title());
-        if ("phase".equals(node.kind())) {
-            return stripPrefix(title, "phase");
+        if (KIND_PHASE.equals(node.kind())) {
+            return stripPrefix(title, KIND_PHASE);
         }
-        if ("sub_workflow".equals(node.kind())) {
+        if (KIND_SUB_WORKFLOW.equals(node.kind())) {
             return stripPrefix(title, "sub-workflow");
         }
         return title;

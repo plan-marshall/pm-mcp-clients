@@ -198,19 +198,9 @@ public final class TuiScreenDriver {
                 }
                 int columns = terminal.getColumns();
                 int rows = terminal.getRows();
-                if (!screen.equals(previous) || columns != previousColumns || rows != previousRows) {
-                    var rendered = layout.render(screen, columns, rows);
-                    // A level that loses or gains rows (a closed node, a hidden token panel) must
-                    // redraw every line: Display's diff only moves the tail and would leave the
-                    // old, longer body in place. A reset makes the next update a full frame.
-                    if (previous == null || previous.rows().size() != screen.rows().size()) {
-                        display.reset();
-                    }
-                    display.update(rendered, 0);
-                    previous = screen;
-                    previousColumns = columns;
-                    previousRows = rows;
-                }
+                previous = renderIfChanged(display, screen, previous, previousColumns, previousRows);
+                previousColumns = columns;
+                previousRows = rows;
                 int peeked = terminal.reader().peek(POLL_MILLIS);
                 if (peeked == NonBlockingReader.EOF) {
                     break;
@@ -242,6 +232,24 @@ public final class TuiScreenDriver {
             terminal.flush();
         }
         return Result.LEFT;
+    }
+
+    private @Nullable TuiScreen renderIfChanged(Display display, TuiScreen screen,
+                        @Nullable TuiScreen previous, int previousColumns, int previousRows) {
+        int columns = terminal.getColumns();
+        int rows = terminal.getRows();
+        if (screen.equals(previous) && columns == previousColumns && rows == previousRows) {
+            return previous;
+        }
+        var rendered = layout.render(screen, columns, rows);
+        // A level that loses or gains rows (a closed node, a hidden token panel) must redraw every
+        // line: Display's diff only moves the tail and would leave the old, longer body in place.
+        // A reset makes the next update a full frame.
+        if (previous == null || previous.rows().size() != screen.rows().size()) {
+            display.reset();
+        }
+        display.update(rendered, 0);
+        return screen;
     }
 
     private void filter(KeyHandler handler) {

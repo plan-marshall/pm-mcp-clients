@@ -380,6 +380,18 @@ class PlanViewFullScreenTest {
             assertTrue(screen.contains("repeating (5 of 5): shown"), screen);
             assertFalse(virtual.rawOutput().contains("\u001B[31m"), "the stream must not carry the harness's control sequence");
 
+            await(() -> activeStream.get() != null);
+            var stream = activeStream.get();
+            if (stream != null) {
+                try {
+                    stream.send("task.off_track", "{\"plan_id\":\"fix-relay\",\"task_id\":\"TASK-003\"}");
+                } catch (IOException _) {
+                    // the stream may close while the view is leaving
+                }
+            }
+            delay(300L);
+            assertTrue(shows(virtual, "Injected Reading the relay's transport"));
+
             virtual.type("\u001b");
             await(() -> shows(virtual, "execute.envelope") && shows(virtual, "p project"));
             delay(200L);
@@ -424,12 +436,35 @@ class PlanViewFullScreenTest {
             await(() -> shows(virtual, "by plan"));
             virtual.type("\r");
             await(() -> shows(virtual, "execute.envelope") && shows(virtual, "p project"));
-            virtual.type("\u001b");
+            // p from a plan opened in the project goes back to that project
+            virtual.type("p");
             await(() -> shows(virtual, "by plan"));
-            delay(120L);
+            delay(200L);
             virtual.type("\u001b");
-            await(() -> shows(virtual, "projects") && !shows(virtual, "by plan"));
+            await(() -> shows(virtual, "projects"));
             delay(120L);
+            delay(200L);
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("e from a plan opened in its epic view returns to that view")
+    void shouldReturnToEpicView() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 40)) {
+            var context = createContext(virtual);
+            var thread = start(app(context, virtual,
+                                new OverviewFullScreenApp.InitialSelection("pm-mcp-clients", "epic", false)),
+                                new StringWriter());
+            await(() -> virtual.alternateScreenActive() && shows(virtual, "by epic"));
+            virtual.type("j");
+            await(() -> virtual.screen().lines().stream()
+                                .anyMatch(line -> line.startsWith("\u25b6") && line.contains("Fix Relay Transport")));
+            virtual.type("\r");
+            await(() -> shows(virtual, "p project"));
+            virtual.type("e");
+            await(() -> shows(virtual, "by epic") && shows(virtual, "Relay Hardening"));
             delay(200L);
             virtual.type("q");
             join(thread);
@@ -487,6 +522,25 @@ class PlanViewFullScreenTest {
             delay(200L);
             virtual.type("q");
             join(thread);
+        }
+    }
+
+
+    @Test
+    @DisplayName("plan <id> launches the full-screen view through the verb and q leaves it")
+    void shouldLaunchThroughPlanCommand() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 40)) {
+            var context = createContext(virtual);
+            virtual.type("q");
+            var out = new StringWriter();
+            var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
+                                "plan", "fix-relay");
+            assertEquals(0, code);
+            var raw = virtual.rawOutput();
+            assertTrue(raw.contains("phase execute"), raw);
+            assertTrue(raw.contains("p project"), raw);
+            assertEquals(1, virtual.alternation().entries());
+            assertEquals(1, virtual.alternation().exits());
         }
     }
 
