@@ -430,6 +430,7 @@
           <h2 class="section-title">{$t('project.adding.title')}</h2>
           <div class="project-grid">
             {#each explorer.being_added as being (being.checkout_path)}
+              {@const continueEntryId = entryIdOf(being.continue_link)}
               <div class="project-card being-added-card" data-testid="being-added-card">
                 <div class="being-added-card__info">
                   <span class="mono text-sm checkout-path">{being.checkout_path}</span>
@@ -442,21 +443,16 @@
                   </span>
                 </div>
                 <div class="being-added-card__actions">
-                  <Button
-                    variant="primary"
-                    size="small"
-                    onclick={() => {
-                      const entryId = entryIdOf(being.continue_link);
-                      if (entryId) {
-                        navigateTo('start', { entryId });
-                      } else {
-                        navigateTo('project-onboarding');
-                      }
-                    }}
-                    data-testid="continue-onboarding-btn"
-                  >
-                    {$t('project.adding.continue')}
-                  </Button>
+                  {#if continueEntryId}
+                    <Button
+                      variant="primary"
+                      size="small"
+                      onclick={() => navigateTo('start', { entryId: continueEntryId })}
+                      data-testid="continue-onboarding-btn"
+                    >
+                      {$t('project.adding.continue')}
+                    </Button>
+                  {/if}
                   <Button
                     variant="secondary"
                     size="small"
