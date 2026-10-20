@@ -24,9 +24,9 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 1. **Consolidate 23 Fragmented Files into Scenario 1 (`onboarding.json`)**:
    - Merge `onboarding.json`, `onboarding-happy.json`, `onboarding-harness-all-failed.json`, `onboarding-harness-not-logged-in.json`, `onboarding-harness-tokens-complete.json`, `onboarding-harness-tokens-not-reported.json`, `onboarding-harness-tokens-partial.json`, `onboarding-refusals.json`, `onboarding-settings-conflict.json`, `onboarding-unknown-harness.json`, `entry.json`, `entry-device-lifecycle.json`, `entry-fresh-code.json`, `entry-lan-conflict.json`, `entry-lan-credentials.json`, `entry-onboarding.json`, `entry-paired-browser.json`, `entry-ssh-session.json`, `entry-stream-close.json`, `entry-unonboarded.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, and `status-only.json` into **`pm-mock-runtime/src/main/resources/scenarios/onboarding.json`**.
-   - Remove the 22 redundant JSON files from `src/main/resources/scenarios/` and map their legacy constants in `ScenarioRegistry` to `onboarding#<state>` so all existing unit, CLI, and E2E tests continue to resolve without cluttering the scenario directory.
+   - Remove the 23 redundant JSON files from `src/main/resources/scenarios/` and map their legacy constants in `ScenarioRegistry` to `onboarding#<state>` so all existing unit, CLI, and E2E tests continue to resolve without cluttering the scenario directory.
 2. **Migrate Every State to Full `OperatorStateResource` & `EventEnvelope`**:
-   - Replace all flat legacy representations (`"scope": "machine", "state": "onboard.mode"`) and dummy stubs (`{"status": "ready"}`) with valid `OperatorStateResource` objects (`scope: {"kind": "machine"}`, `state: {"state_id": "...", "kind": "operator_wait" | "working" | "completed"}`, `summary`, `detail`, `links` array with `id`, `rel`, `method`, `href`, `label_key`, and `data`).
+   - Replace all flat legacy representations (`"scope": "machine", "state": "onboard.mode"`) and dummy stubs (`{"status": "ready"}`) with valid `OperatorStateResource` objects (`scope: {"kind": "machine"}`, `state: {"state_id": "...", "kind": "operator_wait" | "working" | "completed"}`, `facts` carrying the summary and the domain values, and a `links` array of `id`, `rel`, `method`, `href`, `preselected`, and `confirm`).
    - Ensure every state link in `states.<id>.links` matches an `OperatorLink.id` in `representation.links` and every scheduled event in `events` is a valid `EventEnvelope`.
 3. **Complete All Missing `onboarding-<case>` and `entry-<case>` States**:
    - Add dedicated, reachable states in `onboarding.json` for all cases required by `onboarding-contract.adoc` and `entry-contract.adoc`:
@@ -44,7 +44,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`, which already pre-registers all legacy scenario aliases in `ScenarioRegistry`). Runs in parallel with Waves 2b–2d (`mock-runtime-running-work`, `mock-runtime-projects-and-start`, `mock-runtime-reports-system-designer`) with zero shared Java or JSON files.
 
 ### Boundary Rules
-- **Sole Owner of**: `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` (and deletion of the 22 superseded `onboarding-*.json`, `entry-*.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, `status-only.json` files), plus `OnboardingScenarioTest.java`, `EntryScenarioTest.java`, `PairedDevicesScenarioTest.java`, and `OperatorInteractionScenarioTest.java`.
+- **Sole Owner of**: `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` (and deletion of the 23 superseded `onboarding-*.json`, `entry-*.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, `status-only.json` files), plus `OnboardingScenarioTest.java`, `EntryScenarioTest.java`, `PairedDevicesScenarioTest.java`, and `OperatorInteractionScenarioTest.java`.
 - **No Touch**: `ScenarioRegistry.java` / `StandardScenarios.java` (owned by `mock-runtime-foundation-and-consolidation-plan.md`), `doc/plans/README.adoc`, `pm-operator`, and `pm-web-app`.
 
 ---
@@ -82,7 +82,7 @@ Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`, which already pr
 
 ### Phase 1: Migrate Onboarding States to `OperatorStateResource` in `onboarding.json`
 - [x] **1.1 Convert Guided & Automatic Onboarding States**:
-  - Rewrite all states in `onboarding.json` (`onboard.mode`, `auto.consent`, `auto.scan`, `language.choose`, `harness.consent`, `harness.choose`, `harness.add`, `harness.probe-consent`, `harness.probe`, `harness.blocked`, `harness.all-failed`, `harness.unknown`, `harness.confirm`, `github.consent`, `github.check`, `sonar.consent`, `sonar.key`, `defaults.choose`, `onboard.summary`, `onboard.completed`, `settings.conflict`) to carry full `OperatorStateResource` representations (`scope`, `state`, `summary`, `detail`, `links`, `data`).
+  - Rewrite all states in `onboarding.json` (`onboard.mode`, `auto.consent`, `auto.scan`, `language.choose`, `harness.consent`, `harness.choose`, `harness.add`, `harness.probe-consent`, `harness.probe`, `harness.blocked`, `harness.all-failed`, `harness.unknown`, `harness.confirm`, `github.consent`, `github.check`, `sonar.consent`, `sonar.key`, `defaults.choose`, `onboard.summary`, `onboard.completed`, `settings.conflict`) to carry full `OperatorStateResource` representations (`scope`, `state`, `facts`, `links`).
   - Ensure all `check.result` and `state.changed` events in `events` use complete `EventEnvelope` objects.
 - [x] **1.2 Align `MockRuntimeEngine` Onboarding Route Helpers**:
   - Update `handleOnboardingRoutes` and `handleMachineSettingsRoutes` in `MockRuntimeEngine` so state transitions and responses preserve the `OperatorStateResource` envelope from `onboarding.json` while applying stateful mutations (such as settings revision increments and `409 conflict` on stale revision).
@@ -91,7 +91,7 @@ Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`, which already pr
 - [x] **2.1 Merge Entry & Pairing States**:
   - Add entry/pairing states (`entry.ready`, `entry.unonboarded`, `entry.paired-browser`, `entry.ssh-session`, `entry.fresh-code`, `entry.lan-conflict`, `entry.lan-credentials`, `entry.device-lifecycle`, `entry.stream-close`, `status.only`, `wait.choose`, `wait.check`, `wait.moved`) into `onboarding.json` with valid `OperatorStateResource` representations and `OperatorLink` definitions.
 - [x] **2.2 Remove Superseded Scenario Files & Wire Registry Aliases**:
-  - Delete the 22 superseded scenario files (`onboarding-*.json`, `entry*.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, `status-only.json`) from `pm-mock-runtime/src/main/resources/scenarios/`.
+  - Delete the 23 superseded scenario files (`onboarding-*.json`, `entry*.json`, `paired-devices.json`, `web-pairing.json`, `operator-interaction.json`, `status-only.json`) from `pm-mock-runtime/src/main/resources/scenarios/`.
   - Map their constants in `ScenarioRegistry` to `onboarding#<state>` so `MockRuntime.start(StandardScenarios.ONBOARDING_HAPPY)` or `POST /mock/scenario` with a legacy case name activates `onboarding` at the corresponding start state.
 
 ### Phase 3: Verification & Scenario Contract Tests

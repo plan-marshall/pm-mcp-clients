@@ -36,7 +36,7 @@ the operator envelope under `operator`.
 |---|---|
 | `src/main/resources/scenarios/onboarding.json` | Rewritten: 80 `OperatorStateResource` states, one status route, alias-target states for every legacy case. |
 | `src/main/resources/scenarios/onboarding-*.json` (9 files) | Deleted. |
-| `src/main/resources/scenarios/entry*.json` (11 files) | Deleted. |
+| `src/main/resources/scenarios/entry*.json` (10 files) | Deleted. |
 | `src/main/resources/scenarios/paired-devices.json` | Deleted. |
 | `src/main/resources/scenarios/web-pairing.json` | Deleted. |
 | `src/main/resources/scenarios/operator-interaction.json` | Deleted. |
@@ -77,8 +77,9 @@ The engine reads state-scoped runtime fixtures from
 status of `entry-unonboarded`, `entry-onboarding`, `entry-lan-conflict`, and the device lists of
 `entry-device-lifecycle` and `entry-stream-close` without a separate scenario file.
 
-**Codec mapping note**: the plan names `summary`, `detail`, `data`, and `label_key`. The closed
-`pm-api` codec defines none of those members. The consolidated states therefore carry:
+**Codec mapping note**: the plan names `summary`, `detail`, `data`, and `label_key` as shorthand. The
+closed `pm-api` codec defines none of those members, so this mapping is the approved reading of the
+plan: the consolidated states carry:
 
 - the summary and all domain values under `facts` (`facts.summary`, `facts.harnesses`,
   `facts.results`, `facts.checks`, …);

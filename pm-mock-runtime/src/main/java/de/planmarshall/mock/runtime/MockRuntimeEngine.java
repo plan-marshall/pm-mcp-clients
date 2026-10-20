@@ -662,8 +662,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private boolean seedDevicesFromStateFixture() {
         var runtime = stateRuntimeFixture(currentScenario.get().start());
-        if (runtime == null || !(runtime.get(FIXTURE_DEVICES) instanceof List<?> devices)) {
+        if (runtime == null || !runtime.containsKey(FIXTURE_DEVICES)) {
             return false;
+        }
+        if (!(runtime.get(FIXTURE_DEVICES) instanceof List<?> devices)) {
+            throw new IllegalStateException("facts.runtime.devices in state '"
+                    + currentScenario.get().start() + "' is no array");
         }
         try {
             var list = DeviceListResource.fromTree(devices);
@@ -677,11 +681,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 devicePairedBy.put(device.deviceId(), device.pairedBy());
             }
             return true;
-            // cui-rewrite:disable InvalidExceptionUsageRecipe
-        } catch (IOException | RuntimeException _) {
-            pairedDevices.clear();
-            devicePairedBy.clear();
-            return false;
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalStateException("Malformed facts.runtime.devices in state '"
+                    + currentScenario.get().start() + "'", e);
         }
     }
 

@@ -149,6 +149,15 @@ class ScenarioRegistryTest {
     }
 
     @Test
+    @DisplayName("every standard legacy alias resolves to an existing state")
+    void everyStandardAliasResolves() {
+        for (var alias : registry.legacyAliases().entrySet()) {
+            var scenario = registry.resolve(alias.getValue());
+            assertEquals(ScenarioRegistry.stateNameOf(alias.getValue()), scenario.start(), alias.getKey());
+        }
+    }
+
+    @Test
     @DisplayName("an alias does not overwrite the primary scenario's own start state")
     void aliasDoesNotOverwritePrimaryStart() {
         registry.registerLegacyAlias("ghost-start", StandardScenarios.PROJECTS_AND_START

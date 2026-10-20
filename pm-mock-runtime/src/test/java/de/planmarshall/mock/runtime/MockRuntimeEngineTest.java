@@ -104,6 +104,21 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @DisplayName("a malformed state device fixture fails the start instead of falling back to defaults")
+    void malformedStateDeviceFixtureFailsFast() {
+        var representation = Map.<String, Object>of(
+                "scope", Map.of("kind", "machine"),
+                "state", Map.of("state_id", "start.state"),
+                "facts", Map.of("runtime", Map.of("devices", "not-a-list")));
+        var state = new StateDefinition(representation, Map.of(), List.of(), null);
+        var scenario = new Scenario(1, "bad-devices", "Bad device fixture", "start.state", null,
+                Map.of(), Map.of("start.state", state));
+
+        assertThrows(IllegalStateException.class,
+                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
+    }
+
+    @Test
     @DisplayName("goToState transitions to valid state and rejects invalid state")
     void stateTransitions() {
         assertThrows(IllegalArgumentException.class, () -> engine.goToState("non-existent"));
