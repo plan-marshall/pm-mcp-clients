@@ -75,7 +75,7 @@ public final class TuiLayout {
         var lines = new ArrayList<AttributedString>(height);
         lines.add(header(screen, width));
         lines.add(rule(width));
-        lines.addAll(body(screen, width, height - HEADER_LINES - FOOTER_LINES));
+        lines.addAll(body(screen, width, columns, height - HEADER_LINES - FOOTER_LINES));
         lines.add(rule(width));
         lines.add(footer(screen, width));
         return List.copyOf(lines);
@@ -165,8 +165,8 @@ public final class TuiLayout {
         return new AttributedString(truncate(text, width));
     }
 
-    private List<AttributedString> body(TuiScreen screen, int width, int height) {
-        var lines = screen.help() ? helpLines(screen, width) : rowLines(screen, width);
+    private List<AttributedString> body(TuiScreen screen, int width, int columns, int height) {
+        var lines = screen.help() ? helpLines(screen, width) : rowLines(screen, width, columns);
         return viewport(lines, screen, width, height);
     }
 
@@ -194,7 +194,7 @@ public final class TuiLayout {
         return lines;
     }
 
-    private List<BodyLine> rowLines(TuiScreen screen, int width) {
+    private List<BodyLine> rowLines(TuiScreen screen, int width, int columns) {
         var lines = new ArrayList<BodyLine>();
         if (!screen.filter().isEmpty()) {
             lines.add(new BodyLine(new AttributedString(truncate("/ " + screen.filter(), width)), -1));
@@ -209,7 +209,7 @@ public final class TuiLayout {
             } else {
                 lines.add(new BodyLine(new AttributedString(truncate(text, width)), index));
             }
-            if (width + 1 >= DETAIL_COLUMNS && row.details() != null && !row.details().isBlank()) {
+            if (columns >= DETAIL_COLUMNS && row.details() != null && !row.details().isBlank()) {
                 lines.add(new BodyLine(new AttributedString(truncate(DETAIL_INDENT + row.details(), width)), index));
             }
         }
