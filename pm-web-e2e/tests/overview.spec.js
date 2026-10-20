@@ -144,4 +144,39 @@ test.describe('Overview View (UC-PLN-4)', () => {
     // Verify back on main running work view
     await expect(page.locator('.plan-card').first()).toBeVisible();
   });
+
+  test('opens an ended plan as it ended and its completion report in one step', async ({ page }) => {
+    await page.getByRole('button', { name: /^Ended work/i }).click();
+    await expect(page.locator('[data-testid="ended-item"]').first()).toBeVisible();
+
+    // The title opens the plan's own view, remembering the section it was opened from.
+    await page.locator('[data-testid="ended-open-fix-relay"]').click();
+    await expect(page).toHaveURL(/\/plans\/fix-relay$/);
+    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
+
+    // The browser's back returns to Ended Work, on the page the operator left.
+    await page.goBack();
+    await expect(page.locator('.ended-view')).toBeVisible();
+    await expect(page.getByText(/page 1 of 3/i)).toBeVisible();
+
+    // A plan's completion report is one step from its row.
+    await page.locator('[data-testid="ended-report-fix-relay"]').click();
+    await expect(page).toHaveURL(/\/reports\?plan=fix-relay$/);
+    await expect(page.locator('.completion-report')).toBeVisible();
+  });
+
+  test('remembers Running Work as the browser start page across a reload', async ({ page }) => {
+    const toggle = page.locator('[data-testid="start-page-toggle"]');
+    await expect(toggle).toHaveText('Set as browser start page');
+    await toggle.click();
+
+    await expect(toggle).toHaveText('Default start page');
+    expect(await page.evaluate(() => localStorage.getItem('pm_start_route'))).toBe('overview');
+
+    await page.reload();
+    await expect(page.locator('.overview')).toBeVisible();
+    await expect(page.locator('[data-testid="start-page-toggle"]')).toHaveText(
+      'Default start page',
+    );
+  });
 });

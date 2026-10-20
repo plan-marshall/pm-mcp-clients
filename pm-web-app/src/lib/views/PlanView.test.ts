@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import PlanView from './PlanView.svelte';
-import { apiClient, type ProcessTree, type TaskActivity } from '../api/client';
-import { runtimeStore } from '../stores/runtime';
+import {
+  apiClient,
+  type PlanCompletionReport,
+  type ProcessTree,
+  type TaskActivity,
+} from '../api/client';
+import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
 import { get } from 'svelte/store';
 
 describe('PlanView component', () => {
@@ -251,25 +256,182 @@ describe('PlanView component', () => {
     expect(prunedBox).toHaveTextContent('not in this plan: refine, outline (the land lane)');
   });
 
-  it('navigates back to overview on back button and to epic on breadcrumb click', async () => {
+  it('returns to the caller view from the back button', async () => {
+    navigateTo('overview');
+    openPlanView('fix-relay');
+
     render(PlanView);
 
     await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('back-btn'));
 
-    // Click epic link in breadcrumb
-    const epicBtn = screen.getByTestId('breadcrumb-epic');
-    await fireEvent.click(epicBtn);
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+  });
 
-    const stateAfterEpic = get(runtimeStore);
-    expect(stateAfterEpic.currentRoute).toBe('epic');
-    expect(stateAfterEpic.selectedEpicId).toBe('relay-hardening');
+  it('opens the parent epic from the breadcrumb in one step', async () => {
+    render(PlanView);
 
-    // Click back button
-    const backBtn = screen.getByTestId('back-btn');
-    await fireEvent.click(backBtn);
+    await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('breadcrumb-epic'));
 
-    const stateAfterBack = get(runtimeStore);
-    expect(stateAfterBack.currentRoute).toBe('overview');
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('epic');
+    expect(state.selectedEpicId).toBe('relay-hardening');
+  });
+
+  it('opens the project in the explorer in one step', async () => {
+    render(PlanView);
+
+    await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('breadcrumb-project'));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('projects');
+    expect(state.selectedProjectId).toBe('pm-mcp-clients');
+    expect(window.location.pathname).toBe('/projects');
+    expect(window.location.search).toBe('?project=pm-mcp-clients');
+  });
+
+  it('discloses the token breakdown by phase and role with raw components', async () => {
+    const planWithBreakdown: ProcessTree = {
+      ...mockPlan,
+      tokens_so_far: {
+        ...mockPlan.tokens_so_far,
+        floor: true,
+        tasks_total: 17,
+        tasks_measured: 15,
+        by_phase: [
+          {
+            name: 'execute',
+            total: 380000,
+            input: 350000,
+            output: 30000,
+            unmeasured: 2,
+            floor: true,
+            components: {
+              input: 350000,
+              cache_read: 20000,
+              cache_write: 5000,
+              output: 30000,
+              reasoning: 2000,
+            },
+          },
+        ],
+        by_role: [
+          {
+            name: 'implement',
+            total: 380000,
+            input: 350000,
+            output: 30000,
+            unmeasured: 2,
+            floor: true,
+          },
+        ],
+      },
+    };
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithBreakdown);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    // The line carries the floor and the catalogue-formatted coverage.
+    expect(screen.getByTestId('plan-tokens')).toHaveTextContent(/≥ 380 k/);
+    expect(screen.getByTestId('plan-tokens')).toHaveTextContent('2 of 17 tasks not measured');
+
+    const toggle = screen.getByTestId('tokens-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const breakdown = screen.getByTestId('token-breakdown');
+    expect(breakdown).toHaveTextContent('By phase');
+    expect(breakdown).toHaveTextContent('By role');
+
+    const phaseRow = screen.getByTestId('token-phase-execute');
+    expect(phaseRow).toHaveTextContent('350 k');
+    expect(phaseRow).toHaveTextContent('25 k');
+    expect(phaseRow).toHaveTextContent('30 k');
+    expect(phaseRow).toHaveTextContent('380 k');
+
+    const roleRow = screen.getByTestId('token-role-implement');
+    expect(roleRow).toHaveTextContent('350 k');
+    expect(roleRow).toHaveTextContent('380 k');
+  });
+
+  it('reads the token breakdown of an ended plan from its completion report', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue({
+      plan_id: 'fix-relay',
+      token_usage: {
+        by_phase: [
+          {
+            name: 'execute',
+            total: 380000,
+            input: 350000,
+            output: 30000,
+            unmeasured: 0,
+            floor: false,
+            components: {
+              input: 350000,
+              cache_read: 20000,
+              cache_write: 5000,
+              output: 30000,
+              reasoning: 2000,
+            },
+          },
+        ],
+        by_role: [
+          {
+            name: 'implement',
+            total: 380000,
+            input: 350000,
+            output: 30000,
+            unmeasured: 0,
+            floor: false,
+          },
+        ],
+      },
+    } as unknown as PlanCompletionReport);
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedPlanEnded: { plan_id: 'fix-relay', outcome: 'merged' },
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await fireEvent.click(screen.getByTestId('tokens-toggle'));
+
+    const phaseRow = await screen.findByTestId('token-phase-execute');
+    expect(phaseRow).toHaveTextContent('25 k');
+    expect(screen.getByTestId('token-role-implement')).toHaveTextContent('380 k');
+    expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('fix-relay');
+  });
+
+  it('shows an ended plan as it ended and opens its completion report in one step', async () => {
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedPlanEnded: {
+        plan_id: 'fix-relay',
+        outcome: 'merged',
+        reason: 'the fallback held',
+        ended_at: '2026-10-16T11:20:00Z',
+      },
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const banner = screen.getByTestId('plan-ended');
+    expect(banner).toHaveTextContent('The plan has ended: merged');
+    expect(banner).toHaveTextContent('ended 2026-10-16T11:20:00Z');
+    expect(banner).toHaveTextContent('Reason: the fallback held');
+
+    await fireEvent.click(screen.getByTestId('ended-completion-report'));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('reports');
+    expect(state.selectedReportDetailPlanId).toBe('fix-relay');
+    expect(window.location.search).toBe('?plan=fix-relay');
   });
 
   it('selects running task over earlier completed task on initial load', async () => {

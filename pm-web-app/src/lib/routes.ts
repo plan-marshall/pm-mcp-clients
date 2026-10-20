@@ -42,6 +42,8 @@ export interface RouteParams {
   planId?: string;
   epicId?: string;
   taskId?: string;
+  /** The plan whose completion report the reports route shows. */
+  reportPlanId?: string;
 }
 
 /** The project and the entry a start path names. */
@@ -197,6 +199,11 @@ export function pathForRoute(route: AppRoute, params: RouteParams = {}): string 
     return params.epicId
       ? `/epics/${encodeURIComponent(params.epicId)}/decomposition`
       : '/epics/decompose';
+  }
+  if (route === 'reports') {
+    return params.reportPlanId
+      ? `/reports?plan=${encodeURIComponent(params.reportPlanId)}`
+      : '/reports';
   }
   return FIXED_ROUTE_PATHS[route] ?? null;
 }

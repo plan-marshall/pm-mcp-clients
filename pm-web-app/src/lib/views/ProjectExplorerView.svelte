@@ -63,8 +63,25 @@
     }
   }
 
+  /**
+   * Focuses the project a caller opened the explorer at (`/projects?project={id}`).
+   *
+   * The plan and epic views reach their project in one step; filtering to its name shows that
+   * project's card without the others in the way. A plain visit to the explorer has no query and
+   * is left as it is.
+   */
+  function focusRequestedProject(): void {
+    if (typeof window === 'undefined' || !explorer) return;
+    const requested = new URLSearchParams(window.location.search).get('project');
+    if (!requested) return;
+    const project = explorer.all_projects.find((p) => p.project_id === requested);
+    if (project) {
+      filter = project.display_name;
+    }
+  }
+
   onMount(() => {
-    void loadExplorer();
+    void loadExplorer().then(focusRequestedProject);
 
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
       if (

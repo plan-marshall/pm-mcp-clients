@@ -56,8 +56,34 @@
     return Object.values(projectMap);
   });
 
+  /**
+   * The plan whose completion report the route opened, from `/reports?plan={id}` or the store a
+   * plan view set when it led here.
+   *
+   * @returns the plan id, or `null` for the plain list
+   */
+  function requestedReportPlan(): string | null {
+    if (typeof window !== 'undefined') {
+      const fromQuery = new URLSearchParams(window.location.search).get('plan');
+      if (fromQuery) return fromQuery;
+    }
+    return $runtimeStore.selectedReportDetailPlanId ?? null;
+  }
+
+  /** Leaves the detail and returns to the list, clearing the plan from the address bar. */
+  function closeDetail(): void {
+    activeDetailPlanId = null;
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
+    if (typeof window !== 'undefined') {
+      // Replace the entry directly: `syncUrl('/reports')` would leave the query in place because
+      // the pathname is already `/reports`.
+      window.history.replaceState({ path: '/reports' }, '', '/reports');
+    }
+  }
+
   onMount(async () => {
     isMounted = true;
+    activeDetailPlanId = requestedReportPlan();
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
@@ -196,12 +222,7 @@
 
 <div class="reports-view">
   {#if activeDetailPlanId}
-    <CompletionReportView
-      planId={activeDetailPlanId}
-      onClose={() => {
-        activeDetailPlanId = null;
-      }}
-    />
+    <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
   {:else}
     <div class="reports-container">
       <!-- Header -->

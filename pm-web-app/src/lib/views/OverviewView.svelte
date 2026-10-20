@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -12,7 +13,15 @@
     type AlongsideLanding,
     type EndedWorkPage,
   } from '../api/client';
-  import { openPlanView, openEpicView } from '../stores/runtime';
+  import {
+    runtimeStore,
+    openPlanView,
+    openEpicView,
+    openEndedPlanView,
+    openCompletionReport,
+    rememberedStartRoute,
+    setRememberedStartRoute,
+  } from '../stores/runtime';
   import { openStartWork, openStartEntry } from '../stores/start';
   import { openGitSource } from '../stores/gitSource';
 
@@ -24,6 +33,7 @@
   let showEnded = false;
   let endedPage: EndedWorkPage | null = null;
   let currentEndedPage = 1;
+  let startPageIsOverview = false;
   let detailRequestGeneration = 0;
   let endedRequestGeneration = 0;
 
@@ -38,6 +48,7 @@
 
   onMount(async () => {
     if (typeof window !== 'undefined') {
+      startPageIsOverview = rememberedStartRoute() === 'overview';
       const savedMode = localStorage.getItem('pm_overview_view_mode');
       if (savedMode === 'plan' || savedMode === 'epic') {
         viewMode = savedMode;
@@ -45,6 +56,22 @@
       const savedProj = localStorage.getItem('pm_overview_selected_project');
       if (savedProj) {
         selectedProjectId = savedProj;
+      }
+      // A view that opened the plan or the project came back to Running Work returns to the
+      // section it left: Ended Work, on the page it showed.
+      showEnded = localStorage.getItem('pm_overview_show_ended') === '1';
+      const savedEndedPage = Number.parseInt(
+        localStorage.getItem('pm_overview_ended_page') ?? '',
+        10,
+      );
+      if (Number.isInteger(savedEndedPage) && savedEndedPage > 0) {
+        currentEndedPage = savedEndedPage;
+      }
+      // The store names the project another view opened one step ago; it wins over the one this
+      // browser last selected.
+      const fromStore = get(runtimeStore).selectedProjectId;
+      if (fromStore) {
+        selectedProjectId = fromStore;
       }
     }
 
@@ -63,6 +90,9 @@
     });
 
     await loadProjects();
+    if (showEnded && selectedProjectId) {
+      await loadEndedWork(selectedProjectId, currentEndedPage);
+    }
   });
 
   onDestroy(() => {
@@ -141,10 +171,64 @@
     selectedProjectId = projectId;
     showEnded = false;
     endedPage = null;
+    currentEndedPage = 1;
     if (typeof window !== 'undefined') {
       localStorage.setItem('pm_overview_selected_project', projectId);
+      localStorage.setItem('pm_overview_show_ended', '0');
+      localStorage.setItem('pm_overview_ended_page', '1');
     }
     void loadProjectDetail(projectId);
+  }
+
+  /**
+   * Remembers the Ended Work section while the operator opens one of its plans or reports.
+   */
+  function rememberEndedState() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pm_overview_show_ended', showEnded ? '1' : '0');
+      localStorage.setItem('pm_overview_ended_page', String(currentEndedPage));
+    }
+  }
+
+  /**
+   * Remembers or forgets Running Work as the browser's start page.
+   */
+  function toggleStartPage() {
+    startPageIsOverview = !startPageIsOverview;
+    setRememberedStartRoute(startPageIsOverview ? 'overview' : null);
+  }
+
+  /**
+   * Opens an ended item as it ended: a plan in its plan view, an epic in its epic view.
+   *
+   * @param item the ended work row
+   */
+  function openEndedItem(item: EndedWorkPage['items'][number]) {
+    const id = item.id ?? item.item_id;
+    if (!id) return;
+    rememberEndedState();
+    if (item.kind === 'epic') {
+      openEpicView(id);
+      return;
+    }
+    openEndedPlanView({
+      plan_id: id,
+      outcome: item.outcome ?? null,
+      reason: item.reason ?? null,
+      ended_at: item.ended_at ?? null,
+    });
+  }
+
+  /**
+   * Opens an ended plan's completion report in one step.
+   *
+   * @param item the ended work row of a plan
+   */
+  function openEndedReport(item: EndedWorkPage['items'][number]) {
+    const id = item.id ?? item.item_id;
+    if (!id) return;
+    rememberEndedState();
+    openCompletionReport(id);
   }
 
   function setViewMode(mode: 'plan' | 'epic') {
@@ -157,6 +241,7 @@
   async function openEndedWork() {
     showEnded = true;
     currentEndedPage = 1;
+    rememberEndedState();
     if (selectedProjectId) {
       await loadEndedWork(selectedProjectId, 1);
     }
@@ -164,8 +249,10 @@
 
   function closeEndedWork() {
     showEnded = false;
+    currentEndedPage = 1;
     endedRequestGeneration += 1;
     endedPage = null;
+    rememberEndedState();
   }
 
   async function loadEndedWork(projectId: string, page: number) {
@@ -176,6 +263,7 @@
       if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
         endedPage = res;
         currentEndedPage = page;
+        rememberEndedState();
       }
     } catch (err: unknown) {
       if (projectId === selectedProjectId && requestGeneration === endedRequestGeneration) {
@@ -302,9 +390,22 @@
   <aside class="overview-sidebar" aria-label={$t('overview.running.title')}>
     <div class="sidebar-header">
       <h2 class="sidebar-title">{$t('overview.running.title')}</h2>
-      {#if isLoadingProjects}
-        <Spinner size="1rem" label={$t('overview.projects.loading')} />
-      {/if}
+      <div class="sidebar-header__actions">
+        {#if isLoadingProjects}
+          <Spinner size="1rem" label={$t('overview.projects.loading')} />
+        {/if}
+        <button
+          class="start-page-toggle"
+          class:start-page-toggle--active={startPageIsOverview}
+          aria-pressed={startPageIsOverview}
+          on:click={toggleStartPage}
+          data-testid="start-page-toggle"
+        >
+          {startPageIsOverview
+            ? $t('overview.start_page.is_default')
+            : $t('overview.start_page.set')}
+        </button>
+      </div>
     </div>
 
     {#if projects.length === 0 && !isLoadingProjects}
@@ -388,6 +489,7 @@
                   <th>{$t('overview.ended.col.outcome')}</th>
                   <th>{$t('overview.ended.col.pull_request')}</th>
                   <th>{$t('overview.ended.col.ended')}</th>
+                  <th>{$t('overview.ended.col.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -400,7 +502,15 @@
                           : '▸ ' + $t('overview.kind.plan')}
                       </span>
                     </td>
-                    <td><strong>{item.title}</strong></td>
+                    <td>
+                      <button
+                        class="ended-open"
+                        on:click={() => openEndedItem(item)}
+                        data-testid="ended-open-{item.id ?? item.item_id}"
+                      >
+                        {item.title}
+                      </button>
+                    </td>
                     <td>
                       {#if item.outcome}
                         <span class="badge badge--outcome badge--{item.outcome}">
@@ -432,6 +542,17 @@
                       {/if}
                     </td>
                     <td class="text-muted">{formatRelative(item.ended_at)}</td>
+                    <td>
+                      {#if item.kind === 'plan'}
+                        <button
+                          class="ended-report"
+                          on:click={() => openEndedReport(item)}
+                          data-testid="ended-report-{item.id ?? item.item_id}"
+                        >
+                          {$t('report.completion.open')}
+                        </button>
+                      {/if}
+                    </td>
                   </tr>
                 {/each}
               </tbody>
@@ -785,6 +906,36 @@
     color: var(--color-text-primary);
   }
 
+  .sidebar-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .start-page-toggle {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+  }
+
+  .start-page-toggle:hover {
+    background: var(--color-bg-subtle);
+    color: var(--color-text-primary);
+  }
+
+  .start-page-toggle--active {
+    background: var(--color-primary-subtle);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+  }
+
   .sidebar-empty {
     padding: var(--space-4);
     color: var(--color-text-muted);
@@ -1057,6 +1208,35 @@
     display: block;
     font-size: var(--text-xs);
     color: var(--color-text-muted);
+  }
+
+  .ended-open {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-text-primary);
+    font-weight: 600;
+    font-size: inherit;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--color-border);
+  }
+
+  .ended-open:hover {
+    color: var(--color-primary);
+  }
+
+  .ended-report {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-primary);
+    font-size: var(--text-xs);
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: underline;
   }
 
   .ended-pagination {

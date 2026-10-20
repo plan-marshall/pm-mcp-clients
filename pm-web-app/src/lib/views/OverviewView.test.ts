@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import OverviewView from './OverviewView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { get } from 'svelte/store';
 import {
   apiClient,
   type ProjectOverviewResponse,
@@ -324,6 +325,80 @@ describe('OverviewView component', () => {
     await waitFor(() => {
       expect(screen.getByText('Console history of answers')).toBeInTheDocument();
     });
+  });
+
+  it('remembers Running Work as the browser start page and forgets it again', async () => {
+    render(OverviewView);
+
+    const toggle = await screen.findByTestId('start-page-toggle');
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(toggle).toHaveTextContent('Set as browser start page');
+
+    await fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(toggle).toHaveTextContent('Default start page');
+    expect(localStorage.getItem('pm_start_route')).toBe('overview');
+
+    await fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(localStorage.getItem('pm_start_route')).toBeNull();
+  });
+
+  it('opens an ended plan as it ended and its completion report in one step', async () => {
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Ended work')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('Ended work'));
+    await waitFor(() => {
+      expect(screen.getAllByTestId('ended-item').length).toBe(3);
+    });
+
+    await fireEvent.click(screen.getByTestId('ended-open-pln-relay-drops'));
+
+    let state = get(runtimeStore);
+    expect(state.currentRoute).toBe('plan');
+    expect(state.selectedPlanId).toBe('pln-relay-drops');
+    expect(state.selectedPlanEnded).toEqual({
+      plan_id: 'pln-relay-drops',
+      outcome: 'merged',
+      reason: null,
+      ended_at: '2026-10-14T10:00:00Z',
+    });
+    expect(localStorage.getItem('pm_overview_show_ended')).toBe('1');
+
+    await fireEvent.click(screen.getByTestId('ended-report-pln-relay-drops'));
+
+    state = get(runtimeStore);
+    expect(state.currentRoute).toBe('reports');
+    expect(state.selectedReportDetailPlanId).toBe('pln-relay-drops');
+  });
+
+  it('restores the ended work page after the operator returns to the overview', async () => {
+    localStorage.setItem('pm_overview_show_ended', '1');
+    localStorage.setItem('pm_overview_ended_page', '2');
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 2);
+      expect(screen.getAllByTestId('ended-item').length).toBe(3);
+    });
+  });
+
+  it('opens the project another view named in one step', async () => {
+    runtimeStore.update((s) => ({ ...s, selectedProjectId: 'pm-mcp-core' }));
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Session log and generations')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('tab', { name: /pm-mcp-core/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   it('subscribes to live SSE events and reloads on update', async () => {

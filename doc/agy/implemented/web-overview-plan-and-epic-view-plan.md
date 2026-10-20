@@ -59,14 +59,14 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-overview-plan-view` on branch `feat/web-overview-plan-and-epic-view` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `pm-dev-frontend-javascript` for `OverviewView`, `PlanView`, and `EpicView`.
   - `pm-dev-frontend-css` for breadcrumb, token breakdown table, and ended-plan banner styling.
   - `persona-module-tester` & `pm-dev-frontend-jest-testing` for Vitest component tests and Playwright E2E tests.
   - `persona-code-reviewer` for finding evaluation & bot review resolution.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/web-overview-plan-and-epic-view-plan-report.md`) and initial plan moved to `doc/agy/implemented/web-overview-plan-and-epic-view-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/web-overview-plan-and-epic-view-plan-report.md`) and initial plan moved to `doc/agy/implemented/web-overview-plan-and-epic-view-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-overview-plan-and-epic-view-plan-report.md` by orchestrator session.
@@ -88,18 +88,18 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Caller-Aware Breadcrumb Navigation & One-Step Project/Epic Links
-- [ ] **1.1 Update `PlanView.svelte` & `EpicView.svelte` Breadcrumbs**:
+- [x] **1.1 Update `PlanView.svelte` & `EpicView.svelte` Breadcrumbs**:
   - Replace hardcoded `navigateTo('overview')` with `goBack()` using the caller route from `runtimeStore`.
   - Wire the project breadcrumb link to open `/projects?project={project_id}` and the parent epic link to open `/epics/{epic_id}`.
 
 ### Phase 2: One-Step-Away Token Breakdown & Ended Plan Completion Report Link
-- [ ] **2.1 Expandable Token Breakdown with Raw Components**:
+- [x] **2.1 Expandable Token Breakdown with Raw Components**:
   - Add a one-step disclosure in `PlanView.svelte` showing `by_phase` and `by_role` tables with raw `input`, `cached`, `output`, and `total` columns, plus the unmeasured task notice.
-- [ ] **2.2 Ended Plan Completion Report Action**:
+- [x] **2.2 Ended Plan Completion Report Action**:
   - On ended plans in `PlanView.svelte` and `OverviewView.svelte`, add the action to open the plan's Completion Report (`/reports?plan={id}`).
 
 ### Phase 3: Browser Start-Point Preference & Verification
-- [ ] **3.1 Start-Point Toggle & Filter Persistence**:
+- [x] **3.1 Start-Point Toggle & Filter Persistence**:
   - Add the `pm_start_route` start-page toggle in `OverviewView.svelte` and persist overview filters across route transitions.
-- [ ] **3.2 Unit & E2E Tests**:
+- [x] **3.2 Unit & E2E Tests**:
   - Run `cd pm-web-app && npm test`, `cd pm-web-e2e && npx playwright test tests/overview.spec.js tests/plan-view.spec.js`, and `./mvnw verify -Ppre-commit`.
