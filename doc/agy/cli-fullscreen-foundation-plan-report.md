@@ -209,10 +209,11 @@ commits, none was refuted.
 | 10 | The driver dispatched actions a level does not bind | `boundOn(screen.kind(), action)` drops them before the handler; a test sends `e` on the overview |
 | 11 | A lone `Esc` waited the 1 s default ambiguity timeout | `KeyMap.setAmbiguousTimeout(100 ms)`; a test asserts the configured value |
 | 12 | The file-level security tests never reached `verifyFile` | Both tests now create the `0700` directory first, so only the symlink or the `0644` file can make the read fall back |
+| 13 | The filter hand-off could leave the alternate screen blank | The driver invalidates its frame cache after `resume(display)`; a test presses `/`, Enter, and asserts the rows are drawn again |
 
 ### Additional tests added for the review
 
 `PlanCommandTest.depthMustBePositive`, `ConsoleNoticeBufferTest.countsCoalescedReports`,
 `keepsVerbatimLines`, `closedBufferRejectsLine`, `TuiLayoutTest.indicatorsKeepSelectionVisible`,
-`TuiScreenDriverTest.unboundKeyIsDropped` and `escapeHasShortAmbiguityTimeout`, and the tightened
-`OverviewStateStoreTest` security tests.
+`TuiScreenDriverTest.unboundKeyIsDropped`, `escapeHasShortAmbiguityTimeout`, and
+`filterHandoffRedraws`, and the tightened `OverviewStateStoreTest` security tests.
