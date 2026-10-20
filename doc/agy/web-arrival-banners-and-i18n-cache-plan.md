@@ -75,7 +75,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-banners-and-i18n-cache` on branch `feat/web-banners-and-i18n-cache` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-banners-and-i18n-cache` on branch `feat/web-banners-and-i18n-cache` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend-javascript` for store, i18n cache engine, and Svelte layout changes.
   - `pm-dev-frontend-css` for clean removal of banner CSS and layout verification.
