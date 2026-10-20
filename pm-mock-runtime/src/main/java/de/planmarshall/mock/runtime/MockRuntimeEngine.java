@@ -41,8 +41,6 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
-import de.planmarshall.api.control.ArchiveCheckLine;
-import de.planmarshall.api.control.ChatProposalResource;
 import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.control.ChatState;
 import de.planmarshall.api.control.ChatTurnResource;
@@ -50,10 +48,7 @@ import de.planmarshall.api.control.DecompositionCheck;
 import de.planmarshall.api.control.DecompositionPlan;
 import de.planmarshall.api.control.DecompositionResource;
 import de.planmarshall.api.control.DecompositionWorkstream;
-import de.planmarshall.api.control.EpicEvent;
 import de.planmarshall.api.control.EpicResource;
-import de.planmarshall.api.control.EpicTokens;
-import de.planmarshall.api.control.EpicWorkstream;
 import de.planmarshall.api.control.HoldChangedEvent;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionRequest;
@@ -64,25 +59,12 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateRequest;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.PlanSettingsValue;
-import de.planmarshall.api.control.PlanTokenFigure;
-import de.planmarshall.api.control.RegisterSummary;
-import de.planmarshall.api.control.ReviewItemResource;
 import de.planmarshall.api.control.ReviewResource;
-import de.planmarshall.api.control.TokenFigure;
 import de.planmarshall.api.control.WorkActions;
-import de.planmarshall.api.control.WorkRow;
-import de.planmarshall.api.decision.AnswerType;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
-import de.planmarshall.api.decision.DecisionOption;
-import de.planmarshall.api.decision.DecisionPart;
-import de.planmarshall.api.decision.DecisionScope;
 import de.planmarshall.api.decision.InterpretationType;
-import de.planmarshall.api.decision.QuorumBand;
-import de.planmarshall.api.decision.QuorumSupport;
-import de.planmarshall.api.decision.QuorumVote;
-import de.planmarshall.api.decision.Reversibility;
 import de.planmarshall.api.decomposition.CheckSeverity;
 import de.planmarshall.api.decomposition.DecompositionCheckFinding;
 import de.planmarshall.api.decomposition.DecompositionCommitResult;
@@ -336,6 +318,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String FIXTURE_ONBOARD = "onboard";
     private static final String FIXTURE_SUMMARY = "summary";
     private static final String FIXTURE_LAN_CONFLICT = "lan_conflict";
+    /** The state-specific route overrides a state's runtime fixture may carry ("METHOD /path"). */
+    private static final String FIXTURE_ROUTES = "routes";
+    /** The state whose runtime fixture is the base every other state of the scenario inherits. */
+    private static final String BASE_FIXTURE_STATE = "running_work.active";
+    private static final String FIXTURE_CONTROL = "control";
+    private static final String FIXTURE_DECISIONS = "decisions";
+    private static final String FIXTURE_DECOMPOSITIONS = "decompositions";
     private static final String FIELD_VERSION = "version";
     private static final String FIELD_MACHINE = "machine";
     private static final String FIELD_LISTENER = "listener";
@@ -375,9 +364,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_EPIC_NOT_FOUND = "epic_not_found";
     private static final String ERR_CHECKS_FAIL = "checks_fail";
     private static final String ERR_PLAN_NOT_FOUND = "plan_not_found";
-    private static final String CONST_EPIC_RELAY_HARDENING = "relay-hardening";
-    private static final String CONST_EPIC_STORAGE_MIGRATION = "storage-migration";
-    private static final String CONST_PLAN_RELAY_AUTH_V2 = "relay-auth-v2";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
@@ -602,6 +588,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private synchronized void setScenario(Scenario scenario) {
+        // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
+        // the active scenario and every stateful fixture untouched.
+        validateRuntimeFixture(scenario);
         this.currentScenario.set(scenario);
         this.currentPairingCode = scenario.pairingCode();
         this.pairingCounter = 0;
@@ -761,7 +750,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (stateId == null) {
             return null;
         }
-        var state = currentScenario.get().state(stateId);
+        return runtimeFixtureOf(currentScenario.get(), stateId);
+    }
+
+    /**
+     * @param scenario a scenario
+     * @param stateId  a state of the scenario
+     * @return the engine-only fixture data the state's operator facts carry under {@code runtime},
+     *         or {@code null} when the state or the fixture is absent
+     */
+    private static @Nullable Map<String, Object> runtimeFixtureOf(Scenario scenario, @Nullable String stateId) {
+        if (stateId == null) {
+            return null;
+        }
+        var state = scenario.state(stateId);
         if (state == null) {
             return null;
         }
@@ -781,6 +783,113 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private @Nullable Map<String, Object> currentRuntimeFixture() {
         return stateRuntimeFixture(currentStateId.get());
+    }
+
+    /**
+     * The engine-only fixture of the state the scenario starts in, merged over the scenario's base
+     * fixture so a case state declares only what differs. The base is the {@code running_work.active}
+     * state of the consolidated running-work scenario; a scenario that has no such state is seeded
+     * by its start state alone.
+     *
+     * @return the merged fixture, or {@code null} when neither the state nor the base carries one
+     */
+    private @Nullable Map<String, Object> startRuntimeFixture() {
+        return startRuntimeFixtureOf(currentScenario.get());
+    }
+
+    /**
+     * Merges the start state's fixture of a scenario over that scenario's base fixture, without
+     * touching the engine state, so a candidate scenario can be validated before it is activated.
+     *
+     * @param scenario the candidate scenario
+     * @return the merged fixture, or {@code null} when neither state carries one
+     */
+    private static @Nullable Map<String, Object> startRuntimeFixtureOf(Scenario scenario) {
+        var base = runtimeFixtureOf(scenario, BASE_FIXTURE_STATE);
+        var own = runtimeFixtureOf(scenario, scenario.start());
+        if (base == null || own == null || own == base) {
+            return own != null ? own : base;
+        }
+        var merged = new LinkedHashMap<String, Object>(base);
+        own.forEach((key, value) -> {
+            if (FIXTURE_CONTROL.equals(key) && value instanceof Map<?, ?> ownControl
+                    && merged.get(key) instanceof Map<?, ?> baseControl) {
+                var control = new LinkedHashMap<String, Object>();
+                baseControl.forEach((baseKey, baseValue) -> control.put(String.valueOf(baseKey), baseValue));
+                ownControl.forEach((ownKey, ownValue) -> control.put(String.valueOf(ownKey), ownValue));
+                merged.put(key, control);
+            } else {
+                merged.put(key, value);
+            }
+        });
+        return merged;
+    }
+
+    /**
+     * @param method the HTTP method
+     * @param path   the request path
+     * @return the route the current state declares for the path first, the scenario route otherwise
+     */
+    private @Nullable RouteDefinition activeRoute(String method, String path) {
+        var runtime = currentRuntimeFixture();
+        if (runtime != null && runtime.get(FIXTURE_ROUTES) instanceof Map<?, ?> overrides) {
+            var override = overrides.get(method.toUpperCase(Locale.ROOT) + " " + path);
+            if (override instanceof Map<?, ?> representation) {
+                return RouteDefinition.of(representation);
+            }
+        }
+        return currentScenario.get().route(method, path);
+    }
+
+    /**
+     * @param fixture the runtime fixture, may be {@code null}
+     * @param key     the fixture member
+     * @return the member's array of objects, empty when the member is absent
+     * @throws IllegalStateException when the member is present but is not an array of objects
+     */
+    private static List<Map<String, Object>> fixtureObjects(@Nullable Map<String, Object> fixture, String key) {
+        return fixtureObjects(fixture, key, "facts.runtime." + key);
+    }
+
+    private static List<Map<String, Object>> fixtureObjects(@Nullable Map<String, Object> fixture, String key,
+            String path) {
+        if (fixture == null || !fixture.containsKey(key)) {
+            return List.of();
+        }
+        if (!(fixture.get(key) instanceof List<?> list)) {
+            throw new IllegalStateException(path + " must be an array");
+        }
+        var result = new ArrayList<Map<String, Object>>(list.size());
+        for (var element : list) {
+            var map = JsonTree.asObject(element);
+            if (map == null) {
+                throw new IllegalStateException(path + " must be an array of objects");
+            }
+            result.add(map);
+        }
+        return result;
+    }
+
+    /**
+     * @param fixture the runtime fixture, may be {@code null}
+     * @param key     the fixture member
+     * @return the member's object, or {@code null} when the member is absent
+     * @throws IllegalStateException when the member is present but is not an object
+     */
+    private static @Nullable Map<String, Object> fixtureObject(@Nullable Map<String, Object> fixture, String key) {
+        return fixtureObject(fixture, key, "facts.runtime." + key);
+    }
+
+    private static @Nullable Map<String, Object> fixtureObject(@Nullable Map<String, Object> fixture, String key,
+            String path) {
+        if (fixture == null || !fixture.containsKey(key)) {
+            return null;
+        }
+        var map = JsonTree.asObject(fixture.get(key));
+        if (map == null) {
+            throw new IllegalStateException(path + " must be an object");
+        }
+        return map;
     }
 
     /**
@@ -1267,7 +1376,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // 5. A scenario link or static route outside the engine's live domain areas wins over the
         //    domain defaults: a scenario definition is never shadowed by a Java fixture, and an
         //    operator link under /links/ is always served as the scenario declares it.
-        var route = currentScenario.get().route(request.method(), path);
+        var route = activeRoute(request.method(), path);
         if (!isLiveDomainPath(path)) {
             if (handleStateLink(request, response)) {
                 return;
@@ -2253,6 +2362,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(200, removed.toMap());
     }
 
+    /**
+     * Seeds the stateful control fixtures from the active scenario's runtime fixture. The fixture is
+     * declared by the scenario ({@code facts.runtime.control}) so a case state shows its own plans,
+     * epics, holds, settings, and chats; a scenario that declares none has no control state.
+     */
     private void initDefaultControl() {
         synchronized (controlLock) {
             controlPlanStates.clear();
@@ -2266,191 +2380,217 @@ public final class MockRuntimeEngine implements AutoCloseable {
             controlHolds.clear();
             controlSettingsRevisions.clear();
             controlSettings.clear();
-
-            controlPlanStates.put(CONST_FIX_RELAY, "running");
-            controlPlanEpics.put(CONST_FIX_RELAY, CONST_RELAY_HARDENING);
-            controlPlanStates.put("relay-cursor-order", "held");
-            controlPlanEpics.put("relay-cursor-order", CONST_RELAY_HARDENING);
-            controlPlanStates.put(CONST_RELAY_AUTH_V2, "waiting");
-            controlPlanEpics.put(CONST_RELAY_AUTH_V2, CONST_RELAY_HARDENING);
-            controlPlanStates.put("relay-docs", "held");
-            controlPlanEpics.put("relay-docs", CONST_RELAY_HARDENING);
-            controlPlanStates.put("relay-metrics", "paused");
-            controlPlanEpics.put("relay-metrics", CONST_RELAY_HARDENING);
-            controlPlanStates.put(CONST_DOCS_TYPO, "ended");
-
-            controlEpicStates.put(CONST_RELAY_HARDENING, "running");
-            controlEpicAuto.put(CONST_RELAY_HARDENING, true);
-            controlEpicScope.put(CONST_RELAY_HARDENING, 3);
-            controlEpicRunning.put(CONST_RELAY_HARDENING, 3);
-            controlEpicOverlap.put(CONST_RELAY_HARDENING, 0);
-            controlEpicStates.put("relay-docs-epic", "landing");
-
-            controlHolds.put(holdKey("relay-cursor-order", "H-0001"), new HoldRecord(
-                    "H-0001", "relay-cursor-order", "plan", "integrity_pause",
-                    "the plan's store file references.json changed outside the runtime",
-                    0, null, "references.json", 4812L, "3f9a6b2cc21e", 5034L, "b70d41aa9a44",
-                    List.of(ACTION_RETRY, ACTION_ACCEPT, ACTION_ABORT), null));
-            controlHolds.put(holdKey("relay-docs", "H-0002"), new HoldRecord(
-                    "H-0002", "relay-docs", "plan", "held",
-                    "waits: overlap with relay-auth-v2 (2 files)",
-                    1, Instant.parse(CONST_TIME_10_14), null, null, null, null, null,
-                    List.of(ACTION_RETRY, "end_plan"), null));
-
-            controlSettingsRevisions.put(CONST_FIX_RELAY, 7);
-            var values = new LinkedHashMap<String, PlanSettingsValue>();
-            values.put("landing", new PlanSettingsValue("landing", "landing.pull-request", "project",
-                    List.of("landing.pull-request", "landing.main", CONST_LANDING_FILES)));
-            values.put(KEY_METHOD, new PlanSettingsValue(KEY_METHOD, "method.test-first", "machine",
-                    List.of("method.test-first", "method.tests-after")));
-            values.put(KEY_ASKING, new PlanSettingsValue(KEY_ASKING, "ask.key-points", "plan",
-                    List.of("ask.every-phase", "ask.key-points", "ask.questions-only")));
-            values.put(KEY_POSTURE, new PlanSettingsValue(KEY_POSTURE, CONST_STANDARD, "plan", List.of()));
-            values.put("base", new PlanSettingsValue("base", "main", "plan", List.of()));
-            values.put("role.implement", new PlanSettingsValue("role.implement",
-                    "Claude Code - sonnet-5.5", "plan", List.of()));
-            values.put("role.review", new PlanSettingsValue("role.review",
-                    "Codex - gpt-5.3", "project", List.of()));
-            values.put("integration.git", new PlanSettingsValue("integration.git", "native", "project", List.of()));
-            values.put("provider.issues", new PlanSettingsValue("provider.issues", "GitHub", "project", List.of()));
-            controlSettings.put(CONST_FIX_RELAY, values);
-
             controlEpics.clear();
             controlChats.clear();
             controlReviews.clear();
             controlArchiveChecks.clear();
-            controlEpics.put(CONST_RELAY_HARDENING, relayHardeningResource());
-            controlEpics.put("relay-docs-epic", relayDocsEpicResource());
 
-            controlChats.put(CONST_FIX_RELAY, planChat());
-            controlChats.put(CONST_RELAY_HARDENING, epicChat());
-            controlChats.put(CONST_DOCS_TYPO, endedChat());
-
-            controlReviews.put(reviewKey(CONST_RELAY_HARDENING, FIELD_FINDINGS), findingsReview());
-            controlReviews.put(reviewKey(CONST_RELAY_HARDENING, "watches"), watchesReview());
-
-            controlArchiveChecks.put(CONST_RELAY_HARDENING, archiveCheckOpenFindings());
-            controlArchiveChecks.put("relay-docs-epic", archiveCheckReviewFirst());
+            var control = fixtureObject(startRuntimeFixture(), FIXTURE_CONTROL);
+            if (control == null) {
+                return;
+            }
+            var seed = readControlSeed(control);
+            controlPlanStates.putAll(seed.planStates());
+            controlPlanPausePoints.putAll(seed.pausePoints());
+            controlPlanEpics.putAll(seed.planEpics());
+            controlEpicStates.putAll(seed.epicStates());
+            controlEpicAuto.putAll(seed.epicAuto());
+            controlEpicScope.putAll(seed.epicScope());
+            controlEpicRunning.putAll(seed.epicRunning());
+            controlEpicOverlap.putAll(seed.epicOverlap());
+            controlHolds.putAll(seed.holds());
+            controlSettingsRevisions.putAll(seed.settingsRevisions());
+            controlSettings.putAll(seed.settings());
+            controlEpics.putAll(seed.epics());
+            controlChats.putAll(seed.chats());
+            controlReviews.putAll(seed.reviews());
+            controlArchiveChecks.putAll(seed.archiveChecks());
         }
+    }
+
+    /**
+     * The parsed control fixture, kept apart from the engine maps so a candidate scenario can be
+     * read (and refused) before the active scenario's state is cleared.
+     */
+    private record ControlSeed(
+    Map<String, String> planStates,
+    Map<String, String> pausePoints,
+    Map<String, String> planEpics,
+    Map<String, String> epicStates,
+    Map<String, Boolean> epicAuto,
+    Map<String, Integer> epicScope,
+    Map<String, Integer> epicRunning,
+    Map<String, Integer> epicOverlap,
+    Map<String, HoldRecord> holds,
+    Map<String, Integer> settingsRevisions,
+    Map<String, Map<String, PlanSettingsValue>> settings,
+    Map<String, EpicResource> epics,
+    Map<String, ChatReadBackResource> chats,
+    Map<String, ReviewResource> reviews,
+    Map<String, ArchiveCheck> archiveChecks) {
+    }
+
+    private static ControlSeed readControlSeed(Map<String, Object> control) {
+        var planStates = new LinkedHashMap<String, String>();
+        var pausePoints = new LinkedHashMap<String, String>();
+        var planEpics = new LinkedHashMap<String, String>();
+        for (var plan : fixtureObjects(control, "plans", "facts.runtime.control.plans")) {
+            var planId = JsonTree.string(plan, "plan_id");
+            if (planId == null || planId.isBlank()) {
+                throw new IllegalStateException("facts.runtime.control.plans names a plan without plan_id");
+            }
+            var state = JsonTree.string(plan, "state");
+            planStates.put(planId, state != null ? state : "running");
+            var epicId = JsonTree.string(plan, "epic_id");
+            if (epicId != null) {
+                planEpics.put(planId, epicId);
+            }
+            var pausePoint = JsonTree.string(plan, "pause_point");
+            if (pausePoint != null) {
+                pausePoints.put(planId, pausePoint);
+            }
+        }
+
+        var epicStates = new LinkedHashMap<String, String>();
+        var epicAuto = new LinkedHashMap<String, Boolean>();
+        var epicScope = new LinkedHashMap<String, Integer>();
+        var epicRunning = new LinkedHashMap<String, Integer>();
+        var epicOverlap = new LinkedHashMap<String, Integer>();
+        var epics = new LinkedHashMap<String, EpicResource>();
+        var archiveChecks = new LinkedHashMap<String, ArchiveCheck>();
+        var reviews = new LinkedHashMap<String, ReviewResource>();
+        for (var epic : fixtureObjects(control, "epics", "facts.runtime.control.epics")) {
+            var epicId = JsonTree.string(epic, "epic_id");
+            if (epicId == null || epicId.isBlank()) {
+                throw new IllegalStateException("facts.runtime.control.epics names an epic without epic_id");
+            }
+            var state = JsonTree.string(epic, "state");
+            epicStates.put(epicId, state != null ? state : "running");
+            epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
+            epicScope.put(epicId, intMember(epic, "scope"));
+            epicRunning.put(epicId, intMember(epic, "running"));
+            epicOverlap.put(epicId, intMember(epic, "overlap_max_files"));
+
+            var resource = fixtureObject(epic, "resource",
+                    "facts.runtime.control.epics." + epicId + ".resource");
+            if (resource != null) {
+                epics.put(epicId, readFixture(() -> EpicResource.fromMap(resource),
+                        "facts.runtime.control.epics." + epicId + ".resource"));
+            }
+            var archiveCheck = fixtureObject(epic, "archive_check",
+                    "facts.runtime.control.epics." + epicId + ".archive_check");
+            if (archiveCheck != null) {
+                archiveChecks.put(epicId, readFixture(() -> ArchiveCheck.fromMap(archiveCheck),
+                        "facts.runtime.control.epics." + epicId + ".archive_check"));
+            }
+            if (epic.containsKey("reviews")) {
+                var epicReviews = JsonTree.asObject(epic.get("reviews"));
+                if (epicReviews == null) {
+                    throw new IllegalStateException("facts.runtime.control.epics." + epicId
+                            + ".reviews must be an object");
+                }
+                epicReviews.forEach((register, value) -> {
+                    var map = JsonTree.asObject(value);
+                    if (map == null) {
+                        throw new IllegalStateException("facts.runtime.control.epics." + epicId
+                                + ".reviews." + register + " must be an object");
+                    }
+                    reviews.put(reviewKey(epicId, String.valueOf(register)),
+                            readFixture(() -> ReviewResource.fromMap(map),
+                                    "facts.runtime.control.epics." + epicId + ".reviews." + register));
+                });
+            }
+        }
+
+        var holds = new LinkedHashMap<String, HoldRecord>();
+        for (var hold : fixtureObjects(control, "holds", "facts.runtime.control.holds")) {
+            var record = readFixture(() -> HoldRecord.fromMap(hold), "facts.runtime.control.holds");
+            holds.put(holdKey(record.subjectId(), record.holdId()), record);
+        }
+
+        var settingsRevisions = new LinkedHashMap<String, Integer>();
+        var settings = new LinkedHashMap<String, Map<String, PlanSettingsValue>>();
+        for (var entry : fixtureObjects(control, "settings", "facts.runtime.control.settings")) {
+            var planId = JsonTree.string(entry, "plan_id");
+            if (planId == null || planId.isBlank()) {
+                throw new IllegalStateException("facts.runtime.control.settings names no plan_id");
+            }
+            var record = readFixture(() -> PlanSettingsRecord.fromMap(entry),
+                    "facts.runtime.control.settings." + planId);
+            settingsRevisions.put(planId, (int) record.revision());
+            var values = new LinkedHashMap<String, PlanSettingsValue>();
+            record.values().forEach(value -> values.put(value.aspect(), value));
+            settings.put(planId, values);
+        }
+
+        var chats = new LinkedHashMap<String, ChatReadBackResource>();
+        for (var chat : fixtureObjects(control, "chats", "facts.runtime.control.chats")) {
+            var record = readFixture(() -> ChatReadBackResource.fromMap(chat), "facts.runtime.control.chats");
+            chats.put(record.subjectId(), record);
+        }
+
+        return new ControlSeed(planStates, pausePoints, planEpics, epicStates, epicAuto, epicScope,
+                epicRunning, epicOverlap, holds, settingsRevisions, settings, epics, chats, reviews,
+                archiveChecks);
     }
 
     private static String reviewKey(String epicId, String register) {
         return epicId + ":" + register;
     }
 
-    private static EpicResource relayHardeningResource() {
-        var ws1 = new EpicWorkstream("WS-1", "Reconnect", true, List.of(
-                new WorkRow("relay-reconnect-backoff", "relay-reconnect-backoff", "shipped", null, null,
-                        List.of(), 211, null, null, List.of(), List.of(), List.of()),
-                new WorkRow("relay-cursor-order", "relay-cursor-order", "running", null, null,
-                        List.of(), null, null, null, List.of(), List.of(), List.of()),
-                new WorkRow("relay-reconnect-docs", "relay-reconnect-docs", "paused", null, null,
-                        List.of(), null, null, null, List.of(), List.of(), List.of()),
-                new WorkRow("relay-reconnect-metrics", "relay-reconnect-metrics", "staged", "none", null,
-                        List.of(), null, null, "measure the reconnect",
-                        List.of("the reconnect metrics"), List.of("pm-relay/src/metrics"), List.of())));
-        var ws2 = new EpicWorkstream("WS-2", "Authentication", true, List.of(
-                new WorkRow(CONST_RELAY_AUTH_V2, CONST_RELAY_AUTH_V2, "waiting for you", null, null,
-                        List.of(), null, null, null, List.of(), List.of(), List.of()),
-                new WorkRow("relay-token-rotation", "relay-token-rotation", "staged", "dependency",
-                        CONST_RELAY_AUTH_V2, List.of(), null, null, null, List.of(), List.of(), List.of()),
-                new WorkRow("relay-docs", "relay-docs", "staged", "overlap", CONST_RELAY_AUTH_V2,
-                        List.of("pm-api/src/store/Docs.java"), null, null, null, List.of(), List.of(), List.of())));
-        var tokens = new EpicTokens(
-                new TokenFigure(3_860_000L, 3_520_000L, 340_000L, true, true, 4, 1),
-                new TokenFigure(120_000L, 110_000L, 10_000L, true, false, 1, 0),
-                List.of(new PlanTokenFigure("relay-reconnect-backoff",
-                        new TokenFigure(1_400_000L, 1_300_000L, 100_000L, true, false, 2, 0))));
-        return new EpicResource(CONST_RELAY_HARDENING, CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CLIENTS, null,
-                "running", true, 0, 3, 3, null, List.of(ws1, ws2),
-                List.of("2 documents", "1 issue"), 2,
-                new RegisterSummary(3, 4, 2), new RegisterSummary(1, 4, 0), tokens,
-                List.of(new EpicEvent("2026-10-16T12:40:00Z", "relay-auth-v2 asks a decision"),
-                        new EpicEvent("2026-10-16T12:05:00Z",
-                                "relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered"),
-                        new EpicEvent("2026-10-16T11:55:00Z", "you paused relay-reconnect-docs")));
+    private static int intMember(Map<String, Object> map, String key) {
+        var value = JsonTree.integer(map, key);
+        return value != null ? value : 0;
     }
 
-    private static EpicResource relayDocsEpicResource() {
-        var docs = new WorkRow("relay-docs", "relay-docs", "handed back", null, null,
-                List.of(), 218, null, null, List.of(), List.of(), List.of());
-        return new EpicResource("relay-docs-epic", CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CLIENTS, null,
-                "landing", false, 0, 1, 0, null,
-                List.of(new EpicWorkstream("WS-1", "Docs", true, List.of(docs))),
-                List.of("1 document"), 1,
-                new RegisterSummary(0, 0, 0), new RegisterSummary(0, 0, 0),
-                new EpicTokens(TokenFigure.notMeasured(), TokenFigure.notMeasured(), List.of()),
-                List.of(new EpicEvent("2026-10-16T12:30:00Z", "the ledger is landing")));
+    /**
+     * Reads and refuses the candidate scenario's runtime fixture without activating it, so a
+     * malformed fixture cannot leave the engine half-switched.
+     *
+     * @param scenario the candidate scenario
+     */
+    private static void validateRuntimeFixture(Scenario scenario) {
+        var fixture = startRuntimeFixtureOf(scenario);
+        if (fixture == null) {
+            return;
+        }
+        var control = fixtureObject(fixture, FIXTURE_CONTROL);
+        if (control != null) {
+            readControlSeed(control);
+        }
+        for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
+            DecisionEnvelope.fromMap(entry);
+        }
+        for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
+            readFixture(() -> EpicDecomposition.fromMap(cut), "facts.runtime.decompositions");
+        }
     }
 
-    private static ChatReadBackResource planChat() {
-        return new ChatReadBackResource("C-0001", CONST_FIX_RELAY, "plan", "replan", "plan",
-                ChatState.READ_BACK.wireValue(),
-                List.of(new ChatTurnResource("operator", "Can the cursor test also cover the SSE transport?",
-                                CONST_TIME_10_14, false),
-                        new ChatTurnResource("replan", "Yes. TASK-4 tests one transport only; I propose a second test.",
-                                CONST_TIME_10_14, false)),
-                new ChatProposalResource("a test per transport",
-                        "TASK-4  cursor write order: a test for the websocket transport",
-                        "TASK-4  cursor write order: a test per transport, websocket and SSE",
-                        "after the current task"));
+    /**
+     * Reads a fixture with a {@code pm-api} codec, refusing a malformed fixture with the fixture
+     * path so the failure names the scenario data rather than an anonymous parse error.
+     *
+     * @param reader the codec call
+     * @param path   the fixture path for the failure message
+     * @param <T>    the decoded type
+     * @return the decoded fixture
+     */
+    private static <T> T readFixture(FixtureSupplier<T> reader, String path) {
+        try {
+            return reader.get();
+        } catch (IOException e) {
+            throw new IllegalStateException("Malformed " + path + ": " + e.getMessage(), e);
+        }
     }
 
-    private static ChatReadBackResource epicChat() {
-        return new ChatReadBackResource("C-0002", CONST_RELAY_HARDENING, "epic", "decompose", "epic",
-                ChatState.TURN.wireValue(),
-                List.of(new ChatTurnResource("operator", "Why does relay-docs wait?", CONST_TIME_10_14, false),
-                        new ChatTurnResource("decompose",
-                                "Its surface shares pm-api/src/store with relay-auth-v2; it waits for that plan.",
-                                CONST_TIME_10_14, false)),
-                null);
-    }
+    @FunctionalInterface
+    private interface FixtureSupplier<T> {
 
-    private static ChatReadBackResource endedChat() {
-        return new ChatReadBackResource("C-0003", CONST_DOCS_TYPO, "plan", "replan", "archive",
-                ChatState.OPEN.wireValue(),
-                List.of(new ChatTurnResource("operator", "Why was it cancelled?", CONST_TIME_10_14, false),
-                        new ChatTurnResource("replan", "You cancelled it: replaced by relay-v2.",
-                                CONST_TIME_10_14, false)),
-                null);
-    }
-
-    private static ReviewResource findingsReview() {
-        return new ReviewResource("R-0001", CONST_RELAY_HARDENING, FIELD_FINDINGS, List.of(
-                        new ReviewItemResource("F-0004", FIELD_FINDINGS, "Reconnect loses the last event",
-                                List.of("a fix must hold for every transport; covered by a test that drops the connection "
-                                        + "between delivery and cursor write"),
-                                "landing of relay-reconnect (#211) · 2 days ago", "trusted", "open",
-                                "Promote to a plan: it needs a change across two modules"),
-                        new ReviewItemResource("F-0005", FIELD_FINDINGS, "The retry count is not bounded",
-                                List.of("bound the retries"), "review comment of #212", "untrusted", "kept", null),
-                        new ReviewItemResource("F-0006", FIELD_FINDINGS, "A typo in the README",
-                                List.of(), "the plan's own review", "trusted", "dropped", null)),
-                2, 3, "item", null, null);
-    }
-
-    private static ReviewResource watchesReview() {
-        return new ReviewResource("R-0002", CONST_RELAY_HARDENING, "watches", List.of(
-                        new ReviewItemResource("W-0001", "watches", "The reconnect backoff grows without bound",
-                                List.of("check the backoff against the docs"), "the epic's review", "trusted", "watch", null),
-                        new ReviewItemResource("W-0002", "watches", "The cursor file is not fsynced",
-                                List.of(), "a later review", "trusted", "kept", null)),
-                2, 2, "open", null, null);
-    }
-
-    private static ArchiveCheck archiveCheckOpenFindings() {
-        return new ArchiveCheck(CONST_RELAY_HARDENING, List.of(
-                        new ArchiveCheckLine("control.archive.no_plan_active", true, null, null),
-                        new ArchiveCheckLine("control.archive.rows_ended", true, "11 shipped · 1 cancelled", null),
-                        new ArchiveCheckLine("control.archive.open_findings", false, "2", "review-findings"),
-                        new ArchiveCheckLine("control.archive.ledger_landed", true, null, null),
-                        new ArchiveCheckLine("control.archive.completion_reviewed", true, null, null),
-                        new ArchiveCheckLine("control.archive.carried", true, "3 kept findings · 5 watches", null)),
-                3, 5, false);
-    }
-
-    private static ArchiveCheck archiveCheckReviewFirst() {
-        return new ArchiveCheck("relay-docs-epic", List.of(), 0, 0, true);
+        /**
+         * @return the decoded fixture
+         * @throws IOException if the fixture is not the contract's shape
+         */
+        T get() throws IOException;
     }
 
     private void initDefaultStart() {
@@ -2737,44 +2877,42 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * Seeds the epic decomposition fixtures from the active scenario's runtime fixture
+     * ({@code facts.runtime.decompositions}), so the draft, its checks, and its later changes are
+     * declarative.
+     */
     private void initDefaultDecomposition() {
         synchronized (decompositionLock) {
             decompositions.clear();
-            decompositions.put(CONST_EPIC_RELAY_HARDENING, relayHardeningCut());
-            decompositions.put(CONST_EPIC_STORAGE_MIGRATION, storageMigrationCut());
+            seedDecompositions(startRuntimeFixture());
+            if (decompositions.isEmpty()) {
+                // The start scenarios have no decomposition of their own: a started epic shows the
+                // canonical draft the running-work scenario declares, the fixture every scenario
+                // carried before the consolidation.
+                seedDecompositions(defaultRuntimeFixture());
+            }
         }
     }
 
-    private static EpicDecomposition relayHardeningCut() {
-        var reconnectBackoff = new StagedPlanRecord("relay-reconnect-backoff", "relay-reconnect-backoff",
-                "reconnect the relay with backoff", List.of("pm-relay/src/reconnect"), List.of(),
-                StagedPlanRecord.STATUS_STAGED);
-        var cursorOrder = new StagedPlanRecord("relay-cursor-order", "relay-cursor-order",
-                "order the cursors across the nodes",
-                List.of("pm-relay/src/cursor", "pm-api/src/cursor"), List.of("relay-reconnect-backoff"),
-                StagedPlanRecord.STATUS_STAGED);
-        var authV2 = new StagedPlanRecord(CONST_PLAN_RELAY_AUTH_V2, CONST_PLAN_RELAY_AUTH_V2,
-                "a token exchange the relay renews by itself", List.of("pm-api/src/cursor"), List.of(),
-                StagedPlanRecord.STATUS_STAGED);
-        var tokenRotation = new StagedPlanRecord("relay-token-rotation", "relay-token-rotation",
-                "rotate the relay token", List.of("pm-relay/src/token"), List.of(CONST_PLAN_RELAY_AUTH_V2),
-                StagedPlanRecord.STATUS_STAGED);
-        return new EpicDecomposition(CONST_EPIC_RELAY_HARDENING, DecompositionState.DRAFT, 3,
-                List.of(new WorkstreamRecord("WS-1", "Reconnect", "the reconnect work", 1,
-                                List.of(reconnectBackoff, cursorOrder)),
-                        new WorkstreamRecord("WS-2", "Authentication", "the token work", 2,
-                                List.of(authV2, tokenRotation))),
-                List.of());
+    private void seedDecompositions(@Nullable Map<String, Object> fixture) {
+        for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
+            var decomposition = readFixture(() -> EpicDecomposition.fromMap(cut),
+                    "facts.runtime.decompositions");
+            decompositions.put(decomposition.epicId(), decomposition);
+        }
     }
 
-    private static EpicDecomposition storageMigrationCut() {
-        var schema = new StagedPlanRecord("storage-schema", "storage-schema", "the new schema",
-                List.of("pm-api/src/store"), List.of("storage-migrate"), StagedPlanRecord.STATUS_STAGED);
-        var migrate = new StagedPlanRecord("storage-migrate", "storage-migrate", "migrate the store",
-                List.of("pm-relay/src/store"), List.of("storage-schema"), StagedPlanRecord.STATUS_STAGED);
-        return new EpicDecomposition(CONST_EPIC_STORAGE_MIGRATION, DecompositionState.DRAFT, 1,
-                List.of(new WorkstreamRecord("WS-1", "Storage", "the store work", 1, List.of(schema, migrate))),
-                List.of());
+    /**
+     * @return the runtime fixture of the scenario the default fixtures live in, or {@code null}
+     */
+    private @Nullable Map<String, Object> defaultRuntimeFixture() {
+        if (StandardScenarios.RUNNING_WORK.equals(currentScenario.get().name())) {
+            return null;
+        }
+        var scenario = registry.resolve(StandardScenarios.RUNNING_WORK + ScenarioRegistry.STATE_SEPARATOR
+                + BASE_FIXTURE_STATE);
+        return runtimeFixtureOf(scenario, scenario.start());
     }
 
     private boolean handleDecompositionRoutes(MockHttpRequest request, MockHttpResponse response)
@@ -4266,6 +4404,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var update = PlanSettingsUpdateRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             var revision = controlSettingsRevisions.getOrDefault(planId, 1);
+            if ("ended".equals(controlPlanStates.get(planId))) {
+                response.json(409, PlanSettingsUpdateResult.tooLate("ended").toMap());
+                return;
+            }
             if (update.revision() != revision) {
                 response.json(409, PlanSettingsUpdateResult.conflict(revision, currentValue(planId, update.aspect())).toMap());
                 return;
@@ -4696,7 +4838,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean serveIntentFixture(MockHttpResponse response, String fixturePath, FixtureReader reader,
             String idField, String id) throws IOException {
-        var route = currentScenario.get().route("GET", fixturePath);
+        var route = activeRoute("GET", fixturePath);
         if (route == null) {
             return false;
         }
@@ -4975,7 +5117,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private boolean handleProjectOverviewRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
         if ("GET".equals(request.method()) && path.startsWith("/api/v1/projects/")) {
-            var route = currentScenario.get().route("GET", path);
+            var route = activeRoute("GET", path);
             if (route != null) {
                 if (path.endsWith("/ended")) {
                     handleEndedPageQuery(route, request.query() != null ? request.query() : "page=1", response);
@@ -7334,127 +7476,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * Seeds the open decisions from the active scenario's runtime fixture
+     * ({@code facts.runtime.decisions}), so a case state shows its own decisions, waivers, and
+     * quorum votes instead of a Java literal.
+     */
     private void initDefaultDecisions() {
         synchronized (decisionsLock) {
             openDecisions.clear();
-
-            // Q-007 (fix-relay)
-            var q007VotesOpt2 = List.of(
-                    new QuorumVote("implement", "claude-3.7-sonnet", 88, "Keeps git history linear"),
-                    new QuorumVote("architecture", "gemini-2.5-pro", 85, "Standard clean rebase")
-            );
-            var q007SupportOpt2 = new QuorumSupport(2, 3, 2, QuorumBand.CLEAR_MAJORITY,
-                    "the branch was pushed; a rebase rewrites what others pulled.", q007VotesOpt2);
-            var q007VotesOpt1 = List.of(
-                    new QuorumVote("quorum-b", "gpt-4o", 70, "The branch was pushed; a rebase rewrites what others pulled.")
-            );
-            var q007SupportOpt1 = new QuorumSupport(1, 3, 1, QuorumBand.CLEAR_MAJORITY, null, q007VotesOpt1);
-
-            var q007Opt1 = new DecisionOption("1", "Merge main into the branch", "Preserves commit SHAs", null, null, q007SupportOpt1);
-            var q007Opt2 = new DecisionOption("2", "Rebase onto main", "Keeps history linear", null, null, q007SupportOpt2);
-            var q007Opt3 = new DecisionOption("3", "Stop the plan and ask me later", "Pauses execution", null, null, null);
-
-            var q007Part = new DecisionPart("1", "How should the conflict be resolved?", AnswerType.ONE_OPTION,
-                    List.of(q007Opt1, q007Opt2, q007Opt3), "2", "Rebase onto main. Keeps the history linear.",
-                    "implement", null, true, true);
-
-            var q007 = new DecisionEnvelope(
-                    "Q-007", 1, "Resolve rebase conflict", "Conflict", "plan fix-relay",
-                    DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
-                    "The change conflicts with main in RelayServer.java.",
-                    Map.of("file", "RelayServer.java", "lines", "42-58", "summary", "both versions of the method"),
-                    List.of(q007Part), Instant.parse("2026-10-16T14:02:00Z"),
-                    false, null, null, null
-            );
-            openDecisions.put("Q-007", q007);
-
-            // Q-009 (drop-legacy-api)
-            var q009Opt1 = new DecisionOption("1", "Delete them now", null, "Breaking change for existing v1 consumers", null,
-                    new QuorumSupport(1, 3, 1, QuorumBand.SPLIT, "two clients of v1 are known; both migrated last week.",
-                            List.of(new QuorumVote("quorum-a", "model-a", 65, "Fast cleanup"))));
-            var q009Opt2 = new DecisionOption("2", "Deprecate them, delete in 0.11", null, "Deprecation header on v1 responses", null,
-                    new QuorumSupport(1, 3, 1, QuorumBand.SPLIT, null,
-                            List.of(new QuorumVote("architecture", "model-b", 80, "Graceful migration"))));
-            var q009Opt3 = new DecisionOption("3", "Keep them", null, "Maintains legacy code indefinitely", null,
-                    new QuorumSupport(1, 3, 1, QuorumBand.SPLIT, null,
-                            List.of(new QuorumVote("quorum-c", "model-c", 60, "Zero disruption"))));
-
-            var q009Part = new DecisionPart("1", "Delete the published v1 endpoints from the release branch?", AnswerType.ONE_OPTION,
-                    List.of(q009Opt1, q009Opt2, q009Opt3), "2", "Deprecate them, delete in 0.11.",
-                    "architecture", null, true, false);
-
-            var q009 = new DecisionEnvelope(
-                    "Q-009", 1, "Delete published v1 endpoints?", null, "plan drop-legacy-api",
-                    DecisionScope.PLAN, "finalize", "architecture", "plan", Reversibility.IRREVERSIBLE,
-                    "Delete the published v1 endpoints from the release branch?",
-                    Map.of("endpoints", "/api/v1/legacy, /api/v1/old"),
-                    List.of(q009Part), Instant.parse("2026-10-16T14:15:00Z"),
-                    false, null, null, null
-            );
-            openDecisions.put("Q-009", q009);
-
-            // Q-012 (storage-v2) - Multi-part
-            var q012Part1 = new DecisionPart("1", "Where does the data live?", AnswerType.ONE_OPTION,
-                    List.of(new DecisionOption("1", "A file per plan", "Isolated files", null, null, null),
-                            new DecisionOption("2", "One database for the machine", "Central storage", null, null, null)),
-                    "1", "A file per plan. Simple isolation.", "outline", null, true, false);
-            var q012Part2 = new DecisionPart("2", "How is it migrated?", AnswerType.ONE_OPTION,
-                    List.of(new DecisionOption("1", "At the first start of the new release", "Automatic migration", null, null, null),
-                            new DecisionOption("2", "By a verb the operator runs", "Manual control", null, null, null)),
-                    "1", "Automated transition.", "outline", "depends on part 1: A file per plan", true, false);
-            var q012Part3 = new DecisionPart("3", "Which format?", AnswerType.ONE_OPTION,
-                    List.of(new DecisionOption("1", "JSON lines", "Append-only text", null, null, null),
-                            new DecisionOption("2", "SQLite per plan", "Structured queries", null, null, null)),
-                    "1", "JSON lines matches repository standards.", "outline", null, true, false);
-
-            var q012 = new DecisionEnvelope(
-                    "Q-012", 1, "How should the new store be introduced?", null, "plan storage-v2",
-                    DecisionScope.PLAN, "outline", "outline", "plan", Reversibility.REVERSIBLE,
-                    "How should the new store be introduced?",
-                    Map.of("measurements", "current store size: 12MB"),
-                    List.of(q012Part1, q012Part2, q012Part3), Instant.parse("2026-10-16T14:30:00Z"),
-                    false, null, null, null
-            );
-            openDecisions.put("Q-012", q012);
-
-            // Q-031 (setup of pm-mcp-clients)
-            var q031Part = new DecisionPart("1", "Should the generated sources of pm-api be described as a module of their own?", AnswerType.ONE_OPTION,
-                    List.of(new DecisionOption("1", "yes", "Dedicated module entry", null, null, null),
-                            new DecisionOption("2", "no, with pm-api", "Keep bundled with pm-api", null, null, null)),
-                    "2", "no, with pm-api", "enrich", null, true, true);
-
-            var q031 = new DecisionEnvelope(
-                    "Q-031", 1, "Module description for generated sources", null, "setup of pm-mcp-clients",
-                    DecisionScope.PROJECT_SETUP, "descriptions", "enrich", "setup", Reversibility.REVERSIBLE,
-                    "Should the generated sources of pm-api be described as a module of their own?",
-                    null, List.of(q031Part), Instant.parse("2026-10-16T14:45:00Z"),
-                    false, null, null, null
-            );
-            openDecisions.put("Q-031", q031);
-
-            // WR-2 (fix-relay waiver)
-            var wr2 = new DecisionEnvelope(
-                    "WR-2", 1, "fix-relay asks for a waiver", null, "plan fix-relay",
-                    DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
-                    "The test needs a second machine the CI does not have.",
-                    Map.of("run", "CI run #412", "test", "RelayIntegrationTest.java"),
-                    List.of(), Instant.parse("2026-10-16T13:10:00Z"),
-                    true, "ci_check:integration-tests", "failing: needs second machine",
-                    "The test needs a second machine the CI does not have."
-            );
-            openDecisions.put("WR-2", wr2);
-
-            // WR-3 (session-log waiver)
-            var wr3 = new DecisionEnvelope(
-                    "WR-3", 1, "session-log asks for a waiver", null, "plan session-log",
-                    DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
-                    "the classes are generated by the annotation processor",
-                    Map.of(CONST_COVERAGE, "76%", FIELD_TARGET, "80%"),
-                    List.of(), Instant.parse("2026-10-16T14:02:00Z"),
-                    true, "coverage:pm-api", "76 %: 3 classes without a test",
-                    "the classes are generated by the annotation processor"
-            );
-            openDecisions.put("WR-3", wr3);
+            var fixture = startRuntimeFixture();
+            for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
+                var decision = DecisionEnvelope.fromMap(entry);
+                openDecisions.put(decision.id(), decision);
+            }
         }
     }
 
@@ -7802,7 +7836,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 1. If static route is defined for this exact process path, return it directly
-        var route = currentScenario.get().route("GET", path);
+        var route = activeRoute("GET", path);
         if (route != null) {
             response.json(route.status(), route.representation());
             return true;
@@ -7813,7 +7847,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var parts = path.split("/");
             if (parts.length >= 7 && "tasks".equals(parts[5])) {
                 var taskId = parts[6];
-                var defaultRoute = currentScenario.get().route("GET", "/api/v1/plans/fix-relay/tasks/TASK-003/activity");
+                var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/tasks/TASK-003/activity");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
                     var copy = new LinkedHashMap<String, Object>();
                     repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
@@ -7829,7 +7863,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!planId.contains("/")) {
-                var defaultRoute = currentScenario.get().route("GET", "/api/v1/plans/fix-relay/process");
+                var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
                     var copy = new LinkedHashMap<String, Object>();
                     repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
@@ -7846,7 +7880,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var sub = path.substring(PATH_EPICS_PREFIX.length());
             var epicId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!epicId.contains("/")) {
-                var defaultRoute = currentScenario.get().route("GET", "/api/v1/epics/relay-hardening/process");
+                var defaultRoute = activeRoute("GET", "/api/v1/epics/relay-hardening/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
                     var copy = new LinkedHashMap<String, Object>();
                     repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));

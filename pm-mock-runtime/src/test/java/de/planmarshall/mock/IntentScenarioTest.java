@@ -29,7 +29,6 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.intent.BuilderCheckResource;
-import de.planmarshall.api.intent.BuilderQuestion;
 import de.planmarshall.api.intent.CriterionStatus;
 import de.planmarshall.api.intent.DeliverableRecord;
 import de.planmarshall.api.intent.DoneWhenCheck;
@@ -38,6 +37,7 @@ import de.planmarshall.api.intent.IntentDecider;
 import de.planmarshall.api.intent.OutlineResource;
 import de.planmarshall.api.intent.OverSizeDistributionResource;
 import de.planmarshall.api.intent.PlanIntentResource;
+import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 
@@ -45,19 +45,8 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class IntentScenarioTest {
 
-    @Test
-    @DisplayName("every intent scenario loads and is registered")
-    void allIntentScenariosLoad() {
-        var cases = List.of(StandardScenarios.INTENT_PLAN, StandardScenarios.INTENT_OUTLINE,
-                StandardScenarios.INTENT_EPIC, StandardScenarios.INTENT_OVERSIZE);
-        assertTrue(StandardScenarios.ALL.containsAll(cases), "the standard list names every case");
-
-        for (var name : cases) {
-            var scenario = ScenarioLoader.load(name);
-            assertEquals(name, scenario.name());
-            assertFalse(scenario.start().isBlank(), name + " names its start state");
-        }
-    }
+    private static final String AUTH_HEADER = "Authorization";
+    private static final String STATE = StandardScenarios.RUNNING_WORK + "#intent.ready";
 
     @Nested
     @DisplayName("The plan's intent record")
@@ -66,8 +55,10 @@ class IntentScenarioTest {
         @Test
         @DisplayName("serves the intent record with its self-review and builder check")
         void servesIntentRecord() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.INTENT_PLAN)) {
-                assertEquals(StandardScenarios.INTENT_PLAN, runtime.currentScenarioName());
+            try (var runtime = MockRuntime.start(STATE)) {
+                assertEquals(StandardScenarios.RUNNING_WORK, runtime.currentScenarioName());
+                assertEquals("intent.ready", runtime.currentStateName());
+
                 var response = get(runtime, "/api/v1/plans/fix-relay/intent");
                 assertEquals(200, response.status(), response.bodyText());
 
@@ -94,7 +85,7 @@ class IntentScenarioTest {
                 assertEquals(1, check.recommendedQuestions().size());
                 assertEquals("BQ-001", check.operatorQuestions().getFirst().id());
                 assertTrue(check.operatorQuestions().getFirst().needsOperator());
-                assertEquals(BuilderQuestion.State.ANSWERED, check.questions().get(2).state());
+                assertEquals("BQ-003", check.questions().get(2).id());
                 assertEquals("AC-002", check.questions().get(2).answer());
 
                 assertTrue(intent.decisions().stream()
@@ -105,7 +96,7 @@ class IntentScenarioTest {
         @Test
         @DisplayName("answers another plan id from the same fixture")
         void servesAnotherPlanId() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.INTENT_PLAN)) {
+            try (var runtime = MockRuntime.start(STATE)) {
                 var response = get(runtime, "/api/v1/plans/other-plan/intent");
                 assertEquals(200, response.status(), response.bodyText());
                 assertEquals("other-plan", PlanIntentResource.fromJson(response.bodyText()).planId());
@@ -113,26 +104,13 @@ class IntentScenarioTest {
         }
 
         @Test
-        @DisplayName("serves no outline in the intent scenario and no intent in the outline scenario")
-        void routesAreScopedToTheScenario() throws Exception {
-            try (var intent = MockRuntime.start(StandardScenarios.INTENT_PLAN)) {
-                assertEquals(404, get(intent, "/api/v1/plans/fix-relay/outline").status());
-            }
-            try (var outline = MockRuntime.start(StandardScenarios.INTENT_OUTLINE)) {
-                assertEquals(404, get(outline, "/api/v1/plans/fix-relay/intent").status());
-            }
-        }
-
-        @Test
-        @DisplayName("a path without an id is answered mock_no_route, not a runtime error")
+        @DisplayName("a path without an id is answered mock_no_route")
         void pathWithoutId() throws Exception {
-            try (var intent = MockRuntime.start(StandardScenarios.INTENT_PLAN)) {
-                assertEquals(404, get(intent, "/api/v1/plans/intent").status());
-                assertEquals(404, get(intent, "/api/v1/plans/outline").status());
-                assertEquals(404, get(intent, "/api/v1/epics/intent").status());
-            }
-            try (var oversize = MockRuntime.start(StandardScenarios.INTENT_OVERSIZE)) {
-                assertEquals(404, get(oversize, "/api/v1/projects/metrics/oversize").status());
+            try (var runtime = MockRuntime.start(STATE)) {
+                assertEquals(404, get(runtime, "/api/v1/plans/intent").status());
+                assertEquals(404, get(runtime, "/api/v1/plans/outline").status());
+                assertEquals(404, get(runtime, "/api/v1/epics/intent").status());
+                assertEquals(404, get(runtime, "/api/v1/projects/metrics/oversize").status());
             }
         }
     }
@@ -144,7 +122,7 @@ class IntentScenarioTest {
         @Test
         @DisplayName("serves the deliverables, affected files, dependencies, and missing key link")
         void servesOutlineRecord() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.INTENT_OUTLINE)) {
+            try (var runtime = MockRuntime.start(STATE)) {
                 var response = get(runtime, "/api/v1/plans/fix-relay/outline");
                 assertEquals(200, response.status(), response.bodyText());
 
@@ -176,7 +154,7 @@ class IntentScenarioTest {
         @Test
         @DisplayName("serves the done-when checks with their evidence and each plan's criterion")
         void servesEpicIntent() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.INTENT_EPIC)) {
+            try (var runtime = MockRuntime.start(STATE)) {
                 var response = get(runtime, "/api/v1/epics/relay-hardening/intent");
                 assertEquals(200, response.status(), response.bodyText());
 
@@ -211,7 +189,7 @@ class IntentScenarioTest {
         @Test
         @DisplayName("serves the token buckets and the share the proposed multiple would flag")
         void servesDistribution() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.INTENT_OVERSIZE)) {
+            try (var runtime = MockRuntime.start(STATE)) {
                 var response = get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize");
                 assertEquals(200, response.status(), response.bodyText());
 
@@ -236,18 +214,19 @@ class IntentScenarioTest {
     }
 
     @Test
-    @DisplayName("every fixture is the contract's shape before it is served")
+    @DisplayName("every intent fixture is the contract's shape before it is served")
     void fixturesAreContractShaped() {
-        var planIntent = ScenarioLoader.load(StandardScenarios.INTENT_PLAN)
-                .route("GET", "/api/v1/plans/fix-relay/intent");
-        var outline = ScenarioLoader.load(StandardScenarios.INTENT_OUTLINE)
-                .route("GET", "/api/v1/plans/fix-relay/outline");
-        var epicIntent = ScenarioLoader.load(StandardScenarios.INTENT_EPIC)
-                .route("GET", "/api/v1/epics/relay-hardening/intent");
-        var oversize = ScenarioLoader.load(StandardScenarios.INTENT_OVERSIZE)
-                .route("GET", "/api/v1/projects/pm-mcp-clients/metrics/oversize");
+        var scenario = ScenarioLoader.load(StandardScenarios.RUNNING_WORK);
+        var planIntent = scenario.route("GET", "/api/v1/plans/fix-relay/intent");
+        var outline = scenario.route("GET", "/api/v1/plans/fix-relay/outline");
+        var epicIntent = scenario.route("GET", "/api/v1/epics/relay-hardening/intent");
+        var oversize = scenario.route("GET", "/api/v1/projects/pm-mcp-clients/metrics/oversize");
 
         assertAll(
+                () -> assertNotNull(planIntent),
+                () -> assertNotNull(outline),
+                () -> assertNotNull(epicIntent),
+                () -> assertNotNull(oversize),
                 () -> assertNotNull(PlanIntentResource.fromMap(
                         JsonTree.asObject(planIntent.representation()))),
                 () -> assertNotNull(OutlineResource.fromMap(
@@ -258,8 +237,31 @@ class IntentScenarioTest {
                         JsonTree.asObject(oversize.representation()))));
     }
 
+    @Test
+    @DisplayName("every state of the consolidated scenario decodes as an operator state")
+    void everyStateDecodes() throws Exception {
+        var scenario = ScenarioLoader.load(StandardScenarios.RUNNING_WORK);
+        assertEquals(38, scenario.states().size());
+        for (var entry : scenario.states().entrySet()) {
+            var representation = JsonTree.asObject(entry.getValue().representation());
+            assertNotNull(representation, entry.getKey());
+            assertEquals(entry.getKey(),
+                    JsonTree.string(JsonTree.object(representation, "state"), "state_id"), entry.getKey());
+            assertNotNull(OperatorStateResource.fromMap(representation),
+                    entry.getKey());
+        }
+        assertTrue(scenario.states().keySet().containsAll(List.of(
+                "overview.running", "overview.empty", "overview.setup-only", "overview.plan-ending",
+                "process.running", "process.loopback", "process.nested-3-deep", "process.pruned-lane",
+                "process.new-version", "process.failed-tool", "process.off-track",
+                "process.tokens-partial", "process.tokens-none", "process.tokens-not-measured",
+                "intent.ready", "decisions.open", "decisions.answered-elsewhere", "decisions.withdrawn",
+                "control.ready", "control.pause", "control.holds", "control.settings", "control.epic",
+                "control.decomposition", "control.chat", "control.review", "control.tokens")));
+    }
+
     private static HttpResponse get(MockRuntime runtime, String path) throws Exception {
         return new UnixSocketHttpClient(runtime.socketPath())
-                .send(HttpRequest.get(path).withHeader("Authorization", "Bearer " + runtime.token()));
+                .send(HttpRequest.get(path).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
     }
 }
