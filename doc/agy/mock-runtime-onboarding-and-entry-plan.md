@@ -51,7 +51,7 @@ Depends on Wave 1 (`mock-runtime-foundation-and-consolidation`, which already pr
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-onboarding-entry` on branch `feat/mock-runtime-onboarding-and-entry` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-onboarding-entry` on branch `feat/mock-runtime-onboarding-and-entry` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
