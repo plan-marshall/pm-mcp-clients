@@ -161,7 +161,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void loadInitialData(RuntimeClient runtime) {
+    void loadInitialData(RuntimeClient runtime) {
         fetchProjects(runtime);
         fetchUnreadReports(runtime);
 
@@ -187,7 +187,7 @@ public final class OverviewFullScreenApp {
         loadInitialSavedOrRoot(runtime, rootRows, projects, saved);
     }
 
-    private void loadInitialEnded(RuntimeClient runtime, List<TuiRow> rootRows, List<ProjectSummary> projects) {
+    void loadInitialEnded(RuntimeClient runtime, List<TuiRow> rootRows, List<ProjectSummary> projects) {
         stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, null);
         String targetProject = initialSelection.project();
         if ((targetProject == null || targetProject.isBlank()) && !projects.isEmpty()) {
@@ -198,7 +198,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void loadInitialSavedOrRoot(RuntimeClient runtime, List<TuiRow> rootRows,
+    void loadInitialSavedOrRoot(RuntimeClient runtime, List<TuiRow> rootRows,
                         List<ProjectSummary> projects, OverviewSavedState saved) {
         var savedProjectId = saved.projectId();
         if (savedProjectId != null && projects.stream().anyMatch(p -> p.projectId().equals(savedProjectId))) {
@@ -210,7 +210,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void fetchProjects(RuntimeClient runtime) {
+    void fetchProjects(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/projects"));
             if (response.status() == 200) {
@@ -221,7 +221,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void fetchUnreadReports(RuntimeClient runtime) {
+    void fetchUnreadReports(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/reports"));
             if (response.status() == 200) {
@@ -233,7 +233,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private boolean isCurrentProjectSetupNeedingOperator() {
+    boolean isCurrentProjectSetupNeedingOperator() {
         var detail = currentProjectDetail.get();
         var cached = cachedProjects.get();
         if (detail == null || cached == null) {
@@ -247,7 +247,7 @@ public final class OverviewFullScreenApp {
                             .orElse(false);
     }
 
-    private void openProject(RuntimeClient runtime, @Nullable String projectId, boolean byEpic, @Nullable String selectedId) {
+    void openProject(RuntimeClient runtime, @Nullable String projectId, boolean byEpic, @Nullable String selectedId) {
         if (projectId == null || projectId.isBlank()) {
             return;
         }
@@ -267,7 +267,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void openEnded(RuntimeClient runtime, @Nullable String projectId) {
+    void openEnded(RuntimeClient runtime, @Nullable String projectId) {
         if (projectId == null || projectId.isBlank()) {
             return;
         }
@@ -285,7 +285,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private synchronized TuiScreen buildScreen() {
+    synchronized TuiScreen buildScreen() {
         var lvl = stack.level();
         var breadcrumb = lvl != null ? lvl.title() : "";
         var kind = lvl != null ? lvl.kind() : TuiLevel.Kind.OVERVIEW;
@@ -330,7 +330,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void handleSseDisconnect() {
+    void handleSseDisconnect() {
         connected.set(false);
         terminal.raise(Terminal.Signal.WINCH);
         if (running.get()) {
@@ -343,7 +343,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void handleLiveEvent(@Nullable String eventName, @Nullable String data) {
+    void handleLiveEvent(@Nullable String eventName, @Nullable String data) {
         if (data == null || data.isBlank()) {
             return;
         }
@@ -372,7 +372,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private static boolean isStructuralChange(String name, String type) {
+    static boolean isStructuralChange(String name, String type) {
         if (name.startsWith("project.") || name.startsWith("phase.") || name.startsWith("scope.")
                             || name.startsWith("hold.") || name.startsWith("condition.") || name.startsWith("task.")
                             || "needs_operator.changed".equals(name) || "reset".equals(name)) {
@@ -382,7 +382,7 @@ public final class OverviewFullScreenApp {
                             || type.startsWith("hold.") || type.startsWith("condition.") || "reset".equals(type);
     }
 
-    private void refreshActiveLevels() {
+    void refreshActiveLevels() {
         TuiLevel.Kind targetKind;
         String targetProjectId;
         synchronized (this) {
@@ -411,7 +411,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private static @Nullable ProjectDetailResponse fetchTargetDetail(RuntimeClient runtime, TuiLevel.Kind kind, @Nullable String projectId) throws IOException {
+    static @Nullable ProjectDetailResponse fetchTargetDetail(RuntimeClient runtime, TuiLevel.Kind kind, @Nullable String projectId) throws IOException {
         if ((kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) && projectId != null) {
             var response = runtime.send(HttpRequest.get(PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId)));
             if (response.status() == 200) {
@@ -421,7 +421,7 @@ public final class OverviewFullScreenApp {
         return null;
     }
 
-    private static @Nullable EndedWorkPage fetchTargetEnded(RuntimeClient runtime, TuiLevel.Kind kind, @Nullable String projectId) throws IOException {
+    static @Nullable EndedWorkPage fetchTargetEnded(RuntimeClient runtime, TuiLevel.Kind kind, @Nullable String projectId) throws IOException {
         if (kind == TuiLevel.Kind.ENDED && projectId != null) {
             var response = runtime.send(HttpRequest.get(PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId) + "/ended?page=1"));
             if (response.status() == 200) {
@@ -431,7 +431,7 @@ public final class OverviewFullScreenApp {
         return null;
     }
 
-    private void applyRefreshedData(TuiLevel.Kind targetKind, @Nullable String targetProjectId,
+    void applyRefreshedData(TuiLevel.Kind targetKind, @Nullable String targetProjectId,
                         @Nullable ProjectDetailResponse fetchedDetail,
                         @Nullable EndedWorkPage fetchedEnded) {
         var currentLvl = stack.level();
@@ -459,7 +459,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private void saveState() {
+    void saveState() {
         try {
             var existing = stateStore.read().orElse(OverviewSavedState.empty());
             var lvl = stack.level();
@@ -492,7 +492,7 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
+    static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
         var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
         return switch (type) {
             case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
@@ -501,12 +501,24 @@ public final class OverviewFullScreenApp {
         };
     }
 
-    private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
+    static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
         if (category == ConsoleNoticeBuffer.Category.REPORT
                             && eventMap.get("count") instanceof Number number && number.intValue() > 1) {
             return Math.min(number.intValue(), 10_000);
         }
         return 1;
+    }
+
+    TuiScreenDriver.KeyHandler keyHandler() {
+        return new OverviewKeyHandler();
+    }
+
+    TuiViewStack stack() {
+        return stack;
+    }
+
+    void stop() {
+        running.set(false);
     }
 
     private final class OverviewKeyHandler implements TuiScreenDriver.KeyHandler {
