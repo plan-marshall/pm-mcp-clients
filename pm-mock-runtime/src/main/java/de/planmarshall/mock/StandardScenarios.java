@@ -9,6 +9,11 @@
  */
 package de.planmarshall.mock;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -23,6 +28,20 @@ import lombok.experimental.UtilityClass;
  */
 @UtilityClass
 public final class StandardScenarios {
+
+    /**
+     * The five canonical, user-facing scenarios of the mock runtime. They are the only entries the
+     * interactive launcher offers; the fine-grained case scenarios below remain resolvable through
+     * the legacy alias table of {@link de.planmarshall.mock.scenario.ScenarioRegistry} while the
+     * consolidation waves migrate them into these five files.
+     */
+    public static final String PROJECTS_AND_START = "projects-and-start";
+
+    /**
+     * The system and reports scenario: the reports inbox, plan completion reports, the runtime
+     * lifecycle (drain, stop, restart), and cleanup (UC-PLN-6, UC-SYS-1..3).
+     */
+    public static final String REPORTS_AND_SYSTEM = "reports-and-system";
 
     /**
      * Represents an idle runtime serving machine status ({@code /api/v1/status}).
@@ -410,6 +429,39 @@ public final class StandardScenarios {
     public static final String OPERATOR_INTERACTION = "operator-interaction";
 
     /**
+     * Unmodifiable list of the five canonical scenarios, in the order the launcher presents them.
+     * The list is loaded from {@code scenarios/primary.txt}, the one file {@code start.sh} reads too,
+     * so the Java catalog and the interactive menu cannot drift apart.
+     */
+    public static final List<String> PRIMARY_SCENARIOS = loadPrimaryScenarios();
+
+    /**
+     * @return the primary scenario names in launcher order
+     */
+    private static List<String> loadPrimaryScenarios() {
+        var resource = "scenarios/primary.txt";
+        var expectedCount = 5;
+        try (var in = StandardScenarios.class.getClassLoader().getResourceAsStream(resource)) {
+            if (in == null) {
+                throw new IllegalStateException("Missing classpath resource " + resource);
+            }
+            try (var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+                var names = reader.lines()
+                        .map(String::trim)
+                        .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                        .toList();
+                if (names.size() != expectedCount) {
+                    throw new IllegalStateException("Expected " + expectedCount
+                            + " primary scenarios in " + resource + ", found " + names.size());
+                }
+                return names;
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read " + resource, e);
+        }
+    }
+
+    /**
      * Unmodifiable list of all delivered standard scenario names. The entry cases are derived from
      * {@link #ENTRY_CASES}, so a new case is listed here by construction.
      */
@@ -429,7 +481,7 @@ public final class StandardScenarios {
                     START_CHAT, START_FOLLOW_UP,
                     LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
                     INTENT_PLAN, INTENT_OUTLINE, INTENT_EPIC, INTENT_OVERSIZE,
-                    OPERATOR_INTERACTION))
+                    OPERATOR_INTERACTION, PROJECTS_AND_START, REPORTS_AND_SYSTEM))
             .flatMap(List::stream)
             .toList();
 }

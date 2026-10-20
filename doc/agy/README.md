@@ -22,8 +22,8 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Mock** | [`mock-runtime-foundation-and-consolidation-plan.md`](mock-runtime-foundation-and-consolidation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-foundation` | `feat/mock-foundation` | Active (PR #125 under review / CI) |
-| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` | `feat/cli-fullscreen-overview` | Ready to execute (Step 1 complete) |
+| **Mock** | [`mock-runtime-onboarding-and-entry-plan.md`](mock-runtime-onboarding-and-entry-plan.md) | Next up for worktree allocation | `feat/mock-onboarding-and-entry` | Ready to launch (Foundation verified in PR #125) |
+| **CLI** | [`cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-overview` | `feat/cli-fullscreen-overview` | Active (in flight) |
 | **Web** | [`web-onboarding-entry-and-projects-plan.md`](web-onboarding-entry-and-projects-plan.md) | Next up for worktree allocation | `feat/web-onboarding-entry-and-projects` | Ready to launch (Foundation verified in PR #126) |
 
 ---
@@ -33,9 +33,9 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 As each active plan lands on `main` and passes Step 8 verification, subsequent plans are launched according to this dependency graph:
 
 ### Stream A: Mock Runtime Remediation (`pm-mock-runtime`)
-1. **Foundation (Active)**: `mock-runtime-foundation-and-consolidation-plan.md`
+1. **Foundation (Landed & Verified)**: [`mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md) ([Report](verified/mock-runtime-foundation-and-consolidation-plan-report.md) — PR #125, commit `589bfaf`)
    *(Core engine, closed schema, scoped SSE replay, JSON-RPC `/mcp`, 5-scenario architecture)*
-2. **Wave 2**: `mock-runtime-onboarding-and-entry-plan.md` & `mock-runtime-running-work-plan.md`
+2. **Wave 2 (Next Active)**: `mock-runtime-onboarding-and-entry-plan.md` & `mock-runtime-running-work-plan.md`
    *(Migrates onboarding, paired devices, and running-work fixtures into standard scenarios)*
 3. **Wave 3**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
    *(Migrates projects, starting work, reports, and system views into standard scenarios)*

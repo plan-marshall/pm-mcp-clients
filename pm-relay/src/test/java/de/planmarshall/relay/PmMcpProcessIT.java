@@ -43,6 +43,9 @@ import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.api.testsupport.StagedDaemon;
 import de.planmarshall.api.testsupport.VerificationResults;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.StandardScenarios;
 
 import picocli.CommandLine;
 
@@ -68,6 +71,7 @@ class PmMcpProcessIT {
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-mcp", PmMcp.class, MachinePaths.class,
             CommandLine.class, JsonFactory.class);
     private RuntimeFixture fixture;
+    private MockRuntime mock;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -76,17 +80,33 @@ class PmMcpProcessIT {
 
     @AfterEach
     void tearDown() throws IOException {
+        if (mock != null) {
+            mock.close();
+            mock = null;
+        }
         fixture.close();
     }
 
+    /**
+     * Starts the real mock runtime — the one HTTP/MCP implementation of PM-TEST-7 — for the tests
+     * that need a daemon and no fault.
+     */
+    private MockRuntime startMock() throws IOException {
+        mock = MockRuntime.start(MockRuntimeConfig.builder()
+                .scenario(StandardScenarios.STATUS_ONLY)
+                .build());
+        return mock;
+    }
+
     private Map<String, String> environment() {
-        var environment = new HashMap<>(fixture.environment());
+        var environment = new HashMap<>(mock != null ? mock.environment() : fixture.environment());
         environment.put("PATH", "/usr/bin:/bin");
         return environment;
     }
 
     private CliProcess relay(Map<String, String> environment) throws IOException {
-        return CliProcess.start(binary.with("serve", "--client", "claude"), environment, fixture.base().getParent());
+        var parent = mock != null ? mock.base().getParent() : fixture.base().getParent();
+        return CliProcess.start(binary.with("serve", "--client", "claude"), environment, parent);
     }
 
     private static FakeRuntimeServer.Handler mcp() {
@@ -108,7 +128,7 @@ class PmMcpProcessIT {
     @Test
     @DisplayName("writes only newline-framed JSON-RPC to stdout and ends on stdin EOF")
     void hygieneAndTermination() throws Exception {
-        fixture.start(mcp());
+        startMock();
         try (var process = relay(environment())) {
             var lines = new ArrayList<String>();
             process.send(INITIALIZE);
@@ -133,10 +153,14 @@ class PmMcpProcessIT {
             for (var line : lines) {
                 assertNotNull(JsonTree.asObject(JsonTree.parse(line)), line);
             }
-            assertEquals("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-11-25\"}}", lines.get(0));
+            var initialize = JsonTree.asObject(JsonTree.parse(lines.get(0)));
+            assertEquals(1, JsonTree.integer(initialize, "id"));
+            assertEquals("2025-11-25",
+                    JsonTree.string(JsonTree.object(initialize, "result"), "protocolVersion"));
             assertTrue(lines.get(1).contains("notifications/progress"));
-            assertEquals("{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{\"tools\":[{\"name\":\"pm_wait\",\"inputSchema\":"
-                    + "{\"type\":\"object\",\"properties\":{}}}]}}", lines.get(2));
+            var tools = JsonTree.asObject(JsonTree.parse(lines.get(2)));
+            assertEquals(2, JsonTree.integer(tools, "id"));
+            assertTrue(lines.get(2).contains("\"pm_wait\""));
             assertTrue(exitMillis < 2000, "exit after EOF took " + exitMillis + " ms");
             var values = new LinkedHashMap<String, Object>();
             values.put("mode", binary.mode());
@@ -149,7 +173,7 @@ class PmMcpProcessIT {
     @Test
     @DisplayName("forwards the host's initialize within the start budget (PM-TECH-3)")
     void startupToFirstForward() throws Exception {
-        var server = fixture.start(mcp());
+        var server = startMock();
         var samples = new ArrayList<Long>();
         for (var run = 0; run < STARTUP_RUNS; run++) {
             try (var process = relay(environment())) {
@@ -309,7 +333,7 @@ class PmMcpProcessIT {
     @Test
     @DisplayName("answers malformed stdin with a parse error and keeps relaying")
     void malformedStdin() throws Exception {
-        var server = fixture.start(mcp());
+        var server = startMock();
         try (var process = relay(environment())) {
             process.send("this is not JSON-RPC");
             var parseError = process.nextLine(WAIT);
@@ -335,7 +359,11 @@ class PmMcpProcessIT {
             assertEquals(1, server.requests().size(), "only the valid request was forwarded");
             assertTrue(server.requests().getFirst().bodyText().contains("\"method\":\"initialize\""),
                     "the forwarded request is the host's initialize");
-            assertEquals(INITIALIZE_RESULT, answered.text(), "the daemon's own initialize result is relayed");
+            var answer = JsonTree.asObject(JsonTree.parse(answered.text()));
+            assertEquals(1, JsonTree.integer(answer, "id"));
+            assertEquals("2025-11-25",
+                    JsonTree.string(JsonTree.object(answer, "result"), "protocolVersion"),
+                    "the daemon's own initialize result is relayed");
 
             var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
             assertEquals(parseError.text() + "\n" + answered.text() + "\n", stdout,

@@ -123,48 +123,67 @@ done
 FINAL_ARGS=()
 
 if [ "$HAS_SCENARIO" = false ]; then
-    # Discover available scenarios dynamically from source
+    # The five canonical scenarios of the consolidated catalog come from the same resource the Java
+    # catalog reads (StandardScenarios.PRIMARY_SCENARIOS), so the menu cannot drift from it. The
+    # fine-grained case files still exist during migration but are deliberately not offered here;
+    # -s <name> reaches any of them.
+    PRIMARY_FILE="$SCENARIOS_DIR/primary.txt"
     scenarios=()
-    if [ -d "$SCENARIOS_DIR" ]; then
-        for f in "$SCENARIOS_DIR"/*.json; do
-            if [ -f "$f" ]; then
-                bname="$(basename "$f" .json)"
-                scenarios+=("$bname")
-            fi
-        done
+    if [ -f "$PRIMARY_FILE" ]; then
+        while IFS= read -r line; do
+            case "$line" in
+                ''|'#'*) continue ;;
+            esac
+            scenarios+=("$line")
+        done < "$PRIMARY_FILE"
+    fi
+    if [ ${#scenarios[@]} -eq 0 ]; then
+        echo "Error: no primary scenarios in $PRIMARY_FILE" >&2
+        exit 1
     fi
 
-    if [ ${#scenarios[@]} -gt 0 ]; then
-        echo ""
-        echo "No scenario specified. Available scenarios (loaded dynamically from source):"
-        default_idx=1
-        for i in "${!scenarios[@]}"; do
-            idx=$((i + 1))
-            name="${scenarios[$i]}"
-            if [ "$name" = "onboarding-happy" ]; then
-                default_idx=$idx
-            fi
-            echo "  $idx) $name"
-        done
+    # Reads the one-line description from a scenario file, without requiring jq or python.
+    scenario_description() {
+        sed -n 's/^[[:space:]]*"description"[[:space:]]*:[[:space:]]*"\(.*\)",\{0,1\}[[:space:]]*$/\1/p' "$1" \
+            | head -n1
+    }
 
-        if [ -t 0 ]; then
-            echo -n "Select a scenario [1-${#scenarios[@]}] (default: $default_idx): "
-            read -r choice || choice=""
-            if [ -z "$choice" ]; then
-                choice=$default_idx
-            fi
-            if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#scenarios[@]}" ]; then
-                selected_scenario="${scenarios[$((choice - 1))]}"
-            else
-                echo "Invalid selection '$choice', defaulting to '${scenarios[$((default_idx - 1))]}'."
-                selected_scenario="${scenarios[$((default_idx - 1))]}"
-            fi
-        else
-            selected_scenario="${scenarios[$((default_idx - 1))]}"
-            echo "Non-interactive environment detected, defaulting to '$selected_scenario'."
+    echo ""
+    echo "No scenario specified. Available scenarios:"
+    default_idx=1
+    for i in "${!scenarios[@]}"; do
+        idx=$((i + 1))
+        name="${scenarios[$i]}"
+        description=""
+        if [ -f "$SCENARIOS_DIR/$name.json" ]; then
+            description="$(scenario_description "$SCENARIOS_DIR/$name.json")"
         fi
-        FINAL_ARGS+=(--scenario "$selected_scenario")
+        echo "  $idx) $name"
+        if [ -n "$description" ]; then
+            echo "     $description"
+        fi
+        if [ "$name" = "running-work" ]; then
+            default_idx=$idx
+        fi
+    done
+
+    if [ -t 0 ]; then
+        echo -n "Select a scenario [1-${#scenarios[@]}] (default: $default_idx): "
+        read -r choice || choice=""
+        if [ -z "$choice" ]; then
+            choice=$default_idx
+        fi
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#scenarios[@]}" ]; then
+            selected_scenario="${scenarios[$((choice - 1))]}"
+        else
+            echo "Invalid selection '$choice', defaulting to '${scenarios[$((default_idx - 1))]}'."
+            selected_scenario="${scenarios[$((default_idx - 1))]}"
+        fi
+    else
+        selected_scenario="${scenarios[$((default_idx - 1))]}"
+        echo "Non-interactive environment detected, defaulting to '$selected_scenario'."
     fi
+    FINAL_ARGS+=(--scenario "$selected_scenario")
 fi
 
 # A runtime started from another worktree or through `mvn exec:java` keeps no PID file here;

@@ -10,6 +10,7 @@
 package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,6 +32,7 @@ import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
 import de.planmarshall.mock.scenario.LinkDefinition;
+import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
@@ -277,6 +279,78 @@ class MockRuntimeEngineTest {
         assertEquals("mock_no_route", res.json().get("error"));
         assertEquals("runtime.idle", res.json().get("state"));
         assertNotNull(res.json().get("offered_links"));
+    }
+
+    @Test
+    @DisplayName("an unoffered domain endpoint answers mock_no_route naming the state")
+    void unofferedDomainIsNoRoute() throws Exception {
+        var auth = Map.of("Authorization", "Bearer test-token");
+
+        var system = send("GET", "/api/v1/system", auth, new byte[0], false);
+        assertEquals(404, system.status());
+        assertEquals("mock_no_route", system.json().get("error"));
+        assertEquals("runtime.idle", system.json().get("state"));
+
+        var decisions = send("GET", "/api/v1/decisions", auth, new byte[0], false);
+        assertEquals(404, decisions.status());
+        assertEquals("mock_no_route", decisions.json().get("error"));
+
+        // The domain a scenario declares is served.
+        engine.switchScenario(StandardScenarios.SYSTEM);
+        assertEquals(200, send("GET", "/api/v1/system", auth, new byte[0], false).status());
+    }
+
+    @Test
+    @DisplayName("every stateful handler family is classified as a live domain path")
+    void liveDomainPrefixesCoverHandlers() {
+        var representatives = List.of(
+                "/api/v1/reports",
+                "/api/v1/plans/p-1/process",
+                "/api/v1/epics/e-1/decomposition",
+                "/api/v1/entries/ent-1",
+                "/api/v1/projects/p-1",
+                "/api/v1/project-onboardings",
+                "/api/v1/explorer",
+                "/api/v1/overview",
+                "/api/v1/workflows",
+                "/api/v1/decisions",
+                "/api/v1/questions",
+                "/api/v1/system",
+                "/api/v1/operator/runtime/stop",
+                "/api/v1/runtime/stop",
+                "/api/v1/recipes",
+                "/api/v1/intake/draft",
+                "/api/v1/onboarding/auto",
+                "/api/v1/web",
+                "/api/v1/web/listeners/lan",
+                "/api/v1/status/connection",
+                "/api/v1/enrol",
+                "/api/v1/credentials/github",
+                "/api/v1/machine/decisions",
+                "/api/v1/machine/settings");
+        for (var path : representatives) {
+            assertTrue(MockRuntimeEngine.isLiveDomainPath(path), path + " must be a live domain path");
+        }
+        // The operator link convention is scenario-first, never a live domain.
+        assertFalse(MockRuntimeEngine.isLiveDomainPath("/api/v1/machine/links/yes"));
+        assertFalse(MockRuntimeEngine.isLiveDomainPath("/api/v1/status"));
+    }
+
+    @Test
+    @DisplayName("a scenario static route outside the live domains wins over the domain defaults")
+    void scenarioRouteWinsOutsideLiveDomains() throws Exception {
+        var state = new StateDefinition(Map.of("message", "start"), Map.of(), List.of(), null);
+        var testScenario = new Scenario(1, "route-precedence", "Route precedence", "start", null,
+                Map.of("GET /api/v1/custom/thing", new RouteDefinition(
+                        Map.of("value", "from-scenario"), 200)),
+                Map.of("start", state));
+        registry.register(testScenario);
+        engine.switchScenario("route-precedence");
+
+        var res = send("GET", "/api/v1/custom/thing", Map.of("Authorization", "Bearer test-token"),
+                new byte[0], false);
+        assertEquals(200, res.status());
+        assertEquals("from-scenario", res.json().get("value"));
     }
 
     @Test

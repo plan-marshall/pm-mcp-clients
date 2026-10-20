@@ -1,0 +1,313 @@
+{
+  "format_version": 1,
+  "name": "projects-and-start",
+  "description": "Project explorer, enrolment, git and store inspection, and starting plans and epics from every intake source (UC-PRJ-1..3, UC-STA-1..9)",
+  "start": "projects.explorer",
+  "pairing_code": "KXQB-MRTN",
+  "routes": {
+    "GET /api/v1/status": {
+      "representation": {
+        "status": "ready",
+        "version": "0.9.1",
+        "listener": "unix",
+        "machine": {
+          "name": "mock-machine",
+          "onboarded": true
+        },
+        "running_since": "08:14",
+        "workers_count": 2,
+        "build_slots_used": 1,
+        "build_slots_total": 2,
+        "web": {
+          "enabled": true,
+          "lan": true,
+          "port": 7420,
+          "open": true
+        }
+      }
+    },
+    "GET /api/v1/projects": {
+      "representation": {
+        "favourites": [
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "plan-marshall/pm-mcp-clients",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-clients",
+            "readiness": "ready",
+            "needs_operator_count": 2,
+            "setup_needs_summary": "decision",
+            "active_plans_count": 3,
+            "active_epics_count": 1,
+            "last_active": "2026-10-17T10:04:00Z",
+            "is_favourite": true,
+            "is_released": false
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "plan-marshall/pm-mcp-core",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-core",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 2,
+            "active_epics_count": 0,
+            "last_active": "2026-10-17T09:57:00Z",
+            "is_favourite": true,
+            "is_released": false
+          }
+        ],
+        "recent": [
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "remote_url": "https://github.com/plan-marshall/plan-marshall",
+            "readiness": "setup_needs",
+            "setup_needs_summary": "credential sonar",
+            "needs_operator_count": 1,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-16T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "cui-http",
+            "display_name": "de.cuioss:cui-http",
+            "remote_url": "https://github.com/cuioss/cui-http",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-14T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          }
+        ],
+        "all_projects": [
+          {
+            "project_id": "API-Sheriff",
+            "display_name": "API-Sheriff",
+            "remote_url": "https://github.com/plan-marshall/api-sheriff",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-09-12T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "cui-http",
+            "display_name": "de.cuioss:cui-http",
+            "remote_url": "https://github.com/cuioss/cui-http",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-14T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "legacy-portal",
+            "display_name": "legacy-portal",
+            "remote_url": "https://github.com/plan-marshall/legacy-portal",
+            "readiness": "released",
+            "needs_operator_count": 0,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-08-17T10:00:00Z",
+            "is_favourite": false,
+            "is_released": true
+          },
+          {
+            "project_id": "plan-marshall",
+            "display_name": "plan-marshall",
+            "remote_url": "https://github.com/plan-marshall/plan-marshall",
+            "readiness": "setup_needs",
+            "setup_needs_summary": "credential sonar",
+            "needs_operator_count": 1,
+            "active_plans_count": 0,
+            "active_epics_count": 0,
+            "last_active": "2026-10-16T10:00:00Z",
+            "is_favourite": false,
+            "is_released": false
+          },
+          {
+            "project_id": "pm-mcp-clients",
+            "display_name": "plan-marshall/pm-mcp-clients",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-clients",
+            "readiness": "ready",
+            "needs_operator_count": 2,
+            "setup_needs_summary": "decision",
+            "active_plans_count": 3,
+            "active_epics_count": 1,
+            "last_active": "2026-10-17T10:04:00Z",
+            "is_favourite": true,
+            "is_released": false
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "display_name": "plan-marshall/pm-mcp-core",
+            "remote_url": "https://github.com/plan-marshall/pm-mcp-core",
+            "readiness": "ready",
+            "needs_operator_count": 0,
+            "active_plans_count": 2,
+            "active_epics_count": 0,
+            "last_active": "2026-10-17T09:57:00Z",
+            "is_favourite": true,
+            "is_released": false
+          }
+        ],
+        "being_added": [
+          {
+            "checkout_path": "~/git/cui-parent",
+            "current_step": "Identity",
+            "step_number": 2,
+            "total_steps": 10,
+            "continue_link": "/api/v1/entries/ent-cui/continue",
+            "abandon_link": "/api/v1/entries/ent-cui/abandon"
+          }
+        ]
+      }
+    }
+  },
+  "states": {
+    "projects.explorer": {
+      "representation": {
+        "scope": "workspace",
+        "state": "projects.explorer",
+        "summary": "Project Explorer"
+      },
+      "links": {}
+    },
+    "start.sources": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "start.sources",
+          "kind": "operator_wait"
+        },
+        "links": []
+      },
+      "links": {}
+    },
+    "start.ready": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "start.ready",
+          "kind": "operator_wait"
+        },
+        "links": []
+      },
+      "links": {}
+    },
+    "start.recipe": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "start.recipe",
+          "kind": "operator_wait"
+        },
+        "links": []
+      },
+      "links": {}
+    }
+  },
+  "start_case": {
+    "project_id": "pm-mcp-clients",
+    "kind": "plan",
+    "state": "start.sources",
+    "landing": "landing.pull-request",
+    "documents_mode": "ask",
+    "lessons_available": true,
+    "local_changes": true,
+    "epic_auto_start": true,
+    "epic_auto_start_origin": "machine",
+    "parallelization_scope": 1,
+    "overlap_max_files": 0,
+    "title": "Start a plan in pm-mcp-clients",
+    "sources": [],
+    "recipes": [
+      {
+        "key": "agentfile-hygiene",
+        "name": "agentfile-hygiene",
+        "description": "classify and clean the agent files against the rubric",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": []
+      },
+      {
+        "key": "code-review",
+        "name": "code-review",
+        "description": "a structural and quality review of the current footprint",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "depth",
+            "value": "standard",
+            "options": [
+              "quick",
+              "standard",
+              "deep"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "lesson-cleanup",
+        "name": "lesson-cleanup",
+        "description": "turn one lesson into a slim, deterministic plan",
+        "origin": "domain",
+        "takes_request": false,
+        "parameters": []
+      },
+      {
+        "key": "audit",
+        "name": "audit",
+        "description": "audit the code against a request",
+        "origin": "project",
+        "takes_request": true,
+        "parameters": [
+          {
+            "name": "modules",
+            "value": "all 9",
+            "options": [
+              "all 9"
+            ],
+            "proposed": true,
+            "available": true
+          }
+        ]
+      },
+      {
+        "key": "no-modules",
+        "name": "no-modules",
+        "description": "a recipe whose parameter has no option",
+        "origin": "project",
+        "takes_request": false,
+        "parameters": [
+          {
+            "name": "modules",
+            "options": [],
+            "proposed": false,
+            "available": false,
+            "reason": "none the recipe can work on"
+          }
+        ]
+      }
+    ]
+  }
+}
