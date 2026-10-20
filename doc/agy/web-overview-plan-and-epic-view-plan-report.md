@@ -98,7 +98,8 @@ All 284 Vitest component/unit tests pass, the 10 targeted Playwright E2E tests p
 3. **Project link.** The plan names `ProjectExplorerView` and `/projects?project={id}`; the explorer now reads that query and filters to the project. This is a small additive change outside the view-ownership list, required for the link to land on the project's detail.
 4. **Pre-commit formatting churn.** The registry-served parent's OpenRewrite run realigned unrelated Java files (blank lines after imports). Those unrelated edits were reverted so the PR carries only this plan's footprint; the gate itself completed successfully. This is an upstream parent-artifact drift, not a source change of this plan.
 5. **E2E activity assertion.** The existing `plan-view.spec.js` array assertion no longer matched the scenario's seven activity entries; it now asserts the first three entries individually, preserving the intent.
-6. **Report location.** The report stays in `doc/agy/`; moving it to `doc/agy/verified/` is Step 8 and belongs to the orchestrator.
+6. **Sourcery AI budget.** Sourcery skipped its review because the account's seven-day diff-character budget (2,500,000) was exhausted; the PR carries no `skip-bot-review` label. CodeRabbit reviewed the change and every finding was addressed in `2332bd1`.
+7. **Report location.** The report stays in `doc/agy/`; moving it to `doc/agy/verified/` is Step 8 and belongs to the orchestrator.
 
 ---
 
