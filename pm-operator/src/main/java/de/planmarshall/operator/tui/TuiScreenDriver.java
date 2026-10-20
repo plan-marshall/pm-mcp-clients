@@ -44,8 +44,8 @@ import de.planmarshall.operator.OperatorContext;
  */
 public final class TuiScreenDriver {
 
-    /** The shortest poll wait; a key that arrives wakes the loop at once. */
-    static final long POLL_MILLIS = 50L;
+    /** The longest wait for a key before the view looks for a changed model again. */
+    static final long POLL_MILLIS = 250L;
 
     /** What a run of the driver ended with. */
     public enum Result {
@@ -177,15 +177,26 @@ public final class TuiScreenDriver {
         });
         boolean alternate = false;
         try {
-            enterAlternate();
             alternate = true;
+            enterAlternate();
             var display = new Display(terminal, true);
             var reader = new BindingReader(terminal.reader());
             var keyMap = keyMap();
+            TuiScreen previous = null;
+            int previousColumns = -1;
+            int previousRows = -1;
             boolean running = true;
             while (running) {
                 display.resize(terminal);
-                display.update(layout.render(renderer.screen(), terminal.getColumns(), terminal.getRows()), 0);
+                var screen = renderer.screen();
+                int columns = terminal.getColumns();
+                int rows = terminal.getRows();
+                if (!screen.equals(previous) || columns != previousColumns || rows != previousRows) {
+                    display.update(layout.render(screen, columns, rows), 0);
+                    previous = screen;
+                    previousColumns = columns;
+                    previousRows = rows;
+                }
                 int peeked = terminal.reader().peek(POLL_MILLIS);
                 if (peeked == NonBlockingReader.EOF) {
                     break;
