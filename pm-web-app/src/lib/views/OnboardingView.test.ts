@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import OnboardingView from './OnboardingView.svelte';
 import { runtimeStore } from '../stores/runtime';
 
@@ -118,5 +118,38 @@ describe('OnboardingView component', () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('This machine is ready');
     expect(screen.getByRole('button', { name: /add a project/i })).toBeInTheDocument();
+  });
+
+  it('opens at the step another screen asked for', async () => {
+    runtimeStore.set({
+      isInitialized: true,
+      isPaired: true,
+      isOnboarded: true,
+      deviceLabel: 'Test Browser',
+      machineName: 'mbp-oliver',
+      currentRoute: 'onboarding',
+      currentState: {
+        state: 'onboard.completed',
+        summary: 'Machine setup is complete',
+      },
+      onboarding: {
+        state: 'onboard.completed',
+        completed_steps: 7,
+        step_summaries: { '2': 'Claude Code 2.4.1 (default)' },
+      },
+      onboardingStep: 2,
+      isRevoked: false,
+      revokedReason: '',
+      isOffline: false,
+      isListenerClosed: false,
+      completedSteps: 7,
+      activeStep: 8,
+    });
+
+    render(OnboardingView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('step-summary')).toHaveTextContent('Claude Code 2.4.1 (default)');
+    });
   });
 });

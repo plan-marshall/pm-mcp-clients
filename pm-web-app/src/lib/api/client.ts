@@ -100,6 +100,112 @@ export interface ProjectExplorer {
   being_added: BeingAddedProject[];
 }
 
+/** How far one step of a project's onboarding has come. */
+export type ProjectOnboardingStepStatus =
+  'done' | 'current' | 'waiting' | 'skipped' | 'needs_repair';
+
+/** One step of a project's onboarding, as the runtime reports it. */
+export interface ProjectOnboardingStep {
+  /** The step's 1-based number, 1 to 10. */
+  step: number;
+  /** The catalogue suffix of the step's name, e.g. `identity`. */
+  key?: string | null;
+  /** The state that renders the step, e.g. `project.identity`. */
+  state?: string | null;
+  status: ProjectOnboardingStepStatus;
+  summary?: string | null;
+  reason?: string | null;
+}
+
+/**
+ * The build environment of a project's jobs: the operator's login environment as the terminal
+ * client captured it, never the runtime's own.
+ */
+export interface ProjectBuildEnvironment {
+  /** When the terminal client last captured it. */
+  captured_at?: string | null;
+  /** Who captured it, `terminal` or `web`; absent on the runtime's own copy. */
+  source?: string | null;
+  /** The command that captures it, for a machine that has none yet. */
+  command?: string | null;
+  /** The variables, for the line that opens to them. */
+  variables?: Record<string, string>;
+}
+
+/** One turn of the setup question chat. */
+export interface ProjectChatTurn {
+  role: string;
+  text: string;
+  at: string;
+  untrusted: boolean;
+}
+
+/**
+ * The representation of a project's onboarding (UC-PRJ-1).
+ *
+ * A run before its enrolment is addressed by its onboarding instance; after the enrolment the
+ * same run is reached by its project id. The view reads one shape either way.
+ */
+export interface ProjectOnboardingState {
+  project_id?: string | null;
+  onboarding_id?: string | null;
+  checkout_path?: string | null;
+  /** The step the run waits at, 1 to 10. */
+  step?: number | null;
+  total_steps?: number | null;
+  /** The state that renders the step, e.g. `project.identity`. */
+  state?: string | null;
+  summary?: string | null;
+  steps?: ProjectOnboardingStep[];
+  build_environment?: ProjectBuildEnvironment | null;
+  /** Whether the setup question chat is offered, and why not where it is not. */
+  chat_available?: boolean;
+  chat_disabled_reason?: string | null;
+  chat?: ProjectChatTurn[];
+  /** A value changed in another client meanwhile. */
+  conflict?: boolean;
+  current_value?: string | null;
+  wanted_value?: string | null;
+  detected_domains?: string[];
+  discovered_modules?: string[];
+  credentials_needed?: string[];
+  links?: Record<string, OnboardingLink | string>;
+  /** What the state reports of its own, for a step without a screen here. */
+  [key: string]: unknown;
+}
+
+/** One value of a project's own settings, with where it came from. */
+export interface ProjectSettingsValue {
+  aspect: string;
+  value?: string | null;
+  origin: string;
+  choices?: string[];
+}
+
+/** A project's own settings, at one revision. */
+export interface ProjectSettingsRecord {
+  project_id: string;
+  revision: number;
+  values: ProjectSettingsValue[];
+}
+
+/** The outcome of saving one value of a project's settings. */
+export interface ProjectSettingsUpdateResult {
+  applied: boolean;
+  conflict: boolean;
+  revision: number;
+  aspect?: string | null;
+  current_value?: string | null;
+}
+
+/** One value the operator wanted to change while another client changed it first. */
+export interface ProjectSettingsConflict {
+  aspect: string;
+  currentValue: string;
+  wantedValue: string;
+  revision: number;
+}
+
 export interface ProjectReleaseRequest {
   project_id: string;
   confirm_release: boolean;
@@ -1144,7 +1250,6 @@ export interface FollowUpProposal {
   proposal?: ChatProposal | null;
 }
 
-
 export interface RecipeParameter {
   name: string;
   value?: string;
@@ -1538,10 +1643,7 @@ export class ApiClient {
    * @param accept `true` to store the proposed description, `false` to discard it
    * @returns the entry's new representation
    */
-  public async answerChatProposal(
-    entryId: string,
-    accept: boolean,
-  ): Promise<StartStateResource> {
+  public async answerChatProposal(entryId: string, accept: boolean): Promise<StartStateResource> {
     const suffix = accept ? 'accept' : 'reject';
     return this.request<StartStateResource>(
       'POST',
@@ -1595,10 +1697,7 @@ export class ApiClient {
    * @param subjectId the ended plan or epic
    * @returns the opened entry
    */
-  public async acceptFollowUp(
-    projectId: string,
-    subjectId: string,
-  ): Promise<StartStateResource> {
+  public async acceptFollowUp(projectId: string, subjectId: string): Promise<StartStateResource> {
     return this.request<StartStateResource>(
       'POST',
       `/api/v1/ended/${encodeURIComponent(subjectId)}/chat/accept`,
@@ -1792,6 +1891,92 @@ export class ApiClient {
     await this.request('PUT', `/api/v1/projects/${encodeURIComponent(projectId)}/favourite`, {
       favourite,
     });
+  }
+
+  /**
+   * Persists the operator's order of the favourite projects.
+   *
+   * The order is the runtime's, so both clients and every paired browser show the same; the
+   * runtime records it with the marks (`PUT /api/v1/explorer/favourites`).
+   *
+   * @param projectIds the favourites in their new order
+   * @returns the order the runtime recorded
+   */
+  public async reorderFavouriteProjects(
+    projectIds: string[],
+  ): Promise<{ status: string; project_ids: string[] }> {
+    return this.updateFavourites(projectIds);
+  }
+
+  /**
+   * Reads a project's onboarding, driven by the runtime's setup state.
+   *
+   * @param projectId the project whose setup runs
+   * @returns the run's current representation
+   */
+  public async getProjectOnboarding(projectId: string): Promise<ProjectOnboardingState> {
+    return this.request<ProjectOnboardingState>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/onboarding`,
+    );
+  }
+
+  /**
+   * Applies one step of a project's onboarding.
+   *
+   * A value changed in another client meanwhile is refused with `conflict`, which this call
+   * returns rather than throws: the screen shows the current value beside the operator's choice.
+   *
+   * @param projectId the project whose setup runs
+   * @param step the step's id, e.g. `identity`, or `chat` for a question
+   * @param body the step's values
+   * @returns the run's new representation
+   */
+  public async stepProjectOnboarding(
+    projectId: string,
+    step: string,
+    body: Record<string, unknown> = {},
+  ): Promise<ProjectOnboardingState> {
+    return this.requestWithConflict<ProjectOnboardingState>(
+      'POST',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/onboarding/step`,
+      { step, ...body },
+    );
+  }
+
+  /**
+   * Reads the values a project sets of its own, with the revision the change applies to.
+   *
+   * @param projectId the project
+   * @returns its settings at one revision
+   */
+  public async getProjectSettings(projectId: string): Promise<ProjectSettingsRecord> {
+    return this.request<ProjectSettingsRecord>(
+      'GET',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/settings`,
+    );
+  }
+
+  /**
+   * Saves one value of a project's settings against the revision it was read at.
+   *
+   * @param projectId the project
+   * @param aspect the value's aspect, e.g. `landing`
+   * @param value the operator's choice
+   * @param expectedRevision the revision the screen showed
+   * @returns what happened; a refused change carries `conflict` and the current value
+   */
+  public async saveProjectSettings(
+    projectId: string,
+    aspect: string,
+    value: string | null,
+    expectedRevision: number,
+  ): Promise<ProjectSettingsUpdateResult> {
+    return this.requestWithConflict<ProjectSettingsUpdateResult>(
+      'PUT',
+      `/api/v1/projects/${encodeURIComponent(projectId)}/settings`,
+      { aspect, value, expected_revision: expectedRevision },
+    );
   }
 
   public async startProjectOnboarding(path: string): Promise<{ ok: boolean }> {
@@ -2247,11 +2432,22 @@ export class ApiClient {
     if (secret) {
       headers['Authorization'] = `Bearer ${secret}`;
     }
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers,
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers,
+        body: JSON.stringify(body),
+      });
+    } catch {
+      this.onOfflineCallback?.();
+      throw new Error('network_offline');
+    }
+    if (res.status === 401) {
+      this.clearAuth();
+      this.onRevokedCallback?.('unauthorized');
+      throw new Error('unauthorized');
+    }
     if (res.status === 409 || res.ok) {
       return (await res.json()) as T;
     }
