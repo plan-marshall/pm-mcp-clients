@@ -9,12 +9,15 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
@@ -101,6 +104,35 @@ class PmConsoleBehaviourTest {
         var text = rendered.toString(StandardCharsets.UTF_8);
         assertTrue(text.contains("2 questions stay open"), text);
         assertTrue(text.contains("exit or Ctrl+D again leaves"), text);
+    }
+
+    @Test
+    @DisplayName("a notice is held while the view is open and summarized when it leaves")
+    void noticesAreHeldWhileTheViewIsOpen() throws Exception {
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.enterFullScreen();
+            console.applyConsoleEvent("question", Map.of("type", "question", "id", "Q-1",
+                                "scope", "plan fix-relay", "summary", "blocks the plan"), reader);
+            console.applyConsoleEvent("report", Map.of("type", "report", "id", "r-1",
+                                "from", "pm-mcp-clients", "subject", "merged"), reader);
+
+            var printed = new StringWriter();
+            console.leaveFullScreen(new PrintWriter(printed));
+
+            assertAll(
+                                () -> assertFalse(rendered.toString(StandardCharsets.UTF_8).contains("Question Q-1"),
+                                                    rendered.toString(StandardCharsets.UTF_8)),
+                                () -> assertTrue(printed.toString().contains(
+                                                                        "While the overview was open: 1 decision arrived, 1 new report."),
+                                                    printed.toString())
+            );
+        }
     }
 
     @Test

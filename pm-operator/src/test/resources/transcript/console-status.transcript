@@ -1,6 +1,6 @@
 ✓ Runtime running (pm-mcpd 0.1.0-SNAPSHOT)
 ✓ Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)
-▪ 7 unread reports since {time} · reports shows them
+▪ 7 unread reports since <timestamp> · reports shows them
 pm › status
 runtime   running
 version   0.1.0-SNAPSHOT

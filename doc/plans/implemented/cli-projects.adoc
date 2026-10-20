@@ -4,9 +4,9 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-projects`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]; no roadmap milestone yet
+Serves:: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]; no roadmap milestone yet
 Where:: `pm-operator`
-Part of:: link:epic-clients.adoc[the client work]
+Part of:: link:../epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What
@@ -18,11 +18,11 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]
+* Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]
 * Specification: the sections link:project-contract.adoc[`project-contract`] implements in the contract, which this package shows
-* Design: link:../design/shared/project-explorer.adoc[Project Explorer]; link:../design/shared/project-onboarding.adoc[Project Onboarding]; link:../design/terminal-client/17-projects.adoc[Terminal Client, Projects]
+* Design: link:../../design/shared/project-explorer.adoc[Project Explorer]; link:../../design/shared/project-onboarding.adoc[Project Onboarding]; link:../../design/terminal-client/17-projects.adoc[Terminal Client, Projects]
 
 == Done When
 

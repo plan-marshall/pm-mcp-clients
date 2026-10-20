@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import java.util.TreeSet;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -103,6 +102,8 @@ class OverviewCatalogueTest {
                 "operator.overview.keys.switch_view",
                 "operator.overview.keys.help",
                 "operator.overview.keys.leave",
+                "operator.overview.keys.reload",
+                "operator.overview.keys.system",
                 "operator.overview.more_above",
                 "operator.overview.more_below",
                 "operator.overview.connected",

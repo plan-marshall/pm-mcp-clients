@@ -105,7 +105,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |nothing
 |epic clients
 
-|link:cli-onboarding.adoc[`cli-onboarding`]
+|link:implemented/cli-onboarding.adoc[`cli-onboarding`]
 |The console `pm-operator`: entry and onboarding
 |`done`
 |link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:implemented/entry-contract.adoc[`entry-contract`]
@@ -168,7 +168,7 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/cli-projects.adoc[`cli-projects`]
 |Projects in the terminal
 |`done`
-|link:implemented/project-contract.adoc[`project-contract`]; link:cli-onboarding.adoc[`cli-onboarding`]
+|link:implemented/project-contract.adoc[`project-contract`]; link:implemented/cli-onboarding.adoc[`cli-onboarding`]
 |epic clients
 
 |link:implemented/web-projects.adoc[`web-projects`]
@@ -204,13 +204,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:cli-actions.adoc[`cli-actions`]
 |Actions on plans and epics in the terminal
 |`open`
-|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]; link:cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-start.adoc[`cli-start`]
+|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]; link:implemented/cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-start.adoc[`cli-start`]
 |epic clients
 
 |link:web-actions.adoc[`web-actions`]
 |Actions on plans and epics in the web app
 |`open`
-|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:web-plan-view.adoc[`web-plan-view`]; link:implemented/web-start.adoc[`web-start`]
+|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:implemented/web-plan-view.adoc[`web-plan-view`]; link:implemented/web-start.adoc[`web-start`]
 |epic clients
 
 |link:implemented/start-contract.adoc[`start-contract`]
@@ -258,13 +258,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/cli-reports.adoc[`cli-reports`]
 |Reports and the completion report in the terminal
 |`done`
-|link:implemented/report-contract.adoc[`report-contract`]; link:implemented/system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view); link:cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
+|link:implemented/report-contract.adoc[`report-contract`]; link:implemented/system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view); link:implemented/cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:implemented/web-reports.adoc[`web-reports`]
 |Reports and the completion report in the web app
 |`done`
-|link:implemented/report-contract.adoc[`report-contract`]; link:implemented/system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
+|link:implemented/report-contract.adoc[`report-contract`]; link:implemented/system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
 |link:implemented/system-contract.adoc[`system-contract`]
@@ -303,7 +303,54 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/api-contract.adoc[`api-contract`]
 |Milestones 8, 10, 11, and 12
 
+|link:../agy/implemented/cli-fullscreen-foundation-plan.adoc[`cli-fullscreen-foundation`]
+|The full-screen TUI framework (`de.planmarshall.operator.tui`), the virtual-terminal screen-test harness, the cross-view design and key registry, and the CLI/config hygiene the TUI review found
+|`done`
+|link:implemented/cli-overview.adoc[`cli-overview`]; link:implemented/cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-projects.adoc[`cli-projects`]; link:implemented/cli-reports.adoc[`cli-reports`]; link:implemented/cli-system.adoc[`cli-system`]
+|epic clients
+
 |===
+
+[#full-screen-status]
+=== Full-Screen Status of the Terminal Packages
+
+The five terminal packages above were landed with their scrollback forms — the tree of `status` and
+`plans`, the printed plan and epic views, the printed projects, reports, and system views — and
+their full-screen forms were left to the foundation and the five plans it unblocks. This table
+records where each full-screen form now lives; a package's own row above stays `done` for the
+scrollback form it delivered.
+
+[cols="3,3,3",options="header"]
+|===
+|Package |Full-screen form |Delivered by
+
+|`cli-overview`
+|the frame, levels, key registry, narrow fallback, and the overview itself
+|link:../agy/implemented/cli-fullscreen-foundation-plan.adoc[`cli-fullscreen-foundation`] (frame); `cli-fullscreen-overview` (the overview)
+
+|`cli-plan-view`
+|the plan view as a level of the frame
+|`cli-fullscreen-plan-view`
+
+|`cli-projects`
+|the Explorer as the `projects` root, with the project levels
+|`cli-fullscreen-projects`
+
+|`cli-reports`
+|the unread reports as a level of the frame
+|`cli-fullscreen-reports-system`
+
+|`cli-system`
+|the system view as a level of the frame
+|`cli-fullscreen-reports-system`
+
+|`cli-actions`
+|the actions of a plan or epic, below its row
+|`cli-fullscreen-actions`
+|===
+
+The implementation plans of the full-screen forms are the `doc/agy/cli-fullscreen-*.md` files; they
+are staged plans of the client work and are not separate roadmap packages.
 
 The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
 

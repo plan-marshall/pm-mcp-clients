@@ -4,28 +4,28 @@
 link:README.adoc[Work packages of `pm-mcp-clients`] » `web-system`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]; no roadmap milestone yet
+Serves:: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]; no roadmap milestone yet
 Where:: `pm-web-app`
-Part of:: link:epic-clients.adoc[the client work]
+Part of:: link:../epic-clients.adoc[the client work]
 Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
 
 == What
 
-* *Design first*: no web design exists for these views. The package lays them out in the design system of `web-design` from the shared design, and has the operator accept the layout before building it: the entry _System_ in the frame beside the machine settings, the view as a route of its own (`/system`), the confirmations as dialogues over it, the progress line of a drain or an upgrade in the frame, the page of a stopped runtime, the cleanup as a route below it (`/system/cleanup`) with its confirmation as a dialogue (link:../design/web-app/README.adoc#structure[Web App, Structure]).
+* *Design first*: no web design exists for these views. The package lays them out in the design system of `web-design` from the shared design, and has the operator accept the layout before building it: the entry _System_ in the frame beside the machine settings, the view as a route of its own (`/system`), the confirmations as dialogues over it, the progress line of a drain or an upgrade in the frame, the page of a stopped runtime, the cleanup as a route below it (`/system/cleanup`) with its confirmation as a dialogue (link:../../design/web-app/README.adoc#structure[Web App, Structure]).
 * The system view with its six parts, live from `GET /api/v1/events`, each figure a link to what it counts, the window, the grouping, and per project remembered per browser; a figure unavailable with its reason, never `0`.
-* The models in tokens, never money: the total with its split per model or role, a floor with the calls not measured, the raw components in the line's detail (link:../design/shared/system.adoc#models[System, The Models]), in link:../design/shared/texts-and-languages.adoc#numbers[the number format of tokens].
+* The models in tokens, never money: the total with its split per model or role, a floor with the calls not measured, the raw components in the line's detail (link:../../design/shared/system.adoc#models[System, The Models]), in link:../../design/shared/texts-and-languages.adoc#numbers[the number format of tokens].
 * Stop, restart, and upgrade from a paired device, each with its confirmation and its choice of when; the drain's line with _Stop now_ and _Keep it running_ on every device; the stopped page with the command to copy, connecting again by itself; the restart's reconnect; the check behind its consent screen; the upgrade's check list, its withdraw, its failures; loading the app again after an upgrade, waiting where a field holds unsent text.
-* The cleanup (link:../design/shared/cleanup.adoc[Cleanup]): the job from the System view's line and from the report's detail, its summary, its details paged per project with a check box per item and _Check all_, _None_, an item opened read-only and back with the checks kept; _Delete…_ with its confirmation and progress, _Ask me again in 3 days_, _Ignore_; the decision of another device closing the job; _Kept for good_ with release; the residue figures; the durations in the machine settings (link:../design/web-app/machine-settings.adoc#cleanup[Web App, Machine Settings]) and a project's own under ④ Own settings of its setup.
+* The cleanup (link:../../design/shared/cleanup.adoc[Cleanup]): the job from the System view's line and from the report's detail, its summary, its details paged per project with a check box per item and _Check all_, _None_, an item opened read-only and back with the checks kept; _Delete…_ with its confirmation and progress, _Ask me again in 3 days_, _Ignore_; the decision of another device closing the job; _Kept for good_ with release; the residue figures; the durations in the machine settings (link:../../design/web-app/machine-settings.adoc#cleanup[Web App, Machine Settings]) and a project's own under ④ Own settings of its setup.
 * Every view at desktop and phone width, light and dark; texts from the catalogue only (area `system`).
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]
-* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI & Security § Web App]
+* Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]
+* Specification: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI & Security § Web App]
 * Specification: the sections link:system-contract.adoc[`system-contract`] implements in the contract, which this package shows
-* Design: link:../design/shared/system.adoc[System]; link:../design/shared/cleanup.adoc[Cleanup]; link:../design/web-app/machine-settings.adoc#cleanup[Web App, Machine Settings]; link:../design/web-app/README.adoc#structure[Web App, Structure]; the web app's views of `web-design`
+* Design: link:../../design/shared/system.adoc[System]; link:../../design/shared/cleanup.adoc[Cleanup]; link:../../design/web-app/machine-settings.adoc#cleanup[Web App, Machine Settings]; link:../../design/web-app/README.adoc#structure[Web App, Structure]; the web app's views of `web-design`
 
 == Done When
 

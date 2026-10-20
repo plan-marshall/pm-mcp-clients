@@ -86,9 +86,9 @@ public final class PlanCommand implements Callable<Integer> {
     @Option(names = "--all", description = "Show all details")
     boolean all;
 
-    @Option(names = "--depth", description = "Process tree depth: compact, standard, full")
-    @Nullable
-    String depth;
+    @Option(names = "--depth", paramLabel = "<n>",
+                        description = "Opens n levels of the process tree (default 3).")
+    int depth = -1;
 
     @Option(names = {"--task", "--activity"}, description = "Task ID for worker activity")
     @Nullable
@@ -140,7 +140,7 @@ public final class PlanCommand implements Callable<Integer> {
             }
 
             var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/process";
-            if (depth != null) {
+            if (depth > 0) {
                 path += "?depth=" + depth;
             }
             var response = runtime.send(HttpRequest.get(path));
@@ -427,25 +427,11 @@ public final class PlanCommand implements Callable<Integer> {
                             TokenFormat.formatTokens(tokens.output(), false, "en"));
     }
 
-    private static int parseDepth(@Nullable String depth, boolean all) {
+    private static int parseDepth(int depth, boolean all) {
         if (all) {
             return Integer.MAX_VALUE;
         }
-        if (depth == null || depth.isBlank()) {
-            return 3;
-        }
-        return switch (depth.toLowerCase()) {
-            case "compact", "1" -> 1;
-            case "standard", "2" -> 2;
-            case "full", "3" -> 3;
-            default -> {
-                try {
-                    yield Integer.parseInt(depth);
-                } catch (NumberFormatException e) {
-                    yield 3;
-                }
-            }
-        };
+        return depth > 0 ? depth : 3;
     }
 
     @Command(name = "add", description = "Starts a plan from its sources.")

@@ -59,6 +59,7 @@ public final class PmConsole {
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
     private final List<String> badges = new CopyOnWriteArrayList<>();
+    private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
 
     private volatile @Nullable String activePairingCode;
     private volatile @Nullable String activePairingUrl;
@@ -387,7 +388,9 @@ public final class PmConsole {
         var locale = locale();
         var notice = ConsoleNotice.fromEventMap(locale, eventMap);
         if (notice != null) {
-            reader.printAbove(notice);
+            if (!noticeBuffer.hold(categoryOf(eventMap))) {
+                reader.printAbove(notice);
+            }
             notifyOperator(reader.getTerminal(), eventMap);
         }
         var name = eventName != null ? eventName : "";
@@ -402,6 +405,41 @@ public final class PmConsole {
         } else if ("fresh_code".equals(type)) {
             activePairingCode = JsonTree.string(eventMap, "code");
             activePairingUrl = JsonTree.string(eventMap, "url");
+        }
+    }
+
+    private static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
+        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        return switch (type) {
+            case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "report", "report.sent" -> ConsoleNoticeBuffer.Category.REPORT;
+            default -> ConsoleNoticeBuffer.Category.NEED;
+        };
+    }
+
+    /**
+     * @return the buffer that holds notices while a full-screen view is open
+     */
+    public ConsoleNoticeBuffer noticeBuffer() {
+        return noticeBuffer;
+    }
+
+    /** Marks the start of a full-screen view: notices are held instead of printed above it. */
+    public void enterFullScreen() {
+        noticeBuffer.activate();
+    }
+
+    /**
+     * Marks the end of a full-screen view and prints one line of what arrived meanwhile.
+     *
+     * @param out the console's writer
+     */
+    public void leaveFullScreen(PrintWriter out) {
+        noticeBuffer.deactivate();
+        var summary = noticeBuffer.drainSummary(locale());
+        if (!summary.isEmpty()) {
+            out.println(summary);
+            out.flush();
         }
     }
 
