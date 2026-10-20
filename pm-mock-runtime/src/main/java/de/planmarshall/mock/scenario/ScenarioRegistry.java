@@ -123,6 +123,9 @@ public final class ScenarioRegistry {
             // cui-rewrite:disable InvalidExceptionUsageRecipe
         } catch (IllegalArgumentException missing) {
             var target = legacyAliases.get(nameOrPath);
+            if (target == null && nameOrPath.endsWith(".json")) {
+                target = legacyAliases.get(nameOrPath.substring(0, nameOrPath.length() - ".json".length()));
+            }
             if (target == null) {
                 throw missing;
             }
@@ -216,29 +219,29 @@ public final class ScenarioRegistry {
 
         private static void registerInto(ScenarioRegistry registry) {
             // Scenario 1: onboarding and entry.
-            registry.registerLegacyAlias("status-only", "onboarding#onboard.mode");
+            registry.registerLegacyAlias("status-only", "onboarding#status.only");
             registry.registerLegacyAlias("onboarding-happy", "onboarding#onboard.mode");
-            registry.registerLegacyAlias("onboarding-harness-not-logged-in", "onboarding#harness.blocked");
-            registry.registerLegacyAlias("onboarding-harness-tokens-complete", "onboarding#harness.enrol");
-            registry.registerLegacyAlias("onboarding-harness-tokens-partial", "onboarding#harness.enrol");
-            registry.registerLegacyAlias("onboarding-harness-tokens-not-reported", "onboarding#harness.enrol");
-            registry.registerLegacyAlias("onboarding-harness-all-failed", "onboarding#harness.blocked");
+            registry.registerLegacyAlias("onboarding-harness-not-logged-in", "onboarding#harness.not-logged-in");
+            registry.registerLegacyAlias("onboarding-harness-tokens-complete", "onboarding#harness.tokens-complete");
+            registry.registerLegacyAlias("onboarding-harness-tokens-partial", "onboarding#harness.tokens-partial");
+            registry.registerLegacyAlias("onboarding-harness-tokens-not-reported", "onboarding#harness.tokens-not-reported");
+            registry.registerLegacyAlias("onboarding-harness-all-failed", "onboarding#harness.all-failed");
             registry.registerLegacyAlias("onboarding-refusals", "onboarding#harness.consent");
-            registry.registerLegacyAlias("onboarding-unknown-harness", "onboarding#harness.add");
-            registry.registerLegacyAlias("onboarding-settings-conflict", "onboarding#settings.choose");
-            registry.registerLegacyAlias("web-pairing", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("entry", "onboarding#onboard.mode");
-            registry.registerLegacyAlias("entry-unonboarded", "onboarding#onboard.mode");
-            registry.registerLegacyAlias("entry-onboarding", "onboarding#onboard.mode");
-            registry.registerLegacyAlias("entry-paired-browser", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("entry-ssh-session", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("entry-fresh-code", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("entry-lan-conflict", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("entry-lan-credentials", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("entry-device-lifecycle", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("entry-stream-close", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("paired-devices", "onboarding#onboard.completed");
-            registry.registerLegacyAlias("operator-interaction", "onboarding#onboard.mode");
+            registry.registerLegacyAlias("onboarding-unknown-harness", "onboarding#harness.unknown");
+            registry.registerLegacyAlias("onboarding-settings-conflict", "onboarding#settings.conflict");
+            registry.registerLegacyAlias("web-pairing", "onboarding#web.pair");
+            registry.registerLegacyAlias("entry", "onboarding#entry.ready");
+            registry.registerLegacyAlias("entry-unonboarded", "onboarding#entry.unonboarded");
+            registry.registerLegacyAlias("entry-onboarding", "onboarding#entry.onboarding");
+            registry.registerLegacyAlias("entry-paired-browser", "onboarding#entry.paired-browser");
+            registry.registerLegacyAlias("entry-ssh-session", "onboarding#entry.ssh-session");
+            registry.registerLegacyAlias("entry-fresh-code", "onboarding#entry.fresh-code");
+            registry.registerLegacyAlias("entry-lan-conflict", "onboarding#entry.lan-conflict");
+            registry.registerLegacyAlias("entry-lan-credentials", "onboarding#entry.lan-credentials");
+            registry.registerLegacyAlias("entry-device-lifecycle", "onboarding#entry.device-lifecycle");
+            registry.registerLegacyAlias("entry-stream-close", "onboarding#entry.stream-close");
+            registry.registerLegacyAlias("paired-devices", "onboarding#entry.device-lifecycle");
+            registry.registerLegacyAlias("operator-interaction", "onboarding#wait.choose");
 
             // Scenario 2: running work, process view, decisions, and control.
             registry.registerLegacyAlias("plan-view", "running-work#running_work.active");

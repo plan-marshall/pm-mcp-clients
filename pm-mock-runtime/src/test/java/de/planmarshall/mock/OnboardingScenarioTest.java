@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,8 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.interaction.OperatorScopeKind;
+import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.onboarding.AutoResultItem;
 import de.planmarshall.api.onboarding.AutoResultReason;
@@ -43,6 +46,7 @@ import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
 import de.planmarshall.api.onboarding.TokenUsageCoverage;
+import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("OnboardingScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -55,6 +59,26 @@ class OnboardingScenarioTest {
         try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
             assertEquals(StandardScenarios.ONBOARDING, runtime.currentScenarioName());
             assertEquals("onboard.mode", runtime.currentStateName());
+        }
+    }
+
+    @Test
+    @DisplayName("every state carries an OperatorStateResource whose links the scenario links serve")
+    void shouldDecodeEveryStateAsAnOperatorState() throws Exception {
+        var scenario = ScenarioLoader.load(StandardScenarios.ONBOARDING);
+        // The consolidation of the guided, entry, device, and shared-interaction cases.
+        assertTrue(scenario.states().size() >= 60, "states: " + scenario.states().size());
+
+        for (var entry : scenario.states().entrySet()) {
+            var representation = JsonTree.asObject(entry.getValue().representation());
+            assertNotNull(representation, entry.getKey());
+            var state = OperatorStateResource.fromMap(representation);
+
+            assertEquals(entry.getKey(), state.stateId(), "state id of " + entry.getKey());
+            assertEquals(OperatorScopeKind.MACHINE, state.scope().kind());
+            assertEquals(entry.getValue().links().keySet(),
+                    state.links().stream().map(link -> link.id()).collect(Collectors.toSet()),
+                    "operator links of " + entry.getKey());
         }
     }
 
@@ -171,6 +195,47 @@ class OnboardingScenarioTest {
                 var harness = items.stream()
                         .filter(item -> item.aspect() == OnboardingAspect.HARNESSES).findFirst().orElseThrow();
                 assertEquals(AutoResultReason.ALL_SUPPORTED, harness.reason());
+            }
+        }
+
+        @Test
+        @DisplayName("reports the seven done aspects at the review step without completing the machine")
+        void shouldReportTheReviewStep() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("onboard.summary");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var stateRes = client.send(HttpRequest.get("/api/v1/onboarding/state")
+                        .withHeader("Authorization", auth));
+                var state = JsonTree.asObject(JsonTree.parse(new String(stateRes.body(), StandardCharsets.UTF_8)));
+                assertEquals(7, JsonTree.integer(state, "completed_steps"));
+                assertEquals(7, JsonTree.asObject(state.get("step_summaries")).size());
+
+                var statusRes = client.send(HttpRequest.get("/api/v1/status")
+                        .withHeader("Authorization", auth));
+                var status = JsonTree.asObject(JsonTree.parse(new String(statusRes.body(), StandardCharsets.UTF_8)));
+                var onboard = JsonTree.asObject(status.get("onboard"));
+                assertEquals("onboard.summary", JsonTree.string(onboard, "state"));
+                assertEquals(7, JsonTree.integer(onboard, "step"));
+                assertEquals(Boolean.FALSE, onboard.get("completed"));
+                assertEquals(Boolean.FALSE, status.get("onboarded"));
+            }
+        }
+
+        @Test
+        @DisplayName("keeps the route's onboarding progress for a state without an aspect")
+        void shouldKeepTheRouteProgressWithoutAnAspect() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("auto.consent");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var statusRes = client.send(HttpRequest.get("/api/v1/status")
+                        .withHeader("Authorization", auth));
+                var status = JsonTree.asObject(JsonTree.parse(new String(statusRes.body(), StandardCharsets.UTF_8)));
+                assertEquals("onboard.mode", JsonTree.string(JsonTree.asObject(status.get("onboard")), "state"));
+                assertEquals(Boolean.FALSE, status.get("onboarded"));
             }
         }
     }
@@ -385,7 +450,7 @@ class OnboardingScenarioTest {
                 var auth = Map.of("Authorization", "Bearer " + runtime.token());
 
                 var probe = step(client, auth, "check");
-                assertEquals("harness.probe", probe.get("state"));
+                assertEquals("harness.probe-failed", probe.get("state"));
                 var checks = JsonTree.asArray(probe.get("checks"));
                 assertEquals(2, checks.size());
                 for (var element : checks) {
@@ -406,19 +471,33 @@ class OnboardingScenarioTest {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = Map.of("Authorization", "Bearer " + runtime.token());
 
+                runtime.goToState("harness.consent");
                 assertEquals("harness.consent", step(client, auth, "no").get("state"));
                 assertEquals("harness.choose", step(client, auth, "yes").get("state"));
-                assertEquals("catalogue.consent", step(client, auth, "choose").get("state"));
+
+                runtime.goToState("catalogue.consent");
                 assertEquals("catalogue.consent", step(client, auth, "no").get("state"));
                 assertEquals("catalogue.select", step(client, auth, "no_advice").get("state"));
-                assertEquals("store.consent", step(client, auth, "set").get("state"));
+
+                runtime.goToState("store.consent");
                 assertEquals("store.consent", step(client, auth, "no").get("state"));
                 assertEquals("store.check", step(client, auth, "yes").get("state"));
-                assertEquals("providers.consent", step(client, auth, "continue").get("state"));
+
+                runtime.goToState("providers.consent");
                 assertEquals("providers.consent", step(client, auth, "no").get("state"));
                 assertEquals("providers.select", step(client, auth, "yes").get("state"));
-                assertEquals("defaults.review", step(client, auth, "set").get("state"));
-                assertEquals("onboard.completed", step(client, auth, "accept").get("state"));
+
+                runtime.goToState("roles.consent");
+                assertEquals("roles.review", step(client, auth, "no").get("state"));
+                runtime.goToState("roles.consent");
+                assertEquals("roles.validate", step(client, auth, "yes").get("state"));
+
+                runtime.goToState("providers.verify-consent");
+                assertEquals("providers.verify-consent", step(client, auth, "no").get("state"));
+                assertEquals("providers.verify", step(client, auth, "yes").get("state"));
+
+                runtime.goToState("defaults.review");
+                assertEquals("defaults.validate", step(client, auth, "accept").get("state"));
             }
         }
 
@@ -455,7 +534,7 @@ class OnboardingScenarioTest {
         @DisplayName("refuses a documents-mode change against an older revision and applies it again")
         void shouldRefuseAStaleSettingsChange() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_SETTINGS_CONFLICT)) {
-                assertEquals("settings.choose", runtime.currentStateName());
+                assertEquals("settings.conflict", runtime.currentStateName());
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
