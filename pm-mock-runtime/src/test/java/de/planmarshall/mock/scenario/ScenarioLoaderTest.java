@@ -47,6 +47,19 @@ class ScenarioLoaderTest {
     }
 
     @Test
+    @DisplayName("refuses a non-object runtime fixture in a state's facts")
+    void refusesNonObjectRuntimeFixture() {
+        var json = """
+                {"format_version":1,"name":"bad-runtime","start":"a.b",
+                 "states":{"a.b":{"representation":{"scope":{"kind":"machine"},
+                 "state":{"state_id":"a.b"},"facts":{"runtime":"not-an-object"},"links":[]}}}}
+                """;
+        var refused = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "bad-runtime"));
+        assertEquals("representation.facts.runtime", refused.field());
+    }
+
+    @Test
     @DisplayName("parses complete scenario details including routes, events, and auto-transitions")
     void parsesScenarioDetails() {
         var json = """
