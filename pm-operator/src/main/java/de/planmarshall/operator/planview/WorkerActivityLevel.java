@@ -83,10 +83,9 @@ public final class WorkerActivityLevel {
     }
 
     /**
-     * @param locale the interface locale
      * @return the header path from the plan through the leaf to the task
      */
-    public String breadcrumb(String locale) {
+    public String breadcrumb() {
         return PlanViewFormatting.clean(planId) + PlanViewFormatting.PATH_SEPARATOR
                             + PlanViewFormatting.clean(nodeId) + PlanViewFormatting.PATH_SEPARATOR
                             + PlanViewFormatting.clean(activity.taskId());

@@ -113,8 +113,8 @@ class WorkerActivityLevelTest {
         level.update(fresh);
         assertAll(
                             () -> assertTrue(text(level).contains("14:09:00")),
-                            () -> assertTrue(level.breadcrumb("en").startsWith("fix-relay")),
-                            () -> assertTrue(level.breadcrumb("en").endsWith("TASK-003")),
+                            () -> assertTrue(level.breadcrumb().startsWith("fix-relay")),
+                            () -> assertTrue(level.breadcrumb().endsWith("TASK-003")),
                             () -> assertEquals("fix-relay", level.planId()),
                             () -> assertEquals("execute.envelope", level.nodeId()),
                             () -> assertEquals("TASK-003", level.taskId())

@@ -222,7 +222,7 @@ public final class OverviewFullScreenApp {
         var saved = stateStore.read().orElse(OverviewSavedState.empty());
 
         if (initialSelection.plan() != null && !initialSelection.plan().isBlank()) {
-            openPlanAsRoot(runtime, initialSelection.plan(), null);
+            openPlanAsRoot(runtime, initialSelection.plan());
             return;
         }
 
@@ -339,9 +339,8 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    @SuppressWarnings("java:S2637")
-    void openPlanAsRoot(RuntimeClient runtime, String planId, @Nullable EndedInfo ended) {
-        if (!fetchPlan(runtime, planId, ended)) {
+    void openPlanAsRoot(RuntimeClient runtime, String planId) {
+        if (!fetchPlan(runtime, planId, null)) {
             return;
         }
         var view = currentPlanView.get();
@@ -377,12 +376,78 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    private boolean belowIsProject(TuiLevel.Kind kind, String projectId) {
-        if (stack.depth() < 2) {
-            return false;
+    void saveState() {
+        try {
+            var existing = stateStore.read().orElse(OverviewSavedState.empty());
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            var kind = lvl.kind();
+            if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
+                // A sub-level of a plan does not describe a place of the overview; keep the
+                // snapshot the operator had before opening it.
+                return;
+            }
+            var sel = stack.selected();
+            var selectedId = sel != null ? sel.id() : null;
+
+            String projectId = null;
+            String projectView = null;
+
+            if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
+                projectId = lvl.id();
+                projectView = kind == TuiLevel.Kind.PROJECT_BY_EPIC ? "epic" : "plan";
+            } else if (kind == TuiLevel.Kind.PLAN) {
+                var view = currentPlanView.get();
+                if (view != null) {
+                    projectId = view.projectId();
+                    projectView = view.epicId() != null ? "epic" : "plan";
+                    selectedId = view.planId();
+                }
+            }
+
+            var updated = new OverviewSavedState(
+                                projectId,
+                                projectView,
+                                selectedId,
+                                existing.systemWindow(),
+                                existing.systemGroupBy(),
+                                existing.systemProjectId()
+            );
+            stateStore.write(updated);
+        } catch (IOException _) {
+            // best effort persistence
         }
-        var below = stack.levelAt(stack.depth() - 2);
-        return below != null && below.kind() == kind && projectId.equals(below.id());
+    }
+
+    static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
+        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        return switch (type) {
+            case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "report", "report.sent" -> ConsoleNoticeBuffer.Category.REPORT;
+            default -> ConsoleNoticeBuffer.Category.NEED;
+        };
+    }
+
+    static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
+        if (category == ConsoleNoticeBuffer.Category.REPORT
+                            && eventMap.get("count") instanceof Number number && number.intValue() > 1) {
+            return Math.min(number.intValue(), 10_000);
+        }
+        return 1;
+    }
+
+    TuiScreenDriver.KeyHandler keyHandler() {
+        return new OverviewKeyHandler();
+    }
+
+    TuiViewStack stack() {
+        return stack;
+    }
+
+    void stop() {
+        running.set(false);
     }
 
     synchronized TuiScreen buildScreen() {
@@ -401,7 +466,7 @@ public final class OverviewFullScreenApp {
         } else if (kind == TuiLevel.Kind.PLAN_ACTIVITY) {
             var view = currentActivity.get();
             if (view != null) {
-                breadcrumb = view.breadcrumb(locale);
+                breadcrumb = view.breadcrumb();
             }
         } else if (kind == TuiLevel.Kind.PLAN_COMPLETION) {
             var view = currentCompletion.get();
@@ -599,9 +664,13 @@ public final class OverviewFullScreenApp {
         if (view == null || level == null) {
             return;
         }
+        var planId = level.id();
+        if (planId == null) {
+            return;
+        }
         try {
             var response = runtime.send(HttpRequest.get(PLANS_API_PREFIX
-                                + OperatorUrlUtil.encodePathSegment(level.id() != null ? level.id() : "") + "/process"));
+                                + OperatorUrlUtil.encodePathSegment(planId) + "/process"));
             if (response.status() != 200) {
                 return;
             }
@@ -644,79 +713,6 @@ public final class OverviewFullScreenApp {
         }
     }
 
-    void saveState() {
-        try {
-            var existing = stateStore.read().orElse(OverviewSavedState.empty());
-            var lvl = stack.level();
-            if (lvl == null) {
-                return;
-            }
-            var kind = lvl.kind();
-            if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
-                // A sub-level of a plan does not describe a place of the overview; keep the
-                // snapshot the operator had before opening it.
-                return;
-            }
-            var sel = stack.selected();
-            var selectedId = sel != null ? sel.id() : null;
-
-            String projectId = null;
-            String projectView = null;
-
-            if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-                projectId = lvl.id();
-                projectView = kind == TuiLevel.Kind.PROJECT_BY_EPIC ? "epic" : "plan";
-            } else if (kind == TuiLevel.Kind.PLAN) {
-                var view = currentPlanView.get();
-                if (view != null) {
-                    projectId = view.projectId();
-                    projectView = view.epicId() != null ? "epic" : "plan";
-                    selectedId = view.planId();
-                }
-            }
-
-            var updated = new OverviewSavedState(
-                                projectId,
-                                projectView,
-                                selectedId,
-                                existing.systemWindow(),
-                                existing.systemGroupBy(),
-                                existing.systemProjectId()
-            );
-            stateStore.write(updated);
-        } catch (IOException _) {
-            // best effort persistence
-        }
-    }
-
-    static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
-        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-        return switch (type) {
-            case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
-            case "report", "report.sent" -> ConsoleNoticeBuffer.Category.REPORT;
-            default -> ConsoleNoticeBuffer.Category.NEED;
-        };
-    }
-
-    static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
-        if (category == ConsoleNoticeBuffer.Category.REPORT
-                            && eventMap.get("count") instanceof Number number && number.intValue() > 1) {
-            return Math.min(number.intValue(), 10_000);
-        }
-        return 1;
-    }
-
-    TuiScreenDriver.KeyHandler keyHandler() {
-        return new OverviewKeyHandler();
-    }
-
-    TuiViewStack stack() {
-        return stack;
-    }
-
-    void stop() {
-        running.set(false);
-    }
 
     private final class OverviewKeyHandler implements TuiScreenDriver.KeyHandler {
 
@@ -1001,7 +997,7 @@ public final class OverviewFullScreenApp {
                 currentActivity.set(activity);
                 activityFollow.set(true);
                 var level = TuiLevel.of(TuiLevel.Kind.PLAN_ACTIVITY, planId + "/" + taskId,
-                                    activity.breadcrumb(locale));
+                                    activity.breadcrumb());
                 var rows = activity.rows(locale);
                 stack.push(level, rows, rows.isEmpty() ? null : rows.getLast().id());
                 return true;
@@ -1026,6 +1022,14 @@ public final class OverviewFullScreenApp {
             } catch (IOException | IllegalArgumentException _) {
                 return false;
             }
+        }
+
+        private boolean belowIsProject(TuiLevel.Kind kind, String projectId) {
+            if (stack.depth() < 2) {
+                return false;
+            }
+            var below = stack.levelAt(stack.depth() - 2);
+            return below != null && below.kind() == kind && projectId.equals(below.id());
         }
 
         private void jumpToPlanProject(RuntimeClient runtime) {
