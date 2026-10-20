@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import OverviewView from './OverviewView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 import {
   apiClient,
@@ -175,21 +176,23 @@ describe('OverviewView component', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp-oliver',
-      machineName: 'local-machine',
-      currentRoute: 'overview',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'local-machine',
+        currentRoute: 'overview',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+      }),
+    );
 
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue(mockProjects);
     vi.spyOn(apiClient, 'getProjectDetail').mockImplementation(async (id: string) => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import MachineSettingsView from './MachineSettingsView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type MachineSettingsRecord } from '../api/client';
 
 /**
@@ -78,23 +79,25 @@ describe('MachineSettingsView against the mock runtime states', () => {
     localStorage.clear();
     localStorage.setItem('pm_device_secret', 'secret123');
 
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp-oliver',
-      machineName: 'mbp-oliver',
-      currentRoute: 'machine-settings',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 7,
-      activeStep: 8,
-      unreadReportsCount: 0,
-      openDecisionsCount: 0,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'mbp-oliver',
+        currentRoute: 'machine-settings',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 7,
+        activeStep: 8,
+        unreadReportsCount: 0,
+        openDecisionsCount: 0,
+      }),
+    );
 
     vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue(settingsRecord());
   });

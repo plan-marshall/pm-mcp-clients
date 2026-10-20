@@ -2,27 +2,30 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import OnboardingView from './OnboardingView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 
 describe('OnboardingView component', () => {
   beforeEach(() => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: false,
-      deviceLabel: 'Test Browser',
-      machineName: 'mbp-oliver',
-      currentRoute: 'onboarding',
-      currentState: {
-        state: 'onboard.mode',
-        summary: 'Choose onboarding mode',
-      },
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: false,
+        deviceLabel: 'Test Browser',
+        machineName: 'mbp-oliver',
+        currentRoute: 'onboarding',
+        currentState: {
+          state: 'onboard.mode',
+          summary: 'Choose onboarding mode',
+        },
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+      }),
+    );
   });
 
   it('renders onboarding mode with 7 step overview', () => {
@@ -38,26 +41,28 @@ describe('OnboardingView component', () => {
   });
 
   it('renders consent box when in consent state', () => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: false,
-      deviceLabel: 'Test Browser',
-      machineName: 'mbp-oliver',
-      currentRoute: 'onboarding',
-      currentState: {
-        state: 'harness.consent',
-        summary: 'Look for coding agents',
-        looks_for: 'Claude Code, OpenCode, Aider',
-        runs: 'which claude, which opencode',
-      },
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 2,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: false,
+        deviceLabel: 'Test Browser',
+        machineName: 'mbp-oliver',
+        currentRoute: 'onboarding',
+        currentState: {
+          state: 'harness.consent',
+          summary: 'Look for coding agents',
+          looks_for: 'Claude Code, OpenCode, Aider',
+          runs: 'which claude, which opencode',
+        },
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 2,
+      }),
+    );
 
     render(OnboardingView);
 
@@ -69,24 +74,26 @@ describe('OnboardingView component', () => {
   });
 
   it('renders model working indicator when probing', () => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: false,
-      deviceLabel: 'Test Browser',
-      machineName: 'mbp-oliver',
-      currentRoute: 'onboarding',
-      currentState: {
-        state: 'harness.probe',
-        summary: 'Checking harnesses',
-      },
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 2,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: false,
+        deviceLabel: 'Test Browser',
+        machineName: 'mbp-oliver',
+        currentRoute: 'onboarding',
+        currentState: {
+          state: 'harness.probe',
+          summary: 'Checking harnesses',
+        },
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 2,
+      }),
+    );
 
     render(OnboardingView);
 
@@ -95,24 +102,26 @@ describe('OnboardingView component', () => {
   });
 
   it('renders completed card when onboard.completed is reached', () => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Test Browser',
-      machineName: 'mbp-oliver',
-      currentRoute: 'onboarding',
-      currentState: {
-        state: 'onboard.completed',
-        summary: 'Machine setup is complete',
-      },
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 8,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Test Browser',
+        machineName: 'mbp-oliver',
+        currentRoute: 'onboarding',
+        currentState: {
+          state: 'onboard.completed',
+          summary: 'Machine setup is complete',
+        },
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 8,
+      }),
+    );
 
     render(OnboardingView);
 
@@ -121,30 +130,32 @@ describe('OnboardingView component', () => {
   });
 
   it('opens at the step another screen asked for', async () => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Test Browser',
-      machineName: 'mbp-oliver',
-      currentRoute: 'onboarding',
-      currentState: {
-        state: 'onboard.completed',
-        summary: 'Machine setup is complete',
-      },
-      onboarding: {
-        state: 'onboard.completed',
-        completed_steps: 7,
-        step_summaries: { '2': 'Claude Code 2.4.1 (default)' },
-      },
-      onboardingStep: 2,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 7,
-      activeStep: 8,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Test Browser',
+        machineName: 'mbp-oliver',
+        currentRoute: 'onboarding',
+        currentState: {
+          state: 'onboard.completed',
+          summary: 'Machine setup is complete',
+        },
+        onboarding: {
+          state: 'onboard.completed',
+          completed_steps: 7,
+          step_summaries: { '2': 'Claude Code 2.4.1 (default)' },
+        },
+        onboardingStep: 2,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 7,
+        activeStep: 8,
+      }),
+    );
 
     render(OnboardingView);
 

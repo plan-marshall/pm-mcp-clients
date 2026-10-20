@@ -8,7 +8,7 @@
    * The screen stays in the language it was shown in until the choice is recorded; the
    * primary button names the two languages it records.
    */
-  export interface LanguageChoice {
+  interface LanguageChoice {
     interface: string;
     model: string;
     systemLocale?: string;

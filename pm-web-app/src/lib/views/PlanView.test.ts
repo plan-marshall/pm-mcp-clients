@@ -8,6 +8,7 @@ import {
   type TaskActivity,
 } from '../api/client';
 import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 
 describe('PlanView component', () => {
@@ -132,28 +133,30 @@ describe('PlanView component', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'test',
-      machineName: 'test-mac',
-      currentRoute: 'plan',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      isDraining: false,
-      isStopped: false,
-      activeStep: 1,
-      unreadReportsCount: 0,
-      openDecisionsCount: 0,
-      selectedPlanId: 'fix-relay',
-      selectedEpicId: 'relay-hardening',
-      selectedTaskId: 'TASK-003',
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'test',
+        machineName: 'test-mac',
+        currentRoute: 'plan',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        isDraining: false,
+        isStopped: false,
+        activeStep: 1,
+        unreadReportsCount: 0,
+        openDecisionsCount: 0,
+        selectedPlanId: 'fix-relay',
+        selectedEpicId: 'relay-hardening',
+        selectedTaskId: 'TASK-003',
+      }),
+    );
 
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(mockPlan);
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue(mockActivity);

@@ -236,7 +236,7 @@
       (item.sent_at && item.created_at && item.sent_at !== item.created_at);
 
     if (isSentLater) {
-      const sentStr = item.sent || item.sent_at;
+      const sentStr = item.sent || item.sent_at || '';
       return `${createdStr} · ${$t('report.list.sent_at', { time: sentStr })}`;
     }
     return createdStr;

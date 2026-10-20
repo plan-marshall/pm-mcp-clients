@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SystemView from './SystemView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type SystemSnapshot } from '../api/client';
 
 describe('SystemView component', () => {
@@ -114,26 +115,28 @@ describe('SystemView component', () => {
   };
 
   beforeEach(() => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp',
-      machineName: 'mbp-oliver',
-      currentRoute: 'system',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      isDraining: false,
-      drainInfo: null,
-      isStopped: false,
-      stoppedInfo: null,
-      activeStep: 1,
-      unreadReportsCount: 0,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp',
+        machineName: 'mbp-oliver',
+        currentRoute: 'system',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        isDraining: false,
+        drainInfo: null,
+        isStopped: false,
+        stoppedInfo: null,
+        activeStep: 1,
+        unreadReportsCount: 0,
+      }),
+    );
     vi.restoreAllMocks();
   });
 

@@ -12,6 +12,7 @@
     type ProcessTokens,
     type ProcessEndedInfo,
     type TokenBreakdownItem,
+    type ActivityEntry,
   } from '../api/client';
   import {
     runtimeStore,
@@ -40,7 +41,8 @@
     plan?.ended ??
       ($runtimeStore.selectedPlanEnded?.plan_id === plan?.plan_id
         ? $runtimeStore.selectedPlanEnded
-        : null),
+        : null) ??
+      null,
   );
 
   let tokenBreakdown: {
@@ -174,6 +176,37 @@
     return null;
   }
 
+  /**
+   * Reads one live-activity event into an entry.
+   *
+   * The stream reports the entry either directly (`task.activity`) or inside an `entry` field
+   * (`activity`); a text entry names its body `text` in one and `content` in the other.
+   */
+  function toActivityEntry(event: string, data: unknown): ActivityEntry | null {
+    if (event !== 'task.activity' && event !== 'activity') return null;
+    if (!data || typeof data !== 'object') return null;
+    const payload = data as Record<string, unknown>;
+    const source =
+      payload.entry && typeof payload.entry === 'object'
+        ? (payload.entry as Record<string, unknown>)
+        : payload;
+    if (typeof source.kind !== 'string') return null;
+    return {
+      timestamp: typeof source.timestamp === 'string' ? source.timestamp : '',
+      kind: source.kind,
+      tool_name: (source.tool_name as string | null | undefined) ?? null,
+      tool_target: (source.tool_target as string | null | undefined) ?? null,
+      tool_failed: source.tool_failed === true,
+      content:
+        (source.content as string | null | undefined) ??
+        (source.text as string | undefined) ??
+        null,
+      size: (source.size as string | null | undefined) ?? null,
+      files: Array.isArray(source.files) ? (source.files as string[]) : [],
+      questions: Array.isArray(source.questions) ? (source.questions as string[]) : [],
+    };
+  }
+
   async function loadTaskActivity(pId: string, tId: string) {
     if (unsubscribeActivity) {
       unsubscribeActivity();
@@ -183,11 +216,12 @@
     isLoadingActivity = true;
     try {
       taskActivity = await apiClient.getTaskActivity(pId, tId);
-      unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (newEntry) => {
-        if (taskActivity) {
+      unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (event, data) => {
+        const entry = toActivityEntry(event, data);
+        if (taskActivity && entry) {
           taskActivity = {
             ...taskActivity,
-            entries: [...taskActivity.entries, newEntry],
+            entries: [...taskActivity.entries, entry],
           };
         }
       });
@@ -424,7 +458,7 @@
             <span class="breadcrumb-sep">›</span>
             <button
               class="breadcrumb-link"
-              onclick={() => openEpic(plan.epic!.epic_id)}
+              onclick={() => openEpic(plan!.epic!.epic_id)}
               data-testid="breadcrumb-epic"
             >
               {plan.epic.title || plan.epic.epic_id}

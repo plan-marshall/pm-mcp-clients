@@ -738,7 +738,7 @@ describe('start-recipe: parameters, the derived id and its run', () => {
   it('chooses a recipe, sets its parameters and shows the derived read-only id', async () => {
     arrangeOpen(
       representation({
-        entry: entry({ state: 'start.recipe', recipes: RECIPES }),
+        entry: entry({ state: 'start.recipe', recipe: RECIPES[0] }),
         recipes: RECIPES,
       }),
     );
@@ -746,7 +746,7 @@ describe('start-recipe: parameters, the derived id and its run', () => {
       .spyOn(apiClient, 'actEntry')
       .mockResolvedValueOnce(
         representation({
-          entry: entry({ state: 'recipe.parameters', recipe: RECIPES[0], recipes: RECIPES }),
+          entry: entry({ state: 'recipe.parameters', recipe: RECIPES[0] }),
           recipes: RECIPES,
         }),
       )

@@ -10,7 +10,7 @@
    * Tokens, never money: every figure is a token count or a floor estimate, and no price or
    * cost of a model is ever shown.
    */
-  export interface ModelRow {
+  interface ModelRow {
     harness_id: string;
     model_id: string;
     source?: string;

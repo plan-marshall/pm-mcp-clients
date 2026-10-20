@@ -8,7 +8,7 @@
    * Every found harness is listed with its version, its path and whether it can run workers;
    * what it reports of its tokens stands below it as information, never as a condition.
    */
-  export interface HarnessRow {
+  interface HarnessRow {
     harness_id: string;
     name: string;
     path?: string;

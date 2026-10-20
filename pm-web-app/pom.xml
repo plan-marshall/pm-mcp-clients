@@ -18,6 +18,7 @@
         <maven.jar.plugin.automatic.module.name>de.planmarshall.web.app</maven.jar.plugin.automatic.module.name>
         <skip.lint>false</skip.lint>
         <skip.npm.build>false</skip.npm.build>
+        <skip.typecheck>false</skip.typecheck>
         <sonar.sources>src</sonar.sources>
         <sonar.tests>src</sonar.tests>
         <sonar.test.inclusions>**/*.test.ts,**/*.test.js</sonar.test.inclusions>
@@ -91,6 +92,20 @@
                         <configuration>
                             <arguments>run lint</arguments>
                             <skip>${skip.lint}</skip>
+                        </configuration>
+                    </execution>
+                    <!-- The type check is the gate the editor already shows: 'run build' transpiles the
+                         sources without checking their types, so a type error would otherwise reach
+                         main while the editor reports it on every file. -->
+                    <execution>
+                        <id>npm-typecheck</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <arguments>run check</arguments>
+                            <skip>${skip.typecheck}</skip>
                         </configuration>
                     </execution>
                 </executions>

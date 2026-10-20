@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import EpicView from './EpicView.svelte';
 import { apiClient, type EpicProcess } from '../api/client';
 import { runtimeStore, navigateTo, openPlanView, openEpicView } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 
 describe('EpicView component', () => {
@@ -49,28 +50,30 @@ describe('EpicView component', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'test',
-      machineName: 'test-mac',
-      currentRoute: 'epic',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      isDraining: false,
-      isStopped: false,
-      activeStep: 1,
-      unreadReportsCount: 0,
-      openDecisionsCount: 0,
-      selectedPlanId: null,
-      selectedEpicId: 'relay-hardening',
-      selectedTaskId: null,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'test',
+        machineName: 'test-mac',
+        currentRoute: 'epic',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        isDraining: false,
+        isStopped: false,
+        activeStep: 1,
+        unreadReportsCount: 0,
+        openDecisionsCount: 0,
+        selectedPlanId: null,
+        selectedEpicId: 'relay-hardening',
+        selectedTaskId: null,
+      }),
+    );
 
     vi.spyOn(apiClient, 'getEpicProcess').mockResolvedValue(mockEpic);
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});

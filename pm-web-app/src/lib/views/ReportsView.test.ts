@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ReportsView from './ReportsView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 import {
   apiClient,
@@ -51,24 +52,26 @@ describe('ReportsView component', () => {
   };
 
   beforeEach(() => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: true,
-      isOnboarded: true,
-      deviceLabel: 'Firefox on mbp-oliver',
-      machineName: 'mbp-oliver',
-      currentRoute: 'reports',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-      unreadReportsCount: 3,
-      unreadReportsArrivalNotice: null,
-      quietReportNotice: null,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'mbp-oliver',
+        currentRoute: 'reports',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+        unreadReportsCount: 3,
+        unreadReportsArrivalNotice: null,
+        quietReportNotice: null,
+      }),
+    );
 
     vi.spyOn(apiClient, 'getReports').mockResolvedValue(mockPage);
     vi.spyOn(apiClient, 'markReportRead').mockResolvedValue(undefined);

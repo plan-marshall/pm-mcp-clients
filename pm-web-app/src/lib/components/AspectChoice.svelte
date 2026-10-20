@@ -8,7 +8,7 @@
    * Each shows what the runtime reports and records it with one button; the aspect's later run
    * from the machine settings uses the same screens with the current values as the proposal.
    */
-  export interface RoleRow {
+  interface RoleRow {
     role: string;
     harness_id: string;
     model_id: string;
@@ -16,14 +16,14 @@
     origin?: string;
   }
 
-  export interface StoreRow {
+  interface StoreRow {
     kind: string;
     name: string;
     available: boolean;
     recommended?: boolean;
   }
 
-  export interface ProviderRow {
+  interface ProviderRow {
     provider: string;
     name: string;
     available: boolean;
@@ -32,7 +32,7 @@
     cause?: string;
   }
 
-  export interface PlanDefaultsRow {
+  interface PlanDefaultsRow {
     landing: string;
     method: string;
     asking: string;

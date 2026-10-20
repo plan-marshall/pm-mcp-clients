@@ -2,24 +2,27 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import PairingView from './PairingView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 
 describe('PairingView component', () => {
   beforeEach(() => {
-    runtimeStore.set({
-      isInitialized: true,
-      isPaired: false,
-      isOnboarded: false,
-      deviceLabel: '',
-      machineName: 'mbp-oliver',
-      currentRoute: 'pair',
-      currentState: null,
-      isRevoked: false,
-      revokedReason: '',
-      isOffline: false,
-      isListenerClosed: false,
-      completedSteps: 0,
-      activeStep: 1,
-    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: false,
+        isOnboarded: false,
+        deviceLabel: '',
+        machineName: 'mbp-oliver',
+        currentRoute: 'pair',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 1,
+      }),
+    );
   });
 
   it('renders pairing page title and input', () => {

@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:ci": "vitest run",
     "test:ci-strict": "vitest run",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,js,svelte,css,json}\"",

@@ -314,11 +314,11 @@
   }
 
   function getPlanPhase(p: ActivePlanSummary): string {
-    return (p as any).current_phase || p.currentPhase || '';
+    return p.current_phase || '';
   }
 
   function getPlanState(p: ActivePlanSummary): string {
-    const s = (p as any).phase_state || p.phaseState || 'running';
+    const s = p.phase_state || 'running';
     return s === 'waiting_for_you' ? 'waiting' : s;
   }
 
