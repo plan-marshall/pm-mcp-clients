@@ -14,7 +14,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Specifications** | [`05-mock-runtime.adoc`](../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc), [`04-operator-api.adoc`](../../../plan-marshall-documentation/doc/specification/runtime-model/04-operator-api.adoc) |
 | **Local Client Design** | [`doc/design/shared/projects.adoc`](../design/shared/projects.adoc), [`doc/design/shared/starting-work.adoc`](../design/shared/starting-work.adoc) |
 | **Roadmap Packages** | [`doc/plans/implemented/project-contract.adoc`](../plans/implemented/project-contract.adoc), [`doc/plans/implemented/start-contract.adoc`](../plans/implemented/start-contract.adoc) |
-| **Prerequisite Plans** | [`doc/agy/cli-start-plan.md`](cli-start-plan.md) (in flight), [`doc/agy/web-start-plan.md`](web-start-plan.md) (in flight), [`doc/agy/mock-runtime-foundation-and-consolidation-plan.md`](mock-runtime-foundation-and-consolidation-plan.md) |
+| **Prerequisite Plans** | [`doc/agy/implemented/cli-start-plan.md`](implemented/cli-start-plan.md) (landed, PR #118), [`doc/agy/implemented/web-start-plan.md`](implemented/web-start-plan.md) (landed, PR #117), [`doc/agy/implemented/mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md) (landed, PR #125), [`doc/agy/implemented/mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md) (landed, PR #143) |
 | **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
@@ -36,8 +36,8 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 ## 3. Concurrency & Isolation
 
-- **Must start after**: the currently in-flight [`doc/agy/cli-start-plan.md`](cli-start-plan.md) and [`doc/agy/web-start-plan.md`](web-start-plan.md) have landed on `main` (because those two in-flight plans directly read the legacy `start-*.json` scenario files in `pm-mock-runtime/src/main/resources/scenarios/`), and after Wave 1 (`mock-runtime-foundation-and-consolidation-plan.md`).
-- **Parallelizable with**: Waves 2a (`mock-runtime-onboarding-and-entry`) and 2b (`mock-runtime-running-work`).
+- **Prerequisites Satisfied**: All prerequisites (`cli-start`, `web-start`, `mock-runtime-foundation`, `mock-runtime-onboarding-and-entry`, `mock-runtime-running-work`, and `mock-runtime-fully-onboarded`) have landed on `main`.
+- **Parallelizable with**: `web-decisions-and-actions-plan.md` and `cli-fullscreen-actions-plan.md`.
 
 ### Boundary Rules
 - **Sole Owner of**: `pm-mock-runtime/src/main/resources/scenarios/projects-and-start.json`, `StartRegistry.java`, deletion of the 20 superseded project/start JSON files, and `ProjectsScenarioTest.java`, `EnrolScenarioTest.java`, `GitSourceScenarioTest.java`, `LessonSourceScenarioTest.java`, `StartScenarioTest.java`, and `StartContractTest.java`.
