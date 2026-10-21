@@ -93,6 +93,7 @@ class EpicViewFullScreenTest {
                                 && ControlFixture.shows(virtual, "p project"));
             virtual.type("\u001b");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "phase execute"));
+            assertTrue(ControlFixture.shows(virtual, "p project"));
             ControlFixture.delay(200L);
             virtual.type("q");
             ControlFixture.join(thread);
@@ -160,8 +161,10 @@ class EpicViewFullScreenTest {
             virtual.type("p");
             // p pushes the project's level, so Esc returns to the epic.
             ControlFixture.await(() -> ControlFixture.shows(virtual, "by plan"));
+            assertTrue(ControlFixture.shows(virtual, "by plan"));
             virtual.type("\u001b");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "WS-1  Reconnect"));
+            assertTrue(ControlFixture.shows(virtual, "WS-1  Reconnect"));
             ControlFixture.delay(200L);
             virtual.type("q");
             ControlFixture.join(thread);
@@ -183,6 +186,8 @@ class EpicViewFullScreenTest {
             virtual.type("\r");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "Objective     measure the reconnect")
                                 && ControlFixture.shows(virtual, "Surface       pm-relay/src/metrics"));
+            assertTrue(ControlFixture.shows(virtual, "Objective     measure the reconnect"));
+            assertTrue(ControlFixture.shows(virtual, "Surface       pm-relay/src/metrics"));
             ControlFixture.delay(200L);
             virtual.type("q");
             ControlFixture.join(thread);

@@ -81,7 +81,6 @@ public final class EpicViewLevel {
     private static final String CLOSED = "\u25b8 ";
     private static final String NO_CHILDREN = "  ";
     private static final String CHILD_INDENT = "    ";
-    private static final String DETAIL_INDENT = "    ";
     private static final String DOT = " \u00b7 ";
 
     private final Map<String, WorkRow> rowsById = new LinkedHashMap<>();

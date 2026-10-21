@@ -111,7 +111,7 @@ public final class ActionsMenu {
      * @param delta the number of entries, negative for up
      */
     public void move(int delta) {
-        selected = Math.max(0, Math.min(entries.size() - 1, selected + delta));
+        selected = (int) Math.clamp((long) selected + delta, 0, entries.size() - 1);
     }
 
     /**

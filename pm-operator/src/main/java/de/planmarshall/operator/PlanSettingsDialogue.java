@@ -81,11 +81,7 @@ final class PlanSettingsDialogue {
 
     private int execute(@Nullable String group) throws IOException {
         var settings = client.settings(planId);
-        if (settings == null) {
-            prompt.line("operator.actions.settings.value", Map.of("aspect", "", "plan", planId));
-            return 1;
-        }
-        var chosenGroup = group != null && !group.isBlank() ? normalizeGroup(group) : askGroup();
+        @Nullable String chosenGroup = group != null && !group.isBlank() ? normalizeGroup(group) : askGroup();
         if (chosenGroup == null) {
             return 0;
         }
@@ -101,7 +97,7 @@ final class PlanSettingsDialogue {
         return change(settings, aspect);
     }
 
-    private String askGroup() {
+    private @Nullable String askGroup() {
         var options = new StringBuilder(MessageCatalogue.format(prompt.locale(),
                             "operator.actions.settings.which", Map.of("plan", planId)));
         for (int index = 0; index < GROUPS.size(); index++) {

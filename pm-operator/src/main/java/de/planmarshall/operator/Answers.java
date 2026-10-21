@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.util.Locale;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The answers a dialogue accepts for the yes/no questions of the catalogue.
@@ -39,7 +40,7 @@ final class Answers {
         return is(answer, "n", "no", "nein");
     }
 
-    private static boolean is(String answer, String... accepted) {
+    private static boolean is(@Nullable String answer, String... accepted) {
         if (answer == null) {
             return false;
         }

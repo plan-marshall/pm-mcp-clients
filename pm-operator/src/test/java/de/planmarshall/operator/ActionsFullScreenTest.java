@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.StringWriter;
+import org.jline.keymap.KeyMap;
+import org.jline.utils.InfoCmp;
 
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
@@ -154,8 +156,10 @@ class ActionsFullScreenTest {
                                 && ControlFixture.shows(virtual, "phase execute"));
             virtual.type("a");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "Pause\u2026"));
+            assertTrue(ControlFixture.shows(virtual, "Pause\u2026"));
             virtual.type("\u001b");
             ControlFixture.await(() -> !ControlFixture.shows(virtual, "Pause\u2026"));
+            assertFalse(ControlFixture.shows(virtual, "Pause\u2026"));
             ControlFixture.delay(200L);
             virtual.type("q");
             ControlFixture.join(thread);
@@ -245,8 +249,8 @@ class ActionsFullScreenTest {
             select(virtual, "Relay Metrics");
             virtual.type("a");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "Start"));
-            var down = org.jline.keymap.KeyMap.key(virtual.terminal(),
-                                org.jline.utils.InfoCmp.Capability.key_down);
+            var down = KeyMap.key(virtual.terminal(),
+                                InfoCmp.Capability.key_down);
             virtual.type(down != null && !down.isEmpty() ? down : "\u001b[B");
             ControlFixture.delay(150L);
             virtual.type("\r");

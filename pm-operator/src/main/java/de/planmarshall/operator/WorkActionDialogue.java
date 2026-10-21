@@ -427,6 +427,6 @@ final class WorkActionDialogue {
     }
 
     private static String normalize(String status) {
-        return status == null ? "" : status.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+        return status.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
     }
 }

@@ -371,7 +371,7 @@ public final class OverviewFullScreenApp {
      * @param epicId  the epic
      * @return {@code true} when the runtime served the epic
      */
-    boolean openEpicView(RuntimeClient runtime, String epicId) {
+    boolean openEpicView(String epicId) {
         try {
             var resource = new WorkActionsClient(context).epic(epicId);
             var view = new EpicViewLevel(resource);
@@ -871,16 +871,12 @@ public final class OverviewFullScreenApp {
         };
     }
 
-    /**
-     * Opens what waits for the operator in the selected row.
-     *
-     * @return {@code false} when the decision is handed to the console and the view must leave
-     */
-    private boolean openWhatWaits() {
+    /** Opens what waits for the operator in the selected row. */
+    private void openWhatWaits() {
         var lvl = stack.level();
         var selected = stack.selected();
         if (lvl == null || selected == null) {
-            return true;
+            return;
         }
         if (lvl.kind() == TuiLevel.Kind.EPIC) {
             var view = currentEpicView.get();
@@ -897,11 +893,10 @@ public final class OverviewFullScreenApp {
                         statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
                     }
                 }
-                return true;
+                return;
             }
         }
         openActions();
-        return true;
     }
 
     private Thread startEventListener() {
@@ -1250,9 +1245,7 @@ public final class OverviewFullScreenApp {
                 case PROJECT -> jumpToProject();
                 case COMPLETION -> planOpenCompletion();
                 case ACTIONS -> openActions();
-                case WAITS -> {
-                    return openWhatWaits();
-                }
+                case WAITS -> openWhatWaits();
                 default -> {
                     // unhandled key actions
                 }
@@ -1437,11 +1430,7 @@ public final class OverviewFullScreenApp {
                 return;
             }
             if ("epic".equalsIgnoreCase(item.kind())) {
-                try {
-                    if (!openEpicView(context.runtime(true), item.id())) {
-                        openEndedEpicView(item);
-                    }
-                } catch (IOException _) {
+                if (!openEpicView(item.id())) {
                     openEndedEpicView(item);
                 }
                 return;
@@ -1464,7 +1453,7 @@ public final class OverviewFullScreenApp {
         private boolean epicOpenSelected(String rowId) {
             var view = currentEpicView.get();
             if (view == null) {
-                return true;
+                return false;
             }
             var register = view.registerOf(rowId);
             if (register != null) {
@@ -1622,7 +1611,7 @@ public final class OverviewFullScreenApp {
                 stack.back();
                 return;
             }
-            if (openEpicView(runtime, view.epicId())) {
+            if (openEpicView(view.epicId())) {
                 return;
             }
             // A runtime that does not serve the epic as a resource still shows its plans in the
@@ -1734,12 +1723,8 @@ public final class OverviewFullScreenApp {
             var isEpic = detail != null && detail.epics().stream().anyMatch(e -> e.epicId().equals(itemId));
             if (isEpic) {
                 // An epic opens its own view; its plans and sections are one level below.
-                try {
-                    if (openEpicView(context.runtime(true), itemId)) {
-                        return;
-                    }
-                } catch (IOException _) {
-                    // fall back to the project's by-epic view
+                if (openEpicView(itemId)) {
+                    return;
                 }
                 try {
                     openProject(context.runtime(true), detail.projectId(), true, itemId);

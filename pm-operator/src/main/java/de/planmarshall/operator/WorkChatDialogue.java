@@ -36,8 +36,6 @@ final class WorkChatDialogue {
     private static final String STATE_ID = "control.chat";
     private static final String ROLE_OPERATOR = ChatTurnResource.ROLE_OPERATOR;
 
-    private final OperatorContext context;
-    private final PrintWriter out;
     private final StartPrompt prompt;
     private final WorkActionsClient client;
     private final String kind;
@@ -46,8 +44,6 @@ final class WorkChatDialogue {
 
     private WorkChatDialogue(OperatorContext context, PrintWriter out, String kind, String subjectId,
                         boolean ended, boolean noInput) {
-        this.context = context;
-        this.out = out;
         this.kind = kind;
         this.subjectId = subjectId;
         this.ended = ended;

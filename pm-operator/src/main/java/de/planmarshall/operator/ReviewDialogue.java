@@ -86,7 +86,7 @@ final class ReviewDialogue {
         while (true) {
             var open = review.openItems();
             if (open.isEmpty()) {
-                return finish(review);
+                return finish();
             }
             var item = open.getFirst();
             show(review, item);
@@ -95,8 +95,8 @@ final class ReviewDialogue {
                 return 0;
             }
             review = switch (decision) {
-                case KEEP -> keep(review, item);
-                case DROP -> drop(review, item);
+                case KEEP -> keep(item);
+                case DROP -> drop(item);
                 case PROMOTE, EDIT -> {
                     prompt.line("operator.actions.review.no_draft", Map.of());
                     yield review;
@@ -106,12 +106,10 @@ final class ReviewDialogue {
                     yield client.review(epicId, register);
                 }
                 case REMAINING -> acceptRemaining(review);
-                case FINISH -> {
-                    yield review;
-                }
+                case FINISH -> review;
             };
             if (decision == Decision.FINISH) {
-                return finish(review);
+                return finish();
             }
         }
     }
@@ -210,7 +208,7 @@ final class ReviewDialogue {
         return null;
     }
 
-    private ReviewResource keep(ReviewResource review, ReviewItemResource item) throws IOException {
+    private ReviewResource keep(ReviewItemResource item) throws IOException {
         var other = REGISTER_FINDINGS.equals(register) ? REGISTER_WATCHES : REGISTER_FINDINGS;
         var answer = prompt.askRaw("1) " + registerLabel(register) + "  2) " + registerLabel(other)
                             + StartPrompt.SUFFIX, STATE_ID,
@@ -231,7 +229,7 @@ final class ReviewDialogue {
         return updated;
     }
 
-    private ReviewResource drop(ReviewResource review, ReviewItemResource item) throws IOException {
+    private ReviewResource drop(ReviewItemResource item) throws IOException {
         var reason = prompt.askRaw(text("control.review.drop_reason") + StartPrompt.SUFFIX, STATE_ID,
                             text("control.review.drop"), epicId);
         var updated = client.disposition(epicId, item.itemId(), ReviewDisposition.DROPPED.value(), reason);
@@ -265,7 +263,7 @@ final class ReviewDialogue {
         return updated;
     }
 
-    private int finish(ReviewResource review) throws IOException {
+    private int finish() throws IOException {
         if (!prompt.asks()) {
             StartPrompt.missing(STATE_ID, text("operator.actions.review.finish"), epicId);
         }
