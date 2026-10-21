@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,10 +20,14 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.EpicProcess;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.operator.epicview.EpicViewFormatting;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -67,6 +72,9 @@ public final class EpicCommand implements Callable<Integer> {
     @Option(names = "--all", description = "Show all details")
     boolean all;
 
+    @Option(names = "--tokens", description = "Show the epic's tokens per plan and its own tasks")
+    boolean tokens;
+
     EpicCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
     }
@@ -78,6 +86,11 @@ public final class EpicCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (epicId != null && !epicId.isBlank()) {
+            var resource = fetchResource(runtime, epicId);
+            if (resource != null) {
+                printResource(out, resource, tokens);
+                return 0;
+            }
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/process";
             var response = runtime.send(HttpRequest.get(path));
             if (response.status() == 404) {
@@ -122,6 +135,144 @@ public final class EpicCommand implements Callable<Integer> {
             return 0;
         }
         throw new OperatorRefusedException("epic list", response);
+    }
+
+    private @Nullable EpicResource fetchResource(RuntimeClient runtime, String epicId) {
+        try {
+            var response = runtime.send(HttpRequest.get(EPICS_API + OperatorUrlUtil.encodePathSegment(epicId)));
+            if (response.status() != 200 || !response.bodyText().contains("\"workstreams\"")) {
+                return null;
+            }
+            return EpicResource.fromJson(response.bodyText());
+        } catch (IOException | IllegalArgumentException _) {
+            return null;
+        }
+    }
+
+    private void printResource(PrintWriter out, EpicResource epic, boolean tokens) {
+        var locale = context.clientEnvironment().locale();
+        var state = EpicViewFormatting.stateText(locale, epic);
+        var head = new StringBuilder(OutputSafety.stripControlSequences(epic.epicId()))
+                            .append(" \u00b7 epic \u00b7 ").append(state)
+                            .append(" \u00b7 ").append(EpicViewFormatting.modeText(locale, epic))
+                            .append(" \u00b7 ").append(EpicViewFormatting.atOnce(locale, epic.running(), epic.scope()));
+        if (epic.findings().newCount() > 0) {
+            head.append(" \u00b7 ").append(MessageCatalogue.format(locale, "operator.actions.epic.needs_you", Map.of()))
+                                .append(": ").append(epic.findings().newCount());
+        }
+        out.println(head);
+        out.printf("  %-44s %s%n", MessageCatalogue.format(locale, "operator.plan.tree.context",
+                                                Map.of("project", OutputSafety.stripControlSequences(epic.projectId()))),
+                            "status --project " + OutputSafety.stripControlSequences(epic.projectId()));
+        printWorkstreams(out, locale, epic);
+        printSources(out, locale, epic);
+        printLandings(out, locale, epic);
+        printRegisters(out, locale, epic);
+        out.printf("  %-14s %s%n", MessageCatalogue.format(locale, "operator.epic.tokens", Map.of()),
+                            EpicViewFormatting.tokensText(locale, epic.tokens(), planCount(epic)));
+        printEvents(out, locale, epic);
+        if (tokens) {
+            printTokens(out, locale, epic);
+        }
+        out.flush();
+    }
+
+    private void printWorkstreams(PrintWriter out, String locale, EpicResource epic) {
+        for (var workstream : epic.workstreams()) {
+            out.println("  " + OutputSafety.stripControlSequences(workstream.id()) + " "
+                                + OutputSafety.stripControlSequences(workstream.name()) + "   "
+                                + EpicViewFormatting.countsText(locale, workstream.rows()));
+            for (var row : workstream.rows()) {
+                var status = EpicViewFormatting.statusText(locale, row);
+                var line = new StringBuilder("    ")
+                                    .append(String.format("%-18s", status))
+                                    .append(OutputSafety.stripControlSequences(row.planId()));
+                if (row.pullRequestNumber() != null) {
+                    line.append("   #").append(row.pullRequestNumber());
+                }
+                if ("staged".equals(EpicViewFormatting.statusKey(row.status()))) {
+                    line.append("   ").append(EpicViewFormatting.waitText(locale, row, epic.running(), epic.scope()));
+                }
+                out.println(line);
+            }
+        }
+    }
+
+    private void printSources(PrintWriter out, String locale, EpicResource epic) {
+        if (!epic.sources().isEmpty()) {
+            out.printf("  %-14s %s%n", MessageCatalogue.format(locale, "operator.epic.sources", Map.of()),
+                                String.join(", ", epic.sources().stream()
+                                                    .map(OutputSafety::stripControlSequences).toList()));
+        }
+    }
+
+    private void printLandings(PrintWriter out, String locale, EpicResource epic) {
+        if (epic.landings() == 0) {
+            return;
+        }
+        out.printf("  %-14s %d%n", MessageCatalogue.format(locale, "operator.epic.landings", Map.of()),
+                            epic.landings());
+        for (var workstream : epic.workstreams()) {
+            for (var row : workstream.rows()) {
+                if (row.pullRequestNumber() != null) {
+                    out.println("    " + OutputSafety.stripControlSequences(row.planId()) + "   #"
+                                        + row.pullRequestNumber());
+                }
+            }
+        }
+    }
+
+    private void printRegisters(PrintWriter out, String locale, EpicResource epic) {
+        out.printf("  %-14s %s   epic findings %s%n",
+                            MessageCatalogue.format(locale, "operator.epic.findings", Map.of()),
+                            EpicViewFormatting.registerCounts(locale, epic.findings(), "findings"),
+                            OutputSafety.stripControlSequences(epic.epicId()));
+        out.printf("  %-14s %s   epic watches %s%n",
+                            MessageCatalogue.format(locale, "operator.epic.watches", Map.of()),
+                            EpicViewFormatting.registerCounts(locale, epic.watches(), "watches"),
+                            OutputSafety.stripControlSequences(epic.epicId()));
+    }
+
+    private void printEvents(PrintWriter out, String locale, EpicResource epic) {
+        if (epic.events().isEmpty()) {
+            return;
+        }
+        out.printf("  %-14s %s%n", MessageCatalogue.format(locale, "operator.epic.events", Map.of()),
+                            MessageCatalogue.format(locale, "operator.actions.epic.events", Map.of()));
+        int shown = 0;
+        for (var event : epic.events()) {
+            if (shown++ == 10) {
+                out.println("    " + MessageCatalogue.format(locale, "operator.epic.event_more",
+                                    Map.of("count", epic.events().size() - 10)));
+                break;
+            }
+            out.println("    " + EpicViewFormatting.eventTime(event.at()) + "  "
+                                + OutputSafety.stripControlSequences(event.text()));
+        }
+    }
+
+    private void printTokens(PrintWriter out, String locale, EpicResource epic) {
+        out.println("  " + MessageCatalogue.format(locale, "operator.epic.tokens", Map.of()));
+        for (var plan : epic.tokens().plans()) {
+            out.printf("    %-34s %-28s plan %s%n",
+                                OutputSafety.stripControlSequences(plan.planId()),
+                                EpicViewFormatting.tokenFigure(locale, plan.figure()),
+                                OutputSafety.stripControlSequences(plan.planId()));
+        }
+        out.printf("    %-34s %s%n", MessageCatalogue.format(locale, "overview.epic.tokens_own", Map.of()),
+                            EpicViewFormatting.tokenFigure(locale, epic.tokens().own()));
+        out.printf("    %-34s %s%n", MessageCatalogue.format(locale, "operator.epic.tokens", Map.of()),
+                            EpicViewFormatting.tokenFigure(locale, epic.tokens().total()));
+    }
+
+    private static int planCount(EpicResource epic) {
+        var plans = new HashSet<String>();
+        for (var workstream : epic.workstreams()) {
+            for (var row : workstream.rows()) {
+                plans.add(row.planId());
+            }
+        }
+        return plans.size();
     }
 
     private void printEpicProcess(PrintWriter out, EpicProcess epic) {
@@ -369,6 +520,9 @@ public final class EpicCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
+            if (context.isInteractiveTerminal()) {
+                return ReviewDialogue.run(context, out, epicId, "findings", false);
+            }
             var endpoint = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/findings";
             var response = context.runtime(true).send(HttpRequest.get(endpoint));
             if (response.status() == 200) {
@@ -398,6 +552,9 @@ public final class EpicCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
+            if (context.isInteractiveTerminal()) {
+                return ReviewDialogue.run(context, out, epicId, "watches", false);
+            }
             var endpoint = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/watches";
             var response = context.runtime(true).send(HttpRequest.get(endpoint));
             if (response.status() == 200) {

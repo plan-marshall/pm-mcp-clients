@@ -57,6 +57,83 @@ class EpicCommandTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
+    private static final String EPIC_RESOURCE = """
+                        {"epic_id":"relay-hardening","project_id":"pm-mcp-clients",
+                         "display_name":"pm-mcp-clients","state":"running","auto_start":true,
+                         "overlap_max_files":0,"scope":3,"running":3,
+                         "workstreams":[
+                           {"id":"WS-1","name":"Reconnect","open":true,"rows":[
+                             {"plan_id":"relay-reconnect-backoff","title":"relay-reconnect-backoff",
+                              "status":"shipped","pull_request_number":211},
+                             {"plan_id":"relay-cursor-order","title":"relay-cursor-order","status":"running"}]},
+                           {"id":"WS-2","name":"Authentication","open":true,"rows":[
+                             {"plan_id":"relay-docs","title":"relay-docs","status":"staged",
+                              "wait_reason":"overlap","wait_plan_id":"relay-auth-v2"}]}],
+                         "sources":["2 documents","1 issue"],"landings":1,
+                         "findings":{"new":3,"open":4,"kept":2},"watches":{"new":1,"open":4,"kept":0},
+                         "tokens":{"total":{"total":3860000,"input":3520000,"output":340000,"measured":true,
+                                            "floor":true,"measured_tasks":4,"not_measured_tasks":1},
+                                   "own":{"total":120000,"input":110000,"output":10000,"measured":true,
+                                          "floor":false,"measured_tasks":1,"not_measured_tasks":0},
+                                   "plans":[{"plan_id":"relay-reconnect-backoff",
+                                             "figure":{"total":1400000,"input":1300000,"output":100000,
+                                                       "measured":true,"floor":false,"measured_tasks":2,
+                                                       "not_measured_tasks":0}}]},
+                         "events":[{"at":"2026-10-16T12:40:00Z","text":"relay-auth-v2 asks a decision"}]}
+                        """;
+
+    @Test
+    @DisplayName("epic <id> prints the epic as a tree from its resource")
+    void epicResourceTree() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/relay-hardening".equals(request.target())) {
+                response.json(200, EPIC_RESOURCE);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "relay-hardening");
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("relay-hardening \u00b7 epic"), output),
+                            () -> assertTrue(output.contains("automatic"), output),
+                            () -> assertTrue(output.contains("3 of 3 at once"), output),
+                            () -> assertTrue(output.contains("WS-1 Reconnect")
+                                                || output.contains("WS-1  Reconnect"), output),
+                            () -> assertTrue(output.contains("relay-reconnect-backoff"), output),
+                            () -> assertTrue(output.contains("#211"), output),
+                            () -> assertTrue(output.contains("waits: overlap with relay-auth-v2"), output),
+                            () -> assertTrue(output.contains("2 documents, 1 issue"), output),
+                            () -> assertTrue(output.contains("Findings"), output),
+                            () -> assertTrue(output.contains("3.86 M"), output),
+                            () -> assertTrue(output.contains("Events"), output),
+                            () -> assertTrue(output.contains("relay-auth-v2 asks a decision"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("epic <id> --tokens prints the figure per plan and the epic's own tasks")
+    void epicResourceTokens() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/relay-hardening".equals(request.target())) {
+                response.json(200, EPIC_RESOURCE);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "relay-hardening", "--tokens");
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("plan relay-reconnect-backoff"), output),
+                            () -> assertTrue(output.contains("1.40 M"), output),
+                            () -> assertTrue(output.contains("the epic's own tasks"), output)
+        );
+    }
+
     @Test
     @DisplayName("epic list lists running epics")
     void epicList() throws Exception {

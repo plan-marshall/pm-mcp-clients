@@ -595,13 +595,39 @@ public final class PlanCommand implements Callable<Integer> {
             this.context = context;
         }
 
+        private String askPoint(PrintWriter out) {
+            var locale = context.clientEnvironment().locale();
+            var prompt = new StartPrompt(context, out, locale, false);
+            var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.actions.pause.ask",
+                                                    Map.of("plan", planId)), "control.pause",
+                                MessageCatalogue.format(locale, "operator.actions.pause.task", Map.of()), planId);
+            return switch (answer.trim()) {
+                case "1", "now" -> "now";
+                case "3", "phase" -> "after_phase";
+                default -> "after_task";
+            };
+        }
+
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             String point = "after_task";
-            if (now) point = "now";
-            if (afterPhase) point = "after_phase";
+            if (now) {
+                point = "now";
+            } else if (afterPhase) {
+                point = "after_phase";
+            } else if (!afterTask) {
+                if (noInput) {
+                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.actions.pause.stopped", Map.of()));
+                    out.flush();
+                    return 3;
+                }
+                if (context.isInteractiveTerminal()) {
+                    point = askPoint(out);
+                }
+            }
 
             var payload = Map.of("point", point);
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/pause";
@@ -1237,7 +1263,7 @@ public final class PlanCommand implements Callable<Integer> {
             if (response.status() == 200 || response.status() == 409) {
                 return PlanSettingsUpdateResult.fromJson(response.bodyText());
             }
-            return PlanSettingsUpdateResult.tooLate(planId);
+            return new PlanSettingsUpdateResult(false, false, revision, null, null);
         }
 
         private int refused(PrintWriter out, String aspect, @Nullable String value) throws IOException {

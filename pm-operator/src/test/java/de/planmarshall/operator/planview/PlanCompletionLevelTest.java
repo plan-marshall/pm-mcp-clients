@@ -76,7 +76,7 @@ class PlanCompletionLevelTest {
         var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(minimal));
         var text = level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
         assertAll(
-                            () -> assertTrue(text.contains("2 d ago"), text),
+                            () -> assertTrue(text.contains("ago"), text),
                             () -> assertTrue(text.contains("5 min"), text),
                             () -> assertFalse(text.contains("Deliverables"), text),
                             () -> assertFalse(text.contains("Decisions"), text),

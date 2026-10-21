@@ -27,9 +27,11 @@ import org.jspecify.annotations.Nullable;
  * @param reportsCount  the number of unread reports
  * @param footerText    the footer to draw instead of the one the key registry generates, or
  *                      {@code null} for the registry's footer
+ * @param menu          the modal actions menu drawn below a row or the header, or {@code null}
  */
 public record TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
-String filter, boolean help, boolean connected, int reportsCount, @Nullable String footerText) {
+String filter, boolean help, boolean connected, int reportsCount, @Nullable String footerText,
+@Nullable TuiMenu menu) {
 
     /**
      * @param breadcrumb    the header's left side
@@ -43,7 +45,24 @@ String filter, boolean help, boolean connected, int reportsCount, @Nullable Stri
      */
     public TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
                         String filter, boolean help, boolean connected, int reportsCount) {
-        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, null);
+        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, null, null);
+    }
+
+    /**
+     * @param breadcrumb    the header's left side
+     * @param kind          the kind of level
+     * @param rows          the visible rows
+     * @param selectedIndex the index of the selected row, or {@code -1}
+     * @param filter        the filter text
+     * @param help          whether the help overlay is shown
+     * @param connected     whether the event stream is open
+     * @param reportsCount  the number of unread reports
+     * @param footerText    the footer to draw, or {@code null}
+     */
+    public TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
+                        String filter, boolean help, boolean connected, int reportsCount,
+                        @Nullable String footerText) {
+        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, footerText, null);
     }
 
     /**

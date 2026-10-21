@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -22,9 +23,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.control.EpicResource;
+import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
@@ -36,11 +40,17 @@ import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.ConsoleNotice;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
+import de.planmarshall.operator.OperatorActions;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OperatorUrlUtil;
+import de.planmarshall.operator.OutputSafety;
 import de.planmarshall.operator.OverviewSavedState;
 import de.planmarshall.operator.OverviewStateStore;
 import de.planmarshall.operator.PmOperator;
+import de.planmarshall.operator.actions.ActionMenus;
+import de.planmarshall.operator.actions.ActionsMenu;
+import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.epicview.EpicViewLevel;
 import de.planmarshall.operator.planview.PlanCompletionLevel;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.planview.PlanViewLevel.EndedInfo;
@@ -48,6 +58,7 @@ import de.planmarshall.operator.planview.WorkerActivityLevel;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiLevel;
+import de.planmarshall.operator.tui.TuiMenuEntry;
 import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreen;
 import de.planmarshall.operator.tui.TuiScreenDriver;
@@ -62,6 +73,7 @@ public final class OverviewFullScreenApp {
 
     private static final String PROJECTS_API_PREFIX = "/api/v1/projects/";
     private static final String PLANS_API_PREFIX = "/api/v1/plans/";
+    private static final String STATUS_ROW_ID = "__status__";
 
     /**
      * Initial CLI selection state.
@@ -113,8 +125,17 @@ public final class OverviewFullScreenApp {
     private final AtomicReference<PlanViewLevel> currentPlanView = new AtomicReference<>();
     private final AtomicReference<WorkerActivityLevel> currentActivity = new AtomicReference<>();
     private final AtomicReference<PlanCompletionLevel> currentCompletion = new AtomicReference<>();
+    private final AtomicReference<EpicViewLevel> currentEpicView = new AtomicReference<>();
     private final AtomicBoolean activityFollow = new AtomicBoolean(true);
     private volatile @Nullable String pendingAnswerPlanId;
+    private @Nullable ActionsMenu actionsMenu;
+    private @Nullable HoldRecord menuHold;
+    private @Nullable EpicResource menuEpic;
+    private @Nullable String menuKind;
+    private @Nullable String menuLandingUnit;
+    private @Nullable String statusMessage;
+    private @Nullable PrintWriter consoleOut;
+    private @Nullable TuiScreenDriver activeDriver;
 
     /**
      * Creates the full-screen overview application with system clock and context defaults.
@@ -176,10 +197,13 @@ public final class OverviewFullScreenApp {
 
         try {
             var driver = new TuiScreenDriver(terminal, locale);
+            activeDriver = driver;
+            consoleOut = out;
             var result = driver.run(this::buildScreen, new OverviewKeyHandler());
             openPendingDecision(out);
             return result;
         } finally {
+            activeDriver = null;
             running.set(false);
             sseThread.interrupt();
             saveState();
@@ -340,6 +364,41 @@ public final class OverviewFullScreenApp {
         }
     }
 
+    /**
+     * Opens an epic's view as a level of the full-screen view.
+     *
+     * @param runtime the runtime client
+     * @param epicId  the epic
+     * @return {@code true} when the runtime served the epic
+     */
+    boolean openEpicView(RuntimeClient runtime, String epicId) {
+        try {
+            var resource = new WorkActionsClient(context).epic(epicId);
+            var view = new EpicViewLevel(resource);
+            currentEpicView.set(view);
+            stack.push(view.level(locale), view.rows(locale), view.initialRowId());
+            return true;
+        } catch (IOException _) {
+            return false;
+        }
+    }
+
+    /**
+     * Opens an ended epic whose resource the runtime no longer serves, from its ended work row.
+     *
+     * @param item the ended work row
+     */
+    void openEndedEpicView(EndedWorkItem item) {
+        var projectId = currentEndedLevel.get() != null ? currentEndedLevel.get().projectId() : "";
+        var note = new EpicViewLevel.EndedNote(
+                            item.terminalReason() != null ? item.terminalReason() : "completed",
+                            item.reason(),
+                            OverviewFormatting.formatEndedTime(locale, item.endedAt(), clock));
+        var view = EpicViewLevel.ended(item.id(), projectId, item.title(), note);
+        currentEpicView.set(view);
+        stack.push(view.level(locale), view.rows(locale), view.initialRowId());
+    }
+
     void openPlanAsRoot(RuntimeClient runtime, String planId) {
         if (!fetchPlan(runtime, planId, null)) {
             return;
@@ -405,6 +464,13 @@ public final class OverviewFullScreenApp {
                     projectId = view.projectId();
                     projectView = view.epicId() != null ? "epic" : "plan";
                     selectedId = view.planId();
+                }
+            } else if (kind == TuiLevel.Kind.EPIC) {
+                var view = currentEpicView.get();
+                if (view != null) {
+                    projectId = view.projectId();
+                    projectView = "epic";
+                    selectedId = view.epicId();
                 }
             }
 
@@ -474,18 +540,348 @@ public final class OverviewFullScreenApp {
             if (view != null) {
                 breadcrumb = view.breadcrumb(locale);
             }
+        } else if (kind == TuiLevel.Kind.EPIC) {
+            var view = currentEpicView.get();
+            if (view != null) {
+                breadcrumb = view.level(locale).title();
+                footer = view.footer(locale);
+            }
+        }
+        var rows = stack.visibleRows();
+        if (statusMessage != null && !statusMessage.isBlank()) {
+            var withStatus = new ArrayList<TuiRow>(rows.size() + 1);
+            withStatus.addAll(rows);
+            withStatus.add(TuiRow.leaf(STATUS_ROW_ID, "  " + statusMessage));
+            rows = withStatus;
         }
         return new TuiScreen(
                             breadcrumb,
                             kind,
-                            stack.visibleRows(),
+                            rows,
                             stack.selectedIndex(),
                             stack.filter(),
                             stack.helpVisible(),
                             connected.get(),
                             unreadReports.get(),
-                            footer
+                            footer,
+                            actionsMenu != null ? actionsMenu.screenMenu() : null
         );
+    }
+
+    /** The dialogue surface a suspended view hands its action to. */
+    @FunctionalInterface
+    private interface DialogueTask {
+        void run() throws IOException;
+    }
+
+    private WorkActionsClient actionsClient() {
+        return new WorkActionsClient(context);
+    }
+
+    private PrintWriter dialogueOut() {
+        return consoleOut != null ? consoleOut : new PrintWriter(System.out, true);
+    }
+
+    private void runDialogue(DialogueTask task) {
+        Runnable guarded = () -> {
+            try {
+                task.run();
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+        };
+        var driver = activeDriver;
+        if (driver != null) {
+            driver.suspendFor(guarded);
+        } else {
+            guarded.run();
+        }
+    }
+
+    private void openActions() {
+        var lvl = stack.level();
+        var selected = stack.selected();
+        if (lvl == null || selected == null) {
+            return;
+        }
+        var selectedId = selected.id();
+        var kind = lvl.kind();
+        try {
+            if (kind == TuiLevel.Kind.ENDED) {
+                var ended = currentEndedLevel.get();
+                var item = ended != null ? ended.items().stream()
+                                    .filter(candidate -> candidate.id().equals(selectedId)).findFirst()
+                                    .orElse(null) : null;
+                if (item == null) {
+                    return;
+                }
+                menuKind = "epic".equalsIgnoreCase(item.kind()) ? "epic" : "plan";
+                actionsMenu = ActionMenus.ended(locale, item.id(), item.title(), selectedId);
+                return;
+            }
+            if (kind == TuiLevel.Kind.PLAN) {
+                var view = currentPlanView.get();
+                if (view == null) {
+                    return;
+                }
+                if (view.isEnded()) {
+                    menuKind = "plan";
+                    actionsMenu = ActionMenus.ended(locale, view.planId(), view.planId(), selectedId);
+                } else {
+                    openPlanActions(view.planId(), selectedId);
+                }
+                return;
+            }
+            if (kind == TuiLevel.Kind.PLAN_ACTIVITY) {
+                var activity = currentActivity.get();
+                if (activity != null) {
+                    openPlanActions(activity.planId(), selectedId);
+                }
+                return;
+            }
+            if (kind == TuiLevel.Kind.PLAN_COMPLETION) {
+                var completion = currentCompletion.get();
+                if (completion != null) {
+                    menuKind = "plan";
+                    actionsMenu = ActionMenus.ended(locale, completion.planId(), completion.planId(),
+                                        selectedId);
+                }
+                return;
+            }
+            if (kind == TuiLevel.Kind.EPIC) {
+                openEpicRowActions(selectedId);
+                return;
+            }
+            if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
+                openProjectRowActions(selectedId);
+            }
+        } catch (IOException refused) {
+            statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+        }
+    }
+
+    private void openEpicRowActions(String selectedId) throws IOException {
+        var view = currentEpicView.get();
+        if (view == null) {
+            return;
+        }
+        if (view.isEnded()) {
+            menuKind = "epic";
+            menuHold = null;
+            menuEpic = null;
+            actionsMenu = ActionMenus.ended(locale, view.epicId(), view.epicId(), selectedId);
+            return;
+        }
+        var planId = view.planIdOf(selectedId);
+        if (planId != null && !view.isStagedPlanRow(selectedId)) {
+            openPlanActions(planId, selectedId);
+            return;
+        }
+        openEpicActions(view.epicId(), selectedId);
+    }
+
+    private void openProjectRowActions(String selectedId) throws IOException {
+        var detail = currentProjectDetail.get();
+        if (detail == null) {
+            return;
+        }
+        if (selectedId.startsWith("landing:")) {
+            openLandingActions(selectedId.substring("landing:".length()), selectedId);
+            return;
+        }
+        boolean epic = detail.epics().stream().anyMatch(candidate -> candidate.epicId().equals(selectedId));
+        if (epic) {
+            openEpicActions(selectedId, selectedId);
+            return;
+        }
+        boolean plan = detail.plans().stream().anyMatch(candidate -> candidate.planId().equals(selectedId));
+        if (plan) {
+            openPlanActions(selectedId, selectedId);
+        }
+    }
+
+    private void openPlanActions(String planId, @Nullable String rowId) throws IOException {
+        var client = actionsClient();
+        var actions = client.actions("plan", planId);
+        HoldRecord hold = null;
+        try {
+            hold = client.hold(planId);
+        } catch (IOException _) {
+            // A plan without a readable hold list still offers its actions.
+        }
+        if (actions.actions().isEmpty()) {
+            statusMessage = MessageCatalogue.format(locale, "operator.actions.none", Map.of("name", planId));
+            actionsMenu = null;
+            return;
+        }
+        menuKind = "plan";
+        menuHold = hold;
+        menuEpic = null;
+        actionsMenu = ActionMenus.plan(locale, actions, hold, rowId);
+    }
+
+    private void openEpicActions(String epicId, @Nullable String rowId) throws IOException {
+        var client = actionsClient();
+        var actions = client.actions("epic", epicId);
+        EpicResource resource = null;
+        try {
+            resource = client.epic(epicId);
+        } catch (IOException _) {
+            // The actions still offer what the state allows; the head facts default.
+        }
+        if (actions.actions().isEmpty()) {
+            statusMessage = MessageCatalogue.format(locale, "operator.actions.none", Map.of("name", epicId));
+            actionsMenu = null;
+            return;
+        }
+        menuKind = "epic";
+        menuHold = null;
+        menuEpic = resource;
+        var next = resource != null ? nextLaunchable(resource) : null;
+        var reasons = currentEpicView.get() != null
+                            ? currentEpicView.get().waitReasons(locale) : List.<String>of();
+        actionsMenu = ActionMenus.epic(locale, actions, next, reasons,
+                            resource != null && resource.autoStart(),
+                            resource != null ? resource.overlapMaxFiles() : 0,
+                            resource != null ? resource.findings().newCount() : 0,
+                            resource != null ? resource.watches().open() : 0, rowId);
+    }
+
+    private void openLandingActions(String unit, String rowId) throws IOException {
+        var detail = currentProjectDetail.get();
+        if (detail == null) {
+            return;
+        }
+        var landing = detail.alongsideLandings().stream()
+                            .filter(candidate -> unit.equals(candidate.unit()))
+                            .findFirst().orElse(null);
+        menuKind = "landing";
+        menuLandingUnit = unit;
+        menuHold = null;
+        menuEpic = null;
+        actionsMenu = ActionMenus.landing(locale, unit,
+                            landing != null ? landing.holdKind() : null, rowId);
+    }
+
+    private static @Nullable String nextLaunchable(EpicResource epic) {
+        for (var workstream : epic.workstreams()) {
+            for (var row : workstream.rows()) {
+                if ("staged".equals(normalizeStatus(row.status()))
+                                    && (row.waitReason() == null || "none".equals(row.waitReason()))) {
+                    return row.planId();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String normalizeStatus(@Nullable String status) {
+        return status == null ? "" : status.trim().toLowerCase(Locale.ROOT).replace(' ', '_');
+    }
+
+    /**
+     * @param trigger the menu's mnemonic, or the empty string to close the menu
+     * @return {@code true} to keep the view open
+     */
+    private boolean handleMenu(String trigger) {
+        if (actionsMenu == null) {
+            return true;
+        }
+        if (trigger.isEmpty()) {
+            actionsMenu = null;
+            return true;
+        }
+        var entry = actionsMenu.entry(trigger);
+        if (entry == null) {
+            return true;
+        }
+        if (!entry.enabled()) {
+            statusMessage = entry.reason() != null ? entry.reason() : "";
+            return true;
+        }
+        var menu = actionsMenu;
+        actionsMenu = null;
+        runMenuEntry(menu, entry);
+        refreshActiveLevels();
+        return true;
+    }
+
+    private void runMenuEntry(ActionsMenu menu, TuiMenuEntry entry) {
+        var subject = menu.subject();
+        if (subject == ActionsMenu.Subject.LANDING) {
+            if ("show_pr".equals(entry.action())) {
+                statusMessage = entry.label();
+                return;
+            }
+            var project = currentProjectId();
+            if (project != null && menuLandingUnit != null) {
+                runDialogue(() -> actionsClient().performLanding(project, menuLandingUnit, entry.action()));
+            }
+            return;
+        }
+        var kind = menuKind != null ? menuKind : "plan";
+        if (subject == ActionsMenu.Subject.ENDED) {
+            runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId(),
+                                currentProjectId(), locale));
+            return;
+        }
+        var holdId = menuHold != null ? menuHold.holdId() : null;
+        var epic = menuEpic;
+        runDialogue(() -> OperatorActions.run(context, dialogueOut(), kind, menu.subjectId(), entry.action(),
+                            epic, holdId));
+    }
+
+    private @Nullable String currentProjectId() {
+        var epic = currentEpicView.get();
+        if (epic != null && stack.level() != null && stack.level().kind() == TuiLevel.Kind.EPIC) {
+            return epic.projectId();
+        }
+        var plan = currentPlanView.get();
+        if (plan != null) {
+            return plan.projectId();
+        }
+        var detail = currentProjectDetail.get();
+        if (detail != null) {
+            return detail.projectId();
+        }
+        var ended = currentEndedLevel.get();
+        return ended != null ? ended.projectId() : null;
+    }
+
+    private void openWhatWaits() {
+        var lvl = stack.level();
+        var selected = stack.selected();
+        if (lvl == null || selected == null) {
+            return;
+        }
+        if (lvl.kind() == TuiLevel.Kind.EPIC) {
+            var view = currentEpicView.get();
+            if (view != null) {
+                var planId = view.planIdOf(selected.id());
+                if (planId != null) {
+                    try {
+                        var hold = actionsClient().hold(planId);
+                        if (hold != null) {
+                            runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId,
+                                                hold.holdId()));
+                        }
+                    } catch (IOException refused) {
+                        statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                    }
+                }
+                return;
+            }
+        }
+        if (lvl.kind() == TuiLevel.Kind.PLAN) {
+            var view = currentPlanView.get();
+            var waiting = selected != null ? view.waitingPlanOf(selected.id()) : null;
+            if (waiting != null) {
+                pendingAnswerPlanId = waiting;
+                stop();
+                return;
+            }
+        }
+        openActions();
     }
 
     private Thread startEventListener() {
@@ -598,6 +994,10 @@ public final class OverviewFullScreenApp {
                 refreshActivity(runtime);
                 return;
             }
+            if (targetKind == TuiLevel.Kind.EPIC) {
+                refreshEpic();
+                return;
+            }
             fetchProjects(runtime);
             fetchUnreadReports(runtime);
 
@@ -688,6 +1088,23 @@ public final class OverviewFullScreenApp {
         }
     }
 
+    private void refreshEpic() {
+        var view = currentEpicView.get();
+        if (view == null || view.isEnded()) {
+            return;
+        }
+        try {
+            var resource = new WorkActionsClient(context).epic(view.epicId());
+            synchronized (this) {
+                view.update(resource);
+                stack.refresh(view.rows(locale));
+            }
+            terminal.raise(Terminal.Signal.WINCH);
+        } catch (IOException _) {
+            // best-effort refresh
+        }
+    }
+
     private void refreshActivity(RuntimeClient runtime) {
         var view = currentActivity.get();
         if (view == null) {
@@ -719,10 +1136,22 @@ public final class OverviewFullScreenApp {
 
     private final class OverviewKeyHandler implements TuiScreenDriver.KeyHandler {
 
+        private OverviewKeyHandler() {
+        }
+
         @Override
         public boolean handle(TuiKeyAction action) {
             synchronized (OverviewFullScreenApp.this) {
+                statusMessage = null;
                 return handleLocked(action);
+            }
+        }
+
+        @Override
+        public boolean menu(String trigger) {
+            synchronized (OverviewFullScreenApp.this) {
+                statusMessage = null;
+                return handleMenu(trigger);
             }
         }
 
@@ -773,7 +1202,7 @@ public final class OverviewFullScreenApp {
                 case OPEN -> {
                     return openSelected();
                 }
-                case CLOSE -> closePlanRow();
+                case CLOSE -> closeSelected();
                 case ENDED -> openEndedLevel();
                 case RELOAD -> refreshActiveLevels();
                 case BACK -> {
@@ -784,15 +1213,14 @@ public final class OverviewFullScreenApp {
                 }
                 case REPORTS -> openReports();
                 case SYSTEM -> openSystem();
-                case EXPAND_ALL -> planExpandAll();
+                case EXPAND_ALL -> expandSelected();
                 case WHERE -> planJumpToWhere();
                 case NON_LANE -> planToggleNonLane();
                 case TOKENS -> planToggleTokens();
-                case PROJECT -> planJumpToProject();
+                case PROJECT -> jumpToProject();
                 case COMPLETION -> planOpenCompletion();
-                case ACTIONS, WAITS -> {
-                    // hooks for actions and decision answering
-                }
+                case ACTIONS -> openActions();
+                case WAITS -> openWhatWaits();
                 default -> {
                     // unhandled key actions
                 }
@@ -918,6 +1346,9 @@ public final class OverviewFullScreenApp {
                 openEndedSelected(selectedId);
                 return true;
             }
+            if (kind == TuiLevel.Kind.EPIC) {
+                return epicOpenSelected(selectedId);
+            }
             if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
                 return true;
             }
@@ -970,7 +1401,17 @@ public final class OverviewFullScreenApp {
             }
             var item = ended.items().stream().filter(candidate -> candidate.id().equals(selectedId))
                                 .findFirst().orElse(null);
-            if (item == null || !"plan".equalsIgnoreCase(item.kind())) {
+            if (item == null) {
+                return;
+            }
+            if ("epic".equalsIgnoreCase(item.kind())) {
+                try {
+                    if (!openEpicView(context.runtime(true), item.id())) {
+                        openEndedEpicView(item);
+                    }
+                } catch (IOException _) {
+                    openEndedEpicView(item);
+                }
                 return;
             }
             var endedInfo = new EndedInfo(
@@ -982,6 +1423,97 @@ public final class OverviewFullScreenApp {
             } catch (IOException _) {
                 // best effort
             }
+        }
+
+        /**
+         * @param rowId the row of the epic's view
+         * @return {@code true} to keep the view open
+         */
+        private boolean epicOpenSelected(String rowId) {
+            var view = currentEpicView.get();
+            if (view == null) {
+                return true;
+            }
+            var register = view.registerOf(rowId);
+            if (register != null) {
+                runDialogue(() -> OperatorActions.runReview(context, dialogueOut(), view.epicId(), register));
+                return true;
+            }
+            var planId = view.planIdOf(rowId);
+            if (planId != null && !view.isStagedPlanRow(rowId)) {
+                try {
+                    if (openPlan(context.runtime(true), planId, null)) {
+                        return true;
+                    }
+                } catch (IOException _) {
+                    // fall back to the row's details
+                }
+            }
+            if (view.openable(rowId)) {
+                view.toggle(rowId, locale);
+                stack.refresh(view.rows(locale));
+            }
+            return true;
+        }
+
+        private void closeSelected() {
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            if (lvl.kind() == TuiLevel.Kind.EPIC) {
+                var view = currentEpicView.get();
+                if (view == null) {
+                    return;
+                }
+                var selected = stack.selected();
+                var parent = view.closeRow(selected != null ? selected.id() : null);
+                stack.refresh(view.rows(locale));
+                if (parent != null) {
+                    stack.select(parent);
+                }
+                return;
+            }
+            closePlanRow();
+        }
+
+        private void expandSelected() {
+            var lvl = stack.level();
+            var selected = stack.selected();
+            if (lvl != null && lvl.kind() == TuiLevel.Kind.EPIC) {
+                var view = currentEpicView.get();
+                if (view != null) {
+                    view.expandAll();
+                    stack.refresh(view.rows(locale));
+                }
+                return;
+            }
+            if (lvl != null && lvl.kind() == TuiLevel.Kind.PLAN) {
+                var view = currentPlanView.get();
+                if (view != null) {
+                    view.expandAll(selected != null ? selected.id() : null);
+                    refreshPlanRows();
+                }
+            }
+        }
+
+        private void jumpToProject() {
+            var lvl = stack.level();
+            if (lvl != null && lvl.kind() == TuiLevel.Kind.EPIC) {
+                var view = currentEpicView.get();
+                if (view == null) {
+                    return;
+                }
+                // p pushes the project's level, so that Esc returns to the epic the operator came
+                // from even when the epic itself was opened from that project.
+                try {
+                    openProject(context.runtime(true), view.projectId(), false, null);
+                } catch (IOException refused) {
+                    statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                }
+                return;
+            }
+            planJumpToProject();
         }
 
         private boolean openActivity(RuntimeClient runtime, String planId, String taskId) {
@@ -1052,13 +1584,30 @@ public final class OverviewFullScreenApp {
             if (view == null || view.epicId() == null) {
                 return;
             }
-            // When the plan was opened from its epic's view, e returns to that view: it is the level
-            // below the plan.
+            // When the plan was opened from its epic's view, e returns to that view: it is the
+            // level below the plan.
+            if (belowIsEpic(view.epicId())) {
+                stack.back();
+                return;
+            }
+            if (openEpicView(runtime, view.epicId())) {
+                return;
+            }
+            // A runtime that does not serve the epic as a resource still shows its plans in the
+            // project's view by epic.
             if (belowIsProject(TuiLevel.Kind.PROJECT_BY_EPIC, view.projectId())) {
                 stack.back();
                 return;
             }
             openProject(runtime, view.projectId(), true, view.epicId());
+        }
+
+        private boolean belowIsEpic(String epicId) {
+            if (stack.depth() < 2) {
+                return false;
+            }
+            var below = stack.levelAt(stack.depth() - 2);
+            return below != null && below.kind() == TuiLevel.Kind.EPIC && epicId.equals(below.id());
         }
 
         private void refreshPlanRows() {
@@ -1152,7 +1701,14 @@ public final class OverviewFullScreenApp {
             var detail = currentProjectDetail.get();
             var isEpic = detail != null && detail.epics().stream().anyMatch(e -> e.epicId().equals(itemId));
             if (isEpic) {
-                // An epic's view is the project's work grouped by epic, with the epic selected.
+                // An epic opens its own view; its plans and sections are one level below.
+                try {
+                    if (openEpicView(context.runtime(true), itemId)) {
+                        return;
+                    }
+                } catch (IOException _) {
+                    // fall back to the project's by-epic view
+                }
                 try {
                     openProject(context.runtime(true), detail.projectId(), true, itemId);
                 } catch (IOException _) {
