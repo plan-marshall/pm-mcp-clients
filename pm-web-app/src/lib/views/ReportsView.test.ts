@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import ReportsView from './ReportsView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -12,6 +12,7 @@ import {
 } from '../api/client';
 
 describe('ReportsView component', () => {
+  let eventHandler: ((event: string, data: unknown) => void) | null = null;
   const mockReports: ReportItem[] = [
     {
       id: 'rep-0142',
@@ -75,7 +76,11 @@ describe('ReportsView component', () => {
     vi.spyOn(apiClient, 'getReports').mockResolvedValue(mockPage);
     vi.spyOn(apiClient, 'markReportRead').mockResolvedValue(undefined);
     vi.spyOn(apiClient, 'markAllReportsRead').mockResolvedValue({ marked_count: 3 });
-    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    eventHandler = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
+      eventHandler = handler;
+      return () => {};
+    });
   });
 
   it('renders unread reports grouped by project, epic, and plan', async () => {
@@ -86,12 +91,12 @@ describe('ReportsView component', () => {
       expect(screen.getByText(/3 unread/)).toBeInTheDocument();
     });
 
-    // Check project headers
-    expect(screen.getByText('pm-mcp-clients')).toBeInTheDocument();
-    expect(screen.getByText('pm-mcp-core')).toBeInTheDocument();
+    // Check project headers (the path of each report repeats the project as a link)
+    expect(screen.getAllByText('pm-mcp-clients')[0]).toBeInTheDocument();
+    expect(screen.getAllByText('pm-mcp-core')[0]).toBeInTheDocument();
 
     // Check epic header
-    expect(screen.getByText('relay-hardening')).toBeInTheDocument();
+    expect(screen.getAllByText('relay-hardening')[0]).toBeInTheDocument();
 
     // Check items
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
@@ -226,5 +231,150 @@ describe('ReportsView component', () => {
     await fireEvent.click(olderBtn);
 
     expect(apiClient.getReports).toHaveBeenCalledWith(true);
+  });
+
+  it('navigates from each part of the from path without reading the report', async () => {
+    render(ReportsView);
+
+    const projectLink = await screen.findAllByRole('button', {
+      name: /Open the project pm-mcp-clients/i,
+    });
+    await fireEvent.click(projectLink[0]);
+    expect(get(runtimeStore).currentRoute).toBe('projects');
+    expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+
+    const epicLink = (
+      await screen.findAllByRole('button', {
+        name: /Open the epic relay-hardening/i,
+      })
+    )[0];
+    await fireEvent.click(epicLink);
+    expect(get(runtimeStore).currentRoute).toBe('epic');
+    expect(get(runtimeStore).selectedEpicId).toBe('relay-hardening');
+
+    const planLink = await screen.findByRole('button', { name: /Open the plan fix-relay/i });
+    await fireEvent.click(planLink);
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+
+    expect(apiClient.markReportRead).not.toHaveBeenCalled();
+  });
+
+  it('opens an epic report detail and reads it in the same act', async () => {
+    const epicReport: ReportItem = {
+      id: 'rep-0144',
+      from: { project: 'pm-mcp-clients', epic: 'relay-hardening', plan: 'relay-docs' },
+      kind: 'epic.waits_overlap',
+      subject: 'relay-docs waits: overlap with relay-auth-v2 (2 files)',
+      created_at: '2026-10-16T11:21:00Z',
+      created: 'today 11:21',
+      detail_link: '/api/v1/epics/relay-hardening',
+    };
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [epicReport],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
+
+    render(ReportsView);
+
+    const card = (await screen.findByText(/relay-docs waits/)).closest('.report-card');
+    expect(card).not.toBeNull();
+    await fireEvent.click(
+      within(card as HTMLElement).getByRole('button', { name: /Show the details/i }),
+    );
+
+    expect(get(runtimeStore).currentRoute).toBe('epic');
+    expect(get(runtimeStore).selectedEpicId).toBe('relay-hardening');
+    expect(apiClient.markReportRead).toHaveBeenCalledWith('rep-0144');
+  });
+
+  it('disables the detail of a subject the cleanup deleted', async () => {
+    const deleted: ReportItem = {
+      id: 'rep-0200',
+      from: { project: 'pm-mcp-clients', plan: 'relay-docs' },
+      kind: 'plan.ended',
+      subject: 'relay-docs ended: merged',
+      created_at: '2026-10-16T11:20:00Z',
+      created: 'today 11:20',
+      detail_link: '/api/v1/plans/relay-docs/completion',
+      subject_deleted: true,
+    };
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [deleted],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
+
+    render(ReportsView);
+
+    const detail = await screen.findByRole('button', { name: /Show the details/i });
+    expect(detail).toBeDisabled();
+    expect(screen.getByText(/relay-docs was deleted by the cleanup/)).toBeInTheDocument();
+  });
+
+  it('opens a cleanup report at the job and clears a stored preview', async () => {
+    const cleanupReport: ReportItem = {
+      id: 'rep-0130',
+      from: { project: 'pm-mcp-clients' },
+      kind: 'system.cleanup_due',
+      subject: 'Cleanup is due',
+      subject_params: { item: 'fix-relay' },
+      created_at: '2026-10-16T09:00:00Z',
+      created: 'today 09:00',
+      detail_link: '/api/v1/system/cleanup',
+    };
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [cleanupReport],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
+    runtimeStore.update((s) => ({ ...s, cleanupPreviewItemId: 'plan-1' }));
+
+    render(ReportsView);
+
+    const card = (await screen.findByText('Cleanup is due')).closest('.report-card');
+    await fireEvent.click(
+      within(card as HTMLElement).getByRole('button', { name: /Show the details/i }),
+    );
+
+    expect(get(runtimeStore).currentRoute).toBe('cleanup');
+    expect(get(runtimeStore).cleanupHighlightItemId).toBe('fix-relay');
+    expect(get(runtimeStore).cleanupPreviewItemId).toBeNull();
+  });
+
+  it('announces a coalesced arrival politely and leaves the tab title alone', async () => {
+    const originalTitle = document.title;
+    render(ReportsView);
+    await waitFor(() => expect(eventHandler).not.toBeNull());
+
+    eventHandler?.('report.sent', {
+      report: {
+        id: 'rep-0201',
+        from: { project: 'pm-mcp-clients', epic: 'relay-hardening', plan: 'relay-docs' },
+        kind: 'plan.started',
+        subject: 'relay-docs started by relay-hardening (2 of 3 at once)',
+        created_at: '2026-10-21T10:00:00Z',
+        created: 'today 10:00',
+      } satisfies ReportItem,
+    });
+    eventHandler?.('report.sent', {
+      report: {
+        id: 'rep-0202',
+        from: { project: 'pm-mcp-clients', epic: 'relay-hardening' },
+        kind: 'epic.launchable',
+        subject: '2 plans can start now in relay-hardening',
+        created_at: '2026-10-21T10:01:00Z',
+        created: 'today 10:01',
+      } satisfies ReportItem,
+    });
+
+    const notice = await screen.findByTestId('report-arrival-notice');
+    expect(notice).toHaveAttribute('aria-live', 'polite');
+    expect(notice).toHaveTextContent('2 new reports · relay-hardening');
+    expect(document.title).toBe(originalTitle);
   });
 });

@@ -675,6 +675,9 @@ export interface ReportFrom {
   project?: string;
   epic?: string;
   plan?: string;
+  project_title?: string;
+  epic_title?: string;
+  plan_title?: string;
 }
 
 export interface ReportItem {
@@ -694,6 +697,122 @@ export interface ReportItem {
   sent?: string;
   summary?: string;
   detail?: string;
+  /** The kind of the subject the report is about, where the runtime names it. */
+  subject_kind?: string;
+  /** Whether the cleanup has deleted the report's subject since it was written. */
+  subject_deleted?: boolean;
+}
+
+/**
+ * Normalises the origin of a report from either wire spelling.
+ *
+ * The runtime writes the identifiers as `project_id`, `epic_id`, and `plan_id`; older fixtures
+ * and the browser's own tests use `project`, `epic`, and `plan`. The views read the short names.
+ *
+ * @param raw the origin as the runtime sent it
+ * @returns the same origin under the short names
+ */
+function normaliseReportFrom(raw: unknown): ReportFrom {
+  const from = (raw ?? {}) as Record<string, unknown>;
+  const text = (key: string, fallbackKey?: string): string | undefined => {
+    const value = from[key] ?? (fallbackKey ? from[fallbackKey] : undefined);
+    return typeof value === 'string' && value.length > 0 ? value : undefined;
+  };
+  return {
+    project: text('project', 'project_id'),
+    epic: text('epic', 'epic_id'),
+    plan: text('plan', 'plan_id'),
+    project_title: text('project_title'),
+    epic_title: text('epic_title'),
+    plan_title: text('plan_title'),
+  };
+}
+
+/**
+ * Normalises a token breakdown line from the runtime's wire names.
+ *
+ * The record names the line `label` and its figures `tokens`, `input_tokens`, and
+ * `output_tokens`; the completion report renders them as `name`, `total`, `input`, and
+ * `output`.
+ *
+ * @param raw the line as the runtime sent it
+ * @returns the line under the names the views read
+ */
+function normaliseTokenBreakdown(raw: unknown): TokenBreakdownItem {
+  const line = (raw ?? {}) as Record<string, unknown>;
+  const number = (key: string, fallbackKey?: string): number => {
+    const value = line[key] ?? (fallbackKey ? line[fallbackKey] : undefined);
+    return typeof value === 'number' ? value : 0;
+  };
+  const text = (key: string, fallbackKey?: string): string | undefined => {
+    const value = line[key] ?? (fallbackKey ? line[fallbackKey] : undefined);
+    return typeof value === 'string' ? value : undefined;
+  };
+  return {
+    name: text('name', 'label') ?? '',
+    total: number('total', 'tokens'),
+    input: number('input', 'input_tokens'),
+    output: number('output', 'output_tokens'),
+    unmeasured: number('unmeasured', 'unmeasured_tasks'),
+    floor: line['floor'] === true || line['is_floor'] === true,
+    harness_model: text('harness_model'),
+    effort: text('effort'),
+    components: (line['components'] ?? line['details']) as TokenComponentRecord | undefined,
+  };
+}
+
+/**
+ * Normalises the completion report's token usage from the runtime's wire names.
+ *
+ * @param raw the token usage as the runtime sent it
+ * @returns the usage under the names the views read
+ */
+function normaliseTokenUsage(raw: unknown): TokenUsageRecord | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const usage = raw as Record<string, unknown>;
+  const number = (key: string, fallbackKey?: string): number => {
+    const value = usage[key] ?? (fallbackKey ? usage[fallbackKey] : undefined);
+    return typeof value === 'number' ? value : 0;
+  };
+  const lines = (key: string): TokenBreakdownItem[] =>
+    Array.isArray(usage[key]) ? (usage[key] as unknown[]).map(normaliseTokenBreakdown) : [];
+  return {
+    total: number('total', 'total_tokens'),
+    input: number('input', 'input_tokens'),
+    output: number('output', 'output_tokens'),
+    duration_seconds: number('duration_seconds'),
+    workers_count: number('workers_count'),
+    models_count: number('models_count'),
+    tasks_measured: number('tasks_measured'),
+    tasks_total: number('tasks_total'),
+    is_floor: usage['is_floor'] === true,
+    unmeasured_reason:
+      typeof usage['unmeasured_reason'] === 'string' ? usage['unmeasured_reason'] : undefined,
+    by_phase: lines('by_phase'),
+    by_role: lines('by_role'),
+    by_model: lines('by_model'),
+    waste_records: Array.isArray(usage['waste_records'])
+      ? (usage['waste_records'] as TokenWasteRecord[])
+      : [],
+    total_waste_tokens: number('total_waste_tokens'),
+    waste_share_percent: number('waste_share_percent'),
+  };
+}
+
+/**
+ * Normalises a report as the runtime sends it, including the origin spelling.
+ *
+ * @param raw the report as the runtime sent it
+ * @returns the report with its origin under the short names
+ */
+export function normaliseReportItem(raw: ReportItem): ReportItem {
+  return {
+    ...raw,
+    from: normaliseReportFrom(raw.from),
+    subject_deleted:
+      raw.subject_deleted === true ||
+      (raw as ReportItem & { detail_disabled?: boolean }).detail_disabled === true,
+  };
 }
 
 export interface ReportsPage {
@@ -900,6 +1019,10 @@ export interface RuntimeMetrics {
   upgrade_release_notes_url?: string | null;
   upgrade_possible?: boolean;
   upgrade_disabled_reason?: string | null;
+  /** The worktrees holding uncommitted changes, where the runtime reports them. */
+  dirty_worktrees?: number | null;
+  /** A one-line summary of the newer release's notes, where the runtime reports one. */
+  upgrade_release_notes_summary?: string | null;
 }
 
 export interface WorkMetrics {
@@ -944,6 +1067,9 @@ export interface CleanupSummary {
   next_check_at?: string;
 }
 
+/** The windows the system view offers. */
+export type SystemWindow = 'hour' | 'today' | '7d';
+
 export interface SystemSnapshot {
   runtime: RuntimeMetrics;
   work: WorkMetrics;
@@ -955,7 +1081,7 @@ export interface SystemSnapshot {
   };
   models: ModelMetric[];
   cleanup: CleanupSummary;
-  window: 'hour' | 'today' | '7d';
+  window: SystemWindow;
   project?: string | null;
 }
 
@@ -982,6 +1108,10 @@ export interface CleanupKeptItem {
   kept_at: string;
   who: string;
 }
+
+/** The kept list as the runtime sends it: a bare array or an `items` wrapper. */
+type CleanupKeptResponse =
+  CleanupKeptItem[] | { items?: CleanupKeptItem[] } | Record<string, unknown>[];
 
 export interface CleanupResidue {
   step: string;
@@ -1593,6 +1723,248 @@ export interface LocalChangesCaptureResult {
   lane: string;
   snapshot_commit: string;
   status: string;
+}
+
+/**
+ * Normalises the runtime metrics from the runtime's wire names.
+ *
+ * The snapshot names the release fields `newer_version` and `upgrade_supported`, and the memory
+ * fields `heap_*`; the view reads the upgrade names it offers and the memory names it shows.
+ *
+ * @param raw the runtime metrics as the runtime sent them
+ * @returns the metrics under the names the view reads
+ */
+function normaliseRuntimeMetrics(raw: unknown): RuntimeMetrics {
+  const runtime = (raw ?? {}) as Record<string, unknown>;
+  const str = (key: string, fallbackKey?: string): string | undefined => {
+    const value = runtime[key] ?? (fallbackKey ? runtime[fallbackKey] : undefined);
+    return typeof value === 'string' ? value : undefined;
+  };
+  const num = (key: string, fallbackKey?: string): number | undefined => {
+    const value = runtime[key] ?? (fallbackKey ? runtime[fallbackKey] : undefined);
+    return typeof value === 'number' ? value : undefined;
+  };
+  const returned = (key: string): string | null => {
+    const value = str(key);
+    return value && value !== 'off' ? value : null;
+  };
+  const cpu = num('cpu_percent');
+  return {
+    version: str('version') ?? '',
+    build_date: str('build_date', 'build'),
+    git_commit: str('git_commit'),
+    uptime_seconds: num('uptime_seconds'),
+    uptime_formatted: str('uptime_formatted', 'uptime'),
+    memory_used_bytes: num('memory_used_bytes', 'heap_used_bytes'),
+    memory_max_bytes: num('memory_max_bytes', 'heap_max_bytes'),
+    memory_resident_bytes: num('memory_resident_bytes', 'resident_memory_bytes'),
+    cpu_percent: cpu ?? null,
+    cpu_measured: runtime['cpu_measured'] === true || cpu !== undefined,
+    machine_store_bytes: num('machine_store_bytes'),
+    disk_free_bytes: num('disk_free_bytes'),
+    disk_measured_at: str('disk_measured_at', 'measured_at'),
+    socket_listener: runtime['socket_listener'] === true,
+    loopback_address: returned('loopback_address') ?? returned('loopback_listener'),
+    lan_address: returned('lan_address') ?? returned('network_listener'),
+    lan_devices_count: num('lan_devices_count', 'paired_devices_count'),
+    relays_behind_count: num('relays_behind_count'),
+    relays_behind_version: str('relays_behind_version'),
+    upgrade_available_version: str('upgrade_available_version', 'newer_version'),
+    upgrade_available_date: str('upgrade_available_date', 'newer_version_date'),
+    upgrade_checked_at: str('upgrade_checked_at', 'newer_version_checked_at'),
+    upgrade_release_notes_url: str('upgrade_release_notes_url', 'release_notes_link'),
+    upgrade_possible: runtime['upgrade_possible'] === true || runtime['upgrade_supported'] === true,
+    upgrade_disabled_reason: str('upgrade_disabled_reason', 'upgrade_unsupported_reason'),
+    dirty_worktrees: num('dirty_worktrees'),
+    upgrade_release_notes_summary: str('upgrade_release_notes_summary'),
+  };
+}
+
+/**
+ * @param model a model metric as the runtime sent it
+ * @returns its id, from the short name or the harness-and-model pair
+ */
+function modelIdOf(model: Record<string, unknown>): string {
+  if (typeof model['id'] === 'string') return model['id'];
+  return typeof model['harness_and_model'] === 'string' ? model['harness_and_model'] : '';
+}
+
+/**
+ * Normalises a model's figures from the runtime's wire names.
+ *
+ * @param raw the model metric as the runtime sent it
+ * @returns the metric under the names the table reads
+ */
+function normaliseModelMetric(raw: unknown): ModelMetric {
+  const model = (raw ?? {}) as Record<string, unknown>;
+  const num = (key: string): number =>
+    typeof model[key] === 'number' ? (model[key] as number) : 0;
+  return {
+    id: modelIdOf(model),
+    role: typeof model['role'] === 'string' ? model['role'] : undefined,
+    calls_count: num('calls_count'),
+    tokens_total: num('tokens_total'),
+    tokens_in: num('tokens_in'),
+    tokens_out: num('tokens_out'),
+    errors_count: num('errors_count'),
+    retries_count: num('retries_count'),
+    unmeasured_calls: num('unmeasured_calls'),
+    tokens_unmeasured: model['tokens_unmeasured'] === true || model['is_floor'] === true,
+  };
+}
+
+/**
+ * Normalises the cleanup summary from the runtime's wire names.
+ *
+ * @param raw the summary as the runtime sent it
+ * @returns the summary under the names the views read
+ */
+function normaliseCleanupSummary(raw: unknown): CleanupSummary {
+  const cleanup = (raw ?? {}) as Record<string, unknown>;
+  const num = (key: string, fallbackKey?: string): number => {
+    const value = cleanup[key] ?? (fallbackKey ? cleanup[fallbackKey] : undefined);
+    return typeof value === 'number' ? value : 0;
+  };
+  const str = (key: string, fallbackKey?: string): string | undefined => {
+    const value = cleanup[key] ?? (fallbackKey ? cleanup[fallbackKey] : undefined);
+    return typeof value === 'string' ? value : undefined;
+  };
+  return {
+    plans_count: num('plans_count'),
+    epics_count: num('epics_count'),
+    logs_count: num('logs_count'),
+    read_reports_count: num('read_reports_count', 'reports_count'),
+    unenrolled_projects_count: num('unenrolled_projects_count', 'projects_count'),
+    freed_bytes: num('freed_bytes'),
+    kept_for_good_count: num('kept_for_good_count'),
+    last_sweep_at: str('last_sweep_at'),
+    next_check_at: str('next_check_at'),
+  };
+}
+
+/**
+ * Normalises the system snapshot from the runtime's wire names.
+ *
+ * @param raw the snapshot as the runtime sent it
+ * @returns the snapshot under the names the system view reads
+ */
+function normaliseSystemSnapshot(raw: SystemSnapshot): SystemSnapshot {
+  const snapshot = (raw ?? {}) as unknown as Record<string, unknown>;
+  return {
+    runtime: normaliseRuntimeMetrics(snapshot['runtime']),
+    work: (snapshot['work'] ?? {}) as WorkMetrics,
+    workers: (Array.isArray(snapshot['workers']) ? snapshot['workers'] : []) as WorkerMetric[],
+    jobs: (snapshot['jobs'] ?? {}) as SystemSnapshot['jobs'],
+    models: (Array.isArray(snapshot['models']) ? snapshot['models'] : []).map(normaliseModelMetric),
+    cleanup: normaliseCleanupSummary(snapshot['cleanup']),
+    window: (snapshot['window'] ?? 'hour') as SystemWindow,
+    project: typeof snapshot['project'] === 'string' ? snapshot['project'] : null,
+  };
+}
+
+/**
+ * Normalises a cleanup item from the runtime's wire names.
+ *
+ * @param raw the item as the runtime sent it
+ * @returns the item under the names the cleanup view reads
+ */
+function normaliseCleanupItem(raw: unknown): CleanupItemEntry {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  const text = (key: string): string | undefined =>
+    typeof item[key] === 'string' ? (item[key] as string) : undefined;
+  const number = (key: string, fallbackKey?: string): number => {
+    const value = item[key] ?? (fallbackKey ? item[fallbackKey] : undefined);
+    return typeof value === 'number' ? value : 0;
+  };
+  return {
+    id: text('id') ?? '',
+    kind: text('kind') ?? '',
+    title: text('title') ?? text('id') ?? '',
+    ended_at: text('ended_at'),
+    freed_bytes: number('freed_bytes', 'size_bytes'),
+    detail: text('detail') ?? text('outcome') ?? text('kept_until') ?? undefined,
+  };
+}
+
+/**
+ * @param value a value as the runtime sent it
+ * @returns the value where it is text, else an empty string
+ */
+function textOf(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Normalises a kept cleanup item from the runtime's wire names.
+ *
+ * @param raw the item as the runtime sent it
+ * @returns the item under the names the cleanup view reads
+ */
+function normaliseKeptItem(raw: unknown): CleanupKeptItem {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  return {
+    item_id: textOf(item['item_id']) || textOf(item['id']),
+    kind: textOf(item['kind']),
+    title: textOf(item['title']),
+    why: typeof item['why'] === 'string' ? item['why'] : textOf(item['how']),
+    kept_at: textOf(item['kept_at']),
+    who: textOf(item['who']),
+  };
+}
+
+/**
+ * Normalises a cleanup project from the runtime's wire names.
+ *
+ * @param raw the project as the runtime sent it
+ * @returns the project under the names the cleanup view reads
+ */
+function normaliseCleanupProject(raw: unknown): CleanupProjectItem {
+  const project = (raw ?? {}) as Record<string, unknown>;
+  const id = textOf(project['project_id']);
+  return {
+    project_id: id,
+    display_name: textOf(project['display_name']) || id,
+    items: (Array.isArray(project['items']) ? project['items'] : []).map(normaliseCleanupItem),
+  };
+}
+
+/**
+ * Normalises a cleanup job from the runtime's wire names.
+ *
+ * @param raw the job as the runtime sent it
+ * @returns the job under the names the cleanup view reads
+ */
+function normaliseCleanupJob(raw: CleanupJob): CleanupJob {
+  const job = (raw ?? {}) as unknown as Record<string, unknown>;
+  const projectItems = (job['projects'] ?? job['project_items'] ?? []) as unknown[];
+  const kept = (job['kept'] ?? []) as unknown[];
+  return {
+    job_id: typeof job['job_id'] === 'string' ? job['job_id'] : '',
+    due_since: typeof job['due_since'] === 'string' ? job['due_since'] : undefined,
+    summary: normaliseCleanupSummary(job['summary']),
+    projects: projectItems.map(normaliseCleanupProject),
+    kept: kept.map(normaliseKeptItem),
+    residue: Array.isArray(job['residue']) ? (job['residue'] as CleanupResidue[]) : [],
+    durations: (job['durations'] as CleanupDurations) ?? {
+      plans_days: 0,
+      epics_days: 0,
+      logs_days: 0,
+      reports_days: 0,
+      unenrolled_days: 0,
+      remind_days: 0,
+    },
+  };
+}
+
+/**
+ * @param message the runtime's error code or the HTTP status
+ * @param status the response status
+ * @returns an error carrying the status, so a caller can tell a refusal from an unavailable route
+ */
+function httpError(message: string, status: number): Error {
+  const error = new Error(message) as Error & { status?: number };
+  error.status = status;
+  return error;
 }
 
 export class ApiClient {
@@ -2280,7 +2652,7 @@ export class ApiClient {
     >('GET', path);
     if (Array.isArray(data)) {
       return {
-        items: data,
+        items: data.map(normaliseReportItem),
         unread_count: data.length,
         has_older: false,
         older_count: 0,
@@ -2295,7 +2667,7 @@ export class ApiClient {
       has_older?: boolean;
       older_count?: number;
     };
-    const items = rawObj.items || rawObj.reports || [];
+    const items = (rawObj.items || rawObj.reports || []).map(normaliseReportItem);
     return {
       items,
       unread_count: rawObj.unread_count ?? items.length,
@@ -2315,10 +2687,15 @@ export class ApiClient {
   }
 
   public async getPlanCompletion(planId: string): Promise<PlanCompletionReport> {
-    return this.request<PlanCompletionReport>(
+    const report = await this.request<PlanCompletionReport>(
       'GET',
       `/api/v1/plans/${encodeURIComponent(planId)}/completion`,
     );
+    return {
+      ...report,
+      from: normaliseReportFrom(report.from),
+      token_usage: normaliseTokenUsage(report.token_usage),
+    };
   }
 
   public async getDecisions(params?: {
@@ -2370,15 +2747,15 @@ export class ApiClient {
     );
   }
 
-  public async getSystemSnapshot(
-    window?: 'hour' | 'today' | '7d',
-    project?: string,
-  ): Promise<SystemSnapshot> {
+  public async getSystemSnapshot(window?: SystemWindow, project?: string): Promise<SystemSnapshot> {
     const params = new URLSearchParams();
     if (window) params.set('window', window);
     if (project) params.set('project', project);
     const qs = params.toString();
-    return this.request<SystemSnapshot>('GET', `/api/v1/system${qs ? `?${qs}` : ''}`);
+    let path = '/api/v1/system';
+    if (qs) path += `?${qs}`;
+    const snapshot = await this.request<SystemSnapshot>('GET', path);
+    return normaliseSystemSnapshot(snapshot);
   }
 
   public async stopRuntime(
@@ -2412,7 +2789,27 @@ export class ApiClient {
   }
 
   public async withdrawUpgrade(): Promise<void> {
-    await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
+    try {
+      await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
+    } catch (err: unknown) {
+      // The operator channel is the runtime's own withdraw. A deployment that offers only the
+      // system route is the fallback; a refused withdraw (the links are switched) is not retried.
+      const status = (err as Error & { status?: number })?.status;
+      const message = (err as Error)?.message ?? '';
+      if (status === 409 || message.includes('not_withdrawable')) throw err;
+      const routeUnavailable =
+        status === 404 ||
+        status === 405 ||
+        message.includes('mock_no_route') ||
+        message.includes('unknown_route') ||
+        message.includes('no route');
+      if (!routeUnavailable) throw err;
+      try {
+        await this.request('POST', '/api/v1/system/upgrade/withdraw', {});
+      } catch {
+        throw err;
+      }
+    }
   }
 
   public async checkUpgrade(): Promise<{
@@ -2424,7 +2821,8 @@ export class ApiClient {
   }
 
   public async getCleanupJob(): Promise<CleanupJob> {
-    return this.request<CleanupJob>('GET', '/api/v1/system/cleanup');
+    const job = await this.request<CleanupJob>('GET', '/api/v1/system/cleanup');
+    return normaliseCleanupJob(job);
   }
 
   public async executeCleanup(
@@ -2448,7 +2846,9 @@ export class ApiClient {
   }
 
   public async getKeptCleanup(): Promise<{ items: CleanupKeptItem[] }> {
-    return this.request<{ items: CleanupKeptItem[] }>('GET', '/api/v1/system/cleanup/kept');
+    const data = await this.request<CleanupKeptResponse>('GET', '/api/v1/system/cleanup/kept');
+    const rawItems = Array.isArray(data) ? data : (data?.items ?? []);
+    return { items: rawItems.map(normaliseKeptItem) };
   }
 
   public async releaseKeptCleanup(
@@ -2504,7 +2904,7 @@ export class ApiClient {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
+      throw httpError(err.error || `HTTP ${res.status}`, res.status);
     }
 
     return res.json() as Promise<T>;

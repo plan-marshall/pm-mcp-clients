@@ -24,9 +24,9 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.reports-heading')).toContainText('Reports');
 
     // Verify grouped hierarchy
-    await expect(page.getByText('pm-mcp-clients')).toBeVisible();
-    await expect(page.getByText('relay-hardening')).toBeVisible();
-    await expect(page.getByText('fix-relay')).toBeVisible();
+    await expect(page.getByText('pm-mcp-clients').first()).toBeVisible();
+    await expect(page.getByText('relay-hardening').first()).toBeVisible();
+    await expect(page.getByText('fix-relay').first()).toBeVisible();
     await expect(page.getByText('Ended: merged (#214)')).toBeVisible();
   });
 
@@ -62,9 +62,11 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.reports-view')).toBeVisible();
 
     // Click Show the details on fix-relay report
-    const detailBtn = page.locator('.action-btn--detail').first();
+    const card = page.locator('.report-card', { hasText: 'Ended: merged (#214)' });
+    const detailBtn = card.getByRole('button', { name: /Show the details/i });
     await expect(detailBtn).toBeVisible();
     await detailBtn.click();
+    await expect(page).toHaveURL(/plan=fix-relay/);
 
     // Completion report modal / view should be visible
     await expect(page.locator('.completion-report')).toBeVisible();
@@ -99,5 +101,78 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(
       page.getByText('Nothing new. Reports you have read are not shown any more.'),
     ).toBeVisible();
+  });
+});
+
+test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => {
+  test.beforeEach(async ({ page, request }) => {
+    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'reports' },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/#code=KXQB-MRTN');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+    await page
+      .locator('.app-header')
+      .getByRole('button', { name: /Reports/i })
+      .click();
+    await expect(page.locator('.reports-view')).toBeVisible();
+  });
+
+  test('each part of the from path opens its view without reading the report', async ({ page }) => {
+    await page
+      .getByRole('button', { name: /Open the plan fix-relay/i })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/plans\/fix-relay$/);
+
+    await page
+      .locator('.app-header')
+      .getByRole('button', { name: /Reports/i })
+      .click();
+    await expect(page.getByText('Ended: merged (#214)')).toBeVisible();
+  });
+
+  test('opens an epic report at its epic', async ({ page }) => {
+    const card = page.locator('.report-card', { hasText: 'relay-docs waits' });
+    await card.getByRole('button', { name: /Show the details/i }).click();
+    await expect(page).toHaveURL(/\/epics\/relay-hardening$/);
+  });
+
+  test('opens a project report at the project list', async ({ page }) => {
+    const card = page.locator('.report-card', { hasText: 'pm-mcp-core is onboarded' });
+    await card.getByRole('button', { name: /Show the details/i }).click();
+    await expect(page).toHaveURL(/\/projects(\?.*)?$/);
+  });
+
+  test('announces an arriving report politely and coalesces it', async ({ page, request }) => {
+    const title = await page.title();
+
+    const report = {
+      report: {
+        id: 'rep-9001',
+        from: {
+          project_id: 'pm-mcp-clients',
+          epic_id: 'relay-hardening',
+          plan_id: 'new-plan',
+        },
+        kind: 'plan.started',
+        subject: 'new-plan started by relay-hardening',
+        created_at: '2026-10-21T10:00:00Z',
+      },
+    };
+    const res = await request.post('http://127.0.0.1:7420/mock/broadcast', {
+      data: { event: 'report.sent', data: report },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    const notice = page.getByTestId('report-arrival-notice');
+    await expect(notice).toBeAttached();
+    await expect(notice).toHaveAttribute('aria-live', 'polite');
+    await expect(notice).toContainText('new-plan started by relay-hardening');
+    expect(await page.title()).toBe(title);
   });
 });

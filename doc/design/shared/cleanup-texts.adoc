@@ -276,4 +276,28 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |`system.cleanup.residue.explain`
 |Technical leftovers are removed by the runtime and never asked.
 |Technische Reste entfernt die Runtime selbst, ohne zu fragen.
+|`system.cleanup.preview.back`
+|Back to the job
+|Zurück zum Auftrag
+
+|`system.cleanup.preview.readonly`
+|Read-only: opening an item decides nothing.
+|Nur lesen: Ein Element zu öffnen entscheidet nichts.
+
+|`system.cleanup.preview.detail`
+|Detail
+|Detail
+
+|`system.cleanup.preview.size`
+|Space it frees
+|Freigegebener Speicher
+
+|`system.cleanup.preview.empty`
+|This item carries no further details.
+|Dieses Element hat keine weiteren Details.
+
+|`system.cleanup.preview.open`
+|Open {item} read-only
+|Öffne {item} zum Lesen
+
 |===

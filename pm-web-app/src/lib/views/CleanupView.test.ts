@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import CleanupView from './CleanupView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { get } from 'svelte/store';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type CleanupJob, type CleanupKeptItem } from '../api/client';
 
@@ -219,6 +220,44 @@ describe('CleanupView component', () => {
     const ignoreBtn = screen.getByRole('button', { name: 'Ignore' });
     await fireEvent.click(ignoreBtn);
     expect(ignoreSpy).toHaveBeenCalledWith('cln-0007');
+  });
+
+  it('opens an item read-only and returns with the checks kept', async () => {
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
+    vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
+
+    render(CleanupView);
+
+    await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
+
+    const before = screen.getAllByRole('checkbox');
+    await fireEvent.click(before[0]);
+    expect(before[0]).not.toBeChecked();
+
+    await fireEvent.click(screen.getByRole('button', { name: /Open fix-relay read-only/i }));
+
+    expect(screen.getByTestId('cleanup-preview')).toBeInTheDocument();
+    expect(screen.getByText(/Read-only: opening an item decides nothing/i)).toBeInTheDocument();
+    expect(get(runtimeStore).cleanupPreviewItemId).toBe('plan-1');
+
+    await fireEvent.click(screen.getByRole('button', { name: /Back to the job/i }));
+
+    const after = screen.getAllByRole('checkbox');
+    expect(after[0]).not.toBeChecked();
+    expect(get(runtimeStore).cleanupUncheckedIds).toEqual({ 'plan-1': true });
+  });
+
+  it('highlights the item a report opened the job at', async () => {
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
+    vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
+    runtimeStore.update((s) => ({ ...s, cleanupHighlightItemId: 'plan-1' }));
+
+    render(CleanupView);
+
+    await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
+    expect(document.getElementById('cleanup-item-plan-1')?.className).toContain(
+      'item-row--highlight',
+    );
   });
 
   it('switches to kept tab and releases kept items', async () => {

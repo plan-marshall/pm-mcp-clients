@@ -385,4 +385,112 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`operator.help.designer`
 |Design a plan's process in the web app (web shows the ways in).
 |Entwirf den Prozess eines Plans in der Web-App (web zeigt die Wege hinein).
+|`designer.input.limit`
+|1 MB
+|1 MB
+
+|`designer.input.installed_hint`
+|Choose an installed unit on the left, or start from a file, a paste, or a template.
+|Wähle links eine installierte Einheit oder starte mit einer Datei, einem Einfügetext oder einer Vorlage.
+
+|`designer.input.template`
+|Start from a template
+|Mit einer Vorlage starten
+
+|`designer.input.template_hint`
+|An empty unit with its frontmatter to fill in.
+|Eine leere Einheit mit ihrem auszufüllenden Frontmatter.
+
+|`designer.input.file_too_large`
+|The file is larger than {limit}.
+|Die Datei ist größer als {limit}.
+
+|`designer.input.read_failed`
+|The file could not be read.
+|Die Datei konnte nicht gelesen werden.
+
+|`designer.draft.restored_loading_failed`
+|The workflow units could not be loaded.
+|Die Workflow-Einheiten konnten nicht geladen werden.
+
+|`designer.frontmatter.name`
+|Name
+|Name
+
+|`designer.frontmatter.description`
+|Description
+|Beschreibung
+
+|`designer.frontmatter.type`
+|Type
+|Typ
+
+|`designer.frontmatter.entries`
+|Entries
+|Eingänge
+
+|`designer.frontmatter.exits`
+|Exits
+|Ausgänge
+
+|`designer.frontmatter.author_label`
+|Author
+|Autor
+
+|`designer.frontmatter.author_save`
+|Remember my name
+|Meinen Namen merken
+
+|`designer.frontmatter.modified`
+|Modified
+|Geändert
+
+|`designer.frontmatter.release`
+|Release
+|Release
+
+|`designer.frontmatter.signature`
+|Signature
+|Signatur
+
+|`designer.frontmatter.signature_none`
+|none
+|keine
+
+|`designer.frontmatter.add_action`
+|Add the frontmatter
+|Frontmatter hinzufügen
+
+|`designer.validate.failed`
+|The validation could not be run.
+|Die Prüfung konnte nicht ausgeführt werden.
+
+|`designer.place.progress`
+|Placing {unit}
+|Platziere {unit}
+
+|`designer.place.starting`
+|The landing is written, committed, and landed.
+|Die Landung wird geschrieben, festgeschrieben und gelandet.
+
+|`designer.remove.failed`
+|The removal was refused.
+|Das Entfernen wurde abgelehnt.
+
+|`designer.diff.same`
+|unchanged line
+|unveränderte Zeile
+
+|`designer.diff.add`
+|added line
+|hinzugefügte Zeile
+
+|`designer.diff.remove`
+|removed line
+|entfernte Zeile
+
+|`designer.diff.change`
+|changed line
+|geänderte Zeile
+
 |===

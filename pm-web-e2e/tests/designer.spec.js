@@ -84,14 +84,125 @@ test.describe('Process Designer Flow (UC-PLN-3)', () => {
     );
   });
 
-  test('places the open unit in a project', async ({ page }) => {
-    // Choose the project explicitly so the placement lands there
+  test('shows the difference and places the open unit in a project', async ({ page }) => {
+    // Choose the project explicitly so the placement lands there, and wait for the units the
+    // choice reloads before editing: that load opens the project's unit and would replace the fill.
+    const projectLoaded = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/projects/pm-mcp-clients/workflows') && response.ok(),
+    );
     await page.getByTestId('project-select').selectOption('pm-mcp-clients');
+    await projectLoaded;
+
+    // A changed unit is what the comparison and the placing are for; the same text is refused.
+    await page
+      .getByTestId('workflow-text')
+      .fill(
+        'workflow landing.pull-request version 2 format 1\n' +
+          '---\nname: Landing\ntype: subworkflow\nentry start\nexit done\n---\n' +
+          'state start\n  done -> done\n',
+      );
+    await expect(page.getByTestId('workflow-text')).toHaveValue(/state start/);
 
     await page.getByTestId('validate-button').click();
     await expect(page.getByTestId('validation-valid')).toBeVisible();
 
     await page.getByTestId('place-button').click();
-    await expect(page.getByTestId('designer-placed')).toContainText('Placed:');
+    await expect(page.getByTestId('place-dialog')).toBeVisible();
+    await page.getByTestId('place-compare').click();
+
+    await expect(page.getByTestId('designer-diff')).toBeVisible();
+    await expect(page.getByTestId('place-confirm')).toBeVisible();
+    await page.getByTestId('place-confirm').click();
+
+    await expect(page.getByTestId('designer-place-done')).toContainText('Placed:', {
+      timeout: 15000,
+    });
+  });
+});
+
+test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC-PLN-3)', () => {
+  test.beforeEach(async ({ page, request }) => {
+    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'designer' },
+    });
+    expect(res.ok()).toBeTruthy();
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/#code=KXQB-MRTN');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+    await page.getByRole('button', { name: 'Machine settings' }).click();
+    await page.getByTestId('machine-settings-button').click();
+    await page.getByTestId('open-designer-btn').click();
+    await expect(page.getByTestId('process-designer')).toBeVisible();
+  });
+
+  test('reads an uploaded unit in the browser', async ({ page }) => {
+    await page.getByRole('button', { name: 'Upload a file' }).click();
+    await page.getByTestId('designer-file-input').setInputFiles({
+      name: 'uploaded.pmwf',
+      mimeType: 'text/plain',
+      buffer: Buffer.from(
+        'workflow uploaded-unit version 1 format 1\n' +
+          '---\nname: Uploaded\ntype: subworkflow\nentry start\nexit done\n---\n' +
+          'state start\n  done -> done\n',
+      ),
+    });
+
+    await expect(page.getByTestId('workflow-text')).toHaveValue(/workflow uploaded-unit/);
+    await expect(page.getByTestId('designer-unit')).toHaveText('uploaded-unit');
+  });
+
+  test('keeps the draft across a reload and says when it is from', async ({ page }) => {
+    await page
+      .getByTestId('workflow-text')
+      .fill(
+        'workflow landing.pull-request version 9 format 1\n---\nname: Drafted\n---\nstate start\n',
+      );
+    page.on('dialog', (dialog) => dialog.accept());
+    await page.reload();
+
+    await expect(page.getByTestId('process-designer')).toBeVisible();
+    await expect(page.getByTestId('workflow-text')).toHaveValue(/name: Drafted/);
+    await expect(page.getByTestId('designer-notice')).toContainText('Your draft from');
+  });
+
+  test('writes a frontmatter change from the panel into the text', async ({ page }) => {
+    await page.getByTestId('frontmatter-name').fill('Renamed');
+    await expect(page.getByTestId('workflow-text')).toHaveValue(/name: Renamed/);
+    await expect(page.getByTestId('workflow-text')).toHaveValue(/modified: \d{4}-\d{2}-\d{2}/);
+  });
+
+  test('jumps to the line of a validation finding', async ({ page }) => {
+    await page.getByTestId('workflow-text').fill('this is not a workflow');
+    await page.getByTestId('validate-button').click();
+    await expect(page.getByTestId('validation-summary')).toContainText('1 finding');
+
+    await page.getByTestId('finding-0').getByRole('button').click();
+
+    const line = await page.getByTestId('workflow-text').evaluate((element) => {
+      const field = element;
+      return field.value.slice(0, field.selectionStart).split('\n').length;
+    });
+    expect(line).toBeGreaterThan(0);
+  });
+
+  test('asks before leaving a changed draft', async ({ page }) => {
+    await page.getByTestId('workflow-text').fill('workflow changed version 1 format 1\n');
+    await page.getByTestId('designer-back').click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('Leave the designer?');
+    await dialog.getByRole('button', { name: 'Stay' }).click();
+    await expect(page.getByTestId('process-designer')).toBeVisible();
+  });
+
+  test('is read only at phone width with Validate kept', async ({ page }) => {
+    await page.setViewportSize({ width: 600, height: 900 });
+
+    await expect(page.getByTestId('designer-phone-note')).toBeVisible();
+    await expect(page.getByTestId('workflow-text')).toHaveAttribute('readonly', '');
+    await expect(page.getByTestId('validate-button')).toBeVisible();
+    await expect(page.getByTestId('place-button')).toHaveCount(0);
   });
 });

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -9,7 +10,7 @@
     type CleanupItemEntry,
     type CleanupKeptItem,
   } from '../api/client';
-  import { navigateTo } from '../stores/runtime';
+  import { navigateTo, runtimeStore } from '../stores/runtime';
   import { formatBytes } from '../utils/tokenFormat';
 
   let job = $state<CleanupJob | null>(null);
@@ -21,6 +22,9 @@
 
   // Unchecked items (checked items are the ones to be deleted; unchecking excludes them and keeps them for good)
   let uncheckedIds = $state<Record<string, boolean>>({});
+
+  // The item whose read-only preview is open, kept on the route so going back keeps the checks.
+  let previewItemId = $state<string | null>(null);
 
   // Active view tab: 'job' or 'kept'
   let activeTab = $state<'job' | 'kept'>('job');
@@ -36,6 +40,45 @@
     void loadData();
   });
 
+  /**
+   * Keeps the selection on the runtime store, so a preview or another view returns to it.
+   */
+  function persistSelection(): void {
+    runtimeStore.update((s) => ({
+      ...s,
+      cleanupSelectionJobId: job?.job_id ?? null,
+      cleanupUncheckedIds: { ...uncheckedIds },
+    }));
+  }
+
+  /** Clears the checks and the preview a job held, so a later job starts clean. */
+  function clearRememberedSelection(): void {
+    uncheckedIds = {};
+    previewItemId = null;
+    runtimeStore.update((s) => ({
+      ...s,
+      cleanupSelectionJobId: null,
+      cleanupUncheckedIds: {},
+      cleanupPreviewItemId: null,
+    }));
+  }
+
+  /**
+   * Opens an item's read-only preview without deciding anything about it.
+   *
+   * @param item the item to inspect
+   */
+  function openPreview(item: CleanupItemEntry): void {
+    previewItemId = item.id;
+    runtimeStore.update((s) => ({ ...s, cleanupPreviewItemId: item.id }));
+  }
+
+  /** Closes the preview and returns to the job with its checks as they were. */
+  function closePreview(): void {
+    previewItemId = null;
+    runtimeStore.update((s) => ({ ...s, cleanupPreviewItemId: null }));
+  }
+
   async function loadData() {
     isLoading = true;
     loadError = '';
@@ -46,8 +89,16 @@
       ]);
       job = cleanupJob;
       keptItems = keptRes?.items || [];
-      // Initialize all items as checked (i.e. uncheckedIds is empty)
-      uncheckedIds = {};
+      const remembered = get(runtimeStore);
+      if (job && remembered.cleanupSelectionJobId === job.job_id) {
+        uncheckedIds = { ...(remembered.cleanupUncheckedIds ?? {}) };
+        previewItemId = remembered.cleanupPreviewItemId ?? null;
+      } else {
+        clearRememberedSelection();
+        if (job) {
+          runtimeStore.update((s) => ({ ...s, cleanupSelectionJobId: cleanupJob?.job_id ?? null }));
+        }
+      }
     } catch {
       loadError = $t('system.cleanup.load_failed');
     } finally {
@@ -70,6 +121,22 @@
     return allItems.filter((item) => !uncheckedIds[item.id]);
   });
 
+  let previewItem = $derived.by<CleanupItemEntry | null>(() => {
+    if (!previewItemId) return null;
+    return allItems.find((item) => item.id === previewItemId) ?? null;
+  });
+
+  /** The item a report's detail asked this visit to highlight, where it named one. */
+  let highlightedItemId = $derived($runtimeStore.cleanupHighlightItemId ?? null);
+
+  $effect(() => {
+    const id = highlightedItemId;
+    if (!id || !job || typeof document === 'undefined') return;
+    const target =
+      document.getElementById(`cleanup-item-${id}`) ?? document.getElementById('cleanup-summary');
+    target?.scrollIntoView?.({ block: 'center' });
+  });
+
   let uncheckedCount = $derived.by(() => {
     return allItems.length - checkedItems.length;
   });
@@ -86,6 +153,7 @@
     } else {
       uncheckedIds = { ...uncheckedIds, [id]: true };
     }
+    persistSelection();
   }
 
   function checkAllForProject(items: CleanupItemEntry[]) {
@@ -94,6 +162,7 @@
       delete copy[item.id];
     }
     uncheckedIds = copy;
+    persistSelection();
   }
 
   function uncheckAllForProject(items: CleanupItemEntry[]) {
@@ -102,6 +171,7 @@
       copy[item.id] = true;
     }
     uncheckedIds = copy;
+    persistSelection();
   }
 
   function openDeleteModal() {
@@ -125,6 +195,14 @@
         size: formatBytes(res.freed_bytes),
       });
       closeDeleteModal();
+      uncheckedIds = {};
+      previewItemId = null;
+      runtimeStore.update((s) => ({
+        ...s,
+        cleanupUncheckedIds: {},
+        cleanupPreviewItemId: null,
+        cleanupHighlightItemId: null,
+      }));
       void loadData();
     } catch (err: unknown) {
       actionError = (err as Error)?.message || $t('system.cleanup.failed');
@@ -137,6 +215,7 @@
     if (!job) return;
     try {
       await apiClient.remindCleanup(job.job_id);
+      clearRememberedSelection();
       actionSuccess = $t('system.cleanup.reminded', { date: 'in 3 days' });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {
@@ -148,6 +227,7 @@
     if (!job) return;
     try {
       await apiClient.ignoreCleanup(job.job_id);
+      clearRememberedSelection();
       actionSuccess = $t('system.cleanup.ignored', { count: allItems.length });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {
@@ -254,7 +334,12 @@
       </div>
     {:else}
       <!-- Summary Card -->
-      <section class="card summary-card" aria-labelledby="heading-summary">
+      <section
+        id="cleanup-summary"
+        class="card summary-card"
+        class:summary-card--highlight={highlightedItemId}
+        aria-labelledby="heading-summary"
+      >
         <h2 id="heading-summary" class="card-title">{$t('system.cleanup.summary.title')}</h2>
         <div class="summary-content">
           <div class="summary-counts">
@@ -285,70 +370,115 @@
       </section>
 
       <!-- Details per project -->
-      <section class="projects-section" aria-labelledby="heading-details">
-        <h2 id="heading-details" class="section-title">{$t('system.cleanup.details.title')}</h2>
-
-        {#each job.projects as project}
-          <div class="card project-card">
-            <div class="project-header">
-              <div class="project-name">
-                <h3>{project.display_name}</h3>
-                <span class="mono text-muted text-xs">{project.project_id}</span>
-              </div>
-              <div class="project-select-actions">
-                <button
-                  type="button"
-                  class="btn-link"
-                  onclick={() => checkAllForProject(project.items)}
-                >
-                  {$t('system.cleanup.details.check_all')}
-                </button>
-                <button
-                  type="button"
-                  class="btn-link"
-                  onclick={() => uncheckAllForProject(project.items)}
-                >
-                  {$t('system.cleanup.details.check_none')}
-                </button>
-              </div>
-            </div>
-
-            <ul class="items-list">
-              {#each project.items as item}
-                {@const isChecked = !uncheckedIds[item.id]}
-                <li class="item-row" class:item-row--excluded={!isChecked}>
-                  <label class="item-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onchange={() => toggleItem(item.id)}
-                    />
-                    <div class="item-info">
-                      <span class="item-title">{item.title}</span>
-                      <div class="item-meta">
-                        <span class="badge badge--kind">{item.kind}</span>
-                        {#if item.ended_at}
-                          <span class="text-muted text-xs">
-                            {$t('system.cleanup.details.ended', { time: item.ended_at })}
-                          </span>
-                        {/if}
-                        {#if item.detail}
-                          <span class="text-muted text-xs">· {item.detail}</span>
-                        {/if}
-                      </div>
-                    </div>
-                  </label>
-                  <span class="item-size mono">{formatBytes(item.freed_bytes)}</span>
-                </li>
-              {/each}
-            </ul>
+      {#if previewItem}
+        <section
+          class="card preview-card"
+          aria-labelledby="heading-preview"
+          data-testid="cleanup-preview"
+        >
+          <div class="preview-head">
+            <button type="button" class="btn-link" onclick={closePreview}>
+              ← {$t('system.cleanup.preview.back')}
+            </button>
+            <h2 id="heading-preview" class="section-title">{previewItem.title}</h2>
+            <span class="badge badge--kind">{previewItem.kind}</span>
           </div>
-        {/each}
+          <p class="text-muted text-sm">{$t('system.cleanup.preview.readonly')}</p>
+          <dl class="preview-facts">
+            {#if previewItem.ended_at}
+              <dt>{$t('system.cleanup.details.ended', { time: previewItem.ended_at })}</dt>
+              <dd></dd>
+            {/if}
+            {#if previewItem.detail}
+              <dt>{$t('system.cleanup.preview.detail')}</dt>
+              <dd>{previewItem.detail}</dd>
+            {/if}
+            <dt>{$t('system.cleanup.preview.size')}</dt>
+            <dd class="mono">{formatBytes(previewItem.freed_bytes)}</dd>
+          </dl>
+          {#if !previewItem.detail}
+            <p class="text-muted text-sm">{$t('system.cleanup.preview.empty')}</p>
+          {/if}
+        </section>
+      {:else}
+        <section class="projects-section" aria-labelledby="heading-details">
+          <h2 id="heading-details" class="section-title">{$t('system.cleanup.details.title')}</h2>
 
-        <p class="unchecked-note text-muted text-sm">
-          {$t('system.cleanup.details.unchecked_note')}
-        </p>
-      </section>
+          {#each job.projects as project}
+            <div class="card project-card">
+              <div class="project-header">
+                <div class="project-name">
+                  <h3>{project.display_name}</h3>
+                  <span class="mono text-muted text-xs">{project.project_id}</span>
+                </div>
+                <div class="project-select-actions">
+                  <button
+                    type="button"
+                    class="btn-link"
+                    onclick={() => checkAllForProject(project.items)}
+                  >
+                    {$t('system.cleanup.details.check_all')}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-link"
+                    onclick={() => uncheckAllForProject(project.items)}
+                  >
+                    {$t('system.cleanup.details.check_none')}
+                  </button>
+                </div>
+              </div>
+
+              <ul class="items-list">
+                {#each project.items as item}
+                  {@const isChecked = !uncheckedIds[item.id]}
+                  <li
+                    id={`cleanup-item-${item.id}`}
+                    class="item-row"
+                    class:item-row--excluded={!isChecked}
+                    class:item-row--highlight={item.id === highlightedItemId}
+                  >
+                    <label class="item-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onchange={() => toggleItem(item.id)}
+                      />
+                      <div class="item-info">
+                        <span class="item-title">{item.title}</span>
+                        <div class="item-meta">
+                          <span class="badge badge--kind">{item.kind}</span>
+                          {#if item.ended_at}
+                            <span class="text-muted text-xs">
+                              {$t('system.cleanup.details.ended', { time: item.ended_at })}
+                            </span>
+                          {/if}
+                          {#if item.detail}
+                            <span class="text-muted text-xs">· {item.detail}</span>
+                          {/if}
+                        </div>
+                      </div>
+                    </label>
+                    <span class="item-size mono">{formatBytes(item.freed_bytes)}</span>
+                    <button
+                      type="button"
+                      class="btn-link"
+                      aria-label={$t('system.cleanup.preview.open', { item: item.title })}
+                      onclick={() => openPreview(item)}
+                    >
+                      {$t('system.cleanup.details.open')}
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/each}
+
+          <p class="unchecked-note text-muted text-sm">
+            {$t('system.cleanup.details.unchecked_note')}
+          </p>
+        </section>
+      {/if}
 
       <!-- Action Bar -->
       <div class="cleanup-actions-bar">
@@ -522,6 +652,40 @@
 
   .summary-card {
     background-color: var(--color-bg-subtle);
+  }
+
+  .summary-card--highlight,
+  .item-row--highlight {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .preview-card {
+    margin-bottom: var(--space-6);
+  }
+
+  .preview-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-2);
+  }
+
+  .preview-facts {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--space-1) var(--space-4);
+    margin: var(--space-3) 0 0 0;
+    font-size: var(--text-sm);
+  }
+
+  .preview-facts dt {
+    color: var(--color-text-muted);
+  }
+
+  .preview-facts dd {
+    margin: 0;
   }
 
   .card-title {
