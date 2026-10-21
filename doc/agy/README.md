@@ -20,15 +20,15 @@ Every work package in `doc/agy/` is governed by coordinated architectural layers
 
 ## 2. Active Wave: 3-Stream Parallel Model
 
-Waves execute across disjoint parallel streams (Mock Runtime and CLI TUI):
+Waves execute across disjoint parallel streams (Mock Runtime, CLI TUI, and Cross-Module Use Case):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
 | **Mock** | [`mock-runtime-reports-system-designer-plan.md`](mock-runtime-reports-system-designer-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-reports-system-designer` | `feat/mock-runtime-reports-system-designer` | Step 1 allocated; ready to launch |
 | **CLI (Projects)** | [`cli-fullscreen-projects-plan.md`](cli-fullscreen-projects-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-projects` | `feat/cli-fullscreen-projects` | Step 1 allocated; ready to launch |
-| **CLI (Reports/System)** | [`cli-fullscreen-reports-system-plan.md`](cli-fullscreen-reports-system-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-reports-system` | `feat/cli-fullscreen-reports-system` | Step 1 allocated; ready to launch |
+| **Use Case (Cross-Module)** | [`uc-pln-5-plan.md`](uc-pln-5-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-uc-pln-5` | `feat/uc-pln-5-follow-epic` | Step 1 allocated; ready to launch |
 
-*(Note: Stream C Web Client is 100% delivered with PR #154).*
+*(Note: Stream B Sequel [`cli-fullscreen-reports-system-plan.md`](cli-fullscreen-reports-system-plan.md) is queued to run sequentially after `cli-fullscreen-projects` lands).*
 
 ---
 
