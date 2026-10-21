@@ -83,8 +83,8 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - [x] 4. Final completion report written (`doc/agy/web-decisions-and-actions-plan-report.md`), initial plan moved to `doc/agy/implemented/web-decisions-and-actions-plan.md`, `doc/plans/web-actions.adoc` moved to `doc/plans/implemented/web-actions.adoc`, and `web-actions` marked `done` in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [x] 6. PR opened ([#151](https://github.com/plan-marshall/pm-mcp-clients/pull/151), NEVER `skip-bot-review`), review timer scheduled, 100% of bot findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-decisions-and-actions-plan-report.md` by orchestrator session.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-decisions-and-actions-plan-report.md` by orchestrator session.
 
 ---
 
