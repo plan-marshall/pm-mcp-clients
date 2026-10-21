@@ -67,8 +67,8 @@ Every feature, refactoring, or bug fix must follow this sequential lifecycle:
 
 ### Session Roles & Boundaries
 
-- **Orchestrator Session**: Prepares Step 1 (worktree creation, checking off Step 1 in plan, initial branch push) and completes Step 8 (post-landing 4-dimension verification, moving report to `doc/agy/verified/`, updating indexes). The orchestrator never implements production code directly.
-- **Worker Session**: Executes Steps 2 through 7 inside its dedicated worktree. The worker reads `doc/agy/<topic>-plan.md` directly for its Scope, Persona Matrix, and Phased Technical Recipe—the orchestrator does not duplicate these into the launch prompt.
+- **Orchestrator Session**: Prepares Step 1 (worktree creation, checking off Step 1 in plan, initial branch push, dependency pre-flight) per [`doc/meta/emit_rules.adoc`](../meta/emit_rules.adoc) and completes Step 8 (post-landing 4-dimension verification, moving report to `doc/agy/verified/`, updating indexes) per [`doc/meta/verification-protocol.adoc`](../meta/verification-protocol.adoc). The orchestrator never implements production code directly.
+- **Worker Session**: Executes Steps 2 through 7 inside its dedicated worktree per [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc). The worker reads `doc/agy/<topic>-plan.md` directly for its Scope, Persona Matrix, and Phased Technical Recipe—the orchestrator does not duplicate these into the launch prompt.
 - **Plan Session Boundary**: The worker must ONLY author the completion report at `doc/agy/<topic>-plan-report.md` and move the plan to `doc/agy/implemented/<topic>-plan.md`. The worker **never** moves reports to `doc/agy/verified/` (strictly reserved for Step 8 by the orchestrator).
 
 ### Step 1: Isolated Git Worktree Lifecycle (Orchestrator Responsibility)
@@ -247,8 +247,8 @@ The repository's `main` branch is protected by GitHub Rulesets and uses GitHub's
 
 Once changes have landed on `main` and the repository workspace is synchronized:
 
-1. **Conduct 4-Pillar Verification Analysis (Governed by [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md))**:
-   Do not re-execute Maven reactor builds or tests (functional compilation, tests, and static checks were already proven by CI and pre-commit). Instead, rigorously execute the active 4-pillar audit defined in [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md):
+1. **Conduct 4-Pillar Verification Analysis (Governed by [`doc/meta/verification-protocol.adoc`](../meta/verification-protocol.adoc))**:
+   Do not re-execute Maven reactor builds or tests (functional compilation, tests, and static checks were already proven by CI and pre-commit). Instead, rigorously execute the active 4-pillar audit defined in [`doc/meta/verification-protocol.adoc`](../meta/verification-protocol.adoc):
    - **Pillar 1: Specification & Contract Conformance Matrix**: Trace implemented capabilities against upstream `.adoc` specifications, use cases, wire contracts, and closed enums; verify zero stubs or temporary placeholders.
    - **Pillar 2: Architectural & Code Hygiene Anti-Pattern Scans**: Automated module-specific checks (zero `fallbackMessages`, zero uncatalogued strings, closed mock schema enforcement, terminal output sanitizer boundary, pure Jackson streaming).
    - **Pillar 3: Subprocess Lifecycle & Cross-Module Handshake Pre-Flight**: Smoke-test live lifecycles (`start.sh`, `stop.sh`, port bindings, standard scenarios, SSE reset/replay).
@@ -335,26 +335,18 @@ Include this standardized checklist in any new plan (`doc/agy/*-plan.md`):
 
 ## 5. Canonical Worker Launch Prompt Standard
 
-Because every implementation plan (`doc/agy/<topic>-plan.md`) already defines its scope, isolation boundaries, persona matrix, and phased recipe, orchestrators launch workers using this concise canonical prompt:
+Because every implementation plan (`doc/agy/<topic>-plan.md`) already defines its scope, isolation boundaries, persona matrix, and phased recipe, orchestrators launch workers using the lean two-liner standard codified in [`doc/meta/emit_rules.adoc`](../meta/emit_rules.adoc):
 
-```markdown
-You are an autonomous senior developer agent executing the implementation plan in an isolated git worktree.
+1. **Working Directory Navigation:**
+   ```bash
+   cd /Users/oliver/git/worktrees/<worktree-name>
+   ```
 
-### Worktree & Plan
-- Working Directory: `/Users/oliver/git/worktrees/<worktree-name>`
-- Branch: `<branch-name>`
-- Plan: `doc/agy/<topic>-plan.md`
-- Governed by: `doc/agy/runbook.md`
+2. **Canonical Worker Prompt to Paste:**
+   ```text
+   Execute the implementation plan at `doc/agy/<topic>-plan.md` conforming strictly to `doc/agy/runbook.md`. Step 1 (worktree allocation) is already complete. Load required cognitive personas and proceed from Step 2 onwards.
+   ```
 
-### Instructions
-1. Step 1 is already complete. Read `doc/agy/<topic>-plan.md` and execute Steps 2 through 7.
-2. Adopt the cognitive personas and domain skills designated in Section 4 of the plan.
-3. Follow the 5-Phase Technical Recipe in Section 5 of the plan, with all tests passing locally.
-4. Pass pre-commit gate before committing (`./mvnw verify -Ppre-commit`).
-5. Author completion report `doc/agy/<topic>-plan-report.md`, move plan to `doc/agy/implemented/`, and update `doc/plans/README.adoc`. Do NOT move report to `verified/` (Step 8 is reserved for orchestrator).
-6. Open PR against `main`. Invariant: NEVER apply `--label "skip-bot-review"`. Resolve 100% of automated review bot findings via `persona-code-reviewer`.
-7. Enqueue in merge queue and land on `main`.
-8. All commits must include:
-   Co-Authored-By: plan-marshall <noreply@cuioss.de>
-```
+> [!IMPORTANT]
+> **Anti-Duplication Invariant**: The orchestrator must never summarize or copy-paste plan sections (scope, persona matrix, technical recipes, checklists) into the launch prompt. The plan file is the sole authoritative specification.
 

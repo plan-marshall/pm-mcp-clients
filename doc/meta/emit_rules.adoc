@@ -1,0 +1,135 @@
+= Task Emission & Worktree Orchestration Protocol
+:toc: left
+:toclevels: 3
+:nofooter:
+:sectnums:
+
+This document establishes the canonical protocol for the **Orchestrator Session** when preparing, emitting, and dispatching implementation tasks in `pm-mcp-clients`.
+
+It operationalizes **Step 1 (Worktree Allocation & Task Emission)** of link:../agy/runbook.md[`doc/agy/runbook.md`] and sits alongside link:implement_use-cases.adoc[`doc/meta/implement_use-cases.adoc`] and link:verification-protocol.adoc[`doc/meta/verification-protocol.adoc`].
+
+== Position in the Governance Architecture
+
+The meta-governance lifecycle cleanly separates orchestrator responsibilities from worker execution:
+
+[cols="2,2,2,4",options="header"]
+|===
+|Document |Primary Actor |Lifecycle Stage |Governing Scope
+
+|`doc/meta/emit_rules.adoc` _(this document)_
+|**Orchestrator**
+|Step 1 (Emit / Launch)
+|Worktree provisioning, Step 1 checklist check-off, dependency pre-flight, and emitting the strict canonical two-liner worker prompt.
+
+|link:implement_use-cases.adoc[`doc/meta/implement_use-cases.adoc`]
+|**Worker**
+|Steps 2–7 (Implementation)
+|Technical recipe across modules (`pm-api` -> `pm-mock-runtime` -> `pm-operator` -> `pm-web-app` -> IT/E2E), streaming codecs, testing methodology, and cognitive persona adoption.
+
+|link:verification-protocol.adoc[`doc/meta/verification-protocol.adoc`]
+|**Orchestrator**
+|Step 8 (Verification)
+|Post-landing 4-pillar verification audit, completion report verification, report archival into `doc/agy/verified/`, and index maintenance.
+
+|link:post_run_review.adoc[`doc/meta/post_run_review.adoc`]
+|**Orchestrator**
+|Multi-Plan Review
+|Cross-stream post-run review, gap analysis, and synthesis of de-collided remediation plans.
+|===
+
+---
+
+== Core Architectural Invariants for Task Emission
+
+[#inv-self-contained]
+=== Invariant 1: Self-Contained Plan Principle
+Every implementation plan in `doc/agy/<topic>-plan.md` must be 100% self-contained. It declares:
+
+* Traceability to use-case and design specifications (Section 1).
+* Scope, deliverables, and file-level boundary rules (Sections 2 and 3).
+* Sequential 8-step lifecycle checklist (Section 4).
+* Cognitive personas and supporting domain skills matrix (Section 5).
+* Phased technical recipe with step-by-step checklist (Section 6).
+* Build, pre-commit, and PR verification gates (Sections 4 and 6).
+
+Because all technical instructions and cognitive constraints reside inside the plan file, no secondary operational instructions are needed.
+
+[#inv-anti-duplication]
+=== Invariant 2: Anti-Duplication Rule
+The orchestrator **must never duplicate, copy-paste, or re-summarize** the plan's contents in the worker prompt.
+
+* *Prohibited*: Copying phases, repeating persona skill tables, enumerating invariants, pasting test command lists, or restating PR instructions in chat or launch prompts.
+* *Rationale*: Duplicating plan text creates dual-maintenance drift, cognitive noise, context window bloat, and encourages workers to read prompt summaries instead of following the authoritative plan file.
+
+[#inv-canonical-prompt]
+=== Invariant 3: The Canonical Two-Liner Prompt Standard
+When dispatching an OpenCode, Antigravity, or other worker session, the orchestrator emits **only two items**:
+
+1. The exact shell command to change into the isolated worktree directory:
++
+[source,bash]
+----
+cd /Users/oliver/git/worktrees/<worktree-name>
+----
+
+2. The exact canonical worker launch prompt:
++
+[source,text]
+----
+Execute the implementation plan at `doc/agy/<topic>-plan.md` conforming strictly to `doc/agy/runbook.md`. Step 1 (worktree allocation) is already complete. Load required cognitive personas and proceed from Step 2 onwards.
+----
+
+Nothing more, nothing less.
+
+---
+
+== Step 1: Orchestrator Preparation Workflow
+
+Before emitting the launch command and prompt, the orchestrator must execute this complete preparation sequence:
+
+=== 1. Main Branch Synchronization
+Ensure the repository root is on clean, up-to-date `main`:
+[source,bash]
+----
+git checkout main && git pull --rebase origin main
+----
+
+=== 2. Isolated Worktree Creation
+Create the dedicated worktree and topic branch off `main`:
+[source,bash]
+----
+git worktree add -b feat/<topic-name> /Users/oliver/git/worktrees/<worktree-name> main
+----
+* Invariant: Never implement directly on `main` or in the root workspace.
+* Directory pattern: `/Users/oliver/git/worktrees/pm-mcp-clients-<topic>`
+
+=== 3. Plan Step 1 Check-Off
+In the newly created worktree, update `doc/agy/<topic>-plan.md` to mark Step 1 as completed:
+[source,markdown]
+----
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/<worktree-name>` on branch `feat/<topic-name>` off latest `main`.
+----
+
+=== 4. Initial Branch Commit & Tracking Push
+Commit the Step 1 check-off with the required co-author trailer and push the branch to `origin`:
+[source,bash]
+----
+git -C /Users/oliver/git/worktrees/<worktree-name> commit -am "chore(plan): check off step 1 in <topic>-plan.md
+
+Co-Authored-By: plan-marshall <noreply@cuioss.de>"
+git -C /Users/oliver/git/worktrees/<worktree-name> push -u origin feat/<topic-name>
+----
+
+=== 5. Dependency Pre-Flight
+If the plan involves frontend modules (`pm-web-app`, `pm-web-e2e`), run dependency setup in the worktree to ensure a clean starting state:
+[source,bash]
+----
+cd /Users/oliver/git/worktrees/<worktree-name>/pm-web-app && npm ci
+----
+Verify that `npm run check` reports zero errors and zero warnings.
+
+=== 6. Dashboard Synchronization
+Update `doc/agy/README.md` (Section 2: Active Waves) to reflect the active worktree directory, branch name, and status.
+
+=== 7. Task Emission
+Emit the directory navigation command and canonical two-liner prompt to the operator.

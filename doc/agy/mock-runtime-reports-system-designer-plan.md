@@ -2,7 +2,7 @@
 
 This implementation plan governs **Scenario 4 (`reports-and-system.json`)** and **Scenario 5 (`designer.json`)** of the 5-scenario mock-runtime architecture, removes the remaining non-standard `"designer"` top-level schema bypass and the `validateOperatorState` early-return bypass in `ScenarioLoader`, and wires direct scenario JSON consumption into `pm-web-app` Vitest tests.
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
 ---
 
@@ -15,7 +15,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Local Client Design** | [`doc/design/shared/reports.adoc`](../design/shared/reports.adoc), [`doc/design/shared/system-and-cleanup.adoc`](../design/shared/system-and-cleanup.adoc), [`doc/design/shared/workflow-designer.adoc`](../design/shared/workflow-designer.adoc) |
 | **Roadmap Packages** | [`doc/plans/implemented/report-contract.adoc`](../plans/implemented/report-contract.adoc), [`doc/plans/implemented/system-contract.adoc`](../plans/implemented/system-contract.adoc), [`doc/plans/implemented/designer-contract.adoc`](../plans/implemented/designer-contract.adoc), [`doc/plans/implemented/web-app-foundation.adoc`](../plans/implemented/web-app-foundation.adoc) |
 | **Prerequisite Plans** | [`doc/agy/mock-runtime-foundation-and-consolidation-plan.md`](mock-runtime-foundation-and-consolidation-plan.md), Waves 2a–2c |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
 ---

@@ -1,18 +1,20 @@
 # Orchestrator Wave Index & Implementation Dashboard
 
-This document provides the central, real-time dashboard for agent orchestration under [`doc/agy/runbook.md`](runbook.md) and [`doc/meta/verification-protocol.md`](../meta/verification-protocol.md).
+This document provides the central, real-time dashboard for agent orchestration under [`doc/agy/runbook.md`](runbook.md), [`doc/meta/emit_rules.adoc`](../meta/emit_rules.adoc), and [`doc/meta/verification-protocol.adoc`](../meta/verification-protocol.adoc).
 
 It tracks active worktrees, the 3-stream parallel wave model, and the sequential execution order for all remaining implementation packages.
 
 ---
 
-## 1. Governing Framework & The Four Pillars
+## 1. Governing Framework & Architectural Layers
 
-Every work package in `doc/agy/` is governed by four coordinated architectural layers:
+Every work package in `doc/agy/` is governed by coordinated architectural layers:
 1. **Roadmap & Specifications (`doc/plans/`)**: Declares formal package boundaries and requirements.
-2. **Technical Implementation Recipe (`doc/meta/implement_use-cases.md`)**: Governs the 5-module build flow, Jackson streaming constraints, and test standards.
-3. **Operational Lifecycle & SOP (`doc/agy/runbook.md`)**: Governs worktree isolation, cognitive persona adoption, pre-commit vs. documentation distinction, PR creation (NEVER `skip-bot-review` on worker PRs), and automated bot triage.
-4. **Post-Landing Verification Protocol (`doc/meta/verification-protocol.md`)**: Governs active, independent Step 8 verification across 4 pillars (Traceability Matrix, Anti-Pattern Scans, Subprocess Lifecycle Pre-Flight, Independent Diff Auditing).
+2. **Task Emission & Worktree Orchestration (`doc/meta/emit_rules.adoc`)**: Governs Step 1 worktree setup and the canonical two-liner worker launch prompt standard (zero plan duplication).
+3. **Technical Implementation Recipe (`doc/meta/implement_use-cases.adoc`)**: Governs the 5-module build flow, Jackson streaming constraints, and test standards.
+4. **Operational Lifecycle & SOP (`doc/agy/runbook.md`)**: Governs worktree isolation, cognitive persona adoption, pre-commit vs. documentation distinction, PR creation (NEVER `skip-bot-review` on worker PRs), and automated bot triage.
+5. **Post-Landing Verification Protocol (`doc/meta/verification-protocol.adoc`)**: Governs active, independent Step 8 verification across 4 pillars (Traceability Matrix, Anti-Pattern Scans, Subprocess Lifecycle Pre-Flight, Independent Diff Auditing).
+6. **Post-Run Wave Review (`doc/meta/post_run_review.adoc`)**: Governs multi-plan reviews and de-collided remediation DAG synthesis.
 
 ---
 

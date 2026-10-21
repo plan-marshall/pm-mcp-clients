@@ -7,11 +7,6 @@
 *.classpath
 *.project
 **/.vscode
-# The shared Java/Maven editor settings are part of the repository; everything else in the
-# editor folder stays local.
-!/.vscode/
-/.vscode/*
-!/.vscode/settings.json
 .DS_Store
 .asciidoctorconfig.adoc
 .factorypath
