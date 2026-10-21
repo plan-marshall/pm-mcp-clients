@@ -73,7 +73,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` on branch `feat/web-decisions-and-actions` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` on branch `feat/web-decisions-actions` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `pm-dev-frontend-javascript` for `DecisionView`, `ControlActionsBar`, `HoldResolutionModal`, `PlanSettingsModal`, `FindingsReviewModal`, and `EpicView`.
   - `pm-dev-frontend-css` for modal dialogues, docked chat panel layout, and responsive styling.
