@@ -6260,7 +6260,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             var fixture = startRuntimeFixture();
             var fixtureProjects = fixtureObjects(fixture, FIXTURE_PROJECTS);
-            if (!fixtureProjects.isEmpty()) {
+            if (fixture != null && fixture.containsKey(FIXTURE_PROJECTS)) {
                 for (var project : fixtureProjects) {
                     var enrolled = readFixture(() -> EnrolledProject.fromMap(project), "facts.runtime.projects");
                     enrolledProjects.add(enrolled);
@@ -6559,15 +6559,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
         };
     }
 
+    /**
+     * @return {@code true} when the active scenario declares the project explorer domain, so its
+     *         stateful handler serves the live explorer and the single project
+     */
+    private boolean declaresProjects() {
+        var name = currentScenario.get().name();
+        return StandardScenarios.PROJECTS.equals(name) || StandardScenarios.PROJECTS_AND_START.equals(name);
+    }
+
     private boolean handleProjectExplorerGet(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
         if ("/api/v1/explorer".equals(path)
                 || (PATH_PROJECTS.equals(path)
                 && ((request.query() != null && request.query().contains("all"))
-                || StandardScenarios.PROJECTS.equals(currentScenario.get().name())))) {
+                || declaresProjects()))) {
             handleGetProjectsExplorer(response);
             return true;
         }
-        if (StandardScenarios.PROJECTS.equals(currentScenario.get().name())
+        if (declaresProjects()
                 && path.startsWith("/api/v1/projects/")
                 && !path.endsWith("/ended")
                 && !path.endsWith(SEGMENT_EVENTS)

@@ -39,16 +39,18 @@ import de.planmarshall.api.source.lesson.UnclaimedLessonSummary;
 class LessonSourceScenarioTest {
 
     private static final String PROJECT = "pm-mcp-clients";
+    private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
+    private static final String LESSON_SOURCE = SCENARIO + "#sources.lessons";
 
     @Test
     @DisplayName("lists the unclaimed lessons newest first and leaves claimed and retired ones out")
     void shouldListUnclaimedLessonsNewestFirst() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals(StandardScenarios.LESSON_SOURCE, runtime.currentScenarioName());
-            assertEquals("lesson.choose", runtime.currentStateName());
+            assertEquals(SCENARIO, runtime.currentScenarioName());
+            assertEquals("sources.lessons", runtime.currentStateName());
 
             var lessons = listLessons(client, auth, PROJECT);
             assertEquals(List.of("les-0007", "les-0009"), lessons.stream()
@@ -65,7 +67,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("reports a holding premise for a lesson whose cited files and symbols exist")
     void shouldReportHoldingPremise() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -80,7 +82,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("reports the missing files and symbols of a broken premise")
     void shouldReportBrokenPremise() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -98,7 +100,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("claims a lesson with a holding premise and broadcasts source.lesson_claimed")
     void shouldClaimLesson() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -126,7 +128,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("refuses a claim of a lesson whose broken premise was not overridden")
     void shouldRefuseClaimOfBrokenPremise() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -144,7 +146,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("claims a lesson with a broken premise when the operator uses it anyway")
     void shouldClaimBrokenPremiseWithOverride() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -158,7 +160,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("refuses a claim of a lesson another plan already owns")
     void shouldRefuseClaimOfOwnedLesson() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -175,7 +177,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("retires a lesson, broadcasts source.lesson_retired, and never offers it again")
     void shouldRetireLesson() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -204,7 +206,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("answers 404 for a premise check of a lesson that does not exist")
     void shouldAnswerNotFoundForUnknownLesson() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -221,7 +223,7 @@ class LessonSourceScenarioTest {
     @Test
     @DisplayName("refuses a lesson of a project that is not ready")
     void shouldRefuseNotReadyProject() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.LESSON_SOURCE)) {
+        try (var runtime = MockRuntime.start(LESSON_SOURCE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 

@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -56,21 +58,28 @@ import de.planmarshall.api.start.StartRefusalReason;
 import de.planmarshall.api.start.StartState;
 import de.planmarshall.api.start.StartStateResource;
 import de.planmarshall.api.start.StartTranscriptState;
+import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("StartScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class StartScenarioTest {
 
+    private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
+
+    private static String state(String stateId) {
+        return SCENARIO + "#" + stateId;
+    }
+
 
     @Test
     @DisplayName("loads the start scenario and lists the offered recipes")
     void shouldLoadScenarioAndListRecipes() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.START)) {
+        try (var runtime = MockRuntime.start(state("start.sources"))) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals(StandardScenarios.START, runtime.currentScenarioName());
+            assertEquals(SCENARIO, runtime.currentScenarioName());
             assertEquals("start.sources", runtime.currentStateName());
 
             var res = client.send(HttpRequest.get("/api/v1/recipes").withHeader("Authorization", auth));
@@ -88,7 +97,7 @@ class StartScenarioTest {
     @Test
     @DisplayName("starts a plan from a description and broadcasts plan.started")
     void shouldStartPlanFromDescription() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.START)) {
+        try (var runtime = MockRuntime.start(state("start.sources"))) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -121,7 +130,7 @@ class StartScenarioTest {
     @Test
     @DisplayName("derives a recipe plan id from the recipe key and the time")
     void shouldDeriveRecipePlanId() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.START)) {
+        try (var runtime = MockRuntime.start(state("start.sources"))) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -139,7 +148,7 @@ class StartScenarioTest {
     @Test
     @DisplayName("starts an epic and broadcasts epic.started")
     void shouldStartEpic() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.START)) {
+        try (var runtime = MockRuntime.start(state("start.sources"))) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -165,7 +174,7 @@ class StartScenarioTest {
     @Test
     @DisplayName("refuses a start in a project that is not ready")
     void shouldRefuseNotReadyProject() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.START)) {
+        try (var runtime = MockRuntime.start(state("start.sources"))) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -182,7 +191,7 @@ class StartScenarioTest {
     @Test
     @DisplayName("answers 404 for a start in an unknown project")
     void shouldRefuseUnknownProject() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.START)) {
+        try (var runtime = MockRuntime.start(state("start.sources"))) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -196,7 +205,7 @@ class StartScenarioTest {
     @Test
     @DisplayName("opens a draft intake and broadcasts intake.created")
     void shouldOpenIntakeDraft() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.START)) {
+        try (var runtime = MockRuntime.start(state("start.sources"))) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -225,18 +234,54 @@ class StartScenarioTest {
 
 
     @Test
-    @DisplayName("every start case scenario loads and is registered")
-    void allStartScenariosLoad() {
-        var cases = StandardScenarios.ALL.stream()
-                .filter(name -> StandardScenarios.START.equals(name) || name.startsWith("start-"))
-                .toList();
-        assertEquals(16, cases.size(), "the start and start-<case> scenarios");
+    @DisplayName("the consolidated scenario carries every start case as a state")
+    void allStartCasesAreStates() {
+        var scenario = ScenarioLoader.load(SCENARIO);
+        var startStates = List.of("start.sources", "start.chat", "start.documents",
+                "start.entry-continue", "start.epic", "start.epic-adopt", "start.follow-up",
+                "start.issue-failed", "start.lesson", "start.local-changes", "start.pull-request",
+                "start.rate-limited", "start.recipe", "start.refused", "start.unscreened");
 
-        for (var name : cases) {
-            var scenario = ScenarioLoader.load(name);
-            assertEquals(name, scenario.name());
-            assertFalse(scenario.startCase().isEmpty(), name + " carries its start fixtures");
+        for (var stateId : startStates) {
+            var fixture = startFixture(scenario, stateId);
+            assertFalse(fixture.isEmpty(), stateId + " carries its start fixtures");
+            assertNotNull(StartState.fromWire((String) fixture.get("state")), stateId);
+            assertNotNull(EntryKind.fromWire((String) fixture.get("kind")), stateId);
         }
+        assertTrue(scenario.states().keySet().containsAll(List.of("projects.explorer", "projects.ready",
+                "projects.empty", "projects.attention", "projects.being-added", "projects.unenrolled",
+                "enrol.scan", "enrol.digest-mismatch", "sources.git", "sources.lessons")));
+    }
+
+    @Test
+    @DisplayName("no superseded project or start scenario file remains")
+    void supersededFilesAreGone() throws Exception {
+        var scenarios = Path.of("src", "main", "resources", "scenarios");
+        if (!Files.isDirectory(scenarios)) {
+            scenarios = Path.of("pm-mock-runtime", "src", "main", "resources", "scenarios");
+        }
+        var superseded = List.of("projects.json", "enrolment.json", "git_sources.json",
+                "lesson_source.json", "start.json", "start-chat.json", "start-documents.json",
+                "start-entry-continue.json", "start-epic-adopt.json", "start-epic.json",
+                "start-follow-up.json", "start-issue-failed.json", "start-lesson.json",
+                "start-local-changes.json", "start-pull-request.json", "start-rate-limited.json",
+                "start-recipe.json", "start-refused.json", "start-sources.json",
+                "start-unscreened.json");
+        try (var files = Files.list(scenarios)) {
+            var present = files.map(file -> file.getFileName().toString())
+                    .filter(superseded::contains)
+                    .toList();
+            assertEquals(List.of(), present, "the cases live in projects-and-start.json");
+        }
+    }
+
+    private static Map<String, Object> startFixture(Scenario scenario, String stateId) {
+        var state = scenario.state(stateId);
+        assertNotNull(state, stateId);
+        var representation = JsonTree.asObject(state.representation());
+        var facts = JsonTree.asObject(representation.get("facts"));
+        var runtime = JsonTree.asObject(facts.get("runtime"));
+        return JsonTree.asObject(runtime.get("start"));
     }
 
     @Nested
@@ -246,7 +291,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("opens under its project and is addressed at the top level by its id")
         void opensUnderProjectAndIsAddressedByItsId() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_SOURCES)) {
+            try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -286,7 +331,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("broadcasts entry.opened and answers scope_not_found for an unknown entry")
         void eventsAndUnknownEntry() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_SOURCES)) {
+            try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -316,7 +361,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("refuses a start in a project that is not ready and one that does not exist")
         void gateRefusals() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_REFUSED)) {
+            try (var runtime = MockRuntime.start(state("start.refused"))) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -342,7 +387,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-sources serves a stored issue and documents, and offers only combinable kinds")
         void sourcesScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_SOURCES)) {
+            try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 assertEquals(StartState.SOURCES, state.state());
@@ -386,7 +431,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-documents serves a moved source and a refused file")
         void documentsScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_DOCUMENTS)) {
+            try (var runtime = MockRuntime.start(state("start.documents"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 assertEquals(SourceState.MOVED, source(state, "src-docs-1").state());
@@ -405,7 +450,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-issue-failed serves not_found, a flagged acceptance, and a refused grant")
         void issueFailures() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_ISSUE_FAILED)) {
+            try (var runtime = MockRuntime.start(state("start.issue-failed"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 assertEquals(SourceFailureCause.NOT_FOUND, source(state, "src-issue-1").failure().cause());
@@ -438,7 +483,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-unscreened serves an accepted unscreened issue and pull request")
         void unscreenedScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_UNSCREENED)) {
+            try (var runtime = MockRuntime.start(state("start.unscreened"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 var issue = source(state, "src-issue-1");
@@ -456,7 +501,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-lesson serves a stored lesson and one claimed meanwhile")
         void lessonScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_LESSON)) {
+            try (var runtime = MockRuntime.start(state("start.lesson"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 assertEquals(SourceState.STORED, source(state, "src-lesson-1").state(),
@@ -469,7 +514,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-rate-limited serves resets_at as an epoch second and never retries by itself")
         void rateLimitedScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_RATE_LIMITED)) {
+            try (var runtime = MockRuntime.start(state("start.rate-limited"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 var limited = source(state, "src-issue-1");
@@ -499,7 +544,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-local-changes withholds the local changes under landing.files and names the setting")
         void localChangesScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_LOCAL_CHANGES)) {
+            try (var runtime = MockRuntime.start(state("start.local-changes"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 var offer = offer(state, SourceKind.LOCAL_CHANGES);
@@ -518,7 +563,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-pull-request serves a fork's changed files as untrusted")
         void pullRequestScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_PULL_REQUEST)) {
+            try (var runtime = MockRuntime.start(state("start.pull-request"))) {
                 addAndAssert(runtime, "add_pull_request", "src-pr-1", SourceKind.PULL_REQUEST);
                 var pr = source(fetch(runtime, "ent-3f9a2c41"), "src-pr-1");
                 assertEquals(SourceTrust.UNTRUSTED, pr.trust());
@@ -536,7 +581,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-recipe derives the plan id from the recipe key and the time, and never asks a landing")
         void recipeReady() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_RECIPE)) {
+            try (var runtime = MockRuntime.start(state("start.recipe"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 assertEquals(StartState.RECIPE, state.state());
@@ -578,7 +623,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("a recipe with a parameter without an option cannot run")
         void recipeWithoutOption() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_RECIPE)) {
+            try (var runtime = MockRuntime.start(state("start.recipe"))) {
                 var chosen = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/links/choose:no-modules", "{}")
                         .withHeader("Authorization", "Bearer " + runtime.token()));
@@ -595,7 +640,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-refused names what is missing and the one action that fixes it")
         void refusedScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_REFUSED)) {
+            try (var runtime = MockRuntime.start(state("start.refused"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 assertEquals(StartState.REFUSED, state.state());
@@ -610,7 +655,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-epic shows epic.auto_start in force with its origin and never asks the scope")
         void epicReady() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_EPIC)) {
+            try (var runtime = MockRuntime.start(state("start.epic"))) {
                 var state = fetch(runtime, "ent-5c1b7d20");
                 assertEquals(EntryKind.EPIC, state.entry().kind());
                 assertTrue(state.entry().kindOffers().stream()
@@ -638,7 +683,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-epic-adopt offers the adoptable ledgers and serves an adoption failure")
         void epicAdoption() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_EPIC_ADOPT)) {
+            try (var runtime = MockRuntime.start(state("start.epic-adopt"))) {
                 var state = fetch(runtime, "ent-7a2e4f01");
 
                 assertEquals(StartState.EPIC_ADOPT, state.state());
@@ -664,7 +709,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-entry-continue keeps an entry with its sources and continues to its ready step")
         void entryContinue() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_ENTRY_CONTINUE)) {
+            try (var runtime = MockRuntime.start(state("start.entry-continue"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 assertEquals(1, state.entry().sourceCount());
@@ -690,7 +735,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-chat serves the transcript, its proposal, and the routed role")
         void chatScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_CHAT)) {
+            try (var runtime = MockRuntime.start(state("start.chat"))) {
                 var state = fetch(runtime, "ent-3f9a2c41");
 
                 var chat = state.chat();
@@ -716,7 +761,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("a chat turn is answered by the routed role and a create ends the chat before it moves")
         void chatTurnAndCreate() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_CHAT)) {
+            try (var runtime = MockRuntime.start(state("start.chat"))) {
                 var turn = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/chat/turns",
                         JsonTree.write(Map.of("text", "What did you understand?")))
@@ -751,7 +796,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("an abandoned entry deletes its transcript")
         void abandonDeletesTranscript() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_CHAT)) {
+            try (var runtime = MockRuntime.start(state("start.chat"))) {
                 var abandoned = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/links/abandon", "{}")
                         .withHeader("Authorization", "Bearer " + runtime.token()));
@@ -764,7 +809,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("an epic's entry routes its chat to decompose")
         void epicChatRoutesToDecompose() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_EPIC)) {
+            try (var runtime = MockRuntime.start(state("start.epic"))) {
                 var opened = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-5c1b7d20/links/chat", "{}")
                         .withHeader("Authorization", "Bearer " + runtime.token()));
@@ -782,7 +827,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("start-follow-up opens a plan's entry from an ended plan and from an ended epic")
         void followUpScenario() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_FOLLOW_UP)) {
+            try (var runtime = MockRuntime.start(state("start.follow-up"))) {
                 var auth = "Bearer " + runtime.token();
 
                 var plan = client(runtime).send(HttpRequest.get(
@@ -821,7 +866,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("lists the checkout's files relative to the root and refuses a traversal")
         void listsConfinedFiles() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_SOURCES)) {
+            try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var auth = "Bearer " + runtime.token();
 
                 var root = client(runtime).send(HttpRequest.get(
@@ -853,7 +898,7 @@ class StartScenarioTest {
         @Test
         @DisplayName("the home directory is refused on the network listener")
         void homeIsLoopbackOnly() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.START_SOURCES)) {
+            try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var response = client.send(HttpRequest.get(
                         "/api/v1/projects/pm-mcp-clients/files?root=home")
@@ -921,11 +966,16 @@ class StartScenarioTest {
     }
 
     @Test
-    @DisplayName("the start scenarios' entry ids are the ones their fixtures name")
+    @DisplayName("the start cases' entry ids are the ones their fixtures name")
     void scenarioEntryIds() {
-        var scenario = ScenarioLoader.load(StandardScenarios.START_CHAT);
-        assertEquals("ent-3f9a2c41", scenario.startCase().get("entry_id"));
-        assertEquals("plan", scenario.startCase().get("kind"));
-        assertEquals("start.sources", scenario.startCase().get("state"));
+        var scenario = ScenarioLoader.load(SCENARIO);
+        var chat = startFixture(scenario, "start.chat");
+        assertEquals("ent-3f9a2c41", chat.get("entry_id"));
+        assertEquals("plan", chat.get("kind"));
+        assertEquals("start.sources", chat.get("state"));
+
+        var epic = startFixture(scenario, "start.epic");
+        assertEquals("ent-5c1b7d20", epic.get("entry_id"));
+        assertEquals("epic", epic.get("kind"));
     }
 }

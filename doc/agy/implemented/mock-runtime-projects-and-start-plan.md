@@ -48,15 +48,15 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-projects-start` on branch `feat/mock-projects-start` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/mock-runtime-projects-and-start-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-projects-and-start-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/mock-runtime-projects-and-start-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-projects-and-start-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/mock-runtime-projects-and-start-plan-report.md` by orchestrator session.
@@ -77,18 +77,18 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Migrate `StartRegistry` Off Non-Standard `"start_case"` Field
-- [ ] **1.1 Refactor `StartRegistry` to Read State `data` and `routes`**:
+- [x] **1.1 Refactor `StartRegistry` to Read State `data` and `routes`**:
   - Update `StartRegistry` so that instead of reading `scenario.startCase()`, it initializes from the active state's `OperatorStateResource` (`data` map and `links`) and scenario `routes`.
 
 ### Phase 2: Author Consolidated `projects-and-start.json`
-- [ ] **2.1 Consolidate Project Explorer, Enrolment & Source States**:
+- [x] **2.1 Consolidate Project Explorer, Enrolment & Source States**:
   - Author `projects-and-start.json` with full `OperatorStateResource` states for project browsing (`projects.ready`, `projects.empty`, `projects.attention`, `projects.being-added`, `projects.unenrolled`, `enrol.scan`, `enrol.digest-mismatch`, `sources.git`, `sources.lessons`) and declarative `routes` for `/api/v1/projects`, `/api/v1/enrol`, `/api/v1/recipes`, etc.
-- [ ] **2.2 Consolidate All 15 `start.*` States**:
+- [x] **2.2 Consolidate All 15 `start.*` States**:
   - Include `start.sources`, `start.chat`, `start.documents`, `start.entry-continue`, `start.epic`, `start.epic-adopt`, `start.follow-up`, `start.issue-failed`, `start.lesson`, `start.local-changes`, `start.pull-request`, `start.rate-limited`, `start.recipe`, `start.refused`, and `start.unscreened` in `projects-and-start.json` with complete `OperatorLink` lists and `EventEnvelope` events.
   - Delete the 20 superseded JSON files.
 
 ### Phase 3: Contract Verification Tests
-- [ ] **3.1 Expand Test Suites**:
+- [x] **3.1 Expand Test Suites**:
   - Update `ProjectsScenarioTest`, `EnrolScenarioTest`, `GitSourceScenarioTest`, `LessonSourceScenarioTest`, `StartScenarioTest`, and `StartContractTest` to verify every case in `project-contract.adoc` and `start-contract.adoc` against `projects-and-start.json`.
-- [ ] **3.2 Pre-Commit & Operational Gate**:
+- [x] **3.2 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).
