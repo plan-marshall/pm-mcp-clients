@@ -2,7 +2,7 @@
   "format_version": 1,
   "name": "reports-and-system",
   "description": "Reports inbox, plan completion reports, runtime lifecycle (drain, stop, restart), and cleanup and kept items (UC-PLN-6, UC-SYS-1..3)",
-  "start": "reports.list",
+  "start": "reports.unread",
   "pairing_code": "KXQB-MRTN",
   "routes": {
     "GET /api/v1/status": {
@@ -27,48 +27,3205 @@
           "open": true
         }
       }
-    }
-  },
-  "states": {
-    "reports.list": {
+    },
+    "GET /api/v1/reports": {
       "representation": {
-        "scope": "workspace",
-        "state": "reports.list",
-        "summary": "Reports · 5 unread"
-      },
-      "links": {
-        "read": {
-          "method": "POST",
-          "href": "/api/v1/reports/read",
-          "next": "reports.list"
+        "items": [
+          {
+            "id": "rep-0142",
+            "from": {
+              "project_id": "pm-mcp-clients",
+              "epic_id": "relay-hardening",
+              "plan_id": "fix-relay"
+            },
+            "kind": "plan.ended",
+            "subject": "fix-relay ended: merged (#214)",
+            "subject_params": {
+              "plan": "fix-relay",
+              "outcome": "merged (#214)"
+            },
+            "created_at": "2026-10-16T11:20:00Z",
+            "sent_at": "2026-10-16T11:20:00Z",
+            "detail_link": "/api/v1/plans/fix-relay/completion"
+          },
+          {
+            "id": "rep-0143",
+            "from": {
+              "project_id": "pm-mcp-clients",
+              "epic_id": "relay-hardening",
+              "plan_id": "relay-token-store"
+            },
+            "kind": "plan.started",
+            "subject": "relay-token-store started by relay-hardening (2 of 3 at once)",
+            "subject_params": {
+              "plan": "relay-token-store",
+              "epic": "relay-hardening",
+              "running": 2,
+              "scope": 3,
+              "by": "epic"
+            },
+            "created_at": "2026-10-16T11:21:00Z",
+            "sent_at": "2026-10-16T11:21:00Z",
+            "detail_link": "/api/v1/plans/relay-token-store"
+          },
+          {
+            "id": "rep-0144",
+            "from": {
+              "project_id": "pm-mcp-clients",
+              "epic_id": "relay-hardening",
+              "plan_id": "relay-docs"
+            },
+            "kind": "epic.waits_overlap",
+            "subject": "relay-docs waits: overlap with relay-auth-v2 (2 files)",
+            "subject_params": {
+              "plan": "relay-docs",
+              "other": "relay-auth-v2",
+              "files": 2
+            },
+            "created_at": "2026-10-16T11:21:00Z",
+            "sent_at": "2026-10-16T11:21:00Z",
+            "detail_link": "/api/v1/epics/relay-hardening"
+          },
+          {
+            "id": "rep-0139",
+            "from": {
+              "project_id": "pm-mcp-clients",
+              "plan_id": "docs-typo"
+            },
+            "kind": "plan.ended",
+            "subject": "docs-typo ended: no change",
+            "subject_params": {
+              "plan": "docs-typo",
+              "outcome": "no change"
+            },
+            "created_at": "2026-10-16T09:02:00Z",
+            "sent_at": "2026-10-16T09:40:00Z",
+            "detail_link": "/api/v1/plans/docs-typo/completion"
+          },
+          {
+            "id": "rep-0131",
+            "from": {
+              "project_id": "pm-mcp-core"
+            },
+            "kind": "project.onboarded",
+            "subject": "pm-mcp-core is onboarded",
+            "subject_params": {
+              "project": "pm-mcp-core"
+            },
+            "created_at": "2026-10-15T18:40:00Z",
+            "sent_at": "2026-10-15T18:40:00Z",
+            "detail_link": "/api/v1/projects/pm-mcp-core"
+          },
+          {
+            "id": "rep-0120",
+            "from": {
+              "project_id": "pm-mcp-clients",
+              "epic_id": "relay-hardening",
+              "plan_id": "relay-auth-v2"
+            },
+            "kind": "plan.ended",
+            "subject": "relay-auth-v2 ended: merged (#210)",
+            "subject_params": {
+              "plan": "relay-auth-v2",
+              "outcome": "merged (#210)"
+            },
+            "created_at": "2026-10-14T10:00:00Z",
+            "sent_at": "2026-10-14T10:00:00Z",
+            "detail_link": "/api/v1/plans/relay-auth-v2/completion"
+          },
+          {
+            "id": "rep-0110",
+            "from": {
+              "project_id": "pm-mcp-core"
+            },
+            "kind": "source.flagged",
+            "subject": "A source of codeberg-issues was flagged: issue #4711",
+            "subject_params": {
+              "item": "codeberg-issues",
+              "source": "issue #4711"
+            },
+            "created_at": "2026-10-13T08:00:00Z",
+            "sent_at": "2026-10-13T08:00:00Z",
+            "detail_link": "/api/v1/sources/codeberg-issues"
+          }
+        ],
+        "unread_count": 7,
+        "oldest_unread_time": "2026-10-13T08:00:00Z",
+        "has_older": true,
+        "older_count": 2
+      }
+    },
+    "GET /api/v1/plans/fix-relay/completion": {
+      "representation": {
+        "plan_id": "fix-relay",
+        "title": "fix-relay",
+        "from": {
+          "project_id": "pm-mcp-clients",
+          "epic_id": "relay-hardening",
+          "plan_id": "fix-relay"
+        },
+        "outcome": "merged",
+        "terminal_reason": "the pull request #214 was merged into main",
+        "pull_request_number": 214,
+        "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+        "reason": "—",
+        "started_at": "2026-10-16T08:40:00Z",
+        "ended_at": "2026-10-16T11:20:00Z",
+        "duration_seconds": 9600,
+        "paused_seconds": 1200,
+        "paused_by": "you",
+        "deliverables": [
+          {
+            "name": "cursor write order",
+            "state": "done"
+          },
+          {
+            "name": "a test per transport, websocket and SSE",
+            "state": "done"
+          },
+          {
+            "name": "fsync of the cursor file",
+            "state": "done"
+          }
+        ],
+        "replanning_records": [
+          {
+            "trigger": "the base moved",
+            "time": "09:55",
+            "change": "TASK-5 added"
+          }
+        ],
+        "decision_records": [
+          {
+            "id": "Q-003",
+            "question": "Rebase onto main",
+            "answer": "rebase",
+            "by": "operator",
+            "channel": "web",
+            "device": "iPad"
+          },
+          {
+            "id": "Q-005",
+            "question": "Pick transport",
+            "answer": "sse",
+            "by": "delegated"
+          }
+        ],
+        "token_usage": {
+          "total_tokens": 412000,
+          "input_tokens": 380000,
+          "output_tokens": 32000,
+          "duration_seconds": 9600,
+          "workers_count": 6,
+          "models_count": 3,
+          "tasks_measured": 38,
+          "tasks_total": 41,
+          "is_floor": true,
+          "unmeasured_reason": "their worker was terminated",
+          "by_phase": [
+            {
+              "label": "refine",
+              "tokens": 38000,
+              "input_tokens": 35000,
+              "output_tokens": 3000,
+              "unmeasured_tasks": 0,
+              "is_floor": false
+            },
+            {
+              "label": "outline",
+              "tokens": 96000,
+              "input_tokens": 90000,
+              "output_tokens": 6000,
+              "unmeasured_tasks": 0,
+              "is_floor": false
+            },
+            {
+              "label": "execute",
+              "tokens": 241000,
+              "input_tokens": 222000,
+              "output_tokens": 19000,
+              "unmeasured_tasks": 3,
+              "is_floor": true,
+              "components": {
+                "input_tokens": 310000,
+                "cache_read_tokens": 62000,
+                "cache_write_tokens": 8000,
+                "output_tokens": 29000,
+                "reasoning_tokens": 3000
+              }
+            },
+            {
+              "label": "finalize",
+              "tokens": 37000,
+              "input_tokens": 33000,
+              "output_tokens": 4000,
+              "unmeasured_tasks": 0,
+              "is_floor": false
+            }
+          ],
+          "by_role": [
+            {
+              "label": "planner",
+              "tokens": 128000,
+              "input_tokens": 120000,
+              "output_tokens": 8000,
+              "unmeasured_tasks": 0,
+              "is_floor": false,
+              "details": "claude:opus-5.5 · high"
+            },
+            {
+              "label": "implementer",
+              "tokens": 270000,
+              "input_tokens": 247000,
+              "output_tokens": 23000,
+              "unmeasured_tasks": 0,
+              "is_floor": false,
+              "details": "claude:sonnet-5.5 · medium"
+            },
+            {
+              "label": "reviewer",
+              "tokens": 14000,
+              "input_tokens": 13000,
+              "output_tokens": 1000,
+              "unmeasured_tasks": 3,
+              "is_floor": true,
+              "details": "codex:gpt-5 · low"
+            }
+          ],
+          "by_model": [
+            {
+              "label": "claude:opus-5.5",
+              "tokens": 128000,
+              "input_tokens": 120000,
+              "output_tokens": 8000,
+              "unmeasured_tasks": 0,
+              "is_floor": false
+            },
+            {
+              "label": "claude:sonnet-5.5",
+              "tokens": 270000,
+              "input_tokens": 247000,
+              "output_tokens": 23000,
+              "unmeasured_tasks": 0,
+              "is_floor": false
+            },
+            {
+              "label": "codex:gpt-5",
+              "tokens": 14000,
+              "input_tokens": 13000,
+              "output_tokens": 1000,
+              "unmeasured_tasks": 3,
+              "is_floor": true
+            }
+          ],
+          "waste_records": [
+            {
+              "waste_class": "no_product",
+              "tokens": 18000,
+              "share_percent": 4,
+              "tasks_count": 2,
+              "cause_summary": "2 tasks"
+            },
+            {
+              "waste_class": "retries",
+              "tokens": 21000,
+              "share_percent": 5,
+              "tasks_count": 2,
+              "cause_summary": "retryable 1 · stall 1"
+            },
+            {
+              "waste_class": "remediation",
+              "tokens": 13000,
+              "share_percent": 4,
+              "tasks_count": 1,
+              "cause_summary": "returned with findings 1"
+            }
+          ],
+          "total_waste_tokens": 52000,
+          "waste_share_percent": 13
         }
       }
     },
-    "system.ready": {
+    "GET /api/v1/plans/docs-typo/completion": {
       "representation": {
-        "status": "ready",
-        "state": "running"
+        "plan_id": "docs-typo",
+        "title": "docs-typo",
+        "from": {
+          "project_id": "pm-mcp-clients",
+          "plan_id": "docs-typo"
+        },
+        "outcome": "no_change",
+        "terminal_reason": "no changes produced",
+        "reason": "—",
+        "started_at": "2026-10-16T08:40:00Z",
+        "ended_at": "2026-10-16T09:00:00Z",
+        "duration_seconds": 1200,
+        "paused_seconds": 0,
+        "deliverables": [],
+        "replanning_records": [],
+        "decision_records": []
       }
+    },
+    "GET /api/v1/plans/relay-aborted/completion": {
+      "representation": {
+        "plan_id": "relay-aborted",
+        "title": "relay-aborted",
+        "from": {
+          "project_id": "pm-mcp-clients",
+          "epic_id": "relay-hardening",
+          "plan_id": "relay-aborted"
+        },
+        "outcome": "aborted",
+        "terminal_reason": "the operator withdrew the plan before its first task",
+        "reason": "the plan no longer matches the epic's surface",
+        "started_at": "2026-10-15T09:00:00Z",
+        "ended_at": "2026-10-15T09:12:00Z",
+        "duration_seconds": 720,
+        "paused_seconds": 0,
+        "deliverables": [
+          {
+            "name": "the cursor write order",
+            "state": "not_started"
+          }
+        ],
+        "replanning_records": [],
+        "decision_records": [
+          {
+            "id": "Q-011",
+            "question": "Withdraw the plan?",
+            "answer": "withdraw",
+            "by": "operator",
+            "channel": "cli",
+            "device": "mbp-oliver"
+          }
+        ],
+        "token_usage": {
+          "total_tokens": 18000,
+          "input_tokens": 16000,
+          "output_tokens": 2000,
+          "duration_seconds": 720,
+          "workers_count": 1,
+          "models_count": 1,
+          "tasks_measured": 1,
+          "tasks_total": 1,
+          "is_floor": false,
+          "by_phase": [],
+          "by_role": [
+            {
+              "label": "planner",
+              "tokens": 18000,
+              "input_tokens": 16000,
+              "output_tokens": 2000
+            }
+          ],
+          "by_model": [
+            {
+              "label": "claude:opus-5.5",
+              "tokens": 18000,
+              "input_tokens": 16000,
+              "output_tokens": 2000
+            }
+          ],
+          "waste_records": [],
+          "total_waste_tokens": 0,
+          "waste_share_percent": 0
+        }
+      }
+    },
+    "GET /api/v1/plans/relay-failed/completion": {
+      "representation": {
+        "plan_id": "relay-failed",
+        "title": "relay-failed",
+        "from": {
+          "project_id": "pm-mcp-clients",
+          "epic_id": "relay-hardening",
+          "plan_id": "relay-failed"
+        },
+        "outcome": "failed",
+        "terminal_reason": "the build failed after three remediation rounds",
+        "reason": "the relaying cursor file could not be written on the build host",
+        "started_at": "2026-10-14T13:00:00Z",
+        "ended_at": "2026-10-14T15:30:00Z",
+        "duration_seconds": 9000,
+        "paused_seconds": 600,
+        "paused_by": "you",
+        "deliverables": [
+          {
+            "name": "the cursor write order",
+            "state": "done"
+          },
+          {
+            "name": "a test per transport, websocket and SSE",
+            "state": "failed"
+          }
+        ],
+        "replanning_records": [
+          {
+            "trigger": "the build failed",
+            "time": "14:40",
+            "change": "remediation.ci-failure returned the plan"
+          }
+        ],
+        "decision_records": [
+          {
+            "id": "Q-021",
+            "question": "Return to execute?",
+            "answer": "return",
+            "by": "operator",
+            "channel": "web",
+            "device": "Firefox on mbp-oliver"
+          }
+        ],
+        "token_usage": {
+          "total_tokens": 96000,
+          "input_tokens": 88000,
+          "output_tokens": 8000,
+          "duration_seconds": 9000,
+          "workers_count": 2,
+          "models_count": 2,
+          "tasks_measured": 4,
+          "tasks_total": 5,
+          "is_floor": true,
+          "unmeasured_reason": "the reviewer's harness reported no tokens",
+          "by_phase": [
+            {
+              "label": "execute",
+              "tokens": 96000,
+              "input_tokens": 88000,
+              "output_tokens": 8000,
+              "unmeasured_tasks": 1,
+              "is_floor": true
+            }
+          ],
+          "by_role": [
+            {
+              "label": "implementer",
+              "tokens": 82000,
+              "input_tokens": 75000,
+              "output_tokens": 7000
+            },
+            {
+              "label": "reviewer",
+              "tokens": 14000,
+              "input_tokens": 13000,
+              "output_tokens": 1000,
+              "unmeasured_tasks": 1,
+              "is_floor": true
+            }
+          ],
+          "by_model": [
+            {
+              "label": "claude:sonnet-5.5",
+              "tokens": 82000,
+              "input_tokens": 75000,
+              "output_tokens": 7000
+            },
+            {
+              "label": "codex:gpt-5",
+              "tokens": 14000,
+              "input_tokens": 13000,
+              "output_tokens": 1000,
+              "is_floor": true
+            }
+          ],
+          "waste_records": [
+            {
+              "waste_class": "retries",
+              "tokens": 9000,
+              "share_percent": 9,
+              "tasks_count": 3,
+              "cause_summary": "retryable 2 · stall 1"
+            }
+          ],
+          "total_waste_tokens": 9000,
+          "waste_share_percent": 9
+        }
+      }
+    },
+    "GET /api/v1/system": {
+      "representation": {
+        "runtime": {
+          "version": "0.9.1",
+          "build": "2026-10-02 (a1b2c3d)",
+          "started_at": "today 08:14",
+          "uptime_seconds": 22320,
+          "heap_used_bytes": 432013312,
+          "heap_max_bytes": 1073741824,
+          "resident_memory_bytes": 713031680,
+          "cpu_percent": 4.0,
+          "machine_store_bytes": 2469606195,
+          "disk_free_bytes": 40802189312,
+          "measured_at": "13:40",
+          "socket_listener": true,
+          "loopback_listener": "127.0.0.1:7420",
+          "network_listener": "192.168.1.20:7421",
+          "paired_devices_count": 2,
+          "relays_behind_count": 0,
+          "newer_version": "0.10.0",
+          "newer_version_date": "2026-10-16",
+          "newer_version_checked_at": "today 08:14",
+          "release_notes_link": "/api/v1/system/release-notes?version=0.10.0",
+          "upgrade_supported": true
+        },
+        "work": {
+          "plans_by_state": {
+            "running": 3,
+            "waiting_for_you": 1,
+            "held": 1,
+            "paused": 2
+          },
+          "epics_by_state": {
+            "running": 1,
+            "waiting_for_you": 1
+          },
+          "tasks_running": 4,
+          "tasks_queued": 6,
+          "active_projects_count": 3,
+          "recovering_projects": []
+        },
+        "workers": [
+          {
+            "role": "planner",
+            "harness": "claude",
+            "model": "opus-4.5",
+            "state": "busy",
+            "current_plan_title": "fix-relay"
+          },
+          {
+            "role": "implementer",
+            "harness": "claude",
+            "model": "sonnet-4.5",
+            "state": "busy",
+            "current_plan_title": "relay-docs"
+          },
+          {
+            "role": "implementer",
+            "harness": "codex",
+            "model": "gpt-5",
+            "state": "idle"
+          },
+          {
+            "role": "implementer",
+            "harness": "claude",
+            "model": "sonnet-4.5",
+            "state": "busy",
+            "current_plan_title": "token-usage"
+          },
+          {
+            "role": "reviewer",
+            "harness": "claude",
+            "model": "sonnet-4.5",
+            "state": "idle"
+          }
+        ],
+        "jobs": {
+          "build": {
+            "slots_used": 1,
+            "slots_total": 2,
+            "queued": 1
+          },
+          "test": {
+            "slots_used": 0,
+            "slots_total": 1,
+            "queued": 0
+          },
+          "locks_held": 3
+        },
+        "models": [
+          {
+            "harness_and_model": "claude:opus-4.5",
+            "role": "planner",
+            "calls_count": 42,
+            "tokens_total": 2020000,
+            "tokens_in": 1900000,
+            "tokens_out": 120000,
+            "errors_count": 0,
+            "retries_count": 1,
+            "is_floor": false,
+            "unmeasured_calls": 0
+          },
+          {
+            "harness_and_model": "claude:sonnet-4.5",
+            "role": "implementer",
+            "calls_count": 118,
+            "tokens_total": 3610000,
+            "tokens_in": 3200000,
+            "tokens_out": 410000,
+            "errors_count": 0,
+            "retries_count": 0,
+            "is_floor": false,
+            "unmeasured_calls": 0
+          },
+          {
+            "harness_and_model": "codex:gpt-5",
+            "role": "implementer",
+            "calls_count": 12,
+            "tokens_total": 0,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "errors_count": 1,
+            "retries_count": 0,
+            "is_floor": true,
+            "unmeasured_calls": 12
+          }
+        ],
+        "cleanup": {
+          "plans_count": 12,
+          "epics_count": 2,
+          "logs_count": 40,
+          "reports_count": 5,
+          "projects_count": 1,
+          "freed_bytes": 1932735283,
+          "kept_for_good_count": 4,
+          "last_sweep_at": "today 03:00",
+          "next_check_at": "tomorrow 03:00"
+        },
+        "window": "hour"
+      }
+    },
+    "GET /api/v1/system/cleanup": {
+      "representation": {
+        "job_id": "cln-0012",
+        "state": "open",
+        "due_since": "2 Sep",
+        "summary": {
+          "plans_count": 12,
+          "epics_count": 2,
+          "logs_count": 40,
+          "reports_count": 5,
+          "projects_count": 1,
+          "freed_bytes": 1932735283,
+          "kept_for_good_count": 4,
+          "last_sweep_at": "today 03:00",
+          "next_check_at": "tomorrow 03:00"
+        },
+        "project_items": [
+          {
+            "project_id": "pm-mcp-clients",
+            "plans_count": 2,
+            "epics_count": 1,
+            "logs_count": 21,
+            "read_reports_count": 3,
+            "total_bytes": 135266304,
+            "items": [
+              {
+                "id": "fix-relay",
+                "kind": "plan",
+                "title": "fix-relay",
+                "outcome": "merged (#214)",
+                "ended_at": "ended 12 Sep",
+                "size_bytes": 88080384,
+                "logs_count": 6
+              },
+              {
+                "id": "docs-typo",
+                "kind": "plan",
+                "title": "docs-typo",
+                "outcome": "no change",
+                "ended_at": "ended 11 Sep",
+                "size_bytes": 2097152,
+                "logs_count": 1
+              }
+            ]
+          },
+          {
+            "project_id": "pm-mcp-core",
+            "plans_count": 10,
+            "epics_count": 1,
+            "logs_count": 19,
+            "read_reports_count": 2,
+            "total_bytes": 681574400,
+            "items": [
+              {
+                "id": "token-usage",
+                "kind": "plan",
+                "title": "token-usage",
+                "outcome": "merged (#88)",
+                "ended_at": "ended 9 Sep",
+                "size_bytes": 125829120,
+                "logs_count": 11
+              }
+            ]
+          }
+        ],
+        "links": {
+          "delete": "/api/v1/system/cleanup/cln-0012/delete",
+          "remind": "/api/v1/system/cleanup/cln-0012/remind",
+          "ignore": "/api/v1/system/cleanup/cln-0012/ignore"
+        }
+      }
+    }
+  },
+  "states": {
+    "reports.unread": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "reports.unread",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "read_all",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/reports/read",
+            "params": {},
+            "preselected": false
+          },
+          {
+            "id": "open_completion",
+            "rel": "next",
+            "method": "GET",
+            "href": "/api/v1/plans/fix-relay/completion",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "summary": "Reports · 7 unread",
+          "runtime": {
+            "reports": [
+              {
+                "id": "rep-0142",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "fix-relay"
+                },
+                "kind": "plan.ended",
+                "subject": "fix-relay ended: merged (#214)",
+                "subject_params": {
+                  "plan": "fix-relay",
+                  "outcome": "merged (#214)"
+                },
+                "created_at": "2026-10-16T11:20:00Z",
+                "sent_at": "2026-10-16T11:20:00Z",
+                "detail_link": "/api/v1/plans/fix-relay/completion"
+              },
+              {
+                "id": "rep-0143",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-token-store"
+                },
+                "kind": "plan.started",
+                "subject": "relay-token-store started by relay-hardening (2 of 3 at once)",
+                "subject_params": {
+                  "plan": "relay-token-store",
+                  "epic": "relay-hardening",
+                  "running": 2,
+                  "scope": 3,
+                  "by": "epic"
+                },
+                "created_at": "2026-10-16T11:21:00Z",
+                "sent_at": "2026-10-16T11:21:00Z",
+                "detail_link": "/api/v1/plans/relay-token-store"
+              },
+              {
+                "id": "rep-0144",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-docs"
+                },
+                "kind": "epic.waits_overlap",
+                "subject": "relay-docs waits: overlap with relay-auth-v2 (2 files)",
+                "subject_params": {
+                  "plan": "relay-docs",
+                  "other": "relay-auth-v2",
+                  "files": 2
+                },
+                "created_at": "2026-10-16T11:21:00Z",
+                "sent_at": "2026-10-16T11:21:00Z",
+                "detail_link": "/api/v1/epics/relay-hardening"
+              },
+              {
+                "id": "rep-0139",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "plan_id": "docs-typo"
+                },
+                "kind": "plan.ended",
+                "subject": "docs-typo ended: no change",
+                "subject_params": {
+                  "plan": "docs-typo",
+                  "outcome": "no change"
+                },
+                "created_at": "2026-10-16T09:02:00Z",
+                "sent_at": "2026-10-16T09:40:00Z",
+                "detail_link": "/api/v1/plans/docs-typo/completion"
+              },
+              {
+                "id": "rep-0131",
+                "from": {
+                  "project_id": "pm-mcp-core"
+                },
+                "kind": "project.onboarded",
+                "subject": "pm-mcp-core is onboarded",
+                "subject_params": {
+                  "project": "pm-mcp-core"
+                },
+                "created_at": "2026-10-15T18:40:00Z",
+                "sent_at": "2026-10-15T18:40:00Z",
+                "detail_link": "/api/v1/projects/pm-mcp-core"
+              },
+              {
+                "id": "rep-0120",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-auth-v2"
+                },
+                "kind": "plan.ended",
+                "subject": "relay-auth-v2 ended: merged (#210)",
+                "subject_params": {
+                  "plan": "relay-auth-v2",
+                  "outcome": "merged (#210)"
+                },
+                "created_at": "2026-10-14T10:00:00Z",
+                "sent_at": "2026-10-14T10:00:00Z",
+                "detail_link": "/api/v1/plans/relay-auth-v2/completion"
+              },
+              {
+                "id": "rep-0110",
+                "from": {
+                  "project_id": "pm-mcp-core"
+                },
+                "kind": "source.flagged",
+                "subject": "A source of codeberg-issues was flagged: issue #4711",
+                "subject_params": {
+                  "item": "codeberg-issues",
+                  "source": "issue #4711"
+                },
+                "created_at": "2026-10-13T08:00:00Z",
+                "sent_at": "2026-10-13T08:00:00Z",
+                "detail_link": "/api/v1/sources/codeberg-issues"
+              }
+            ],
+            "completion_reports": [
+              {
+                "plan_id": "fix-relay",
+                "title": "fix-relay",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "fix-relay"
+                },
+                "outcome": "merged",
+                "terminal_reason": "the pull request #214 was merged into main",
+                "pull_request_number": 214,
+                "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                "reason": "—",
+                "started_at": "2026-10-16T08:40:00Z",
+                "ended_at": "2026-10-16T11:20:00Z",
+                "duration_seconds": 9600,
+                "paused_seconds": 1200,
+                "paused_by": "you",
+                "deliverables": [
+                  {
+                    "name": "cursor write order",
+                    "state": "done"
+                  },
+                  {
+                    "name": "a test per transport, websocket and SSE",
+                    "state": "done"
+                  },
+                  {
+                    "name": "fsync of the cursor file",
+                    "state": "done"
+                  }
+                ],
+                "replanning_records": [
+                  {
+                    "trigger": "the base moved",
+                    "time": "09:55",
+                    "change": "TASK-5 added"
+                  }
+                ],
+                "decision_records": [
+                  {
+                    "id": "Q-003",
+                    "question": "Rebase onto main",
+                    "answer": "rebase",
+                    "by": "operator",
+                    "channel": "web",
+                    "device": "iPad"
+                  },
+                  {
+                    "id": "Q-005",
+                    "question": "Pick transport",
+                    "answer": "sse",
+                    "by": "delegated"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 412000,
+                  "input_tokens": 380000,
+                  "output_tokens": 32000,
+                  "duration_seconds": 9600,
+                  "workers_count": 6,
+                  "models_count": 3,
+                  "tasks_measured": 38,
+                  "tasks_total": 41,
+                  "is_floor": true,
+                  "unmeasured_reason": "their worker was terminated",
+                  "by_phase": [
+                    {
+                      "label": "refine",
+                      "tokens": 38000,
+                      "input_tokens": 35000,
+                      "output_tokens": 3000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "outline",
+                      "tokens": 96000,
+                      "input_tokens": 90000,
+                      "output_tokens": 6000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "execute",
+                      "tokens": 241000,
+                      "input_tokens": 222000,
+                      "output_tokens": 19000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true,
+                      "components": {
+                        "input_tokens": 310000,
+                        "cache_read_tokens": 62000,
+                        "cache_write_tokens": 8000,
+                        "output_tokens": 29000,
+                        "reasoning_tokens": 3000
+                      }
+                    },
+                    {
+                      "label": "finalize",
+                      "tokens": 37000,
+                      "input_tokens": 33000,
+                      "output_tokens": 4000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    }
+                  ],
+                  "by_role": [
+                    {
+                      "label": "planner",
+                      "tokens": 128000,
+                      "input_tokens": 120000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false,
+                      "details": "claude:opus-5.5 · high"
+                    },
+                    {
+                      "label": "implementer",
+                      "tokens": 270000,
+                      "input_tokens": 247000,
+                      "output_tokens": 23000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false,
+                      "details": "claude:sonnet-5.5 · medium"
+                    },
+                    {
+                      "label": "reviewer",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true,
+                      "details": "codex:gpt-5 · low"
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:opus-5.5",
+                      "tokens": 128000,
+                      "input_tokens": 120000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "claude:sonnet-5.5",
+                      "tokens": 270000,
+                      "input_tokens": 247000,
+                      "output_tokens": 23000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "codex:gpt-5",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true
+                    }
+                  ],
+                  "waste_records": [
+                    {
+                      "waste_class": "no_product",
+                      "tokens": 18000,
+                      "share_percent": 4,
+                      "tasks_count": 2,
+                      "cause_summary": "2 tasks"
+                    },
+                    {
+                      "waste_class": "retries",
+                      "tokens": 21000,
+                      "share_percent": 5,
+                      "tasks_count": 2,
+                      "cause_summary": "retryable 1 · stall 1"
+                    },
+                    {
+                      "waste_class": "remediation",
+                      "tokens": 13000,
+                      "share_percent": 4,
+                      "tasks_count": 1,
+                      "cause_summary": "returned with findings 1"
+                    }
+                  ],
+                  "total_waste_tokens": 52000,
+                  "waste_share_percent": 13
+                }
+              },
+              {
+                "plan_id": "docs-typo",
+                "title": "docs-typo",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "plan_id": "docs-typo"
+                },
+                "outcome": "no_change",
+                "terminal_reason": "no changes produced",
+                "reason": "—",
+                "started_at": "2026-10-16T08:40:00Z",
+                "ended_at": "2026-10-16T09:00:00Z",
+                "duration_seconds": 1200,
+                "paused_seconds": 0,
+                "deliverables": [],
+                "replanning_records": [],
+                "decision_records": []
+              },
+              {
+                "plan_id": "relay-aborted",
+                "title": "relay-aborted",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-aborted"
+                },
+                "outcome": "aborted",
+                "terminal_reason": "the operator withdrew the plan before its first task",
+                "reason": "the plan no longer matches the epic's surface",
+                "started_at": "2026-10-15T09:00:00Z",
+                "ended_at": "2026-10-15T09:12:00Z",
+                "duration_seconds": 720,
+                "paused_seconds": 0,
+                "deliverables": [
+                  {
+                    "name": "the cursor write order",
+                    "state": "not_started"
+                  }
+                ],
+                "replanning_records": [],
+                "decision_records": [
+                  {
+                    "id": "Q-011",
+                    "question": "Withdraw the plan?",
+                    "answer": "withdraw",
+                    "by": "operator",
+                    "channel": "cli",
+                    "device": "mbp-oliver"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 18000,
+                  "input_tokens": 16000,
+                  "output_tokens": 2000,
+                  "duration_seconds": 720,
+                  "workers_count": 1,
+                  "models_count": 1,
+                  "tasks_measured": 1,
+                  "tasks_total": 1,
+                  "is_floor": false,
+                  "by_phase": [],
+                  "by_role": [
+                    {
+                      "label": "planner",
+                      "tokens": 18000,
+                      "input_tokens": 16000,
+                      "output_tokens": 2000
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:opus-5.5",
+                      "tokens": 18000,
+                      "input_tokens": 16000,
+                      "output_tokens": 2000
+                    }
+                  ],
+                  "waste_records": [],
+                  "total_waste_tokens": 0,
+                  "waste_share_percent": 0
+                }
+              },
+              {
+                "plan_id": "relay-failed",
+                "title": "relay-failed",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-failed"
+                },
+                "outcome": "failed",
+                "terminal_reason": "the build failed after three remediation rounds",
+                "reason": "the relaying cursor file could not be written on the build host",
+                "started_at": "2026-10-14T13:00:00Z",
+                "ended_at": "2026-10-14T15:30:00Z",
+                "duration_seconds": 9000,
+                "paused_seconds": 600,
+                "paused_by": "you",
+                "deliverables": [
+                  {
+                    "name": "the cursor write order",
+                    "state": "done"
+                  },
+                  {
+                    "name": "a test per transport, websocket and SSE",
+                    "state": "failed"
+                  }
+                ],
+                "replanning_records": [
+                  {
+                    "trigger": "the build failed",
+                    "time": "14:40",
+                    "change": "remediation.ci-failure returned the plan"
+                  }
+                ],
+                "decision_records": [
+                  {
+                    "id": "Q-021",
+                    "question": "Return to execute?",
+                    "answer": "return",
+                    "by": "operator",
+                    "channel": "web",
+                    "device": "Firefox on mbp-oliver"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 96000,
+                  "input_tokens": 88000,
+                  "output_tokens": 8000,
+                  "duration_seconds": 9000,
+                  "workers_count": 2,
+                  "models_count": 2,
+                  "tasks_measured": 4,
+                  "tasks_total": 5,
+                  "is_floor": true,
+                  "unmeasured_reason": "the reviewer's harness reported no tokens",
+                  "by_phase": [
+                    {
+                      "label": "execute",
+                      "tokens": 96000,
+                      "input_tokens": 88000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 1,
+                      "is_floor": true
+                    }
+                  ],
+                  "by_role": [
+                    {
+                      "label": "implementer",
+                      "tokens": 82000,
+                      "input_tokens": 75000,
+                      "output_tokens": 7000
+                    },
+                    {
+                      "label": "reviewer",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 1,
+                      "is_floor": true
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:sonnet-5.5",
+                      "tokens": 82000,
+                      "input_tokens": 75000,
+                      "output_tokens": 7000
+                    },
+                    {
+                      "label": "codex:gpt-5",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "is_floor": true
+                    }
+                  ],
+                  "waste_records": [
+                    {
+                      "waste_class": "retries",
+                      "tokens": 9000,
+                      "share_percent": 9,
+                      "tasks_count": 3,
+                      "cause_summary": "retryable 2 · stall 1"
+                    }
+                  ],
+                  "total_waste_tokens": 9000,
+                  "waste_share_percent": 9
+                }
+              }
+            ]
+          }
+        }
+      },
+      "links": {
+        "read_all": {
+          "method": "POST",
+          "href": "/api/v1/reports/read",
+          "next": "reports.all-read"
+        },
+        "open_completion": {
+          "method": "GET",
+          "href": "/api/v1/plans/fix-relay/completion",
+          "next": "reports.completion-landed"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 1200,
+          "event": "report.sent",
+          "data": {
+            "report_id": "rep-0150",
+            "kind": "plan.ended",
+            "subject": "relay-cursor ended: merged (#220)",
+            "event": "report.sent",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "workspace",
+              "project_id": "pm-mcp-clients"
+            }
+          }
+        },
+        {
+          "after_ms": 2400,
+          "event": "report.read",
+          "data": {
+            "report_id": "rep-0150",
+            "channel": "web",
+            "device": "Firefox on mbp-oliver",
+            "event": "report.read",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "workspace",
+              "project_id": "pm-mcp-clients"
+            }
+          }
+        }
+      ]
+    },
+    "reports.all-read": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "reports.all-read",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "Reports · 0 unread",
+          "runtime": {
+            "reports": [
+              {
+                "id": "rep-0142",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "fix-relay"
+                },
+                "kind": "plan.ended",
+                "subject": "fix-relay ended: merged (#214)",
+                "subject_params": {
+                  "plan": "fix-relay",
+                  "outcome": "merged (#214)"
+                },
+                "created_at": "2026-10-16T11:20:00Z",
+                "sent_at": "2026-10-16T11:20:00Z",
+                "detail_link": "/api/v1/plans/fix-relay/completion",
+                "read_at": "2026-10-16T12:00:00Z",
+                "read_channel": "web",
+                "read_device": "Firefox on mbp-oliver"
+              },
+              {
+                "id": "rep-0143",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-token-store"
+                },
+                "kind": "plan.started",
+                "subject": "relay-token-store started by relay-hardening (2 of 3 at once)",
+                "subject_params": {
+                  "plan": "relay-token-store",
+                  "epic": "relay-hardening",
+                  "running": 2,
+                  "scope": 3,
+                  "by": "epic"
+                },
+                "created_at": "2026-10-16T11:21:00Z",
+                "sent_at": "2026-10-16T11:21:00Z",
+                "detail_link": "/api/v1/plans/relay-token-store",
+                "read_at": "2026-10-16T12:00:00Z",
+                "read_channel": "web",
+                "read_device": "Firefox on mbp-oliver"
+              },
+              {
+                "id": "rep-0144",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-docs"
+                },
+                "kind": "epic.waits_overlap",
+                "subject": "relay-docs waits: overlap with relay-auth-v2 (2 files)",
+                "subject_params": {
+                  "plan": "relay-docs",
+                  "other": "relay-auth-v2",
+                  "files": 2
+                },
+                "created_at": "2026-10-16T11:21:00Z",
+                "sent_at": "2026-10-16T11:21:00Z",
+                "detail_link": "/api/v1/epics/relay-hardening",
+                "read_at": "2026-10-16T12:00:00Z",
+                "read_channel": "web",
+                "read_device": "Firefox on mbp-oliver"
+              },
+              {
+                "id": "rep-0139",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "plan_id": "docs-typo"
+                },
+                "kind": "plan.ended",
+                "subject": "docs-typo ended: no change",
+                "subject_params": {
+                  "plan": "docs-typo",
+                  "outcome": "no change"
+                },
+                "created_at": "2026-10-16T09:02:00Z",
+                "sent_at": "2026-10-16T09:40:00Z",
+                "detail_link": "/api/v1/plans/docs-typo/completion",
+                "read_at": "2026-10-16T12:00:00Z",
+                "read_channel": "web",
+                "read_device": "Firefox on mbp-oliver"
+              },
+              {
+                "id": "rep-0131",
+                "from": {
+                  "project_id": "pm-mcp-core"
+                },
+                "kind": "project.onboarded",
+                "subject": "pm-mcp-core is onboarded",
+                "subject_params": {
+                  "project": "pm-mcp-core"
+                },
+                "created_at": "2026-10-15T18:40:00Z",
+                "sent_at": "2026-10-15T18:40:00Z",
+                "detail_link": "/api/v1/projects/pm-mcp-core",
+                "read_at": "2026-10-16T12:00:00Z",
+                "read_channel": "web",
+                "read_device": "Firefox on mbp-oliver"
+              },
+              {
+                "id": "rep-0120",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-auth-v2"
+                },
+                "kind": "plan.ended",
+                "subject": "relay-auth-v2 ended: merged (#210)",
+                "subject_params": {
+                  "plan": "relay-auth-v2",
+                  "outcome": "merged (#210)"
+                },
+                "created_at": "2026-10-14T10:00:00Z",
+                "sent_at": "2026-10-14T10:00:00Z",
+                "detail_link": "/api/v1/plans/relay-auth-v2/completion",
+                "read_at": "2026-10-16T12:00:00Z",
+                "read_channel": "web",
+                "read_device": "Firefox on mbp-oliver"
+              },
+              {
+                "id": "rep-0110",
+                "from": {
+                  "project_id": "pm-mcp-core"
+                },
+                "kind": "source.flagged",
+                "subject": "A source of codeberg-issues was flagged: issue #4711",
+                "subject_params": {
+                  "item": "codeberg-issues",
+                  "source": "issue #4711"
+                },
+                "created_at": "2026-10-13T08:00:00Z",
+                "sent_at": "2026-10-13T08:00:00Z",
+                "detail_link": "/api/v1/sources/codeberg-issues",
+                "read_at": "2026-10-16T12:00:00Z",
+                "read_channel": "web",
+                "read_device": "Firefox on mbp-oliver"
+              }
+            ],
+            "completion_reports": [
+              {
+                "plan_id": "fix-relay",
+                "title": "fix-relay",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "fix-relay"
+                },
+                "outcome": "merged",
+                "terminal_reason": "the pull request #214 was merged into main",
+                "pull_request_number": 214,
+                "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                "reason": "—",
+                "started_at": "2026-10-16T08:40:00Z",
+                "ended_at": "2026-10-16T11:20:00Z",
+                "duration_seconds": 9600,
+                "paused_seconds": 1200,
+                "paused_by": "you",
+                "deliverables": [
+                  {
+                    "name": "cursor write order",
+                    "state": "done"
+                  },
+                  {
+                    "name": "a test per transport, websocket and SSE",
+                    "state": "done"
+                  },
+                  {
+                    "name": "fsync of the cursor file",
+                    "state": "done"
+                  }
+                ],
+                "replanning_records": [
+                  {
+                    "trigger": "the base moved",
+                    "time": "09:55",
+                    "change": "TASK-5 added"
+                  }
+                ],
+                "decision_records": [
+                  {
+                    "id": "Q-003",
+                    "question": "Rebase onto main",
+                    "answer": "rebase",
+                    "by": "operator",
+                    "channel": "web",
+                    "device": "iPad"
+                  },
+                  {
+                    "id": "Q-005",
+                    "question": "Pick transport",
+                    "answer": "sse",
+                    "by": "delegated"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 412000,
+                  "input_tokens": 380000,
+                  "output_tokens": 32000,
+                  "duration_seconds": 9600,
+                  "workers_count": 6,
+                  "models_count": 3,
+                  "tasks_measured": 38,
+                  "tasks_total": 41,
+                  "is_floor": true,
+                  "unmeasured_reason": "their worker was terminated",
+                  "by_phase": [
+                    {
+                      "label": "refine",
+                      "tokens": 38000,
+                      "input_tokens": 35000,
+                      "output_tokens": 3000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "outline",
+                      "tokens": 96000,
+                      "input_tokens": 90000,
+                      "output_tokens": 6000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "execute",
+                      "tokens": 241000,
+                      "input_tokens": 222000,
+                      "output_tokens": 19000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true,
+                      "components": {
+                        "input_tokens": 310000,
+                        "cache_read_tokens": 62000,
+                        "cache_write_tokens": 8000,
+                        "output_tokens": 29000,
+                        "reasoning_tokens": 3000
+                      }
+                    },
+                    {
+                      "label": "finalize",
+                      "tokens": 37000,
+                      "input_tokens": 33000,
+                      "output_tokens": 4000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    }
+                  ],
+                  "by_role": [
+                    {
+                      "label": "planner",
+                      "tokens": 128000,
+                      "input_tokens": 120000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false,
+                      "details": "claude:opus-5.5 · high"
+                    },
+                    {
+                      "label": "implementer",
+                      "tokens": 270000,
+                      "input_tokens": 247000,
+                      "output_tokens": 23000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false,
+                      "details": "claude:sonnet-5.5 · medium"
+                    },
+                    {
+                      "label": "reviewer",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true,
+                      "details": "codex:gpt-5 · low"
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:opus-5.5",
+                      "tokens": 128000,
+                      "input_tokens": 120000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "claude:sonnet-5.5",
+                      "tokens": 270000,
+                      "input_tokens": 247000,
+                      "output_tokens": 23000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "codex:gpt-5",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true
+                    }
+                  ],
+                  "waste_records": [
+                    {
+                      "waste_class": "no_product",
+                      "tokens": 18000,
+                      "share_percent": 4,
+                      "tasks_count": 2,
+                      "cause_summary": "2 tasks"
+                    },
+                    {
+                      "waste_class": "retries",
+                      "tokens": 21000,
+                      "share_percent": 5,
+                      "tasks_count": 2,
+                      "cause_summary": "retryable 1 · stall 1"
+                    },
+                    {
+                      "waste_class": "remediation",
+                      "tokens": 13000,
+                      "share_percent": 4,
+                      "tasks_count": 1,
+                      "cause_summary": "returned with findings 1"
+                    }
+                  ],
+                  "total_waste_tokens": 52000,
+                  "waste_share_percent": 13
+                }
+              },
+              {
+                "plan_id": "docs-typo",
+                "title": "docs-typo",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "plan_id": "docs-typo"
+                },
+                "outcome": "no_change",
+                "terminal_reason": "no changes produced",
+                "reason": "—",
+                "started_at": "2026-10-16T08:40:00Z",
+                "ended_at": "2026-10-16T09:00:00Z",
+                "duration_seconds": 1200,
+                "paused_seconds": 0,
+                "deliverables": [],
+                "replanning_records": [],
+                "decision_records": []
+              },
+              {
+                "plan_id": "relay-aborted",
+                "title": "relay-aborted",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-aborted"
+                },
+                "outcome": "aborted",
+                "terminal_reason": "the operator withdrew the plan before its first task",
+                "reason": "the plan no longer matches the epic's surface",
+                "started_at": "2026-10-15T09:00:00Z",
+                "ended_at": "2026-10-15T09:12:00Z",
+                "duration_seconds": 720,
+                "paused_seconds": 0,
+                "deliverables": [
+                  {
+                    "name": "the cursor write order",
+                    "state": "not_started"
+                  }
+                ],
+                "replanning_records": [],
+                "decision_records": [
+                  {
+                    "id": "Q-011",
+                    "question": "Withdraw the plan?",
+                    "answer": "withdraw",
+                    "by": "operator",
+                    "channel": "cli",
+                    "device": "mbp-oliver"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 18000,
+                  "input_tokens": 16000,
+                  "output_tokens": 2000,
+                  "duration_seconds": 720,
+                  "workers_count": 1,
+                  "models_count": 1,
+                  "tasks_measured": 1,
+                  "tasks_total": 1,
+                  "is_floor": false,
+                  "by_phase": [],
+                  "by_role": [
+                    {
+                      "label": "planner",
+                      "tokens": 18000,
+                      "input_tokens": 16000,
+                      "output_tokens": 2000
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:opus-5.5",
+                      "tokens": 18000,
+                      "input_tokens": 16000,
+                      "output_tokens": 2000
+                    }
+                  ],
+                  "waste_records": [],
+                  "total_waste_tokens": 0,
+                  "waste_share_percent": 0
+                }
+              },
+              {
+                "plan_id": "relay-failed",
+                "title": "relay-failed",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-failed"
+                },
+                "outcome": "failed",
+                "terminal_reason": "the build failed after three remediation rounds",
+                "reason": "the relaying cursor file could not be written on the build host",
+                "started_at": "2026-10-14T13:00:00Z",
+                "ended_at": "2026-10-14T15:30:00Z",
+                "duration_seconds": 9000,
+                "paused_seconds": 600,
+                "paused_by": "you",
+                "deliverables": [
+                  {
+                    "name": "the cursor write order",
+                    "state": "done"
+                  },
+                  {
+                    "name": "a test per transport, websocket and SSE",
+                    "state": "failed"
+                  }
+                ],
+                "replanning_records": [
+                  {
+                    "trigger": "the build failed",
+                    "time": "14:40",
+                    "change": "remediation.ci-failure returned the plan"
+                  }
+                ],
+                "decision_records": [
+                  {
+                    "id": "Q-021",
+                    "question": "Return to execute?",
+                    "answer": "return",
+                    "by": "operator",
+                    "channel": "web",
+                    "device": "Firefox on mbp-oliver"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 96000,
+                  "input_tokens": 88000,
+                  "output_tokens": 8000,
+                  "duration_seconds": 9000,
+                  "workers_count": 2,
+                  "models_count": 2,
+                  "tasks_measured": 4,
+                  "tasks_total": 5,
+                  "is_floor": true,
+                  "unmeasured_reason": "the reviewer's harness reported no tokens",
+                  "by_phase": [
+                    {
+                      "label": "execute",
+                      "tokens": 96000,
+                      "input_tokens": 88000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 1,
+                      "is_floor": true
+                    }
+                  ],
+                  "by_role": [
+                    {
+                      "label": "implementer",
+                      "tokens": 82000,
+                      "input_tokens": 75000,
+                      "output_tokens": 7000
+                    },
+                    {
+                      "label": "reviewer",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 1,
+                      "is_floor": true
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:sonnet-5.5",
+                      "tokens": 82000,
+                      "input_tokens": 75000,
+                      "output_tokens": 7000
+                    },
+                    {
+                      "label": "codex:gpt-5",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "is_floor": true
+                    }
+                  ],
+                  "waste_records": [
+                    {
+                      "waste_class": "retries",
+                      "tokens": 9000,
+                      "share_percent": 9,
+                      "tasks_count": 3,
+                      "cause_summary": "retryable 2 · stall 1"
+                    }
+                  ],
+                  "total_waste_tokens": 9000,
+                  "waste_share_percent": 9
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "reports.empty": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "reports.empty",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "Reports · nothing yet",
+          "runtime": {
+            "reports": [],
+            "completion_reports": []
+          }
+        }
+      }
+    },
+    "reports.completion-landed": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "reports.completion-landed",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "detail",
+            "rel": "next",
+            "method": "GET",
+            "href": "/api/v1/plans/fix-relay/completion",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "plan_id": "fix-relay",
+          "outcome": "merged",
+          "runtime": {
+            "completion_reports": [
+              {
+                "plan_id": "fix-relay",
+                "title": "fix-relay",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "fix-relay"
+                },
+                "outcome": "merged",
+                "terminal_reason": "the pull request #214 was merged into main",
+                "pull_request_number": 214,
+                "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                "reason": "—",
+                "started_at": "2026-10-16T08:40:00Z",
+                "ended_at": "2026-10-16T11:20:00Z",
+                "duration_seconds": 9600,
+                "paused_seconds": 1200,
+                "paused_by": "you",
+                "deliverables": [
+                  {
+                    "name": "cursor write order",
+                    "state": "done"
+                  },
+                  {
+                    "name": "a test per transport, websocket and SSE",
+                    "state": "done"
+                  },
+                  {
+                    "name": "fsync of the cursor file",
+                    "state": "done"
+                  }
+                ],
+                "replanning_records": [
+                  {
+                    "trigger": "the base moved",
+                    "time": "09:55",
+                    "change": "TASK-5 added"
+                  }
+                ],
+                "decision_records": [
+                  {
+                    "id": "Q-003",
+                    "question": "Rebase onto main",
+                    "answer": "rebase",
+                    "by": "operator",
+                    "channel": "web",
+                    "device": "iPad"
+                  },
+                  {
+                    "id": "Q-005",
+                    "question": "Pick transport",
+                    "answer": "sse",
+                    "by": "delegated"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 412000,
+                  "input_tokens": 380000,
+                  "output_tokens": 32000,
+                  "duration_seconds": 9600,
+                  "workers_count": 6,
+                  "models_count": 3,
+                  "tasks_measured": 38,
+                  "tasks_total": 41,
+                  "is_floor": true,
+                  "unmeasured_reason": "their worker was terminated",
+                  "by_phase": [
+                    {
+                      "label": "refine",
+                      "tokens": 38000,
+                      "input_tokens": 35000,
+                      "output_tokens": 3000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "outline",
+                      "tokens": 96000,
+                      "input_tokens": 90000,
+                      "output_tokens": 6000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "execute",
+                      "tokens": 241000,
+                      "input_tokens": 222000,
+                      "output_tokens": 19000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true,
+                      "components": {
+                        "input_tokens": 310000,
+                        "cache_read_tokens": 62000,
+                        "cache_write_tokens": 8000,
+                        "output_tokens": 29000,
+                        "reasoning_tokens": 3000
+                      }
+                    },
+                    {
+                      "label": "finalize",
+                      "tokens": 37000,
+                      "input_tokens": 33000,
+                      "output_tokens": 4000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    }
+                  ],
+                  "by_role": [
+                    {
+                      "label": "planner",
+                      "tokens": 128000,
+                      "input_tokens": 120000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false,
+                      "details": "claude:opus-5.5 · high"
+                    },
+                    {
+                      "label": "implementer",
+                      "tokens": 270000,
+                      "input_tokens": 247000,
+                      "output_tokens": 23000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false,
+                      "details": "claude:sonnet-5.5 · medium"
+                    },
+                    {
+                      "label": "reviewer",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true,
+                      "details": "codex:gpt-5 · low"
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:opus-5.5",
+                      "tokens": 128000,
+                      "input_tokens": 120000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "claude:sonnet-5.5",
+                      "tokens": 270000,
+                      "input_tokens": 247000,
+                      "output_tokens": 23000,
+                      "unmeasured_tasks": 0,
+                      "is_floor": false
+                    },
+                    {
+                      "label": "codex:gpt-5",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 3,
+                      "is_floor": true
+                    }
+                  ],
+                  "waste_records": [
+                    {
+                      "waste_class": "no_product",
+                      "tokens": 18000,
+                      "share_percent": 4,
+                      "tasks_count": 2,
+                      "cause_summary": "2 tasks"
+                    },
+                    {
+                      "waste_class": "retries",
+                      "tokens": 21000,
+                      "share_percent": 5,
+                      "tasks_count": 2,
+                      "cause_summary": "retryable 1 · stall 1"
+                    },
+                    {
+                      "waste_class": "remediation",
+                      "tokens": 13000,
+                      "share_percent": 4,
+                      "tasks_count": 1,
+                      "cause_summary": "returned with findings 1"
+                    }
+                  ],
+                  "total_waste_tokens": 52000,
+                  "waste_share_percent": 13
+                }
+              }
+            ]
+          }
+        }
+      },
+      "links": {
+        "detail": {
+          "method": "GET",
+          "href": "/api/v1/plans/fix-relay/completion",
+          "next": "reports.completion-landed"
+        }
+      }
+    },
+    "reports.completion-nothing": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "reports.completion-nothing",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "detail",
+            "rel": "next",
+            "method": "GET",
+            "href": "/api/v1/plans/docs-typo/completion",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "plan_id": "docs-typo",
+          "outcome": "no_change",
+          "runtime": {
+            "completion_reports": [
+              {
+                "plan_id": "docs-typo",
+                "title": "docs-typo",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "plan_id": "docs-typo"
+                },
+                "outcome": "no_change",
+                "terminal_reason": "no changes produced",
+                "reason": "—",
+                "started_at": "2026-10-16T08:40:00Z",
+                "ended_at": "2026-10-16T09:00:00Z",
+                "duration_seconds": 1200,
+                "paused_seconds": 0,
+                "deliverables": [],
+                "replanning_records": [],
+                "decision_records": []
+              }
+            ]
+          }
+        }
+      },
+      "links": {
+        "detail": {
+          "method": "GET",
+          "href": "/api/v1/plans/docs-typo/completion",
+          "next": "reports.completion-nothing"
+        }
+      }
+    },
+    "reports.completion-aborted": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "reports.completion-aborted",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "detail",
+            "rel": "next",
+            "method": "GET",
+            "href": "/api/v1/plans/relay-aborted/completion",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "plan_id": "relay-aborted",
+          "outcome": "aborted",
+          "runtime": {
+            "completion_reports": [
+              {
+                "plan_id": "relay-aborted",
+                "title": "relay-aborted",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-aborted"
+                },
+                "outcome": "aborted",
+                "terminal_reason": "the operator withdrew the plan before its first task",
+                "reason": "the plan no longer matches the epic's surface",
+                "started_at": "2026-10-15T09:00:00Z",
+                "ended_at": "2026-10-15T09:12:00Z",
+                "duration_seconds": 720,
+                "paused_seconds": 0,
+                "deliverables": [
+                  {
+                    "name": "the cursor write order",
+                    "state": "not_started"
+                  }
+                ],
+                "replanning_records": [],
+                "decision_records": [
+                  {
+                    "id": "Q-011",
+                    "question": "Withdraw the plan?",
+                    "answer": "withdraw",
+                    "by": "operator",
+                    "channel": "cli",
+                    "device": "mbp-oliver"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 18000,
+                  "input_tokens": 16000,
+                  "output_tokens": 2000,
+                  "duration_seconds": 720,
+                  "workers_count": 1,
+                  "models_count": 1,
+                  "tasks_measured": 1,
+                  "tasks_total": 1,
+                  "is_floor": false,
+                  "by_phase": [],
+                  "by_role": [
+                    {
+                      "label": "planner",
+                      "tokens": 18000,
+                      "input_tokens": 16000,
+                      "output_tokens": 2000
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:opus-5.5",
+                      "tokens": 18000,
+                      "input_tokens": 16000,
+                      "output_tokens": 2000
+                    }
+                  ],
+                  "waste_records": [],
+                  "total_waste_tokens": 0,
+                  "waste_share_percent": 0
+                }
+              }
+            ]
+          }
+        }
+      },
+      "links": {
+        "detail": {
+          "method": "GET",
+          "href": "/api/v1/plans/relay-aborted/completion",
+          "next": "reports.completion-aborted"
+        }
+      }
+    },
+    "reports.completion-failed": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "reports.completion-failed",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "detail",
+            "rel": "next",
+            "method": "GET",
+            "href": "/api/v1/plans/relay-failed/completion",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "plan_id": "relay-failed",
+          "outcome": "failed",
+          "runtime": {
+            "completion_reports": [
+              {
+                "plan_id": "relay-failed",
+                "title": "relay-failed",
+                "from": {
+                  "project_id": "pm-mcp-clients",
+                  "epic_id": "relay-hardening",
+                  "plan_id": "relay-failed"
+                },
+                "outcome": "failed",
+                "terminal_reason": "the build failed after three remediation rounds",
+                "reason": "the relaying cursor file could not be written on the build host",
+                "started_at": "2026-10-14T13:00:00Z",
+                "ended_at": "2026-10-14T15:30:00Z",
+                "duration_seconds": 9000,
+                "paused_seconds": 600,
+                "paused_by": "you",
+                "deliverables": [
+                  {
+                    "name": "the cursor write order",
+                    "state": "done"
+                  },
+                  {
+                    "name": "a test per transport, websocket and SSE",
+                    "state": "failed"
+                  }
+                ],
+                "replanning_records": [
+                  {
+                    "trigger": "the build failed",
+                    "time": "14:40",
+                    "change": "remediation.ci-failure returned the plan"
+                  }
+                ],
+                "decision_records": [
+                  {
+                    "id": "Q-021",
+                    "question": "Return to execute?",
+                    "answer": "return",
+                    "by": "operator",
+                    "channel": "web",
+                    "device": "Firefox on mbp-oliver"
+                  }
+                ],
+                "token_usage": {
+                  "total_tokens": 96000,
+                  "input_tokens": 88000,
+                  "output_tokens": 8000,
+                  "duration_seconds": 9000,
+                  "workers_count": 2,
+                  "models_count": 2,
+                  "tasks_measured": 4,
+                  "tasks_total": 5,
+                  "is_floor": true,
+                  "unmeasured_reason": "the reviewer's harness reported no tokens",
+                  "by_phase": [
+                    {
+                      "label": "execute",
+                      "tokens": 96000,
+                      "input_tokens": 88000,
+                      "output_tokens": 8000,
+                      "unmeasured_tasks": 1,
+                      "is_floor": true
+                    }
+                  ],
+                  "by_role": [
+                    {
+                      "label": "implementer",
+                      "tokens": 82000,
+                      "input_tokens": 75000,
+                      "output_tokens": 7000
+                    },
+                    {
+                      "label": "reviewer",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "unmeasured_tasks": 1,
+                      "is_floor": true
+                    }
+                  ],
+                  "by_model": [
+                    {
+                      "label": "claude:sonnet-5.5",
+                      "tokens": 82000,
+                      "input_tokens": 75000,
+                      "output_tokens": 7000
+                    },
+                    {
+                      "label": "codex:gpt-5",
+                      "tokens": 14000,
+                      "input_tokens": 13000,
+                      "output_tokens": 1000,
+                      "is_floor": true
+                    }
+                  ],
+                  "waste_records": [
+                    {
+                      "waste_class": "retries",
+                      "tokens": 9000,
+                      "share_percent": 9,
+                      "tasks_count": 3,
+                      "cause_summary": "retryable 2 · stall 1"
+                    }
+                  ],
+                  "total_waste_tokens": 9000,
+                  "waste_share_percent": 9
+                }
+              }
+            ]
+          }
+        }
+      },
+      "links": {
+        "detail": {
+          "method": "GET",
+          "href": "/api/v1/plans/relay-failed/completion",
+          "next": "reports.completion-failed"
+        }
+      }
+    },
+    "system.running": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "system.running",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "stop",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/operator/runtime/stop",
+            "params": {},
+            "preselected": false
+          },
+          {
+            "id": "upgrade",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/operator/runtime/upgrade",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "lifecycle_state": "running",
+          "can_withdraw_stop": false,
+          "summary": "The runtime is running",
+          "runtime": {
+            "snapshot": {
+              "runtime": {
+                "version": "0.9.1",
+                "build": "2026-10-02 (a1b2c3d)",
+                "started_at": "today 08:14",
+                "uptime_seconds": 22320,
+                "heap_used_bytes": 432013312,
+                "heap_max_bytes": 1073741824,
+                "resident_memory_bytes": 713031680,
+                "cpu_percent": 4.0,
+                "machine_store_bytes": 2469606195,
+                "disk_free_bytes": 40802189312,
+                "measured_at": "13:40",
+                "socket_listener": true,
+                "loopback_listener": "127.0.0.1:7420",
+                "network_listener": "192.168.1.20:7421",
+                "paired_devices_count": 2,
+                "relays_behind_count": 0,
+                "newer_version": "0.10.0",
+                "newer_version_date": "2026-10-16",
+                "newer_version_checked_at": "today 08:14",
+                "release_notes_link": "/api/v1/system/release-notes?version=0.10.0",
+                "upgrade_supported": true
+              },
+              "work": {
+                "plans_by_state": {
+                  "running": 3,
+                  "waiting_for_you": 1,
+                  "held": 1,
+                  "paused": 2
+                },
+                "epics_by_state": {
+                  "running": 1,
+                  "waiting_for_you": 1
+                },
+                "tasks_running": 4,
+                "tasks_queued": 6,
+                "active_projects_count": 3,
+                "recovering_projects": []
+              },
+              "workers": [
+                {
+                  "role": "planner",
+                  "harness": "claude",
+                  "model": "opus-4.5",
+                  "state": "busy",
+                  "current_plan_title": "fix-relay"
+                },
+                {
+                  "role": "implementer",
+                  "harness": "claude",
+                  "model": "sonnet-4.5",
+                  "state": "busy",
+                  "current_plan_title": "relay-docs"
+                },
+                {
+                  "role": "implementer",
+                  "harness": "codex",
+                  "model": "gpt-5",
+                  "state": "idle"
+                },
+                {
+                  "role": "implementer",
+                  "harness": "claude",
+                  "model": "sonnet-4.5",
+                  "state": "busy",
+                  "current_plan_title": "token-usage"
+                },
+                {
+                  "role": "reviewer",
+                  "harness": "claude",
+                  "model": "sonnet-4.5",
+                  "state": "idle"
+                }
+              ],
+              "jobs": {
+                "build": {
+                  "slots_used": 1,
+                  "slots_total": 2,
+                  "queued": 1
+                },
+                "test": {
+                  "slots_used": 0,
+                  "slots_total": 1,
+                  "queued": 0
+                },
+                "locks_held": 3
+              },
+              "models": [
+                {
+                  "harness_and_model": "claude:opus-4.5",
+                  "role": "planner",
+                  "calls_count": 42,
+                  "tokens_total": 2020000,
+                  "tokens_in": 1900000,
+                  "tokens_out": 120000,
+                  "errors_count": 0,
+                  "retries_count": 1,
+                  "is_floor": false,
+                  "unmeasured_calls": 0
+                },
+                {
+                  "harness_and_model": "claude:sonnet-4.5",
+                  "role": "implementer",
+                  "calls_count": 118,
+                  "tokens_total": 3610000,
+                  "tokens_in": 3200000,
+                  "tokens_out": 410000,
+                  "errors_count": 0,
+                  "retries_count": 0,
+                  "is_floor": false,
+                  "unmeasured_calls": 0
+                },
+                {
+                  "harness_and_model": "codex:gpt-5",
+                  "role": "implementer",
+                  "calls_count": 12,
+                  "tokens_total": 0,
+                  "tokens_in": 0,
+                  "tokens_out": 0,
+                  "errors_count": 1,
+                  "retries_count": 0,
+                  "is_floor": true,
+                  "unmeasured_calls": 12
+                }
+              ],
+              "cleanup": {
+                "plans_count": 12,
+                "epics_count": 2,
+                "logs_count": 40,
+                "reports_count": 5,
+                "projects_count": 1,
+                "freed_bytes": 1932735283,
+                "kept_for_good_count": 4,
+                "last_sweep_at": "today 03:00",
+                "next_check_at": "tomorrow 03:00"
+              },
+              "window": "hour"
+            }
+          }
+        }
+      },
+      "links": {
+        "stop": {
+          "method": "POST",
+          "href": "/api/v1/operator/runtime/stop",
+          "next": "system.draining"
+        },
+        "upgrade": {
+          "method": "POST",
+          "href": "/api/v1/operator/runtime/upgrade",
+          "next": "system.restarting"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 2000,
+          "event": "system.metrics",
+          "data": {
+            "cpu_percent": 9.5,
+            "tasks_running": 5,
+            "event": "system.metrics",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        }
+      ]
     },
     "system.draining": {
       "representation": {
-        "status": "draining",
-        "state": "draining",
-        "draining_by": "the console",
-        "can_withdraw": true
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "system.draining",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "withdraw",
+            "rel": "loop_back",
+            "method": "DELETE",
+            "href": "/api/v1/operator/runtime/stop",
+            "params": {},
+            "preselected": false
+          },
+          {
+            "id": "stop_now",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/operator/runtime/stop",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "lifecycle_state": "draining",
+          "draining_by": "the console",
+          "can_withdraw_stop": true,
+          "blockers": [
+            {
+              "kind": "plan",
+              "id": "fix-relay",
+              "summary": "1 task still running"
+            },
+            {
+              "kind": "build",
+              "id": "build-42",
+              "summary": "a build holds a slot"
+            }
+          ],
+          "summary": "The runtime drains; two blockers are left"
+        }
+      },
+      "links": {
+        "withdraw": {
+          "method": "DELETE",
+          "href": "/api/v1/operator/runtime/stop",
+          "next": "system.running"
+        },
+        "stop_now": {
+          "method": "POST",
+          "href": "/api/v1/operator/runtime/stop",
+          "next": "system.stopped"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 800,
+          "event": "runtime.draining",
+          "data": {
+            "draining_by": "the console",
+            "event": "runtime.draining",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        }
+      ]
+    },
+    "system.stopped": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "system.stopped",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "lifecycle_state": "stopped",
+          "can_withdraw_stop": false,
+          "summary": "The runtime has stopped"
+        }
       }
     },
-    "system.stopping": {
+    "system.restarting": {
       "representation": {
-        "status": "stopping",
-        "state": "stopping"
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "system.restarting",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "withdraw_upgrade",
+            "rel": "loop_back",
+            "method": "DELETE",
+            "href": "/api/v1/operator/runtime/upgrade",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "lifecycle_state": "upgrading",
+          "step": "preparing",
+          "target_version": "0.10.0",
+          "summary": "The runtime restarts into 0.10.0"
+        }
+      },
+      "links": {
+        "withdraw_upgrade": {
+          "method": "DELETE",
+          "href": "/api/v1/operator/runtime/upgrade",
+          "next": "system.running"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 900,
+          "event": "runtime.upgrading",
+          "data": {
+            "version": "0.10.0",
+            "step": "preparing",
+            "event": "runtime.upgrading",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        },
+        {
+          "after_ms": 2400,
+          "event": "runtime.upgraded",
+          "data": {
+            "version": "0.10.0",
+            "event": "runtime.upgraded",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        }
+      ]
+    },
+    "system.force-stop": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "system.force-stop",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "lifecycle_state": "stopping",
+          "forced": true,
+          "summary": "The runtime stops now; running tasks are returned"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 600,
+          "event": "runtime.stopping",
+          "data": {
+            "when": "now",
+            "then": "restart",
+            "event": "runtime.stopping",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        }
+      ]
+    },
+    "cleanup.idle": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "cleanup.idle",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "kept",
+            "rel": "next",
+            "method": "GET",
+            "href": "/api/v1/system/cleanup/kept",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "open": false,
+          "next_check_at": "tomorrow 03:00",
+          "durations": {
+            "plans_after_days": 30,
+            "epics_after_days": 30,
+            "logs_after_days": 30,
+            "reports_after_days": 30,
+            "unenrolled_after_days": 30,
+            "remind_after_days": 3
+          },
+          "kept_count": 4,
+          "residue": [
+            {
+              "step": "temporary_files",
+              "count": 214,
+              "bytes": 356515840,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "worker_directories",
+              "count": 18,
+              "bytes": 1288490188,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "stale_locks",
+              "count": 3,
+              "bytes": 0,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "old_workspace_rows",
+              "count": 612,
+              "bytes": 0,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "retired_lessons",
+              "count": 4,
+              "bytes": 0,
+              "last_run": "today 03:00"
+            }
+          ],
+          "summary": "Nothing is due; the next sweep is tomorrow"
+        }
+      },
+      "links": {
+        "kept": {
+          "method": "GET",
+          "href": "/api/v1/system/cleanup/kept",
+          "next": "cleanup.kept-items"
+        }
       }
     },
-    "system.upgrading": {
+    "cleanup.preview": {
       "representation": {
-        "status": "upgrading",
-        "state": "upgrading",
-        "step": "preparing"
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "cleanup.preview",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "delete",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/system/cleanup/cln-0012/delete",
+            "params": {},
+            "preselected": false
+          },
+          {
+            "id": "remind",
+            "rel": "loop_back",
+            "method": "POST",
+            "href": "/api/v1/system/cleanup/cln-0012/remind",
+            "params": {},
+            "preselected": false
+          },
+          {
+            "id": "ignore",
+            "rel": "abort",
+            "method": "POST",
+            "href": "/api/v1/system/cleanup/cln-0012/ignore",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "open": true,
+          "job": {
+            "job_id": "cln-0012",
+            "state": "open",
+            "due_since": "2 Sep",
+            "summary": {
+              "plans_count": 12,
+              "epics_count": 2,
+              "logs_count": 40,
+              "reports_count": 5,
+              "projects_count": 1,
+              "freed_bytes": 1932735283,
+              "kept_for_good_count": 4,
+              "last_sweep_at": "today 03:00",
+              "next_check_at": "tomorrow 03:00"
+            },
+            "project_items": [
+              {
+                "project_id": "pm-mcp-clients",
+                "plans_count": 2,
+                "epics_count": 1,
+                "logs_count": 21,
+                "read_reports_count": 3,
+                "total_bytes": 135266304,
+                "items": [
+                  {
+                    "id": "fix-relay",
+                    "kind": "plan",
+                    "title": "fix-relay",
+                    "outcome": "merged (#214)",
+                    "ended_at": "ended 12 Sep",
+                    "size_bytes": 88080384,
+                    "logs_count": 6
+                  },
+                  {
+                    "id": "docs-typo",
+                    "kind": "plan",
+                    "title": "docs-typo",
+                    "outcome": "no change",
+                    "ended_at": "ended 11 Sep",
+                    "size_bytes": 2097152,
+                    "logs_count": 1
+                  }
+                ]
+              },
+              {
+                "project_id": "pm-mcp-core",
+                "plans_count": 10,
+                "epics_count": 1,
+                "logs_count": 19,
+                "read_reports_count": 2,
+                "total_bytes": 681574400,
+                "items": [
+                  {
+                    "id": "token-usage",
+                    "kind": "plan",
+                    "title": "token-usage",
+                    "outcome": "merged (#88)",
+                    "ended_at": "ended 9 Sep",
+                    "size_bytes": 125829120,
+                    "logs_count": 11
+                  }
+                ]
+              }
+            ],
+            "links": {
+              "delete": "/api/v1/system/cleanup/cln-0012/delete",
+              "remind": "/api/v1/system/cleanup/cln-0012/remind",
+              "ignore": "/api/v1/system/cleanup/cln-0012/ignore"
+            }
+          },
+          "durations": {
+            "plans_after_days": 30,
+            "epics_after_days": 30,
+            "logs_after_days": 30,
+            "reports_after_days": 30,
+            "unenrolled_after_days": 30,
+            "remind_after_days": 3
+          },
+          "summary": "12 plans, 2 epics, and 40 logs are due"
+        }
+      },
+      "links": {
+        "delete": {
+          "method": "POST",
+          "href": "/api/v1/system/cleanup/cln-0012/delete",
+          "next": "cleanup.running"
+        },
+        "remind": {
+          "method": "POST",
+          "href": "/api/v1/system/cleanup/cln-0012/remind",
+          "next": "cleanup.idle"
+        },
+        "ignore": {
+          "method": "POST",
+          "href": "/api/v1/system/cleanup/cln-0012/ignore",
+          "next": "cleanup.completed"
+        }
+      }
+    },
+    "cleanup.running": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "cleanup.running",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "open": true,
+          "job_id": "cln-0012",
+          "progress": {
+            "done": 7,
+            "total": 12
+          },
+          "summary": "The cleanup deletes 7 of 12 plans"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 700,
+          "event": "cleanup.progress",
+          "data": {
+            "job_id": "cln-0012",
+            "done": 7,
+            "total": 12,
+            "event": "cleanup.progress",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        },
+        {
+          "after_ms": 2100,
+          "event": "cleanup.done",
+          "data": {
+            "job_id": "cln-0012",
+            "freed_bytes": 1932735283,
+            "event": "cleanup.done",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        }
+      ]
+    },
+    "cleanup.completed": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "cleanup.completed",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "open": false,
+          "job_id": "cln-0012",
+          "freed_bytes": 1932735283,
+          "deleted": {
+            "plans": 11,
+            "epics": 2,
+            "logs": 40
+          },
+          "summary": "The cleanup freed 1.8 GiB"
+        }
+      },
+      "events": [
+        {
+          "after_ms": 400,
+          "event": "cleanup.decided",
+          "data": {
+            "job_id": "cln-0012",
+            "decision": "delete",
+            "event": "cleanup.decided",
+            "at": "2026-10-16T12:00:00Z",
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        }
+      ]
+    },
+    "cleanup.kept-items": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "cleanup.kept-items",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "release",
+            "rel": "submit",
+            "method": "PUT",
+            "href": "/api/v1/system/cleanup/kept",
+            "params": {},
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "kept": [
+            {
+              "item_id": "token-usage",
+              "kind": "plan",
+              "label": "token-usage",
+              "reason": "left out of a delete",
+              "kept_at": "13 Oct",
+              "kept_by": "the console"
+            },
+            {
+              "item_id": "relay-auth",
+              "kind": "epic",
+              "label": "relay-auth",
+              "reason": "ignored",
+              "kept_at": "2 Oct",
+              "kept_by": "the web app (iPad)"
+            },
+            {
+              "item_id": "reports-pm-mcp-clients",
+              "kind": "read_reports",
+              "label": "3 read reports",
+              "reason": "ignored",
+              "kept_at": "2 Oct",
+              "kept_by": "the web app (iPad)"
+            },
+            {
+              "item_id": "old-sandbox",
+              "kind": "unenrolled_project",
+              "label": "old-sandbox",
+              "reason": "ignored",
+              "kept_at": "2 Oct",
+              "kept_by": "the web app (iPad)"
+            }
+          ],
+          "summary": "4 items are kept for good"
+        }
+      },
+      "links": {
+        "release": {
+          "method": "PUT",
+          "href": "/api/v1/system/cleanup/kept",
+          "next": "cleanup.kept-items"
+        }
+      }
+    },
+    "cleanup.residues": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "cleanup.residues",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "residue": [
+            {
+              "step": "temporary_files",
+              "count": 214,
+              "bytes": 356515840,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "worker_directories",
+              "count": 18,
+              "bytes": 1288490188,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "stale_locks",
+              "count": 3,
+              "bytes": 0,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "old_workspace_rows",
+              "count": 612,
+              "bytes": 0,
+              "last_run": "today 03:00"
+            },
+            {
+              "step": "retired_lessons",
+              "count": 4,
+              "bytes": 0,
+              "last_run": "today 03:00"
+            }
+          ],
+          "summary": "5 sweep steps left 1.5 GiB behind"
+        }
       }
     }
   }

@@ -11,8 +11,6 @@ package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,8 +38,7 @@ class StartRegistryTest {
         registry.init(scenario(
                 Map.of("start", Map.of("recipes", List.of(Map.of("key", "base-recipe", "name", "base-recipe")))),
                 Map.of("start", Map.of("project_id", "p", "kind", "plan", "state", "start.sources",
-                        "entry_id", "ent-test", "sources", List.of())),
-                Map.of()));
+                        "entry_id", "ent-test", "sources", List.of()))));
 
         var entry = registry.find("ent-test");
         assertNotNull(entry);
@@ -58,33 +55,19 @@ class StartRegistryTest {
         registry.init(scenario(Map.of(),
                 Map.of("start", Map.of("project_id", "p", "kind", "plan", "state", "start.sources",
                         "entry_id", "ent-test")),
-                Map.of(), Map.of("GET /api/v1/recipes", RouteDefinition.of(Map.of("recipes",
+                Map.of("GET /api/v1/recipes", RouteDefinition.of(Map.of("recipes",
                         List.of(Map.of("key", "route-recipe", "name", "route-recipe")))))));
 
         assertNotNull(registry.find("ent-test"));
         assertEquals("route-recipe", registry.recipes("p").getFirst().key());
     }
 
-    @Test
-    @DisplayName("falls back to the transitional start_case fixture when no state carries one")
-    void fallsBackToTheTopLevelFixture() {
-        var registry = new StartRegistry(_ -> {
-        });
-        registry.init(scenario(Map.of(), Map.of(), Map.of("project_id", "p", "kind", "plan",
-                "state", "start.sources", "entry_id", "ent-legacy", "sources", List.of())));
-
-        assertNotNull(registry.find("ent-legacy"));
-        assertNull(registry.find("ent-test"));
-        assertTrue(registry.recipes("p").isEmpty());
+    private static Scenario scenario(Map<String, Object> baseFixture, Map<String, Object> startFixture) {
+        return scenario(baseFixture, startFixture, Map.of());
     }
 
     private static Scenario scenario(Map<String, Object> baseFixture, Map<String, Object> startFixture,
-            Map<String, Object> startCase) {
-        return scenario(baseFixture, startFixture, startCase, Map.of());
-    }
-
-    private static Scenario scenario(Map<String, Object> baseFixture, Map<String, Object> startFixture,
-            Map<String, Object> startCase, Map<String, RouteDefinition> routes) {
+            Map<String, RouteDefinition> routes) {
         var states = new LinkedHashMap<String, StateDefinition>();
         if (!baseFixture.isEmpty()) {
             states.put(BASE_STATE, state(BASE_STATE, baseFixture));
@@ -93,7 +76,7 @@ class StartRegistryTest {
             states.put(START_STATE, state(START_STATE, startFixture));
         }
         return new Scenario(1, "registry-test", "StartRegistry test", START_STATE, "CODE", routes,
-                states, Map.of(), startCase);
+                states);
     }
 
     private static StateDefinition state(String stateId, Map<String, Object> fixture) {

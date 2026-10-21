@@ -295,8 +295,7 @@ final class StartRegistry {
      * <p>
      * The fixture is the operator representation's {@code facts.runtime.start} of the state the
      * scenario starts in, merged over the scenario's base state {@code running_work.active} so a case
-     * state declares only what differs. A scenario that still carries the transitional top-level
-     * {@code start_case} fixture (the showroom) is seeded from it instead.
+     * state declares only what differs.
      *
      * @param scenario the active scenario
      */
@@ -325,14 +324,13 @@ final class StartRegistry {
 
     /**
      * @param scenario the active scenario
-     * @return the start fixture of the scenario's start state, merged over its base state, or the
-     *         transitional top-level {@code start_case} fixture when no state carries one
+     * @return the start fixture of the scenario's start state, merged over its base state
      */
     private static Map<String, Object> startFixtureOf(Scenario scenario) {
         var fixture = new LinkedHashMap<String, Object>();
         mergeStartFixture(runtimeFixtureOf(scenario, FIXTURE_BASE_STATE), fixture);
         mergeStartFixture(runtimeFixtureOf(scenario, scenario.start()), fixture);
-        return fixture.isEmpty() ? scenario.startCase() : fixture;
+        return fixture;
     }
 
     private static void mergeStartFixture(@Nullable Map<String, Object> runtime, Map<String, Object> target) {

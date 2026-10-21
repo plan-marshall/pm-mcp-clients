@@ -25,11 +25,14 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.planmarshall.api.interaction.OperatorStateResource;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 @DisplayName("StandardScenarios")
@@ -101,6 +104,45 @@ class StandardScenariosTest {
         for (var name : StandardScenarios.PRIMARY_SCENARIOS) {
             assertTrue(Files.isRegularFile(scenarios.resolve(name + ".json")), name + ".json is missing");
         }
+    }
+
+    @Test
+    @DisplayName("delivers exactly the canonical scenario files and no stray case file")
+    void canonicalScenarioFilesAreExactlyThePrimarySet() throws Exception {
+        var scenarios = scenariosDirectory();
+        TreeSet<String> delivered;
+        try (var files = Files.list(scenarios)) {
+            delivered = files.map(path -> path.getFileName().toString())
+                    .filter(name -> name.endsWith(".json"))
+                    .collect(Collectors.toCollection(TreeSet::new));
+        }
+        var expected = StandardScenarios.PRIMARY_SCENARIOS.stream()
+                .map(name -> name + ".json")
+                .collect(Collectors.toCollection(TreeSet::new));
+
+        assertEquals(expected, delivered);
+    }
+
+    @Test
+    @DisplayName("every state of every canonical scenario decodes as an OperatorStateResource")
+    void everyCanonicalStateDecodesAsAnOperatorState() throws Exception {
+        var registry = new ScenarioRegistry();
+        for (var name : StandardScenarios.PRIMARY_SCENARIOS) {
+            var scenario = registry.resolve(name);
+            for (var entry : scenario.states().entrySet()) {
+                var representation = JsonTree.asObject(entry.getValue().representation());
+                var state = OperatorStateResource.fromMap(representation);
+
+                assertEquals(entry.getKey(), state.stateId(), name + " state");
+            }
+        }
+    }
+
+    private static Path scenariosDirectory() {
+        var scenarios = Path.of("src", "main", "resources", "scenarios");
+        return Files.isDirectory(scenarios)
+                ? scenarios
+                : Path.of("pm-mock-runtime", "src", "main", "resources", "scenarios");
     }
 
     @Test

@@ -326,6 +326,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String FIXTURE_DECISIONS = "decisions";
     private static final String FIXTURE_DECOMPOSITIONS = "decompositions";
     private static final String FIXTURE_REPORTS = "reports";
+    private static final String FIXTURE_COMPLETION_REPORTS = "completion_reports";
     private static final String FIXTURE_PROJECTS = "projects";
     private static final String FIXTURE_BEING_ADDED = "being_added";
     private static final String FIELD_VERSION = "version";
@@ -2572,6 +2573,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         for (var report : fixtureObjects(fixture, FIXTURE_REPORTS)) {
             readFixture(() -> ReportItem.fromMap(report), "facts.runtime.reports");
         }
+        for (var report : fixtureObjects(fixture, FIXTURE_COMPLETION_REPORTS)) {
+            readFixture(() -> PlanCompletionReport.fromMap(report), "facts.runtime.completion_reports");
+        }
         for (var project : fixtureObjects(fixture, FIXTURE_PROJECTS)) {
             readFixture(() -> EnrolledProject.fromMap(project), "facts.runtime.projects");
         }
@@ -4614,10 +4618,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void initDefaultReports() {
+        var fixture = startRuntimeFixture();
+        var reportsDeclared = fixture != null && fixture.containsKey(FIXTURE_REPORTS);
         synchronized (reportsLock) {
             mockReports.clear();
-            var fixtureReports = fixtureObjects(startRuntimeFixture(), FIXTURE_REPORTS);
-            if (fixtureReports.isEmpty()) {
+            var fixtureReports = fixtureObjects(fixture, FIXTURE_REPORTS);
+            if (!reportsDeclared) {
                 mockReports.add(new ReportItem(
                         "rep-0142",
                         new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_FIX_RELAY),
@@ -4710,6 +4716,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         completionReports.clear();
+        if (seedCompletionReportsFromFixture(fixture)) {
+            return;
+        }
         var fixRelayDeliverables = List.of(
                 new DeliverableSummary("cursor write order", "done"),
                 new DeliverableSummary("a test per transport, websocket and SSE", "done"),
@@ -4788,6 +4797,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 List.of(),
                 null
         ));
+    }
+
+    /**
+     * Seeds the completion reports from the active scenario's {@code facts.runtime.completion_reports}
+     * fixture, so a case state serves the outcome, waivers, phase timeline, and token breakdown it
+     * declares.
+     *
+     * @param fixture the start state's runtime fixture, or {@code null}
+     * @return {@code true} when the fixture declares the completion reports, so the Java defaults are
+     *         not used; an explicitly empty array declares none
+     */
+    private boolean seedCompletionReportsFromFixture(@Nullable Map<String, Object> fixture) {
+        if (fixture == null || !fixture.containsKey(FIXTURE_COMPLETION_REPORTS)) {
+            return false;
+        }
+        for (var entry : fixtureObjects(fixture, FIXTURE_COMPLETION_REPORTS)) {
+            var report = readFixture(() -> PlanCompletionReport.fromMap(entry),
+                    "facts.runtime.completion_reports");
+            completionReports.put(report.planId(), report);
+        }
+        return true;
     }
 
     /**

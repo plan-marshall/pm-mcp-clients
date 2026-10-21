@@ -42,7 +42,8 @@ class ReportsScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals(StandardScenarios.REPORTS, runtime.currentScenarioName());
+            assertEquals(StandardScenarios.REPORTS_AND_SYSTEM, runtime.currentScenarioName());
+            assertEquals("reports.unread", runtime.currentStateName());
 
             var res = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
             assertEquals(200, res.status());
@@ -203,6 +204,46 @@ class ReportsScenarioTest {
             var body = JsonTree.asObject(JsonTree.parse(res.body()));
             assertEquals("plan_running", JsonTree.string(body, "error"));
             assertTrue(JsonTree.string(body, "message").contains("running"));
+        }
+    }
+
+    @Test
+    @DisplayName("serves the aborted and the failed completion report from the scenario fixtures")
+    void shouldServeTheAbortedAndFailedCompletionReports() throws Exception {
+        try (var aborted = MockRuntime.start(StandardScenarios.REPORTS_AND_SYSTEM + "#reports.completion-aborted")) {
+            var client = new UnixSocketHttpClient(aborted.socketPath());
+            var res = client.send(HttpRequest.get("/api/v1/plans/relay-aborted/completion")
+                    .withHeader("Authorization", "Bearer " + aborted.token()));
+
+            var report = PlanCompletionReport.fromJson(res.bodyText());
+            assertEquals("aborted", report.outcome());
+            assertNotNull(report.reason());
+            assertEquals(18000L, report.tokenUsage().totalTokens());
+        }
+
+        try (var failed = MockRuntime.start(StandardScenarios.REPORTS_AND_SYSTEM + "#reports.completion-failed")) {
+            var client = new UnixSocketHttpClient(failed.socketPath());
+            var res = client.send(HttpRequest.get("/api/v1/plans/relay-failed/completion")
+                    .withHeader("Authorization", "Bearer " + failed.token()));
+
+            var report = PlanCompletionReport.fromJson(res.bodyText());
+            assertEquals("failed", report.outcome());
+            assertTrue(report.tokenUsage().isFloor());
+            assertEquals("the reviewer's harness reported no tokens", report.tokenUsage().unmeasuredReason());
+        }
+    }
+
+    @Test
+    @DisplayName("serves an empty inbox from the reports.empty state fixture")
+    void shouldServeTheEmptyInboxState() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.REPORTS_AND_SYSTEM + "#reports.empty")) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var res = client.send(HttpRequest.get("/api/v1/reports")
+                    .withHeader("Authorization", "Bearer " + runtime.token()));
+
+            var page = ReportsPage.fromJson(res.bodyText());
+            assertEquals(0, page.unreadCount());
+            assertTrue(page.items().isEmpty());
         }
     }
 

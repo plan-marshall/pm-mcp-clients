@@ -78,10 +78,12 @@ class ScenarioLoaderTest {
                   "states": {
                     "initial": {
                       "representation": {
-                        "status": "idle",
-                        "links": {
-                          "advance": { "href": "/api/v1/advance", "method": "POST" }
-                        }
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "initial", "kind": "operator_wait" },
+                        "links": [
+                          { "id": "advance", "rel": "submit", "method": "POST",
+                            "href": "/api/v1/advance", "params": {} }
+                        ]
                       },
                       "links": {
                         "advance": {
@@ -92,7 +94,10 @@ class ScenarioLoaderTest {
                         }
                       },
                       "events": [
-                        { "after_ms": 50, "event": "alert", "data": { "msg": "hello" } }
+                        { "after_ms": 50, "event": "check.result",
+                          "data": { "event": "check.result", "at": "2026-10-16T12:00:00Z",
+                                    "scope": { "kind": "machine" },
+                                    "id": "version", "result": "pass" } }
                       ],
                       "auto": {
                         "after_ms": 200,
@@ -100,7 +105,11 @@ class ScenarioLoaderTest {
                       }
                     },
                     "second": {
-                      "representation": { "status": "completed" }
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "second", "kind": "operator_wait" },
+                        "links": []
+                      }
                     }
                   }
                 }
@@ -131,7 +140,7 @@ class ScenarioLoaderTest {
 
         // Events & Auto
         assertEquals(1, initial.events().size());
-        assertEquals("alert", initial.events().getFirst().event());
+        assertEquals("check.result", initial.events().getFirst().event());
         assertEquals(50, initial.events().getFirst().afterMs());
         assertNotNull(initial.auto());
         assertEquals("second", initial.auto().next());
@@ -187,9 +196,16 @@ class ScenarioLoaderTest {
                   "start": "initial",
                   "states": {
                     "initial": {
-                      "representation": {},
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "initial", "kind": "operator_wait" },
+                        "links": [
+                          { "id": "go", "rel": "submit", "method": "POST",
+                            "href": "/api/v1/go", "params": {} }
+                        ]
+                      },
                       "links": {
-                        "go": { "method": "POST", "next": "does_not_exist" }
+                        "go": { "method": "POST", "href": "/api/v1/go", "next": "does_not_exist" }
                       }
                     }
                   }
@@ -212,7 +228,11 @@ class ScenarioLoaderTest {
                   "start": "initial",
                   "states": {
                     "initial": {
-                      "representation": {},
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "initial", "kind": "operator_wait" },
+                        "links": []
+                      },
                       "auto": { "after_ms": 100, "next": "does_not_exist" }
                     }
                   }

@@ -26,6 +26,7 @@ import java.util.Set;
 import lombok.experimental.UtilityClass;
 
 import de.planmarshall.api.designer.WorkflowCatalogue;
+import de.planmarshall.api.designer.WorkflowUnit;
 import de.planmarshall.api.event.EventEnvelope;
 import de.planmarshall.api.event.EventName;
 import de.planmarshall.api.interaction.OperatorLink;
@@ -36,6 +37,7 @@ import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.SystemSnapshot;
 
 /**
@@ -43,10 +45,10 @@ import de.planmarshall.api.system.SystemSnapshot;
  * ({@code 05-mock-runtime.adoc#scenario-files}).
  * <p>
  * The schema is closed: an unknown member at the root, state, route, link, event, or auto level is
- * refused with the file, the state or route, and the offending field. The {@code designer} and
- * {@code start_case} extension members and the {@code summary} hint of the still-migrating legacy
- * representations are accepted until the consolidation waves move them into {@code pm-api}
- * codecs; every member the specification names is validated against the {@code pm-api} codecs.
+ * refused with the file, the state or route, and the offending field. Every state's
+ * {@code representation} must be a valid {@link OperatorStateResource}: a scenario cannot declare a
+ * state the operator contract does not allow, and every member the specification names is validated
+ * against the {@code pm-api} codecs.
  */
 @UtilityClass
 public class ScenarioLoader {
@@ -55,8 +57,7 @@ public class ScenarioLoader {
     public static final String SCENARIOS_RESOURCE_DIR = "scenarios/";
 
     private static final Set<String> ROOT_FIELDS = Set.of(
-            "format_version", "name", "description", "start", "pairing_code", "routes", "states",
-            "designer", "start_case");
+            "format_version", "name", "description", "start", "pairing_code", "routes", "states");
     private static final Set<String> STATE_FIELDS = Set.of(
             "representation", "links", "events", "auto");
     private static final Set<String> ROUTE_FIELDS = Set.of("status", "representation", "headers");
@@ -189,47 +190,18 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(identifier, null, "states", "states must be a non-empty object");
         }
 
-        var states = parseStates(statesMap, identifier);
-
-        // 8. designer fixtures (UC-PLN-3), optional
-        var designer = parseDesigner(root.get("designer"), identifier);
-
-        // 9. start fixtures (UC-STA-1..9), optional
-        var startCase = parseStartCase(root.get("start_case"), identifier);
-
-        // Validate that start state exists
-        if (!states.containsKey(start)) {
+        // Validate that start state exists before parsing the states, so a missing start is named
+        // as such rather than reported through the first state's representation.
+        if (!statesMap.containsKey(start)) {
             throw new ScenarioValidationException(identifier, null, "start",
                     "start state '" + start + "' does not exist in states");
         }
 
+        var states = parseStates(statesMap, identifier);
+
         validateTransitions(states, identifier);
 
-        return new Scenario(formatVersion, name, description, start, pairingCode, routes, states, designer,
-                startCase);
-    }
-
-    private static Map<String, Object> parseDesigner(Object designerObj, String scenario) {
-        if (designerObj == null) {
-            return Map.of();
-        }
-        var map = JsonTree.asObject(designerObj);
-        if (map == null) {
-            throw new ScenarioValidationException(scenario, null, "designer", "designer fixtures must be an object");
-        }
-        return map;
-    }
-
-    private static Map<String, Object> parseStartCase(Object startCaseObj, String scenario) {
-        if (startCaseObj == null) {
-            return Map.of();
-        }
-        var map = JsonTree.asObject(startCaseObj);
-        if (map == null) {
-            throw new ScenarioValidationException(scenario, null, "start_case",
-                    "start_case fixtures must be an object");
-        }
-        return map;
+        return new Scenario(formatVersion, name, description, start, pairingCode, routes, states);
     }
 
     private static void validateTransitions(Map<String, StateDefinition> states, String identifier) {
@@ -320,12 +292,14 @@ public class ScenarioLoader {
     }
 
     /**
-     * Validates a state whose representation is an operator representation, decoded with the codecs of
+     * Validates a state's representation as an operator representation, decoded with the codecs of
      * {@code pm-api}: every representation, event, and link relation must be one the contract allows,
      * every scenario link must agree with the operator link the state's representation offers by its
      * id, and every advertised operator link must have a scenario link, so a client that sends what the
-     * representation offers is answered. A state whose representation is not an operator representation
-     * (the responses of the legacy scenarios) is left to the loader's own checks.
+     * representation offers is answered.
+     * <p>
+     * The operator representation is mandatory: a state without a valid {@code state.state_id} fails
+     * the load, so every state of every scenario is one both clients can render.
      *
      * @param representation the state representation
      * @param links          the scenario links keyed by operator link id
@@ -337,11 +311,13 @@ public class ScenarioLoader {
             List<EventDefinition> events, String scenario, String stateId) {
         var representationMap = JsonTree.asObject(representation);
         if (representationMap == null) {
-            return;
+            throw new ScenarioValidationException(scenario, stateId, "representation",
+                    "the representation must be an operator state object");
         }
         var stateMap = JsonTree.asObject(representationMap.get(OperatorStateResource.FIELD_STATE));
         if (stateMap == null || !stateMap.containsKey(OperatorStateResource.FIELD_STATE_ID)) {
-            return;
+            throw new ScenarioValidationException(scenario, stateId, "representation.state.state_id",
+                    "every state representation must be an OperatorStateResource with a state_id");
         }
 
         OperatorStateResource state;
@@ -539,12 +515,19 @@ public class ScenarioLoader {
             return;
         }
         try {
+            if (routeKey.endsWith("/workflows") && map.get("units") instanceof List<?> units) {
+                for (var unit : units) {
+                    WorkflowUnit.fromMap(JsonTree.asObject(unit));
+                }
+                return;
+            }
             switch (routeKey) {
                 case "GET /api/v1/projects" -> ProjectExplorer.fromMap(map);
                 case "GET /api/v1/reports" -> ReportsPage.fromMap(map);
                 case "GET /api/v1/overview" -> ProjectOverviewResponse.fromJson(JsonTree.write(map));
                 case "GET /api/v1/system" -> SystemSnapshot.fromMap(map);
-                case "GET /api/v1/workflows" -> WorkflowCatalogue.fromMap(map);
+                case "GET /api/v1/workflows/catalogue" -> WorkflowCatalogue.fromMap(map);
+                case "GET /api/v1/system/cleanup" -> CleanupJob.fromMap(map);
                 default -> {
                     // No closed codec is registered for this endpoint yet.
                 }

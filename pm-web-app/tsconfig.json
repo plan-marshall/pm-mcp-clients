@@ -5,6 +5,7 @@
   "compilerOptions": {
     "allowJs": true,
     "checkJs": false,
+    "resolveJsonModule": true,
     "strict": true,
     "skipLibCheck": true,
     "types": ["$app/types", "vitest/globals"]

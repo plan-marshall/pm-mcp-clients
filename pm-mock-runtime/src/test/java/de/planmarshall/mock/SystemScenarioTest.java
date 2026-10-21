@@ -42,7 +42,8 @@ class SystemScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals(StandardScenarios.SYSTEM, runtime.currentScenarioName());
+            assertEquals(StandardScenarios.REPORTS_AND_SYSTEM, runtime.currentScenarioName());
+            assertEquals("system.running", runtime.currentStateName());
 
             var res = client.send(HttpRequest.get("/api/v1/system").withHeader("Authorization", auth));
             assertEquals(200, res.status());

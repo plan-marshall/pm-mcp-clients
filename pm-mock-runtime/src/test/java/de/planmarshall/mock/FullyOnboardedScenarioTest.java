@@ -101,8 +101,14 @@ class FullyOnboardedScenarioTest {
                 "GET /api/v1/epics",
                 "GET /api/v1/plans/fix-relay/process",
                 "GET /api/v1/epics/relay-hardening/process")));
-        assertFalse(scenario.designer().isEmpty(), "the designer fixtures are seeded");
-        assertFalse(scenario.startCase().isEmpty(), "the start fixtures are seeded");
+        assertTrue(scenario.routes().keySet().containsAll(List.of(
+                "GET /api/v1/workflows",
+                "GET /api/v1/workflows/catalogue")), "the designer fixtures are routes");
+        var representation = JsonTree.asObject(scenario.state("showroom.active").representation());
+        var facts = JsonTree.asObject(representation.get("facts"));
+        var runtime = JsonTree.asObject(facts.get("runtime"));
+        assertNotNull(runtime.get("start"), "the start fixture is seeded in the state");
+        assertNotNull(runtime.get("designer"), "the designer state carries its enrolled projects");
     }
 
     @Test

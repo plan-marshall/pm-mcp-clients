@@ -23,6 +23,9 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+
+import org.jspecify.annotations.Nullable;
+
 import de.planmarshall.api.designer.BuildingBlock;
 import de.planmarshall.api.designer.UnitPlacingResult;
 import de.planmarshall.api.designer.WorkflowCatalogue;
@@ -30,6 +33,7 @@ import de.planmarshall.api.designer.WorkflowFinding;
 import de.planmarshall.api.designer.WorkflowUnit;
 import de.planmarshall.api.designer.WorkflowValidationRequest;
 import de.planmarshall.api.designer.WorkflowValidationResult;
+import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.ProcessNode;
 import de.planmarshall.api.process.ProcessProjectRef;
@@ -48,6 +52,22 @@ final class DesignerRegistry {
     static final String MACHINE = "machine";
 
     private static final String DEFAULT_VERSION = "0.0.0";
+    private static final String BASE_STATE = "designer.ready";
+    private static final String FIXTURE_RUNTIME = "runtime";
+    private static final String FIXTURE_DESIGNER = "designer";
+    private static final String KEY_UNITS = "units";
+    private static final String KEY_BLOCKS = "blocks";
+    private static final String KEY_VERSION = "version";
+    private static final String KEY_PROJECTS = "projects";
+    private static final String KEY_RUNTIME_VERSION = "runtime_version";
+    private static final String KEY_MACHINE_UNITS = "machine_units";
+    private static final String KEY_MACHINE_BLOCKS = "machine_blocks";
+    private static final String KEY_PROJECT_UNITS = "project_units";
+    private static final String KEY_PROJECT_BLOCKS = "project_blocks";
+    private static final String PATH_WORKFLOWS = "/api/v1/workflows";
+    private static final String SEGMENT_CATALOGUE = "/catalogue";
+    private static final String SEGMENT_WORKFLOWS = "/workflows";
+    private static final String PREFIX_PROJECTS = "/api/v1/projects/";
     private static final String KEYWORD_ENTRY = "entry";
     private static final String KEYWORD_EXIT = "exit";
     private static final String PREFIX_STATE = "state ";
@@ -72,24 +92,152 @@ final class DesignerRegistry {
     private String runtimeVersion = DEFAULT_VERSION;
 
     /**
-     * Resets and seeds this registry from the scenario's designer fixtures.
+     * Resets and seeds this registry from the scenario's standard routes and states.
+     * <p>
+     * The installed units and catalogues are the representations of the designer's {@code GET}
+     * routes, exactly as a client reads them: {@code GET /api/v1/workflows} and
+     * {@code GET /api/v1/workflows/catalogue} for the machine scope, and
+     * {@code GET /api/v1/projects/<id>/workflows} with its catalogue for every enrolled project.
+     * The states contribute only what a route cannot: the enrolled project list and the runtime
+     * version of a case, read from {@code facts.runtime.designer} of the scenario's base state
+     * ({@code designer.ready}) merged over the state the scenario starts in.
      *
      * @param scenario the active scenario
      */
     synchronized void init(Scenario scenario) {
         clear();
-        var fixtures = scenario != null ? scenario.designer() : Map.<String, Object>of();
-        if (fixtures.isEmpty()) {
+        if (scenario == null) {
             return;
         }
-        runtimeVersion = string(fixtures, "runtime_version", DEFAULT_VERSION);
-        machineUnits.addAll(parseUnits(objectList(fixtures, "machine_units")));
-        putProjectUnits(JsonTree.asObject(fixtures.get("project_units")));
-        machineBlocks.addAll(parseBlocks(objectList(fixtures, "machine_blocks")));
-        putProjectBlocks(JsonTree.asObject(fixtures.get("project_blocks")));
-        addProjects(fixtures.get("projects"));
+        var override = designerOverrideOf(scenario);
+        var machineCatalogue = routeRepresentation(scenario, "GET", PATH_WORKFLOWS + SEGMENT_CATALOGUE);
+        runtimeVersion = string(override, KEY_RUNTIME_VERSION, versionOf(machineCatalogue));
+        machineUnits.addAll(parseUnits(unitsOf(routeRepresentation(scenario, "GET", PATH_WORKFLOWS))));
+        machineBlocks.addAll(parseBlocks(blocksOf(machineCatalogue)));
+        var projects = projectIdsOf(scenario);
+        for (var project : projects) {
+            projectUnits.put(project, parseUnits(unitsOf(routeRepresentation(scenario, "GET",
+                    projectPath(project)))));
+            projectBlocks.put(project, parseBlocks(blocksOf(routeRepresentation(scenario, "GET",
+                    projectPath(project) + SEGMENT_CATALOGUE))));
+        }
+        applyUnitsOverride(override, KEY_MACHINE_UNITS, machineUnits);
+        applyBlocksOverride(override, KEY_MACHINE_BLOCKS, machineBlocks);
+        applyProjectUnitsOverride(override, KEY_PROJECT_UNITS, projectUnits);
+        applyProjectBlocksOverride(override, KEY_PROJECT_BLOCKS, projectBlocks);
+        addProjects(override.get(KEY_PROJECTS), projects);
         revisions.put(MACHINE, 1);
         projectUnits.keySet().forEach(project -> revisions.put(project, 1));
+    }
+
+    private static void applyUnitsOverride(Map<String, Object> override, String key, List<WorkflowUnit> target) {
+        if (!override.containsKey(key)) {
+            return;
+        }
+        target.clear();
+        target.addAll(parseUnits(objectList(override.get(key))));
+    }
+
+    private static void applyBlocksOverride(Map<String, Object> override, String key, List<BuildingBlock> target) {
+        if (!override.containsKey(key)) {
+            return;
+        }
+        target.clear();
+        target.addAll(parseBlocks(objectList(override.get(key))));
+    }
+
+    private static void applyProjectUnitsOverride(Map<String, Object> override, String key,
+            Map<String, List<WorkflowUnit>> target) {
+        if (!override.containsKey(key)) {
+            return;
+        }
+        target.clear();
+        var map = JsonTree.asObject(override.get(key));
+        if (map != null) {
+            map.forEach((project, value) -> target.put(project, parseUnits(objectList(value))));
+        }
+    }
+
+    private static void applyProjectBlocksOverride(Map<String, Object> override, String key,
+            Map<String, List<BuildingBlock>> target) {
+        if (!override.containsKey(key)) {
+            return;
+        }
+        target.clear();
+        var map = JsonTree.asObject(override.get(key));
+        if (map != null) {
+            map.forEach((project, value) -> target.put(project, parseBlocks(objectList(value))));
+        }
+    }
+
+    /**
+     * @param scenario the active scenario
+     * @return the state-level designer overrides: the base state's fixture merged under the start
+     *         state's, or an empty map when neither carries one
+     */
+    private static Map<String, Object> designerOverrideOf(Scenario scenario) {
+        var override = new LinkedHashMap<String, Object>();
+        mergeDesignerOverride(scenario, BASE_STATE, override);
+        mergeDesignerOverride(scenario, scenario.start(), override);
+        return override;
+    }
+
+    private static void mergeDesignerOverride(Scenario scenario, String stateId, Map<String, Object> target) {
+        var state = scenario.state(stateId);
+        if (state == null) {
+            return;
+        }
+        var representation = JsonTree.asObject(state.representation());
+        if (representation == null) {
+            return;
+        }
+        var facts = JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts != null ? JsonTree.asObject(facts.get(FIXTURE_RUNTIME)) : null;
+        var designer = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_DESIGNER)) : null;
+        if (designer != null) {
+            target.putAll(designer);
+        }
+    }
+
+    private static @Nullable Map<String, Object> routeRepresentation(Scenario scenario, String method, String path) {
+        var route = scenario.route(method, path);
+        return route != null ? JsonTree.asObject(route.representation()) : null;
+    }
+
+    private static String versionOf(@Nullable Map<String, Object> catalogue) {
+        var version = catalogue != null ? JsonTree.string(catalogue, KEY_VERSION) : null;
+        return version != null && !version.isBlank() ? version : DEFAULT_VERSION;
+    }
+
+    private static List<Map<String, Object>> unitsOf(@Nullable Map<String, Object> representation) {
+        return representation != null ? objectList(representation.get(KEY_UNITS)) : List.of();
+    }
+
+    private static List<Map<String, Object>> blocksOf(@Nullable Map<String, Object> representation) {
+        return representation != null ? objectList(representation.get(KEY_BLOCKS)) : List.of();
+    }
+
+    private static List<String> projectIdsOf(Scenario scenario) {
+        var prefix = PREFIX_PROJECTS;
+        var suffix = SEGMENT_WORKFLOWS;
+        return scenario.routes().keySet().stream()
+                .filter(key -> key.startsWith("GET " + prefix) && key.endsWith(suffix))
+                .map(key -> key.substring(("GET " + prefix).length(), key.length() - suffix.length()))
+                .filter(id -> !id.isEmpty() && !id.contains("/"))
+                .distinct()
+                .toList();
+    }
+
+    private static String projectPath(String projectId) {
+        return PREFIX_PROJECTS + projectId + SEGMENT_WORKFLOWS;
+    }
+
+    private void addProjects(@Nullable Object declared, List<String> routeProjects) {
+        if (declared instanceof List<?> projects) {
+            projects.stream().filter(Objects::nonNull).map(String::valueOf).forEach(enrolledProjects::add);
+            return;
+        }
+        enrolledProjects.addAll(routeProjects);
     }
 
     private void clear() {
@@ -100,26 +248,6 @@ final class DesignerRegistry {
         revisions.clear();
         enrolledProjects.clear();
         runtimeVersion = DEFAULT_VERSION;
-    }
-
-    private void putProjectUnits(Map<String, Object> map) {
-        if (map == null) {
-            return;
-        }
-        map.forEach((project, value) -> projectUnits.put(project, parseUnits(objectList(value))));
-    }
-
-    private void putProjectBlocks(Map<String, Object> map) {
-        if (map == null) {
-            return;
-        }
-        map.forEach((project, value) -> projectBlocks.put(project, parseBlocks(objectList(value))));
-    }
-
-    private void addProjects(Object value) {
-        if (value instanceof List<?> projects) {
-            projects.stream().filter(Objects::nonNull).map(String::valueOf).forEach(enrolledProjects::add);
-        }
     }
 
     private static List<WorkflowUnit> parseUnits(List<Map<String, Object>> maps) {
@@ -464,10 +592,6 @@ final class DesignerRegistry {
     private static String string(Map<String, Object> map, String key, String fallback) {
         var value = JsonTree.string(map, key);
         return value != null ? value : fallback;
-    }
-
-    private static List<Map<String, Object>> objectList(Map<String, Object> map, String key) {
-        return objectList(map.get(key));
     }
 
     private static List<Map<String, Object>> objectList(Object value) {

@@ -50,15 +50,15 @@ Runs as **Mock Runtime Wave 3** after Wave 1 (`mock-runtime-foundation-and-conso
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-reports-system-designer` on branch `feat/mock-runtime-reports-system-designer` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/mock-runtime-reports-system-designer-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-reports-system-designer-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/mock-runtime-reports-system-designer-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-reports-system-designer-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/mock-runtime-reports-system-designer-plan-report.md` by orchestrator session.
@@ -79,22 +79,22 @@ Runs as **Mock Runtime Wave 3** after Wave 1 (`mock-runtime-foundation-and-conso
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Author Consolidated `reports-and-system.json`
-- [ ] **1.1 Reports & Completion Report States and Routes**:
+- [x] **1.1 Reports & Completion Report States and Routes**:
   - Create `pm-mock-runtime/src/main/resources/scenarios/reports-and-system.json` containing `GET /api/v1/reports` and `/api/v1/plans/{id}/report` routes and `OperatorStateResource` states (`reports.unread`, `reports.all-read`, `reports.empty`, `reports.completion-landed`, `reports.completion-nothing`, `reports.completion-aborted`, `reports.completion-failed`) with `EventEnvelope` `report.arrived` and `report.read` events.
-- [ ] **1.2 System Lifecycle & Cleanup States and Routes**:
+- [x] **1.2 System Lifecycle & Cleanup States and Routes**:
   - Add `/api/v1/system`, `/api/v1/cleanup`, `/api/v1/cleanup/keep`, and `/api/v1/cleanup/residues` routes and `OperatorStateResource` states (`system.running`, `system.draining`, `system.stopped`, `system.restarting`, `cleanup.idle`, `cleanup.running`, `cleanup.completed`, `cleanup.kept`, `cleanup.residues`) into `reports-and-system.json`.
   - Delete `reports.json` and `system.json`.
 
 ### Phase 2: Migrate `designer.json` & Enforce Mandatory `OperatorStateResource` Validation
-- [ ] **2.1 Refactor `DesignerRegistry` & `designer.json`**:
+- [x] **2.1 Refactor `DesignerRegistry` & `designer.json`**:
   - Move the custom `"designer"` top-level object into standard `routes` (`GET /api/v1/workflows/catalogue`, `GET /api/v1/workflows`, `GET /api/v1/projects/{id}/workflows`) and `OperatorStateResource` states (`designer.ready`, `designer.no-project`, `designer.unit-invalid`, `designer.digest-conflict`, `designer.placed`, `designer.landed-pr`, `designer.landed-direct`, `designer.removed`) inside `designer.json`.
   - Remove `designer` and `startCase` from `Scenario` and `ScenarioLoader`.
-- [ ] **2.2 Remove `validateOperatorState` Early-Return Bypass**:
+- [x] **2.2 Remove `validateOperatorState` Early-Return Bypass**:
   - Update `ScenarioLoader.validateOperatorState` so that any state whose `representation` is not a valid `OperatorStateResource` (with `state.state_id`) throws `ScenarioValidationException`.
   - Add a test in `StandardScenariosTest` asserting that `pm-mock-runtime/src/main/resources/scenarios/` contains **exactly the 5 canonical `.json` files** (`onboarding.json`, `running-work.json`, `projects-and-start.json`, `reports-and-system.json`, `designer.json`) and that every state in all 5 files decodes as an `OperatorStateResource`.
 
 ### Phase 3: Web App Scenario-Driven `fetch` Helper & Verification
-- [ ] **3.1 Vitest Scenario Router in `pm-web-app`**:
+- [x] **3.1 Vitest Scenario Router in `pm-web-app`**:
   - Add `pm-web-app/src/lib/api/scenarioMockFetch.ts` (and a Vitest unit test) that loads any of the 5 scenario JSON files directly from `pm-mock-runtime/src/main/resources/scenarios/` and serves `routes`, current-state `representation`, and state `links` transitions (`05-mock-runtime.adoc` line 76).
-- [ ] **3.2 Pre-Commit & Operational Gate**:
+- [x] **3.2 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).
