@@ -22,9 +22,9 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Mock** | [`mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` | `feat/mock-runtime-fully-onboarded` | Implemented — PR pending |
-| **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Ready to launch |
-| **Web** | [`web-arrival-banners-and-i18n-cache-plan.md`](web-arrival-banners-and-i18n-cache-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-banners-and-i18n-cache` | `feat/web-banners-and-i18n-cache` | Ready to launch |
+| **Mock** | [`mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-projects-start` | `feat/mock-projects-start` | Ready to launch |
+| **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Active implementation |
+| **Web** | [`web-decisions-and-actions-plan.md`](web-decisions-and-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` | `feat/web-decisions-actions` | Ready to launch |
 
 ---
 
@@ -39,9 +39,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Consolidated 23 scenario files into 80-state onboarding.json; full OperatorStateResource closure)*
 3. **Wave 2b (Landed & Verified)**: [`mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) ([Report](verified/mock-runtime-running-work-plan-report.md) — PR #136, commit `49d0ef6`)
    *(Consolidated running-work, plan-view, decisions, and control files into rich running-work.json)*
-4. **Fully Onboarded Showroom Scenario (Implemented — PR pending)**: [`mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md)
+4. **Fully Onboarded Showroom Scenario (Landed & Verified)**: [`mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md) ([Report](verified/mock-runtime-fully-onboarded-scenario-plan-report.md) — PR #143, commit `8484347`)
    *(Omni-domain showroom scenario with all UI views, projects, running work, decisions, reports, system, settings, start, and designer active simultaneously)*
-5. **Wave 3 Consolidation**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
+5. **Wave 3 Consolidation (Active)**: [`mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) & [`mock-runtime-reports-system-designer-plan.md`](mock-runtime-reports-system-designer-plan.md)
    *(Migrates projects, starting work, reports, and system views into standard scenarios)*
 
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)
@@ -61,9 +61,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 2. **Onboarding, Entry & Projects (Landed & Verified)**: [`web-onboarding-entry-and-projects-plan.md`](implemented/web-onboarding-entry-and-projects-plan.md) ([Report](verified/web-onboarding-entry-and-projects-plan-report.md) — PR #132, commit `cff749e`)
    *(10-step project onboarding, build environment display, favourite ordering, setup conflict resolution)*
 3. **Overview, Plan & Epic View (Landed & Verified)**: [`web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) ([Report](verified/web-overview-plan-and-epic-view-plan-report.md) — PR #134, commit `aad7e44`)
-4. **Arrival Banners & i18n Cache (Active)**: [`web-arrival-banners-and-i18n-cache-plan.md`](web-arrival-banners-and-i18n-cache-plan.md)
+4. **Arrival Banners & i18n Cache (Landed & Verified)**: [`web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md) ([Report](verified/web-arrival-banners-and-i18n-cache-plan-report.md) — PR #142, commit `8db8629`)
    *(Complete removal of redundant top arrival notice banners; localStorage catalogue caching with SWR, synchronous hydration, and missing-key shielding)*
-5. **Decisions & Actions**: `web-decisions-and-actions-plan.md`
+5. **Decisions & Actions (Active)**: [`web-decisions-and-actions-plan.md`](web-decisions-and-actions-plan.md)
 6. **Reports, System & Designer**: `web-reports-system-and-designer-plan.md`
 
 ---
