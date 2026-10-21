@@ -26,7 +26,7 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 |---|---|---|---|---|
 | **Mock** | [`mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-projects-start` | `feat/mock-projects-start` | Ready to launch |
 | **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Active implementation |
-| **Web** | [`web-reports-system-and-designer-plan.md`](web-reports-system-and-designer-plan.md) | — | — | Awaiting mock prerequisite (`mock-runtime-reports-system-designer-plan.md`) |
+| **Web** | [`web-reports-system-and-designer-plan.md`](web-reports-system-and-designer-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-reports-system-designer` | `feat/web-reports-system-and-designer` | Step 1 allocated; ready to launch |
 
 ---
 
