@@ -20,13 +20,15 @@ Every work package in `doc/agy/` is governed by coordinated architectural layers
 
 ## 2. Active Wave: 3-Stream Parallel Model
 
-Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
+Waves execute across disjoint parallel streams (Mock Runtime and CLI TUI):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Mock** | [`mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-projects-start` | `feat/mock-projects-start` | Ready to launch |
-| **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Active implementation |
-| **Web** | [`web-reports-system-and-designer-plan.md`](web-reports-system-and-designer-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-reports-system-designer` | `feat/web-reports-system-and-designer` | Step 1 allocated; ready to launch |
+| **Mock** | [`mock-runtime-reports-system-designer-plan.md`](mock-runtime-reports-system-designer-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-reports-system-designer` | `feat/mock-runtime-reports-system-designer` | Step 1 allocated; ready to launch |
+| **CLI (Projects)** | [`cli-fullscreen-projects-plan.md`](cli-fullscreen-projects-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-projects` | `feat/cli-fullscreen-projects` | Step 1 allocated; ready to launch |
+| **CLI (Reports/System)** | [`cli-fullscreen-reports-system-plan.md`](cli-fullscreen-reports-system-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-reports-system` | `feat/cli-fullscreen-reports-system` | Step 1 allocated; ready to launch |
+
+*(Note: Stream C Web Client is 100% delivered with PR #154).*
 
 ---
 
@@ -43,8 +45,10 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Consolidated running-work, plan-view, decisions, and control files into rich running-work.json)*
 4. **Fully Onboarded Showroom Scenario (Landed & Verified)**: [`mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md) ([Report](verified/mock-runtime-fully-onboarded-scenario-plan-report.md) — PR #143, commit `8484347`)
    *(Omni-domain showroom scenario with all UI views, projects, running work, decisions, reports, system, settings, start, and designer active simultaneously)*
-5. **Wave 3 Consolidation (Active)**: [`mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) & [`mock-runtime-reports-system-designer-plan.md`](mock-runtime-reports-system-designer-plan.md)
-   *(Migrates projects, starting work, reports, and system views into standard scenarios)*
+5. **Wave 3a Projects & Start (Landed & Verified)**: [`mock-runtime-projects-and-start-plan.md`](implemented/mock-runtime-projects-and-start-plan.md) ([Report](verified/mock-runtime-projects-and-start-plan-report.md) — PR #150, commit `50e9015`)
+   *(Consolidated 20 project, enrolment, git/lesson source, and start files into projects-and-start.json; migrated StartRegistry)*
+6. **Wave 3b Reports, System & Designer (Active)**: [`mock-runtime-reports-system-designer-plan.md`](mock-runtime-reports-system-designer-plan.md)
+   *(Consolidates remaining reports, system, and designer scenarios into canonical scenarios 4 & 5)*
 
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)
 1. **Foundation (Landed & Verified)**: [`cli-fullscreen-foundation-plan.md`](implemented/cli-fullscreen-foundation-plan.md) ([Report](verified/cli-fullscreen-foundation-plan-report.md) — PR #124, commit `e3ae1c0`)
@@ -53,11 +57,14 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Full-screen overview across projects, Level 1 Projects level, Level 2 Project detail by-plan & by-epic, Level 3 Ended work with pagination, OSC 8 PR links, live SSE updates, 0600 state persistence)*
 3. **Plan View (Landed & Verified)**: [`cli-fullscreen-plan-view-plan.md`](implemented/cli-fullscreen-plan-view-plan.md) ([Report](verified/cli-fullscreen-plan-view-plan-report.md) — PR #137, commit `a057c1f`)
    *(Full-screen Plan View Level 3, 6-phase expandable tree, worker live activity plain-text stream, token split, and 1-key cross-level jumps)*
-4. **Actions & Controlling (Active)**: [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md)
-5. **Projects**: `cli-fullscreen-projects-plan.md`
-6. **Reports & System**: `cli-fullscreen-reports-system-plan.md`
+4. **Actions & Controlling (Landed & Verified)**: [`cli-fullscreen-actions-plan.md`](implemented/cli-fullscreen-actions-plan.md) ([Report](verified/cli-fullscreen-actions-plan-report.md) — PR #146, commit `735713b`)
+   *(Full-screen epic view, modal actions menu, hold dialogue, settings conflict, findings/watches review, ended-work chat)*
+5. **Projects (Active)**: [`cli-fullscreen-projects-plan.md`](cli-fullscreen-projects-plan.md)
+   *(Full-screen project management, enrol wizard, digest mismatch, git and lesson sources)*
+6. **Reports & System (Active)**: [`cli-fullscreen-reports-system-plan.md`](cli-fullscreen-reports-system-plan.md)
+   *(Full-screen reports browser and report view, system view, runtime lifecycle controls)*
 
-### Stream C: Web Client Completion (`pm-web-app`)
+### Stream C: Web Client Completion (`pm-web-app`) - 100% Complete
 1. **Foundation (Landed & Verified)**: [`web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md) ([Report](verified/web-foundation-routing-and-catalogue-plan-report.md) — PR #126, commit `6b3defb`)
    *(Design spec completion, full URL routing/history, elimination of fallbackMessages, retirement of WorkspaceView)*
 2. **Onboarding, Entry & Projects (Landed & Verified)**: [`web-onboarding-entry-and-projects-plan.md`](implemented/web-onboarding-entry-and-projects-plan.md) ([Report](verified/web-onboarding-entry-and-projects-plan-report.md) — PR #132, commit `cff749e`)
@@ -67,7 +74,8 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Complete removal of redundant top arrival notice banners; localStorage catalogue caching with SWR, synchronous hydration, and missing-key shielding)*
 5. **Decisions & Actions (Landed & Verified)**: [`web-decisions-and-actions-plan.md`](implemented/web-decisions-and-actions-plan.md) ([Report](verified/web-decisions-and-actions-plan-report.md) — PR #151, commit `1090bbc`)
    *(Decisions tab count, notifications, one-step reveal, control actions bar, hold resolution, settings conflict dialogue, epic resource sections, findings/watches review, and ended-work chat)*
-6. **Reports, System & Designer (Pending Mock Prerequisite)**: `web-reports-system-and-designer-plan.md`
+6. **Reports, System & Designer (Landed & Verified)**: [`web-reports-system-and-designer-plan.md`](implemented/web-reports-system-and-designer-plan.md) ([Report](verified/web-reports-system-and-designer-plan-report.md) — PR #154, commit `2e4ae7d`)
+   *(Complete reports view, system view, cleanup inspection, and process designer in pm-web-app)*
 
 ---
 
