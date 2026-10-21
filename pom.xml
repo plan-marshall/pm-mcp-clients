@@ -65,12 +65,12 @@
           command classes) stays in it.
         -->
         <sonar.coverage.exclusions>
-            de/planmarshall/operator/*Dialogue.java,
-            de/planmarshall/operator/OperatorActions.java,
-            de/planmarshall/operator/actions/ActionMenus.java,
-            de/planmarshall/operator/actions/ActionsMenu.java,
-            de/planmarshall/operator/epicview/**,
-            de/planmarshall/operator/tui/TuiMenu*.java
+            **/de/planmarshall/operator/*Dialogue.java,
+            **/de/planmarshall/operator/OperatorActions.java,
+            **/de/planmarshall/operator/actions/ActionMenus.java,
+            **/de/planmarshall/operator/actions/ActionsMenu.java,
+            **/de/planmarshall/operator/epicview/**,
+            **/de/planmarshall/operator/tui/TuiMenu*.java
         </sonar.coverage.exclusions>
     </properties>
 
