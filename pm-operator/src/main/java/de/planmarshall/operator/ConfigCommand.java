@@ -585,7 +585,10 @@ public final class ConfigCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            if (plan != null && !plan.isBlank()) {
+            if (plan != null) {
+                if (plan.isBlank()) {
+                    return blankPlan(context, out);
+                }
                 if (defaults || set != null || reset != null || resetAll) {
                     return exclusive(context, out);
                 }
@@ -669,7 +672,10 @@ public final class ConfigCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            if (plan != null && !plan.isBlank()) {
+            if (plan != null) {
+                if (plan.isBlank()) {
+                    return blankPlan(context, out);
+                }
                 if (use != null || without != null || verify) {
                     return exclusive(context, out);
                 }
@@ -728,7 +734,10 @@ public final class ConfigCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            if (plan != null && !plan.isBlank()) {
+            if (plan != null) {
+                if (plan.isBlank()) {
+                    return blankPlan(context, out);
+                }
                 if (landing != null || method != null || asking != null || posture != null || yes) {
                     return exclusive(context, out);
                 }
@@ -1053,6 +1062,13 @@ public final class ConfigCommand implements Callable<Integer> {
      * @param out the verb's output
      * @return the exit code of a verb that combined {@code --plan} with other options
      */
+    private static int blankPlan(OperatorContext context, PrintWriter out) {
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.actions.plan_blank", Map.of()));
+        out.flush();
+        return 1;
+    }
+
     private static int exclusive(OperatorContext context, PrintWriter out) {
         out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                             "operator.actions.plan_option_exclusive", Map.of()));

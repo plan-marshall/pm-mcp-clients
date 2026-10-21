@@ -32,115 +32,19 @@ import org.junit.jupiter.api.Test;
 @DisplayName("actions catalogue in both languages")
 class ActionsCatalogueTest {
 
-    private static final List<String> ACTION_KEYS = List.of(
-                        "operator.actions.keys.actions", "operator.actions.refused", "operator.actions.ended",
-                        "operator.actions.menu.footer", "operator.actions.disabled_suffix",
-                        "operator.actions.chat_end", "operator.actions.chat.you",
-                        "operator.actions.chat.this_item", "operator.actions.chat.accept",
-                        "operator.actions.chat.reject", "operator.actions.chat.accepted",
-                        "operator.actions.chat.follow_up", "operator.actions.chat.no_input",
-                        "operator.actions.chat.head", "operator.actions.chat.scope.plan",
-                        "operator.actions.chat.scope.epic", "operator.actions.chat.scope.archive",
-                        "operator.actions.chat.answers", "operator.actions.chat.kept",
-                        "operator.actions.chat.applied", "operator.actions.chat.no_proposal",
-                        "operator.actions.chat.read_only", "operator.actions.chat.proposed",
-                        "operator.actions.chat.proposed_follow_up",
-                        "operator.actions.settings.which", "operator.actions.settings.aspect.plan-defaults",
-                        "operator.actions.settings.aspect.roles", "operator.actions.settings.aspect.integrations",
-                        "operator.actions.settings.aspect.providers", "operator.actions.settings.header",
-                        "operator.actions.settings.value", "operator.actions.settings.applied",
-                        "operator.actions.settings.removed", "operator.actions.settings.use_inherited",
-                        "operator.actions.settings.no_input", "operator.actions.settings.stopped",
-                        "operator.actions.pr_open", "operator.actions.cancel.confirm",
-                        "operator.actions.keep", "operator.actions.result.ended",
-                        "operator.actions.result.pr_closed", "operator.actions.result.epic_told",
-                        "operator.actions.result.pausing", "operator.actions.result.paused",
-                        "operator.actions.result.started", "operator.actions.result.next_started",
-                        "operator.actions.result.not_archivable", "operator.actions.result.archived",
-                        "operator.actions.archive_landing", "operator.actions.epic.needs_you",
-                        "operator.actions.epic.waits_for", "operator.actions.epic.waits_for_lock",
-                        "operator.actions.epic.waits_for_scope", "operator.actions.epic.analysis",
-                        "operator.actions.epic.events", "operator.actions.epic.more_events",
-                        "operator.actions.hold.confirm_accept", "operator.actions.hold.goes_on",
-                        "operator.actions.review.keep_as", "operator.actions.review.kept",
-                        "operator.actions.review.moved", "operator.actions.review.dropped",
-                        "operator.actions.review.promoted", "operator.actions.review.remaining",
-                        "operator.actions.review.finish", "operator.actions.review.finished",
-                        "operator.actions.review.untrusted", "operator.actions.review.field",
-                        "operator.actions.review.draft", "operator.actions.review.no_draft",
-                        "operator.actions.review.stopped", "operator.actions.review.progress",
-                        "operator.actions.review.none", "operator.actions.review.item",
-                        "operator.actions.review.keep_finding", "operator.actions.review.keep_watch",
-                        "operator.actions.review.reason",
-                        "operator.actions.pause.title", "operator.actions.pause.now",
-                        "operator.actions.pause.task", "operator.actions.pause.phase",
-                        "operator.actions.pause.ask", "operator.actions.end.title",
-                        "operator.actions.end.what_ends", "operator.actions.end.pull_request",
-                        "operator.actions.end.its_epic", "operator.actions.end.told",
-                        "operator.actions.end.afterwards", "operator.actions.end.afterwards_text",
-                        "operator.actions.end.reason", "operator.actions.end.confirm",
-                        "operator.actions.end.close_pr", "operator.actions.end.reason_required",
-                        "operator.actions.epic.cancel.title", "operator.actions.epic.cancel.plans",
-                        "operator.actions.epic.cancel.with_plans", "operator.actions.epic.cancel.afterwards",
-                        "operator.actions.epic.cancel.afterwards_text", "operator.actions.epic.cancel.confirm",
-                        "operator.actions.epic.cancel.done", "operator.actions.archive.title",
-                        "operator.actions.archive.check", "operator.actions.archive.carried",
-                        "operator.actions.hold.title", "operator.actions.hold.cause",
-                        "operator.actions.hold.tried", "operator.actions.hold.recorded",
-                        "operator.actions.hold.current", "operator.actions.hold.prompt",
-                        "operator.actions.hold.none", "operator.actions.hold.confirm",
-                        "operator.actions.hold.accept_prompt", "operator.actions.hold.act.grant",
-                        "operator.actions.hold.act.add_credential", "operator.actions.hold.act.raise_budget",
-                        "operator.actions.hold.act.show_pr", "operator.hold.refused",
-                        "operator.actions.stopped", "operator.actions.result.auto_on",
-                        "operator.actions.common_files.ask", "operator.actions.common_files.invalid",
-                        "operator.actions.chat.follow_up_started",
-                        "operator.actions.pause.stopped", "operator.actions.result.done",
-                        "operator.actions.yes_no", "operator.actions.yes_no_q",
-                        "operator.actions.accept_reject", "operator.actions.plan_option_exclusive",
-                        "operator.actions.dropped");
-
-    private static final List<String> MNEMONIC_KEYS = List.of(
-                        "pause", "start", "cancel", "abandon", "settings", "keep_current", "next", "auto",
-                        "common_files", "decompose_again", "findings_review", "watches_review", "archive",
-                        "raise_and_start", "leave_scope", "retry", "recycle", "grant", "add_credential",
-                        "raise_budget", "accept_change", "show_pr", "give_up_removal", "end_plan",
-                        "abort_plan", "cancel_epic", "keep", "drop", "promote", "chat", "reject",
-                        "accept_remaining", "finish");
-
-    private static final List<String> EPIC_VIEW_KEYS = List.of(
-                        "operator.epic.header.path", "operator.epic.header.line", "operator.epic.header.needs",
-                        "operator.epic.keys.open", "operator.epic.keys.close", "operator.epic.keys.actions",
-                        "operator.epic.keys.project", "operator.epic.workstream", "operator.epic.plan.wait",
-                        "operator.epic.sources", "operator.epic.landings", "operator.epic.landing",
-                        "operator.epic.landing.analysis", "operator.epic.findings", "operator.epic.watches",
-                        "operator.epic.tokens", "operator.epic.tokens_line", "operator.epic.tokens_plan",
-                        "operator.epic.tokens_own", "operator.epic.events", "operator.epic.event",
-                        "operator.epic.event_more", "operator.epic.needs", "operator.epic.ended",
-                        "operator.epic.ended_plain", "operator.epic.empty", "operator.epic.not_measured",
-                        "overview.epic.state", "overview.epic.at_once", "overview.epic.status",
-                        "overview.epic.mode", "overview.epic.waits.dependency", "overview.epic.waits.lock",
-                        "overview.epic.waits.scope", "overview.epic.waits.overlap",
-                        "overview.epic.waits.overlap_files", "overview.epic.waits.none",
-                        "overview.epic.counts.staged", "overview.epic.counts.running",
-                        "overview.epic.counts.pausing", "overview.epic.counts.paused",
-                        "overview.epic.counts.waiting", "overview.epic.counts.shipped",
-                        "overview.epic.counts.cancelled", "overview.epic.counts.abandoned",
-                        "overview.epic.counts.held");
+    private static final List<String> PREFIXES = List.of("operator.actions.", "operator.epic.",
+                        "overview.epic.");
 
     @Test
-    @DisplayName("every text of the actions exists in English and German")
+    @DisplayName("every action and epic-view text exists in English and German")
     void textsExist() {
-        for (var key : ACTION_KEYS) {
-            assertNotEquals(key, MessageCatalogue.format("en", key, params()), key);
-            assertNotEquals(key, MessageCatalogue.format("de", key, params()), key);
-        }
-    }
-
-    @Test
-    @DisplayName("every text of the epic view exists in English and German")
-    void epicViewTextsExist() {
-        for (var key : EPIC_VIEW_KEYS) {
+        var en = MessageCatalogue.getMessages("en", "all");
+        var de = MessageCatalogue.getMessages("de", "all");
+        for (var key : en.keySet()) {
+            if (PREFIXES.stream().noneMatch(key::startsWith)) {
+                continue;
+            }
+            assertTrue(de.containsKey(key), "missing in German: " + key);
             assertNotEquals(key, MessageCatalogue.format("en", key, params()), key);
             assertNotEquals(key, MessageCatalogue.format("de", key, params()), key);
         }
@@ -150,10 +54,14 @@ class ActionsCatalogueTest {
     @DisplayName("every mnemonic is one character and no mnemonic is a")
     void mnemonics() {
         for (var locale : List.of("en", "de")) {
-            for (var name : MNEMONIC_KEYS) {
-                var key = MessageCatalogue.format(locale, "operator.actions.key." + name, Map.of());
-                assertEquals(1, key.length(), locale + " " + name + " = " + key);
-                assertNotEquals("a", key, locale + " " + name);
+            var messages = MessageCatalogue.getMessages(locale, "all");
+            for (var key : messages.keySet()) {
+                if (!key.startsWith("operator.actions.key.")) {
+                    continue;
+                }
+                var value = messages.get(key);
+                assertEquals(1, value.length(), locale + " " + key + " = " + value);
+                assertNotEquals("a", value, locale + " " + key);
             }
         }
     }

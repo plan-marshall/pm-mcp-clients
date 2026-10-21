@@ -89,6 +89,16 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config <aspect> --plan rejects a blank plan id instead of the machine scope")
+    void blankPlanIsRejected() throws Exception {
+        int code = execute("config", "roles", "--plan", "");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("--plan needs a plan id"), out.toString())
+        );
+    }
+
+    @Test
     @DisplayName("config show displays effective configuration")
     void configShow() throws Exception {
         fixture.start((request, response) -> {

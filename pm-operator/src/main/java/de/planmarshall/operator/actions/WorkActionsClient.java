@@ -317,7 +317,7 @@ public final class WorkActionsClient {
      */
     public EpicResource epic(String epicId) throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(EPICS + path(epicId)));
-        if (response.status() != 200) {
+        if (response.status() != 200 || !response.bodyText().contains("\"workstreams\"")) {
             throw new OperatorRefusedException("epic", response);
         }
         return EpicResource.fromJson(response.bodyText());

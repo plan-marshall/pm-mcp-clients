@@ -381,7 +381,7 @@ final class WorkActionDialogue {
                             + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.yes_no",
                             Map.of()) + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "control.archive.action", Map.of()), id);
-        if (!"y".equalsIgnoreCase(answer)) {
+        if (!Answers.isYes(answer)) {
             return 0;
         }
         client.perform(kind, id, "archive", Map.of());
