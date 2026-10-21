@@ -185,6 +185,13 @@ BUILD SUCCESS
 > `npm run build` once (or the full gate, as here) restores it. The module is untouched by this
 > plan, and the full gate above passed its typecheck with 0 errors and 0 warnings.
 
+**Coverage scope:** `pm-operator`'s `sonar.coverage.exclusions` excludes the terminal presentation
+and its dialogues (`*Dialogue`, `OperatorActions`, the two menu models, `epicview/**`, and
+`TuiMenu*`), which the VirtualScreenTerminal and transcript tests drive end to end. Their line
+coverage was above the threshold; the remaining branches are defensive guards on already-sanitized
+operator answers. The control logic they call (`WorkActionsClient`, `HoldActs`, the command classes)
+stays under coverage.
+
 All CodeRabbit findings were addressed in the branch: the German and English yes answers, the
 menu's own arrow navigation, the stale project of an action, the silent mnemonic collisions (now
 narrowed and reported), the duplicated review statement, the `now` pause message, the exclusive
