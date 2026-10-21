@@ -74,7 +74,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-reports-system-designer` on branch `feat/web-reports-system-and-designer` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-reports-system-designer` on branch `feat/web-reports-system-and-designer` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `pm-dev-frontend-javascript` for `ReportsView`, `SystemView`, `CleanupView`, and `ProcessDesigner`.
   - `pm-dev-frontend-css` for side-by-side diff, line-numbered editor, and phone read-only responsive layout.

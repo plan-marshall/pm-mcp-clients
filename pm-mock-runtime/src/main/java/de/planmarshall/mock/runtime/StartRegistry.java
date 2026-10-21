@@ -33,6 +33,7 @@ import de.planmarshall.api.control.ChatRole;
 import de.planmarshall.api.control.ChatScope;
 import de.planmarshall.api.control.ChatState;
 import de.planmarshall.api.control.ChatTurnResource;
+import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.onboarding.DocumentsMode;
 import de.planmarshall.api.source.git.ChangedFile;
@@ -74,10 +75,10 @@ import de.planmarshall.mock.scenario.Scenario;
  * the open entries, their sources, their chats, the recipes offered in a project, the adoptable
  * epics, and the confined file listing of the picker.
  * <p>
- * The state is seeded from the {@code start_case} fixtures of the active scenario and then driven by
- * the operator's acts: every act returns the entry's new {@link StartStateResource}, so a client
- * reads the same contract it would read from the runtime. Nothing is persisted; a scenario switch or
- * a reset re-seeds the state.
+ * The state is seeded from the active state's operator representation and the scenario's routes, and
+ * then driven by the operator's acts: every act returns the entry's new {@link StartStateResource}, so
+ * a client reads the same contract it would read from the runtime. Nothing is persisted; a scenario
+ * switch or a reset re-seeds the state.
  * <p>
  * The registry holds the two invariants the contract is about: a rate-limited source is never
  * retried by the runtime on its own (only the operator's <em>Try again</em> does), and a pull
@@ -179,7 +180,10 @@ final class StartRegistry {
     private static final String KEY_VALUE = "value";
     private static final String KEY_CAUSE = "cause";
     private static final long DEFAULT_RESET_EPOCH = 1_792_507_200L;
-    private static final String TYPE = "start_case";
+    private static final String FIXTURE_RUNTIME = "runtime";
+    private static final String FIXTURE_START = "start";
+    private static final String FIXTURE_BASE_STATE = "running_work.active";
+    private static final String TYPE = "start fixture";
     private static final String DESCRIPTION_REFERENCE = "A description";
     private static final String DEFAULT_DOCUMENT = "doc/concepts/forgejo.adoc";
     private static final String DOC_DIRECTORY = "doc/concepts";
@@ -288,6 +292,11 @@ final class StartRegistry {
 
     /**
      * Seeds the registry from the active scenario.
+     * <p>
+     * The fixture is the operator representation's {@code facts.runtime.start} of the state the
+     * scenario starts in, merged over the scenario's base state {@code running_work.active} so a case
+     * state declares only what differs. A scenario that still carries the transitional top-level
+     * {@code start_case} fixture (the showroom) is seeded from it instead.
      *
      * @param scenario the active scenario
      */
@@ -305,16 +314,48 @@ final class StartRegistry {
         sourceCounter = 0;
         chatCounter = 0;
         documentsMode = DocumentsMode.ASK.wireValue();
-        var fixture = scenario.startCase();
+        var fixture = startFixtureOf(scenario);
         if (fixture.isEmpty()) {
             return;
         }
-        seedDefaults(fixture);
+        seedDefaults(scenario, fixture);
         seedEndedWork(fixture);
         seedEntry(fixture);
     }
 
-    private void seedDefaults(Map<String, Object> fixture) {
+    /**
+     * @param scenario the active scenario
+     * @return the start fixture of the scenario's start state, merged over its base state, or the
+     *         transitional top-level {@code start_case} fixture when no state carries one
+     */
+    private static Map<String, Object> startFixtureOf(Scenario scenario) {
+        var fixture = new LinkedHashMap<String, Object>();
+        mergeStartFixture(runtimeFixtureOf(scenario, FIXTURE_BASE_STATE), fixture);
+        mergeStartFixture(runtimeFixtureOf(scenario, scenario.start()), fixture);
+        return fixture.isEmpty() ? scenario.startCase() : fixture;
+    }
+
+    private static void mergeStartFixture(@Nullable Map<String, Object> runtime, Map<String, Object> target) {
+        var start = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_START)) : null;
+        if (start != null) {
+            target.putAll(start);
+        }
+    }
+
+    private static @Nullable Map<String, Object> runtimeFixtureOf(Scenario scenario, String stateId) {
+        var state = scenario.state(stateId);
+        if (state == null) {
+            return null;
+        }
+        var representation = JsonTree.asObject(state.representation());
+        if (representation == null) {
+            return null;
+        }
+        var facts = JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        return facts != null ? JsonTree.asObject(facts.get(FIXTURE_RUNTIME)) : null;
+    }
+
+    private void seedDefaults(Scenario scenario, Map<String, Object> fixture) {
         var projectId = JsonTree.string(fixture, KEY_PROJECT_ID);
         if (projectId == null) {
             projectId = "pm-mcp-clients";
@@ -332,10 +373,26 @@ final class StartRegistry {
         projectScope.put(projectId, scope != null && scope > 0 ? scope : 1);
         var overlap = JsonTree.integer(fixture, KEY_OVERLAP_MAX_FILES);
         projectOverlap.put(projectId, overlap != null && overlap >= 0 ? overlap : 0);
-        projectRecipes.put(projectId, objects(fixture.get(KEY_RECIPES)).stream()
+        projectRecipes.put(projectId, recipeFixtures(scenario, fixture).stream()
                 .map(StartRegistry::recipeFrom).toList());
         adoptableEpics.addAll(objects(fixture.get(KEY_ADOPTABLE_EPICS)).stream()
                 .map(StartRegistry::adoptableFrom).toList());
+    }
+
+    /**
+     * @param scenario the active scenario
+     * @param fixture  the state's start fixture
+     * @return the recipes the state names, or the scenario's {@code GET /api/v1/recipes} route when
+     *         the state names none
+     */
+    private static List<Map<String, Object>> recipeFixtures(Scenario scenario, Map<String, Object> fixture) {
+        var recipes = objects(fixture.get(KEY_RECIPES));
+        if (!recipes.isEmpty()) {
+            return recipes;
+        }
+        var route = scenario.route("GET", "/api/v1/recipes");
+        var representation = route != null ? JsonTree.asObject(route.representation()) : null;
+        return representation != null ? objects(representation.get(KEY_RECIPES)) : List.of();
     }
 
     private static RecipeRef recipeFrom(Map<String, Object> map) {
