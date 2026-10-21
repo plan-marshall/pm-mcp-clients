@@ -43,15 +43,43 @@
   let reviewChatOpen = $state(false);
   let reviewChatBusy = $state(false);
 
+  /** The workstreams the operator has folded or unfolded, overriding the resource's own default. */
+  let workstreamToggles = $state<Record<string, boolean>>({});
+
+  /** A landing row: a row the runtime served a pull request number for. */
+  type LandingRow = EpicWorkRow & { pull_request_number: number };
+
+  /** The epic's landings: the shipped rows that carry a pull request. */
+  let landings = $derived(
+    resource
+      ? resource.workstreams.flatMap((workstream) =>
+          workstream.rows.filter(
+            (row): row is LandingRow => typeof row.pull_request_number === 'number',
+          ),
+        )
+      : [],
+  );
+
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
+      // The closed catalogue's events that move anything the epic's view shows
+      // (specification, Event Catalogue): a row's status or wait, a scope started or ended, a
+      // phase, a hold, an automatic-mode change, a register entry, or a decomposition draft.
       if (
         event === 'project.work_started' ||
         event === 'project.work_ended' ||
         event === 'project.changed' ||
+        event === 'scope.started' ||
+        event === 'scope.ended' ||
         event === 'phase.changed' ||
-        event === 'epic.event.landed' ||
-        event === 'epic.event.overlap' ||
+        event === 'activity.changed' ||
+        event === 'needs_operator.changed' ||
+        event === 'epic.row_changed' ||
+        event === 'epic.auto_changed' ||
+        event === 'epic.register_changed' ||
+        event === 'epic.decomposition_changed' ||
+        event === 'tokens.changed' ||
+        event === 'hold.opened' ||
         event === 'hold.changed' ||
         event === 'hold.cleared'
       ) {
@@ -114,6 +142,8 @@
 
   /** The readable label of a row's status, with the wire value as the last resort. */
   function rowStatus(status: string): string {
+    // The queue writes `waiting for you` where the vocabulary's own key is `waiting`.
+    const normalized = status === 'waiting for you' ? 'waiting' : status;
     const known = [
       'shipped',
       'staged',
@@ -127,7 +157,29 @@
       'abandoned',
       'ended',
     ];
-    return known.includes(status) ? $t(`epic.views.row.${status}`) : status;
+    return known.includes(normalized) ? $t(`epic.views.row.${normalized}`) : status;
+  }
+
+  /** The marker of a row's status, as the design writes the workstream rows. */
+  function statusGlyph(status: string): string {
+    switch (status) {
+      case 'shipped':
+        return '✓';
+      case 'running':
+      case 'pausing':
+        return '▶';
+      case 'paused':
+        return '⏸';
+      case 'waiting':
+      case 'waiting for you':
+      case 'held':
+        return '!';
+      case 'cancelled':
+      case 'abandoned':
+        return '✕';
+      default:
+        return '○';
+    }
   }
 
   /** What a row waits for, where it waits for anything. */
@@ -162,6 +214,67 @@
       }
     }
     return '';
+  }
+
+  /** Whether a workstream shows its rows: the operator's fold wins over the resource's default. */
+  function isWorkstreamOpen(workstream: { id: string; open: boolean }): boolean {
+    return workstreamToggles[workstream.id] ?? workstream.open;
+  }
+
+  function toggleWorkstream(workstream: { id: string; open: boolean }) {
+    workstreamToggles = {
+      ...workstreamToggles,
+      [workstream.id]: !isWorkstreamOpen(workstream),
+    };
+  }
+
+  /** The statuses a workstream counts, in the order the design writes them. */
+  const COUNTED_STATUSES = [
+    'shipped',
+    'running',
+    'pausing',
+    'paused',
+    'waiting',
+    'held',
+    'staged',
+    'cancelled',
+    'abandoned',
+  ] as const;
+
+  /** The workstream's plan counts per status, e.g. `1 shipped · 1 running · 1 staged`. */
+  function countsText(rows: { status: string }[]): string {
+    const parts: string[] = [];
+    for (const status of COUNTED_STATUSES) {
+      const count = rows.filter((row) => rowStatusKey(row.status) === status).length;
+      if (count > 0) {
+        parts.push($t(`overview.epic.counts.${status}`, { count }));
+      }
+    }
+    return parts.join(' · ');
+  }
+
+  /** The closed status vocabulary's key for a row's wire status. */
+  function rowStatusKey(status: string): string {
+    return status === 'waiting for you' ? 'waiting' : status;
+  }
+
+  /** The wall time of an event, `12:40`, in the interface's own notation. */
+  function formatEventTime(at: string): string {
+    const date = new Date(at);
+    if (Number.isNaN(date.getTime())) return at;
+    return date.toLocaleTimeString($currentLocale === 'de' ? 'de-DE' : 'en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  /**
+   * The pull request's address, only where the runtime served an http(s) one: a value another
+   * scheme could carry never becomes a link the operator is invited to follow.
+   */
+  function pullRequestUrl(url: string | null | undefined): string {
+    return url && /^https?:\/\//i.test(url) ? url : '';
   }
 
   function figureLine(figure: TokenFigure): string {
@@ -402,8 +515,11 @@
         </div>
         <div class="epic-status-tags">
           <span class="badge badge--kind badge--epic">{$t('overview.kind.epic')}</span>
-          <span class="badge badge--state badge--state-{epic.state}" data-testid="epic-state">
-            {epic.state}
+          <span
+            class="badge badge--state badge--state-{resource?.state ?? epic.state}"
+            data-testid="epic-state"
+          >
+            {$t('overview.epic.state', { state: resource?.state ?? epic.state })}
           </span>
           {#if resource}
             <span class="badge badge--mode" data-testid="epic-mode">
@@ -412,15 +528,21 @@
               })}
             </span>
             <span class="badge badge--counts" data-testid="epic-scope">
-              {$t('overview.epic.plans', {
+              {$t('overview.epic.at_once', {
                 running: resource.running,
-                staged: resource.workstreams.reduce(
-                  (count, workstream) =>
-                    count + workstream.rows.filter((row) => row.status === 'staged').length,
-                  0,
-                ),
+                scope: resource.scope,
               })}
             </span>
+            {#if resource.state === 'ended' && resource.terminal_reason}
+              <span class="badge badge--ended" data-testid="epic-end">
+                {$t('overview.ended.epic_end', { end: resource.terminal_reason })}
+              </span>
+            {/if}
+            {#if nextPlanId()}
+              <span class="badge badge--next" data-testid="epic-next-plan">
+                {$t('epic.views.next_plan', { plan: nextPlanId() })}
+              </span>
+            {/if}
           {/if}
         </div>
       </div>
@@ -475,39 +597,65 @@
           <h2 class="section-title">{$t('epic.views.workstreams')}</h2>
           {#each resource.workstreams as workstream (workstream.id)}
             <div class="workstream" data-testid={`workstream-${workstream.id}`}>
-              <h3 class="workstream__title">{workstream.name}</h3>
-              <div class="workstream__rows">
-                {#each workstream.rows as row (row.plan_id)}
-                  <div class="workstream__row" data-testid={`epic-row-${row.plan_id}`}>
-                    <button
-                      type="button"
-                      class="workstream__plan"
-                      onclick={() => openPlan(row.plan_id)}
-                    >
-                      <span class="plan-glyph">{row.status === 'staged' ? '○' : '▶'}</span>
-                      <span class="plan-title font-semibold">{row.title}</span>
-                    </button>
-                    <span class="badge badge--state badge--state-{row.status}">
-                      {rowStatus(row.status)}
-                    </span>
-                    {#if waitLabel(row)}
-                      <span class="workstream__wait" data-testid={`wait-${row.plan_id}`}>
-                        {waitLabel(row)}
-                      </span>
-                    {/if}
-                    {#if row.pull_request_number}
-                      <a
-                        class="pr-link mono"
-                        href={`#pr-${row.pull_request_number}`}
-                        data-testid={`epic-pr-${row.plan_id}`}
-                        onclick={(event) => event.preventDefault()}
+              <h3 class="workstream__title">
+                <button
+                  type="button"
+                  class="workstream__toggle"
+                  aria-expanded={isWorkstreamOpen(workstream)}
+                  data-testid={`workstream-toggle-${workstream.id}`}
+                  onclick={() => toggleWorkstream(workstream)}
+                >
+                  <span class="workstream__marker" aria-hidden="true">
+                    {isWorkstreamOpen(workstream) ? '▾' : '▸'}
+                  </span>
+                  <span class="workstream__id mono">{workstream.id}</span>
+                  <span class="workstream__name">{workstream.name}</span>
+                </button>
+                <span class="workstream__counts" data-testid={`workstream-counts-${workstream.id}`}>
+                  {countsText(workstream.rows)}
+                </span>
+              </h3>
+              {#if isWorkstreamOpen(workstream)}
+                <div class="workstream__rows">
+                  {#each workstream.rows as row (row.plan_id)}
+                    <div class="workstream__row" data-testid={`epic-row-${row.plan_id}`}>
+                      <button
+                        type="button"
+                        class="workstream__plan"
+                        onclick={() => openPlan(row.plan_id)}
                       >
-                        {$t('epic.views.pr', { number: row.pull_request_number })}
-                      </a>
-                    {/if}
-                  </div>
-                {/each}
-              </div>
+                        <span class="plan-glyph">{statusGlyph(row.status)}</span>
+                        <span class="plan-title font-semibold">{row.title}</span>
+                      </button>
+                      <span class="badge badge--state badge--state-{row.status}">
+                        {rowStatus(row.status)}
+                      </span>
+                      {#if waitLabel(row)}
+                        <span class="workstream__wait" data-testid={`wait-${row.plan_id}`}>
+                          {waitLabel(row)}
+                        </span>
+                      {/if}
+                      {#if row.pull_request_number}
+                        {#if pullRequestUrl(row.pull_request_url)}
+                          <a
+                            class="pr-link mono"
+                            href={pullRequestUrl(row.pull_request_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            data-testid={`epic-pr-${row.plan_id}`}
+                          >
+                            {$t('epic.views.pr', { number: row.pull_request_number })}
+                          </a>
+                        {:else}
+                          <span class="pr-link mono" data-testid={`epic-pr-${row.plan_id}`}>
+                            {$t('epic.views.pr', { number: row.pull_request_number })}
+                          </span>
+                        {/if}
+                      {/if}
+                    </div>
+                  {/each}
+                </div>
+              {/if}
             </div>
           {/each}
         </section>
@@ -522,7 +670,7 @@
               {/each}
             </ul>
           {:else}
-            <p class="text-muted">{$t('epic.plans.none')}</p>
+            <p class="text-muted" data-testid="epic-sources-empty">{$t('epic.views.no_sources')}</p>
           {/if}
         </section>
 
@@ -531,6 +679,29 @@
           <p data-testid="epic-landing-count">
             {$t('epic.views.landing_count', { count: resource.landings })}
           </p>
+          {#if landings.length > 0}
+            <ul class="landing-list">
+              {#each landings as landing (landing.plan_id)}
+                <li class="landing-item" data-testid={`epic-landing-${landing.plan_id}`}>
+                  <span class="landing-item__plan mono">{landing.plan_id}</span>
+                  {#if pullRequestUrl(landing.pull_request_url)}
+                    <a
+                      class="landing-item__pr"
+                      href={pullRequestUrl(landing.pull_request_url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {$t('epic.views.pr', { number: landing.pull_request_number })}
+                    </a>
+                  {:else}
+                    <span class="landing-item__pr mono">
+                      {$t('epic.views.pr', { number: landing.pull_request_number })}
+                    </span>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </section>
 
         <!-- Registers -->
@@ -603,7 +774,7 @@
             <ol class="event-list">
               {#each resource.events as event}
                 <li class="event-item">
-                  <span class="event-time mono">{event.at}</span>
+                  <span class="event-time mono">{formatEventTime(event.at)}</span>
                   <span class="event-text">{event.text}</span>
                 </li>
               {/each}
@@ -910,6 +1081,42 @@
     margin: 0;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .workstream__toggle {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+  }
+
+  .workstream__marker {
+    width: 1ch;
+    color: var(--color-text-muted);
+  }
+
+  .workstream__id {
+    color: var(--color-text-muted);
+  }
+
+  .workstream__name {
+    font-weight: 600;
+  }
+
+  .workstream__counts {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
   }
 
   .workstream__rows {
@@ -948,6 +1155,28 @@
   }
 
   .pr-link {
+    color: var(--color-accent);
+    font-size: var(--text-xs);
+  }
+
+  .landing-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+  }
+
+  .landing-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .landing-item__pr {
     color: var(--color-accent);
     font-size: var(--text-xs);
   }
@@ -1026,7 +1255,7 @@
 
   .plans-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
     gap: var(--space-3);
   }
 
@@ -1101,6 +1330,59 @@
 
     .plans-grid {
       grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .epic-header {
+      padding: var(--space-3);
+    }
+
+    .epic-content {
+      padding: var(--space-2);
+      gap: var(--space-4);
+    }
+
+    .epic-headline {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .workstream {
+      padding: var(--space-2);
+    }
+
+    .workstream__row {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .workstream__plan,
+    .workstream__wait {
+      flex: 1 1 100%;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .epic-registers {
+      flex-direction: column;
+    }
+
+    .register {
+      flex: 1 1 auto;
+    }
+
+    .token-facts {
+      grid-template-columns: 1fr;
+    }
+
+    .plans-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .event-item {
+      flex-direction: column;
+      align-items: flex-start;
     }
   }
 </style>

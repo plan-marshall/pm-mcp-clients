@@ -479,6 +479,7 @@ export interface EpicWorkRow {
   wait_plan_id?: string | null;
   overlap_files?: string[];
   pull_request_number?: number | null;
+  pull_request_url?: string | null;
   change?: string | null;
   objective?: string | null;
   deliverables?: string[];

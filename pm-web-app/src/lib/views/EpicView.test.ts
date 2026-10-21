@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import EpicView from './EpicView.svelte';
 import { apiClient, type EpicProcess, type EpicResource, type ReviewResource } from '../api/client';
 import { runtimeStore, navigateTo, openPlanView, openEpicView } from '../stores/runtime';
@@ -179,6 +179,7 @@ describe('EpicView component', () => {
             title: 'relay-cursor-order',
             status: 'running',
             pull_request_number: 211,
+            pull_request_url: 'https://github.com/plan-marshall/pm-mcp-clients/pull/211',
           },
           {
             plan_id: 'relay-docs',
@@ -186,6 +187,13 @@ describe('EpicView component', () => {
             status: 'staged',
             wait_reason: 'overlap',
             wait_plan_id: 'relay-auth-v2',
+            overlap_files: ['pm-api/src/store/Docs.java'],
+          },
+          {
+            plan_id: 'relay-reconnect-metrics',
+            title: 'relay-reconnect-metrics',
+            status: 'staged',
+            wait_reason: 'none',
           },
         ],
       },
@@ -272,16 +280,29 @@ describe('EpicView component', () => {
 
     expect(await screen.findByTestId('epic-workstreams')).toBeInTheDocument();
     expect(screen.getByTestId('workstream-WS-1')).toHaveTextContent('Reconnect');
+    expect(screen.getByTestId(`workstream-WS-1`)).toHaveTextContent('WS-1');
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 running · 2 staged');
     expect(screen.getByTestId('epic-row-relay-cursor-order')).toHaveTextContent(
       'relay-cursor-order',
     );
     expect(screen.getByTestId('epic-pr-relay-cursor-order')).toHaveTextContent('#211');
+    expect(screen.getByTestId('epic-pr-relay-cursor-order')).toHaveAttribute(
+      'href',
+      'https://github.com/plan-marshall/pm-mcp-clients/pull/211',
+    );
     expect(screen.getByTestId('wait-relay-docs')).toHaveTextContent(
       'relay-docs waits: overlap with relay-auth-v2',
+    );
+    expect(screen.getByTestId('epic-next-plan')).toHaveTextContent(
+      'Next plan: relay-reconnect-metrics',
     );
 
     expect(screen.getByTestId('epic-sources')).toHaveTextContent('2 documents');
     expect(screen.getByTestId('epic-landing-count')).toHaveTextContent('2 landings');
+    expect(screen.getByTestId('epic-landing-relay-cursor-order')).toHaveTextContent('#211');
+    expect(
+      screen.getByTestId('epic-landing-relay-cursor-order').querySelector('a'),
+    ).toHaveAttribute('href', 'https://github.com/plan-marshall/pm-mcp-clients/pull/211');
     expect(screen.getByTestId('epic-findings')).toHaveTextContent('3 new · 4 open · 2 kept');
     expect(screen.getByTestId('epic-watches')).toHaveTextContent('4 open · 0 kept');
 
@@ -356,5 +377,98 @@ describe('EpicView component', () => {
     expect(await screen.findByTestId('epic-tokens-not-measured')).toHaveTextContent(
       'no task measured yet',
     );
+  });
+
+  it('folds and unfolds a workstream, keeping its counts in the folded row', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+
+    await screen.findByTestId('workstream-WS-1');
+    expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
+
+    expect(screen.queryByTestId('epic-row-relay-cursor-order')).not.toBeInTheDocument();
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 running · 2 staged');
+
+    await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
+    expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
+  });
+
+  it('writes an event at its wall time, not as an ISO timestamp', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+
+    const events = await screen.findByTestId('epic-events');
+    expect(events).toHaveTextContent('relay-auth-v2 asks a decision');
+    expect(events).not.toHaveTextContent('2026-10-16T12:40:00Z');
+  });
+
+  it('says that an epic has no sources instead of borrowing the plan-empty text', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({ ...mockResource, sources: [] });
+    render(EpicView);
+
+    expect(await screen.findByTestId('epic-sources-empty')).toHaveTextContent('no sources');
+  });
+
+  it('marks an ended epic with how it ended', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({
+      ...mockResource,
+      state: 'ended',
+      terminal_reason: 'completed',
+    });
+    render(EpicView);
+
+    expect(await screen.findByTestId('epic-state')).toHaveTextContent('ended');
+    expect(screen.getByTestId('epic-end')).toHaveTextContent('completed');
+  });
+
+  it('reloads the epic on a row change and ignores an event it does not show', async () => {
+    let deliver: ((event: string) => void) | null = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((onEvent) => {
+      deliver = onEvent as (event: string) => void;
+      return () => {};
+    });
+    const resource = vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+
+    await screen.findByTestId('epic-title');
+    expect(resource).toHaveBeenCalledTimes(1);
+
+    deliver!('epic.row_changed');
+    await waitFor(() => expect(resource).toHaveBeenCalledTimes(2));
+
+    deliver!('stream.closed');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(resource).toHaveBeenCalledTimes(2);
+  });
+
+  it('updates the event list when a live event arrives', async () => {
+    let deliver: ((event: string) => void) | null = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((onEvent) => {
+      deliver = onEvent as (event: string) => void;
+      return () => {};
+    });
+    const resource = vi
+      .spyOn(apiClient, 'getEpicResource')
+      .mockResolvedValueOnce(mockResource)
+      .mockResolvedValueOnce({
+        ...mockResource,
+        events: [
+          { at: '2026-10-16T12:45:00Z', text: 'relay-auth-v2 asks a decision' },
+          { at: '2026-10-16T12:41:00Z', text: 'relay-reconnect-metrics started (3 of 3 at once)' },
+        ],
+      });
+    render(EpicView);
+
+    await screen.findByTestId('epic-title');
+    deliver!('epic.row_changed');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('epic-events')).toHaveTextContent(
+        'relay-reconnect-metrics started (3 of 3 at once)',
+      ),
+    );
+    expect(resource).toHaveBeenCalledTimes(2);
   });
 });
