@@ -49,7 +49,7 @@ Runs as **Mock Runtime Wave 3** after Wave 1 (`mock-runtime-foundation-and-conso
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-reports-system-designer` on branch `feat/mock-runtime-reports-system-designer` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-reports-system-designer` on branch `feat/mock-runtime-reports-system-designer` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
