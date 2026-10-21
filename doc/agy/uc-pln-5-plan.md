@@ -42,7 +42,7 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.adoc
 
 ## 3. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-uc-pln-5` on branch `feat/uc-pln-5-follow-epic` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-uc-pln-5` on branch `feat/uc-pln-5-follow-epic` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
