@@ -24,6 +24,7 @@
     navigateTo,
   } from '../stores/runtime';
   import { formatSplit, formatTokens } from '../utils/tokenFormat';
+  import { refreshesEpicView } from './epicEvents';
 
   let epicId = $derived($runtimeStore.selectedEpicId || '');
   let epic = $state<EpicProcess | null>(null);
@@ -63,26 +64,8 @@
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
       // The closed catalogue's events that move anything the epic's view shows
-      // (specification, Event Catalogue): a row's status or wait, a scope started or ended, a
-      // phase, a hold, an automatic-mode change, a register entry, or a decomposition draft.
-      if (
-        event === 'project.work_started' ||
-        event === 'project.work_ended' ||
-        event === 'project.changed' ||
-        event === 'scope.started' ||
-        event === 'scope.ended' ||
-        event === 'phase.changed' ||
-        event === 'activity.changed' ||
-        event === 'needs_operator.changed' ||
-        event === 'epic.row_changed' ||
-        event === 'epic.auto_changed' ||
-        event === 'epic.register_changed' ||
-        event === 'epic.decomposition_changed' ||
-        event === 'tokens.changed' ||
-        event === 'hold.opened' ||
-        event === 'hold.changed' ||
-        event === 'hold.cleared'
-      ) {
+      // (specification, Event Catalogue); the set is checked against EventName by a unit test.
+      if (refreshesEpicView(event)) {
         void loadEpic(false);
       }
     });
@@ -142,8 +125,7 @@
 
   /** The readable label of a row's status, with the wire value as the last resort. */
   function rowStatus(status: string): string {
-    // The queue writes `waiting for you` where the vocabulary's own key is `waiting`.
-    const normalized = status === 'waiting for you' ? 'waiting' : status;
+    const key = rowStatusKey(status);
     const known = [
       'shipped',
       'staged',
@@ -157,7 +139,7 @@
       'abandoned',
       'ended',
     ];
-    return known.includes(normalized) ? $t(`epic.views.row.${normalized}`) : status;
+    return known.includes(key) ? $t(`epic.views.row.${key}`) : status;
   }
 
   /** The marker of a row's status, as the design writes the workstream rows. */
@@ -255,7 +237,10 @@
 
   /** The closed status vocabulary's key for a row's wire status. */
   function rowStatusKey(status: string): string {
-    return status === 'waiting for you' ? 'waiting' : status;
+    // The queue writes the two two-word statuses with a space; the vocabulary keys them with `_`.
+    if (status === 'waiting for you') return 'waiting';
+    if (status === 'handed back') return 'handed_back';
+    return status;
   }
 
   /** The wall time of an event, `12:40`, in the interface's own notation. */
@@ -627,7 +612,7 @@
                         <span class="plan-glyph">{statusGlyph(row.status)}</span>
                         <span class="plan-title font-semibold">{row.title}</span>
                       </button>
-                      <span class="badge badge--state badge--state-{row.status}">
+                      <span class="badge badge--state badge--state-{rowStatusKey(row.status)}">
                         {rowStatus(row.status)}
                       </span>
                       {#if waitLabel(row)}

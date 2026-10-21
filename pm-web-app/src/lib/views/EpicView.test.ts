@@ -411,6 +411,36 @@ describe('EpicView component', () => {
     expect(await screen.findByTestId('epic-sources-empty')).toHaveTextContent('no sources');
   });
 
+  it('maps a two-word wire status to its catalogue key and badge class', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({
+      ...mockResource,
+      workstreams: [
+        {
+          id: 'WS-1',
+          name: 'Reconnect',
+          open: true,
+          rows: [
+            { plan_id: 'relay-docs', title: 'relay-docs', status: 'handed back' },
+            {
+              plan_id: 'relay-auth-v2',
+              title: 'relay-auth-v2',
+              status: 'waiting for you',
+            },
+          ],
+        },
+      ],
+    });
+    render(EpicView);
+
+    const handedBack = await screen.findByTestId('epic-row-relay-docs');
+    expect(handedBack.querySelector('.badge--state')).toHaveClass('badge--state-handed_back');
+    expect(handedBack).toHaveTextContent('handed back');
+    expect(screen.getByTestId('epic-row-relay-auth-v2').querySelector('.badge--state')).toHaveClass(
+      'badge--state-waiting',
+    );
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 waiting for you');
+  });
+
   it('marks an ended epic with how it ended', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({
       ...mockResource,
