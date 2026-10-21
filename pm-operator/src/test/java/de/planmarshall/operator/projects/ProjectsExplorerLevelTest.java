@@ -11,6 +11,7 @@ package de.planmarshall.operator.projects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -104,17 +105,22 @@ class ProjectsExplorerLevelTest {
         var level = new ProjectsExplorerLevel(new ProjectExplorer(List.of(project), List.of(), List.of(project),
                             List.of(being)), false);
 
-        assertEquals(project, level.projectOf(ProjectsExplorerLevel.PROJECT_PREFIX + "pm-mcp-clients"));
+        var allRowId = ProjectsExplorerLevel.allProjectRowId("pm-mcp-clients");
+        var favouriteRowId = ProjectsExplorerLevel.projectRowId(ProjectsExplorerLevel.GROUP_FAVOURITES,
+                            "pm-mcp-clients");
+        assertEquals(project, level.projectOf(allRowId));
+        assertEquals(project, level.projectOf(favouriteRowId));
+        assertNotEquals(allRowId, favouriteRowId, "the same project in two groups needs two row ids");
         assertEquals(being, level.beingAddedOf(ProjectsExplorerLevel.BEING_ADDED_PREFIX + being.checkoutPath()));
         assertTrue(ProjectsExplorerLevel.isHeader(ProjectsExplorerLevel.GROUP_ALL_ID));
-        assertFalse(ProjectsExplorerLevel.isHeader(ProjectsExplorerLevel.PROJECT_PREFIX + "pm-mcp-clients"));
-        assertTrue(ProjectsExplorerLevel.isSelectable(ProjectsExplorerLevel.PROJECT_PREFIX + "pm-mcp-clients"));
+        assertFalse(ProjectsExplorerLevel.isHeader(allRowId));
+        assertTrue(ProjectsExplorerLevel.isSelectable(allRowId));
         assertNotNull(ProjectsExplorerLevel.firstSelectableId(level.rows("en", CLOCK)));
     }
 
     private static int indexOf(List<TuiRow> rows, String projectId) {
         for (int index = 0; index < rows.size(); index++) {
-            if (rows.get(index).id().equals(ProjectsExplorerLevel.PROJECT_PREFIX + projectId)) {
+            if (rows.get(index).id().equals(ProjectsExplorerLevel.allProjectRowId(projectId))) {
                 return index;
             }
         }

@@ -62,6 +62,15 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
     /** The prefix of the row id of an enrolled project. */
     public static final String PROJECT_PREFIX = "project:";
 
+    /** The group part of a row id in _Favourites_. */
+    public static final String GROUP_FAVOURITES = "fav";
+
+    /** The group part of a row id in _Recent_. */
+    public static final String GROUP_RECENT = "recent";
+
+    /** The group part of a row id in _All projects_. */
+    public static final String GROUP_ALL = "all";
+
     /** The prefix of the row id of an onboarding that has not enrolled yet. */
     public static final String BEING_ADDED_PREFIX = "being:";
 
@@ -109,8 +118,10 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
         }
 
         appendBeingAdded(rows, locale);
-        appendGroup(rows, locale, GROUP_FAVOURITES_ID, "project.explorer.favourites", explorer.favourites(), clock);
-        appendGroup(rows, locale, GROUP_RECENT_ID, "project.explorer.recent", recentWithoutFavourites(), clock);
+        appendGroup(rows, locale, GROUP_FAVOURITES_ID, GROUP_FAVOURITES, "project.explorer.favourites",
+                            explorer.favourites(), clock);
+        appendGroup(rows, locale, GROUP_RECENT_ID, GROUP_RECENT, "project.explorer.recent",
+                            recentWithoutFavourites(), clock);
         appendAllProjects(rows, locale, clock);
         return List.copyOf(rows);
     }
@@ -125,8 +136,8 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
                                 Comparator.nullsLast(Comparator.<Instant>reverseOrder()))
                                 .thenComparing(project -> project.projectId().toLowerCase(Locale.ROOT)));
         } else {
-            sorted.sort(Comparator.comparing((EnrolledProject project) -> project.displayName().toLowerCase(Locale.ROOT))
-                                .thenComparing(project -> project.projectId().toLowerCase(Locale.ROOT)));
+            // The row draws the project id, so by name orders on the same field the operator reads.
+            sorted.sort(Comparator.comparing((EnrolledProject project) -> project.projectId().toLowerCase(Locale.ROOT)));
         }
         return List.copyOf(sorted);
     }
@@ -139,10 +150,29 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
         if (rowId == null || !rowId.startsWith(PROJECT_PREFIX)) {
             return null;
         }
-        var projectId = rowId.substring(PROJECT_PREFIX.length());
+        var groupEnd = rowId.indexOf(':', PROJECT_PREFIX.length());
+        var projectId = groupEnd < 0 ? rowId.substring(PROJECT_PREFIX.length())
+                            : rowId.substring(groupEnd + 1);
         return allKnownProjects().stream()
                             .filter(project -> project.projectId().equals(projectId))
                             .findFirst().orElse(null);
+    }
+
+    /**
+     * @param group     the group the row is drawn in ({@code fav}, {@code recent}, {@code all})
+     * @param projectId the project
+     * @return the group-qualified row id, so the same project in two groups is two rows
+     */
+    public static String projectRowId(String group, String projectId) {
+        return PROJECT_PREFIX + group + ':' + projectId;
+    }
+
+    /**
+     * @param projectId the project
+     * @return its row id in _All projects_
+     */
+    public static String allProjectRowId(String projectId) {
+        return projectRowId(GROUP_ALL, projectId);
     }
 
     /**
@@ -249,14 +279,14 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
         }
     }
 
-    private void appendGroup(List<TuiRow> rows, String locale, String headerId, String headerKey,
-                        List<EnrolledProject> projects, Clock clock) {
+    private void appendGroup(List<TuiRow> rows, String locale, String headerId, String group,
+                        String headerKey, List<EnrolledProject> projects, Clock clock) {
         if (projects.isEmpty()) {
             return;
         }
         rows.add(header(headerId, MessageCatalogue.format(locale, headerKey, Map.of())));
         for (var project : projects) {
-            rows.add(projectRow(locale, project, clock));
+            rows.add(projectRow(locale, project, clock, group));
         }
     }
 
@@ -270,7 +300,7 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
         rows.add(header(GROUP_ALL_ID,
                             MessageCatalogue.format(locale, "project.explorer.all", Map.of()) + DOT_SEPARATOR + order));
         for (var project : projects) {
-            rows.add(projectRow(locale, project, clock));
+            rows.add(projectRow(locale, project, clock, GROUP_ALL));
         }
     }
 
@@ -278,7 +308,7 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
         return new TuiRow(id, title, null, false, false);
     }
 
-    private TuiRow projectRow(String locale, EnrolledProject project, Clock clock) {
+    private TuiRow projectRow(String locale, EnrolledProject project, Clock clock, String group) {
         var line = new StringBuilder();
         line.append(project.isFavourite() ? STAR : "  ");
         line.append(TuiLayout.pad(OutputSafety.stripControlSequences(project.projectId()), NAME_COLUMNS));
@@ -296,7 +326,7 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
         if (!active.isEmpty()) {
             line.append(SEPARATOR).append(active);
         }
-        return new TuiRow(PROJECT_PREFIX + project.projectId(), line.toString().stripTrailing(), null,
+        return new TuiRow(projectRowId(group, project.projectId()), line.toString().stripTrailing(), null,
                             project.needsOperatorCount() > 0, true);
     }
 

@@ -1155,6 +1155,8 @@ public final class OverviewFullScreenApp {
     }
 
     private void refreshExplorer() {
+        var selected = stack.selected();
+        var selectedId = selected != null ? selected.id() : null;
         try {
             var runtime = context.runtime(false);
             fetchExplorer(runtime);
@@ -1166,6 +1168,9 @@ public final class OverviewFullScreenApp {
         if (level != null) {
             synchronized (this) {
                 stack.refresh(level.rows(locale, clock));
+                if (selectedId != null) {
+                    stack.select(selectedId);
+                }
             }
         }
         terminal.raise(Terminal.Signal.WINCH);
@@ -1921,13 +1926,19 @@ public final class OverviewFullScreenApp {
             if (!isExplorerLevel()) {
                 return;
             }
+            int direction = delta == 0 ? 1 : delta;
+            boolean reversed = false;
             int guard = 0;
             while (stack.selected() != null && ProjectsExplorerLevel.isHeader(stack.selected().id())
                                 && guard++ < 100) {
                 int before = stack.selectedIndex();
-                stack.move(delta == 0 ? 1 : delta);
+                stack.move(direction);
                 if (stack.selectedIndex() == before) {
-                    break;
+                    if (reversed) {
+                        return;
+                    }
+                    direction = -direction;
+                    reversed = true;
                 }
             }
         }
@@ -2073,6 +2084,8 @@ public final class OverviewFullScreenApp {
             if (project == null || level == null || !project.isFavourite()) {
                 return;
             }
+            var selected = stack.selected();
+            var selectedRowId = selected != null ? selected.id() : null;
             var favourites = new ArrayList<>(level.explorer().favourites());
             int from = -1;
             for (int index = 0; index < favourites.size(); index++) {
@@ -2081,8 +2094,11 @@ public final class OverviewFullScreenApp {
                     break;
                 }
             }
+            if (from < 0) {
+                return;
+            }
             int to = Math.clamp((long) from + delta, 0, favourites.size() - 1);
-            if (from < 0 || to == from) {
+            if (to == from) {
                 return;
             }
             var moved = favourites.remove(from);
@@ -2091,7 +2107,9 @@ public final class OverviewFullScreenApp {
             var next = level.withFavourites(favourites);
             explorerLevel.set(next);
             stack.refresh(next.rows(locale, clock));
-            stack.select(ProjectsExplorerLevel.PROJECT_PREFIX + project.projectId());
+            if (selectedRowId != null) {
+                stack.select(selectedRowId);
+            }
             try {
                 var ids = favourites.stream().map(EnrolledProject::projectId).toList();
                 var response = context.runtime(true).send(HttpRequest.json("PUT", "/api/v1/explorer/favourites",
@@ -2249,13 +2267,20 @@ public final class OverviewFullScreenApp {
         }
 
         private boolean askYes(String prompt) throws IOException {
+            var driver = activeDriver;
+            var terminal = driver != null ? driver.terminal() : context.createTerminal();
+            boolean owned = driver == null;
             try {
-                var reader = LineReaderBuilder.builder().terminal(context.createTerminal()).build();
+                var reader = LineReaderBuilder.builder().terminal(terminal).build();
                 var answer = reader.readLine(prompt + "  \u203a ");
                 return answer != null && ("y".equalsIgnoreCase(answer.trim())
                                     || "yes".equalsIgnoreCase(answer.trim()));
             } catch (EndOfFileException | UserInterruptException _) {
                 return false;
+            } finally {
+                if (owned) {
+                    terminal.close();
+                }
             }
         }
 

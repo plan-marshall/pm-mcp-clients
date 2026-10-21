@@ -122,11 +122,11 @@ public final class ProjectSelector {
             return Outcome.stopping(FAILURE_CODE);
         }
         printList(out, locale, projects);
-        var chosen = choose(context, out, err, locale, projects, reader);
-        if (chosen == null) {
-            return Outcome.stopping(LEAVE_CODE);
+        var decision = choose(context, err, locale, projects, reader);
+        if (!decision.proceed()) {
+            return Outcome.stopping(decision.exitCode());
         }
-        var resolved = replace(args, chosen.projectId());
+        var resolved = replace(args, decision.project().projectId());
         return Outcome.proceeding(resolved);
     }
 
@@ -236,43 +236,71 @@ public final class ProjectSelector {
         out.flush();
     }
 
-    private static @Nullable EnrolledProject choose(OperatorContext context, PrintWriter out, PrintWriter err,
-                        String locale, List<EnrolledProject> projects, @Nullable LineReader reader) {
-        var prompt = MessageCatalogue.format(locale, "operator.projects.select.prompt",
-                            Map.of("count", projects.size())) + PROMPT_SUFFIX;
-        var active = reader != null ? reader : reader(context);
-        if (active == null) {
+    /**
+     * @param project  the chosen project, or {@code null} when the selector does not proceed
+     * @param proceed  {@code true} to replace the question with the project
+     * @param exitCode the code to return when it does not proceed
+     */
+    private record Decision(@Nullable EnrolledProject project, boolean proceed, int exitCode) {
+
+        private static Decision chosen(EnrolledProject project) {
+            return new Decision(Objects.requireNonNull(project, "project"), true, LEAVE_CODE);
+        }
+
+        private static Decision left() {
+            return new Decision(null, false, LEAVE_CODE);
+        }
+
+        private static Decision noInput() {
+            return new Decision(null, false, NEEDS_INPUT_CODE);
+        }
+
+        private static Decision exhausted() {
+            return new Decision(null, false, FAILURE_CODE);
+        }
+    }
+
+    private static Decision choose(OperatorContext context, PrintWriter err, String locale,
+                        List<EnrolledProject> projects, @Nullable LineReader reader) {
+        if (reader != null) {
+            return choose(reader, err, locale, projects);
+        }
+        try (var terminal = context.createTerminal()) {
+            return choose(LineReaderBuilder.builder().terminal(terminal).build(), err, locale, projects);
+        } catch (IOException _) {
             err.println(MessageCatalogue.format(locale, "operator.projects.select.no_input", Map.of()));
             err.flush();
-            return null;
+            return Decision.noInput();
         }
+    }
+
+    private static Decision choose(LineReader reader, PrintWriter err, String locale,
+                        List<EnrolledProject> projects) {
+        var prompt = MessageCatalogue.format(locale, "operator.projects.select.prompt",
+                            Map.of("count", projects.size())) + PROMPT_SUFFIX;
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             String answer;
             try {
-                answer = active.readLine(prompt);
+                answer = reader.readLine(prompt);
             } catch (EndOfFileException | UserInterruptException _) {
-                return null;
+                return Decision.left();
             }
             if (answer == null) {
-                return null;
+                return Decision.left();
             }
-            var chosen = parseChoice(answer, projects);
-            if (chosen != null || answer.isBlank() || LEAVE.equalsIgnoreCase(answer.trim())) {
-                return chosen;
+            var trimmed = answer.trim();
+            if (trimmed.isEmpty() || LEAVE.equalsIgnoreCase(trimmed)) {
+                return Decision.left();
+            }
+            var chosen = parseChoice(trimmed, projects);
+            if (chosen != null) {
+                return Decision.chosen(chosen);
             }
             err.println(MessageCatalogue.format(locale, "operator.projects.select.invalid",
                                 Map.of("input", OutputSafety.stripControlSequences(answer))));
             err.flush();
         }
-        return null;
-    }
-
-    private static @Nullable LineReader reader(OperatorContext context) {
-        try {
-            return LineReaderBuilder.builder().terminal(context.createTerminal()).build();
-        } catch (IOException _) {
-            return null;
-        }
+        return Decision.exhausted();
     }
 
     private static String readiness(String locale, EnrolledProject project) {

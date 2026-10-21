@@ -33,8 +33,8 @@ Key outcomes:
 4. **`--project ?`** — `ProjectSelector` resolves the question before picocli parses any verb,
    prints the explorer's projects favourites first, and replaces the question with the chosen id.
    The console hands in its own `LineReader` so the selector never opens a second terminal there.
-5. **Tests** — 34 new tests: 14 `VirtualScreenTerminal` tests, 6 view-model tests, 6 action-menu
-   tests, and 8 selector tests. The complete `pm-operator` suite passes.
+5. **Tests** — 28 new tests: 14 `VirtualScreenTerminal` tests, 4 view-model tests, 6 action-menu
+   tests, and 4 selector tests. The complete `pm-operator` suite passes.
 
 ---
 
@@ -75,9 +75,9 @@ Key outcomes:
 | File | Coverage |
 |---|---|
 | `ProjectsFullScreenTest.java` | 14 `VirtualScreenTerminal` tests: groups at 120×30, ready/not-ready/being-added/released menus, favourite toggle, favourite reorder, sort toggle, `/` filter and `Esc`, `r` to the project's overview level, `x` + confirmation + `DELETE`, open entry first, `projects` full-screen launch, `projects --list` scrollback, and `--project ?`. |
-| `projects/ProjectsExplorerLevelTest.java` | 6 tests: the four groups, both _All projects_ orders, empty machine, row resolution/selectable ids, favourite order replacement, and sort toggle. |
+| `projects/ProjectsExplorerLevelTest.java` | 4 tests: the four groups, both _All projects_ orders, the empty machine, and row resolution with group-qualified ids for the same project in two groups. |
 | `projects/ProjectsExplorerActionsTest.java` | 6 tests: ready menu, open entry first, not-ready disabled reason, released menu, favourite label, being-added menu. |
-| `ProjectSelectorTest.java` | 8 tests: ordering and de-duplication, number/id/leave parsing, non-`--project` verbs untouched, and the three `--project` question forms stopping without a terminal. |
+| `ProjectSelectorTest.java` | 4 tests: ordering and de-duplication, number/id/leave parsing, non-`--project` verbs untouched, and question-form detection stopping without a terminal. |
 
 ---
 
@@ -96,9 +96,9 @@ The new suites:
 | Suite | Tests | Result |
 |---|---|---|
 | `ProjectsFullScreenTest (VirtualScreenTerminal)` | 14 | PASS |
-| `ProjectsExplorerLevelTest` | 6 | PASS |
+| `ProjectsExplorerLevelTest` | 4 | PASS |
 | `ProjectsExplorerActionsTest` | 6 | PASS |
-| `ProjectSelectorTest` | 8 | PASS |
+| `ProjectSelectorTest` | 4 | PASS |
 
 ### 3.2 Screen-test assertions
 
