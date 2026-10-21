@@ -2,7 +2,7 @@
 
 This implementation plan governs **Scenario 3 (`projects-and-start.json`)** of the 5-scenario mock-runtime architecture: consolidating the 20 fragmented `projects.json`, `enrolment.json`, `git_sources.json`, `lesson_source.json`, `start.json`, and `start-*.json` files into a single, comprehensive `projects-and-start.json` scenario, and eliminating the non-standard top-level `"start_case"` JSON schema bypass in `ScenarioLoader` and `StartRegistry`.
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
 ---
 
@@ -15,7 +15,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Local Client Design** | [`doc/design/shared/projects.adoc`](../design/shared/projects.adoc), [`doc/design/shared/starting-work.adoc`](../design/shared/starting-work.adoc) |
 | **Roadmap Packages** | [`doc/plans/implemented/project-contract.adoc`](../plans/implemented/project-contract.adoc), [`doc/plans/implemented/start-contract.adoc`](../plans/implemented/start-contract.adoc) |
 | **Prerequisite Plans** | [`doc/agy/implemented/cli-start-plan.md`](implemented/cli-start-plan.md) (landed, PR #118), [`doc/agy/implemented/web-start-plan.md`](implemented/web-start-plan.md) (landed, PR #117), [`doc/agy/implemented/mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md) (landed, PR #125), [`doc/agy/implemented/mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md) (landed, PR #143) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
 ---
