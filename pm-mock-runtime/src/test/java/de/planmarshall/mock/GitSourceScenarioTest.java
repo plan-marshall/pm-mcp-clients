@@ -38,6 +38,8 @@ import de.planmarshall.api.source.git.SourceLane;
 class GitSourceScenarioTest {
 
     private static final String AUTH = "Authorization";
+    private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
+    private static final String GIT_SOURCES = SCENARIO + "#sources.git";
 
     @Nested
     @DisplayName("Pull request adoption")
@@ -46,12 +48,12 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("loads the git_sources scenario and observes a clean pull request")
         void shouldObservePullRequest() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
-                assertEquals(StandardScenarios.GIT_SOURCES, runtime.currentScenarioName());
-                assertEquals("git_sources.intake", runtime.currentStateName());
+                assertEquals(SCENARIO, runtime.currentScenarioName());
+                assertEquals("sources.git", runtime.currentStateName());
 
                 try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader(AUTH, auth))) {
                     var sse = exchange.events();
@@ -72,7 +74,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("adopts a clean pull request in the adopt lane")
         void shouldAdoptCleanPullRequest() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -93,7 +95,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("refuses a flagged pull request until it is accepted explicitly")
         void shouldRefuseFlaggedUntilAccepted() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -117,7 +119,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("refuses a rate-limited, a closed, and a non-writable pull request")
         void shouldRefuseUnadoptablePullRequests() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -130,7 +132,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("refuses an adoption in a project that is not ready")
         void shouldRefuseNotReadyProject() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -146,7 +148,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("refuses a reference that names no pull request number")
         void shouldRefuseInvalidReference() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -165,7 +167,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("previews local changes and captures them into the land lane")
         void shouldCaptureLocalChanges() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -201,7 +203,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("refuses to capture without the confirmation")
         void shouldRefuseWithoutConfirmation() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -217,7 +219,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("refuses a capture whose preview no longer matches")
         void shouldRefuseStalePreview() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -234,7 +236,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("consumes the captured changes so a second capture refuses")
         void shouldConsumeCapturedChanges() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
@@ -261,7 +263,7 @@ class GitSourceScenarioTest {
         @Test
         @DisplayName("refuses local changes where the landing is landing.files (PM-WF-25)")
         void shouldRefuseLandingFiles() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.GIT_SOURCES)) {
+            try (var runtime = MockRuntime.start(GIT_SOURCES)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 

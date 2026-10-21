@@ -49,6 +49,11 @@ public final class TuiScreenDriver {
     /** How long an {@code Esc} waits for the rest of a terminal sequence before it acts. */
     static final long AMBIGUOUS_TIMEOUT_MILLIS = 100L;
 
+    private static final String MENU_CLOSE = "\u0000close";
+    private static final String MENU_UP = "\u0000up";
+    private static final String MENU_DOWN = "\u0000down";
+    private static final String MENU_ENTER = "\u0000enter";
+
     /** What a run of the driver ended with. */
     public enum Result {
         /** The handler asked to leave the view. */
@@ -75,6 +80,29 @@ public final class TuiScreenDriver {
         boolean handle(TuiKeyAction action);
 
         /**
+         * Receives a mnemonic of the modal actions menu while it is open. The menu owns the keys:
+         * only its mnemonics, the arrows with {@code Enter}, and {@code a} or {@code Esc} arrive
+         * here, and none of the level's keys is dispatched until the menu is closed.
+         *
+         * @param trigger the mnemonic, or the empty string when the operator closed the menu
+         * @return {@code true} to keep the view open, {@code false} to leave it
+         */
+        default boolean menu(String trigger) {
+            return true;
+        }
+
+        /**
+         * Moves the modal menu's own selection; the level's row selection does not move while the
+         * menu is open.
+         *
+         * @param delta {@code -1} for up, {@code 1} for down
+         * @return {@code true} to keep the view open
+         */
+        default boolean menuNavigate(int delta) {
+            return true;
+        }
+
+        /**
          * Receives the text the operator typed at the filter bar.
          *
          * @param text the filter text, never {@code null}
@@ -87,6 +115,8 @@ public final class TuiScreenDriver {
     private final Terminal terminal;
     private final TuiLayout layout;
     private final String locale;
+    private @Nullable Display activeDisplay;
+    private boolean suspended;
 
     /**
      * @param terminal the terminal to draw on
@@ -182,6 +212,7 @@ public final class TuiScreenDriver {
             alternate = true;
             enterAlternate();
             var display = new Display(terminal, true);
+            activeDisplay = display;
             var reader = new BindingReader(terminal.reader());
             TuiLevel.@Nullable Kind keyMapKind = null;
             KeyMap<TuiKeyAction> keyMap = keyMap(TuiLevel.Kind.OVERVIEW);
@@ -208,6 +239,19 @@ public final class TuiScreenDriver {
                 if (peeked == NonBlockingReader.READ_EXPIRED) {
                     continue;
                 }
+                var menu = screen.menu();
+                if (menu != null) {
+                    var binding = reader.readBinding(menuKeyMap(menu), null, false);
+                    if (binding == null) {
+                        continue;
+                    }
+                    suspended = false;
+                    running = dispatchMenu(handler, menu, binding);
+                    if (suspended) {
+                        previous = null;
+                    }
+                    continue;
+                }
                 var action = reader.readBinding(keyMap, null, false);
                 if (action == null || !boundOn(screen.kind(), action)) {
                     continue;
@@ -221,9 +265,14 @@ public final class TuiScreenDriver {
                     previous = null;
                     continue;
                 }
+                suspended = false;
                 running = handler.handle(action);
+                if (suspended) {
+                    previous = null;
+                }
             }
         } finally {
+            activeDisplay = null;
             if (alternate) {
                 restore();
             }
@@ -245,7 +294,8 @@ public final class TuiScreenDriver {
         // A level that loses or gains rows (a closed node, a hidden token panel) must redraw every
         // line: Display's diff only moves the tail and would leave the old, longer body in place.
         // A reset makes the next update a full frame.
-        if (previous == null || previous.rows().size() != screen.rows().size()) {
+        if (previous == null || previous.rows().size() != screen.rows().size()
+                            || !Objects.equals(previous.menu(), screen.menu())) {
             display.reset();
         }
         display.update(rendered, 0);
@@ -293,14 +343,74 @@ public final class TuiScreenDriver {
         return TuiKeyRegistry.bindings(kind).stream().anyMatch(binding -> binding.action() == action);
     }
 
+    /**
+     * Runs a dialogue while the view is suspended: the alternate screen is left, the cursor is
+     * shown again, and the dialogue owns the terminal; on return the view enters the alternate
+     * screen again and the next turn draws a full frame, because the screen's content is gone.
+     *
+     * <p>The handler calls this from inside {@link KeyHandler#handle(TuiKeyAction)} or
+     * {@link KeyHandler#menu(String)}. Outside a running view the task simply runs.
+     *
+     * @param task the dialogue
+     */
+    public void suspendFor(Runnable task) {
+        Objects.requireNonNull(task, "task");
+        var display = activeDisplay;
+        if (display == null) {
+            task.run();
+            return;
+        }
+        suspend(display);
+        try {
+            task.run();
+        } finally {
+            suspended = true;
+            resume(display);
+        }
+    }
+
+    private KeyMap<String> menuKeyMap(TuiMenu menu) {
+        var map = new KeyMap<String>();
+        map.setAmbiguousTimeout(AMBIGUOUS_TIMEOUT_MILLIS);
+        bindMenuCapability(map, MENU_UP, InfoCmp.Capability.key_up);
+        bindMenuCapability(map, MENU_DOWN, InfoCmp.Capability.key_down);
+        for (var entry : menu.entries()) {
+            map.bindIfNotBound(entry.trigger(), entry.trigger());
+        }
+        map.bind(MENU_CLOSE, "\u001b");
+        map.bindIfNotBound(MENU_CLOSE, "a");
+        map.bind(MENU_ENTER, "\r");
+        map.bindIfNotBound(MENU_ENTER, "\n");
+        return map;
+    }
+
+    private void bindMenuCapability(KeyMap<String> map, String target, InfoCmp.Capability capability) {
+        var sequence = KeyMap.key(terminal, capability);
+        if (sequence != null && !sequence.isEmpty()) {
+            map.bind(target, sequence);
+        }
+    }
+
+    private static boolean dispatchMenu(KeyHandler handler, TuiMenu menu, String binding) {
+        return switch (binding) {
+            case MENU_CLOSE -> handler.menu("");
+            case MENU_UP -> handler.menuNavigate(-1);
+            case MENU_DOWN -> handler.menuNavigate(1);
+            case MENU_ENTER -> {
+                var selected = menu.selected();
+                yield selected != null ? handler.menu(selected.trigger()) : true;
+            }
+            default -> handler.menu(binding);
+        };
+    }
+
     KeyMap<TuiKeyAction> keyMap(TuiLevel.Kind kind) {
         var map = new KeyMap<TuiKeyAction>();
         // A lone Esc is also the prefix of the arrow and page sequences; the terminal sends a
         // sequence in one write, so a short wait tells them apart without a visible lag on Esc.
         map.setAmbiguousTimeout(AMBIGUOUS_TIMEOUT_MILLIS);
-        for (var binding : TuiKeyRegistry.bindings(kind)) {
-            map.bindIfNotBound(binding.action(), binding.trigger());
-        }
+        // The capability sequences come first: a lone Esc is their prefix, and a binding that is
+        // already a prefix would keep bindIfNotBound from adding the longer arrow sequence.
         bindCapability(map, TuiKeyAction.MOVE_UP, InfoCmp.Capability.key_up);
         bindCapability(map, TuiKeyAction.MOVE_DOWN, InfoCmp.Capability.key_down);
         bindCapability(map, TuiKeyAction.PAGE_UP, InfoCmp.Capability.key_ppage);
@@ -308,13 +418,16 @@ public final class TuiScreenDriver {
         bindCapability(map, TuiKeyAction.OPEN, InfoCmp.Capability.key_enter);
         bindCapability(map, TuiKeyAction.BACK, InfoCmp.Capability.key_left);
         bindCapability(map, TuiKeyAction.OPEN, InfoCmp.Capability.key_right);
+        for (var binding : TuiKeyRegistry.bindings(kind)) {
+            map.bindIfNotBound(binding.action(), binding.trigger());
+        }
         return map;
     }
 
     private void bindCapability(KeyMap<TuiKeyAction> map, TuiKeyAction action, InfoCmp.Capability capability) {
         var sequence = KeyMap.key(terminal, capability);
         if (sequence != null && !sequence.isEmpty()) {
-            map.bindIfNotBound(action, sequence);
+            map.bind(action, sequence);
         }
     }
 

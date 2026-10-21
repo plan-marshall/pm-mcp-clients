@@ -2,7 +2,7 @@
 
 This implementation plan governs the execution of the `cli-actions` work package (`doc/plans/cli-actions.adoc`) — including the full-screen actions menu (`a`), the full-screen Epic View (`UC-PLN-5`), hold resolution (`UC-CTL-4`), plan/epic control dialogues (`UC-CTL-1..3`, `UC-CTL-5`), and ended-work chat — building on [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md), [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md), [`doc/agy/cli-fullscreen-plan-view-plan.md`](cli-fullscreen-plan-view-plan.md), and [`doc/agy/cli-start-plan.md`](cli-start-plan.md).
 
-It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -10,13 +10,13 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-CTL-1` to `UC-CTL-5`](../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc), [`UC-PLN-5`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5) (Follow an Epic) |
-| **Specifications** | [`control-contract.adoc`](../plans/implemented/control-contract.adoc), [`state-catalogue.adoc#chat`](../../../pm-mcp-core/doc/specification/state-catalogue.adoc), [`01-processes-and-transport.adoc#ended-work`](../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc) |
-| **Local Client Design** | Shared: [`doc/design/shared/work-actions.adoc`](../design/shared/work-actions.adoc) (`#settings`, `#chat-ended`), [`epic-view.adoc`](../design/shared/epic-view.adoc)<br>CLI: [`doc/design/terminal-client/19-actions.adoc`](../design/terminal-client/19-actions.adoc) (`#full-screen`, `#epic-view`, `#holds`, `#review`, `#chat`, `#chat-ended`, `#texts`), [`22-texts-actions.adoc`](../design/terminal-client/22-texts-actions.adoc) |
-| **Roadmap Package** | [`doc/plans/cli-actions.adoc`](../plans/cli-actions.adoc) (`open`) |
+| **Use Cases** | [`UC-CTL-1` to `UC-CTL-5`](../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc), [`UC-PLN-5`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5) (Follow an Epic) |
+| **Specifications** | [`control-contract.adoc`](../../plans/implemented/control-contract.adoc), [`state-catalogue.adoc#chat`](../../../../pm-mcp-core/doc/specification/state-catalogue.adoc), [`01-processes-and-transport.adoc#ended-work`](../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc) |
+| **Local Client Design** | Shared: [`doc/design/shared/work-actions.adoc`](../../design/shared/work-actions.adoc) (`#settings`, `#chat-ended`), [`epic-view.adoc`](../../design/shared/epic-view.adoc)<br>CLI: [`doc/design/terminal-client/19-actions.adoc`](../../design/terminal-client/19-actions.adoc) (`#full-screen`, `#epic-view`, `#holds`, `#review`, `#chat`, `#chat-ended`, `#texts`), [`22-texts-actions.adoc`](../../design/terminal-client/22-texts-actions.adoc) |
+| **Roadmap Package** | [`doc/plans/cli-actions.adoc`](../../plans/implemented/cli-actions.adoc) (`open`) |
 | **Prerequisite Plans** | [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md), [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md), [`doc/agy/cli-fullscreen-plan-view-plan.md`](cli-fullscreen-plan-view-plan.md), [`doc/agy/cli-start-plan.md`](cli-start-plan.md), [`doc/agy/mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ---
 
@@ -64,17 +64,17 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` on branch `feat/cli-fullscreen-actions` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` on branch `feat/cli-fullscreen-actions` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/cli-fullscreen-actions-plan-report.md`), initial plan moved to `doc/agy/implemented/cli-fullscreen-actions-plan.md`, and package `cli-actions` marked done in `doc/plans/README.adoc` and moved to `doc/plans/implemented/cli-actions.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/cli-fullscreen-actions-plan-report.md`), initial plan moved to `doc/agy/implemented/cli-fullscreen-actions-plan.md`, and package `cli-actions` marked done in `doc/plans/README.adoc` and moved to `doc/plans/implemented/cli-actions.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Full pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-actions-plan-report.md` by orchestrator session.
 
@@ -96,33 +96,33 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Catalogue & Contract Audit
-- [ ] **1.1 Message Catalogue Audit**:
+- [x] **1.1 Message Catalogue Audit**:
   - Verify all keys in `doc/design/terminal-client/22-texts-actions.adoc`, `19-actions.adoc#texts`, and `doc/design/shared/work-actions-*.adoc` exist in `pm-api/src/main/resources/messages/` in both English and German.
-- [ ] **1.2 Control States Audit**:
+- [x] **1.2 Control States Audit**:
   - Verify the `control.*` states in `running-work.json` (`control.ready`, `control.pause`, `control.holds`, `control.settings`, `control.epic`, `control.review`, `control.chat`, `control.tokens`, `control.decomposition`, delivered by `mock-runtime-running-work-plan.md`) cover all transitions needed by both verb transcripts and full-screen tests.
 
 ### Phase 2: Full-Screen Epic View (`EpicViewLevel`, `UC-PLN-5`)
-- [ ] **2.1 `EpicViewLevel` Tree & Sections**:
+- [x] **2.1 `EpicViewLevel` Tree & Sections**:
   - Render `<project_id> › <epic_id>` header with mode and status, and expandable sections for Workstreams & Plans, Sources, Landings, Findings & Watches, Tokens (expandable per-plan + epic's own tasks with `≥` floor), and Events (all events in full-screen, 10 newest in scrollback tree).
   - Wire `Enter` on a plan row to push `PlanViewLevel` (whose `e` returns to `EpicViewLevel`), `Enter` on Findings/Watches to launch the review dialogue, `p` to jump in one key to `ProjectWorkLevel`, `a` to open `epic.actions`, and `Esc` to return to the caller level.
 
 ### Phase 3: Full-Screen Actions Menu (`a`) & Hold Resolution (`UC-CTL-4`)
-- [ ] **3.1 State-Aware Inline Actions (`plan.actions`, `epic.actions`)**:
+- [x] **3.1 State-Aware Inline Actions (`plan.actions`, `epic.actions`)**:
   - Implement `a` in `ProjectWorkLevel`, `PlanViewLevel`, `EpicViewLevel`, and `EndedWorkLevel`, rendering only the actions valid for the selected item's state (running, pausing, paused, waiting, held, landing failed, ended).
   - Support `u` in the epic menu to toggle `epic auto` on/off and display rows waiting for an overlap.
-- [ ] **3.2 Hold Resolution (`hold.show`, `hold.resolve`, `hold.apply`)**:
+- [x] **3.2 Hold Resolution (`hold.show`, `hold.resolve`, `hold.apply`)**:
   - On a held plan, epic, or failed alongside landing, show the hold details and resolution acts; after executing an act, refresh the state and either resume work or display the remaining hold.
 
 ### Phase 4: Plan Settings (`UC-CTL-5`), Review Dialogue & Ended-Work Chat
-- [ ] **4.1 Plan Settings & Conflict Handling**:
+- [x] **4.1 Plan Settings & Conflict Handling**:
   - Verify `config <aspect> --plan <id>` and the `a` → *Settings…* menu handle refusals and mid-edit value conflicts (`conflict`: apply again or keep).
-- [ ] **4.2 Review Dialogue & Chat Follow-Up**:
+- [x] **4.2 Review Dialogue & Chat Follow-Up**:
   - Complete the findings/watches review dialogue (keep as finding/watch, drop, edit drafted plan, read-back, `h` chat, commit).
   - Complete running-work chat (applying revision at next task boundary) and ended-work chat (`plan chat`, `epic chat`, and `a` → *Chat…* on ended work, transitioning a follow-up plan into `plan add` at its sources with the description stored).
 
 ### Phase 5: Transcript & Screen Tests
-- [ ] **5.1 `ActionsFullScreenTest` & `EpicViewFullScreenTest` (`VirtualScreenTerminal`)**:
+- [x] **5.1 `ActionsFullScreenTest` & `EpicViewFullScreenTest` (`VirtualScreenTerminal`)**:
   - Assert `a` inline action menus across every plan, epic, landing, and ended-work state, including `u` auto toggle, pause-point selection, hold resolution acts, and dialogue suspension/resumption.
   - Assert `EpicViewLevel` opening from Overview and from a plan (`e`), expanding workstreams, sources, landings, tokens, and all events, jumping to project (`p`), and returning via `Esc`.
-- [ ] **5.2 Pre-Commit & Operational Gate**:
-  - Run `./mvnw verify -Ppre-commit`, move `doc/plans/cli-actions.adoc` to `doc/plans/implemented/cli-actions.adoc`, update `doc/plans/README.adoc`, and execute the PR/review workflow per [`doc/agy/runbook.md`](runbook.md).
+- [x] **5.2 Pre-Commit & Operational Gate**:
+  - Run `./mvnw verify -Ppre-commit`, move `doc/plans/cli-actions.adoc` to `doc/plans/implemented/cli-actions.adoc`, update `doc/plans/README.adoc`, and execute the PR/review workflow per [`doc/agy/runbook.md`](../runbook.md).

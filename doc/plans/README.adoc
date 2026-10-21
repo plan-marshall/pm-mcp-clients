@@ -201,9 +201,9 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
 |epic clients
 
-|link:cli-actions.adoc[`cli-actions`]
+|link:implemented/cli-actions.adoc[`cli-actions`]
 |Actions on plans and epics in the terminal
-|`open`
+|`done`
 |link:implemented/control-contract.adoc[`control-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]; link:implemented/cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-start.adoc[`cli-start`]
 |epic clients
 

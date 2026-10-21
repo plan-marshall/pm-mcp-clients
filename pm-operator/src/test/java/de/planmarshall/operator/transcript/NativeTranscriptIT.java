@@ -99,6 +99,22 @@ class NativeTranscriptIT {
     }
 
     @Test
+    @DisplayName("epic relay-hardening matches the recorded transcript on the native binary")
+    void controlEpicMatchesRecordedTranscript() throws Exception {
+        Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.RUNNING_WORK).build())) {
+            MockMachine.recordLiveRuntime(runtime);
+
+            var rendered = PseudoTerminal.run(binary.with("epic", "relay-hardening"),
+                                environment(runtime), Path.of("").toAbsolutePath());
+
+            TranscriptAssert.assertMatches("control-epic", rendered,
+                                new TranscriptNormalizer().replacing(runtime.base(), "<machine-root>"));
+        }
+    }
+
+    @Test
     @DisplayName("plan add --no-input matches the recorded transcript on the native binary")
     void startPlanMatchesRecordedTranscript() throws Exception {
         Assumptions.assumeTrue(binary.nativeImage(), "target/pm-operator is not built; run -Pnative package first");

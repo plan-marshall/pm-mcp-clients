@@ -1,13 +1,13 @@
 = Actions on plans and epics in the terminal
 :nofooter:
 
-link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-actions`
+link:../README.adoc[Work packages of `pm-mcp-clients`] » `cli-actions`
 
 [horizontal]
-Serves:: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]; no roadmap milestone yet
+Serves:: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] to link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]; no roadmap milestone yet
 Where:: `pm-operator`
-Part of:: link:epic-clients.adoc[the client work]
-Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+Part of:: link:../epic-clients.adoc[the client work]
+Status and dependencies:: in the link:../README.adoc#packages[index], the only place that states them
 
 == What
 
@@ -16,11 +16,11 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../design/README.adoc[`doc/design/`]).
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` and are only referenced here; the designs of the clients and what they share are in this repository (link:../../design/README.adoc[`doc/design/`]).
 
-* Use cases: link:../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-5], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]
-* Specification: the sections link:implemented/control-contract.adoc[`control-contract`] implements in the contract, which this package shows; link:../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[State Catalogue § Chatting with the Planning Role], link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Runtime Model § Ended Work] (its chat)
-* Design: link:../design/shared/work-actions.adoc[Actions on Plans and Epics] with link:../design/shared/work-actions.adoc#settings[A Plan's Settings], link:../design/shared/work-actions.adoc#chat-ended[A Chat About Ended Work]; link:../design/shared/epic-view.adoc[Epic View]; link:../design/terminal-client/19-actions.adoc[Terminal Client, Actions]
+* Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[UC-CTL-1 to UC-CTL-5], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]
+* Specification: the sections link:control-contract.adoc[`control-contract`] implements in the contract, which this package shows; link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[State Catalogue § Chatting with the Planning Role], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Runtime Model § Ended Work] (its chat)
+* Design: link:../../design/shared/work-actions.adoc[Actions on Plans and Epics] with link:../../design/shared/work-actions.adoc#settings[A Plan's Settings], link:../../design/shared/work-actions.adoc#chat-ended[A Chat About Ended Work]; link:../../design/shared/epic-view.adoc[Epic View]; link:../../design/terminal-client/19-actions.adoc[Terminal Client, Actions]
 
 == Done When
 

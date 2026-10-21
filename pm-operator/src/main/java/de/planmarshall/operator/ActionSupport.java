@@ -17,8 +17,11 @@ import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.start.EntryKind;
 
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
@@ -104,7 +107,21 @@ final class ActionSupport {
                 out.flush();
                 return 3;
             }
-            effectiveReason = (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned") + " by operator";
+            if (context.isInteractiveTerminal()) {
+                var locale = context.clientEnvironment().locale();
+                var prompt = new StartPrompt(context, out, locale, false);
+                effectiveReason = prompt.askRaw(MessageCatalogue.format(locale, "operator.actions.end.reason",
+                                    Map.of()) + StartPrompt.SUFFIX, "control.action",
+                                    MessageCatalogue.format(locale, "operator.actions.end.reason", Map.of()), id);
+                if (effectiveReason.isBlank()) {
+                    out.println(MessageCatalogue.format(locale, "operator.actions.end.reason_required", Map.of()));
+                    out.flush();
+                    return 1;
+                }
+            } else {
+                effectiveReason = (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned")
+                                    + " by operator";
+            }
         }
 
         var payload = new LinkedHashMap<String, Object>();
@@ -151,8 +168,19 @@ final class ActionSupport {
 
         var response = context.runtime(true).send(HttpRequest.get(endpoint));
         if (response.status() == 200) {
-            out.println(response.bodyText());
-            out.flush();
+            if (context.isConsoleActive()) {
+                var description = WorkChatDialogue.run(context, out, kind, id, false, false);
+                if (description != null) {
+                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.actions.chat.follow_up_started",
+                                        Map.of("description", OutputSafety.stripControlSequences(description))));
+                    out.flush();
+                    return StartDialogue.run(context, out, EntryKind.PLAN,
+                                        new StartAnswers().withDescription(description));
+                }
+                return 0;
+            }
+            WorkChatDialogue.render(context, out, ChatReadBackResource.fromJson(response.bodyText()));
             return 0;
         }
         throw new OperatorRefusedException(kind + " chat", response);

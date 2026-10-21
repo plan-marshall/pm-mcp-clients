@@ -562,6 +562,10 @@ public final class ConfigCommand implements Callable<Integer> {
         @Option(names = "--defaults", description = "Reset to default role assignments")
         boolean defaults;
 
+        @Option(names = "--plan", description = "The plan whose own settings are shown and changed")
+        @Nullable
+        String plan;
+
         @Option(names = "--set", description = "Set role=client:model[:effort]")
         @Nullable
         List<String> set;
@@ -580,6 +584,16 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
+            var out = spec.commandLine().getOut();
+            if (plan != null) {
+                if (plan.isBlank()) {
+                    return blankPlan(context, out);
+                }
+                if (defaults || set != null || reset != null || resetAll) {
+                    return exclusive(context, out);
+                }
+                return PlanSettingsDialogue.run(context, out, plan, "roles", false);
+            }
             var locale = context.clientEnvironment().locale();
             var body = new LinkedHashMap<String, Object>();
             body.put("defaults", defaults);
@@ -587,7 +601,6 @@ public final class ConfigCommand implements Callable<Integer> {
             if (reset != null) body.put("reset", reset);
             body.put("reset_all", resetAll);
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/roles", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
             if (response.status() == 200) {
                 out.println(MessageCatalogue.format(locale, "operator.config.roles_done", Map.of()));
                 out.flush();
@@ -636,6 +649,10 @@ public final class ConfigCommand implements Callable<Integer> {
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
+        @Option(names = "--plan", description = "The plan whose own settings are shown and changed")
+        @Nullable
+        String plan;
+
         @Option(names = "--use", description = "Providers to use")
         @Nullable
         List<String> use;
@@ -654,13 +671,22 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
+            var out = spec.commandLine().getOut();
+            if (plan != null) {
+                if (plan.isBlank()) {
+                    return blankPlan(context, out);
+                }
+                if (use != null || without != null || verify) {
+                    return exclusive(context, out);
+                }
+                return PlanSettingsDialogue.run(context, out, plan, "providers", false);
+            }
             var locale = context.clientEnvironment().locale();
             var body = new LinkedHashMap<String, Object>();
             if (use != null) body.put("use", use);
             if (without != null) body.put("without", without);
             body.put("verify", verify);
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/providers", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
             if (response.status() == 200) {
                 out.println(MessageCatalogue.format(locale, "operator.config.providers_done", Map.of()));
                 out.flush();
@@ -676,6 +702,10 @@ public final class ConfigCommand implements Callable<Integer> {
         @Spec
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
+
+        @Option(names = "--plan", description = "The plan whose own settings are shown and changed")
+        @Nullable
+        String plan;
 
         @Option(names = "--landing", description = "Default landing method: pull-request, main, files")
         @Nullable
@@ -703,6 +733,16 @@ public final class ConfigCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
+            var out = spec.commandLine().getOut();
+            if (plan != null) {
+                if (plan.isBlank()) {
+                    return blankPlan(context, out);
+                }
+                if (landing != null || method != null || asking != null || posture != null || yes) {
+                    return exclusive(context, out);
+                }
+                return PlanSettingsDialogue.run(context, out, plan, "plan-defaults", false);
+            }
             var locale = context.clientEnvironment().locale();
             var body = new LinkedHashMap<String, Object>();
             if (landing != null) body.put("landing", landing);
@@ -712,7 +752,6 @@ public final class ConfigCommand implements Callable<Integer> {
             body.put("confirmed", yes);
 
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/config/plan-defaults", JsonTree.write(body)));
-            var out = spec.commandLine().getOut();
             if (response.status() == 200) {
                 out.println(MessageCatalogue.format(locale, "operator.config.plan_defaults_title", Map.of()));
                 if (landing != null) {
@@ -1017,5 +1056,23 @@ public final class ConfigCommand implements Callable<Integer> {
                 return line == null || !"k".equalsIgnoreCase(line.trim());
             }
         }
+    }
+
+    /**
+     * @param out the verb's output
+     * @return the exit code of a verb that combined {@code --plan} with other options
+     */
+    private static int blankPlan(OperatorContext context, PrintWriter out) {
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.actions.plan_blank", Map.of()));
+        out.flush();
+        return 1;
+    }
+
+    private static int exclusive(OperatorContext context, PrintWriter out) {
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.actions.plan_option_exclusive", Map.of()));
+        out.flush();
+        return 1;
     }
 }

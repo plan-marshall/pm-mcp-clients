@@ -93,17 +93,19 @@ class ActionSupportTest {
     }
 
     @Test
-    @DisplayName("endWork sends default reason and close_pr=true on success")
+    @DisplayName("endWork sends the operator's reason and close_pr=true on success")
     void endWorkDefaultReasonSuccess() throws Exception {
         runtime((request, response) -> {
             if ("/api/v1/plans/p-1/cancel".equals(request.target()) && "POST".equals(request.method())) {
+                assertTrue(request.bodyText().contains("\"reason\":\"the approach is replaced\""));
+                assertTrue(request.bodyText().contains("\"close_pr\":true"));
                 response.send(200, null, "");
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var opts = terminationOptions("p-1", null, false, false);
+        var opts = terminationOptions("p-1", "the approach is replaced", false, false);
         var code = ActionSupport.endWork(context, spec, "plan", opts, ActionSupport.CANCEL);
         assertEquals(0, code);
         assertTrue(out.toString().contains("✓ p-1 cancelled and archived"));
@@ -160,7 +162,14 @@ class ActionSupportTest {
     void chatGetHistory() throws Exception {
         runtime((request, response) -> {
             if ("/api/v1/epics/e-1/chat".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "[{\"role\":\"user\",\"content\":\"hi\"}]");
+                response.json(200, """
+                                    {"chat_id":"C-1","subject_id":"e-1","subject_kind":"epic",
+                                     "role":"decompose","scope":"epic","state":"turn",
+                                     "turns":[{"role":"operator","text":"hi","at":"2026-10-16T10:00:00Z",
+                                               "untrusted":false},
+                                              {"role":"decompose","text":"hello from the epic",
+                                               "at":"2026-10-16T10:00:01Z","untrusted":false}]}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
@@ -168,7 +177,7 @@ class ActionSupportTest {
 
         var code = ActionSupport.chat(context, spec, "epic", "e-1", "   ");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("hi"));
+        assertTrue(out.toString().contains("hello from the epic"), out.toString());
     }
 
     @Test

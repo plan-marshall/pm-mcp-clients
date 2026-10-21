@@ -37,6 +37,10 @@ import de.planmarshall.api.resource.UnenrolResult;
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class EnrolScenarioTest {
 
+    private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
+    private static final String ENROLMENT = SCENARIO + "#enrol.digest-mismatch";
+    private static final String ENROL_SCAN = SCENARIO + "#enrol.scan";
+
     private static final String RECORDED_SHA =
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
     private static final String CURRENT_SHA =
@@ -53,11 +57,12 @@ class EnrolScenarioTest {
     @Test
     @DisplayName("loads the enrolment scenario and reports a mismatching store digest")
     void shouldLoadScenarioAndReportMismatch() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ENROLMENT)) {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals(StandardScenarios.ENROLMENT, runtime.currentScenarioName());
+            assertEquals(SCENARIO, runtime.currentScenarioName());
+            assertEquals("enrol.digest-mismatch", runtime.currentStateName());
 
             var comparison = digest(client, auth, "pm-mcp-clients", ".plan%2Fmarshal.json");
             assertAll(
@@ -78,7 +83,7 @@ class EnrolScenarioTest {
     @Test
     @DisplayName("accepts an edit only for the confirmed current digest and re-baselines the store")
     void shouldAcceptEditAndRebaseline() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ENROLMENT)) {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
             var target = "/api/v1/projects/pm-mcp-clients/stores/accept-edit";
@@ -112,7 +117,7 @@ class EnrolScenarioTest {
     @Test
     @DisplayName("enrols a project on the top-level verb and seeds its store")
     void shouldEnrolProject() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ENROLMENT)) {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -136,7 +141,7 @@ class EnrolScenarioTest {
     @Test
     @DisplayName("enrols a project on the project-scoped alias without a body path")
     void shouldEnrolOnProjectScopedAlias() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ENROLMENT)) {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -150,7 +155,7 @@ class EnrolScenarioTest {
     @Test
     @DisplayName("unenrols a project without active work and drops its store")
     void shouldUnenrolProjectAndDropStore() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ENROLMENT)) {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -169,7 +174,7 @@ class EnrolScenarioTest {
     @Test
     @DisplayName("reports store_not_found for a project without a recorded store")
     void shouldReportStoreNotFound() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ENROLMENT)) {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -184,7 +189,7 @@ class EnrolScenarioTest {
     @Test
     @DisplayName("refuses an accept-edit whose body names no store")
     void shouldRefuseMalformedAcceptEdit() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.ENROLMENT)) {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -192,6 +197,21 @@ class EnrolScenarioTest {
                     "/api/v1/projects/pm-mcp-clients/stores/accept-edit", "{}")
                     .withHeader("Authorization", auth));
             assertEquals(409, response.status());
+        }
+    }
+
+    @Test
+    @DisplayName("serves the enrolment scan state with the same enrolment verbs")
+    void shouldServeEnrolScanState() throws Exception {
+        try (var runtime = MockRuntime.start(ENROL_SCAN)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            assertEquals("enrol.scan", runtime.currentStateName());
+            var response = client.send(HttpRequest.json("POST", "/api/v1/projects/scan-app/enrol", "{}")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, response.status());
+            assertEquals("scan-app", EnrolResult.fromJson(response.bodyText()).projectId());
         }
     }
 }

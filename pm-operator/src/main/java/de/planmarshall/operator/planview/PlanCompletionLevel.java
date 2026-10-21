@@ -41,6 +41,13 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
     }
 
     /**
+     * @return the plan the report belongs to
+     */
+    public String planId() {
+        return report.planId();
+    }
+
+    /**
      * @param locale the interface locale
      * @return the header path of the completion report
      */

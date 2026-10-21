@@ -132,8 +132,8 @@ class ScenarioRegistryTest {
         assertEquals("projects.explorer", aliased.start());
 
         // A legacy file that still exists wins over its alias, so migration can delete file by file.
-        registry.registerLegacyAlias(StandardScenarios.PROJECTS, "designer#designer.ready");
-        assertEquals(StandardScenarios.PROJECTS, registry.resolve(StandardScenarios.PROJECTS).name());
+        registry.registerLegacyAlias(StandardScenarios.REPORTS, "designer#designer.ready");
+        assertEquals(StandardScenarios.REPORTS, registry.resolve(StandardScenarios.REPORTS).name());
         assertEquals("projects-and-start#projects.explorer",
                 new ScenarioRegistry().legacyAlias(StandardScenarios.PROJECTS));
     }

@@ -75,6 +75,29 @@ class ConfigCommandTest {
         );
     }
 
+
+    @Test
+    @DisplayName("config <aspect> --plan refuses the verb's other options")
+    void planScopeIsExclusive() throws Exception {
+        int code = execute("config", "roles", "--plan", "fix-relay", "--set", "implement=x");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains(
+                                                                    "--plan cannot be combined with the other options"),
+                                                out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("config <aspect> --plan rejects a blank plan id instead of the machine scope")
+    void blankPlanIsRejected() throws Exception {
+        int code = execute("config", "roles", "--plan", "");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("--plan needs a plan id"), out.toString())
+        );
+    }
+
     @Test
     @DisplayName("config show displays effective configuration")
     void configShow() throws Exception {
