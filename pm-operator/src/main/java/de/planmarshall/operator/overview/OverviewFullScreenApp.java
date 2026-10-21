@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -86,6 +87,7 @@ public final class OverviewFullScreenApp {
 
     private static final String PROJECTS_API_PREFIX = "/api/v1/projects/";
     private static final String PLANS_API_PREFIX = "/api/v1/plans/";
+    private static final String PROJECT_VERB = "project";
     private static final String STATUS_ROW_ID = "__status__";
 
     /**
@@ -613,6 +615,12 @@ public final class OverviewFullScreenApp {
             withStatus.add(TuiRow.leaf(STATUS_ROW_ID, "  " + statusMessage));
             rows = withStatus;
         }
+        TuiMenu menu = null;
+        if (projectMenu != null) {
+            menu = projectMenu;
+        } else if (actionsMenu != null) {
+            menu = actionsMenu.screenMenu();
+        }
         return new TuiScreen(
                             breadcrumb,
                             kind,
@@ -623,8 +631,7 @@ public final class OverviewFullScreenApp {
                             connected.get(),
                             unreadReports.get(),
                             footer,
-                            projectMenu != null ? projectMenu
-                                                : actionsMenu != null ? actionsMenu.screenMenu() : null
+                            menu
         );
     }
 
@@ -856,7 +863,10 @@ public final class OverviewFullScreenApp {
     private boolean handleMenu(String trigger) {
         if (projectMenu != null) {
             var handler = activeKeyHandler;
-            return handler == null || handler.handleProjectMenu(trigger);
+            if (handler != null) {
+                handler.handleProjectMenu(trigger);
+            }
+            return true;
         }
         if (actionsMenu == null) {
             return true;
@@ -1345,7 +1355,7 @@ public final class OverviewFullScreenApp {
                 case MOVE_FAVOURITE_DOWN -> moveFavourite(1);
                 case MOVE_FAVOURITE_UP -> moveFavourite(-1);
                 case SORT -> toggleExplorerSort();
-                case ADD_PROJECT -> runVerb("project", "add");
+                case ADD_PROJECT -> runVerb(PROJECT_VERB, "add");
                 case ADD_EPIC -> startWork(true);
                 case ADD_PLAN -> startWork(false);
                 case RUNNING_WORK -> openRunningWork();
@@ -1924,14 +1934,20 @@ public final class OverviewFullScreenApp {
 
         private @Nullable EnrolledProject selectedExplorerProject() {
             var level = explorerLevel.get();
+            if (level == null) {
+                return null;
+            }
             var selected = stack.selected();
-            return level != null ? level.projectOf(selected != null ? selected.id() : null) : null;
+            return selected != null ? level.projectOf(selected.id()) : null;
         }
 
         private @Nullable BeingAddedProject selectedBeingAdded() {
             var level = explorerLevel.get();
+            if (level == null) {
+                return null;
+            }
             var selected = stack.selected();
-            return level != null ? level.beingAddedOf(selected != null ? selected.id() : null) : null;
+            return selected != null ? level.beingAddedOf(selected.id()) : null;
         }
 
         private static boolean isReleased(EnrolledProject project) {
@@ -1961,28 +1977,28 @@ public final class OverviewFullScreenApp {
                 projectMenuBeing = being;
                 projectMenuOpenEntries = List.of();
                 projectMenu = TuiMenu.opening(selected.id(),
-                                    ProjectsExplorerActions.forBeingAdded(locale, being));
+                                    ProjectsExplorerActions.forBeingAdded(locale));
             } else {
                 projectMenu = null;
             }
         }
 
-        private boolean handleProjectMenu(String trigger) {
+        private void handleProjectMenu(String trigger) {
             if (trigger.isEmpty()) {
                 closeProjectMenu();
-                return true;
+                return;
             }
             var menu = projectMenu;
             if (menu == null) {
-                return true;
+                return;
             }
             var entry = menu.entry(trigger);
             if (entry == null) {
-                return true;
+                return;
             }
             if (!entry.enabled()) {
                 statusMessage = entry.reason() != null ? entry.reason() : "";
-                return true;
+                return;
             }
             var project = projectMenuProject;
             var being = projectMenuBeing;
@@ -1990,7 +2006,6 @@ public final class OverviewFullScreenApp {
             closeProjectMenu();
             runProjectAction(entry.action(), project, being, entries);
             refreshActiveLevels();
-            return true;
         }
 
         private void closeProjectMenu() {
@@ -2005,11 +2020,7 @@ public final class OverviewFullScreenApp {
             switch (action) {
                 case ProjectsExplorerActions.CONTINUE_STARTING -> continueOpenEntry(project, entries);
                 case ProjectsExplorerActions.CONTINUE_SETUP -> runProjectSetup(project);
-                case ProjectsExplorerActions.CONTINUE_ONBOARDING -> {
-                    if (being != null) {
-                        runVerb("project", "add", being.checkoutPath());
-                    }
-                }
+                case ProjectsExplorerActions.CONTINUE_ONBOARDING -> continueOnboarding(being);
                 case ProjectsExplorerActions.ADD_EPIC -> startWork(project, true);
                 case ProjectsExplorerActions.ADD_PLAN -> startWork(project, false);
                 case ProjectsExplorerActions.RUNNING_WORK -> openRunningWork(project);
@@ -2017,15 +2028,19 @@ public final class OverviewFullScreenApp {
                 case ProjectsExplorerActions.FAVOURITE -> toggleFavourite(project);
                 case ProjectsExplorerActions.ABANDON -> abandon(being);
                 case ProjectsExplorerActions.ENROL_AGAIN -> enrolAgain(project);
-                case ProjectsExplorerActions.ENDED_WORK -> {
-                    if (project != null) {
-                        openEndedFor(project.projectId());
-                    }
-                }
+                case ProjectsExplorerActions.ENDED_WORK -> openEndedForProject(project);
                 default -> {
                     // An action this view does not know leaves the view unchanged.
                 }
             }
+        }
+
+        private void continueOnboarding(@Nullable BeingAddedProject being) {
+            Optional.ofNullable(being).ifPresent(run -> runVerb(PROJECT_VERB, "add", run.checkoutPath()));
+        }
+
+        private void openEndedForProject(@Nullable EnrolledProject project) {
+            Optional.ofNullable(project).ifPresent(run -> openEndedFor(run.projectId()));
         }
 
         private void toggleFavourite() {
@@ -2066,7 +2081,7 @@ public final class OverviewFullScreenApp {
                     break;
                 }
             }
-            int to = (int) Math.clamp((long) from + delta, 0, favourites.size() - 1);
+            int to = Math.clamp((long) from + delta, 0, favourites.size() - 1);
             if (from < 0 || to == from) {
                 return;
             }
@@ -2161,7 +2176,7 @@ public final class OverviewFullScreenApp {
             if (project == null || isReleased(project)) {
                 return;
             }
-            runVerb("project", "setup", project.projectId());
+            runVerb(PROJECT_VERB, "setup", project.projectId());
         }
 
         private void enrolAgain() {
@@ -2172,13 +2187,13 @@ public final class OverviewFullScreenApp {
             if (project == null || !isReleased(project)) {
                 return;
             }
-            runVerb("project", "setup", project.projectId(), "identity");
+            runVerb(PROJECT_VERB, "setup", project.projectId(), "identity");
         }
 
         private void continueProject() {
             var being = selectedBeingAdded();
             if (being != null) {
-                runVerb("project", "add", being.checkoutPath());
+                runVerb(PROJECT_VERB, "add", being.checkoutPath());
                 return;
             }
             var project = selectedExplorerProject();

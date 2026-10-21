@@ -188,7 +188,8 @@ public final class ProjectSelector {
 
     private static List<String> replace(String[] args, String projectId) {
         var resolved = new ArrayList<String>(args.length);
-        for (int index = 0; index < args.length; index++) {
+        int index = 0;
+        while (index < args.length) {
             var arg = args[index];
             if (OPTION.equals(arg)) {
                 resolved.add(OPTION);
@@ -201,6 +202,7 @@ public final class ProjectSelector {
             } else {
                 resolved.add(arg);
             }
+            index++;
         }
         return List.copyOf(resolved);
     }

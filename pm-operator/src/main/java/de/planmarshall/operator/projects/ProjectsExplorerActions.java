@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.operator.OutputSafety;
@@ -75,7 +74,7 @@ public final class ProjectsExplorerActions {
     public static List<TuiMenuEntry> forProject(String locale, EnrolledProject project,
                         List<ProjectOpenEntry> openEntries) {
         if (project.isReleased() || project.readiness() == ProjectReadiness.RELEASED) {
-            return released(locale, project);
+            return released(locale);
         }
         var entries = new ArrayList<TuiMenuEntry>();
         if (project.readiness() == ProjectReadiness.SETUP_NEEDS) {
@@ -103,10 +102,9 @@ public final class ProjectsExplorerActions {
 
     /**
      * @param locale the interface locale
-     * @param being  the onboarding run of the row
      * @return the run's two choices
      */
-    public static List<TuiMenuEntry> forBeingAdded(String locale, BeingAddedProject being) {
+    public static List<TuiMenuEntry> forBeingAdded(String locale) {
         return List.of(
                             entry("c", CONTINUE_ONBOARDING,
                                                 MessageCatalogue.format(locale, "operator.projects.action.continue", Map.of())),
@@ -128,7 +126,7 @@ public final class ProjectsExplorerActions {
                             Map.of("project", OutputSafety.stripControlSequences(project.projectId()), "need", need));
     }
 
-    private static List<TuiMenuEntry> released(String locale, EnrolledProject project) {
+    private static List<TuiMenuEntry> released(String locale) {
         return List.of(
                             entry("a", ENROL_AGAIN,
                                                 MessageCatalogue.format(locale, "project.action.enrol_again", Map.of())),

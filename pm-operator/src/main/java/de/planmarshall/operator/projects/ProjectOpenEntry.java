@@ -56,16 +56,12 @@ public record ProjectOpenEntry(String entryId, String kind, int sourceCount) {
         var entries = new ArrayList<ProjectOpenEntry>();
         for (var item : raw) {
             var map = JsonTree.asObject(item);
-            if (map == null) {
-                continue;
+            var entryId = map != null ? JsonTree.string(map, FIELD_ENTRY_ID) : null;
+            if (map != null && entryId != null && !entryId.isBlank()) {
+                var kind = JsonTree.string(map, FIELD_KIND);
+                var count = JsonTree.integer(map, FIELD_SOURCE_COUNT);
+                entries.add(new ProjectOpenEntry(entryId, kind, count != null ? count : 0));
             }
-            var entryId = JsonTree.string(map, FIELD_ENTRY_ID);
-            if (entryId == null || entryId.isBlank()) {
-                continue;
-            }
-            var kind = JsonTree.string(map, FIELD_KIND);
-            var count = JsonTree.integer(map, FIELD_SOURCE_COUNT);
-            entries.add(new ProjectOpenEntry(entryId, kind, count != null ? count : 0));
         }
         return List.copyOf(entries);
     }

@@ -50,7 +50,7 @@ class ProjectsExplorerLevelTest {
                             List.of(new BeingAddedProject("~/git/cui-parent", "Identity", 2, 10, null, null)));
 
         var rows = new ProjectsExplorerLevel(explorer, false).rows("en", CLOCK);
-        var text = String.join("\n", rows.stream().map(row -> row.line()).toList());
+        var text = String.join("\n", rows.stream().map(TuiRow::line).toList());
 
         assertTrue(text.contains("Being added"), text);
         assertTrue(text.contains("~/git/cui-parent"), text);

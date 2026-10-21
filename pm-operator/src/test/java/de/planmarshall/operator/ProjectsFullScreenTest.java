@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.time.Clock;
 import java.time.Instant;
@@ -191,8 +192,7 @@ class ProjectsFullScreenTest {
             try {
                 app.run(new PrintWriter(out));
             } catch (IOException failure) {
-                /*~~(TODO: Throw specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe)~~>*/
-                throw new RuntimeException(failure);
+                throw new UncheckedIOException(failure);
             }
         });
         thread.start();

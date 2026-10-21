@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
-import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.operator.tui.TuiMenuEntry;
@@ -80,8 +79,7 @@ class ProjectsExplorerActionsTest {
     @Test
     @DisplayName("a project being added offers Continue and Abandon")
     void beingAddedMenu() {
-        var rows = ProjectsExplorerActions.forBeingAdded("en",
-                            new BeingAddedProject("/home/oliver/git/cui-parent", "Identity", 2, 10, null, null));
+        var rows = ProjectsExplorerActions.forBeingAdded("en");
         assertEquals(List.of("c", "x"), triggers(rows));
         assertEquals(ProjectsExplorerActions.CONTINUE_ONBOARDING, rows.getFirst().action());
         assertEquals(ProjectsExplorerActions.ABANDON, rows.get(1).action());
