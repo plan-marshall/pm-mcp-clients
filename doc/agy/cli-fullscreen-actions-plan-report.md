@@ -178,6 +178,9 @@ BUILD SUCCESS
   Javadoc, the frontend build, lint, typecheck, tests, and the full unit-test suite of all eight
   modules (25:21).
 - `pm-operator` surefire: **850 tests, 0 failures, 0 errors, 0 skipped**.
+- **SonarCloud Quality Gate: passed** (new-code coverage above its threshold with the
+  presentation layer scoped out, reliability 1, maintainability 1, duplication 0.1%, every
+  security hotspot reviewed).
 
 > **Worktree note (`pm-web-app`):** SvelteKit 3 writes its typecheck config into
 > `node_modules/$app/` during `npm run build`. In a *fresh* worktree whose `npm ci` runs after the
