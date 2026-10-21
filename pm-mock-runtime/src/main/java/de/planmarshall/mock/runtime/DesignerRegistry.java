@@ -199,22 +199,28 @@ final class DesignerRegistry {
         }
     }
 
-    private static @Nullable Map<String, Object> routeRepresentation(Scenario scenario, String method, String path) {
+    private static @Nullable Object routeRepresentation(Scenario scenario, String method, String path) {
         var route = scenario.route(method, path);
-        return route != null ? JsonTree.asObject(route.representation()) : null;
+        return route != null ? route.representation() : null;
     }
 
-    private static String versionOf(@Nullable Map<String, Object> catalogue) {
-        var version = catalogue != null ? JsonTree.string(catalogue, KEY_VERSION) : null;
+    private static String versionOf(@Nullable Object catalogue) {
+        var map = catalogue != null ? JsonTree.asObject(catalogue) : null;
+        var version = map != null ? JsonTree.string(map, KEY_VERSION) : null;
         return version != null && !version.isBlank() ? version : DEFAULT_VERSION;
     }
 
-    private static List<Map<String, Object>> unitsOf(@Nullable Map<String, Object> representation) {
-        return representation != null ? objectList(representation.get(KEY_UNITS)) : List.of();
+    private static List<Map<String, Object>> unitsOf(@Nullable Object representation) {
+        if (representation instanceof List<?> units) {
+            return objectList(units);
+        }
+        var map = JsonTree.asObject(representation);
+        return map != null ? objectList(map.get(KEY_UNITS)) : List.of();
     }
 
-    private static List<Map<String, Object>> blocksOf(@Nullable Map<String, Object> representation) {
-        return representation != null ? objectList(representation.get(KEY_BLOCKS)) : List.of();
+    private static List<Map<String, Object>> blocksOf(@Nullable Object representation) {
+        var map = JsonTree.asObject(representation);
+        return map != null ? objectList(map.get(KEY_BLOCKS)) : List.of();
     }
 
     private static List<String> projectIdsOf(Scenario scenario) {

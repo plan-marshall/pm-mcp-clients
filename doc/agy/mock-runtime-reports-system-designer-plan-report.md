@@ -42,7 +42,7 @@ through their legacy aliases into `reports-and-system#reports.unread` and
 | Suite | Result |
 |---|---|
 | `pm-mock-runtime` unit suite (`./mvnw -pl pm-mock-runtime test`) | All tests pass, including the new strict-loader and canonical-file assertions. |
-| `pm-web-app` Vitest (`npm run test:ci`) | 49 files, 400 tests pass, including the six new scenario-router tests. |
+| `pm-web-app` Vitest (`npm run test:ci`) | 49 files, 402 tests pass, including the eight new scenario-router tests. |
 | `pm-web-app` ESLint (`npm run lint`) | Clean. |
 | `pm-web-app` type check (`npm run check`) | 0 errors, 0 warnings. |
 

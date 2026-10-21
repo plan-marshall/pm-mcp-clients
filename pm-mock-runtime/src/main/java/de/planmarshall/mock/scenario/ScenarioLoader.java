@@ -243,9 +243,9 @@ public class ScenarioLoader {
             var typedRoute = (Map<String, Object>) routeMap;
             rejectUnknownFields(typedRoute, ROUTE_FIELDS, scenario, null, "routes." + routeKey);
             var rep = routeMap.get("representation");
-            if (!(rep instanceof Map<?, ?>)) {
+            if (!(rep instanceof Map<?, ?>) && !(rep instanceof List<?>)) {
                 throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
-                        "route representation must be a JSON object");
+                        "route representation must be a JSON object or a list");
             }
             validateRouteRepresentation(routeKey, rep, scenario);
             var status = asInt(routeMap.get("status"), 200);
@@ -510,15 +510,15 @@ public class ScenarioLoader {
      * routes fail the load when their representation is not what the contract allows.
      */
     private static void validateRouteRepresentation(String routeKey, Object representation, String scenario) {
-        var map = JsonTree.asObject(representation);
-        if (map == null) {
-            return;
-        }
         try {
-            if (routeKey.endsWith("/workflows") && map.get("units") instanceof List<?> units) {
-                for (var unit : units) {
-                    WorkflowUnit.fromMap(JsonTree.asObject(unit));
+            if (representation instanceof List<?> units) {
+                if (routeKey.endsWith("/workflows")) {
+                    validateUnitList(units);
                 }
+                return;
+            }
+            var map = JsonTree.asObject(representation);
+            if (map == null) {
                 return;
             }
             switch (routeKey) {
@@ -537,6 +537,12 @@ public class ScenarioLoader {
         catch (IOException | RuntimeException e) {
             throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
                     "representation does not decode with the pm-api codec: " + e.getMessage());
+        }
+    }
+
+    private static void validateUnitList(List<?> units) throws IOException {
+        for (var unit : units) {
+            WorkflowUnit.fromMap(JsonTree.asObject(unit));
         }
     }
 

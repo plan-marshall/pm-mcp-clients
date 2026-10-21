@@ -9,6 +9,15 @@ describe('scenarioMockFetch', () => {
     }
   });
 
+  it('covers every scenario file the mock runtime ships', () => {
+    const files = import.meta.glob('../../../../pm-mock-runtime/src/main/resources/scenarios/*.json');
+    const names = Object.keys(files).map((path) =>
+      path.split('/').pop()!.replace('.json', ''),
+    );
+
+    expect(names.sort()).toEqual(Object.keys(SCENARIOS).sort());
+  });
+
   it('serves a static route representation', async () => {
     const mock = scenarioFetch('reports-and-system');
 
@@ -40,6 +49,16 @@ describe('scenarioMockFetch', () => {
     expect(response.status).toBe(404);
     expect(body.error).toBe('mock_no_route');
     expect(body.state).toBe('designer.removed');
+  });
+
+  it('serves the workflow unit list as the bare array the API contract names', async () => {
+    const mock = scenarioFetch('designer');
+
+    const response = await mock.fetch('http://localhost/api/v1/workflows');
+    const body = (await response.json()) as unknown[];
+
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toBeGreaterThan(0);
   });
 
   it('serves the designer catalogue of the machine scope from its route', async () => {

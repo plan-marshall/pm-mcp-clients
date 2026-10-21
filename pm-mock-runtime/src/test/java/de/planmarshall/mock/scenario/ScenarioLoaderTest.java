@@ -16,23 +16,26 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.stream.Stream;
+
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import de.planmarshall.mock.StandardScenarios;
 
 @DisplayName("ScenarioLoader")
 class ScenarioLoaderTest {
 
+    static Stream<String> standardScenarioResources() {
+        return StandardScenarios.PRIMARY_SCENARIOS.stream()
+                .map(name -> "/scenarios/" + name + ".json");
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {
-            "/scenarios/onboarding.json",
-            "/scenarios/running-work.json",
-            "/scenarios/projects-and-start.json",
-            "/scenarios/reports-and-system.json",
-            "/scenarios/designer.json"
-    })
+    @MethodSource("standardScenarioResources")
     @DisplayName("loads and validates all standard scenarios from classpath")
     void loadsStandardScenarios(String resourcePath) throws Exception {
         try (var in = getClass().getResourceAsStream(resourcePath)) {
