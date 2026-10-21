@@ -3,6 +3,7 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import {
     apiClient,
     type ProcessTree,
@@ -555,6 +556,16 @@
           </button>
         </div>
       {/if}
+
+      <!-- The plan's own actions, settings, holds, and chats -->
+      <WorkControlPanel
+        subjectId={plan.plan_id}
+        subjectKind="plan"
+        projectId={plan.project.project_id}
+        ended={Boolean(ended)}
+        pullRequestNumber={plan.pull_request_number ?? null}
+        onChanged={() => void loadPlanProcess(false)}
+      />
 
       <!-- Tokens So Far -->
       <div class="plan-tokens mono" data-testid="plan-tokens">

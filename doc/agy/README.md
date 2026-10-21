@@ -26,7 +26,7 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 |---|---|---|---|---|
 | **Mock** | [`mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-projects-start` | `feat/mock-projects-start` | Ready to launch |
 | **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Active implementation |
-| **Web** | [`web-decisions-and-actions-plan.md`](web-decisions-and-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` | `feat/web-decisions-actions` | Ready to launch |
+| **Web** | [`web-reports-system-and-designer-plan.md`](web-reports-system-and-designer-plan.md) | — | — | Awaiting mock prerequisite (`mock-runtime-reports-system-designer-plan.md`) |
 
 ---
 
@@ -65,8 +65,9 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 3. **Overview, Plan & Epic View (Landed & Verified)**: [`web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) ([Report](verified/web-overview-plan-and-epic-view-plan-report.md) — PR #134, commit `aad7e44`)
 4. **Arrival Banners & i18n Cache (Landed & Verified)**: [`web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md) ([Report](verified/web-arrival-banners-and-i18n-cache-plan-report.md) — PR #142, commit `8db8629`)
    *(Complete removal of redundant top arrival notice banners; localStorage catalogue caching with SWR, synchronous hydration, and missing-key shielding)*
-5. **Decisions & Actions (Active)**: [`web-decisions-and-actions-plan.md`](web-decisions-and-actions-plan.md)
-6. **Reports, System & Designer**: `web-reports-system-and-designer-plan.md`
+5. **Decisions & Actions (Landed & Verified)**: [`web-decisions-and-actions-plan.md`](implemented/web-decisions-and-actions-plan.md) ([Report](verified/web-decisions-and-actions-plan-report.md) — PR #151, commit `1090bbc`)
+   *(Decisions tab count, notifications, one-step reveal, control actions bar, hold resolution, settings conflict dialogue, epic resource sections, findings/watches review, and ended-work chat)*
+6. **Reports, System & Designer (Pending Mock Prerequisite)**: `web-reports-system-and-designer-plan.md`
 
 ---
 

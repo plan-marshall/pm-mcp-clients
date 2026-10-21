@@ -2,7 +2,7 @@
   import '../styles/tokens.css';
   import '../styles/base.css';
   import { onMount, onDestroy } from 'svelte';
-  import { t, setLocale, currentLocale, initI18n } from '../lib/i18n';
+  import { t, setLocale, currentLocale, initI18n, messagesStore } from '../lib/i18n';
   import {
     runtimeStore,
     initRuntime,
@@ -83,6 +83,51 @@
   function toggleLocale() {
     setLocale($currentLocale === 'en' ? 'de' : 'en');
   }
+
+  /** The catalogue key of each route's tab title; the type makes a route impossible to miss. */
+  const ROUTE_TITLE_KEYS: Record<AppRoute, string> = {
+    pair: 'web.pair.page.title',
+    entry: 'start.plan.title',
+    onboarding: 'onboard.entry.title',
+    'project-onboarding': 'project.explorer.title',
+    settings: 'web.settings.page.title',
+    'machine-settings': 'web.settings.page.title',
+    projects: 'project.explorer.title',
+    overview: 'overview.running.title',
+    plan: 'plan.view.title',
+    epic: 'epic.view.title',
+    decomposition: 'epic.view.title',
+    decisions: 'decisions.list.title',
+    reports: 'report.list.title',
+    system: 'system.view.title',
+    cleanup: 'system.view.title',
+    designer: 'designer.view.title',
+    start: 'start.plan.title',
+    revoked: 'devices.revoked.title',
+    'listener-off': 'web.entry.lan_off.title',
+  };
+
+  /**
+   * The title the address bar carries for the route, before the open decisions are counted.
+   *
+   * @param route the route shown
+   * @returns the catalogue title of that route
+   */
+  function routeTitle(route: AppRoute): string {
+    return $t(ROUTE_TITLE_KEYS[route]);
+  }
+
+  // The tab title counts the open decisions, so an operator in another tab sees them without
+  // opening the app; the list and the badge carry the same count.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    const count = $runtimeStore.openDecisionsCount;
+    const key = ROUTE_TITLE_KEYS[$runtimeStore.currentRoute];
+    // The address bar never shows a raw key: the title waits for the catalogue to arrive.
+    if (!key || !$messagesStore[key]) return;
+    const base = routeTitle($runtimeStore.currentRoute);
+    document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
+  });
 </script>
 
 {#if !$runtimeStore.isInitialized}
