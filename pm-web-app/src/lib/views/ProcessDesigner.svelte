@@ -816,6 +816,14 @@
     });
   }
 
+  /** @param kind a diff row's kind @returns its glyph, so the row does not rely on colour */
+  function diffKindGlyph(kind: DiffRow['kind']): string {
+    if (kind === 'add') return '+';
+    if (kind === 'remove') return '−';
+    if (kind === 'change') return '~';
+    return '';
+  }
+
   /** @param value a line of the diff @returns the line, or a placeholder for a gap */
   function diffText(value: string | undefined): string {
     return value ?? '';
@@ -830,15 +838,7 @@
         role="group"
         aria-label={$t(`designer.diff.${row.kind}`)}
       >
-        <span class="diff-kind" aria-hidden="true">
-          {row.kind === 'add'
-            ? '+'
-            : row.kind === 'remove'
-              ? '−'
-              : row.kind === 'change'
-                ? '~'
-                : ''}
-        </span>
+        <span class="diff-kind" aria-hidden="true">{diffKindGlyph(row.kind)}</span>
         <span class="diff-no">{row.leftNo ?? ''}</span>
         <pre class="diff-line">{diffText(row.left)}</pre>
         <span class="diff-no diff-no--right">{row.rightNo ?? ''}</span>

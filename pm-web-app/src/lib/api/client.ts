@@ -1106,6 +1106,10 @@ export interface CleanupKeptItem {
   who: string;
 }
 
+/** The kept list as the runtime sends it: a bare array or an `items` wrapper. */
+type CleanupKeptResponse =
+  CleanupKeptItem[] | { items?: CleanupKeptItem[] } | Record<string, unknown>[];
+
 export interface CleanupResidue {
   step: string;
   last_sweep_at?: string;
@@ -1774,6 +1778,15 @@ function normaliseRuntimeMetrics(raw: unknown): RuntimeMetrics {
 }
 
 /**
+ * @param model a model metric as the runtime sent it
+ * @returns its id, from the short name or the harness-and-model pair
+ */
+function modelIdOf(model: Record<string, unknown>): string {
+  if (typeof model['id'] === 'string') return model['id'];
+  return typeof model['harness_and_model'] === 'string' ? model['harness_and_model'] : '';
+}
+
+/**
  * Normalises a model's figures from the runtime's wire names.
  *
  * @param raw the model metric as the runtime sent it
@@ -1784,7 +1797,7 @@ function normaliseModelMetric(raw: unknown): ModelMetric {
   const num = (key: string): number =>
     typeof model[key] === 'number' ? (model[key] as number) : 0;
   return {
-    id: typeof model['id'] === 'string' ? model['id'] : String(model['harness_and_model'] ?? ''),
+    id: modelIdOf(model),
     role: typeof model['role'] === 'string' ? model['role'] : undefined,
     calls_count: num('calls_count'),
     tokens_total: num('tokens_total'),
@@ -1871,6 +1884,48 @@ function normaliseCleanupItem(raw: unknown): CleanupItemEntry {
 }
 
 /**
+ * @param value a value as the runtime sent it
+ * @returns the value where it is text, else an empty string
+ */
+function textOf(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Normalises a kept cleanup item from the runtime's wire names.
+ *
+ * @param raw the item as the runtime sent it
+ * @returns the item under the names the cleanup view reads
+ */
+function normaliseKeptItem(raw: unknown): CleanupKeptItem {
+  const item = (raw ?? {}) as Record<string, unknown>;
+  return {
+    item_id: textOf(item['item_id']) || textOf(item['id']),
+    kind: textOf(item['kind']),
+    title: textOf(item['title']),
+    why: typeof item['why'] === 'string' ? item['why'] : textOf(item['how']),
+    kept_at: textOf(item['kept_at']),
+    who: textOf(item['who']),
+  };
+}
+
+/**
+ * Normalises a cleanup project from the runtime's wire names.
+ *
+ * @param raw the project as the runtime sent it
+ * @returns the project under the names the cleanup view reads
+ */
+function normaliseCleanupProject(raw: unknown): CleanupProjectItem {
+  const project = (raw ?? {}) as Record<string, unknown>;
+  const id = textOf(project['project_id']);
+  return {
+    project_id: id,
+    display_name: textOf(project['display_name']) || id,
+    items: (Array.isArray(project['items']) ? project['items'] : []).map(normaliseCleanupItem),
+  };
+}
+
+/**
  * Normalises a cleanup job from the runtime's wire names.
  *
  * @param raw the job as the runtime sent it
@@ -1878,32 +1933,14 @@ function normaliseCleanupItem(raw: unknown): CleanupItemEntry {
  */
 function normaliseCleanupJob(raw: CleanupJob): CleanupJob {
   const job = (raw ?? {}) as unknown as Record<string, unknown>;
-  const projectItems = (job['projects'] ?? job['project_items'] ?? []) as Array<
-    Record<string, unknown>
-  >;
-  const kept = (job['kept'] ?? []) as Array<Record<string, unknown>>;
+  const projectItems = (job['projects'] ?? job['project_items'] ?? []) as unknown[];
+  const kept = (job['kept'] ?? []) as unknown[];
   return {
     job_id: typeof job['job_id'] === 'string' ? job['job_id'] : '',
     due_since: typeof job['due_since'] === 'string' ? job['due_since'] : undefined,
     summary: normaliseCleanupSummary(job['summary']),
-    projects: projectItems.map((project) => ({
-      project_id: typeof project['project_id'] === 'string' ? project['project_id'] : '',
-      display_name:
-        typeof project['display_name'] === 'string'
-          ? project['display_name']
-          : typeof project['project_id'] === 'string'
-            ? project['project_id']
-            : '',
-      items: (Array.isArray(project['items']) ? project['items'] : []).map(normaliseCleanupItem),
-    })),
-    kept: kept.map((item) => ({
-      item_id: typeof item['item_id'] === 'string' ? item['item_id'] : String(item['id'] ?? ''),
-      kind: typeof item['kind'] === 'string' ? item['kind'] : '',
-      title: typeof item['title'] === 'string' ? item['title'] : '',
-      why: typeof item['why'] === 'string' ? item['why'] : String(item['how'] ?? ''),
-      kept_at: typeof item['kept_at'] === 'string' ? item['kept_at'] : '',
-      who: typeof item['who'] === 'string' ? item['who'] : '',
-    })),
+    projects: projectItems.map(normaliseCleanupProject),
+    kept: kept.map(normaliseKeptItem),
     residue: Array.isArray(job['residue']) ? (job['residue'] as CleanupResidue[]) : [],
     durations: (job['durations'] as CleanupDurations) ?? {
       plans_days: 0,
@@ -2715,10 +2752,9 @@ export class ApiClient {
     if (window) params.set('window', window);
     if (project) params.set('project', project);
     const qs = params.toString();
-    const snapshot = await this.request<SystemSnapshot>(
-      'GET',
-      `/api/v1/system${qs ? `?${qs}` : ''}`,
-    );
+    let path = '/api/v1/system';
+    if (qs) path += `?${qs}`;
+    const snapshot = await this.request<SystemSnapshot>('GET', path);
     return normaliseSystemSnapshot(snapshot);
   }
 
@@ -2810,23 +2846,9 @@ export class ApiClient {
   }
 
   public async getKeptCleanup(): Promise<{ items: CleanupKeptItem[] }> {
-    const data = await this.request<
-      CleanupKeptItem[] | { items?: CleanupKeptItem[] } | Record<string, unknown>[]
-    >('GET', '/api/v1/system/cleanup/kept');
+    const data = await this.request<CleanupKeptResponse>('GET', '/api/v1/system/cleanup/kept');
     const rawItems = Array.isArray(data) ? data : (data?.items ?? []);
-    return {
-      items: rawItems.map((raw) => {
-        const item = raw as unknown as Record<string, unknown>;
-        return {
-          item_id: typeof item['item_id'] === 'string' ? item['item_id'] : String(item['id'] ?? ''),
-          kind: typeof item['kind'] === 'string' ? item['kind'] : '',
-          title: typeof item['title'] === 'string' ? item['title'] : '',
-          why: typeof item['why'] === 'string' ? item['why'] : String(item['how'] ?? ''),
-          kept_at: typeof item['kept_at'] === 'string' ? item['kept_at'] : '',
-          who: typeof item['who'] === 'string' ? item['who'] : '',
-        };
-      }),
-    };
+    return { items: rawItems.map(normaliseKeptItem) };
   }
 
   public async releaseKeptCleanup(

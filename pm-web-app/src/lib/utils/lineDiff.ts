@@ -84,6 +84,50 @@ function operations(left: string[], right: string[]): Operation[] {
 }
 
 /**
+ * Compares oversized texts position by position rather than allocate a square table.
+ *
+ * @param left the lines before
+ * @param right the lines after
+ * @returns the rows and counts
+ */
+function positionalDiff(left: string[], right: string[]): LineDiff {
+  // A pasted file may be far larger than a unit; compare it position by position rather than
+  // allocate a table that grows with the square of its lines.
+  const rows: DiffRow[] = [];
+  let added = 0;
+  let removed = 0;
+  const bound = Math.max(left.length, right.length);
+  for (let index = 0; index < bound; index++) {
+    if (index >= left.length) {
+      rows.push({ kind: 'add', right: right[index], rightNo: index + 1 });
+      added++;
+    } else if (index >= right.length) {
+      rows.push({ kind: 'remove', left: left[index], leftNo: index + 1 });
+      removed++;
+    } else if (left[index] === right[index]) {
+      rows.push({
+        kind: 'same',
+        left: left[index],
+        right: right[index],
+        leftNo: index + 1,
+        rightNo: index + 1,
+      });
+    } else {
+      rows.push({
+        kind: 'change',
+        left: left[index],
+        right: right[index],
+        leftNo: index + 1,
+        rightNo: index + 1,
+      });
+      added++;
+      removed++;
+    }
+  }
+  return { rows, added, removed };
+}
+
+/**
  * Compares two texts line by line.
  *
  * Removed and added lines that stand next to each other become one `change` row, so the
@@ -97,40 +141,7 @@ export function diffLines(before: string, after: string): LineDiff {
   const left = before === '' ? [] : before.split('\n');
   const right = after === '' ? [] : after.split('\n');
   if (left.length * right.length > 4_000_000) {
-    // A pasted file may be far larger than a unit; compare it position by position rather than
-    // allocate a table that grows with the square of its lines.
-    const rows: DiffRow[] = [];
-    let added = 0;
-    let removed = 0;
-    const bound = Math.max(left.length, right.length);
-    for (let index = 0; index < bound; index++) {
-      if (index >= left.length) {
-        rows.push({ kind: 'add', right: right[index], rightNo: index + 1 });
-        added++;
-      } else if (index >= right.length) {
-        rows.push({ kind: 'remove', left: left[index], leftNo: index + 1 });
-        removed++;
-      } else if (left[index] === right[index]) {
-        rows.push({
-          kind: 'same',
-          left: left[index],
-          right: right[index],
-          leftNo: index + 1,
-          rightNo: index + 1,
-        });
-      } else {
-        rows.push({
-          kind: 'change',
-          left: left[index],
-          right: right[index],
-          leftNo: index + 1,
-          rightNo: index + 1,
-        });
-        added++;
-        removed++;
-      }
-    }
-    return { rows, added, removed };
+    return positionalDiff(left, right);
   }
   const result: DiffRow[] = [];
   let added = 0;

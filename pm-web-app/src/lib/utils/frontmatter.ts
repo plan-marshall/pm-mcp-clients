@@ -41,7 +41,10 @@ export interface ParsedUnit {
 }
 
 const OPEN = '---';
-const SCALAR_FIELDS: Array<[keyof FrontmatterFields, string]> = [
+type ScalarField =
+  'displayName' | 'description' | 'type' | 'author' | 'modified' | 'release' | 'signature';
+
+const SCALAR_FIELDS: Array<[ScalarField, string]> = [
   ['displayName', 'name'],
   ['description', 'description'],
   ['type', 'type'],
@@ -98,6 +101,53 @@ function openingDelimiter(lines: string[]): number {
 }
 
 /**
+ * Reads the block's lines into the fields.
+ *
+ * @param lines the frontmatter body, without delimiters
+ * @param fields the fields to fill
+ */
+function readFields(lines: string[], fields: FrontmatterFields): void {
+  let currentInterface: InterfaceItem | null = null;
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const interfaceMatch = /^(entry|exit)\s+(\S+)\s*$/.exec(line.trim());
+    if (interfaceMatch) {
+      const item: InterfaceItem = { id: interfaceMatch[2] };
+      (interfaceMatch[1] === 'entry' ? fields.entries : fields.exits).push(item);
+      currentInterface = item;
+      continue;
+    }
+    const key = scalarKey(line);
+    if (key) {
+      currentInterface = null;
+      readScalar(key, line.slice(line.indexOf(':') + 1).trim(), fields);
+      continue;
+    }
+    if (currentInterface && line.trim().length > 0) {
+      currentInterface.description = currentInterface.description
+        ? `${currentInterface.description}\n${line.trim()}`
+        : line.trim();
+    }
+  }
+}
+
+/**
+ * @param key the field's wire key
+ * @param value its value
+ * @param fields the fields to write into
+ */
+function readScalar(key: string, value: string, fields: FrontmatterFields): void {
+  if (key === 'name') fields.displayName = value;
+  else if (key === 'description') fields.description = value;
+  else if (key === 'type') fields.type = value;
+  else if (key === 'author') fields.author = value;
+  else if (key === 'modified') fields.modified = value;
+  else if (key === 'release') fields.release = value;
+  else if (key === 'signature') fields.signature = value;
+  else fields.extras.push([key, value]);
+}
+
+/**
  * Reads a unit's text into its header, frontmatter fields, and body.
  *
  * The opening delimiter is accepted only as the first non-blank line after the header, so a `---`
@@ -133,36 +183,7 @@ export function parseUnit(text: string): ParsedUnit {
     };
   }
 
-  let currentInterface: InterfaceItem | null = null;
-  for (const raw of lines.slice(openIndex + 1, closeIndex)) {
-    const line = raw.trimEnd();
-    const interfaceMatch = /^(entry|exit)\s+(\S+)\s*$/.exec(line.trim());
-    if (interfaceMatch) {
-      const item: InterfaceItem = { id: interfaceMatch[2] };
-      (interfaceMatch[1] === 'entry' ? fields.entries : fields.exits).push(item);
-      currentInterface = item;
-      continue;
-    }
-    const key = scalarKey(line);
-    if (key) {
-      currentInterface = null;
-      const value = line.slice(line.indexOf(':') + 1).trim();
-      if (key === 'name') fields.displayName = value;
-      else if (key === 'description') fields.description = value;
-      else if (key === 'type') fields.type = value;
-      else if (key === 'author') fields.author = value;
-      else if (key === 'modified') fields.modified = value;
-      else if (key === 'release') fields.release = value;
-      else if (key === 'signature') fields.signature = value;
-      else fields.extras.push([key, value]);
-      continue;
-    }
-    if (currentInterface && line.trim().length > 0) {
-      currentInterface.description = currentInterface.description
-        ? `${currentInterface.description}\n${line.trim()}`
-        : line.trim();
-    }
-  }
+  readFields(lines.slice(openIndex + 1, closeIndex), fields);
 
   return {
     header,
@@ -186,12 +207,16 @@ function serialiseFrontmatter(fields: FrontmatterFields): string[] {
   block.push(`description: ${fields.description}`.trimEnd());
   block.push(`type: ${fields.type}`.trimEnd());
   for (const entry of fields.entries) {
-    block.push(`entry ${entry.id}`.trimEnd());
-    if (entry.description) block.push(`  ${entry.description}`);
+    block.push(
+      `entry ${entry.id}`.trimEnd(),
+      ...(entry.description ? entry.description.split('\n').map((line) => `  ${line}`) : []),
+    );
   }
   for (const exit of fields.exits) {
-    block.push(`exit ${exit.id}`.trimEnd());
-    if (exit.description) block.push(`  ${exit.description}`);
+    block.push(
+      `exit ${exit.id}`.trimEnd(),
+      ...(exit.description ? exit.description.split('\n').map((line) => `  ${line}`) : []),
+    );
   }
   block.push(`author: ${fields.author}`.trimEnd());
   block.push(`modified: ${fields.modified}`.trimEnd());
@@ -289,6 +314,23 @@ function writeInterface(block: string[], fields: FrontmatterFields): void {
 }
 
 /**
+ * Writes the edited fields into the block's lines.
+ *
+ * @param block the frontmatter body, without delimiters
+ * @param fields the edited fields
+ * @param before the fields as the block had them
+ */
+function writeFields(block: string[], fields: FrontmatterFields, before: FrontmatterFields): void {
+  for (const [field, key] of SCALAR_FIELDS) {
+    writeScalar(block, key, fields[field]);
+  }
+  const interfaceChanged =
+    JSON.stringify(fields.entries) !== JSON.stringify(before.entries) ||
+    JSON.stringify(fields.exits) !== JSON.stringify(before.exits);
+  if (interfaceChanged) writeInterface(block, fields);
+}
+
+/**
  * Applies an edit to a unit's frontmatter and returns the new text.
  *
  * Only the lines of the fields the edit changed are rewritten; a comment, an unknown field, or a
@@ -321,13 +363,7 @@ export function editFrontmatter(
   }
 
   const block = parsed.rawBlock.slice(1, -1);
-  for (const [field, key] of SCALAR_FIELDS) {
-    writeScalar(block, key, String(fields[field] ?? ''));
-  }
-  const interfaceChanged =
-    JSON.stringify(fields.entries) !== JSON.stringify(parsed.fields.entries) ||
-    JSON.stringify(fields.exits) !== JSON.stringify(parsed.fields.exits);
-  if (interfaceChanged) writeInterface(block, fields);
+  writeFields(block, fields, parsed.fields);
 
   return [parsed.header, ...parsed.preface, OPEN, ...block, ...parsed.body].join('\n');
 }

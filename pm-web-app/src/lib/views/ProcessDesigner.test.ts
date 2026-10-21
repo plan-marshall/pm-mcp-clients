@@ -408,7 +408,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     await fireEvent.click(findingRow.querySelector('button') as HTMLButtonElement);
 
     const editor = screen.getByTestId('workflow-text') as HTMLTextAreaElement;
-    expect(editor.value.slice(0, editor.selectionStart).split('\n').length).toBe(2);
+    expect(editor.value.slice(0, editor.selectionStart).split('\n')).toHaveLength(2);
   });
 
   it('shows the side-by-side difference before placing and lands it', async () => {
