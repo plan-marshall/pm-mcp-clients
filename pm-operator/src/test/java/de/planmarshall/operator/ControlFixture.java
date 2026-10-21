@@ -284,6 +284,8 @@ final class ControlFixture implements AutoCloseable {
                 throw new IllegalStateException(exception);
             }
         });
+        // A failing screen test must not keep the forked test JVM alive.
+        thread.setDaemon(true);
         thread.start();
         return thread;
     }

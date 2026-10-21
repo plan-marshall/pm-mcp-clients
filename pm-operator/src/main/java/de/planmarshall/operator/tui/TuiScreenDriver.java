@@ -372,6 +372,8 @@ public final class TuiScreenDriver {
     private KeyMap<String> menuKeyMap(TuiMenu menu) {
         var map = new KeyMap<String>();
         map.setAmbiguousTimeout(AMBIGUOUS_TIMEOUT_MILLIS);
+        bindMenuCapability(map, MENU_UP, InfoCmp.Capability.key_up);
+        bindMenuCapability(map, MENU_DOWN, InfoCmp.Capability.key_down);
         for (var entry : menu.entries()) {
             map.bindIfNotBound(entry.trigger(), entry.trigger());
         }
@@ -379,15 +381,13 @@ public final class TuiScreenDriver {
         map.bindIfNotBound(MENU_CLOSE, "a");
         map.bind(MENU_ENTER, "\r");
         map.bindIfNotBound(MENU_ENTER, "\n");
-        bindMenuCapability(map, MENU_UP, InfoCmp.Capability.key_up);
-        bindMenuCapability(map, MENU_DOWN, InfoCmp.Capability.key_down);
         return map;
     }
 
     private void bindMenuCapability(KeyMap<String> map, String target, InfoCmp.Capability capability) {
         var sequence = KeyMap.key(terminal, capability);
         if (sequence != null && !sequence.isEmpty()) {
-            map.bindIfNotBound(target, sequence);
+            map.bind(target, sequence);
         }
     }
 
@@ -409,9 +409,8 @@ public final class TuiScreenDriver {
         // A lone Esc is also the prefix of the arrow and page sequences; the terminal sends a
         // sequence in one write, so a short wait tells them apart without a visible lag on Esc.
         map.setAmbiguousTimeout(AMBIGUOUS_TIMEOUT_MILLIS);
-        for (var binding : TuiKeyRegistry.bindings(kind)) {
-            map.bindIfNotBound(binding.action(), binding.trigger());
-        }
+        // The capability sequences come first: a lone Esc is their prefix, and a binding that is
+        // already a prefix would keep bindIfNotBound from adding the longer arrow sequence.
         bindCapability(map, TuiKeyAction.MOVE_UP, InfoCmp.Capability.key_up);
         bindCapability(map, TuiKeyAction.MOVE_DOWN, InfoCmp.Capability.key_down);
         bindCapability(map, TuiKeyAction.PAGE_UP, InfoCmp.Capability.key_ppage);
@@ -419,13 +418,16 @@ public final class TuiScreenDriver {
         bindCapability(map, TuiKeyAction.OPEN, InfoCmp.Capability.key_enter);
         bindCapability(map, TuiKeyAction.BACK, InfoCmp.Capability.key_left);
         bindCapability(map, TuiKeyAction.OPEN, InfoCmp.Capability.key_right);
+        for (var binding : TuiKeyRegistry.bindings(kind)) {
+            map.bindIfNotBound(binding.action(), binding.trigger());
+        }
         return map;
     }
 
     private void bindCapability(KeyMap<TuiKeyAction> map, TuiKeyAction action, InfoCmp.Capability capability) {
         var sequence = KeyMap.key(terminal, capability);
         if (sequence != null && !sequence.isEmpty()) {
-            map.bindIfNotBound(action, sequence);
+            map.bind(action, sequence);
         }
     }
 

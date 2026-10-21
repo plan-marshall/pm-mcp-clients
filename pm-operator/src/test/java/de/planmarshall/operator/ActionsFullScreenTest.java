@@ -245,7 +245,9 @@ class ActionsFullScreenTest {
             select(virtual, "Relay Metrics");
             virtual.type("a");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "Start"));
-            virtual.type("\u001bOB");
+            var down = org.jline.keymap.KeyMap.key(virtual.terminal(),
+                                org.jline.utils.InfoCmp.Capability.key_down);
+            virtual.type(down != null && !down.isEmpty() ? down : "\u001b[B");
             ControlFixture.delay(150L);
             virtual.type("\r");
             ControlFixture.await(() -> out.toString().contains("Abandon relay-metrics?"));
