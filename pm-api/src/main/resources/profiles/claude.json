@@ -69,7 +69,7 @@
           "target": [ "/input/file_path", "/input.command" ] },
         "tool_result": { "match": [ "user" ], "size": "/size", "is_error": null },
         "file_changed": { "match": [ "file_changed" ], "path": "/path" },
-        "turn": { "match": [ "result" ] }
+        "turn": { "match": [ "result" ], "stop_reason": null }
       }
     },
     "endpoints": [ "api.anthropic.com:443" ],
