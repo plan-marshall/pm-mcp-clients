@@ -1916,6 +1916,17 @@ function normaliseCleanupJob(raw: CleanupJob): CleanupJob {
   };
 }
 
+/**
+ * @param message the runtime's error code or the HTTP status
+ * @param status the response status
+ * @returns an error carrying the status, so a caller can tell a refusal from an unavailable route
+ */
+function httpError(message: string, status: number): Error {
+  const error = new Error(message) as Error & { status?: number };
+  error.status = status;
+  return error;
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
@@ -2747,10 +2758,12 @@ export class ApiClient {
     } catch (err: unknown) {
       // The operator channel is the runtime's own withdraw. A deployment that offers only the
       // system route is the fallback; a refused withdraw (the links are switched) is not retried.
+      const status = (err as Error & { status?: number })?.status;
       const message = (err as Error)?.message ?? '';
+      if (status === 409 || message.includes('not_withdrawable')) throw err;
       const routeUnavailable =
-        message.includes('404') ||
-        message.includes('405') ||
+        status === 404 ||
+        status === 405 ||
         message.includes('mock_no_route') ||
         message.includes('unknown_route') ||
         message.includes('no route');
@@ -2869,7 +2882,7 @@ export class ApiClient {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP ${res.status}`);
+      throw httpError(err.error || `HTTP ${res.status}`, res.status);
     }
 
     return res.json() as Promise<T>;

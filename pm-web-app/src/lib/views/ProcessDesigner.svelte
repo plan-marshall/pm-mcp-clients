@@ -825,11 +825,24 @@
 {#snippet diffTable(rows: DiffRow[], testId: string)}
   <div class="designer__diff" data-testid={testId}>
     {#each rows as row}
-      <div class="diff-row diff-row--{row.kind}">
+      <div
+        class="diff-row diff-row--{row.kind}"
+        role="group"
+        aria-label={$t(`designer.diff.${row.kind}`)}
+      >
+        <span class="diff-kind" aria-hidden="true">
+          {row.kind === 'add'
+            ? '+'
+            : row.kind === 'remove'
+              ? '−'
+              : row.kind === 'change'
+                ? '~'
+                : ''}
+        </span>
         <span class="diff-no">{row.leftNo ?? ''}</span>
         <pre class="diff-line">{diffText(row.left)}</pre>
-        <span class="diff-no">{row.rightNo ?? ''}</span>
-        <pre class="diff-line">{diffText(row.right)}</pre>
+        <span class="diff-no diff-no--right">{row.rightNo ?? ''}</span>
+        <pre class="diff-line diff-line--right">{diffText(row.right)}</pre>
       </div>
     {/each}
   </div>
@@ -1999,10 +2012,16 @@
 
   .diff-row {
     display: grid;
-    grid-template-columns: 3rem 1fr 3rem 1fr;
+    grid-template-columns: 1rem 3rem 1fr 3rem 1fr;
     gap: var(--space-2);
     padding: 0 var(--space-2);
     white-space: pre;
+  }
+
+  .diff-kind {
+    color: var(--color-text-secondary);
+    font-weight: 700;
+    text-align: center;
   }
 
   .diff-row--add {
@@ -2065,11 +2084,11 @@
     }
 
     .diff-row {
-      grid-template-columns: 2rem 1fr;
+      grid-template-columns: 1rem 2rem 1fr;
     }
 
-    .diff-row .diff-no:nth-child(3),
-    .diff-row .diff-line:nth-child(4) {
+    .diff-no--right,
+    .diff-line--right {
       display: none;
     }
   }

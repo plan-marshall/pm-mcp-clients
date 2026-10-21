@@ -180,6 +180,17 @@ describe('ApiClient wire normalisation', () => {
     });
   });
 
+  it('does not fall back to the system withdraw route on a refusal', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ error: 'cannot_withdraw' }),
+    });
+
+    await expect(client.withdrawUpgrade()).rejects.toThrow('cannot_withdraw');
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('reads a cleanup job and its kept items under the view names', async () => {
     respond({
       job_id: 'cln-1',

@@ -228,7 +228,10 @@ export function serialiseUnit(unit: ParsedUnit): string {
  * @param value its new value
  */
 function writeScalar(block: string[], key: string, value: string): void {
-  const index = block.findIndex((line) => new RegExp(`^${key}\\s*:`).test(line));
+  const index = block.findIndex((line) => {
+    const colon = line.indexOf(':');
+    return colon > 0 && line.slice(0, colon).trim() === key;
+  });
   if (index === -1) {
     if (value.length > 0) block.push(`${key}: ${value}`);
     return;

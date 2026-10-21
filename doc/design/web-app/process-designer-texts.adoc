@@ -477,4 +477,20 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |The removal was refused.
 |Das Entfernen wurde abgelehnt.
 
+|`designer.diff.same`
+|unchanged line
+|unveränderte Zeile
+
+|`designer.diff.add`
+|added line
+|hinzugefügte Zeile
+
+|`designer.diff.remove`
+|removed line
+|entfernte Zeile
+
+|`designer.diff.change`
+|changed line
+|geänderte Zeile
+
 |===
