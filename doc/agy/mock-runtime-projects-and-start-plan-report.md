@@ -97,5 +97,5 @@ No test was skipped, weakened, or removed to obtain a green build. The malformed
 
 ## 5. Residual / Deferred
 
-- The transitional top-level `start_case` fallback in `StartRegistry` exists solely for `fully-onboarded.json`; Wave 3 (`mock-runtime-reports-system-designer-plan.md`) removes the field from `Scenario` / `ScenarioLoader` and can then delete the fallback.
+- The transitional top-level `start_case` fallback in `StartRegistry` exists solely for `fully-onboarded.json`, and the case-name mapping in `MockRuntime` exists only because `ScenarioRegistry`'s coarse alias table is owned by Wave 3 (`mock-runtime-reports-system-designer-plan.md`). That wave removes the field from `Scenario` / `ScenarioLoader`, makes the case-specific aliases authoritative, and can then delete both bridges.
 - Timed `events` blocks are not attached to start states: start acts are synchronous and the runtime's `StartStateResource` emits the catalogue events (`entry.opened`, `plan.started`, `epic.started`, `plan.abandoned`) through the live registry. Adding static timed events would risk injecting frames ahead of an act's event; event coverage remains assertion-based in `StartScenarioTest`.

@@ -43,9 +43,11 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 public final class MockRuntime implements AutoCloseable {
 
     /**
-     * The legacy case names of Scenario 3 mapped to their consolidated state. The registry's coarse
-     * alias table points every project/start alias at the scenario's primary state; a client (and a
-     * transcript test) that still names a case receives the case it names.
+     * The legacy case names of Scenario 3 mapped to their consolidated state. The registry's own
+     * coarse alias table points every project/start alias at the scenario's primary state; a client
+     * (and a transcript test) that still names a case receives the case it names. The registry table
+     * is owned by the Wave 3 finalization; this runtime seam is removed with the transitional
+     * {@code startCase} fallback when that wave makes the mapping authoritative.
      */
     private static final Map<String, String> LEGACY_CASE_STATES = Map.ofEntries(
             Map.entry(StandardScenarios.PROJECTS, "projects.explorer"),
