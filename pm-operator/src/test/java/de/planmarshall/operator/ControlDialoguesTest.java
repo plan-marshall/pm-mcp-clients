@@ -497,6 +497,14 @@ class ControlDialoguesTest {
                 response.json(200, new HoldResolutionResult("H-1", true, null, "p").toJson());
             } else if (path.endsWith("/holds")) {
                 response.json(200, STALLED_HOLD);
+            } else if (path.contains("/plans/conflict/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.contains("/plans/conflict/settings")) {
+                response.json(409, PlanSettingsUpdateResult.conflict(8, "landing.main").toJson());
+            } else if (path.contains("/plans/refused/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.contains("/plans/refused/settings")) {
+                response.json(400, "{\"error\":\"refused\",\"reason\":\"the base branch is protected\"}");
             } else if (path.endsWith("/settings") && "GET".equals(request.method())) {
                 response.json(200, SETTINGS);
             } else if (path.endsWith("/settings")) {
@@ -536,6 +544,9 @@ class ControlDialoguesTest {
         PlanSettingsRecord settings = client.settings("p");
         assertEquals(7, settings.revision());
         assertTrue(client.updateSettings("p", 7, "landing", "landing.main").result().applied());
+        assertTrue(client.updateSettings("conflict", 7, "landing", "landing.main").result().conflict());
+        assertEquals("the base branch is protected",
+                            client.updateSettings("refused", 7, "landing", "landing.main").refusalReason());
         ReviewResource review = client.review("e", "findings");
         assertEquals(1, review.items().size());
         assertEquals(1, client.disposition("e", "F-1", "kept", null).items().size());
@@ -914,5 +925,20 @@ class ControlDialoguesTest {
                             "config", "plan-defaults", "--plan", "p");
         assertEquals(0, code, out.toString());
         assertTrue(out.toString().contains("version becomes 8"), out.toString());
+    }
+
+    @Test
+    @DisplayName("config roles --plan asks that group and finds nothing to change")
+    void verbConfigPlanEmptyGroup() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/settings")) {
+                response.json(200, SETTINGS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
+                            "config", "roles", "--plan", "p");
+        assertEquals(0, code, out.toString());
     }
 }

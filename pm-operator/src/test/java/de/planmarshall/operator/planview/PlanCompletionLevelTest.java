@@ -10,6 +10,7 @@
 package de.planmarshall.operator.planview;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -53,6 +54,8 @@ class PlanCompletionLevelTest {
     @DisplayName("the report names its outcome, reason, deliverables, decisions and tokens")
     void reportLines() throws Exception {
         var text = text();
+        var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT));
+        assertEquals("fix-relay", level.planId());
         assertTrue(text.contains("completion report"), text);
         assertTrue(text.contains("merged"), text);
         assertTrue(text.contains("#214"), text);
