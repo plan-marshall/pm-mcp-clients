@@ -2,7 +2,7 @@
 
 This implementation plan governs the remediation of `web-decisions` (`doc/plans/implemented/web-decisions.adoc`) and the execution of the `web-actions` work package (`doc/plans/web-actions.adoc`, epic clients) in `pm-web-app` and `pm-web-e2e`, consuming the shared `ChatPanel.svelte` built by the in-flight [`doc/agy/web-start-plan.md`](web-start-plan.md).
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
 ---
 
@@ -14,8 +14,8 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Specifications** | [`decision-contract.adoc`](../plans/implemented/decision-contract.adoc), [`control-contract.adoc`](../plans/implemented/control-contract.adoc), [`state-catalogue.adoc#chat`](../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
 | **Local Client Design** | [`doc/design/shared/decisions.adoc`](../design/shared/decisions.adoc), [`doc/design/shared/work-actions.adoc`](../design/shared/work-actions.adoc), [`doc/design/shared/epic-view.adoc`](../design/shared/epic-view.adoc), [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) |
 | **Roadmap Packages** | [`doc/plans/implemented/web-decisions.adoc`](../plans/implemented/web-decisions.adoc), [`doc/plans/web-actions.adoc`](../plans/web-actions.adoc) (`open`) |
-| **Prerequisite Plans** | [`doc/agy/web-start-plan.md`](web-start-plan.md) (in flight; provides `ChatPanel.svelte`), [`doc/agy/web-foundation-routing-and-catalogue-plan.md`](web-foundation-routing-and-catalogue-plan.md), [`doc/agy/web-overview-plan-and-epic-view-plan.md`](web-overview-plan-and-epic-view-plan.md), [`doc/agy/mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
+| **Prerequisite Plans** | [`doc/agy/implemented/web-start-plan.md`](implemented/web-start-plan.md) (landed, PR #117; provides `ChatPanel.svelte`), [`doc/agy/implemented/web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md) (landed, PR #126), [`doc/agy/implemented/web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) (landed, PR #134), [`doc/agy/implemented/web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md) (landed, PR #142), [`doc/agy/implemented/mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) (landed, PR #136) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
 ---
@@ -49,12 +49,13 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 ## 3. Concurrency & Isolation
 
-- **Depends on**:
-  - [`doc/agy/web-start-plan.md`](web-start-plan.md) (in flight; provides `ChatPanel.svelte`)
-  - [`doc/agy/web-foundation-routing-and-catalogue-plan.md`](web-foundation-routing-and-catalogue-plan.md)
-  - [`doc/agy/web-overview-plan-and-epic-view-plan.md`](web-overview-plan-and-epic-view-plan.md) (runs after `web-overview-plan-and-epic-view` so `PlanView`, `EpicView`, and `OverviewView` are never edited concurrently)
-  - [`doc/agy/mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md)
-- **Parallelizable with**: `cli-fullscreen-actions-plan.md`, `web-reports-system-and-designer-plan.md`.
+- **Prerequisites Satisfied**:
+  - [`doc/agy/implemented/web-start-plan.md`](implemented/web-start-plan.md) (provides `ChatPanel.svelte`)
+  - [`doc/agy/implemented/web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md)
+  - [`doc/agy/implemented/web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md)
+  - [`doc/agy/implemented/web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md)
+  - [`doc/agy/implemented/mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md)
+- **Parallelizable with**: `mock-runtime-projects-and-start-plan.md` and `cli-fullscreen-actions-plan.md`.
 
 ### Boundary Rules
 - **Sole Owner of**:

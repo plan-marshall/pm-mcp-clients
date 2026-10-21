@@ -2,7 +2,7 @@
 
 This implementation plan governs the completion of the full-screen Project Explorer (`projects` without `--list`, and `--project ?` selector) for `UC-PRJ-1..3` (`doc/plans/implemented/cli-projects.adoc`) in `pm-operator`, building on [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md) and [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md).
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
 ---
 
@@ -15,7 +15,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Local Client Design** | Shared: [`doc/design/shared/project-explorer.adoc`](../design/shared/project-explorer.adoc), [`project-onboarding.adoc`](../design/shared/project-onboarding.adoc)<br>CLI: [`doc/design/terminal-client/17-projects.adoc`](../design/terminal-client/17-projects.adoc) (`#explorer`, `#commands`, `#list`, `#texts`), [`02-levels.adoc#addressing`](../design/terminal-client/02-levels.adoc) (`--project ?`) |
 | **Roadmap Package** | [`doc/plans/implemented/cli-projects.adoc`](../plans/implemented/cli-projects.adoc) |
 | **Prerequisite Plans** | [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md), [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md), [`doc/agy/mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
 ---
