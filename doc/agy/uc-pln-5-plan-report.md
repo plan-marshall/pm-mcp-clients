@@ -76,7 +76,8 @@ dependencies), sources, landings with analysis, findings/watches review entry, t
 |---|---|
 | `src/lib/api/client.ts` | `EpicWorkRow.pull_request_url?: string \| null`. |
 | `src/lib/views/EpicView.svelte` | Localized state (resource is authoritative over the process); `running of scope at once`; ended-epic end marker; next-plan marker; workstream id, per-status counts, and fold/unfold honouring the resource's `open`; status glyphs (`✓ ▶ ⏸ ! ✕ ○`); landings list with `<a target="_blank" rel="noopener noreferrer">` only for `http(s)` addresses; wall-time events; `no sources` text; closed-catalogue SSE subscription; responsive rules down to 320 px and no fixed 320 px grid track. |
-| `src/lib/views/EpicView.test.ts` | 16 tests (was 10): added counts/fold, next plan, landing link, localized end, empty sources, wall-time events, closed-catalogue reload, and an SSE-driven event-list update. |
+| `src/lib/views/EpicView.test.ts` | 17 tests (was 10): added counts/fold, next plan, landing link, localized end, empty sources, wall-time events, closed-catalogue reload, an SSE-driven event-list update, and the two-word status normalization. |
+| `src/lib/views/epicEvents.ts` + `epicEvents.test.ts` | **New.** The epic view's reload set as a named constant, with a test that reads `pm-api`'s `EventName.java` and refuses any name the closed catalogue does not hold. |
 
 ### `pm-web-e2e`
 
@@ -102,13 +103,14 @@ dependencies), sources, landings with analysis, findings/watches review entry, t
 | `EpicViewCatalogueTest` (new) | 6 tests, 0 failures — 47-key presence, EN/DE parity, ICU formatting |
 | `ControlResourcesTest` | pass, including the new `pull_request_url` round-trip |
 | `pm-mock-runtime` (all) | **400 tests, 0 failures** |
-| `EpicViewScenarioTest` (new) | 5 tests, 0 failures |
+| `EpicViewScenarioTest` (new) | 6 tests, 0 failures |
 | `pm-operator` (all) | **850 tests, 0 failures** |
 | `EpicViewLevelTest` / `EpicViewFullScreenTest` / `ControlEpicTranscriptTest` / `EpicCommandTest` | 9 / 10 / 1 / 12 tests, 0 failures |
 | `pm-relay` (all) | 26 tests, 0 failures |
 | `pm-exec` (all) | 87 tests, 0 failures, 3 pre-existing skips |
-| `pm-web-app` Vitest | **400 tests across 48 files, 0 failures** |
-| `EpicView.test.ts` | 16 tests, 0 failures |
+| `pm-web-app` Vitest | **403 tests across 49 files, 0 failures** |
+| `EpicView.test.ts` | 17 tests, 0 failures |
+| `epicEvents.test.ts` (new) | 2 tests, 0 failures — every subscribed event is a member of `EventName` |
 | `pm-web-app` `npm run check` | 0 errors, 0 warnings |
 | `pm-web-app` / `pm-web-e2e` `npm run lint` | clean |
 | `pm-web-e2e/tests/epic-view.spec.js` | **10 passed** |
