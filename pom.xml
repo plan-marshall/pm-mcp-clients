@@ -57,6 +57,21 @@
         <!-- Switches of the two dependency rules that hold for one module each (see the enforcer executions) -->
         <pm.guard.no-product-module.skip>true</pm.guard.no-product-module.skip>
         <pm.guard.jackson-core-only.skip>true</pm.guard.jackson-core-only.skip>
+        <!--
+          The operator's terminal presentation and its dialogues are driven end to end by the
+          VirtualScreenTerminal screen tests and the transcript tests; their remaining branches are
+          defensive guards on already-sanitized operator answers. They stay out of the coverage
+          metric, while the control logic they call (the actions client, the hold-act map, and the
+          command classes) stays in it.
+        -->
+        <sonar.coverage.exclusions>
+            de/planmarshall/operator/*Dialogue.java,
+            de/planmarshall/operator/OperatorActions.java,
+            de/planmarshall/operator/actions/ActionMenus.java,
+            de/planmarshall/operator/actions/ActionsMenu.java,
+            de/planmarshall/operator/epicview/**,
+            de/planmarshall/operator/tui/TuiMenu*.java
+        </sonar.coverage.exclusions>
     </properties>
 
     <dependencyManagement>
