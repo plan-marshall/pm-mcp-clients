@@ -31,6 +31,13 @@ describe('lineDiff', () => {
     ]);
   });
 
+  it('treats an empty text as no lines', () => {
+    const diff = diffLines('', 'a\nb');
+    expect(diff.removed).toBe(0);
+    expect(diff.added).toBe(2);
+    expect(diff.rows.every((row) => row.kind === 'add')).toBe(true);
+  });
+
   it('keeps an empty line as a line of its own', () => {
     const diff = diffLines('a\n\nb', 'a\nb');
     expect(diff.removed).toBe(1);

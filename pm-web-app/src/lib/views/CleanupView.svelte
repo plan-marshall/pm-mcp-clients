@@ -37,9 +37,6 @@
   let selectedKeptIds = $state<Record<string, boolean>>({});
 
   onMount(() => {
-    const remembered = get(runtimeStore);
-    uncheckedIds = { ...(remembered.cleanupUncheckedIds ?? {}) };
-    previewItemId = remembered.cleanupPreviewItemId ?? null;
     void loadData();
   });
 
@@ -47,7 +44,23 @@
    * Keeps the selection on the runtime store, so a preview or another view returns to it.
    */
   function persistSelection(): void {
-    runtimeStore.update((s) => ({ ...s, cleanupUncheckedIds: { ...uncheckedIds } }));
+    runtimeStore.update((s) => ({
+      ...s,
+      cleanupSelectionJobId: job?.job_id ?? null,
+      cleanupUncheckedIds: { ...uncheckedIds },
+    }));
+  }
+
+  /** Clears the checks and the preview a job held, so a later job starts clean. */
+  function clearRememberedSelection(): void {
+    uncheckedIds = {};
+    previewItemId = null;
+    runtimeStore.update((s) => ({
+      ...s,
+      cleanupSelectionJobId: null,
+      cleanupUncheckedIds: {},
+      cleanupPreviewItemId: null,
+    }));
   }
 
   /**
@@ -76,6 +89,16 @@
       ]);
       job = cleanupJob;
       keptItems = keptRes?.items || [];
+      const remembered = get(runtimeStore);
+      if (job && remembered.cleanupSelectionJobId === job.job_id) {
+        uncheckedIds = { ...(remembered.cleanupUncheckedIds ?? {}) };
+        previewItemId = remembered.cleanupPreviewItemId ?? null;
+      } else {
+        clearRememberedSelection();
+        if (job) {
+          runtimeStore.update((s) => ({ ...s, cleanupSelectionJobId: cleanupJob?.job_id ?? null }));
+        }
+      }
     } catch {
       loadError = $t('system.cleanup.load_failed');
     } finally {
@@ -192,6 +215,7 @@
     if (!job) return;
     try {
       await apiClient.remindCleanup(job.job_id);
+      clearRememberedSelection();
       actionSuccess = $t('system.cleanup.reminded', { date: 'in 3 days' });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {
@@ -203,6 +227,7 @@
     if (!job) return;
     try {
       await apiClient.ignoreCleanup(job.job_id);
+      clearRememberedSelection();
       actionSuccess = $t('system.cleanup.ignored', { count: allItems.length });
       setTimeout(() => navigateTo('system'), 1500);
     } catch (err: unknown) {

@@ -294,6 +294,19 @@ describe('SystemView component', () => {
     await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith('7d', 'pm-mcp-clients'));
   });
 
+  it('drops a remembered project that is no longer enrolled', async () => {
+    localStorage.setItem(
+      'pm_system_filters',
+      JSON.stringify({ window: 'hour', groupBy: 'model', project: 'gone' }),
+    );
+    const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenLastCalledWith('hour', undefined));
+    expect(JSON.parse(localStorage.getItem('pm_system_filters') ?? '{}').project).toBe('');
+  });
+
   it('makes the work figures links to what they count', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
     render(SystemView);

@@ -85,8 +85,14 @@ test.describe('Process Designer Flow (UC-PLN-3)', () => {
   });
 
   test('shows the difference and places the open unit in a project', async ({ page }) => {
-    // Choose the project explicitly so the placement lands there
+    // Choose the project explicitly so the placement lands there, and wait for the units the
+    // choice reloads before editing: that load opens the project's unit and would replace the fill.
+    const projectLoaded = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/projects/pm-mcp-clients/workflows') && response.ok(),
+    );
     await page.getByTestId('project-select').selectOption('pm-mcp-clients');
+    await projectLoaded;
 
     // A changed unit is what the comparison and the placing are for; the same text is refused.
     await page

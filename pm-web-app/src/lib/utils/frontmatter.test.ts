@@ -57,6 +57,26 @@ describe('frontmatter', () => {
     expect(edited).toContain('state finalize.review');
   });
 
+  it('does not mistake a delimiter pair in the body for a frontmatter', () => {
+    const text = 'workflow x version 1 format 1\nstate a\n---\nnot: frontmatter\n---\n';
+    expect(parseUnit(text).hasFrontmatter).toBe(false);
+    expect(parseUnit(text).body).toEqual(['state a', '---', 'not: frontmatter', '---', '']);
+  });
+
+  it('keeps comments and an unmodelled description across an edit', () => {
+    const withComment = unit
+      .replace('custom: kept', '# a comment\ncustom: kept')
+      .replace('  The execute phase ended.', '  The execute phase ended.\n  A second line.');
+    const edited = editFrontmatter(withComment, (fields) => {
+      fields.release = '0.10.0';
+    });
+
+    expect(edited).toContain('# a comment');
+    expect(edited).toContain('  The execute phase ended.\n  A second line.');
+    expect(edited).toContain('release: 0.10.0');
+    expect(edited).toContain('custom: kept');
+  });
+
   it('adds a frontmatter to a unit that has none', () => {
     const bare = 'workflow new-unit version 1 format 1\nstate start\n';
     expect(parseUnit(bare).hasFrontmatter).toBe(false);
@@ -73,6 +93,7 @@ describe('frontmatter', () => {
     const parsed = parseUnit(added);
     expect(parsed.hasFrontmatter).toBe(true);
     expect(parsed.fields.displayName).toBe('New');
+    expect(added.split('\n')[1]).toBe('---');
     expect(added).toContain('state start');
   });
 

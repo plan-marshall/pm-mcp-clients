@@ -315,6 +315,37 @@ describe('ReportsView component', () => {
     expect(screen.getByText(/relay-docs was deleted by the cleanup/)).toBeInTheDocument();
   });
 
+  it('opens a cleanup report at the job and clears a stored preview', async () => {
+    const cleanupReport: ReportItem = {
+      id: 'rep-0130',
+      from: { project: 'pm-mcp-clients' },
+      kind: 'system.cleanup_due',
+      subject: 'Cleanup is due',
+      subject_params: { item: 'fix-relay' },
+      created_at: '2026-10-16T09:00:00Z',
+      created: 'today 09:00',
+      detail_link: '/api/v1/system/cleanup',
+    };
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [cleanupReport],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
+    runtimeStore.update((s) => ({ ...s, cleanupPreviewItemId: 'plan-1' }));
+
+    render(ReportsView);
+
+    const card = (await screen.findByText('Cleanup is due')).closest('.report-card');
+    await fireEvent.click(
+      within(card as HTMLElement).getByRole('button', { name: /Show the details/i }),
+    );
+
+    expect(get(runtimeStore).currentRoute).toBe('cleanup');
+    expect(get(runtimeStore).cleanupHighlightItemId).toBe('fix-relay');
+    expect(get(runtimeStore).cleanupPreviewItemId).toBeNull();
+  });
+
   it('announces a coalesced arrival politely and leaves the tab title alone', async () => {
     const originalTitle = document.title;
     render(ReportsView);

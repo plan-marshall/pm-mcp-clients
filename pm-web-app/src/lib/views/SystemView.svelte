@@ -11,7 +11,11 @@
     type EnrolledProject,
   } from '../api/client';
   import { runtimeStore, navigateTo } from '../stores/runtime';
-  import { hasUnsentInput, startUnsentInputTracking } from '../stores/unsentInput';
+  import {
+    hasUnsentInput,
+    hasUnsentInputStore,
+    startUnsentInputTracking,
+  } from '../stores/unsentInput';
   import { formatSplit, formatBytes } from '../utils/tokenFormat';
 
   /** The browser's remembered filters: the window, the grouping, and the project. */
@@ -105,10 +109,15 @@
     void apiClient
       .getProjectExplorer()
       .then((response) => {
-        if (isMounted) projects = response.all_projects ?? [];
+        if (!isMounted) return;
+        projects = response.all_projects ?? [];
+        if (selectedProject && !projects.some((p) => p.project_id === selectedProject)) {
+          handleProjectChange('');
+        }
       })
       .catch(() => {
-        // The project filter is optional; without the list the view still shows the machine.
+        // Without the list the filter cannot be shown, so it must not apply either.
+        if (isMounted && selectedProject) handleProjectChange('');
       });
     void loadSnapshot(true);
   });
@@ -208,8 +217,8 @@
   /**
    * Loads the app again after an upgrade, unless a field holds text the operator has not sent.
    */
-  function maybeReloadAfterUpgrade(): void {
-    if (hasUnsentInput()) {
+  function maybeReloadAfterUpgrade(force = false): void {
+    if (!force && hasUnsentInput()) {
       reloadWaitsForInput = true;
       return;
     }
@@ -221,6 +230,14 @@
       reloadWaitsForInput = true;
     }
   }
+
+  // The reload waits while a field holds text; once the operator sends or clears it, the wait
+  // ends and the app loads the new release by itself.
+  $effect(() => {
+    if (upgradePhase === 'reload' && reloadWaitsForInput && !$hasUnsentInputStore) {
+      maybeReloadAfterUpgrade();
+    }
+  });
 
   function openModal(action: 'stop' | 'restart') {
     activeModal = action;
@@ -627,7 +644,7 @@
         <p class="text-muted text-sm">{$t('system.upgrade.reload.unsent')}</p>
       {/if}
       <div class="upgrade-panel__actions">
-        <Button variant="primary" onclick={maybeReloadAfterUpgrade}>
+        <Button variant="primary" onclick={() => maybeReloadAfterUpgrade(true)}>
           {$t('system.mismatch.load_again')}
         </Button>
       </div>

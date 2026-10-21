@@ -2748,7 +2748,13 @@ export class ApiClient {
       // The operator channel is the runtime's own withdraw. A deployment that offers only the
       // system route is the fallback; a refused withdraw (the links are switched) is not retried.
       const message = (err as Error)?.message ?? '';
-      if (message.includes('not_withdrawable') || message.includes('409')) throw err;
+      const routeUnavailable =
+        message.includes('404') ||
+        message.includes('405') ||
+        message.includes('mock_no_route') ||
+        message.includes('unknown_route') ||
+        message.includes('no route');
+      if (!routeUnavailable) throw err;
       try {
         await this.request('POST', '/api/v1/system/upgrade/withdraw', {});
       } catch {

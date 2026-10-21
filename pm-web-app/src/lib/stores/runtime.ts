@@ -79,6 +79,8 @@ export interface RuntimeState {
   selectedPlanEnded?: EndedPlanInfo | null;
   /** The cleanup items the operator unchecked, kept while a preview or another view is open. */
   cleanupUncheckedIds?: Record<string, boolean>;
+  /** The job those unchecked items belong to; a reminder opens a new job with no checks kept. */
+  cleanupSelectionJobId?: string | null;
   /** The cleanup item whose read-only preview is open, if any. */
   cleanupPreviewItemId?: string | null;
   /** The cleanup item a report's detail opened the job at, highlighted once. */
@@ -133,6 +135,7 @@ const initialState: RuntimeState = {
   onboardingStep: null,
   selectedPlanEnded: null,
   cleanupUncheckedIds: {},
+  cleanupSelectionJobId: null,
   cleanupPreviewItemId: null,
   cleanupHighlightItemId: null,
   overviewFocus: null,

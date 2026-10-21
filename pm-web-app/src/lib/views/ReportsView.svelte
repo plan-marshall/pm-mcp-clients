@@ -374,6 +374,7 @@
       runtimeStore.update((s) => ({
         ...s,
         cleanupHighlightItemId: cleanupItemOf(item),
+        cleanupPreviewItemId: null,
       }));
       navigateTo('cleanup');
       return;
@@ -501,20 +502,13 @@
     </div>
   {/snippet}
 
-  {#if noticeCount > 0}
-    <div
-      class="arrival-notice"
-      role="status"
-      aria-live="polite"
-      data-testid="report-arrival-notice"
-    >
-      {#if noticeCount === 1}
-        {$t('report.notice.one', { from: noticeFrom, subject: noticeSubject })}
-      {:else}
-        {$t('report.notice.many', { count: noticeCount, from: noticeFrom })}
-      {/if}
-    </div>
-  {/if}
+  <div class="arrival-notice" role="status" aria-live="polite" data-testid="report-arrival-notice">
+    {#if noticeCount === 1}
+      {$t('report.notice.one', { from: noticeFrom, subject: noticeSubject })}
+    {:else if noticeCount > 1}
+      {$t('report.notice.many', { count: noticeCount, from: noticeFrom })}
+    {/if}
+  </div>
 
   {#if activeDetailPlanId}
     {#key activeDetailPlanId}

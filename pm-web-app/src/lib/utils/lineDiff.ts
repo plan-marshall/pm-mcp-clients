@@ -94,8 +94,8 @@ function operations(left: string[], right: string[]): Operation[] {
  * @returns the aligned rows and the added and removed line counts
  */
 export function diffLines(before: string, after: string): LineDiff {
-  const left = before.split('\n');
-  const right = after.split('\n');
+  const left = before === '' ? [] : before.split('\n');
+  const right = after === '' ? [] : after.split('\n');
   if (left.length * right.length > 4_000_000) {
     // A pasted file may be far larger than a unit; compare it position by position rather than
     // allocate a table that grows with the square of its lines.

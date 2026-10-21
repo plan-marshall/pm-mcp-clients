@@ -87,6 +87,8 @@
   let placeTargetProject = $state<string | null>(null);
   let placeAgainst = $state('');
   let placeDiff = $state<LineDiff | null>(null);
+  /** The digest of the unit at the chosen level, which the placing replaces. */
+  let placeDigest = $state<string | null>(null);
   let conflictDiff = $state<LineDiff | null>(null);
   let landingSteps = $state<string[]>([]);
   let landingError = $state('');
@@ -259,6 +261,22 @@
     }
   }
 
+  /** Fetches the units, the catalogue, and the project list for the open scope. */
+  async function fetchAll(): Promise<void> {
+    const [unitList, catalogueData, projectData] = await Promise.all([
+      apiClient.getWorkflows(projectId),
+      apiClient.getWorkflowCatalogue(projectId),
+      apiClient.getProjectExplorer().catch(() => null),
+    ]);
+    units = Array.isArray(unitList) ? unitList : [];
+    catalogue = catalogueData;
+    projects = (projectData?.all_projects ?? []).map((project) => ({
+      project_id: project.project_id,
+      display_name: project.display_name,
+    }));
+    selectedBlock = null;
+  }
+
   async function loadAll(): Promise<void> {
     notice = '';
     const draft = readDraft();
@@ -267,18 +285,7 @@
     if (draft?.projectId) projectId = draft.projectId;
     loadedProjectId = projectId;
     try {
-      const [unitList, catalogueData, projectData] = await Promise.all([
-        apiClient.getWorkflows(projectId),
-        apiClient.getWorkflowCatalogue(projectId),
-        apiClient.getProjectExplorer().catch(() => null),
-      ]);
-      units = Array.isArray(unitList) ? unitList : [];
-      catalogue = catalogueData;
-      projects = (projectData?.all_projects ?? []).map((project) => ({
-        project_id: project.project_id,
-        display_name: project.display_name,
-      }));
-      selectedBlock = null;
+      await fetchAll();
 
       if (draft) {
         unitName = draft.unitName;
@@ -392,6 +399,8 @@
   function afterEdit(): void {
     outdated = result !== null;
     placeMessage = '';
+    placeDiff = null;
+    placeDigest = null;
     dirty = true;
     saveDraft();
     updateCursorFromTextarea();
@@ -649,35 +658,72 @@
     placeStage = 'target';
     landingError = '';
     landingSteps = [];
+    placeDigest = null;
   }
 
   /**
-   * Validates the target and shows the difference and the projects it reaches.
+   * @returns the units of the level the operator chose to place into
+   */
+  async function placementUnits(): Promise<WorkflowUnit[]> {
+    if ((placeTargetProject ?? null) === (projectId ?? null)) return units;
+    return apiClient.getWorkflows(placeTargetProject);
+  }
+
+  /**
+   * Reads the unit's text at the chosen level, falling back to the level in force there.
+   *
+   * A project that has no copy of its own has the machine's copy, or the compiled default, in
+   * force; the comparison is against that text, and the label names the level it used.
+   *
+   * @param targetUnits the units of the chosen scope
+   * @returns the baseline text and the level it came from
+   */
+  function baselineOf(targetUnits: WorkflowUnit[]): {
+    text: string;
+    level: string;
+    digest: string | null;
+  } {
+    const existing = targetUnits.find((unit) => unit.name === unitName);
+    const wanted = placeTargetProject ? 'project' : 'machine';
+    if (!existing) return { text: '', level: wanted, digest: null };
+    const exact = existing.levels.find((entry) => entry.level === wanted);
+    if (exact) return { text: exact.text, level: wanted, digest: exact.digest };
+    // The target level has no copy: the comparison falls back to the level in force there, but
+    // the placing creates a copy and replaces nothing.
+    const inForce =
+      existing.levels.find((entry) => entry.level === existing.level_in_force) ??
+      existing.levels[0];
+    return { text: inForce?.text ?? '', level: inForce?.level ?? wanted, digest: null };
+  }
+
+  /**
+   * Compares the draft with the text at the chosen level and shows the difference.
    */
   async function compareForPlacement(): Promise<void> {
     landingError = '';
-    let beforeText = '';
+    placeDiff = null;
     try {
-      const targetUnits =
-        placeTargetProject && placeTargetProject !== projectId
-          ? await apiClient.getWorkflows(placeTargetProject)
-          : units;
-      const existing = targetUnits.find((unit) => unit.name === unitName);
-      if (existing) {
-        const level =
-          existing.levels.find((entry) => entry.level === existing.level_in_force) ??
-          existing.levels[0];
-        beforeText = level?.text ?? '';
-      } else {
-        beforeText = '';
-      }
+      const targetUnits = await placementUnits();
+      const baseline = baselineOf(targetUnits);
+      placeAgainst = $t(`designer.level.${baseline.level}`);
+      placeDigest = baseline.digest;
+      placeDiff = diffLines(baseline.text, text);
     } catch {
       landingError = $t('designer.place.failed', { reason: $t('system.figure.unavailable') });
+      placeStage = 'failed';
+      return;
     }
-    placeAgainst = targetLevelLabel(placeTargetProject);
-    placeDiff = diffLines(beforeText, text);
     conflictDiff = null;
     placeStage = 'diff';
+  }
+
+  /** Retries the step that failed: the comparison when no difference was shown, else placing. */
+  function retryPlacement(): void {
+    if (placeDiff) {
+      void place();
+    } else {
+      void compareForPlacement();
+    }
   }
 
   /** @returns the path a placing writes, for the progress lines */
@@ -700,7 +746,7 @@
         unit_name: unitName,
         unit_kind: unitKind,
         author: savedAuthor || $runtimeStore.deviceLabel || null,
-        digest,
+        digest: placeDigest,
       });
       landingSteps = placed.steps ?? [];
       placeMessage = $t('designer.place.result', {
@@ -713,19 +759,14 @@
       dirty = false;
       touched = false;
       clearDraft();
-      digest = placed.digest ?? digest;
+      digest = placed.digest ?? placeDigest ?? digest;
       placeAgainst = targetLevelLabel(placeTargetProject);
-      const placedName = unitName;
-      await loadAll();
-      const placedUnit = units.find((unit) => unit.name === placedName);
-      if (placedUnit) openUnit(placedUnit);
-      placeStage = 'done';
-      placeMessage = $t('designer.place.result', {
-        name: placedName,
-        author: placed.author ?? 'you',
-        date: placed.release ?? '',
-        digest: placed.digest ?? '',
-      });
+      try {
+        // Refresh the installed units without replacing the placed text the editor holds.
+        await fetchAll();
+      } catch {
+        // The placement already landed; a failed refresh leaves the placed text on screen.
+      }
     } catch (err: unknown) {
       const message = (err as Error)?.message ?? $t('system.action.failed');
       if (/conflict/i.test(message)) {
@@ -742,15 +783,8 @@
   /** Shows the unit as it now is against the draft, after a placing conflicted. */
   async function showConflict(): Promise<void> {
     try {
-      const targetUnits =
-        placeTargetProject && placeTargetProject !== projectId
-          ? await apiClient.getWorkflows(placeTargetProject)
-          : units;
-      const existing = targetUnits.find((unit) => unit.name === unitName);
-      const level =
-        existing?.levels.find((entry) => entry.level === existing.level_in_force) ??
-        existing?.levels[0];
-      conflictDiff = diffLines(level?.text ?? '', text);
+      const targetUnits = await placementUnits();
+      conflictDiff = diffLines(baselineOf(targetUnits).text, text);
     } catch {
       conflictDiff = diffLines('', text);
     }
@@ -763,6 +797,7 @@
     landingError = '';
     landingSteps = [];
     conflictDiff = null;
+    placeDigest = null;
   }
 
   async function removeUnit(unit: WorkflowUnit): Promise<void> {
@@ -1105,7 +1140,7 @@
             <input
               class="frontmatter__input"
               value={frontmatter.type}
-              readonly={isCompiledOnly || isReplacing}
+              readonly={isPhone || isCompiledOnly || isReplacing}
               oninput={(event) => setField('type', event.currentTarget.value)}
               data-testid="frontmatter-type"
             />
@@ -1120,7 +1155,7 @@
             <input
               class="frontmatter__input"
               value={frontmatter.entries.map((entry) => entry.id).join(', ')}
-              readonly={isCompiledOnly || isReplacing}
+              readonly={isPhone || isCompiledOnly || isReplacing}
               oninput={(event) => setInterface('entries', event.currentTarget.value)}
               data-testid="frontmatter-entries"
             />
@@ -1130,7 +1165,7 @@
             <input
               class="frontmatter__input"
               value={frontmatter.exits.map((entry) => entry.id).join(', ')}
-              readonly={isCompiledOnly || isReplacing}
+              readonly={isPhone || isCompiledOnly || isReplacing}
               oninput={(event) => setInterface('exits', event.currentTarget.value)}
               data-testid="frontmatter-exits"
             />
@@ -1396,7 +1431,12 @@
         </p>
         <div class="designer__modal-actions">
           <Button variant="secondary" onclick={closePlace}>{$t('web.common.close')}</Button>
-          <Button variant="primary" loading={isPlacing} onclick={place} data-testid="place-retry">
+          <Button
+            variant="primary"
+            loading={isPlacing}
+            onclick={retryPlacement}
+            data-testid="place-retry"
+          >
             {$t('designer.place.retry')}
           </Button>
         </div>
