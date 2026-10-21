@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.control.ArchiveCheck;
@@ -940,5 +942,27 @@ class ControlDialoguesTest {
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
                             "config", "roles", "--plan", "p");
         assertEquals(0, code, out.toString());
+    }
+
+    @Test
+    @DisplayName("every client call is fail-closed on a refused response")
+    void clientRefusals() throws Exception {
+        serve((request, response) -> response.json(500, "{\"error\":\"server_error\"}"));
+        var client = new WorkActionsClient(context);
+        assertThrows(OperatorRefusedException.class, () -> client.actions("plan", "p"));
+        assertThrows(OperatorRefusedException.class, () -> client.holds("p"));
+        assertThrows(OperatorRefusedException.class, () -> client.perform("plan", "p", "start", Map.of()));
+        assertThrows(OperatorRefusedException.class, () -> client.resolveHold("p", "h", "retry", null));
+        assertThrows(OperatorRefusedException.class, () -> client.settings("p"));
+        assertThrows(OperatorRefusedException.class, () -> client.updateSettings("p", 1, "a", "b"));
+        assertThrows(OperatorRefusedException.class, () -> client.review("e", "findings"));
+        assertThrows(OperatorRefusedException.class, () -> client.disposition("e", "F-1", "kept", null));
+        assertThrows(OperatorRefusedException.class, () -> client.commitReview("e"));
+        assertThrows(OperatorRefusedException.class, () -> client.chat("plan", "p"));
+        assertThrows(OperatorRefusedException.class, () -> client.chatTurn("plan", "p", "x"));
+        assertThrows(OperatorRefusedException.class, () -> client.chatProposal("plan", "p", true));
+        assertThrows(OperatorRefusedException.class, () -> client.epic("e"));
+        assertThrows(OperatorRefusedException.class, () -> client.archiveCheck("e"));
+        assertThrows(OperatorRefusedException.class, () -> client.performLanding("pr", "unit", "retry"));
     }
 }
