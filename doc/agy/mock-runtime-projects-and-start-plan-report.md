@@ -3,7 +3,7 @@
 **Plan:** [`doc/agy/implemented/mock-runtime-projects-and-start-plan.md`](implemented/mock-runtime-projects-and-start-plan.md)
 **Branch:** `feat/mock-projects-start`
 **Module:** `pm-mock-runtime`
-**Status:** Implementation complete; PR review window pending (Step 6). Post-landing verification (Step 8) is reserved for the orchestrator.
+**Status:** Implementation complete; PR #150 green (CI, integration tests, CodeRabbit, SonarCloud). Merge queue (Step 7) and post-landing verification (Step 8) are the orchestrator-facing remainder.
 
 ---
 
