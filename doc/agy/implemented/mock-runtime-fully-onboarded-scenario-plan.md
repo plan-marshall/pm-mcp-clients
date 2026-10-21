@@ -6,7 +6,7 @@ While the 5 consolidated scenarios partition domain-specific test fixtures (onbo
 
 This plan delivers a unified, realistic, fully onboarded mock environment enabling complete end-to-end UI testing, interactive walkthroughs, and Playwright verification across both `pm-web-app` and `pm-operator` without switching scenario files.
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.md`](../../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -14,13 +14,13 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-ONB-1..10`](../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc) (Machine Onboarding & Settings), [`UC-ENT-1..2`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc) (Entry & Paired Devices), [`UC-PRJ-1..4`](../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc) (Projects & Setup), [`UC-PLN-1..6`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc) (Plans, Epics, Decisions, Reports, Designer), [`UC-STA-1..9`](../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc) (Starting Work), [`UC-CTL-1..5`](../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc) (Controlling Work), [`UC-SYS-1..3`](../../../plan-marshall-documentation/doc/use-cases/07-system.adoc) (System & Cleanup) |
-| **Specifications** | [`05-mock-runtime.adoc`](../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc), [`04-operator-api.adoc`](../../../plan-marshall-documentation/doc/specification/runtime-model/04-operator-api.adoc), [`state-catalogue.adoc`](../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
-| **Contracts** | [`api-contract.adoc`](../plans/implemented/api-contract.adoc), [`overview-contract.adoc`](../plans/implemented/overview-contract.adoc), [`process-contract.adoc`](../plans/implemented/process-contract.adoc), [`decision-contract.adoc`](../plans/implemented/decision-contract.adoc), [`control-contract.adoc`](../plans/implemented/control-contract.adoc), [`report-contract.adoc`](../plans/implemented/report-contract.adoc), [`system-contract.adoc`](../plans/implemented/system-contract.adoc), [`project-contract.adoc`](../plans/implemented/project-contract.adoc), [`start-contract.adoc`](../plans/implemented/start-contract.adoc), [`designer-contract.adoc`](../plans/implemented/designer-contract.adoc) |
-| **Local Client Design** | [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc), [`doc/design/terminal-client/README.adoc`](../design/terminal-client/README.adoc), [`doc/design/shared/`](../design/shared/) |
-| **Prerequisite Plans** | [`doc/agy/mock-runtime-foundation-and-consolidation-plan.md`](implemented/mock-runtime-foundation-and-consolidation-plan.md), [`doc/agy/mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Use Cases** | [`UC-ONB-1..10`](../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc) (Machine Onboarding & Settings), [`UC-ENT-1..2`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc) (Entry & Paired Devices), [`UC-PRJ-1..4`](../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc) (Projects & Setup), [`UC-PLN-1..6`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc) (Plans, Epics, Decisions, Reports, Designer), [`UC-STA-1..9`](../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc) (Starting Work), [`UC-CTL-1..5`](../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc) (Controlling Work), [`UC-SYS-1..3`](../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc) (System & Cleanup) |
+| **Specifications** | [`05-mock-runtime.adoc`](../../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc), [`04-operator-api.adoc`](../../../../plan-marshall-documentation/doc/specification/runtime-model/04-operator-api.adoc), [`state-catalogue.adoc`](../../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
+| **Contracts** | [`api-contract.adoc`](../../plans/implemented/api-contract.adoc), [`overview-contract.adoc`](../../plans/implemented/overview-contract.adoc), [`process-contract.adoc`](../../plans/implemented/process-contract.adoc), [`decision-contract.adoc`](../../plans/implemented/decision-contract.adoc), [`control-contract.adoc`](../../plans/implemented/control-contract.adoc), [`report-contract.adoc`](../../plans/implemented/report-contract.adoc), [`system-contract.adoc`](../../plans/implemented/system-contract.adoc), [`project-contract.adoc`](../../plans/implemented/project-contract.adoc), [`start-contract.adoc`](../../plans/implemented/start-contract.adoc), [`designer-contract.adoc`](../../plans/implemented/designer-contract.adoc) |
+| **Local Client Design** | [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc), [`doc/design/terminal-client/README.adoc`](../../design/terminal-client/README.adoc), [`doc/design/shared/`](../../design/shared/) |
+| **Prerequisite Plans** | [`doc/agy/mock-runtime-foundation-and-consolidation-plan.md`](mock-runtime-foundation-and-consolidation-plan.md), [`doc/agy/mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../../meta/implement_use-cases.md) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ---
 
@@ -94,15 +94,15 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` on branch `feat/mock-runtime-fully-onboarded` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` on branch `feat/mock-runtime-fully-onboarded` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for scenario composition, `MockRuntimeEngine` alignment, and Java constants.
   - `pm-dev-java:java-security` for output safety and mock token/secret handling.
   - `plan-marshall-persona-integration-tester` & `pm-dev-java:junit-integration` for `FullyOnboardedScenarioTest` and Playwright `showroom.spec.js`.
   - `plan-marshall-persona-code-reviewer` for review gate and 100% findings resolution.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/mock-runtime-fully-onboarded-scenario-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-fully-onboarded-scenario-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/mock-runtime-fully-onboarded-scenario-plan-report.md`) and initial plan moved to `doc/agy/implemented/mock-runtime-fully-onboarded-scenario-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/mock-runtime-fully-onboarded-scenario-plan-report.md` by orchestrator session.
@@ -124,49 +124,49 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Scenario Schema & Launcher Registration
-- [ ] **1.1 Register Scenario Constants & Primary Index**:
+- [x] **1.1 Register Scenario Constants & Primary Index**:
   - Add `public static final String FULLY_ONBOARDED = "fully-onboarded";` to `StandardScenarios.java`.
   - Add `fully-onboarded` to `pm-mock-runtime/src/main/resources/scenarios/primary.txt`.
   - Update `expectedCount` in `StandardScenarios.java` (increment count) and update `StandardScenariosTest.java`.
   - Update `start.sh` menu options and help text.
-- [ ] **1.2 Register Alias & Routing in `ScenarioRegistry`**:
+- [x] **1.2 Register Alias & Routing in `ScenarioRegistry`**:
   - Register `fully-onboarded` in `ScenarioRegistry.java`.
 
 ### Phase 2: Author Comprehensive `fully-onboarded.json` Fixture
-- [ ] **2.1 Machine, Web Listener & Paired Devices**:
+- [x] **2.1 Machine, Web Listener & Paired Devices**:
   - `GET /api/v1/status`: status `ready`, machine onboarded, port 7420, LAN enabled.
   - `GET /api/v1/web/devices`: at least 2 paired devices.
   - `GET /api/v1/machine/settings`: comprehensive machine settings resource.
-- [ ] **2.2 Projects & Project Explorer**:
+- [x] **2.2 Projects & Project Explorer**:
   - `GET /api/v1/projects`: 3 enrolled projects (`pm-mcp-clients`, `pm-mcp-core`, `plan-marshall`).
   - Project setups, git repository roots, files tree, and ended work archives.
-- [ ] **2.3 Plan Overview, Plans & Epics**:
+- [x] **2.3 Plan Overview, Plans & Epics**:
   - `GET /api/v1/overview`: running work breakdown with held plans and attention reasons.
   - `GET /api/v1/plans`: active plans (`fix-relay`, `docs-typo`, `relay-token-store`).
   - `GET /api/v1/epics`: active epic (`relay-hardening`) with 3 workstreams.
   - Process trees, task activity streams, intent, and outline.
-- [ ] **2.4 Decisions**:
+- [x] **2.4 Decisions**:
   - `GET /api/v1/decisions`: 3 pending decisions (high-stakes with recommendation reveal, multi-part, and chat-first).
-- [ ] **2.5 Reports & Completion Report**:
+- [x] **2.5 Reports & Completion Report**:
   - `GET /api/v1/reports`: 5 unread/read reports across plan, epic, cleanup, and system kinds.
   - `GET /api/v1/plans/fix-relay/completion`: full completion report with token breakdown, phase timeline, and PR outcome.
-- [ ] **2.6 System View & Cleanup**:
+- [x] **2.6 System View & Cleanup**:
   - `GET /api/v1/system`: full `RuntimeMetrics`, upgrade available to `0.10.0`, release notes link.
   - `GET /api/v1/system/cleanup`: cleanup preview with active candidates and kept protected items.
-- [ ] **2.7 Starting Work & Process Designer**:
+- [x] **2.7 Starting Work & Process Designer**:
   - `GET /api/v1/recipes`, `/api/v1/intake/draft`, and start chat fixtures.
   - `GET /api/v1/workflows/catalogue` and `/api/v1/workflows` installed units.
 
 ### Phase 3: Engine Dynamic Route Alignment
-- [ ] **3.1 Domain Declaration in `MockRuntimeEngine`**:
+- [x] **3.1 Domain Declaration in `MockRuntimeEngine`**:
   - Ensure `declaresSystem()`, `declaresDecisions()`, and other domain guards recognize `fully-onboarded` so all dynamic routes are served out of the box.
 
 ### Phase 4: Automated Verification & E2E Showroom
-- [ ] **4.1 Mock Runtime Suite (`FullyOnboardedScenarioTest.java`)**:
+- [x] **4.1 Mock Runtime Suite (`FullyOnboardedScenarioTest.java`)**:
   - Test scenario loading via `ScenarioLoader`.
   - Assert that every domain route responds with HTTP 200 and valid JSON tree matching `pm-api` codecs.
   - Assert SSE events stream across all scopes.
-- [ ] **4.2 Playwright Showroom Walkthrough (`tests/showroom.spec.js`)**:
+- [x] **4.2 Playwright Showroom Walkthrough (`tests/showroom.spec.js`)**:
   - Boot `fully-onboarded` in mock runtime.
   - Execute end-to-end traversal across:
     1. Header navigation & badges (`Decisions: 3`, `Reports: 5`).
@@ -178,5 +178,5 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
     7. Reports view: inspect unread reports and open completion report.
     8. System view: verify metrics, upgrade notice, and cleanup preview.
     9. Settings view: verify machine settings and paired devices.
-- [ ] **4.3 Pre-Commit Gate**:
+- [x] **4.3 Pre-Commit Gate**:
   - Run `./mvnw verify -Ppre-commit`.

@@ -22,7 +22,7 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Mock** | [`mock-runtime-fully-onboarded-scenario-plan.md`](mock-runtime-fully-onboarded-scenario-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` | `feat/mock-runtime-fully-onboarded` | Ready to launch (Showroom) |
+| **Mock** | [`mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-fully-onboarded` | `feat/mock-runtime-fully-onboarded` | Implemented — PR pending |
 | **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Ready to launch |
 | **Web** | [`web-arrival-banners-and-i18n-cache-plan.md`](web-arrival-banners-and-i18n-cache-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-banners-and-i18n-cache` | `feat/web-banners-and-i18n-cache` | Ready to launch |
 
@@ -39,7 +39,7 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Consolidated 23 scenario files into 80-state onboarding.json; full OperatorStateResource closure)*
 3. **Wave 2b (Landed & Verified)**: [`mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) ([Report](verified/mock-runtime-running-work-plan-report.md) — PR #136, commit `49d0ef6`)
    *(Consolidated running-work, plan-view, decisions, and control files into rich running-work.json)*
-4. **Fully Onboarded Showroom Scenario (Active)**: [`mock-runtime-fully-onboarded-scenario-plan.md`](mock-runtime-fully-onboarded-scenario-plan.md)
+4. **Fully Onboarded Showroom Scenario (Implemented — PR pending)**: [`mock-runtime-fully-onboarded-scenario-plan.md`](implemented/mock-runtime-fully-onboarded-scenario-plan.md)
    *(Omni-domain showroom scenario with all UI views, projects, running work, decisions, reports, system, settings, start, and designer active simultaneously)*
 5. **Wave 3 Consolidation**: `mock-runtime-projects-and-start-plan.md` & `mock-runtime-reports-system-designer-plan.md`
    *(Migrates projects, starting work, reports, and system views into standard scenarios)*

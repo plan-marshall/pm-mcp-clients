@@ -329,6 +329,9 @@ The module ships with the following standard scenarios out of the box, declared 
 * `StandardScenarios.ONBOARDING_HAPPY` (`"onboarding-happy"`): complete happy path machine onboarding flow through mode selection, language selection, harness verification, and confirmation.
 * `StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN` (`"onboarding-harness-not-logged-in"`): machine onboarding where harness probing fails with a missing login diagnosis and offers a fix link.
 * `StandardScenarios.WEB_PAIRING` (`"web-pairing"`): browser pairing flow demonstrating pairing code exchange and subsequent authenticated web client requests.
+* `StandardScenarios.FULLY_ONBOARDED` (`"fully-onboarded"`): the showroom. One fully onboarded machine with every operator domain populated at once (projects, running work, decisions, reports, system, settings, start, designer, and the event stream), so both clients can be walked end to end without switching scenarios.
+
+The fine-grained entries above remain resolvable by name for case-level tests. The interactive launcher offers the canonical scenarios in link:src/main/resources/scenarios/primary.txt[`primary.txt`], the one list the Java catalog and `start.sh` both read; `fully-onboarded` is the sixth entry.
 
 `StandardScenarios.ALL` provides an unmodifiable list of all delivered standard scenario names.
 

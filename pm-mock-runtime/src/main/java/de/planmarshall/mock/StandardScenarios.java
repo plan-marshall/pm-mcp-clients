@@ -30,12 +30,19 @@ import lombok.experimental.UtilityClass;
 public final class StandardScenarios {
 
     /**
-     * The five canonical, user-facing scenarios of the mock runtime. They are the only entries the
+     * The canonical, user-facing scenarios of the mock runtime. They are the only entries the
      * interactive launcher offers; the fine-grained case scenarios below remain resolvable through
      * the legacy alias table of {@link de.planmarshall.mock.scenario.ScenarioRegistry} while the
-     * consolidation waves migrate them into these five files.
+     * consolidation waves migrate them into these files.
      */
     public static final String PROJECTS_AND_START = "projects-and-start";
+
+    /**
+     * The showroom: one machine that is fully onboarded and every operator domain populated at once
+     * (projects, running work, decisions, reports, system, settings, start, designer, and the event
+     * stream). It is the single scenario for an end-to-end walkthrough of both clients.
+     */
+    public static final String FULLY_ONBOARDED = "fully-onboarded";
 
     /**
      * The system and reports scenario: the reports inbox, plan completion reports, the runtime
@@ -429,7 +436,7 @@ public final class StandardScenarios {
     public static final String OPERATOR_INTERACTION = "operator-interaction";
 
     /**
-     * Unmodifiable list of the five canonical scenarios, in the order the launcher presents them.
+     * Unmodifiable list of the canonical scenarios, in the order the launcher presents them.
      * The list is loaded from {@code scenarios/primary.txt}, the one file {@code start.sh} reads too,
      * so the Java catalog and the interactive menu cannot drift apart.
      */
@@ -440,7 +447,6 @@ public final class StandardScenarios {
      */
     private static List<String> loadPrimaryScenarios() {
         var resource = "scenarios/primary.txt";
-        var expectedCount = 5;
         try (var in = StandardScenarios.class.getClassLoader().getResourceAsStream(resource)) {
             if (in == null) {
                 throw new IllegalStateException("Missing classpath resource " + resource);
@@ -450,9 +456,8 @@ public final class StandardScenarios {
                         .map(String::trim)
                         .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                         .toList();
-                if (names.size() != expectedCount) {
-                    throw new IllegalStateException("Expected " + expectedCount
-                            + " primary scenarios in " + resource + ", found " + names.size());
+                if (names.isEmpty()) {
+                    throw new IllegalStateException("No primary scenarios in " + resource);
                 }
                 return names;
             }
@@ -481,7 +486,7 @@ public final class StandardScenarios {
                     START_CHAT, START_FOLLOW_UP,
                     LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
                     INTENT_PLAN, INTENT_OUTLINE, INTENT_EPIC, INTENT_OVERSIZE,
-                    OPERATOR_INTERACTION, PROJECTS_AND_START, REPORTS_AND_SYSTEM))
+                    OPERATOR_INTERACTION, PROJECTS_AND_START, REPORTS_AND_SYSTEM, FULLY_ONBOARDED))
             .flatMap(List::stream)
             .toList();
 }
