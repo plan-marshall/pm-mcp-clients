@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
@@ -36,6 +37,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param waitPlanId        the plan a dependency or overlap waits for, or {@code null}
  * @param overlapFiles      the files in common with the plan it overlaps, when a wait is an overlap
  * @param pullRequestNumber a shipped plan's pull request number, or {@code null}
+ * @param pullRequestUrl    the pull request's web address, or {@code null}
  * @param change            the plan's change marker on a later run, or {@code null}
  * @param objective         the staged plan's objective, or {@code null}
  * @param deliverables      the staged plan's deliverables
@@ -50,6 +52,7 @@ public record WorkRow(
         @Nullable String waitPlanId,
         List<String> overlapFiles,
         @Nullable Integer pullRequestNumber,
+        @Nullable String pullRequestUrl,
         @Nullable String change,
         @Nullable String objective,
         List<String> deliverables,
@@ -102,6 +105,9 @@ public record WorkRow(
         if (pullRequestNumber != null) {
             map.put("pull_request_number", pullRequestNumber);
         }
+        if (pullRequestUrl != null) {
+            map.put("pull_request_url", pullRequestUrl);
+        }
         if (change != null) {
             map.put("change", change);
         }
@@ -146,6 +152,7 @@ public record WorkRow(
                 JsonTree.string(map, "wait_plan_id"),
                 ControlJson.readStrings(map, "overlap_files"),
                 ControlJson.optInteger(map, "pull_request_number"),
+                JsonTree.string(map, "pull_request_url"),
                 JsonTree.string(map, "change"),
                 JsonTree.string(map, "objective"),
                 ControlJson.readStrings(map, "deliverables"),
