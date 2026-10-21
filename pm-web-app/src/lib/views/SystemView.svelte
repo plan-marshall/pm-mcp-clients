@@ -578,7 +578,7 @@
         {/each}
       </ul>
       <div class="upgrade-panel__actions">
-        {#if upgradeInfo.withdrawable !== false && upgradeStepIndex < 3}
+        {#if upgradeInfo.withdrawable !== false && upgradeStepIndex < 2}
           <Button variant="secondary" loading={isWithdrawingUpgrade} onclick={withdrawUpgrade}>
             {$t('system.upgrade.withdraw')}
           </Button>

@@ -2743,15 +2743,14 @@ export class ApiClient {
 
   public async withdrawUpgrade(): Promise<void> {
     try {
-      await this.request('POST', '/api/v1/system/upgrade/withdraw', {});
+      await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
     } catch (err: unknown) {
-      // The runtime's operator channel names the withdraw `DELETE .../upgrade`. A runtime that
-      // offers only that route answers the system route as no route; a refused withdraw (the
-      // links are switched) is answered by the operator route itself and is not retried here.
+      // The operator channel is the runtime's own withdraw. A deployment that offers only the
+      // system route is the fallback; a refused withdraw (the links are switched) is not retried.
       const message = (err as Error)?.message ?? '';
       if (message.includes('not_withdrawable') || message.includes('409')) throw err;
       try {
-        await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
+        await this.request('POST', '/api/v1/system/upgrade/withdraw', {});
       } catch {
         throw err;
       }
