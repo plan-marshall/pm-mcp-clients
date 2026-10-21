@@ -54,7 +54,7 @@ zero warnings. No file in `pm-operator`, `pm-mock-runtime`, `routes.ts`, or `App
 | `src/lib/views/SystemView.test.ts` | Filter memory/restore, work figure links, consent checks, withdraw, failure cause/retry, unsent-text reload wait. |
 | `src/lib/views/CleanupView.test.ts` | Read-only preview preserving checks and the report highlight. |
 | `src/lib/views/ProcessDesigner.test.ts` | Paste/template intake, draft restore, frontmatter two-way edit and signature drop, structure-to-line and finding-to-line jumps, diff/confirm placement, conflict comparison, phone read-only. |
-| `src/lib/utils/lineDiff.test.ts`, `frontmatter.test.ts`, `src/lib/stores/unsentInput.test.ts` | **New** unit suites for the new utilities. |
+| `src/lib/utils/lineDiff.test.ts`, `frontmatter.test.ts`, `src/lib/stores/unsentInput.test.ts`, `src/lib/api/client.normalise.test.ts` | **New** unit suites for the utilities and the wire normalisers. |
 
 ### 2.3 `pm-api` message catalogue
 
@@ -80,7 +80,7 @@ The text tables of `doc/design/shared/reports.adoc`, `system-texts.adoc`, `clean
 | Gate | Result |
 |---|---|
 | `cd pm-web-app && npm run check` | 0 errors, 0 warnings |
-| `cd pm-web-app && npm test` | 47 files, **383 tests passed** |
+| `cd pm-web-app && npm test` | 48 files, **393 tests passed** |
 | `cd pm-web-app && npm run lint` | clean |
 | `cd pm-web-e2e && npx playwright test tests/reports.spec.js tests/system.spec.js tests/designer.spec.js` | **27 tests passed** |
 | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** (all 8 reactor modules) |
