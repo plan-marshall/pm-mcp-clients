@@ -586,6 +586,9 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             if (plan != null && !plan.isBlank()) {
+                if (defaults || set != null || reset != null || resetAll) {
+                    return exclusive(context, out);
+                }
                 return PlanSettingsDialogue.run(context, out, plan, "roles", false);
             }
             var locale = context.clientEnvironment().locale();
@@ -667,6 +670,9 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             if (plan != null && !plan.isBlank()) {
+                if (use != null || without != null || verify) {
+                    return exclusive(context, out);
+                }
                 return PlanSettingsDialogue.run(context, out, plan, "providers", false);
             }
             var locale = context.clientEnvironment().locale();
@@ -723,6 +729,9 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             if (plan != null && !plan.isBlank()) {
+                if (landing != null || method != null || asking != null || posture != null || yes) {
+                    return exclusive(context, out);
+                }
                 return PlanSettingsDialogue.run(context, out, plan, "plan-defaults", false);
             }
             var locale = context.clientEnvironment().locale();
@@ -1038,5 +1047,16 @@ public final class ConfigCommand implements Callable<Integer> {
                 return line == null || !"k".equalsIgnoreCase(line.trim());
             }
         }
+    }
+
+    /**
+     * @param out the verb's output
+     * @return the exit code of a verb that combined {@code --plan} with other options
+     */
+    private static int exclusive(OperatorContext context, PrintWriter out) {
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.actions.plan_option_exclusive", Map.of()));
+        out.flush();
+        return 1;
     }
 }

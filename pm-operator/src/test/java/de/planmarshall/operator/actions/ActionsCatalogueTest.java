@@ -97,7 +97,8 @@ class ActionsCatalogueTest {
                         "operator.actions.chat.follow_up_started",
                         "operator.actions.pause.stopped", "operator.actions.result.done",
                         "operator.actions.yes_no", "operator.actions.yes_no_q",
-                        "operator.actions.accept_reject");
+                        "operator.actions.accept_reject", "operator.actions.plan_option_exclusive",
+                        "operator.actions.dropped");
 
     private static final List<String> MNEMONIC_KEYS = List.of(
                         "pause", "start", "cancel", "abandon", "settings", "keep_current", "next", "auto",
@@ -166,10 +167,9 @@ class ActionsCatalogueTest {
                             new HoldRecord("H-2", "p", "plan", "integrity_pause", "cause", 0, null,
                                                 "f", 1L, "a", 2L, "b", List.of("retry", "accept", "abort"),
                                                 null),
-                            new HoldRecord("H-3", "p", "plan", "landing_failed", "cause", 0, null,
+                            new HoldRecord("H-3", "p", "plan", "stalled", "cause", 0, null,
                                                 null, null, null, null, null,
-                                                List.of("retry", "show_pr", "give_up_removal", "end_plan"),
-                                                "https://x/pull/1"));
+                                                List.of("retry", "recycle", "end_plan"), null));
         for (var locale : List.of("en", "de")) {
             assertUnique(ActionMenus.plan(locale, actions("running", null, "pause", "cancel", "chat",
                                 "settings"), null, null), locale);
@@ -233,6 +233,64 @@ class ActionsCatalogueTest {
         params.put("counts", "c");
         params.put("number", 1);
         return params;
+    }
+
+    @Test
+    @DisplayName("every action the runtime offers is on a mnemonic, or reported as dropped")
+    void everyOfferedActionAppears() {
+        var holds = List.of(
+                            new HoldRecord("H-1", "p", "plan", "stalled", "cause", 1, null, null, null,
+                                                null, null, null, List.of("retry", "recycle", "end_plan"), null),
+                            new HoldRecord("H-2", "p", "plan", "condition", "cause", 1, null, null, null,
+                                                null, null, null,
+                                                List.of("retry", "grant", "add_credential", "raise_budget",
+                                                                    "end_plan"), null),
+                            new HoldRecord("H-3", "p", "plan", "integrity_pause", "cause", 0, null, "f", 1L,
+                                                "a", 2L, "b", List.of("retry", "accept", "abort"), null));
+        var planActions = List.of("pause", "cancel", "chat", "settings");
+        for (var locale : List.of("en", "de")) {
+            for (var hold : holds) {
+                assertOffered(ActionMenus.plan(locale, actions("held", hold.kind(),
+                                    planActions.toArray(String[]::new)), hold, null), planActions, locale);
+            }
+            for (var holdKind : List.of("stalled", "condition", "integrity_pause", "held",
+                                "landing_failed")) {
+                var epicActions = List.of("next", "auto", "common_files", "decompose", "findings",
+                                    "watches", "chat", "archive", "cancel");
+                assertOffered(ActionMenus.epic(locale, actions("held", holdKind,
+                                    epicActions.toArray(String[]::new)), "next", List.of(), true, 0, 1, 2,
+                                    null), epicActions, locale);
+            }
+        }
+    }
+
+    private static void assertOffered(ActionsMenu menu, List<String> offered, String locale) {
+        var present = new HashSet<String>();
+        for (var entry : menu.entries()) {
+            present.add(entry.action());
+        }
+        for (var action : offered) {
+            if ("cancel".equals(action) || "abandon".equals(action)) {
+                // The cancel of a held subject is its hold's end/abort, which the menu shows instead.
+                continue;
+            }
+            assertTrue(present.contains(action) || menu.droppedActions().contains(action),
+                                locale + " lost " + action + " in " + menu.entries() + " dropped="
+                                                    + menu.droppedActions());
+        }
+    }
+
+    @Test
+    @DisplayName("a plan's landing hold never takes the pause mnemonic")
+    void planLandingHoldDoesNotTakePause() {
+        var hold = new HoldRecord("H-4", "p", "plan", "landing_failed", "cause", 0, null, null, null,
+                            null, null, null, List.of("retry", "show_pr", "give_up_removal", "end_plan"),
+                            "https://x/pull/1");
+        var menu = ActionMenus.plan("en", actions("held", "landing_failed", "pause", "cancel", "chat",
+                            "settings"), hold, null);
+        assertTrue(menu.entries().stream().anyMatch(entry -> "pause".equals(entry.action())));
+        assertTrue(menu.entries().stream().noneMatch(entry -> "show_pr".equals(entry.action())));
+        assertTrue(menu.entries().stream().noneMatch(entry -> "give_up_removal".equals(entry.action())));
     }
 
     private static WorkActions actions(String state, String holdKind, String... offered) {

@@ -150,7 +150,11 @@ final class WorkActionDialogue {
             default -> "task";
         };
         client.perform(kind, id, "pause", Map.of("point", point));
-        prompt.line("operator.actions.result.pausing", Map.of("plan", id, "point", point));
+        if ("now".equals(point)) {
+            prompt.line("operator.actions.result.paused", Map.of("plan", id));
+        } else {
+            prompt.line("operator.actions.result.pausing", Map.of("plan", id, "point", point));
+        }
         return 0;
     }
 
@@ -188,7 +192,7 @@ final class WorkActionDialogue {
                             Map.of("action", outcome)) + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
                                                 Map.of("action", outcome)), id);
-        if (!"y".equalsIgnoreCase(confirm)) {
+        if (!Answers.isYes(confirm)) {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();
@@ -226,7 +230,7 @@ final class WorkActionDialogue {
                             "operator.actions.epic.cancel.confirm", Map.of()) + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.title",
                                                 Map.of("epic", id)), id);
-        if (!"y".equalsIgnoreCase(confirm)) {
+        if (!Answers.isYes(confirm)) {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();

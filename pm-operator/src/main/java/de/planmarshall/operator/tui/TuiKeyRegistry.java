@@ -288,10 +288,12 @@ public final class TuiKeyRegistry {
         var epicLevel = new ArrayList<>(navigation);
         epicLevel.add(new Binding("a", TuiKeyAction.ACTIONS));
         epicLevel.add(new Binding("p", TuiKeyAction.PROJECT));
+        epicLevel.add(new Binding("!", TuiKeyAction.WAITS));
         epicLevel.add(new Binding("*", TuiKeyAction.EXPAND_ALL));
         registry.put(TuiLevel.Kind.EPIC, level(epicLevel,
                             footer("\u2191\u2193", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
                             footer("a", TuiKeyAction.ACTIONS), footer("p", TuiKeyAction.PROJECT),
+                            footer("!", TuiKeyAction.WAITS),
                             footer("Esc", TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));
 

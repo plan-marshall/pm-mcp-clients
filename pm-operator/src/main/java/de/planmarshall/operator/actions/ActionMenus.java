@@ -49,18 +49,19 @@ public final class ActionMenus {
                         @Nullable String rowId) {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
+        var dropped = new ArrayList<String>();
         boolean holdEnds = false;
         if (hold != null) {
-            holdEnds = addHoldActs(entries, used, locale, hold);
+            holdEnds = addHoldActs(entries, used, dropped, locale, hold);
         }
         for (var availability : actions.actions()) {
             var action = availability.action();
             if (holdEnds && ("cancel".equals(action) || "abandon".equals(action))) {
                 continue;
             }
-            add(entries, used, availability, planLabel(locale, action), locale);
+            add(entries, used, dropped, availability, planLabel(locale, action), locale);
         }
-        return new ActionsMenu(actions.subjectId(), ActionsMenu.Subject.PLAN, rowId, entries);
+        return new ActionsMenu(actions.subjectId(), ActionsMenu.Subject.PLAN, rowId, entries, dropped);
     }
 
     /**
@@ -80,16 +81,17 @@ public final class ActionMenus {
                         int watchesOpen, @Nullable String rowId) {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
-        boolean holdCancels = addEpicHoldActs(entries, used, locale, actions.holdKind());
+        var dropped = new ArrayList<String>();
+        boolean holdCancels = addEpicHoldActs(entries, used, dropped, locale, actions.holdKind());
         var labels = new EpicLabels(nextPlan, waitReasons, autoStart, overlapMaxFiles, findingsNew, watchesOpen);
         for (var availability : actions.actions()) {
             var action = availability.action();
             if (holdCancels && "cancel".equals(action)) {
                 continue;
             }
-            add(entries, used, availability, epicLabel(locale, action, labels), locale);
+            add(entries, used, dropped, availability, epicLabel(locale, action, labels), locale);
         }
-        return new ActionsMenu(actions.subjectId(), ActionsMenu.Subject.EPIC, rowId, entries);
+        return new ActionsMenu(actions.subjectId(), ActionsMenu.Subject.EPIC, rowId, entries, dropped);
     }
 
     private record EpicLabels(@Nullable String nextPlan, List<String> waitReasons, boolean autoStart,
@@ -110,7 +112,7 @@ public final class ActionMenus {
         var label = MessageCatalogue.format(locale, "operator.actions.ended", Map.of("name", subject));
         var chat = MessageCatalogue.format(locale, "control.plan.chat", Map.of()) + ELLIPSIS;
         var entry = TuiMenuEntry.enabled(key(locale, ACTION_CHAT), ACTION_CHAT, label + "   " + chat);
-        return new ActionsMenu(subjectId, ActionsMenu.Subject.ENDED, rowId, List.of(entry));
+        return new ActionsMenu(subjectId, ActionsMenu.Subject.ENDED, rowId, List.of(entry), List.of());
     }
 
     /**
@@ -124,56 +126,78 @@ public final class ActionMenus {
                         @Nullable String rowId) {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
-        addHoldAct(entries, used, locale, "retry");
-        addHoldAct(entries, used, locale, "show_pr");
+        var dropped = new ArrayList<String>();
+        addHoldAct(entries, used, dropped, locale, "retry");
+        addHoldAct(entries, used, dropped, locale, HoldActs.SHOW_PR);
         if ("landing_failed".equals(holdKind)) {
-            addHoldAct(entries, used, locale, "give_up_removal");
+            addHoldAct(entries, used, dropped, locale, HoldActs.GIVE_UP_REMOVAL);
         }
         if (entries.isEmpty()) {
-            addHoldAct(entries, used, locale, "retry");
+            addHoldAct(entries, used, dropped, locale, "retry");
         }
-        return new ActionsMenu(landingId, ActionsMenu.Subject.LANDING, rowId, entries);
+        return new ActionsMenu(landingId, ActionsMenu.Subject.LANDING, rowId, entries, dropped);
     }
 
-    private static boolean addHoldActs(List<TuiMenuEntry> entries, Set<String> used, String locale,
-                        HoldRecord hold) {
-        boolean ends = hold.offers("end_plan") || hold.offers("abort");
+    private static boolean addHoldActs(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,
+                        String locale, HoldRecord hold) {
+        boolean ends = hold.offers(HoldActs.END_PLAN) || hold.offers(HoldActs.ABORT);
         for (var act : hold.acts()) {
-            addHoldAct(entries, used, locale, act);
+            // A plan's hold never carries a landing's acts (show the pull request, give up the
+            // removal): those belong to a failed alongside landing or an epic's landing.
+            if (HoldActs.isLandingAct(act) || HoldActs.CANCEL_EPIC.equals(act)) {
+                continue;
+            }
+            addHoldAct(entries, used, dropped, locale, act);
         }
         return ends;
     }
 
-    private static boolean addEpicHoldActs(List<TuiMenuEntry> entries, Set<String> used, String locale,
-                        @Nullable String holdKind) {
+    private static boolean addEpicHoldActs(List<TuiMenuEntry> entries, Set<String> used,
+                        List<String> dropped, String locale, @Nullable String holdKind) {
         if (holdKind == null) {
             return false;
         }
-        if ("landing_failed".equals(holdKind)) {
-            addHoldAct(entries, used, locale, "retry");
-            addHoldAct(entries, used, locale, "show_pr");
-            addHoldAct(entries, used, locale, "give_up_removal");
-            addHoldAct(entries, used, locale, "cancel_epic");
-            return true;
+        switch (holdKind) {
+            case "landing_failed" -> {
+                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, HoldActs.SHOW_PR);
+                addHoldAct(entries, used, dropped, locale, HoldActs.GIVE_UP_REMOVAL);
+            }
+            case "integrity_pause" -> {
+                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, HoldActs.ACCEPT);
+            }
+            case "stalled" -> {
+                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, "recycle");
+            }
+            case "condition" -> {
+                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, "grant");
+                addHoldAct(entries, used, dropped, locale, "add_credential");
+                addHoldAct(entries, used, dropped, locale, "raise_budget");
+            }
+            default -> addHoldAct(entries, used, dropped, locale, "retry");
         }
-        addHoldAct(entries, used, locale, "retry");
-        addHoldAct(entries, used, locale, "accept");
-        addHoldAct(entries, used, locale, "cancel_epic");
+        addHoldAct(entries, used, dropped, locale, HoldActs.CANCEL_EPIC);
         return true;
     }
 
-    private static void addHoldAct(List<TuiMenuEntry> entries, Set<String> used, String locale, String act) {
+    private static void addHoldAct(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,
+                        String locale, String act) {
         var trigger = key(locale, act);
         if (!used.add(trigger)) {
+            dropped.add(act);
             return;
         }
         entries.add(TuiMenuEntry.enabled(trigger, act, holdLabel(locale, act)));
     }
 
-    private static void add(List<TuiMenuEntry> entries, Set<String> used, ActionAvailability availability,
-                        String label, String locale) {
+    private static void add(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,
+                        ActionAvailability availability, String label, String locale) {
         var trigger = key(locale, availability.action());
         if (!used.add(trigger)) {
+            dropped.add(availability.action());
             return;
         }
         if (availability.available()) {
@@ -222,20 +246,7 @@ public final class ActionMenus {
     }
 
     private static String holdLabel(String locale, String act) {
-        return switch (act) {
-            case "grant" -> text(locale, "operator.actions.hold.act.grant");
-            case "add_credential" -> text(locale, "operator.actions.hold.act.add_credential");
-            case "raise_budget" -> text(locale, "operator.actions.hold.act.raise_budget");
-            case "show_pr" -> text(locale, "operator.actions.hold.act.show_pr");
-            case "accept" -> text(locale, "control.hold.act.accept_change");
-            case "give_up_removal" -> text(locale, "control.hold.act.give_up_removal");
-            case "end_plan" -> text(locale, "control.hold.act.end_plan");
-            case "abort" -> text(locale, "control.hold.act.abort_plan");
-            case "cancel_epic" -> text(locale, "control.hold.act.cancel_epic");
-            case "retry" -> text(locale, "control.hold.act.retry");
-            case "recycle" -> text(locale, "control.hold.act.recycle");
-            default -> act;
-        };
+        return HoldActs.label(locale, act);
     }
 
     private static String key(String locale, String action) {
@@ -243,9 +254,7 @@ public final class ActionMenus {
             case "decompose" -> "decompose_again";
             case "findings" -> "findings_review";
             case "watches" -> "watches_review";
-            case "accept" -> "accept_change";
-            case "abort" -> "abort_plan";
-            default -> action;
+            default -> HoldActs.keyName(action);
         };
         return MessageCatalogue.format(locale, KEY_PREFIX + name, Map.of());
     }

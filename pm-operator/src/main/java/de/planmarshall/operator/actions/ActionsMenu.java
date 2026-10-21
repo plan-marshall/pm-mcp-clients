@@ -42,20 +42,24 @@ public final class ActionsMenu {
     private final Subject subject;
     private final @Nullable String subjectRowId;
     private final List<TuiMenuEntry> entries;
+    private final List<String> droppedActions;
     private int selected;
 
     /**
-     * @param subjectId    the id of the plan, epic, or landing
-     * @param subject      what the menu acts on
-     * @param subjectRowId the row the menu is drawn below, or {@code null} for the selected row
-     * @param entries      the entries, in the order they are drawn
+     * @param subjectId      the id of the plan, epic, or landing
+     * @param subject        what the menu acts on
+     * @param subjectRowId   the row the menu is drawn below, or {@code null} for the selected row
+     * @param entries        the entries, in the order they are drawn
+     * @param droppedActions the actions whose mnemonic was already taken, in the order they were
+     *                       dropped
      */
     public ActionsMenu(String subjectId, Subject subject, @Nullable String subjectRowId,
-                        List<TuiMenuEntry> entries) {
+                        List<TuiMenuEntry> entries, List<String> droppedActions) {
         this.subjectId = Objects.requireNonNull(subjectId, "subjectId");
         this.subject = Objects.requireNonNull(subject, "subject");
         this.subjectRowId = subjectRowId;
         this.entries = List.copyOf(entries);
+        this.droppedActions = List.copyOf(droppedActions);
         if (this.entries.isEmpty()) {
             throw new IllegalArgumentException("an actions menu needs an entry");
         }
@@ -79,6 +83,14 @@ public final class ActionsMenu {
     /** @return the entries, in the order they are drawn */
     public List<TuiMenuEntry> entries() {
         return entries;
+    }
+
+    /**
+     * @return the actions the menu could not show because their mnemonic was already taken by an
+     *         earlier, more urgent entry (the acts of a hold stand first)
+     */
+    public List<String> droppedActions() {
+        return droppedActions;
     }
 
     /** @return the index of the selected entry */

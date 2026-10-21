@@ -82,7 +82,7 @@ entries only.
 | File | Change |
 |---|---|
 | `OverviewFullScreenApp.java` | Opens `EpicViewLevel` from an epic row, from `e` in a plan view, and from ended work (falling back to the project's by-epic view or an ended note when the runtime serves no resource); refreshes it on live events; wires `a`, the menu, hold acts, the review/chat/settings dialogues, `p`, `Esc`, `a`/`Esc` menu closing; persists an epic's project on exit; a status line for a refusal. |
-| `EpicCommand.java` | `epic <id>` prints the epic resource as a tree (head, workstreams, plans, sources, landings, registers, tokens, ten newest events) and `--tokens` the per-plan and own figures, falling back to the process resource. `epic findings|watches` open the review dialogue on an interactive terminal. |
+| `EpicCommand.java` | `epic <id>` prints the epic resource as a tree (head, workstreams, plans, sources, landings, registers, tokens, ten newest events) and `--tokens` the per-plan and own figures, falling back to the process resource. `epic findings\|watches` open the review dialogue on an interactive terminal. |
 | `PlanCommand.java` | `plan pause` asks for its point when no flag is given (and `--no-input` stops); `plan chat` without `--message` opens the chat dialogue. |
 | `ActionSupport.java` | A cancel/abandon without `--reason` asks for it on an interactive terminal; `chat` without a message opens the chat dialogue and its follow-up. |
 | `PlanCompletionLevel.java` | `planId()` for the plan's actions from an ended completion report. |
@@ -101,10 +101,12 @@ entries only.
 | Test | Coverage |
 |---|---|
 | `EpicViewLevelTest` (9) | Head, workstreams and waits, sections and events, toggles, staged-plan details, lookups and next launchable, breadcrumb/footer, ended note, empty epic. |
-| `ActionMenusTest` (11) | Plan menu by state, paused/pausing, disabled reason, held and integrity-pause acts, epic menu and counts, nothing launchable, disabled archive, ended menu, landing menu, German mnemonics and no `a`. |
-| `ActionsCatalogueTest` (4) | Every action, review, hold, settings, chat and epic-view text in EN and DE; every mnemonic one character and never `a`; no mnemonic repeats within any menu or prompt in either language. |
+| `ActionMenusTest` (10) | Plan menu by state, paused/pausing, disabled reason, held and integrity-pause acts, epic menu and counts, nothing launchable, disabled archive, ended menu, landing menu, German mnemonics and no `a`. |
+| `ActionsCatalogueTest` (6) | Every action, review, hold, settings, chat and epic-view text in EN and DE; every mnemonic one character and never `a`; no mnemonic repeats within any menu or prompt; every offered action is on a mnemonic or reported as dropped; a plan’s landing hold never takes Pause. |
 | `EpicViewFullScreenTest` (9 screen tests) | Open from the project, from a plan's `e` with `Esc` return, epic actions and closing, `u` automatic off with the request body, `p` to the project and back, a staged plan's details, `*`, an ended epic's read-only view and chat-only menu, caller return. |
-| `ActionsFullScreenTest` (8 screen tests) | Plan actions below the row, menu modality and closing, pause with its point and request body, start in place, hold acts and retry resolving the hold, actions in the plan view, ended work chat alone, epic actions below the epic row, an inert key while a menu is open. |
+| `ActionsFullScreenTest` (9 screen tests) | Plan actions below the row, menu modality and closing, the arrows moving the menu’s own selection with Enter running it, pause with its point and request body, start in place, hold acts and retry resolving the hold, actions in the plan view, ended work chat alone, epic actions below the epic row, an inert key while a menu is open. |
+| `AnswersTest` (2) | Yes and no are accepted in English and German, and nothing else. |
+| `ConfigCommandTest` (+1) | `config <aspect> --plan` refuses the verb’s other options. |
 | `EpicCommandTest` (+2) | `epic <id>` as a tree from the resource and `--tokens`. |
 | `ControlEpicTranscriptTest` + `control-epic.transcript` (1) | The scrollback epic tree against the `running-work` mock scenario, JVM and native. |
 
@@ -112,9 +114,9 @@ entries only.
 
 - `./mvnw verify -Ppre-commit -pl pm-api,pm-operator -am`: **BUILD SUCCESS** (root, `pm-api`,
   `pm-exec`, `pm-mock-runtime`, `pm-relay`, `pm-operator`).
-- `pm-operator` surefire: **803 tests, 0 failures, 0 errors, 0 skipped** (the previous 760 plus 43
-  new ones; `ActionSupportTest` was updated).
-- New tests: 43 (9 + 10 + 4 + 9 + 8 + 2 + 1).
+- `pm-operator` surefire: **809 tests, 0 failures, 0 errors, 0 skipped** (the previous suite plus
+  48 new ones; `ActionSupportTest` was updated).
+- New tests: 48 (9 + 10 + 6 + 9 + 9 + 2 + 1 + 2).
 - `pm-web-app` independently: `npm run build && npm run check` → **0 errors, 0 warnings** (see the
   note in section 6).
 
@@ -174,20 +176,26 @@ BUILD SUCCESS
 - The pre-commit gate ran OpenRewrite, the license headers, Checkstyle, the Enforcer rules,
   Javadoc, and the full unit-test suite of every module this plan changes and their reactor
   dependencies (root, `pm-api`, `pm-exec`, `pm-mock-runtime`, `pm-relay`, `pm-operator`).
-- `pm-operator` surefire: **803 tests, 0 failures, 0 errors, 0 skipped**.
+- `pm-operator` surefire: **809 tests, 0 failures, 0 errors, 0 skipped**.
 
 > **Full-reactor note (`pm-web-app`):** a full `./mvnw verify -Ppre-commit` in a *fresh* worktree
 > fails in `pm-web-app`'s `npm-typecheck` with `File '$app/tsconfig' not found`. SvelteKit 3 writes
 > that generated file into `node_modules/$app/` during `npm run build`; the module's lifecycle in
 > this worktree re-runs `npm ci` after the build and removes it before `svelte-check`. The module is
 > untouched by this plan: `npm run build && npm run check` in `pm-web-app` reports **0 errors and 0
-> warnings**. The gate was therefore run for the modules this plan changes is and their
-> dependencies; the web module has no source change in this diff.
+> warnings**. The gate was therefore run for the modules this plan changes and their
+> reactor dependencies; the web module has no source change in this diff.
 
-> **Pre-commit workspace note:** the repository-wide OpenRewrite pass reformats a set of
-> pre-existing `pm-api` sources that this plan does not own. Those generated changes are reverted
-> after the green run, so the delivered diff stays within the plan's boundary; re-running the gate
-> reproduces the same unrelated formatting churn.
+All CodeRabbit findings were addressed in the branch: the German and English yes answers, the
+menu's own arrow navigation, the stale project of an action, the silent mnemonic collisions (now
+narrowed and reported), the duplicated review statement, the `now` pause message, the exclusive
+`--plan` options, the analysis prefix boundary, the `!` binding on the epic level, and the report
+and Javadoc details.
+
+**Pre-commit workspace note:** the repository-wide OpenRewrite pass reformats a set of pre-existing
+`pm-api` sources that this plan does not own. Those generated changes are reverted after the green
+run, so the delivered diff stays within the plan's boundary; re-running the gate reproduces the
+same unrelated formatting churn.
 
 ## 7. Follow-ups for the Orchestrator (Step 8)
 

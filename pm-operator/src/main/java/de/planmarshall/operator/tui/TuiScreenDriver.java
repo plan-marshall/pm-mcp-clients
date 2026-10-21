@@ -92,6 +92,17 @@ public final class TuiScreenDriver {
         }
 
         /**
+         * Moves the modal menu's own selection; the level's row selection does not move while the
+         * menu is open.
+         *
+         * @param delta {@code -1} for up, {@code 1} for down
+         * @return {@code true} to keep the view open
+         */
+        default boolean menuNavigate(int delta) {
+            return true;
+        }
+
+        /**
          * Receives the text the operator typed at the filter bar.
          *
          * @param text the filter text, never {@code null}
@@ -383,8 +394,8 @@ public final class TuiScreenDriver {
     private static boolean dispatchMenu(KeyHandler handler, TuiMenu menu, String binding) {
         return switch (binding) {
             case MENU_CLOSE -> handler.menu("");
-            case MENU_UP -> handler.handle(TuiKeyAction.MOVE_UP);
-            case MENU_DOWN -> handler.handle(TuiKeyAction.MOVE_DOWN);
+            case MENU_UP -> handler.menuNavigate(-1);
+            case MENU_DOWN -> handler.menuNavigate(1);
             case MENU_ENTER -> {
                 var selected = menu.selected();
                 yield selected != null ? handler.menu(selected.trigger()) : true;

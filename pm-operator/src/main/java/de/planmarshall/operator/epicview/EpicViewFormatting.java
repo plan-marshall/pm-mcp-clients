@@ -187,8 +187,7 @@ public final class EpicViewFormatting {
     }
 
     /**
-     * @param locale the interface locale
-     * @param row    the row
+     * @param row the row
      * @return the pull request by its number, or an empty string
      */
     public static String pullRequest(WorkRow row) {

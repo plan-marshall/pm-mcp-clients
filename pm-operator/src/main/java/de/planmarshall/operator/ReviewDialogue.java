@@ -130,8 +130,6 @@ final class ReviewDialogue {
                             Map.of("item", OutputSafety.stripControlSequences(item.itemId()),
                                                 "title", firstLine(item.statement()),
                                                 "state", item.disposition().value())));
-        prompt.line("control.review.statement",
-                            Map.of("text", text(item)));
         field("control.review.statement", text(item));
         if (!item.rules().isEmpty()) {
             field("control.review.rules", String.join("; ", cleanAll(item.rules())));
@@ -254,7 +252,7 @@ final class ReviewDialogue {
                             + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "control.review.accept_remaining",
                                                 Map.of("count", open.size())), epicId);
-        if (!"y".equalsIgnoreCase(answer)) {
+        if (!Answers.isYes(answer)) {
             return review;
         }
         var updated = review;
@@ -274,7 +272,7 @@ final class ReviewDialogue {
         var answer = prompt.askRaw(MessageCatalogue.format(prompt.locale(), "control.review.finish", Map.of())
                             + "   " + text("operator.actions.yes_no") + StartPrompt.SUFFIX, STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "control.review.finish", Map.of()), epicId);
-        if (!"y".equalsIgnoreCase(answer)) {
+        if (!Answers.isYes(answer)) {
             return 0;
         }
         var finished = client.commitReview(epicId);

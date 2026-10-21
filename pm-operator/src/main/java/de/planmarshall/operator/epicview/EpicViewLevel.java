@@ -192,8 +192,7 @@ public final class EpicViewLevel {
     public String footer(String locale) {
         var parts = new ArrayList<String>();
         parts.add("\u2191\u2193 " + MessageCatalogue.format(locale, "operator.overview.keys.move", Map.of()));
-        parts.add("Enter " + MessageCatalogue.format(locale, "operator.epic.keys.open", Map.of()));
-        parts.add("\u2192 " + MessageCatalogue.format(locale, "operator.epic.keys.open", Map.of()));
+        parts.add("Enter/\u2192 " + MessageCatalogue.format(locale, "operator.epic.keys.open", Map.of()));
         parts.add("\u2190 " + MessageCatalogue.format(locale, "operator.epic.keys.close", Map.of()));
         parts.add("a " + MessageCatalogue.format(locale, "operator.epic.keys.actions", Map.of()));
         parts.add("p " + MessageCatalogue.format(locale, "operator.epic.keys.project", Map.of()));
@@ -547,11 +546,22 @@ public final class EpicViewLevel {
         for (var event : epic.events()) {
             var text = EpicViewFormatting.clean(event.text());
             var marker = text.indexOf("analysis:");
-            if (marker >= 0 && text.startsWith(planId)) {
+            if (marker >= 0 && startsWithPlanId(text, planId)) {
                 return text.substring(marker + "analysis:".length()).trim();
             }
         }
         return null;
+    }
+
+    private static boolean startsWithPlanId(String text, String planId) {
+        if (!text.startsWith(planId)) {
+            return false;
+        }
+        if (text.length() == planId.length()) {
+            return true;
+        }
+        char next = text.charAt(planId.length());
+        return !Character.isLetterOrDigit(next) && next != '-';
     }
 
     private TuiRow registerRow(String locale, String id, String labelKey, String counts, String command,

@@ -718,6 +718,7 @@ public final class OverviewFullScreenApp {
         menuHold = hold;
         menuEpic = null;
         actionsMenu = ActionMenus.plan(locale, actions, hold, rowId);
+        reportDroppedActions(actionsMenu);
     }
 
     private void openEpicActions(String epicId, @Nullable String rowId) throws IOException {
@@ -745,6 +746,7 @@ public final class OverviewFullScreenApp {
                             resource != null ? resource.overlapMaxFiles() : 0,
                             resource != null ? resource.findings().newCount() : 0,
                             resource != null ? resource.watches().open() : 0, rowId);
+        reportDroppedActions(actionsMenu);
     }
 
     private void openLandingActions(String unit, String rowId) throws IOException {
@@ -761,6 +763,14 @@ public final class OverviewFullScreenApp {
         menuEpic = null;
         actionsMenu = ActionMenus.landing(locale, unit,
                             landing != null ? landing.holdKind() : null, rowId);
+    }
+
+    private void reportDroppedActions(ActionsMenu menu) {
+        if (menu.droppedActions().isEmpty()) {
+            return;
+        }
+        statusMessage = MessageCatalogue.format(locale, "operator.actions.dropped",
+                            Map.of("actions", String.join(", ", menu.droppedActions())));
     }
 
     private static @Nullable String nextLaunchable(EpicResource epic) {
@@ -832,20 +842,33 @@ public final class OverviewFullScreenApp {
     }
 
     private @Nullable String currentProjectId() {
-        var epic = currentEpicView.get();
-        if (epic != null && stack.level() != null && stack.level().kind() == TuiLevel.Kind.EPIC) {
-            return epic.projectId();
+        var lvl = stack.level();
+        if (lvl == null) {
+            return null;
         }
-        var plan = currentPlanView.get();
-        if (plan != null) {
-            return plan.projectId();
-        }
-        var detail = currentProjectDetail.get();
-        if (detail != null) {
-            return detail.projectId();
-        }
-        var ended = currentEndedLevel.get();
-        return ended != null ? ended.projectId() : null;
+        return switch (lvl.kind()) {
+            case EPIC -> {
+                var view = currentEpicView.get();
+                yield view != null && view.epicId().equals(lvl.id()) ? view.projectId() : null;
+            }
+            case PLAN -> {
+                var view = currentPlanView.get();
+                yield view != null && view.planId().equals(lvl.id()) ? view.projectId() : null;
+            }
+            case PLAN_ACTIVITY, PLAN_COMPLETION -> {
+                var view = currentPlanView.get();
+                yield view != null ? view.projectId() : null;
+            }
+            case PROJECT_BY_PLAN, PROJECT_BY_EPIC -> {
+                var detail = currentProjectDetail.get();
+                yield detail != null && detail.projectId().equals(lvl.id()) ? detail.projectId() : null;
+            }
+            case ENDED -> {
+                var ended = currentEndedLevel.get();
+                yield ended != null && ended.projectId().equals(lvl.id()) ? ended.projectId() : null;
+            }
+            default -> null;
+        };
     }
 
     /**
@@ -875,15 +898,6 @@ public final class OverviewFullScreenApp {
                     }
                 }
                 return true;
-            }
-        }
-        if (lvl.kind() == TuiLevel.Kind.PLAN) {
-            var view = currentPlanView.get();
-            var waiting = selected != null ? view.waitingPlanOf(selected.id()) : null;
-            if (waiting != null) {
-                pendingAnswerPlanId = waiting;
-                stop();
-                return false;
             }
         }
         openActions();
@@ -1158,6 +1172,16 @@ public final class OverviewFullScreenApp {
             synchronized (OverviewFullScreenApp.this) {
                 statusMessage = null;
                 return handleMenu(trigger);
+            }
+        }
+
+        @Override
+        public boolean menuNavigate(int delta) {
+            synchronized (OverviewFullScreenApp.this) {
+                if (actionsMenu != null) {
+                    actionsMenu.move(delta);
+                }
+                return true;
             }
         }
 

@@ -634,7 +634,7 @@ public final class PlanCommand implements Callable<Integer> {
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
-                if (now) {
+                if ("now".equals(point)) {
                     out.printf("✓ %s paused%n", planId);
                 } else {
                     out.printf("✓ %s pausing after the %s%n", planId, "after_phase".equals(point) ? "phase" : "task");

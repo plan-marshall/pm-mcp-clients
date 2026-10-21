@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionResult;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.actions.HoldActs;
 import de.planmarshall.operator.actions.WorkActionsClient;
 
 /**
@@ -214,14 +215,14 @@ final class HoldDialogue {
                                                                         hold.filePath() != null ? hold.filePath() : ""))),
                                 STATE_ID, MessageCatalogue.format(prompt.locale(),
                                                     "operator.actions.hold.confirm_accept", Map.of()), planId);
-            if (!"y".equalsIgnoreCase(answer)) {
+            if (!Answers.isYes(answer)) {
                 return null;
             }
         } else if (irreversible(act)) {
             var question = MessageCatalogue.format(prompt.locale(), "operator.actions.hold.confirm",
                                 Map.of("action", actLabel(act)));
             var answer = prompt.askRaw(question, STATE_ID, act, planId);
-            if (!"y".equalsIgnoreCase(answer)) {
+            if (!Answers.isYes(answer)) {
                 return null;
             }
         }
@@ -245,32 +246,11 @@ final class HoldDialogue {
     }
 
     private String actLabel(String act) {
-        return switch (act) {
-            case "grant" -> MessageCatalogue.format(prompt.locale(), "operator.actions.hold.act.grant", Map.of());
-            case "add_credential" -> MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.hold.act.add_credential", Map.of());
-            case "raise_budget" -> MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.hold.act.raise_budget", Map.of());
-            case "show_pr" -> MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.hold.act.show_pr", Map.of());
-            case ACT_ACCEPT -> MessageCatalogue.format(prompt.locale(), "control.hold.act.accept_change", Map.of());
-            case "abort" -> MessageCatalogue.format(prompt.locale(), "control.hold.act.abort_plan", Map.of());
-            case "end_plan" -> MessageCatalogue.format(prompt.locale(), "control.hold.act.end_plan", Map.of());
-            case "cancel_epic" -> MessageCatalogue.format(prompt.locale(), "control.hold.act.cancel_epic",
-                                Map.of());
-            case "give_up_removal" -> MessageCatalogue.format(prompt.locale(),
-                                "control.hold.act.give_up_removal", Map.of());
-            case "recycle" -> MessageCatalogue.format(prompt.locale(), "control.hold.act.recycle", Map.of());
-            default -> MessageCatalogue.format(prompt.locale(), "control.hold.act.retry", Map.of());
-        };
+        return HoldActs.label(prompt.locale(), act);
     }
 
     private static String keyName(String act) {
-        return switch (act) {
-            case "accept" -> "accept_change";
-            case "abort" -> "abort_plan";
-            default -> act;
-        };
+        return HoldActs.keyName(act);
     }
 
     private static boolean irreversible(String act) {

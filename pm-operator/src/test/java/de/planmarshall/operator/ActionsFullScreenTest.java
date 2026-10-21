@@ -234,6 +234,33 @@ class ActionsFullScreenTest {
         }
     }
 
+
+    @Test
+    @DisplayName("the arrows move the menu's own selection and Enter runs the selected entry")
+    void shouldNavigateTheMenu() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var out = new StringWriter();
+            var thread = openProject(context, virtual, out);
+            select(virtual, "Relay Metrics");
+            virtual.type("a");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Start"));
+            virtual.type("\u001bOB");
+            ControlFixture.delay(150L);
+            virtual.type("\r");
+            ControlFixture.await(() -> out.toString().contains("Abandon relay-metrics?"));
+            assertFalse(control.requests().stream().anyMatch(
+                                                    request -> request.endsWith("/api/v1/plans/relay-metrics/actions/start")),
+                                control.requests().toString());
+            // The dialogue asked its reason; an empty one is refused and nothing is sent.
+            virtual.type("\r");
+            ControlFixture.await(() -> out.toString().contains("The reason is required."));
+            ControlFixture.delay(150L);
+            virtual.type("q");
+            ControlFixture.join(thread);
+        }
+    }
+
     private Thread openProject(OperatorContext context, VirtualScreenTerminal virtual) throws Exception {
         return openProject(context, virtual, new StringWriter());
     }
