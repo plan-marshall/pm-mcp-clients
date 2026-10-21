@@ -37,14 +37,18 @@ import de.planmarshall.api.project.ProjectReleaseResult;
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class ProjectsScenarioTest {
 
+    private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
+    private static final String PROJECTS_STATE = SCENARIO + "#projects.explorer";
+
     @Test
     @DisplayName("loads projects scenario and returns complete project explorer")
     void shouldLoadScenarioAndReturnExplorer() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.PROJECTS)) {
+        try (var runtime = MockRuntime.start(PROJECTS_STATE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            assertEquals(StandardScenarios.PROJECTS, runtime.currentScenarioName());
+            assertEquals(SCENARIO, runtime.currentScenarioName());
+            assertEquals("projects.explorer", runtime.currentStateName());
 
             var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
             assertEquals(200, res.status());
@@ -69,7 +73,7 @@ class ProjectsScenarioTest {
     @Test
     @DisplayName("updates favourites ordering and toggles project favourite")
     void shouldUpdateFavourites() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.PROJECTS)) {
+        try (var runtime = MockRuntime.start(PROJECTS_STATE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -103,7 +107,7 @@ class ProjectsScenarioTest {
     @Test
     @DisplayName("handles project onboarding and abandon flow")
     void shouldHandleOnboardingAndAbandon() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.PROJECTS)) {
+        try (var runtime = MockRuntime.start(PROJECTS_STATE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -133,7 +137,7 @@ class ProjectsScenarioTest {
     @Test
     @DisplayName("releases project ending active plans and epics")
     void shouldReleaseProject() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.PROJECTS)) {
+        try (var runtime = MockRuntime.start(PROJECTS_STATE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
@@ -159,9 +163,97 @@ class ProjectsScenarioTest {
     }
 
     @Test
+    @DisplayName("serves the empty project explorer when no project is enrolled")
+    void shouldServeEmptyExplorer() throws Exception {
+        try (var runtime = MockRuntime.start(SCENARIO + "#projects.empty")) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            var explorer = ProjectExplorer.fromJson(res.bodyText());
+            assertAll(
+                    () -> assertTrue(explorer.favourites().isEmpty()),
+                    () -> assertTrue(explorer.recent().isEmpty()),
+                    () -> assertTrue(explorer.allProjects().isEmpty()),
+                    () -> assertTrue(explorer.beingAdded().isEmpty())
+            );
+        }
+    }
+
+    @Test
+    @DisplayName("serves the project that needs the operator's attention")
+    void shouldServeAttentionNeededProject() throws Exception {
+        try (var runtime = MockRuntime.start(SCENARIO + "#projects.attention")) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            var explorer = ProjectExplorer.fromJson(res.bodyText());
+            var attention = explorer.allProjects().stream()
+                    .filter(project -> "pm-mcp-clients".equals(project.projectId()))
+                    .findFirst().orElseThrow();
+            assertAll(
+                    () -> assertEquals(ProjectReadiness.SETUP_NEEDS, attention.readiness()),
+                    () -> assertEquals("decision", attention.setupNeedsSummary()),
+                    () -> assertEquals(2, attention.needsOperatorCount())
+            );
+        }
+    }
+
+    @Test
+    @DisplayName("serves a second project being added beside the one in progress")
+    void shouldServeProjectBeingAdded() throws Exception {
+        try (var runtime = MockRuntime.start(SCENARIO + "#projects.being-added")) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            var explorer = ProjectExplorer.fromJson(res.bodyText());
+            assertEquals(2, explorer.beingAdded().size());
+            assertTrue(explorer.beingAdded().stream()
+                    .anyMatch(being -> "~/git/new-service".equals(being.checkoutPath())));
+        }
+    }
+
+    @Test
+    @DisplayName("serves a released and an enrolled project in the unenrolled case")
+    void shouldServeUnenrolledCase() throws Exception {
+        try (var runtime = MockRuntime.start(SCENARIO + "#projects.unenrolled")) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            var explorer = ProjectExplorer.fromJson(res.bodyText());
+            var released = explorer.allProjects().stream()
+                    .filter(project -> "legacy-portal".equals(project.projectId()))
+                    .findFirst().orElseThrow();
+            assertTrue(released.isReleased());
+            assertEquals(ProjectReadiness.RELEASED, released.readiness());
+        }
+    }
+
+    @Test
+    @DisplayName("serves the ready case at both its explorer and its ready state")
+    void shouldServeReadyProjectState() throws Exception {
+        try (var runtime = MockRuntime.start(SCENARIO + "#projects.ready")) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            assertEquals("projects.ready", runtime.currentStateName());
+            var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            assertEquals(6, ProjectExplorer.fromJson(res.bodyText()).allProjects().size());
+        }
+    }
+
+    @Test
     @DisplayName("unenrols project only when no active work runs")
     void shouldUnenrolProjectWithSafetyCheck() throws Exception {
-        try (var runtime = MockRuntime.start(StandardScenarios.PROJECTS)) {
+        try (var runtime = MockRuntime.start(PROJECTS_STATE)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
