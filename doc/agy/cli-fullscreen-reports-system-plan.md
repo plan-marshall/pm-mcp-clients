@@ -2,7 +2,7 @@
 
 This implementation plan governs the completion of the full-screen Reports (`R`, `UC-PLN-6`) and System (`S` / `system`, `UC-SYS-1..3`) views (`doc/plans/implemented/cli-reports.adoc` and `doc/plans/implemented/cli-system.adoc`) in `pm-operator`, building on [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md) and [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md).
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
 ---
 
@@ -15,7 +15,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Local Client Design** | Shared: [`doc/design/shared/reports.adoc`](../design/shared/reports.adoc), [`completion-report.adoc`](../design/shared/completion-report.adoc), [`system.adoc`](../design/shared/system.adoc), [`cleanup.adoc`](../design/shared/cleanup.adoc)<br>CLI: [`doc/design/terminal-client/24-reports.adoc`](../design/terminal-client/24-reports.adoc) (`#full-screen`, `#completion`), [`25-system.adoc`](../design/terminal-client/25-system.adoc) (`#full-screen`), [`26-cleanup.adoc`](../design/terminal-client/26-cleanup.adoc) |
 | **Roadmap Packages** | [`doc/plans/implemented/cli-reports.adoc`](../plans/implemented/cli-reports.adoc), [`doc/plans/implemented/cli-system.adoc`](../plans/implemented/cli-system.adoc) |
 | **Prerequisite Plans** | [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md), [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md), [`doc/agy/mock-runtime-reports-system-designer-plan.md`](mock-runtime-reports-system-designer-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
 ---

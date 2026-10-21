@@ -2,7 +2,7 @@
 
 This implementation plan governs the remediation of `web-reports` (`doc/plans/implemented/web-reports.adoc`), `web-system` (`doc/plans/implemented/web-system.adoc`), and `web-designer` (`doc/plans/implemented/web-designer.adoc`) in `pm-web-app` and `pm-web-e2e`.
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
 ---
 
@@ -15,7 +15,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Local Client Design** | [`doc/design/shared/reports.adoc`](../design/shared/reports.adoc), [`doc/design/shared/completion-report.adoc`](../design/shared/completion-report.adoc), [`doc/design/shared/system-view.adoc`](../design/shared/system-view.adoc), [`doc/design/shared/process-designer.adoc`](../design/shared/process-designer.adoc), [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) |
 | **Roadmap Packages** | [`doc/plans/implemented/web-reports.adoc`](../plans/implemented/web-reports.adoc), [`doc/plans/implemented/web-system.adoc`](../plans/implemented/web-system.adoc), [`doc/plans/implemented/web-designer.adoc`](../plans/implemented/web-designer.adoc) |
 | **Prerequisite Plans** | [`doc/agy/web-foundation-routing-and-catalogue-plan.md`](web-foundation-routing-and-catalogue-plan.md), [`doc/agy/mock-runtime-reports-system-designer-plan.md`](mock-runtime-reports-system-designer-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
 ---

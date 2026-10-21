@@ -17,17 +17,21 @@ the agent shall execute the four-phase workflow defined in this guideline.
 
 == Position in the Governance Lifecycle
 
-Whereas link:verification-protocol.md[`doc/meta/verification-protocol.md`] governs **single-plan** verification immediately after a pull request lands (Step 8 of `doc/agy/runbook.md`), this guideline governs **multi-plan wave reviews**:
+Whereas link:verification-protocol.adoc[`doc/meta/verification-protocol.adoc`] governs **single-plan** verification immediately after a pull request lands (Step 8 of `doc/agy/runbook.md`), and link:emit_rules.adoc[`doc/meta/emit_rules.adoc`] governs task preparation and lean two-liner emission (Step 1), this guideline governs **multi-plan wave reviews**:
 
 [cols="2,3,3",options="header"]
 |===
 |Document |Scope |Primary Output
 
-|link:implement_use-cases.md[`doc/meta/implement_use-cases.md`]
+|link:emit_rules.adoc[`doc/meta/emit_rules.adoc`]
+|Worktree provisioning, pre-flight dependency setup, and lean 2-liner task emission.
+|Isolated worktree + canonical launch command/prompt.
+
+|link:implement_use-cases.adoc[`doc/meta/implement_use-cases.adoc`]
 |Single use-case or work package implementation across the 5 repository modules.
 |One executable plan in `doc/agy/<topic>-plan.md` + code implementation.
 
-|link:verification-protocol.md[`doc/meta/verification-protocol.md`]
+|link:verification-protocol.adoc[`doc/meta/verification-protocol.adoc`]
 |Single landed pull request verification (Step 8 audit).
 |Verification verdict (`PASSED` -> `doc/agy/verified/`, or single remediation plan).
 
@@ -92,7 +96,7 @@ Group all findings from Phase 1 into bounded, self-contained execution plans und
 2. **Parallel Feature Plans**:
    Decompose the remaining domain views/scenarios into 3–5 orthogonal feature plans per stream that depend on the stream's foundation plan.
 3. **Standard Plan Structure**:
-   Every generated plan in `doc/agy/` must follow `doc/meta/implement_use-cases.md` and `doc/agy/runbook.md`, containing:
+   Every generated plan in `doc/agy/` must follow link:implement_use-cases.adoc[`doc/meta/implement_use-cases.adoc`] and `doc/agy/runbook.md`, containing:
    * **Goal & Context** (linking exact design `.adoc` files and staged `doc/plans/*.adoc` packages)
    * **Dependencies & Collision Guardrails** (explicit execution ordering and file-ownership boundaries)
    * **Deliverables & Phased Tasks** (`pm-api` -> `pm-mock-runtime` -> `pm-operator` / `pm-web-app` -> IT / E2E tests)

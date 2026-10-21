@@ -2,7 +2,7 @@
 
 This implementation plan governs the execution of the `cli-actions` work package (`doc/plans/cli-actions.adoc`) — including the full-screen actions menu (`a`), the full-screen Epic View (`UC-PLN-5`), hold resolution (`UC-CTL-4`), plan/epic control dialogues (`UC-CTL-1..3`, `UC-CTL-5`), and ended-work chat — building on [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md), [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md), [`doc/agy/cli-fullscreen-plan-view-plan.md`](cli-fullscreen-plan-view-plan.md), and [`doc/agy/cli-start-plan.md`](cli-start-plan.md).
 
-It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
 ---
 
@@ -15,7 +15,7 @@ It operationalizes [`doc/meta/implement_use-cases.md`](../meta/implement_use-cas
 | **Local Client Design** | Shared: [`doc/design/shared/work-actions.adoc`](../design/shared/work-actions.adoc) (`#settings`, `#chat-ended`), [`epic-view.adoc`](../design/shared/epic-view.adoc)<br>CLI: [`doc/design/terminal-client/19-actions.adoc`](../design/terminal-client/19-actions.adoc) (`#full-screen`, `#epic-view`, `#holds`, `#review`, `#chat`, `#chat-ended`, `#texts`), [`22-texts-actions.adoc`](../design/terminal-client/22-texts-actions.adoc) |
 | **Roadmap Package** | [`doc/plans/cli-actions.adoc`](../plans/cli-actions.adoc) (`open`) |
 | **Prerequisite Plans** | [`doc/agy/cli-fullscreen-foundation-plan.md`](cli-fullscreen-foundation-plan.md), [`doc/agy/cli-fullscreen-overview-plan.md`](cli-fullscreen-overview-plan.md), [`doc/agy/cli-fullscreen-plan-view-plan.md`](cli-fullscreen-plan-view-plan.md), [`doc/agy/cli-start-plan.md`](cli-start-plan.md), [`doc/agy/mock-runtime-running-work-plan.md`](mock-runtime-running-work-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.md`](../meta/implement_use-cases.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
 
 ---
