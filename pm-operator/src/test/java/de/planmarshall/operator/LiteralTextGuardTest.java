@@ -56,7 +56,13 @@ class LiteralTextGuardTest {
                         "StartPrompt.java",
                         "StartRenderer.java",
                         "ChatDialogue.java",
-                        "EpicDecompositionDialogue.java");
+                        "EpicDecompositionDialogue.java",
+                        "WorkActionDialogue.java",
+                        "HoldDialogue.java",
+                        "ReviewDialogue.java",
+                        "WorkChatDialogue.java",
+                        "PlanSettingsDialogue.java",
+                        "OperatorActions.java");
 
     /** A call that renders text to the operator. */
     private static final Pattern RENDER_CALL = Pattern.compile(

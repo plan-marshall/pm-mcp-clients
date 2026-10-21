@@ -15,6 +15,7 @@ import java.util.Map;
 import org.jline.utils.AttributedString;
 import org.jline.utils.AttributedStyle;
 import org.jline.utils.WCWidth;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.OutputSafety;
@@ -46,6 +47,7 @@ public final class TuiLayout {
     private static final int MIN_HEIGHT = HEADER_LINES + FOOTER_LINES;
     private static final String CURSOR = "\u25b6 ";
     private static final String INDENT = "  ";
+    private static final String MENU_INDENT = "      ";
     private static final String DETAIL_INDENT = "    ";
     private static final String ELLIPSIS = "\u2026";
     private static final String RULE = "\u2500";
@@ -161,7 +163,9 @@ public final class TuiLayout {
     }
 
     private AttributedString footer(TuiScreen screen, int width) {
-        var text = screen.footerText() != null
+        var text = screen.menu() != null
+                            ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
+                            : screen.footerText() != null
                             ? screen.footerText()
                             : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
         return new AttributedString(truncate(text, width));
@@ -191,7 +195,9 @@ public final class TuiLayout {
                 lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + selected.details(), width)), 0));
             }
         }
-        var footer = screen.footerText() != null
+        var footer = screen.menu() != null
+                            ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
+                            : screen.footerText() != null
                             ? screen.footerText()
                             : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
         lines.add(new BodyLine(new AttributedString(pad(footer, width)), 0));
@@ -204,6 +210,8 @@ public final class TuiLayout {
             lines.add(new BodyLine(new AttributedString(pad("/ " + screen.filter(), width)), -1));
         }
         var rows = screen.rows();
+        var menu = screen.menu();
+        int menuAfter = menuAfter(menu, rows, screen.selectedIndex());
         for (int index = 0; index < rows.size(); index++) {
             var row = rows.get(index);
             boolean selected = index == screen.selectedIndex();
@@ -216,8 +224,42 @@ public final class TuiLayout {
             if (columns >= DETAIL_COLUMNS && row.details() != null && !row.details().isBlank()) {
                 lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + row.details(), width)), index));
             }
+            if (menu != null && index == menuAfter) {
+                appendMenu(lines, menu, width, index);
+            }
         }
         return lines;
+    }
+
+    private static int menuAfter(@Nullable TuiMenu menu, List<TuiRow> rows, int selectedIndex) {
+        if (menu == null) {
+            return -1;
+        }
+        if (menu.subjectRowId() != null) {
+            for (int index = 0; index < rows.size(); index++) {
+                if (rows.get(index).id().equals(menu.subjectRowId())) {
+                    return index;
+                }
+            }
+        }
+        return selectedIndex >= 0 && selectedIndex < rows.size() ? selectedIndex : rows.size() - 1;
+    }
+
+    private void appendMenu(List<BodyLine> lines, TuiMenu menu, int width, int rowIndex) {
+        for (int index = 0; index < menu.entries().size(); index++) {
+            var entry = menu.entries().get(index);
+            var text = MENU_INDENT + entry.trigger() + "  " + entry.label();
+            if (!entry.enabled() && entry.reason() != null) {
+                text += MessageCatalogue.format(locale, "operator.actions.disabled_suffix",
+                                    Map.of("reason", entry.reason()));
+            }
+            if (index == menu.selectedIndex()) {
+                lines.add(new BodyLine(new AttributedString(pad(text, width), AttributedStyle.DEFAULT.inverse()),
+                                    rowIndex));
+            } else {
+                lines.add(new BodyLine(new AttributedString(pad(text, width)), rowIndex));
+            }
+        }
     }
 
     private static String cursor(boolean selected) {

@@ -108,6 +108,28 @@ final class TranscriptDialogues {
         }
     }
 
+
+    /**
+     * @return {@code epic relay-hardening} against the mock runtime's running-work scenario
+     * @throws Exception if the runtime or the verb fails
+     */
+    static Dialogue controlEpic() throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.RUNNING_WORK).build());
+             var driver = TerminalTestDriver.create()) {
+            MockMachine.recordLiveRuntime(runtime);
+            driver.project(environment(runtime), runtime.base().getParent());
+            driver.endOfInput();
+
+            var exitCode = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(),
+                                "epic", "relay-hardening");
+            if (exitCode != 0) {
+                throw new IllegalStateException("epic relay-hardening exited with " + exitCode);
+            }
+            return new Dialogue("control-epic", driver.render(), runtime.base());
+        }
+    }
+
     /**
      * @return the console with {@code status} and {@code exit} typed at its prompt
      * @throws Exception if the runtime or the console fails
