@@ -56,6 +56,15 @@
       if (savedMode === 'plan' || savedMode === 'epic') {
         viewMode = savedMode;
       }
+      // A figure of the system view asked for the plans or the epics; consume it once.
+      const focus = get(runtimeStore).overviewFocus;
+      if (focus === 'plans') {
+        viewMode = 'plan';
+        runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
+      } else if (focus === 'epics') {
+        viewMode = 'epic';
+        runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
+      }
       const savedProj = localStorage.getItem('pm_overview_selected_project');
       if (savedProj) {
         selectedProjectId = savedProj;

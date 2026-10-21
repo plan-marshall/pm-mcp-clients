@@ -280,6 +280,22 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |{item} was deleted on {date}
 |{item} wurde am {date} gelöscht
 
+|`report.detail.deleted_by_cleanup`
+|{item} was deleted by the cleanup on {date}.
+|{item} wurde am {date} durch die Aufräumaktion gelöscht.
+
+|`report.from.open_project`
+|Open the project {project}
+|Öffne das Projekt {project}
+
+|`report.from.open_epic`
+|Open the epic {epic}
+|Öffne das Epic {epic}
+
+|`report.from.open_plan`
+|Open the plan {plan}
+|Öffne den Plan {plan}
+
 |`report.list.machine`
 |This machine
 |Diese Maschine

@@ -4,8 +4,10 @@ import SystemView from './SystemView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type SystemSnapshot } from '../api/client';
+import { get } from 'svelte/store';
 
 describe('SystemView component', () => {
+  let eventHandler: ((event: string, data: unknown) => void) | null = null;
   const mockSnapshot: SystemSnapshot = {
     runtime: {
       version: '0.9.1',
@@ -138,6 +140,38 @@ describe('SystemView component', () => {
       }),
     );
     vi.restoreAllMocks();
+    eventHandler = null;
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      favourites: [],
+      recent: [],
+      all_projects: [
+        {
+          project_id: 'pm-mcp-clients',
+          display_name: 'pm-mcp-clients',
+          readiness: 'ready',
+          needs_operator_count: 0,
+          active_plans_count: 3,
+          active_epics_count: 1,
+          is_favourite: true,
+          is_released: false,
+        },
+        {
+          project_id: 'pm-mcp-core',
+          display_name: 'pm-mcp-core',
+          readiness: 'ready',
+          needs_operator_count: 0,
+          active_plans_count: 0,
+          active_epics_count: 0,
+          is_favourite: false,
+          is_released: false,
+        },
+      ],
+      being_added: [],
+    });
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
+      eventHandler = handler;
+      return () => {};
+    });
   });
 
   it('renders the 6-part dashboard with metrics and models', async () => {
@@ -225,5 +259,128 @@ describe('SystemView component', () => {
     await waitFor(() => {
       expect(screen.getByText('Copy the command')).toBeInTheDocument();
     });
+  });
+
+  it('remembers the window, the grouping, and the project per browser', async () => {
+    const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    render(SystemView);
+
+    await waitFor(() => expect(screen.getByText('System')).toBeInTheDocument());
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Per role' }));
+    await fireEvent.change(screen.getByTestId('system-project-filter'), {
+      target: { value: 'pm-mcp-clients' },
+    });
+
+    const saved = JSON.parse(localStorage.getItem('pm_system_filters') ?? '{}');
+    expect(saved).toEqual({
+      window: 'today',
+      groupBy: 'role',
+      project: 'pm-mcp-clients',
+    });
+    expect(fetchSpy).toHaveBeenLastCalledWith('today', 'pm-mcp-clients');
+  });
+
+  it('restores the remembered filters on mount', async () => {
+    localStorage.setItem(
+      'pm_system_filters',
+      JSON.stringify({ window: '7d', groupBy: 'role', project: 'pm-mcp-clients' }),
+    );
+    const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith('7d', 'pm-mcp-clients'));
+  });
+
+  it('makes the work figures links to what they count', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    render(SystemView);
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /running plans in the overview/i })).toBeVisible(),
+    );
+
+    await fireEvent.click(screen.getByRole('button', { name: /running plans in the overview/i }));
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+
+    await fireEvent.click(screen.getByRole('button', { name: /projects with running work/i }));
+    expect(get(runtimeStore).currentRoute).toBe('projects');
+  });
+
+  it('shows the pre-upgrade checks and consents to the upgrade', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    const upgradeSpy = vi
+      .spyOn(apiClient, 'upgradeRuntime')
+      .mockResolvedValue({ status: 'started' });
+
+    render(SystemView);
+
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+    );
+    await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+
+    const dialog = await screen.findByTestId('upgrade-consent');
+    expect(dialog).toHaveTextContent('Upgrade 0.9.1 to 0.10.0?');
+    expect(screen.getByTestId('upgrade-check-list')).toHaveTextContent('2 workers are busy');
+    expect(screen.getByTestId('upgrade-check-list')).toHaveTextContent('1 build runs');
+
+    await fireEvent.click(screen.getByRole('button', { name: /Upgrade when done/i }));
+    expect(upgradeSpy).toHaveBeenCalledWith('0.10.0', 'drain');
+  });
+
+  it('withdraws an upgrade that waits for what runs', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    const withdrawSpy = vi.spyOn(apiClient, 'withdrawUpgrade').mockResolvedValue();
+    render(SystemView);
+    await waitFor(() => expect(eventHandler).not.toBeNull());
+
+    eventHandler?.('runtime.upgrading', {
+      version: '0.10.0',
+      installed: '0.9.1',
+      step: 'verify',
+      withdrawable: true,
+    });
+
+    await waitFor(() => expect(screen.getByTestId('upgrade-steps')).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: /Withdraw the upgrade/i }));
+    expect(withdrawSpy).toHaveBeenCalled();
+    expect(await screen.findByTestId('upgrade-withdrawn')).toBeInTheDocument();
+  });
+
+  it('shows the cause of a failed upgrade and offers to try again', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    render(SystemView);
+    await waitFor(() => expect(eventHandler).not.toBeNull());
+
+    eventHandler?.('runtime.upgrade_failed', {
+      version: '0.10.0',
+      installed: '0.9.1',
+      step: 'verify',
+      reason: 'the digest did not match',
+    });
+
+    const failed = await screen.findByTestId('upgrade-failed');
+    expect(failed).toHaveTextContent('failed while verify: the digest did not match');
+    expect(screen.getByRole('button', { name: /Try again/i })).toBeInTheDocument();
+  });
+
+  it('waits for unsent text before reloading after an upgrade', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    render(SystemView);
+    await waitFor(() => expect(eventHandler).not.toBeNull());
+
+    const field = document.createElement('textarea');
+    field.value = 'a half-written answer';
+    document.body.appendChild(field);
+
+    eventHandler?.('runtime.upgraded', { version: '0.10.0' });
+
+    const reload = await screen.findByTestId('upgrade-reload');
+    expect(reload).toHaveTextContent('0.10.0');
+    expect(reload).toHaveTextContent('waits until the text');
+    field.remove();
   });
 });

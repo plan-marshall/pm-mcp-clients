@@ -39,22 +39,22 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
 
     // 2. Work Card
     await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
-    await expect(page.getByText(/plans/i)).toBeVisible();
+    await expect(page.getByText('Plans', { exact: true })).toBeVisible();
 
     // 3. Workers Card
     await expect(page.getByRole('heading', { name: 'Workers' })).toBeVisible();
-    await expect(page.getByText(/busy/i)).toBeVisible();
-    await expect(page.getByText(/idle/i)).toBeVisible();
+    await expect(page.getByText(/busy/i).first()).toBeVisible();
+    await expect(page.getByText(/idle/i).first()).toBeVisible();
 
     // 4. Jobs Card
     await expect(page.getByRole('heading', { name: 'Jobs' })).toBeVisible();
-    await expect(page.getByText(/build/i)).toBeVisible();
+    await expect(page.getByText(/build/i).first()).toBeVisible();
 
     // 5. Models Card
     await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
 
-    // 6. Cleanup Card
-    await expect(page.getByRole('heading', { name: 'Cleanup' })).toBeVisible();
+    // 6. Cleanup banner
+    await expect(page.getByRole('region', { name: /Cleanup banner/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Review…/i })).toBeVisible();
   });
 
@@ -128,5 +128,75 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
     await backBtn.click();
 
     await expect(dialog).not.toBeVisible();
+  });
+});
+
+test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1..3)', () => {
+  test.beforeEach(async ({ page, request }) => {
+    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+      data: { scenario: 'system' },
+    });
+    expect(res.ok()).toBeTruthy();
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/#code=KXQB-MRTN');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+    await page.getByRole('button', { name: /System/i }).click();
+    await expect(page.getByTestId('system-view')).toBeVisible();
+  });
+
+  test('remembers the window, the grouping, and the project across a reload', async ({ page }) => {
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
+    await page.getByRole('button', { name: 'Per role' }).click();
+    await page.getByTestId('system-project-filter').selectOption('pm-mcp-clients');
+
+    await page.reload();
+    await expect(page.getByTestId('system-view')).toBeVisible();
+
+    await expect(page.getByRole('button', { name: 'Today', exact: true })).toHaveClass(/active/);
+    await expect(page.getByRole('button', { name: 'Per role' })).toHaveClass(/active/);
+    await expect(page.getByTestId('system-project-filter')).toHaveValue('pm-mcp-clients');
+  });
+
+  test('links a work figure to what it counts', async ({ page }) => {
+    await page
+      .getByRole('button', { name: /running plans in the overview/i })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/overview$/);
+  });
+
+  test('shows the pre-upgrade checks, consents, and withdraws the upgrade', async ({ page }) => {
+    await page
+      .getByRole('button', { name: /Upgrade/i })
+      .first()
+      .click();
+
+    const consent = page.getByTestId('upgrade-consent');
+    await expect(consent).toBeVisible();
+    await expect(consent).toContainText('Upgrade 0.9.1 to 0.10.0?');
+    await expect(page.getByTestId('upgrade-check-list')).toContainText('workers are busy');
+
+    await page.getByRole('button', { name: /Upgrade when done/i }).click();
+
+    await expect(page.getByTestId('upgrade-steps')).toBeVisible();
+    await page.getByRole('button', { name: /Withdraw the upgrade/i }).click();
+    await expect(page.getByTestId('upgrade-withdrawn')).toContainText('0.9.1 keeps running');
+  });
+
+  test('opens a cleanup item read-only and keeps the unchecked items', async ({ page }) => {
+    await page.getByRole('button', { name: /Review…/i }).click();
+    await expect(page.getByTestId('cleanup-view')).toBeVisible();
+
+    const first = page.locator('input[type="checkbox"]').first();
+    await first.click();
+    await expect(first).not.toBeChecked();
+
+    await page.getByRole('button', { name: /Open fix-relay read-only/i }).click();
+    await expect(page.getByTestId('cleanup-preview')).toBeVisible();
+    await expect(page.getByText(/opening an item decides nothing/i)).toBeVisible();
+
+    await page.getByRole('button', { name: /Back to the job/i }).click();
+    await expect(page.locator('input[type="checkbox"]').first()).not.toBeChecked();
   });
 });

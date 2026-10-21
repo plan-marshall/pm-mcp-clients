@@ -7,6 +7,7 @@
   export let projectLabel = '';
   export let outdated = false;
   export let onPreview: () => void = () => {};
+  export let onSelectLine: (line: number) => void = () => {};
 
   function statusGlyph(status: string): string {
     if (status === 'passed') return '✓';
@@ -59,12 +60,18 @@
       <ul class="validation__findings" data-testid="validation-findings">
         {#each result.findings as finding, index (index)}
           <li class="validation__finding" data-testid={`finding-${index}`}>
-            {$t('designer.validate.finding', {
-              rule: finding.rule,
-              line: finding.line,
-              column: finding.column,
-              message: finding.message,
-            })}
+            <button
+              type="button"
+              class="validation__finding-button"
+              onclick={() => onSelectLine(finding.line)}
+            >
+              {$t('designer.validate.finding', {
+                rule: finding.rule,
+                line: finding.line,
+                column: finding.column,
+                message: finding.message,
+              })}
+            </button>
             {#if finding.project}
               <span class="validation__finding-project">{finding.project}</span>
             {/if}
@@ -151,6 +158,17 @@
   .validation__finding {
     font-size: var(--text-sm);
     color: var(--color-danger);
+  }
+
+  .validation__finding-button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
   }
 
   .validation__finding-project {

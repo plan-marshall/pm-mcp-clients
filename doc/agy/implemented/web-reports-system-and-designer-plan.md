@@ -75,14 +75,14 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-reports-system-designer` on branch `feat/web-reports-system-and-designer` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `pm-dev-frontend-javascript` for `ReportsView`, `SystemView`, `CleanupView`, and `ProcessDesigner`.
   - `pm-dev-frontend-css` for side-by-side diff, line-numbered editor, and phone read-only responsive layout.
   - `persona-module-tester` & `pm-dev-frontend-jest-testing` for Vitest component tests and Playwright E2E tests.
   - `persona-code-reviewer` for finding evaluation & bot review resolution.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/web-reports-system-and-designer-plan-report.md`) and initial plan moved to `doc/agy/implemented/web-reports-system-and-designer-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/web-reports-system-and-designer-plan-report.md`) and initial plan moved to `doc/agy/implemented/web-reports-system-and-designer-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-reports-system-and-designer-plan-report.md` by orchestrator session.
@@ -104,26 +104,26 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Complete `ReportsView.svelte` & Polite Live Notice
-- [ ] **1.1 Polite Live-Region Notice & `from` Links**:
+- [x] **1.1 Polite Live-Region Notice & `from` Links**:
   - Render an `aria-live="polite"` coalesced report arrival notice without changing `document.title`.
   - Render `project`, `epic`, and `plan` in `report.from` as independent links that navigate without marking the report read.
-- [ ] **1.2 All Report Detail Targets**:
+- [x] **1.2 All Report Detail Targets**:
   - Support opening detail for `plan`, `epic`, `project`, `start`, and `cleanup` reports, and disable the button with `report.detail.deleted_by_cleanup` when `subject_deleted` is true.
 
 ### Phase 2: Complete `SystemView.svelte` & `CleanupView.svelte`
-- [ ] **2.1 Persisted System Filters, Clickable `Work` Figures & Upgrade Flow**:
+- [x] **2.1 Persisted System Filters, Clickable `Work` Figures & Upgrade Flow**:
   - Persist `(selectedWindow, selectedGroupBy, selectedProject)` in `localStorage`.
   - Make `Work` figures clickable links to `/overview` or `/projects`.
   - Implement upgrade consent, pre-upgrade checklist, withdraw, failure states, and unsent-input reload guard.
-- [ ] **2.2 Cleanup Read-Only Item Inspection**:
+- [x] **2.2 Cleanup Read-Only Item Inspection**:
   - Allow opening a cleanup item read-only from `CleanupView.svelte` and returning with all checkbox selections intact.
 
 ### Phase 3: Complete `ProcessDesigner.svelte`
-- [ ] **3.1 File Upload, Draft Persistence & Frontmatter Panel**:
+- [x] **3.1 File Upload, Draft Persistence & Frontmatter Panel**:
   - Add browser file upload and paste intake, `localStorage` draft persistence + unsaved-changes leave confirmation, and the two-way synced Frontmatter panel (auto-setting modification date & release, dropping signature, remembering author per device, read-only interface on replace).
-- [ ] **3.2 Bidirectional Structure Sync, Side-by-Side Diff & Phone Mode**:
+- [x] **3.2 Bidirectional Structure Sync, Side-by-Side Diff & Phone Mode**:
   - Add line numbers and two-way selection sync between text and structure tree, desktop side-by-side placement diff, affected projects list, landing progress/retry/conflict views, and `< 640px` phone read-only mode with `Validate`.
 
 ### Phase 4: Verification
-- [ ] **4.1 Unit & E2E Tests**:
+- [x] **4.1 Unit & E2E Tests**:
   - Run `cd pm-web-app && npm test`, `cd pm-web-e2e && npx playwright test tests/reports.spec.js tests/system.spec.js tests/designer.spec.js`, and `./mvnw verify -Ppre-commit`.

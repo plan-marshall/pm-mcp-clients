@@ -8,11 +8,17 @@
     type SystemSnapshot,
     type WorkerMetric,
     type ModelMetric,
+    type EnrolledProject,
   } from '../api/client';
   import { runtimeStore, navigateTo } from '../stores/runtime';
-  import { formatTokens, formatSplit, formatBytes } from '../utils/tokenFormat';
+  import { hasUnsentInput, startUnsentInputTracking } from '../stores/unsentInput';
+  import { formatSplit, formatBytes } from '../utils/tokenFormat';
+
+  /** The browser's remembered filters: the window, the grouping, and the project. */
+  const SYSTEM_FILTERS_KEY = 'pm_system_filters';
 
   let snapshot = $state<SystemSnapshot | null>(null);
+  let projects = $state<EnrolledProject[]>([]);
   let isLoading = $state(true);
   let loadError = $state('');
   let actionError = $state('');
@@ -23,25 +29,87 @@
   let selectedProject = $state<string>('');
   let selectedGroupBy = $state<'model' | 'role'>('model');
 
+  /** Where the upgrade is: offered, consented to, running, failed, or waiting to reload. */
+  type UpgradePhase = 'idle' | 'consent' | 'progress' | 'withdrawn' | 'failed' | 'reload';
+  let upgradePhase = $state<UpgradePhase>('idle');
+  let upgradeInfo = $state<{
+    version?: string;
+    step?: string;
+    installed?: string;
+    withdrawable?: boolean;
+    reason?: string;
+    restored?: string;
+  }>({});
+  let reloadWaitsForInput = $state(false);
+
   // Confirmation modal state for lifecycle actions
-  let activeModal = $state<'stop' | 'restart' | 'upgrade' | null>(null);
+  let activeModal = $state<'stop' | 'restart' | null>(null);
   let modalWhen = $state<'drain' | 'now'>('drain');
   let isExecutingAction = $state(false);
+  let isWithdrawingUpgrade = $state(false);
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
 
+  /**
+   * Reads the filters the browser remembered, keeping only values this view understands.
+   */
+  function restoreFilters(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(SYSTEM_FILTERS_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        window?: string;
+        groupBy?: string;
+        project?: string;
+      };
+      if (saved.window === 'hour' || saved.window === 'today' || saved.window === '7d') {
+        selectedWindow = saved.window;
+      }
+      if (saved.groupBy === 'model' || saved.groupBy === 'role') {
+        selectedGroupBy = saved.groupBy;
+      }
+      if (typeof saved.project === 'string') {
+        selectedProject = saved.project;
+      }
+    } catch {
+      // A disabled or unreadable storage keeps the defaults; the view still works.
+    }
+  }
+
+  /** Writes the filters to the browser, so the next visit opens where this one was. */
+  function persistFilters(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(
+        SYSTEM_FILTERS_KEY,
+        JSON.stringify({
+          window: selectedWindow,
+          groupBy: selectedGroupBy,
+          project: selectedProject,
+        }),
+      );
+    } catch {
+      // Full, disabled, or private-mode storage: the filters apply to this visit only.
+    }
+  }
+
   onMount(() => {
     isMounted = true;
-    unsubscribeEvents = apiClient.subscribeEvents((event) => {
-      if (
-        event === 'system.metrics' ||
-        event === 'runtime.draining' ||
-        event === 'runtime.drain_withdrawn'
-      ) {
-        void loadSnapshot(false);
-      }
+    restoreFilters();
+    startUnsentInputTracking();
+    unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
+      handleSystemEvent(event, data);
     });
+    void apiClient
+      .getProjectExplorer()
+      .then((response) => {
+        if (isMounted) projects = response.all_projects ?? [];
+      })
+      .catch(() => {
+        // The project filter is optional; without the list the view still shows the machine.
+      });
     void loadSnapshot(true);
   });
 
@@ -75,16 +143,100 @@
 
   function handleWindowChange(win: 'hour' | 'today' | '7d') {
     selectedWindow = win;
+    persistFilters();
     void loadSnapshot(true);
   }
 
   function handleProjectChange(prj: string) {
     selectedProject = prj;
+    persistFilters();
     void loadSnapshot(true);
   }
 
-  function openModal(action: 'stop' | 'restart' | 'upgrade') {
+  function handleGroupChange(groupBy: 'model' | 'role') {
+    selectedGroupBy = groupBy;
+    persistFilters();
+  }
+
+  /**
+   * Opens the overview on the work kind a figure counts.
+   *
+   * @param focus whether the plans or the epics are shown
+   */
+  function openOverview(focus: 'plans' | 'epics'): void {
+    runtimeStore.update((s) => ({ ...s, overviewFocus: focus }));
+    navigateTo('overview');
+  }
+
+  /**
+   * Handles the runtime's events: the metrics refresh, and the upgrade's steps.
+   *
+   * @param event the event's name
+   * @param data its payload
+   */
+  function handleSystemEvent(event: string, data: unknown): void {
+    if (!isMounted) return;
+    if (
+      event === 'system.metrics' ||
+      event === 'runtime.draining' ||
+      event === 'runtime.drain_withdrawn'
+    ) {
+      void loadSnapshot(false);
+      return;
+    }
+    if (event === 'runtime.upgrading') {
+      upgradePhase = 'progress';
+      upgradeInfo = { ...upgradeInfo, ...((data ?? {}) as typeof upgradeInfo) };
+      return;
+    }
+    if (event === 'runtime.upgraded') {
+      const info = (data ?? {}) as { version?: string };
+      upgradeInfo = { ...upgradeInfo, version: info.version ?? upgradeInfo.version };
+      upgradePhase = 'reload';
+      reloadWaitsForInput = false;
+      void loadSnapshot(false);
+      maybeReloadAfterUpgrade();
+      return;
+    }
+    if (event === 'runtime.upgrade_failed') {
+      upgradePhase = 'failed';
+      upgradeInfo = { ...upgradeInfo, ...((data ?? {}) as typeof upgradeInfo) };
+      return;
+    }
+  }
+
+  /**
+   * Loads the app again after an upgrade, unless a field holds text the operator has not sent.
+   */
+  function maybeReloadAfterUpgrade(): void {
+    if (hasUnsentInput()) {
+      reloadWaitsForInput = true;
+      return;
+    }
+    reloadWaitsForInput = false;
+    try {
+      window.location.reload();
+    } catch {
+      // A browser that refuses the reload keeps the notice with its own Load again button.
+      reloadWaitsForInput = true;
+    }
+  }
+
+  function openModal(action: 'stop' | 'restart') {
     activeModal = action;
+    modalWhen = 'drain';
+    actionError = '';
+    actionSuccess = '';
+  }
+
+  /** Opens the upgrade's consent screen: the checks first, then the choice of when. */
+  function openUpgradeConsent() {
+    upgradePhase = 'consent';
+    upgradeInfo = {
+      version: snapshot?.runtime.upgrade_available_version ?? undefined,
+      installed: snapshot?.runtime.version,
+      withdrawable: true,
+    };
     modalWhen = 'drain';
     actionError = '';
     actionSuccess = '';
@@ -107,13 +259,8 @@
         } else {
           runtimeStore.update((s) => ({ ...s, isStopped: true }));
         }
-      } else if (activeModal === 'restart') {
+      } else {
         await apiClient.stopRuntime(modalWhen, 'restart');
-      } else if (activeModal === 'upgrade') {
-        await apiClient.upgradeRuntime(
-          snapshot?.runtime.upgrade_available_version || undefined,
-          modalWhen,
-        );
       }
       closeModal();
       void loadSnapshot(false);
@@ -122,6 +269,104 @@
     } finally {
       isExecutingAction = false;
     }
+  }
+
+  /** Consents to the upgrade and starts it with the chosen `when`. */
+  async function confirmUpgrade() {
+    const version = upgradeInfo.version ?? snapshot?.runtime.upgrade_available_version ?? undefined;
+    isExecutingAction = true;
+    actionError = '';
+    upgradeInfo = {
+      ...upgradeInfo,
+      version,
+      step: 'fetch',
+      installed: snapshot?.runtime.version,
+      withdrawable: true,
+    };
+    upgradePhase = 'progress';
+    try {
+      await apiClient.upgradeRuntime(version, modalWhen);
+      void loadSnapshot(false);
+    } catch (err: unknown) {
+      upgradePhase = 'failed';
+      upgradeInfo = {
+        ...upgradeInfo,
+        step: 'fetch',
+        reason: (err as Error)?.message ?? $t('system.action.failed'),
+      };
+    } finally {
+      isExecutingAction = false;
+    }
+  }
+
+  /** Withdraws the upgrade while it has not switched the links yet. */
+  async function withdrawUpgrade() {
+    isWithdrawingUpgrade = true;
+    actionError = '';
+    try {
+      await apiClient.withdrawUpgrade();
+      upgradePhase = 'withdrawn';
+    } catch (err: unknown) {
+      const message = (err as Error)?.message ?? '';
+      if (message.includes('not_withdrawable') || message.includes('409')) {
+        actionError = $t('system.upgrade.too_late');
+      } else {
+        actionError = $t('system.upgrade.withdraw_failed', { reason: message });
+      }
+    } finally {
+      isWithdrawingUpgrade = false;
+    }
+  }
+
+  /** Hurries the waiting upgrade into the stop now. */
+  async function upgradeNow() {
+    const version = upgradeInfo.version ?? snapshot?.runtime.upgrade_available_version ?? undefined;
+    isExecutingAction = true;
+    try {
+      await apiClient.upgradeRuntime(version, 'now');
+      upgradeInfo = { ...upgradeInfo, step: 'stop' };
+      upgradePhase = 'progress';
+    } catch (err: unknown) {
+      actionError = (err as Error)?.message ?? $t('system.action.failed');
+    } finally {
+      isExecutingAction = false;
+    }
+  }
+
+  /** Dismisses a failed upgrade's notice, keeping the system view as it is. */
+  function dismissUpgrade(): void {
+    upgradePhase = 'idle';
+    upgradeInfo = {};
+    actionError = '';
+  }
+
+  /**
+   * @returns the step index the upgrade reached, for the check list
+   */
+  let upgradeStepIndex = $derived.by(() => {
+    const order = ['fetch', 'verify', 'install', 'wait', 'stop', 'start'];
+    const index = order.indexOf(upgradeInfo.step ?? '');
+    return index < 0 ? 0 : index;
+  });
+
+  /** @returns the catalogue key of the failure the upgrade reported */
+  function upgradeFailureKey(): string {
+    if (upgradeInfo.step === 'start') {
+      return upgradeInfo.restored ? 'system.upgrade.failed_start' : 'system.upgrade.failed_both';
+    }
+    return 'system.upgrade.failed_before';
+  }
+
+  /**
+   * @param step the upgrade step
+   * @returns its place in the check list
+   */
+  function stepState(step: string): 'done' | 'running' | 'pending' {
+    const order = ['fetch', 'verify', 'install', 'wait', 'stop', 'start'];
+    const index = order.indexOf(step);
+    if (index < upgradeStepIndex) return 'done';
+    if (index === upgradeStepIndex) return 'running';
+    return 'pending';
   }
 
   async function handleCheckUpgrade() {
@@ -197,6 +442,21 @@
     </div>
 
     <div class="system-header__controls">
+      {#if projects.length > 0}
+        <select
+          class="project-filter"
+          aria-label={$t('system.work.per_project')}
+          value={selectedProject}
+          onchange={(event) => handleProjectChange(event.currentTarget.value)}
+          data-testid="system-project-filter"
+        >
+          <option value="">{$t('system.work.all')}</option>
+          {#each projects as project (project.project_id)}
+            <option value={project.project_id}>{project.display_name}</option>
+          {/each}
+        </select>
+      {/if}
+
       <div class="window-selector" role="group" aria-label={$t('system.view.window_label')}>
         <button
           type="button"
@@ -245,6 +505,133 @@
     <div class="notice-alert notice-alert--danger" role="alert">
       {actionError}
     </div>
+  {/if}
+
+  {#if snapshot?.runtime.upgrade_available_version && upgradePhase === 'idle'}
+    <section class="upgrade-panel upgrade-panel--available" aria-labelledby="upgrade-available">
+      <div class="upgrade-panel__head">
+        <h2 id="upgrade-available" class="upgrade-panel__title">
+          {$t('system.upgrade.available_title', {
+            version: snapshot.runtime.upgrade_available_version,
+          })}
+        </h2>
+        <span class="text-muted text-sm">
+          {$t('system.upgrade.available_summary', {
+            installed: snapshot.runtime.version,
+            version: snapshot.runtime.upgrade_available_version,
+            date: snapshot.runtime.upgrade_available_date ?? $t('system.figure.unavailable'),
+          })}
+        </span>
+      </div>
+      {#if snapshot.runtime.upgrade_release_notes_summary}
+        <p class="upgrade-panel__notes">{snapshot.runtime.upgrade_release_notes_summary}</p>
+      {/if}
+      <div class="upgrade-panel__actions">
+        {#if snapshot.runtime.upgrade_release_notes_url}
+          <a
+            href={snapshot.runtime.upgrade_release_notes_url}
+            target="_blank"
+            rel="noreferrer"
+            class="link-muted"
+          >
+            {$t('system.runtime.release_notes')}
+          </a>
+        {/if}
+        <Button
+          variant="primary"
+          disabled={snapshot.runtime.upgrade_possible === false}
+          onclick={openUpgradeConsent}
+        >
+          {$t('system.action.upgrade')}
+        </Button>
+      </div>
+      {#if snapshot.runtime.upgrade_possible === false}
+        <p class="text-muted text-sm">
+          {$t('system.upgrade.disabled', {
+            reason: snapshot.runtime.upgrade_disabled_reason ?? $t('system.figure.unavailable'),
+          })}
+        </p>
+      {/if}
+    </section>
+  {/if}
+
+  {#if upgradePhase === 'progress'}
+    <section class="upgrade-panel" aria-labelledby="upgrade-progress" role="status">
+      <h2 id="upgrade-progress" class="upgrade-panel__title">
+        {$t('system.upgrade.title', {
+          version: upgradeInfo.version ?? snapshot?.runtime.upgrade_available_version ?? '',
+        })}
+      </h2>
+      <ul class="upgrade-steps" data-testid="upgrade-steps">
+        {#each ['fetch', 'verify', 'install', 'wait', 'stop', 'start'] as step}
+          {@const state = stepState(step)}
+          <li class="upgrade-step upgrade-step--{state}" data-testid={`upgrade-step-${step}`}>
+            <span class="upgrade-step__glyph" aria-hidden="true">
+              {state === 'done' ? '✓' : state === 'running' ? '◐' : '·'}
+            </span>
+            {$t('system.upgrade.step', {
+              step,
+              installed: upgradeInfo.installed ?? snapshot?.runtime.version ?? '',
+              version: upgradeInfo.version ?? '',
+            })}
+          </li>
+        {/each}
+      </ul>
+      <div class="upgrade-panel__actions">
+        {#if upgradeInfo.withdrawable !== false && upgradeStepIndex < 3}
+          <Button variant="secondary" loading={isWithdrawingUpgrade} onclick={withdrawUpgrade}>
+            {$t('system.upgrade.withdraw')}
+          </Button>
+        {/if}
+        {#if upgradeInfo.step === 'wait'}
+          <Button variant="primary" loading={isExecutingAction} onclick={upgradeNow}>
+            {$t('system.upgrade.now')}
+          </Button>
+        {/if}
+      </div>
+    </section>
+  {:else if upgradePhase === 'withdrawn'}
+    <div class="notice-alert notice-alert--success" role="status" data-testid="upgrade-withdrawn">
+      {$t('system.upgrade.withdrawn', {
+        installed: upgradeInfo.installed ?? snapshot?.runtime.version ?? '',
+      })}
+    </div>
+  {:else if upgradePhase === 'failed'}
+    <section class="upgrade-panel upgrade-panel--failed" role="alert" data-testid="upgrade-failed">
+      <p>
+        {$t(upgradeFailureKey(), {
+          version: upgradeInfo.version ?? '',
+          step: upgradeInfo.step ?? '',
+          reason: upgradeInfo.reason ?? $t('system.figure.unavailable'),
+          installed:
+            upgradeInfo.restored ?? upgradeInfo.installed ?? snapshot?.runtime.version ?? '',
+        })}
+      </p>
+      <div class="upgrade-panel__actions">
+        <Button variant="secondary" onclick={dismissUpgrade}>
+          {$t('system.upgrade.dismiss')}
+        </Button>
+        <Button variant="primary" onclick={openUpgradeConsent}>
+          {$t('system.upgrade.try_again')}
+        </Button>
+      </div>
+    </section>
+  {:else if upgradePhase === 'reload'}
+    <section class="upgrade-panel" role="status" data-testid="upgrade-reload">
+      <p>
+        {$t('system.mismatch.web', {
+          version: upgradeInfo.version ?? snapshot?.runtime.upgrade_available_version ?? '',
+        })}
+      </p>
+      {#if reloadWaitsForInput}
+        <p class="text-muted text-sm">{$t('system.upgrade.reload.unsent')}</p>
+      {/if}
+      <div class="upgrade-panel__actions">
+        <Button variant="primary" onclick={maybeReloadAfterUpgrade}>
+          {$t('system.mismatch.load_again')}
+        </Button>
+      </div>
+    </section>
   {/if}
 
   {#if isLoading && !snapshot}
@@ -308,7 +695,7 @@
               {$t('system.action.restart')}
             </Button>
             {#if snapshot.runtime.upgrade_possible}
-              <Button variant="primary" onclick={() => openModal('upgrade')}>
+              <Button variant="primary" onclick={openUpgradeConsent}>
                 {$t('system.action.upgrade')}
               </Button>
             {/if}
@@ -437,7 +824,15 @@
               {#if snapshot.work.plans_by_state && Object.keys(snapshot.work.plans_by_state).length > 0}
                 {#each Object.entries(snapshot.work.plans_by_state) as [st, count]}
                   {#if count > 0}
-                    <span class="status-tag status-tag--{st}">{count} {st.replace('_', ' ')}</span>
+                    <button
+                      type="button"
+                      class="status-tag status-tag--{st} status-tag--link"
+                      aria-label={$t('system.work.link.plans', { state: st, count })}
+                      onclick={() => openOverview('plans')}
+                    >
+                      {count}
+                      {st.replace('_', ' ')}
+                    </button>
                   {/if}
                 {/each}
               {:else}
@@ -452,7 +847,15 @@
               {#if snapshot.work.epics_by_state && Object.keys(snapshot.work.epics_by_state).length > 0}
                 {#each Object.entries(snapshot.work.epics_by_state) as [st, count]}
                   {#if count > 0}
-                    <span class="status-tag status-tag--{st}">{count} {st.replace('_', ' ')}</span>
+                    <button
+                      type="button"
+                      class="status-tag status-tag--{st} status-tag--link"
+                      aria-label={$t('system.work.link.epics', { state: st, count })}
+                      onclick={() => openOverview('epics')}
+                    >
+                      {count}
+                      {st.replace('_', ' ')}
+                    </button>
                   {/if}
                 {/each}
               {:else}
@@ -474,7 +877,16 @@
           <div class="metric-row">
             <span class="metric-label">{$t('system.work.field.projects')}</span>
             <span class="metric-value">
-              {$t('system.work.projects', { count: snapshot.work.active_projects_count || 0 })}
+              <button
+                type="button"
+                class="metric-link"
+                aria-label={$t('system.work.link.projects', {
+                  count: snapshot.work.active_projects_count || 0,
+                })}
+                onclick={() => navigateTo('projects')}
+              >
+                {$t('system.work.projects', { count: snapshot.work.active_projects_count || 0 })}
+              </button>
             </span>
           </div>
         </div>
@@ -587,9 +999,7 @@
               type="button"
               class="btn-toggle"
               class:btn-toggle--active={selectedGroupBy === 'model'}
-              onclick={() => {
-                selectedGroupBy = 'model';
-              }}
+              onclick={() => handleGroupChange('model')}
             >
               {$t('system.models.per_model')}
             </button>
@@ -597,9 +1007,7 @@
               type="button"
               class="btn-toggle"
               class:btn-toggle--active={selectedGroupBy === 'role'}
-              onclick={() => {
-                selectedGroupBy = 'role';
-              }}
+              onclick={() => handleGroupChange('role')}
             >
               {$t('system.models.per_role')}
             </button>
@@ -683,6 +1091,117 @@
     </div>
   {/if}
 </div>
+
+<!-- Upgrade Consent Dialogue -->
+{#if upgradePhase === 'consent' && snapshot}
+  <div
+    class="modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="upgrade-consent-title"
+    data-testid="upgrade-consent"
+  >
+    <div class="modal-card">
+      <h2 id="upgrade-consent-title" class="modal-title">
+        {$t('system.upgrade.consent', {
+          installed: snapshot.runtime.version,
+          version: snapshot.runtime.upgrade_available_version ?? '',
+        })}
+      </h2>
+
+      <div class="modal-body">
+        <p class="text-muted text-sm">
+          {$t('system.upgrade.explain', {
+            installed: snapshot.runtime.version,
+            version: snapshot.runtime.upgrade_available_version ?? '',
+          })}
+        </p>
+
+        <h3 class="modal-section-title">{$t('system.upgrade.check.title')}</h3>
+        <ul class="upgrade-check-list" data-testid="upgrade-check-list">
+          <li class="upgrade-check">
+            <span class="upgrade-step__glyph" aria-hidden="true">✓</span>
+            {$t('system.upgrade.check.running_workers', {
+              count: snapshot.workers.filter((w) => w.state.toLowerCase() === 'busy').length,
+            })}
+          </li>
+          <li class="upgrade-check">
+            <span class="upgrade-step__glyph" aria-hidden="true">✓</span>
+            {$t('system.upgrade.check.active_builds', {
+              count: snapshot.jobs.build?.slots_used ?? 0,
+            })}
+          </li>
+          <li class="upgrade-check">
+            {#if snapshot.runtime.dirty_worktrees !== null && snapshot.runtime.dirty_worktrees !== undefined}
+              <span class="upgrade-step__glyph" aria-hidden="true">
+                {snapshot.runtime.dirty_worktrees === 0 ? '✓' : '✗'}
+              </span>
+              {$t('system.upgrade.check.dirty_worktrees', {
+                count: snapshot.runtime.dirty_worktrees,
+              })}
+            {:else}
+              <span class="upgrade-step__glyph" aria-hidden="true">?</span>
+              {$t('system.upgrade.check.dirty_reported')}
+            {/if}
+          </li>
+        </ul>
+
+        <fieldset class="modal-fieldset">
+          <legend class="modal-legend">{$t('system.confirm.when')}</legend>
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="upgradeWhen"
+              value="drain"
+              checked={modalWhen === 'drain'}
+              onchange={() => {
+                modalWhen = 'drain';
+              }}
+            />
+            <div class="radio-content">
+              <strong>{$t('system.confirm.drain')}</strong>
+              <span class="text-muted text-sm">{$t('system.confirm.drain_explain')}</span>
+            </div>
+          </label>
+
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="upgradeWhen"
+              value="now"
+              checked={modalWhen === 'now'}
+              onchange={() => {
+                modalWhen = 'now';
+              }}
+            />
+            <div class="radio-content">
+              <strong>{$t('system.confirm.now')}</strong>
+              <span class="text-muted text-sm">{$t('system.confirm.now_explain')}</span>
+            </div>
+          </label>
+        </fieldset>
+      </div>
+
+      <div class="modal-footer">
+        <Button
+          variant="secondary"
+          onclick={() => {
+            upgradePhase = 'idle';
+          }}
+        >
+          {$t('system.confirm.not_now')}
+        </Button>
+        <Button
+          variant={modalWhen === 'now' ? 'danger' : 'primary'}
+          loading={isExecutingAction}
+          onclick={confirmUpgrade}
+        >
+          {$t('system.confirm.do', { act: 'upgrade', when: modalWhen })}
+        </Button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <!-- Modal Confirmation Dialogue -->
 {#if activeModal}
@@ -1044,6 +1563,126 @@
     color: var(--color-primary);
     font-size: var(--text-xs);
     margin-left: var(--space-2);
+  }
+
+  .project-filter {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--text-sm);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+  }
+
+  .status-tag--link {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .status-tag--link:hover {
+    text-decoration: underline;
+  }
+
+  .metric-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-align: right;
+  }
+
+  .metric-link:hover {
+    text-decoration: underline;
+  }
+
+  .upgrade-panel {
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4) var(--space-5);
+    margin-bottom: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .upgrade-panel--available {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary-subtle);
+  }
+
+  .upgrade-panel--failed {
+    border-color: var(--color-danger-border);
+    background-color: var(--color-danger-subtle);
+    color: var(--color-danger);
+  }
+
+  .upgrade-panel__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .upgrade-panel__title {
+    font-size: var(--text-lg);
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .upgrade-panel__notes {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .upgrade-panel__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .upgrade-steps,
+  .upgrade-check-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .upgrade-step,
+  .upgrade-check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .upgrade-step--pending {
+    color: var(--color-text-muted);
+  }
+
+  .upgrade-step--running {
+    font-weight: 600;
+  }
+
+  .upgrade-step__glyph {
+    width: 1rem;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .modal-section-title {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    margin: var(--space-4) 0 var(--space-2) 0;
   }
 
   .notice-alert {

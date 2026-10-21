@@ -77,6 +77,14 @@ export interface RuntimeState {
   onboardingStep?: number | null;
   /** How an ended plan ended, when a view opened it from Ended Work. */
   selectedPlanEnded?: EndedPlanInfo | null;
+  /** The cleanup items the operator unchecked, kept while a preview or another view is open. */
+  cleanupUncheckedIds?: Record<string, boolean>;
+  /** The cleanup item whose read-only preview is open, if any. */
+  cleanupPreviewItemId?: string | null;
+  /** The cleanup item a report's detail opened the job at, highlighted once. */
+  cleanupHighlightItemId?: string | null;
+  /** The work kind a figure asked the overview to show, consumed when it opens. */
+  overviewFocus?: 'plans' | 'epics' | null;
 }
 
 /** An ended plan as Ended Work names it, for the plan view it opens. */
@@ -124,6 +132,10 @@ const initialState: RuntimeState = {
   selectedOnboardingId: null,
   onboardingStep: null,
   selectedPlanEnded: null,
+  cleanupUncheckedIds: {},
+  cleanupPreviewItemId: null,
+  cleanupHighlightItemId: null,
+  overviewFocus: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -446,7 +458,8 @@ function handleStateTransition(data: unknown): void {
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
 function handleReportEvent(event: string, data: unknown): void {
   if (event === 'report.sent') {
-    const reportData = (data || {}) as { subject?: string };
+    const payload = (data || {}) as { report?: { subject?: string }; subject?: string };
+    const reportData = payload.report ?? payload;
     runtimeStore.update((s) => ({
       ...s,
       unreadReportsCount: s.unreadReportsCount + 1,
