@@ -2268,10 +2268,10 @@ public final class OverviewFullScreenApp {
 
         private boolean askYes(String prompt) throws IOException {
             var driver = activeDriver;
-            var terminal = driver != null ? driver.terminal() : context.createTerminal();
+            var confirmTerminal = driver != null ? driver.terminal() : context.createTerminal();
             boolean owned = driver == null;
             try {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+                var reader = LineReaderBuilder.builder().terminal(confirmTerminal).build();
                 var answer = reader.readLine(prompt + "  \u203a ");
                 return answer != null && ("y".equalsIgnoreCase(answer.trim())
                                     || "yes".equalsIgnoreCase(answer.trim()));
@@ -2279,7 +2279,7 @@ public final class OverviewFullScreenApp {
                 return false;
             } finally {
                 if (owned) {
-                    terminal.close();
+                    confirmTerminal.close();
                 }
             }
         }

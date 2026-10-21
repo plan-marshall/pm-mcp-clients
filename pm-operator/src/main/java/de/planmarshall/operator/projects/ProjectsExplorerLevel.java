@@ -151,8 +151,7 @@ public record ProjectsExplorerLevel(ProjectExplorer explorer, boolean byMostUsed
             return null;
         }
         var groupEnd = rowId.indexOf(':', PROJECT_PREFIX.length());
-        var projectId = groupEnd < 0 ? rowId.substring(PROJECT_PREFIX.length())
-                            : rowId.substring(groupEnd + 1);
+        var projectId = rowId.substring(groupEnd < 0 ? PROJECT_PREFIX.length() : groupEnd + 1);
         return allKnownProjects().stream()
                             .filter(project -> project.projectId().equals(projectId))
                             .findFirst().orElse(null);
