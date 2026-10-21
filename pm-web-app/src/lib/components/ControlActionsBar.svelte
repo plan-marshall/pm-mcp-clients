@@ -40,7 +40,7 @@
             : $t('control.epic.next_any');
         case 'auto':
           return $t('control.epic.auto', {
-            mode: automatic ? $t('epic.views.mode_on') : $t('epic.views.mode_off'),
+            mode: automatic ? 'on' : 'off',
           });
         case 'common_files':
           return $t('control.epic.overlap', { count: commonFiles });

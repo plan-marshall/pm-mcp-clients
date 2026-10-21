@@ -79,10 +79,15 @@
     ]);
     if (process.status === 'fulfilled') {
       epic = process.value;
-    } else if (epicResource.status !== 'fulfilled') {
+    }
+    if (epicResource.status === 'fulfilled') {
+      resource = epicResource.value;
+    } else if (initial) {
+      resource = null;
+    }
+    if (!epic) {
       errorMessage = $t('epic.view.load_failed');
     }
-    resource = epicResource.status === 'fulfilled' ? epicResource.value : null;
     if (initial) isLoading = false;
   }
 
@@ -286,6 +291,7 @@
     } catch (err: unknown) {
       reviewNotice = $t('control.review.failed', { reason: reasonOf(err) });
     } finally {
+      await loadEpic(false).catch(() => {});
       reviewBusy = false;
     }
   }

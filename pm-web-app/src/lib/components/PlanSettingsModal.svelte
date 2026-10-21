@@ -33,17 +33,13 @@
 
   const GROUPS = ['plan_defaults', 'roles', 'integrations', 'providers'] as const;
   let chosen: Record<string, string> = {};
+  let seededRevision: number | null = null;
 
-  $: if (settings) {
-    const next: Record<string, string> = {};
-    for (const entry of settings.values) {
-      if (!(entry.aspect in chosen)) {
-        next[entry.aspect] = entry.value ?? '';
-      }
-    }
-    if (Object.keys(next).length > 0) {
-      chosen = { ...chosen, ...next };
-    }
+  // A new revision is the runtime's value: reseed the selects, so a kept or applied change does
+  // not leave the operator's rejected value selected.
+  $: if (settings && settings.revision !== seededRevision) {
+    seededRevision = settings.revision;
+    chosen = Object.fromEntries(settings.values.map((entry) => [entry.aspect, entry.value ?? '']));
   }
 
   function groupFor(aspect: string): string {

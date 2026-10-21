@@ -146,6 +146,31 @@
     }
   }
 
+  /** Replaces a decision with its newer revision and drops the answers to the old one. */
+  function applyRevision(revised: DecisionEnvelope): void {
+    revisedNotices[revised.id] = $t('decision.outcome.revised', {
+      change: revised.change || $t('decision.changed'),
+    });
+    clearDecisionState(revised.id);
+    decisions = decisions.map((entry) => (entry.id === revised.id ? revised : entry));
+  }
+
+  /** Drops every answer, note, interpretation, and submission the decision carried. */
+  function clearDecisionState(id: string): void {
+    const prefix = `${id}:`;
+    delete partAnswers[id];
+    delete reopened[id];
+    for (const map of [ownWordsMode, ownWordsTexts, interpretations, isInterpreting, partNotes]) {
+      for (const key of Object.keys(map)) {
+        if (key.startsWith(prefix)) delete map[key];
+      }
+    }
+    delete isSubmitting[id];
+    for (const key of Object.keys(isSubmitting)) {
+      if (key.startsWith(prefix)) delete isSubmitting[key];
+    }
+  }
+
   function handleEvent(event: string, data: unknown) {
     if (!isMounted) return;
     if (event === 'decision.opened' || event === 'decision.created') {
@@ -155,10 +180,7 @@
         const existing = decisions.find((entry) => entry.id === dec.id);
         if (existing) {
           if ((dec.revision ?? 1) > (existing.revision ?? 1)) {
-            revisedNotices[dec.id] = $t('decision.outcome.revised', {
-              change: dec.change || $t('decision.changed'),
-            });
-            decisions = decisions.map((entry) => (entry.id === dec.id ? dec : entry));
+            applyRevision(dec);
           }
         } else {
           decisions = [dec, ...decisions];
@@ -170,10 +192,7 @@
     } else if (event === 'decision.revised') {
       const revised = data as DecisionEnvelope;
       if (revised?.id) {
-        revisedNotices[revised.id] = $t('decision.outcome.revised', {
-          change: revised.change || $t('decision.changed'),
-        });
-        decisions = decisions.map((entry) => (entry.id === revised.id ? revised : entry));
+        applyRevision(revised);
       }
     } else if (event === 'decision.answered') {
       const answer = data as {
@@ -375,23 +394,21 @@
     const key = keyOf(dec, part, index);
     const interp = interpretations[key];
     const option = interp?.mapped_option_key || 'own_words';
+    if (dec.parts.length > 1) {
+      // Record this part's reading; the Decide button submits all parts together.
+      setAnswer(dec, part, index, option);
+      reopenDependants(dec, index + 1);
+      ownWordsMode[key] = false;
+      interpretations[key] = null;
+      return;
+    }
     isSubmitting[key] = true;
     try {
-      if (dec.parts.length > 1) {
-        const partId = part.part_id || String(index);
-        await apiClient.answerDecision(dec.id, {
-          words: ownWordsTexts[key],
-          part_answers: { [partId]: option },
-          option,
-          note: partNotes[key],
-        });
-      } else {
-        await apiClient.answerDecision(dec.id, {
-          words: ownWordsTexts[key],
-          option,
-          note: partNotes[key],
-        });
-      }
+      await apiClient.answerDecision(dec.id, {
+        words: ownWordsTexts[key],
+        option,
+        note: partNotes[key],
+      });
       setAnswer(dec, part, index, option);
       closeDecision(dec.id);
     } catch (err: unknown) {
@@ -414,11 +431,17 @@
         });
       } else {
         const answers: Record<string, string> = {};
+        const notes: string[] = [];
         for (const [index, part] of dec.parts.entries()) {
           const partId = part.part_id || String(index);
           answers[partId] = answerOf(dec, part, index);
+          const note = partNotes[keyOf(dec, part, index)]?.trim();
+          if (note) notes.push(note);
         }
-        await apiClient.answerDecision(dec.id, { part_answers: answers });
+        await apiClient.answerDecision(dec.id, {
+          part_answers: answers,
+          ...(notes.length > 0 ? { note: notes.join('\n') } : {}),
+        });
       }
       closeDecision(dec.id);
     } catch (err: unknown) {
@@ -467,6 +490,7 @@
       chat = await apiClient.getDecisionChat(dec.id);
     } catch (err: unknown) {
       chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+      chatOpen = false;
     }
   }
 
@@ -503,7 +527,9 @@
     const dec = decisions.find((entry) => entry.id === chatDecisionId);
     if (!dec || dec.parts.length === 0) return;
     const match = /part\s+(\d+)/i.exec(applies);
-    const index = match ? Math.min(dec.parts.length - 1, Number.parseInt(match[1], 10) - 1) : 0;
+    const index = match
+      ? Math.max(0, Math.min(dec.parts.length - 1, Number.parseInt(match[1], 10) - 1))
+      : 0;
     const part = dec.parts[index];
     const key = keyOf(dec, part, index);
     ownWordsTexts[key] = words;
@@ -709,6 +735,12 @@
                   <p class="decision-description">{dec.description}</p>
                 {/if}
 
+                {#if revisedNotices[dec.id]}
+                  <p class="decision-revised" data-testid="decision-revised-{dec.id}" role="status">
+                    {revisedNotices[dec.id]}
+                  </p>
+                {/if}
+
                 {#if dec.evidence}
                   <div class="evidence-section">
                     <button
@@ -738,16 +770,6 @@
                     {/if}
 
                     <p class="part-question">{part.question}</p>
-
-                    {#if revisedNotices[dec.id]}
-                      <p
-                        class="decision-revised"
-                        data-testid="decision-revised-{dec.id}"
-                        role="status"
-                      >
-                        {revisedNotices[dec.id]}
-                      </p>
-                    {/if}
 
                     {#if part.dependency}
                       {#if partAvailable(dec, part, pIdx)}
@@ -1021,20 +1043,15 @@
                       onToggle={() => openChat(dec)}
                       acceptLabel={$t('decision.chat.answer_proposed')}
                     />
-                    {#if chatNotice}
-                      <p
-                        class="decision-chat__notice"
-                        role="alert"
-                        data-testid="decision-chat-notice"
-                      >
-                        {chatNotice}
-                      </p>
-                    {:else}
-                      <p class="decision-chat__open" role="status">
-                        {$t('decision.chat.stays_open', { id: dec.id })}
-                      </p>
-                    {/if}
+                    <p class="decision-chat__open" role="status">
+                      {$t('decision.chat.stays_open', { id: dec.id })}
+                    </p>
                   </div>
+                {/if}
+                {#if chatNotice && chatDecisionId === dec.id}
+                  <p class="decision-chat__notice" role="alert" data-testid="decision-chat-notice">
+                    {chatNotice}
+                  </p>
                 {/if}
               </div>
             {/if}

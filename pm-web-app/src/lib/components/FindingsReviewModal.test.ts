@@ -205,4 +205,15 @@ describe('FindingsReviewModal component', () => {
     });
     expect(screen.queryByTestId('review-modal')).not.toBeInTheDocument();
   });
+
+  it('closes on Escape', async () => {
+    const onClose = vi.fn();
+    render(FindingsReviewModal, {
+      props: { epicId: 'relay-hardening', review, open: true, onClose },
+    });
+
+    await fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { t } from '../i18n';
   import ControlActionsBar from './ControlActionsBar.svelte';
   import HoldResolutionModal from './HoldResolutionModal.svelte';
@@ -82,8 +81,28 @@
   let endedRole = $state('');
 
   let chatSubject = $derived(subjectKind === 'epic' ? `epic:${subjectId}` : subjectId);
+  let loadedSubject = $state('');
 
-  onMount(() => {
+  // A new subject starts from nothing; the panel is reused when Overview switches rows.
+  $effect(() => {
+    const key = `${subjectKind}:${subjectId}:${ended}`;
+    if (key === loadedSubject) return;
+    loadedSubject = key;
+    actions = null;
+    archiveCheck = null;
+    holds = [];
+    holdLoaded = false;
+    holdOpen = false;
+    holdOutcome = null;
+    autoValue = null;
+    notice = '';
+    failure = '';
+    settingsOpen = false;
+    settingsConflict = null;
+    settingsNotice = '';
+    chatOpen = false;
+    chat = null;
+    endedProposal = null;
     void load();
   });
 
@@ -344,6 +363,9 @@
       holds = await apiClient.getPlanHolds(subjectId).catch(() => []);
       if (result.released) {
         holdOpen = false;
+        notice = $t('control.hold.released', {
+          subject: result.subject || subjectId,
+        });
       }
       onChanged();
     } catch (err: unknown) {

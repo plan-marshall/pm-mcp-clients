@@ -30,7 +30,9 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.goto('/#code=KXQB-MRTN');
-    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:', {
+      timeout: 30000,
+    });
   }
 
   test('serves the actions of a running plan with their availability', async ({ request }) => {

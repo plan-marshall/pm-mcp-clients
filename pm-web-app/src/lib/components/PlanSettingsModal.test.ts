@@ -130,4 +130,26 @@ describe('PlanSettingsModal component', () => {
       'landing.main is refused: the base branch is protected',
     );
   });
+
+  it('reseeds the select when the runtime reports a newer revision', async () => {
+    const { rerender } = render(PlanSettingsModal, {
+      props: { planId: 'fix-relay', settings, open: true },
+    });
+
+    expect(screen.getByTestId('settings-value-landing')).toHaveValue('landing.pull-request');
+
+    await rerender({
+      planId: 'fix-relay',
+      open: true,
+      settings: {
+        ...settings,
+        revision: 8,
+        values: settings.values.map((entry) =>
+          entry.aspect === 'landing' ? { ...entry, value: 'landing.main' } : entry,
+        ),
+      },
+    });
+
+    expect(screen.getByTestId('settings-value-landing')).toHaveValue('landing.main');
+  });
 });

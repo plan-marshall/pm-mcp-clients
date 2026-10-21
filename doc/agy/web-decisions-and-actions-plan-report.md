@@ -56,7 +56,7 @@ the epic resource sections.
 | Gate | Result |
 |---|---|
 | `cd pm-web-app && npm run check` | 0 errors, 0 warnings |
-| `cd pm-web-app && npm test` | 44 files, **340 tests passed** |
+| `cd pm-web-app && npm test` | 44 files, **347 tests passed** |
 | `cd pm-web-app && npm run lint` | clean |
 | `cd pm-web-e2e && npm run lint` | clean |
 | `npx playwright test tests/decisions.spec.js tests/control.spec.js` | **23 tests passed** |

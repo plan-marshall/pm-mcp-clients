@@ -2,7 +2,7 @@
   import '../styles/tokens.css';
   import '../styles/base.css';
   import { onMount, onDestroy } from 'svelte';
-  import { t, setLocale, currentLocale, initI18n } from '../lib/i18n';
+  import { t, setLocale, currentLocale, initI18n, messagesStore } from '../lib/i18n';
   import {
     runtimeStore,
     initRuntime,
@@ -84,6 +84,29 @@
     setLocale($currentLocale === 'en' ? 'de' : 'en');
   }
 
+  /** The catalogue key of each route's tab title; the type makes a route impossible to miss. */
+  const ROUTE_TITLE_KEYS: Record<AppRoute, string> = {
+    pair: 'web.pair.page.title',
+    entry: 'start.plan.title',
+    onboarding: 'onboard.entry.title',
+    'project-onboarding': 'project.explorer.title',
+    settings: 'web.settings.page.title',
+    'machine-settings': 'web.settings.page.title',
+    projects: 'project.explorer.title',
+    overview: 'overview.running.title',
+    plan: 'plan.view.title',
+    epic: 'epic.view.title',
+    decomposition: 'epic.view.title',
+    decisions: 'decisions.list.title',
+    reports: 'report.list.title',
+    system: 'system.view.title',
+    cleanup: 'system.view.title',
+    designer: 'designer.view.title',
+    start: 'start.plan.title',
+    revoked: 'devices.revoked.title',
+    'listener-off': 'web.entry.lan_off.title',
+  };
+
   /**
    * The title the address bar carries for the route, before the open decisions are counted.
    *
@@ -91,33 +114,7 @@
    * @returns the catalogue title of that route
    */
   function routeTitle(route: AppRoute): string {
-    switch (route) {
-      case 'overview':
-        return $t('overview.running.title');
-      case 'plan':
-        return $t('plan.view.title');
-      case 'epic':
-      case 'decomposition':
-        return $t('epic.view.title');
-      case 'decisions':
-        return $t('decisions.list.title');
-      case 'projects':
-      case 'project-onboarding':
-        return $t('project.explorer.title');
-      case 'reports':
-        return $t('report.list.title');
-      case 'system':
-      case 'cleanup':
-        return $t('system.view.title');
-      case 'settings':
-      case 'machine-settings':
-        return $t('web.settings.page.title');
-      case 'start':
-      case 'entry':
-        return $t('start.plan.title');
-      default:
-        return $t('web.frame.brand');
-    }
+    return $t(ROUTE_TITLE_KEYS[route]);
   }
 
   // The tab title counts the open decisions, so an operator in another tab sees them without
@@ -125,6 +122,9 @@
   $effect(() => {
     if (typeof document === 'undefined') return;
     const count = $runtimeStore.openDecisionsCount;
+    const key = ROUTE_TITLE_KEYS[$runtimeStore.currentRoute];
+    // The address bar never shows a raw key: the title waits for the catalogue to arrive.
+    if (!key || !$messagesStore[key]) return;
     const base = routeTitle($runtimeStore.currentRoute);
     document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
   });

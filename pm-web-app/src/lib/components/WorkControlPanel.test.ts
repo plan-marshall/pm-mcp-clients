@@ -232,4 +232,19 @@ describe('WorkControlPanel component', () => {
     });
     expect(window.location.pathname).toBe('/entries/ent-3f9a2c41');
   });
+
+  it('reloads the actions when the subject changes', async () => {
+    const { rerender } = render(WorkControlPanel, {
+      props: { subjectId: 'fix-relay', subjectKind: 'plan' },
+    });
+
+    expect(await screen.findByTestId('action-pause')).toBeInTheDocument();
+    expect(apiClient.getPlanActions).toHaveBeenCalledWith('fix-relay');
+
+    await rerender({ subjectId: 'relay-metrics', subjectKind: 'plan' });
+
+    await waitFor(() => {
+      expect(apiClient.getPlanActions).toHaveBeenLastCalledWith('relay-metrics');
+    });
+  });
 });

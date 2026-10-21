@@ -141,4 +141,19 @@ describe('HoldResolutionModal component', () => {
     expect(screen.getByTestId('hold-confirm')).toHaveTextContent('The earlier content is not kept');
     expect(screen.getByTestId('hold-reason')).toBeInTheDocument();
   });
+
+  it('explains an epic cancel with the epic text', async () => {
+    const epicHold: HoldRecord = {
+      ...conditionHold,
+      subject_kind: 'epic',
+      acts: ['cancel_epic'],
+    };
+    render(HoldResolutionModal, { props: { hold: epicHold, open: true } });
+
+    await fireEvent.click(screen.getByTestId('hold-act-cancel_epic'));
+
+    expect(screen.getByTestId('hold-confirm')).toHaveTextContent(
+      'the epic is archived as cancelled',
+    );
+  });
 });

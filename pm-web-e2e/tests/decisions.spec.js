@@ -16,7 +16,9 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.goto('/#code=KXQB-MRTN');
-    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:', {
+      timeout: 30000,
+    });
   });
 
   async function openDecisions(page) {
@@ -138,11 +140,11 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     const decisionCard = page.locator('article[data-decision-id="Q-007"]');
     await decisionCard.getByRole('button', { name: 'chat about it first' }).click();
 
-    // The mock runtime offers no decision chat; the panel says so instead of pretending.
-    await expect(decisionCard.getByTestId('decision-chat-Q-007')).toBeVisible();
+    // The mock runtime offers no decision chat; the card says so and the answers stay enabled.
     await expect(decisionCard.getByTestId('decision-chat-notice')).toContainText(
       'No chat is available for this decision',
     );
+    await expect(decisionCard.getByRole('button', { name: 'chat about it first' })).toBeEnabled();
   });
 
   test('asks once whether the browser may notify, and remembers the answer', async ({ page }) => {

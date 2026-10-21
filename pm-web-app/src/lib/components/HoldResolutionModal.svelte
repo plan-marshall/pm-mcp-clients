@@ -56,8 +56,11 @@
     if (act === 'give_up_removal') {
       return $t('control.hold.give_up_removal.explain');
     }
+    if (act === 'cancel_epic') {
+      return $t('control.cancel_epic.afterwards');
+    }
     return $t('control.end.afterwards', {
-      outcome: act === 'abort' ? 'aborted' : act === 'cancel_epic' ? 'cancelled' : 'cancelled',
+      outcome: act === 'abort' ? 'aborted' : 'cancelled',
     });
   }
 

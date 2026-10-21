@@ -495,4 +495,97 @@ describe('DecisionView component', () => {
     expect(screen.getByTestId('notify-message')).toHaveTextContent('Notifications stay off');
     expect(localStorage.getItem('pm_decision_notify')).toBe('denied');
   });
+
+  it('drops the answers of the earlier revision when a decision is revised', async () => {
+    const captured: { handler?: (event: string, data: unknown) => void } = {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      captured.handler = callback as (event: string, data: unknown) => void;
+      return () => {};
+    });
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([multipartDecision]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
+    });
+    const groups = screen.getAllByRole('radiogroup');
+    await fireEvent.click(groups[0].querySelector('input[value="1"]')!);
+
+    captured.handler?.('decision.opened', {
+      ...multipartDecision,
+      revision: 2,
+      change: 'the migration part changed',
+    });
+
+    expect(await screen.findByTestId('decision-revised-dec-multipart')).toHaveTextContent(
+      'The decision changed: the migration part changed. Please answer again.',
+    );
+    expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+  });
+
+  it('records an own-words answer for one part without closing the decision', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+      {
+        ...multipartDecision,
+        parts: multipartDecision.parts.map((part) => ({
+          ...part,
+          allow_own_words: true,
+        })),
+      },
+    ]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getAllByText('✎ in my own words')[0]);
+    await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+      target: { value: 'Use a file per plan' },
+    });
+    await fireEvent.click(screen.getByText('Read back'));
+    await waitFor(() => {
+      expect(screen.getByText('I understood: Rebase onto main')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('Correct'));
+
+    expect(apiClient.answerDecision).not.toHaveBeenCalled();
+    expect(screen.getByText('How is it migrated?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+  });
+
+  it('sends the notes of every part with a multi-part answer', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+      {
+        ...multipartDecision,
+        parts: multipartDecision.parts.map((part) => ({
+          ...part,
+          allow_note: true,
+        })),
+      },
+    ]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
+    });
+
+    const firstGroups = screen.getAllByRole('radiogroup');
+    await fireEvent.click(firstGroups[0].querySelector('input[value="1"]')!);
+    await waitFor(() => {
+      expect(screen.getAllByRole('radiogroup')).toHaveLength(2);
+    });
+    const parts = screen.getAllByRole('radiogroup');
+    await fireEvent.click(parts[1].querySelector('input[value="2"]')!);
+
+    const notes = screen.getAllByPlaceholderText('Optional note');
+    await fireEvent.input(notes[0], { target: { value: 'one file per plan' } });
+    await fireEvent.input(notes[1], { target: { value: 'run the verb by hand' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Decide' }));
+
+    expect(apiClient.answerDecision).toHaveBeenCalledWith('dec-multipart', {
+      part_answers: { '1': '1', '2': '2' },
+      note: 'one file per plan\nrun the verb by hand',
+    });
+  });
 });

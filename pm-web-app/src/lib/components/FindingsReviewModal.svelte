@@ -44,6 +44,7 @@
     onClose = () => {},
   }: Props = $props();
 
+  let panel = $state<HTMLElement | null>(null);
   let selectedId = $state<string | null>(null);
   let dropReason = $state('');
   let instruction = $state('');
@@ -58,6 +59,18 @@
   let openItems = $derived(review?.items.filter((item) => item.state === 'open') ?? []);
   let drafted: DraftedPlan | null = $derived(review?.drafted_plan ?? null);
   let readBack: ReviewReadBack | null = $derived(review?.read_back ?? null);
+
+  $effect(() => {
+    if (open) {
+      panel?.focus();
+    }
+  });
+
+  function onKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      close();
+    }
+  }
 
   /** The readable label of an item's disposition. */
   function stateLabel(state: string): string {
@@ -133,10 +146,18 @@
 </script>
 
 {#if open}
-  <div class="review-modal" data-testid="review-modal" role="dialog" aria-modal="true">
-    <div class="review-modal__panel">
+  <div class="review-modal" data-testid="review-modal">
+    <div
+      class="review-modal__panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="review-title"
+      tabindex="-1"
+      bind:this={panel}
+      onkeydown={onKeydown}
+    >
       <header class="review-modal__head">
-        <h2 class="review-modal__title" data-testid="review-title">
+        <h2 id="review-title" class="review-modal__title" data-testid="review-title">
           {$t('control.review.title', { epic: epicId, register })}
         </h2>
         <span class="review-modal__progress" data-testid="review-progress">

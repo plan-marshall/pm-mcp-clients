@@ -670,6 +670,11 @@
                   openEpicView(controlSubject.id);
                 }
               }}
+              onDecompose={() => {
+                if (controlSubject?.kind === 'epic') {
+                  openEpicView(controlSubject.id);
+                }
+              }}
               onChanged={refreshAll}
             />
           </section>
