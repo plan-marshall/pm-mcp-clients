@@ -13,13 +13,18 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
@@ -35,6 +40,11 @@ import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.api.overview.ProjectSummary;
 import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.api.process.TaskActivity;
+import de.planmarshall.api.project.BeingAddedProject;
+import de.planmarshall.api.project.EnrolledProject;
+import de.planmarshall.api.project.FavouritesUpdateRequest;
+import de.planmarshall.api.project.ProjectExplorer;
+import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.api.report.PlanCompletionReport;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
@@ -55,9 +65,13 @@ import de.planmarshall.operator.planview.PlanCompletionLevel;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.planview.PlanViewLevel.EndedInfo;
 import de.planmarshall.operator.planview.WorkerActivityLevel;
+import de.planmarshall.operator.projects.ProjectOpenEntry;
+import de.planmarshall.operator.projects.ProjectsExplorerActions;
+import de.planmarshall.operator.projects.ProjectsExplorerLevel;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiLevel;
+import de.planmarshall.operator.tui.TuiMenu;
 import de.planmarshall.operator.tui.TuiMenuEntry;
 import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreen;
@@ -73,6 +87,7 @@ public final class OverviewFullScreenApp {
 
     private static final String PROJECTS_API_PREFIX = "/api/v1/projects/";
     private static final String PLANS_API_PREFIX = "/api/v1/plans/";
+    private static final String PROJECT_VERB = "project";
     private static final String STATUS_ROW_ID = "__status__";
 
     /**
@@ -82,10 +97,11 @@ public final class OverviewFullScreenApp {
      * @param by      optional initial view grouping (epic/plan)
      * @param ended   whether initial level is ended work
      * @param plan    optional plan to open in its full-screen plan view
+     * @param explorer whether the explorer is the root instead of running work
      */
     public record InitialSelection(@Nullable String project, @Nullable String by, boolean ended,
-    @Nullable String plan) {
-        public static final InitialSelection DEFAULT = new InitialSelection(null, null, false, null);
+    @Nullable String plan, boolean explorer) {
+        public static final InitialSelection DEFAULT = new InitialSelection(null, null, false, null, false);
 
         /**
          * @param project optional initial project ID
@@ -93,7 +109,7 @@ public final class OverviewFullScreenApp {
          * @param ended   whether the initial level is ended work
          */
         public InitialSelection(@Nullable String project, @Nullable String by, boolean ended) {
-            this(project, by, ended, null);
+            this(project, by, ended, null, false);
         }
 
         /**
@@ -101,7 +117,14 @@ public final class OverviewFullScreenApp {
          * @return the selection
          */
         public static InitialSelection plan(String plan) {
-            return new InitialSelection(null, null, false, plan);
+            return new InitialSelection(null, null, false, plan, false);
+        }
+
+        /**
+         * @return the selection that opens the projects explorer as the root
+         */
+        public static InitialSelection explorerRoot() {
+            return new InitialSelection(null, null, false, null, true);
         }
     }
 
@@ -119,6 +142,7 @@ public final class OverviewFullScreenApp {
     private final InitialSelection initialSelection;
 
     private final AtomicReference<ProjectOverviewResponse> cachedProjects = new AtomicReference<>();
+    private final AtomicReference<ProjectsExplorerLevel> explorerLevel = new AtomicReference<>();
     private final AtomicReference<ProjectDetailResponse> currentProjectDetail = new AtomicReference<>();
     private final AtomicBoolean currentByEpic = new AtomicBoolean(false);
     private final AtomicReference<EndedWorkLevel> currentEndedLevel = new AtomicReference<>();
@@ -129,6 +153,10 @@ public final class OverviewFullScreenApp {
     private final AtomicBoolean activityFollow = new AtomicBoolean(true);
     private volatile @Nullable String pendingAnswerPlanId;
     private @Nullable ActionsMenu actionsMenu;
+    private @Nullable TuiMenu projectMenu;
+    private @Nullable EnrolledProject projectMenuProject;
+    private @Nullable BeingAddedProject projectMenuBeing;
+    private List<ProjectOpenEntry> projectMenuOpenEntries = List.of();
     private @Nullable HoldRecord menuHold;
     private @Nullable EpicResource menuEpic;
     private @Nullable String menuKind;
@@ -136,6 +164,7 @@ public final class OverviewFullScreenApp {
     private @Nullable String statusMessage;
     private @Nullable PrintWriter consoleOut;
     private @Nullable TuiScreenDriver activeDriver;
+    private @Nullable OverviewKeyHandler activeKeyHandler;
 
     /**
      * Creates the full-screen overview application with system clock and context defaults.
@@ -199,11 +228,14 @@ public final class OverviewFullScreenApp {
             var driver = new TuiScreenDriver(terminal, locale);
             activeDriver = driver;
             consoleOut = out;
-            var result = driver.run(this::buildScreen, new OverviewKeyHandler());
+            var keyHandler = new OverviewKeyHandler();
+            activeKeyHandler = keyHandler;
+            var result = driver.run(this::buildScreen, keyHandler);
             openPendingDecision(out);
             return result;
         } finally {
             activeDriver = null;
+            activeKeyHandler = null;
             running.set(false);
             sseThread.interrupt();
             saveState();
@@ -235,6 +267,17 @@ public final class OverviewFullScreenApp {
     }
 
     void loadInitialData(RuntimeClient runtime) {
+        if (initialSelection.explorer()) {
+            fetchExplorer(runtime);
+            fetchUnreadReports(runtime);
+            var level = explorerLevel.get();
+            if (level != null) {
+                var rows = level.rows(locale, clock);
+                stack.replaceRoot(ProjectsExplorerLevel.level(locale), rows,
+                                    ProjectsExplorerLevel.firstSelectableId(rows));
+            }
+            return;
+        }
         fetchProjects(runtime);
         fetchUnreadReports(runtime);
 
@@ -297,6 +340,20 @@ public final class OverviewFullScreenApp {
             }
         } catch (IOException _) {
             // Keep existing cached projects if runtime read fails
+        }
+    }
+
+    void fetchExplorer(RuntimeClient runtime) {
+        try {
+            var response = runtime.send(HttpRequest.get("/api/v1/projects"));
+            if (response.status() == 200) {
+                var explorer = ProjectExplorer.fromJson(response.bodyText());
+                var current = explorerLevel.get();
+                boolean byMostUsed = current != null && current.byMostUsed();
+                explorerLevel.set(new ProjectsExplorerLevel(explorer, byMostUsed));
+            }
+        } catch (IOException | IllegalArgumentException _) {
+            // Keep the last report of the projects when the runtime read fails.
         }
     }
 
@@ -444,6 +501,10 @@ public final class OverviewFullScreenApp {
                 return;
             }
             var kind = lvl.kind();
+            if (kind == TuiLevel.Kind.PROJECTS) {
+                // The explorer is a root of its own; it does not move the overview's start point.
+                return;
+            }
             if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
                 // A sub-level of a plan does not describe a place of the overview; keep the
                 // snapshot the operator had before opening it.
@@ -554,6 +615,12 @@ public final class OverviewFullScreenApp {
             withStatus.add(TuiRow.leaf(STATUS_ROW_ID, "  " + statusMessage));
             rows = withStatus;
         }
+        TuiMenu menu = null;
+        if (projectMenu != null) {
+            menu = projectMenu;
+        } else if (actionsMenu != null) {
+            menu = actionsMenu.screenMenu();
+        }
         return new TuiScreen(
                             breadcrumb,
                             kind,
@@ -564,7 +631,7 @@ public final class OverviewFullScreenApp {
                             connected.get(),
                             unreadReports.get(),
                             footer,
-                            actionsMenu != null ? actionsMenu.screenMenu() : null
+                            menu
         );
     }
 
@@ -794,6 +861,13 @@ public final class OverviewFullScreenApp {
      * @return {@code true} to keep the view open
      */
     private boolean handleMenu(String trigger) {
+        if (projectMenu != null) {
+            var handler = activeKeyHandler;
+            if (handler != null) {
+                handler.handleProjectMenu(trigger);
+            }
+            return true;
+        }
         if (actionsMenu == null) {
             return true;
         }
@@ -998,6 +1072,10 @@ public final class OverviewFullScreenApp {
         if (targetKind == null) {
             return;
         }
+        if (targetKind == TuiLevel.Kind.PROJECTS) {
+            refreshExplorer();
+            return;
+        }
 
         try {
             var runtime = context.runtime(false);
@@ -1074,6 +1152,28 @@ public final class OverviewFullScreenApp {
                 stack.refresh(ended.rows(locale, clock, stack.helpVisible()));
             }
         }
+    }
+
+    private void refreshExplorer() {
+        var selected = stack.selected();
+        var selectedId = selected != null ? selected.id() : null;
+        try {
+            var runtime = context.runtime(false);
+            fetchExplorer(runtime);
+            fetchUnreadReports(runtime);
+        } catch (IOException _) {
+            // The last report of the projects stays until the runtime is reachable again.
+        }
+        var level = explorerLevel.get();
+        if (level != null) {
+            synchronized (this) {
+                stack.refresh(level.rows(locale, clock));
+                if (selectedId != null) {
+                    stack.select(selectedId);
+                }
+            }
+        }
+        terminal.raise(Terminal.Signal.WINCH);
     }
 
     private void refreshPlan(RuntimeClient runtime) {
@@ -1173,7 +1273,9 @@ public final class OverviewFullScreenApp {
         @Override
         public boolean menuNavigate(int delta) {
             synchronized (OverviewFullScreenApp.this) {
-                if (actionsMenu != null) {
+                if (projectMenu != null) {
+                    projectMenu = projectMenu.move(delta);
+                } else if (actionsMenu != null) {
                     actionsMenu.move(delta);
                 }
                 return true;
@@ -1187,10 +1289,12 @@ public final class OverviewFullScreenApp {
                         activityFollow.set(false);
                     }
                     stack.move(-1);
+                    skipExplorerHeaders(-1);
                     checkEndedPagination();
                 }
                 case MOVE_DOWN -> {
                     stack.move(1);
+                    skipExplorerHeaders(1);
                     if (isActivityLevel()) {
                         activityFollow.set(true);
                     }
@@ -1201,18 +1305,24 @@ public final class OverviewFullScreenApp {
                         activityFollow.set(false);
                     }
                     stack.page(-1);
+                    skipExplorerHeaders(-1);
                     checkEndedPagination();
                 }
                 case PAGE_DOWN -> {
                     stack.page(1);
+                    skipExplorerHeaders(1);
                     if (isActivityLevel()) {
                         activityFollow.set(true);
                     }
                     checkEndedPagination();
                 }
-                case FIRST -> stack.first();
+                case FIRST -> {
+                    stack.first();
+                    skipExplorerHeaders(1);
+                }
                 case LAST -> {
                     stack.last();
+                    skipExplorerHeaders(-1);
                     if (isActivityLevel()) {
                         activityFollow.set(true);
                     }
@@ -1246,6 +1356,18 @@ public final class OverviewFullScreenApp {
                 case COMPLETION -> planOpenCompletion();
                 case ACTIONS -> openActions();
                 case WAITS -> openWhatWaits();
+                case FAVOURITE -> toggleFavourite();
+                case MOVE_FAVOURITE_DOWN -> moveFavourite(1);
+                case MOVE_FAVOURITE_UP -> moveFavourite(-1);
+                case SORT -> toggleExplorerSort();
+                case ADD_PROJECT -> runVerb(PROJECT_VERB, "add");
+                case ADD_EPIC -> startWork(true);
+                case ADD_PLAN -> startWork(false);
+                case RUNNING_WORK -> openRunningWork();
+                case SETUP -> openProjectSetup();
+                case CONTINUE -> continueProject();
+                case ABANDON -> abandonOnboarding();
+                case ENROL_AGAIN -> enrolAgain();
                 default -> {
                     // unhandled key actions
                 }
@@ -1364,6 +1486,10 @@ public final class OverviewFullScreenApp {
             var kind = lvl.kind();
             var selectedId = selected.id();
 
+            if (kind == TuiLevel.Kind.PROJECTS) {
+                openProjectMenu();
+                return true;
+            }
             if (kind == TuiLevel.Kind.PLAN) {
                 return planOpenSelected(selectedId);
             }
@@ -1755,6 +1881,13 @@ public final class OverviewFullScreenApp {
                 return;
             }
             var kind = lvl.kind();
+            if (kind == TuiLevel.Kind.PROJECTS) {
+                var project = selectedExplorerProject();
+                if (project != null && isReleased(project)) {
+                    openEndedFor(project.projectId());
+                }
+                return;
+            }
             String targetProjectId = null;
             if (kind == TuiLevel.Kind.OVERVIEW) {
                 var sel = stack.selected();
@@ -1782,6 +1915,381 @@ public final class OverviewFullScreenApp {
             var systemLevel = TuiLevel.of(TuiLevel.Kind.SYSTEM, "system", "System");
             var rows = List.of(new TuiRow("sys-0", "System view", null, false, false));
             stack.push(systemLevel, rows, null);
+        }
+
+        private boolean isExplorerLevel() {
+            var level = stack.level();
+            return level != null && level.kind() == TuiLevel.Kind.PROJECTS;
+        }
+
+        private void skipExplorerHeaders(int delta) {
+            if (!isExplorerLevel()) {
+                return;
+            }
+            int direction = delta == 0 ? 1 : delta;
+            boolean reversed = false;
+            int guard = 0;
+            while (stack.selected() != null && ProjectsExplorerLevel.isHeader(stack.selected().id())
+                                && guard++ < 100) {
+                int before = stack.selectedIndex();
+                stack.move(direction);
+                if (stack.selectedIndex() == before) {
+                    if (reversed) {
+                        return;
+                    }
+                    direction = -direction;
+                    reversed = true;
+                }
+            }
+        }
+
+        private @Nullable EnrolledProject selectedExplorerProject() {
+            var level = explorerLevel.get();
+            if (level == null) {
+                return null;
+            }
+            var selected = stack.selected();
+            return selected != null ? level.projectOf(selected.id()) : null;
+        }
+
+        private @Nullable BeingAddedProject selectedBeingAdded() {
+            var level = explorerLevel.get();
+            if (level == null) {
+                return null;
+            }
+            var selected = stack.selected();
+            return selected != null ? level.beingAddedOf(selected.id()) : null;
+        }
+
+        private static boolean isReleased(EnrolledProject project) {
+            return project.isReleased() || project.readiness() == ProjectReadiness.RELEASED;
+        }
+
+        private void runVerb(String... args) {
+            runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), args));
+        }
+
+        private void openProjectMenu() {
+            var level = explorerLevel.get();
+            var selected = stack.selected();
+            if (level == null || selected == null) {
+                return;
+            }
+            var project = level.projectOf(selected.id());
+            var being = level.beingAddedOf(selected.id());
+            if (project != null) {
+                projectMenuProject = project;
+                projectMenuBeing = null;
+                projectMenuOpenEntries = isReleased(project) ? List.of() : openEntries(project.projectId());
+                projectMenu = TuiMenu.opening(selected.id(),
+                                    ProjectsExplorerActions.forProject(locale, project, projectMenuOpenEntries));
+            } else if (being != null) {
+                projectMenuProject = null;
+                projectMenuBeing = being;
+                projectMenuOpenEntries = List.of();
+                projectMenu = TuiMenu.opening(selected.id(),
+                                    ProjectsExplorerActions.forBeingAdded(locale));
+            } else {
+                projectMenu = null;
+            }
+        }
+
+        private void handleProjectMenu(String trigger) {
+            if (trigger.isEmpty()) {
+                closeProjectMenu();
+                return;
+            }
+            var menu = projectMenu;
+            if (menu == null) {
+                return;
+            }
+            var entry = menu.entry(trigger);
+            if (entry == null) {
+                return;
+            }
+            if (!entry.enabled()) {
+                statusMessage = entry.reason() != null ? entry.reason() : "";
+                return;
+            }
+            var project = projectMenuProject;
+            var being = projectMenuBeing;
+            var entries = projectMenuOpenEntries;
+            closeProjectMenu();
+            runProjectAction(entry.action(), project, being, entries);
+            refreshActiveLevels();
+        }
+
+        private void closeProjectMenu() {
+            projectMenu = null;
+            projectMenuProject = null;
+            projectMenuBeing = null;
+            projectMenuOpenEntries = List.of();
+        }
+
+        private void runProjectAction(String action, @Nullable EnrolledProject project,
+                            @Nullable BeingAddedProject being, List<ProjectOpenEntry> entries) {
+            switch (action) {
+                case ProjectsExplorerActions.CONTINUE_STARTING -> continueOpenEntry(project, entries);
+                case ProjectsExplorerActions.CONTINUE_SETUP -> runProjectSetup(project);
+                case ProjectsExplorerActions.CONTINUE_ONBOARDING -> continueOnboarding(being);
+                case ProjectsExplorerActions.ADD_EPIC -> startWork(project, true);
+                case ProjectsExplorerActions.ADD_PLAN -> startWork(project, false);
+                case ProjectsExplorerActions.RUNNING_WORK -> openRunningWork(project);
+                case ProjectsExplorerActions.SETUP -> runProjectSetup(project);
+                case ProjectsExplorerActions.FAVOURITE -> toggleFavourite(project);
+                case ProjectsExplorerActions.ABANDON -> abandon(being);
+                case ProjectsExplorerActions.ENROL_AGAIN -> enrolAgain(project);
+                case ProjectsExplorerActions.ENDED_WORK -> openEndedForProject(project);
+                default -> {
+                    // An action this view does not know leaves the view unchanged.
+                }
+            }
+        }
+
+        private void continueOnboarding(@Nullable BeingAddedProject being) {
+            Optional.ofNullable(being).ifPresent(run -> runVerb(PROJECT_VERB, "add", run.checkoutPath()));
+        }
+
+        private void openEndedForProject(@Nullable EnrolledProject project) {
+            Optional.ofNullable(project).ifPresent(run -> openEndedFor(run.projectId()));
+        }
+
+        private void toggleFavourite() {
+            toggleFavourite(selectedExplorerProject());
+        }
+
+        private void toggleFavourite(@Nullable EnrolledProject project) {
+            if (project == null || isReleased(project)) {
+                return;
+            }
+            try {
+                var body = new LinkedHashMap<String, Object>();
+                body.put("favourite", !project.isFavourite());
+                var path = PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(project.projectId())
+                                    + "/favourite";
+                var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
+                if (response.status() != 200 && response.status() != 204) {
+                    statusMessage = MessageCatalogue.format(locale, "project.explorer.favourite_failed", Map.of());
+                }
+            } catch (IOException _) {
+                statusMessage = MessageCatalogue.format(locale, "project.explorer.favourite_failed", Map.of());
+            }
+            refreshExplorer();
+            skipExplorerHeaders(1);
+        }
+
+        private void moveFavourite(int delta) {
+            var project = selectedExplorerProject();
+            var level = explorerLevel.get();
+            if (project == null || level == null || !project.isFavourite()) {
+                return;
+            }
+            var selected = stack.selected();
+            var selectedRowId = selected != null ? selected.id() : null;
+            var favourites = new ArrayList<>(level.explorer().favourites());
+            int from = -1;
+            for (int index = 0; index < favourites.size(); index++) {
+                if (favourites.get(index).projectId().equals(project.projectId())) {
+                    from = index;
+                    break;
+                }
+            }
+            if (from < 0) {
+                return;
+            }
+            int to = Math.clamp((long) from + delta, 0, favourites.size() - 1);
+            if (to == from) {
+                return;
+            }
+            var moved = favourites.remove(from);
+            favourites.add(to, moved);
+            var previous = level;
+            var next = level.withFavourites(favourites);
+            explorerLevel.set(next);
+            stack.refresh(next.rows(locale, clock));
+            if (selectedRowId != null) {
+                stack.select(selectedRowId);
+            }
+            try {
+                var ids = favourites.stream().map(EnrolledProject::projectId).toList();
+                var response = context.runtime(true).send(HttpRequest.json("PUT", "/api/v1/explorer/favourites",
+                                    new FavouritesUpdateRequest(ids).toJson()));
+                if (response.status() != 200 && response.status() != 204) {
+                    revertFavourites(previous);
+                }
+            } catch (IOException _) {
+                revertFavourites(previous);
+            }
+        }
+
+        private void revertFavourites(ProjectsExplorerLevel previous) {
+            explorerLevel.set(previous);
+            stack.refresh(previous.rows(locale, clock));
+            statusMessage = MessageCatalogue.format(locale, "project.explorer.reorder_failed", Map.of());
+        }
+
+        private void toggleExplorerSort() {
+            var level = explorerLevel.get();
+            var selected = stack.selected();
+            if (level == null) {
+                return;
+            }
+            var next = level.withSortToggled();
+            explorerLevel.set(next);
+            stack.refresh(next.rows(locale, clock));
+            if (selected != null) {
+                stack.select(selected.id());
+            }
+        }
+
+        private List<ProjectOpenEntry> openEntries(String projectId) {
+            try {
+                var path = PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(projectId);
+                var response = context.runtime(true).send(HttpRequest.get(path));
+                if (response.status() != 200) {
+                    return List.of();
+                }
+                var detail = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                return detail == null ? List.of() : ProjectOpenEntry.listFromProjectDetail(detail);
+            } catch (IOException | IllegalArgumentException _) {
+                return List.of();
+            }
+        }
+
+        private void startWork(boolean epic) {
+            startWork(selectedExplorerProject(), epic);
+        }
+
+        private void startWork(@Nullable EnrolledProject project, boolean epic) {
+            if (project == null || isReleased(project)) {
+                return;
+            }
+            if (project.readiness() == ProjectReadiness.SETUP_NEEDS) {
+                statusMessage = ProjectsExplorerActions.notReadyReason(locale, project);
+                return;
+            }
+            runVerb(epic ? "epic" : "plan", "add", "--project", project.projectId());
+        }
+
+        private void openRunningWork() {
+            openRunningWork(selectedExplorerProject());
+        }
+
+        private void openRunningWork(@Nullable EnrolledProject project) {
+            if (project == null || isReleased(project)) {
+                return;
+            }
+            try {
+                openProject(context.runtime(true), project.projectId(), false, null);
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+        }
+
+        private void openProjectSetup() {
+            runProjectSetup(selectedExplorerProject());
+        }
+
+        private void runProjectSetup(@Nullable EnrolledProject project) {
+            if (project == null || isReleased(project)) {
+                return;
+            }
+            runVerb(PROJECT_VERB, "setup", project.projectId());
+        }
+
+        private void enrolAgain() {
+            enrolAgain(selectedExplorerProject());
+        }
+
+        private void enrolAgain(@Nullable EnrolledProject project) {
+            if (project == null || !isReleased(project)) {
+                return;
+            }
+            runVerb(PROJECT_VERB, "setup", project.projectId(), "identity");
+        }
+
+        private void continueProject() {
+            var being = selectedBeingAdded();
+            if (being != null) {
+                runVerb(PROJECT_VERB, "add", being.checkoutPath());
+                return;
+            }
+            var project = selectedExplorerProject();
+            if (project == null || isReleased(project)) {
+                return;
+            }
+            if (project.readiness() == ProjectReadiness.SETUP_NEEDS) {
+                runProjectSetup(project);
+                return;
+            }
+            continueOpenEntry(project, openEntries(project.projectId()));
+        }
+
+        private void continueOpenEntry(@Nullable EnrolledProject project, List<ProjectOpenEntry> entries) {
+            if (project == null || entries.isEmpty()) {
+                return;
+            }
+            var entry = entries.getFirst();
+            var verb = "epic".equalsIgnoreCase(entry.kind()) ? "epic" : "plan";
+            runVerb(verb, "add", "--project", project.projectId(), "--entry", entry.entryId());
+        }
+
+        private void abandonOnboarding() {
+            abandon(selectedBeingAdded());
+        }
+
+        private void abandon(@Nullable BeingAddedProject being) {
+            if (being == null) {
+                return;
+            }
+            var prompt = MessageCatalogue.format(locale, "operator.projects.select.abandon.confirm",
+                                Map.of("path", OutputSafety.stripControlSequences(being.checkoutPath()),
+                                                    "keys", MessageCatalogue.format(locale, "operator.actions.yes_no",
+                                                                        Map.of())));
+            var confirmed = new boolean[1];
+            runDialogue(() -> confirmed[0] = askYes(prompt));
+            if (!confirmed[0]) {
+                return;
+            }
+            var target = being.abandonLink();
+            if (target == null || target.isBlank()) {
+                target = "/api/v1/project-onboardings/" + OperatorUrlUtil.encodePathSegment(being.checkoutPath());
+            }
+            try {
+                var response = context.runtime(true).send(HttpRequest.delete(target));
+                if (response.status() < 200 || response.status() >= 300) {
+                    statusMessage = MessageCatalogue.format(locale, "project.adding.abandon_failed", Map.of());
+                }
+            } catch (IOException _) {
+                statusMessage = MessageCatalogue.format(locale, "project.adding.abandon_failed", Map.of());
+            }
+            refreshExplorer();
+        }
+
+        private boolean askYes(String prompt) throws IOException {
+            var driver = activeDriver;
+            var confirmTerminal = driver != null ? driver.terminal() : context.createTerminal();
+            boolean owned = driver == null;
+            try {
+                var reader = LineReaderBuilder.builder().terminal(confirmTerminal).build();
+                var answer = reader.readLine(prompt + "  \u203a ");
+                return answer != null && ("y".equalsIgnoreCase(answer.trim())
+                                    || "yes".equalsIgnoreCase(answer.trim()));
+            } catch (EndOfFileException | UserInterruptException _) {
+                return false;
+            } finally {
+                if (owned) {
+                    confirmTerminal.close();
+                }
+            }
+        }
+
+        private void openEndedFor(String projectId) {
+            try {
+                openEnded(context.runtime(true), projectId);
+            } catch (IOException _) {
+                // best effort
+            }
         }
 
         private void checkEndedPagination() {

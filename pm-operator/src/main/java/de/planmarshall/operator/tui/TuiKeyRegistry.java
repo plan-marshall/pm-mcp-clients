@@ -143,6 +143,9 @@ public final class TuiKeyRegistry {
      * and falls back to the shared action keys for move, filter, help, leave, and back.
      */
     private static String planKey(TuiKeyAction action, TuiLevel.Kind kind) {
+        if (kind == TuiLevel.Kind.PROJECTS) {
+            return projectKey(action);
+        }
         if (kind != TuiLevel.Kind.PLAN) {
             return action.textKey();
         }
@@ -157,6 +160,24 @@ public final class TuiKeyRegistry {
             case EPIC -> "operator.plan.keys.epic";
             case COMPLETION -> "operator.plan.keys.completion";
             case ACTIONS -> "operator.plan.keys.actions";
+            default -> null;
+        };
+        return key != null ? key : action.textKey();
+    }
+
+    /**
+     * The explorer's footer names its keys in the {@code operator.projects.keys.*} area
+     * ({@code doc/design/terminal-client/20-texts-projects.adoc}), not the overview's.
+     */
+    private static String projectKey(TuiKeyAction action) {
+        var key = switch (action) {
+            case OPEN -> "operator.projects.keys.actions";
+            case MOVE_UP, MOVE_DOWN -> "operator.projects.keys.move";
+            case FAVOURITE -> "operator.projects.keys.favourite";
+            case SORT -> "operator.projects.keys.sort";
+            case FILTER -> "operator.projects.keys.filter";
+            case ADD_PROJECT -> "operator.projects.keys.add";
+            case LEAVE -> "operator.projects.keys.leave";
             default -> null;
         };
         return key != null ? key : action.textKey();
@@ -233,11 +254,10 @@ public final class TuiKeyRegistry {
                             footer("/", TuiKeyAction.FILTER), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));
 
-        registry.put(TuiLevel.Kind.PROJECTS, level(projectRootNavigation(navigation),
+        registry.put(TuiLevel.Kind.PROJECTS, level(projectsNavigation(),
                             footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
-                            footer("a", TuiKeyAction.ACTIONS), footer("!", TuiKeyAction.WAITS),
-                            footer("E", TuiKeyAction.ENDED), footer("R", TuiKeyAction.REPORTS),
-                            footer("/", TuiKeyAction.FILTER), footer("?", TuiKeyAction.HELP),
+                            footer("*", TuiKeyAction.FAVOURITE), footer("s", TuiKeyAction.SORT),
+                            footer("/", TuiKeyAction.FILTER), footer("+", TuiKeyAction.ADD_PROJECT),
                             footer("q", TuiKeyAction.LEAVE)));
 
         var projectNavigation = new ArrayList<>(navigation);
@@ -360,13 +380,44 @@ public final class TuiKeyRegistry {
         return bindings;
     }
 
-    private static List<Binding> projectRootNavigation(List<Binding> navigation) {
-        var bindings = new ArrayList<>(navigation);
-        bindings.add(new Binding("a", TuiKeyAction.ACTIONS));
-        bindings.add(new Binding("!", TuiKeyAction.WAITS));
+    /**
+     * The keys of the explorer ({@code doc/design/terminal-client/17-projects.adoc#explorer}): the
+     * keys of navigation, the project actions, and the keys that leave the view for a dialogue.
+     * {@code r} is <em>Running work</em> here, not the overview's reload.
+     */
+    private static List<Binding> projectsNavigation() {
+        var bindings = new ArrayList<Binding>();
+        bindings.add(new Binding(UP, TuiKeyAction.MOVE_UP));
+        bindings.add(new Binding("k", TuiKeyAction.MOVE_UP));
+        bindings.add(new Binding(DOWN, TuiKeyAction.MOVE_DOWN));
+        bindings.add(new Binding("j", TuiKeyAction.MOVE_DOWN));
+        bindings.add(new Binding(PAGE_UP, TuiKeyAction.PAGE_UP));
+        bindings.add(new Binding(PAGE_DOWN, TuiKeyAction.PAGE_DOWN));
+        bindings.add(new Binding("g", TuiKeyAction.FIRST));
+        bindings.add(new Binding("G", TuiKeyAction.LAST));
+        bindings.add(new Binding(ENTER, TuiKeyAction.OPEN));
+        bindings.add(new Binding(NEWLINE, TuiKeyAction.OPEN));
+        bindings.add(new Binding(RIGHT, TuiKeyAction.OPEN));
+        bindings.add(new Binding("l", TuiKeyAction.OPEN));
+        bindings.add(new Binding(ESC, TuiKeyAction.BACK));
+        bindings.add(new Binding(LEFT, TuiKeyAction.BACK));
+        bindings.add(new Binding("h", TuiKeyAction.BACK));
+        bindings.add(new Binding("/", TuiKeyAction.FILTER));
+        bindings.add(new Binding("?", TuiKeyAction.HELP));
+        bindings.add(new Binding("q", TuiKeyAction.LEAVE));
+        bindings.add(new Binding("*", TuiKeyAction.FAVOURITE));
+        bindings.add(new Binding("J", TuiKeyAction.MOVE_FAVOURITE_DOWN));
+        bindings.add(new Binding("K", TuiKeyAction.MOVE_FAVOURITE_UP));
+        bindings.add(new Binding("s", TuiKeyAction.SORT));
+        bindings.add(new Binding("+", TuiKeyAction.ADD_PROJECT));
+        bindings.add(new Binding("e", TuiKeyAction.ADD_EPIC));
+        bindings.add(new Binding("p", TuiKeyAction.ADD_PLAN));
+        bindings.add(new Binding("r", TuiKeyAction.RUNNING_WORK));
+        bindings.add(new Binding("u", TuiKeyAction.SETUP));
+        bindings.add(new Binding("c", TuiKeyAction.CONTINUE));
+        bindings.add(new Binding("x", TuiKeyAction.ABANDON));
+        bindings.add(new Binding("a", TuiKeyAction.ENROL_AGAIN));
         bindings.add(new Binding("E", TuiKeyAction.ENDED));
-        bindings.add(new Binding("S", TuiKeyAction.SYSTEM));
-        bindings.add(new Binding("R", TuiKeyAction.REPORTS));
         return bindings;
     }
 

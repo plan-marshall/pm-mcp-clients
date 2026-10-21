@@ -257,7 +257,12 @@ public final class PmConsole {
             case "web" -> handleWebCommand(out, parts);
             default -> {
                 var args = parseArgs(line);
-                PmOperator.execute(context, out, out, args.toArray(new String[0]));
+                var selection = ProjectSelector.rewrite(context, out, out, args.toArray(String[]::new), reader);
+                if (!selection.proceed()) {
+                    out.flush();
+                    return;
+                }
+                PmOperator.execute(context, out, out, selection.args().toArray(String[]::new));
             }
         }
         out.flush();

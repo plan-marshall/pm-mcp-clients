@@ -62,16 +62,16 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-projects` on branch `feat/cli-fullscreen-projects` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-projects` on branch `feat/cli-fullscreen-projects` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/cli-fullscreen-projects-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-projects-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/cli-fullscreen-projects-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-projects-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-projects-plan-report.md` by orchestrator session.
@@ -93,25 +93,25 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Catalogue & `projects-and-start` Scenario Verification
-- [ ] **1.1 Message Catalogue & Scenario Audit**:
+- [x] **1.1 Message Catalogue & Scenario Audit**:
   - Verify all keys in `doc/design/terminal-client/20-texts-projects.adoc` and `17-projects.adoc#texts` exist in `pm-api/src/main/resources/messages/operator.{en,de}.properties` and `projects.{en,de}.properties`, and verify the `projects.*` states in `projects-and-start.json` (delivered by `mock-runtime-projects-and-start-plan.md`).
 
 ### Phase 2: `ProjectsExplorerLevel` View Model (`de.planmarshall.operator.projects`)
-- [ ] **2.1 Grouped Project List & Filtering**:
+- [x] **2.1 Grouped Project List & Filtering**:
   - Build `ProjectsExplorerLevel` rendering `Being added`, `Favourites` (`★`), `Recent`, and `All projects · by name` / `by most used`.
   - Implement `/` filter mode that collapses the four section headers into one flat filtered list matching project name or ID, and `Esc` to restore the grouped view.
-- [ ] **2.2 Inline Action Menus per Project State**:
+- [x] **2.2 Inline Action Menus per Project State**:
   - Implement `Enter` on any project row to expand/collapse its state-specific action list (`ready`, `ready with open entry`, `not ready`, `being added`, `released`), plus disabled `e`/`p` explanation when a project is not ready.
 
 ### Phase 3: Key Actions, Hand-Offs & `--project ?`
-- [ ] **3.1 Explorer Key Bindings**:
+- [x] **3.1 Explorer Key Bindings**:
   - Wire `*` (toggle favourite), `J`/`K` (move favourite down/up), `s` (toggle sort order), `r` (push `ProjectWorkLevel` in Overview), `E` on a released project (push `EndedWorkLevel`), and `+` / `e` / `p` / `u` / `c` / `x` / `a` to suspend/leave the full-screen view and invoke the corresponding dialogue (`project add`, `epic add`, `plan add`, `project setup`, abandon confirmation, re-enrol).
-- [ ] **3.2 `ProjectsCommand` & `--project ?` Integration**:
+- [x] **3.2 `ProjectsCommand` & `--project ?` Integration**:
   - Update `ProjectsCommand`: when `--list` is not set and `TuiScreenDriver.canOpenFullScreen` is true, open `ProjectsExplorerLevel`; otherwise print the scrollback list.
   - Implement shared `--project ?` resolver across verbs accepting `--project`, presenting the explorer list (favourites first) to pick the project ID interactively.
 
 ### Phase 4: Screen Tests & Integration Verification
-- [ ] **4.1 `ProjectsExplorerFullScreenTest` (`VirtualScreenTerminal`)**:
+- [x] **4.1 `ProjectsExplorerFullScreenTest` (`VirtualScreenTerminal`)**:
   - Assert rendering of `Being added`, `Favourites`, `Recent`, and `All projects` groups at `120x30`.
   - Assert `Enter` inline action menus for each project state (ready, not-ready with disabled `e`/`p` reason, open start entry, being-added with `c`/`x`, and released with `a`/`E`).
   - Assert `*` favourite toggle, `J`/`K` favourite reordering, `s` sort toggle, `/` flat filtering, `r` transition to the project's Overview level, and `--project ?` selection.
