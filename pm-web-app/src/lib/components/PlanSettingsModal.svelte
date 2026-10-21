@@ -2,12 +2,33 @@
   import { t } from '../i18n';
   import type { PlanSettingsRecord } from '../api/client';
 
+  /** A value another client changed while this dialogue was open. */
+  interface SettingsConflict {
+    aspect: string;
+    currentValue: string;
+    wantedValue: string;
+    revision: number;
+  }
+
   export let planId: string;
   export let settings: PlanSettingsRecord | null = null;
   export let open = false;
   export let busy = false;
-  export let onApply: (payload: { aspect: string; value: string | null; revision: number }) => void =
-    () => {};
+  /** A change another client made first, shown until the operator decides. */
+  export let conflict: SettingsConflict | null = null;
+  /** A refusal or a too-late answer the runtime gave for this dialogue. */
+  export let notice = '';
+  export let onApply: (payload: {
+    aspect: string;
+    value: string | null;
+    revision: number;
+  }) => void = () => {};
+  export let onApplyAgain: (payload: {
+    aspect: string;
+    value: string | null;
+    revision: number;
+  }) => void = () => {};
+  export let onKeepCurrent: () => void = () => {};
   export let onClose: () => void = () => {};
 
   const GROUPS = ['plan_defaults', 'roles', 'integrations', 'providers'] as const;
@@ -52,6 +73,50 @@
         {$t('control.settings.title', { plan: planId })}
       </h2>
 
+      {#if notice}
+        <p class="settings-modal__notice" data-testid="settings-notice" role="status">{notice}</p>
+      {/if}
+
+      {#if conflict}
+        <div class="settings-modal__conflict" data-testid="settings-conflict" role="alert">
+          <h3 class="settings-modal__conflict-title">
+            {$t('control.settings.conflict_title')}
+          </h3>
+          <p>
+            {$t('control.settings.conflict', { value: conflict.currentValue })}
+          </p>
+          <dl class="settings-modal__conflict-facts">
+            <dt>{$t('control.settings.yours')}</dt>
+            <dd data-testid="settings-conflict-yours">{conflict.wantedValue}</dd>
+            <dt>{$t('control.settings.origin', { origin: 'plan' })}</dt>
+            <dd data-testid="settings-conflict-current">{conflict.currentValue}</dd>
+          </dl>
+          <div class="settings-modal__conflict-actions">
+            <button
+              type="button"
+              data-testid="settings-conflict-keep"
+              disabled={busy}
+              on:click={() => onKeepCurrent()}
+            >
+              {$t('control.settings.keep_current')}
+            </button>
+            <button
+              type="button"
+              data-testid="settings-conflict-apply-again"
+              disabled={busy}
+              on:click={() =>
+                onApplyAgain({
+                  aspect: conflict.aspect,
+                  value: conflict.wantedValue === '' ? null : conflict.wantedValue,
+                  revision: conflict.revision,
+                })}
+            >
+              {$t('control.settings.apply_again')}
+            </button>
+          </div>
+        </div>
+      {/if}
+
       {#if settings}
         {#each groups() as group (group)}
           <section class="settings-modal__group" data-testid={`settings-group-${group}`}>
@@ -65,12 +130,17 @@
                   bind:value={chosen[entry.aspect]}
                   disabled={busy}
                 >
-                  <option value="">{$t('control.settings.use_inherited', { level: entry.origin })}</option>
+                  <option value=""
+                    >{$t('control.settings.use_inherited', { level: entry.origin })}</option
+                  >
                   {#each entry.choices ?? [] as choice (choice)}
                     <option value={choice}>{choice}</option>
                   {/each}
                 </select>
-                <span class="settings-modal__origin" data-testid={`settings-origin-${entry.aspect}`}>
+                <span
+                  class="settings-modal__origin"
+                  data-testid={`settings-origin-${entry.aspect}`}
+                >
                   {$t('control.settings.origin', { origin: entry.origin })}
                 </span>
                 <button
@@ -133,6 +203,50 @@
     display: flex;
     justify-content: flex-end;
     margin-top: var(--space-3);
+  }
+
+  .settings-modal__notice {
+    margin: 0 0 var(--space-2) 0;
+    padding: var(--space-2);
+    border-left: 3px solid var(--color-warning);
+    background-color: var(--color-warning-subtle);
+    font-size: var(--text-sm);
+  }
+
+  .settings-modal__conflict {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-3) 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    background-color: var(--color-warning-subtle);
+  }
+
+  .settings-modal__conflict-title {
+    margin: 0;
+    font-size: var(--text-base);
+  }
+
+  .settings-modal__conflict-facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: var(--space-1) var(--space-3);
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .settings-modal__conflict-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .settings-modal__conflict-actions button {
+    min-height: 44px;
+    padding: var(--space-2) var(--space-3);
+    cursor: pointer;
   }
 
   .settings-modal__actions button,

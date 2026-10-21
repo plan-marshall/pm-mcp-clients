@@ -15,6 +15,10 @@
   export let onAccept: () => void = () => {};
   export let onReject: () => void = () => {};
   export let onToggle: () => void = () => {};
+  /** The label of the accept button; a follow-up plan names its own act. */
+  export let acceptLabel = '';
+  /** The label of the reject button. */
+  export let rejectLabel = '';
 
   let message = '';
 
@@ -69,10 +73,10 @@
           <p class="chat-panel__after" data-testid="chat-proposal-after">{proposal.after}</p>
           <div class="chat-panel__proposal-actions">
             <button type="button" data-testid="chat-reject" disabled={busy} on:click={onReject}>
-              {$t('start.decomposition.discard')}
+              {rejectLabel || $t('start.decomposition.discard')}
             </button>
             <button type="button" data-testid="chat-accept" disabled={busy} on:click={onAccept}>
-              {$t('start.decomposition.accept')}
+              {acceptLabel || $t('start.decomposition.accept')}
             </button>
           </div>
         </section>

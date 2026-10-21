@@ -1,10 +1,14 @@
 <script lang="ts">
   import { t } from '../i18n';
-  import type { HoldRecord } from '../api/client';
+  import type { HoldRecord, HoldResolutionResult } from '../api/client';
 
-  export let hold: HoldRecord;
+  export let hold: HoldRecord | null = null;
   export let open = false;
   export let busy = false;
+  /** The project whose access a grant names. */
+  export let project = '';
+  /** What the last act did: released the subject, or showed what still holds. */
+  export let outcome: HoldResolutionResult | null = null;
   export let onResolve: (payload: { act: string; reason?: string }) => void = () => {};
   export let onClose: () => void = () => {};
 
@@ -27,8 +31,34 @@
   let confirming: string | null = null;
   let reason = '';
 
+  /** The pull request number of a `show_pr` act, read from its URL. */
+  function pullRequestNumber(): number {
+    const match = /\/(\d+)(?:$|\/)/.exec(hold?.pull_request_url ?? '');
+    return match ? Number.parseInt(match[1], 10) : 0;
+  }
+
   function actLabel(act: string): string {
-    return $t(ACT_KEYS[act] ?? act);
+    const key = ACT_KEYS[act] ?? act;
+    if (act === 'grant') {
+      return $t(key, { project: project || hold?.subject_id || '' });
+    }
+    if (act === 'show_pr') {
+      return $t(key, { number: pullRequestNumber() });
+    }
+    return $t(key);
+  }
+
+  /** What an act that cannot be undone does, before the operator confirms it. */
+  function explanation(act: string): string {
+    if (act === 'accept') {
+      return $t('control.hold.integrity.no_restore');
+    }
+    if (act === 'give_up_removal') {
+      return $t('control.hold.give_up_removal.explain');
+    }
+    return $t('control.end.afterwards', {
+      outcome: act === 'abort' ? 'aborted' : act === 'cancel_epic' ? 'cancelled' : 'cancelled',
+    });
   }
 
   function startAct(act: string): void {
@@ -43,7 +73,9 @@
     if (confirming) {
       const act = confirming;
       confirming = null;
-      onResolve(reason ? { act, reason } : { act });
+      const text = reason.trim();
+      reason = '';
+      onResolve(text ? { act, reason: text } : { act });
     }
   }
 
@@ -51,14 +83,34 @@
     confirming = null;
     reason = '';
   }
+
+  function close(): void {
+    confirming = null;
+    reason = '';
+    onClose();
+  }
 </script>
 
-{#if open}
+{#if open && hold}
   <div class="hold-modal" data-testid="hold-modal" role="dialog" aria-modal="true">
     <div class="hold-modal__panel">
       <h2 class="hold-modal__title" data-testid="hold-title">
         {$t('control.hold.title', { kind: hold.kind, name: hold.subject_id })}
       </h2>
+
+      {#if outcome}
+        <p
+          class="hold-modal__outcome"
+          data-testid={outcome.released ? 'hold-released' : 'hold-still-held'}
+          role="status"
+        >
+          {#if outcome.released}
+            {$t('control.hold.released', { subject: outcome.subject || hold.subject_id })}
+          {:else}
+            {$t('control.hold.still_held', { cause: outcome.cause || hold.cause })}
+          {/if}
+        </p>
+      {/if}
 
       <dl class="hold-modal__facts">
         <dt>{$t('control.hold.cause')}</dt>
@@ -93,9 +145,10 @@
 
       {#if confirming}
         <div class="hold-modal__confirm" data-testid="hold-confirm">
-          <label>
-            {$t('control.hold.cause')}
-            <input type="text" data-testid="hold-reason" bind:value={reason} placeholder="" />
+          <p class="hold-modal__explain">{explanation(confirming)}</p>
+          <label class="hold-modal__field">
+            {$t('control.hold.reason')}
+            <input type="text" data-testid="hold-reason" bind:value={reason} />
           </label>
           <div class="hold-modal__actions">
             <button
@@ -124,7 +177,7 @@
               {actLabel(act)}
             </button>
           {/each}
-          <button type="button" data-testid="hold-close-button" on:click={() => onClose()}>
+          <button type="button" data-testid="hold-close-button" on:click={close}>
             {$t('common.close')}
           </button>
         </div>
@@ -151,6 +204,16 @@
     padding: var(--space-4);
     border-radius: var(--radius-lg);
     background-color: var(--color-bg-surface);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .hold-modal__outcome {
+    margin: var(--space-2) 0;
+    padding: var(--space-2);
+    border-left: 3px solid var(--color-primary);
+    background-color: var(--color-bg-subtle);
+    font-size: var(--text-sm);
   }
 
   .hold-modal__facts {
@@ -171,6 +234,28 @@
     min-height: 44px;
     padding: var(--space-2) var(--space-3);
     cursor: pointer;
+  }
+
+  .hold-modal__explain {
+    margin: 0 0 var(--space-2) 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .hold-modal__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-2);
+  }
+
+  .hold-modal__field input {
+    min-height: 44px;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   @media (max-width: 480px) {

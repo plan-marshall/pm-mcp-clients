@@ -85,4 +85,60 @@ describe('HoldResolutionModal component', () => {
     render(HoldResolutionModal, { props: { hold: conditionHold, open: false } });
     expect(screen.queryByTestId('hold-modal')).not.toBeInTheDocument();
   });
+
+  it('names what still holds after an act that did not release the subject', () => {
+    render(HoldResolutionModal, {
+      props: {
+        hold: conditionHold,
+        open: true,
+        outcome: {
+          hold_id: 'H-0001',
+          released: false,
+          cause: 'the plan reads cui-http, which this project may not read',
+          subject: 'fix-relay',
+        },
+      },
+    });
+
+    expect(screen.getByTestId('hold-still-held')).toHaveTextContent(
+      'Still held: the plan reads cui-http, which this project may not read',
+    );
+  });
+
+  it('says the subject goes on after a releasing act', () => {
+    render(HoldResolutionModal, {
+      props: {
+        hold: conditionHold,
+        open: true,
+        outcome: { hold_id: 'H-0001', released: true, subject: 'fix-relay' },
+      },
+    });
+
+    expect(screen.getByTestId('hold-released')).toHaveTextContent('fix-relay goes on');
+  });
+
+  it('names the project of a grant and the number of a pull request', () => {
+    const landingHold: HoldRecord = {
+      ...conditionHold,
+      acts: ['retry', 'grant', 'show_pr'],
+      pull_request_url: 'https://example.test/relay/pull/211',
+    };
+    render(HoldResolutionModal, {
+      props: { hold: landingHold, open: true, project: 'pm-mcp-clients' },
+    });
+
+    expect(screen.getByTestId('hold-act-grant')).toHaveTextContent(
+      'Grant read access to pm-mcp-clients',
+    );
+    expect(screen.getByTestId('hold-act-show_pr')).toHaveTextContent('Show the pull request #211');
+  });
+
+  it('names what follows before an act that cannot be undone', async () => {
+    render(HoldResolutionModal, { props: { hold: integrityHold, open: true } });
+
+    await fireEvent.click(screen.getByTestId('hold-act-accept'));
+
+    expect(screen.getByTestId('hold-confirm')).toHaveTextContent('The earlier content is not kept');
+    expect(screen.getByTestId('hold-reason')).toBeInTheDocument();
+  });
 });

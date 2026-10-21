@@ -4,6 +4,7 @@
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import {
     apiClient,
     type ProjectSummary,
@@ -43,6 +44,8 @@
   let errorMessage: string | null = null;
 
   let unsubscribeEvents: (() => void) | null = null;
+  /** The plan or epic whose actions the operator opened from its row. */
+  let controlSubject: { kind: 'plan' | 'epic'; id: string } | null = null;
 
   $: selectedProject = projects.find((p) => p.project_id === selectedProjectId) || null;
 
@@ -166,6 +169,20 @@
     } catch {
       // background refresh fail soft
     }
+  }
+
+  /**
+   * Opens the actions of one plan or epic beside the project, without leaving the overview.
+   *
+   * @param kind the subject's kind
+   * @param id the plan or epic
+   */
+  function openControls(kind: 'plan' | 'epic', id: string) {
+    controlSubject = { kind, id };
+  }
+
+  function closeControls() {
+    controlSubject = null;
   }
 
   function selectProject(projectId: string) {
@@ -637,6 +654,27 @@
           </div>
         </div>
 
+        {#if controlSubject}
+          <section class="overview-control" data-testid="overview-control">
+            <div class="overview-control__head">
+              <button type="button" class="overview-control__close" on:click={closeControls}>
+                {$t('common.close')}
+              </button>
+            </div>
+            <WorkControlPanel
+              subjectId={controlSubject.id}
+              subjectKind={controlSubject.kind}
+              projectId={selectedProjectId ?? ''}
+              onReview={() => {
+                if (controlSubject?.kind === 'epic') {
+                  openEpicView(controlSubject.id);
+                }
+              }}
+              onChanged={refreshAll}
+            />
+          </section>
+        {/if}
+
         {#if isLoadingDetail}
           <div class="detail-loading">
             <Spinner size="2rem" label={$t('overview.details.loading')} />
@@ -666,6 +704,14 @@
                         <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
                         <h3 class="work-card__title">{plan.title}</h3>
                       </div>
+                      <button
+                        type="button"
+                        class="card-action"
+                        data-testid="overview-actions-{plan.plan_id}"
+                        on:click|stopPropagation={() => openControls('plan', plan.plan_id)}
+                      >
+                        {$t('control.actions.open')}
+                      </button>
 
                       <div class="work-card__badges">
                         {#if getNeedsOperatorCount(plan) > 0}
@@ -748,6 +794,16 @@
                         >
                         <h3 class="work-card__title">{epic.title}</h3>
                       </div>
+                      <button
+                        type="button"
+                        class="card-action"
+                        data-testid="overview-actions-epic-{(epic as any).epic_id ||
+                          (epic as any).epicId}"
+                        on:click|stopPropagation={() =>
+                          openControls('epic', (epic as any).epic_id || (epic as any).epicId)}
+                      >
+                        {$t('control.actions.open')}
+                      </button>
 
                       <div class="work-card__badges">
                         {#if getNeedsOperatorCount(epic) > 0}
@@ -788,6 +844,19 @@
                             <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
                               {$t('overview.state.' + getPlanState(childPlan))}
                             </span>
+                            <button
+                              type="button"
+                              class="card-action"
+                              data-testid="overview-actions-{(childPlan as any).plan_id ||
+                                (childPlan as any).planId}"
+                              on:click|stopPropagation={() =>
+                                openControls(
+                                  'plan',
+                                  (childPlan as any).plan_id || (childPlan as any).planId,
+                                )}
+                            >
+                              {$t('control.actions.open')}
+                            </button>
                           </div>
                         {/each}
                       </div>

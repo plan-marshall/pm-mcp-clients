@@ -463,7 +463,167 @@ export interface WorkActions {
   pausing_point?: string | null;
   hold_kind?: string | null;
   epic_id?: string | null;
+  /** Whether an epic starts its plans by itself, where the runtime reports it. */
+  auto_enabled?: boolean | null;
+  /** How many files a plan may share with a running one, where the runtime reports it. */
+  overlap_max_files?: number | null;
   actions: ActionAvailability[];
+}
+
+/** One row of an epic's workstream, as the epic resource carries it. */
+export interface EpicWorkRow {
+  plan_id: string;
+  title: string;
+  status: string;
+  wait_reason?: string | null;
+  wait_plan_id?: string | null;
+  overlap_files?: string[];
+  pull_request_number?: number | null;
+  change?: string | null;
+  objective?: string | null;
+  deliverables?: string[];
+  surface?: string[];
+  dependencies?: string[];
+}
+
+/** A workstream of an epic, with its rows. */
+export interface EpicWorkstream {
+  id: string;
+  name: string;
+  open: boolean;
+  rows: EpicWorkRow[];
+}
+
+/** How many findings or watches an epic carries, by their state. */
+export interface RegisterSummary {
+  new: number;
+  open: number;
+  kept: number;
+}
+
+/** One token figure: a plan's, an epic's own tasks', or the epic's total. */
+export interface TokenFigure {
+  total: number;
+  input: number;
+  output: number;
+  measured: boolean;
+  floor: boolean;
+  measured_tasks: number;
+  not_measured_tasks: number;
+}
+
+/** One plan's share of an epic's tokens. */
+export interface PlanTokenFigure {
+  plan_id: string;
+  figure: TokenFigure;
+}
+
+/** The epic's tokens: its plans' sum and its own tasks, with the per-plan detail. */
+export interface EpicTokens {
+  total: TokenFigure;
+  own: TokenFigure;
+  plans: PlanTokenFigure[];
+  not_measured: boolean;
+  not_measured_count: number;
+}
+
+/** One event of the epic's history. */
+export interface EpicEvent {
+  at: string;
+  text: string;
+}
+
+/** The epic as a resource (UC-PLN-5). */
+export interface EpicResource {
+  epic_id: string;
+  project_id: string;
+  display_name: string;
+  link?: string | null;
+  state: string;
+  auto_start: boolean;
+  overlap_max_files: number;
+  scope: number;
+  running: number;
+  terminal_reason?: string | null;
+  workstreams: EpicWorkstream[];
+  sources: string[];
+  landings: number;
+  findings: RegisterSummary;
+  watches: RegisterSummary;
+  tokens: EpicTokens;
+  events: EpicEvent[];
+}
+
+/** One line of the archive check. */
+export interface ArchiveCheckLine {
+  label: string;
+  passed: boolean;
+  note?: string | null;
+  action?: string | null;
+}
+
+/** Whether an epic is through, with the lines the runtime checked. */
+export interface ArchiveCheck {
+  epic_id: string;
+  lines: ArchiveCheckLine[];
+  carried_findings: number;
+  carried_watches: number;
+  completion_review_first: boolean;
+  passed: boolean;
+}
+
+/** One item of a findings or watches review. */
+export interface ReviewItem {
+  item_id: string;
+  register: string;
+  statement: string;
+  rules: string[];
+  origin: string;
+  trust: string;
+  state: string;
+  proposal?: string | null;
+}
+
+/** A plan the planning role drafts for a promoted item. */
+export interface DraftedPlan {
+  plan_id: string;
+  objective?: string | null;
+  deliverables: string[];
+  surface: string[];
+  dependencies: string[];
+}
+
+/** The old against the new of an edit or a redraft. */
+export interface ReviewReadBack {
+  kind: string;
+  before?: string | null;
+  after?: string | null;
+  plan?: DraftedPlan | null;
+}
+
+/** The review of one register of an epic. */
+export interface ReviewResource {
+  review_id: string;
+  epic_id: string;
+  register: string;
+  items: ReviewItem[];
+  decided: number;
+  total: number;
+  state: string;
+  drafted_plan?: DraftedPlan | null;
+  read_back?: ReviewReadBack | null;
+}
+
+/** One chat of the planning role, about a plan, an epic, a decision, or a register. */
+export interface ChatReadBack {
+  chat_id: string;
+  subject_id: string;
+  subject_kind: string;
+  role: string;
+  scope: string;
+  state: string;
+  turns: ChatTurn[];
+  proposal?: ChatProposal | null;
 }
 
 export interface HoldRecord {
@@ -687,6 +847,8 @@ export interface DecisionEnvelope {
   evidence?: Record<string, unknown>;
   parts: DecisionPart[];
   delivered_at?: string;
+  /** What changed in a later revision, where the runtime reports it. */
+  change?: string;
   is_waiver?: boolean;
   waiver_gate?: string;
   waiver_result?: string;
@@ -1692,11 +1854,14 @@ export class ApiClient {
    * @param subjectId an ended plan or epic
    * @returns the follow-up chat the ended work offers, or `null` where it offers none
    */
-  public async getEndedChat(subjectId: string): Promise<FollowUpProposal | null> {
+  public async getEndedChat(
+    projectId: string,
+    subjectId: string,
+  ): Promise<FollowUpProposal | null> {
     try {
       return await this.request<FollowUpProposal>(
         'GET',
-        `/api/v1/ended/${encodeURIComponent(subjectId)}/chat`,
+        `/api/v1/projects/${encodeURIComponent(projectId)}/ended/${encodeURIComponent(subjectId)}/chat`,
       );
     } catch {
       return null;
@@ -1713,7 +1878,7 @@ export class ApiClient {
   public async acceptFollowUp(projectId: string, subjectId: string): Promise<StartStateResource> {
     return this.request<StartStateResource>(
       'POST',
-      `/api/v1/ended/${encodeURIComponent(subjectId)}/chat/accept`,
+      `/api/v1/projects/${encodeURIComponent(projectId)}/ended/${encodeURIComponent(subjectId)}/chat/accept`,
       { project_id: projectId },
     );
   }
@@ -2367,6 +2532,322 @@ export class ApiClient {
 
   public async getEpicProcess(epicId: string): Promise<EpicProcess> {
     return this.request<EpicProcess>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}/process`);
+  }
+
+  /**
+   * @param epicId the epic
+   * @returns the epic as a resource: its header, workstreams, sources, landings, registers,
+   *     tokens, and events
+   */
+  public async getEpicResource(epicId: string): Promise<EpicResource> {
+    return this.request<EpicResource>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}`);
+  }
+
+  /**
+   * @param epicId the epic
+   * @returns the archive check the runtime ran for it
+   */
+  public async getEpicArchiveCheck(epicId: string): Promise<ArchiveCheck> {
+    return this.request<ArchiveCheck>(
+      'GET',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/archive-check`,
+    );
+  }
+
+  /**
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @returns that register's review
+   */
+  public async getEpicReview(
+    epicId: string,
+    register: 'findings' | 'watches',
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'GET',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review?register=${register}`,
+    );
+  }
+
+  /**
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @param itemId the item to keep
+   * @param as `finding` or `watch`
+   * @returns the review after the disposition
+   */
+  public async keepReviewItem(
+    epicId: string,
+    register: 'findings' | 'watches',
+    itemId: string,
+    as: 'finding' | 'watch',
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/items/${encodeURIComponent(itemId)}/keep`,
+      { register, as },
+    );
+  }
+
+  /**
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @param itemId the item to drop
+   * @param reason why the operator drops it
+   * @returns the review after the disposition
+   */
+  public async dropReviewItem(
+    epicId: string,
+    register: 'findings' | 'watches',
+    itemId: string,
+    reason: string,
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/items/${encodeURIComponent(itemId)}/drop`,
+      { register, reason },
+    );
+  }
+
+  /**
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @param itemId the item to promote
+   * @param instruction what the planning role should change, or `null` for the first draft
+   * @returns the review with the drafted plan
+   */
+  public async promoteReviewItem(
+    epicId: string,
+    register: 'findings' | 'watches',
+    itemId: string,
+    instruction?: string,
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/items/${encodeURIComponent(itemId)}/promote`,
+      instruction ? { register, instruction } : { register },
+    );
+  }
+
+  /**
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @param itemId the item whose statement and rules are rewritten
+   * @param instruction what to adapt or add, in the operator's words
+   * @returns the review with the read-back
+   */
+  public async editReviewItem(
+    epicId: string,
+    register: 'findings' | 'watches',
+    itemId: string,
+    instruction: string,
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/items/${encodeURIComponent(itemId)}/edit`,
+      { register, instruction },
+    );
+  }
+
+  /**
+   * Applies the read-back the planning role proposed.
+   *
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @returns the review after the change
+   */
+  public async acceptReviewReadBack(
+    epicId: string,
+    register: 'findings' | 'watches',
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/read-back/accept`,
+      { register },
+    );
+  }
+
+  /**
+   * Discards the read-back and returns to the item as it was.
+   *
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @returns the review before the change
+   */
+  public async discardReviewReadBack(
+    epicId: string,
+    register: 'findings' | 'watches',
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/read-back/discard`,
+      { register },
+    );
+  }
+
+  /**
+   * Stages the plan the planning role drafted for a promoted item.
+   *
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @returns the review after the plan was staged
+   */
+  public async stageReviewPlan(
+    epicId: string,
+    register: 'findings' | 'watches',
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/plan/stage`,
+      { register },
+    );
+  }
+
+  /**
+   * @param epicId the epic
+   * @param register `findings` or `watches`
+   * @returns the review after the decisions were written to the epic's ledger
+   */
+  public async commitReview(
+    epicId: string,
+    register: 'findings' | 'watches',
+  ): Promise<ReviewResource> {
+    return this.request<ReviewResource>(
+      'POST',
+      `/api/v1/epics/${encodeURIComponent(epicId)}/review/commit`,
+      { register },
+    );
+  }
+
+  /**
+   * @param subjectId a plan or an epic
+   * @returns the planning role's chat about it
+   */
+  public async getChat(subjectId: string): Promise<ChatReadBack> {
+    if (subjectId.startsWith('epic:')) {
+      const epicId = subjectId.slice('epic:'.length);
+      return this.request<ChatReadBack>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}/chat`);
+    }
+    return this.request<ChatReadBack>('GET', `/api/v1/plans/${encodeURIComponent(subjectId)}/chat`);
+  }
+
+  /**
+   * @param subjectId a plan or an epic
+   * @param text the operator's message
+   * @returns the chat with the role's answer
+   */
+  public async chatWithSubject(subjectId: string, text: string): Promise<ChatReadBack> {
+    if (subjectId.startsWith('epic:')) {
+      const epicId = subjectId.slice('epic:'.length);
+      return this.request<ChatReadBack>(
+        'POST',
+        `/api/v1/epics/${encodeURIComponent(epicId)}/chat/turns`,
+        { text },
+      );
+    }
+    return this.request<ChatReadBack>(
+      'POST',
+      `/api/v1/plans/${encodeURIComponent(subjectId)}/chat/turns`,
+      { text },
+    );
+  }
+
+  /**
+   * @param subjectId a plan or an epic
+   * @param accept `true` to apply the proposal, `false` to drop it
+   * @returns the chat after the answer
+   */
+  public async answerSubjectChatProposal(
+    subjectId: string,
+    accept: boolean,
+  ): Promise<ChatReadBack> {
+    const suffix = accept ? 'accept' : 'reject';
+    if (subjectId.startsWith('epic:')) {
+      const epicId = subjectId.slice('epic:'.length);
+      return this.request<ChatReadBack>(
+        'POST',
+        `/api/v1/epics/${encodeURIComponent(epicId)}/chat/proposal/${suffix}`,
+        {},
+      );
+    }
+    return this.request<ChatReadBack>(
+      'POST',
+      `/api/v1/plans/${encodeURIComponent(subjectId)}/chat/proposal/${suffix}`,
+      {},
+    );
+  }
+
+  /**
+   * @param subjectId a plan or an epic
+   * @returns the chat after it was closed
+   */
+  public async endChat(subjectId: string): Promise<ChatReadBack> {
+    if (subjectId.startsWith('epic:')) {
+      const epicId = subjectId.slice('epic:'.length);
+      return this.request<ChatReadBack>(
+        'POST',
+        `/api/v1/epics/${encodeURIComponent(epicId)}/chat/end`,
+        {},
+      );
+    }
+    return this.request<ChatReadBack>(
+      'POST',
+      `/api/v1/plans/${encodeURIComponent(subjectId)}/chat/end`,
+      {},
+    );
+  }
+
+  /**
+   * @param decisionId the decision
+   * @returns the planning role's chat about it
+   */
+  public async getDecisionChat(decisionId: string): Promise<ChatReadBack> {
+    return this.request<ChatReadBack>(
+      'GET',
+      `/api/v1/decisions/${encodeURIComponent(decisionId)}/chat`,
+    );
+  }
+
+  /**
+   * @param decisionId the decision
+   * @param text the operator's message
+   * @returns the chat with the role's answer
+   */
+  public async decisionChatTurn(decisionId: string, text: string): Promise<ChatReadBack> {
+    return this.request<ChatReadBack>(
+      'POST',
+      `/api/v1/decisions/${encodeURIComponent(decisionId)}/chat/turns`,
+      { text },
+    );
+  }
+
+  /**
+   * @param decisionId the decision
+   * @param accept `true` to take the proposed answer, `false` to drop it
+   * @returns the chat after the answer
+   */
+  public async answerDecisionChatProposal(
+    decisionId: string,
+    accept: boolean,
+  ): Promise<ChatReadBack> {
+    const suffix = accept ? 'accept' : 'reject';
+    return this.request<ChatReadBack>(
+      'POST',
+      `/api/v1/decisions/${encodeURIComponent(decisionId)}/chat/proposal/${suffix}`,
+      {},
+    );
+  }
+
+  /**
+   * @param decisionId the decision
+   * @returns the chat after it was closed
+   */
+  public async endDecisionChat(decisionId: string): Promise<ChatReadBack> {
+    return this.request<ChatReadBack>(
+      'POST',
+      `/api/v1/decisions/${encodeURIComponent(decisionId)}/chat/end`,
+      {},
+    );
   }
 
   public async getPlanActions(planId: string): Promise<WorkActions> {

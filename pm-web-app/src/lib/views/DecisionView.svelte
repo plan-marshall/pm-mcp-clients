@@ -3,33 +3,55 @@
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import ChatPanel from '../components/ChatPanel.svelte';
   import {
     apiClient,
+    type ChatReadBack,
     type DecisionEnvelope,
     type DecisionPart,
     type DecisionInterpretation,
   } from '../api/client';
   import { runtimeStore, refreshDecisionsCount } from '../stores/runtime';
 
+  const NOTIFY_KEY = 'pm_decision_notify';
+
   let decisions = $state<DecisionEnvelope[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state('');
 
   let showEvidence = $state<Record<string, boolean>>({});
-  let selectedOptions = $state<Record<string, string>>({});
-  let waiverReasons = $state<Record<string, string>>({});
+  /** The chosen option of each part, keyed by decision and part id. */
+  let partAnswers = $state<Record<string, Record<string, string>>>({});
+  let partNotes = $state<Record<string, string>>({});
   let ownWordsTexts = $state<Record<string, string>>({});
-  let notes = $state<Record<string, string>>({});
-  let isInterpreting = $state<Record<string, boolean>>({});
+  let ownWordsMode = $state<Record<string, boolean>>({});
   let interpretations = $state<Record<string, DecisionInterpretation | null>>({});
-  let isOwnWordsMode = $state<Record<string, boolean>>({});
+  let isInterpreting = $state<Record<string, boolean>>({});
   let isSubmitting = $state<Record<string, boolean>>({});
+  let waiverReasons = $state<Record<string, string>>({});
+  let revealed = $state<Record<string, boolean>>({});
+  let reopened = $state<Record<string, { n: number; m: number }>>({});
+  let revisedNotices = $state<Record<string, string>>({});
+  let notices = $state<Array<{ id: string; text: string }>>([]);
+
+  let notifyState = $state<'default' | 'granted' | 'denied'>('default');
+  let notifyAsked = $state(false);
+  /** Whether a decision arrived in this session; the permission is asked only then, never at start. */
+  let sawDecisionEvent = $state(false);
+  let notifyMessage = $state('');
+
+  let chatDecisionId = $state<string | null>(null);
+  let chat = $state<ChatReadBack | null>(null);
+  let chatOpen = $state(false);
+  let chatBusy = $state(false);
+  let chatNotice = $state('');
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
 
   onMount(async () => {
     isMounted = true;
+    readNotifyPreference();
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
@@ -44,25 +66,162 @@
     }
   });
 
+  /** Reads the permission the operator gave once, if any. */
+  function readNotifyPreference(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(NOTIFY_KEY);
+      if (stored === 'granted' || stored === 'denied') {
+        notifyState = stored;
+        notifyAsked = true;
+        return;
+      }
+      if (typeof Notification !== 'undefined') {
+        const permission = Notification.permission;
+        notifyState =
+          permission === 'granted' ? 'granted' : permission === 'denied' ? 'denied' : 'default';
+        notifyAsked = permission !== 'default';
+      }
+    } catch {
+      notifyState = 'denied';
+      notifyAsked = true;
+    }
+  }
+
+  async function allowNotifications(): Promise<void> {
+    notifyAsked = true;
+    try {
+      if (typeof Notification === 'undefined') {
+        notifyState = 'denied';
+        notifyMessage = $t('decision.notify.failed');
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      notifyState = permission === 'granted' ? 'granted' : 'denied';
+      notifyMessage =
+        notifyState === 'granted' ? $t('decision.notify.granted') : $t('decision.notify.denied');
+    } catch {
+      notifyState = 'denied';
+      notifyMessage = $t('decision.notify.failed');
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(NOTIFY_KEY, notifyState);
+    }
+  }
+
+  function denyNotifications(): void {
+    notifyAsked = true;
+    notifyState = 'denied';
+    notifyMessage = $t('decision.notify.denied');
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(NOTIFY_KEY, 'denied');
+    }
+  }
+
+  /** The parameters the notification's title names its subject by. */
+  function notificationParams(dec: DecisionEnvelope): Record<string, string> {
+    const subject = dec.subject ?? '';
+    const kind = dec.is_waiver ? 'waiver' : 'decision';
+    if (subject.startsWith('epic ')) {
+      return { subject: 'epic', name: subject.slice('epic '.length), kind };
+    }
+    if (subject.startsWith('setup of ')) {
+      return { subject: 'setup', project: subject.slice('setup of '.length), kind };
+    }
+    if (dec.scope === 'entry' || subject.startsWith('start ')) {
+      return { subject: 'entry', project: subject.replace(/^start (in )?/, ''), kind };
+    }
+    return { subject: 'other', name: subject.replace(/^plan /, ''), kind };
+  }
+
+  /** Fires a desktop notification while the tab is in the background. */
+  function notifyDecision(dec: DecisionEnvelope): void {
+    if (notifyState !== 'granted') return;
+    if (typeof Notification === 'undefined') return;
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') return;
+    try {
+      new Notification($t('decision.notify.title', notificationParams(dec)));
+    } catch {
+      // A browser that refuses the notification leaves the tab title and the list to say so.
+    }
+  }
+
   function handleEvent(event: string, data: unknown) {
     if (!isMounted) return;
-    if (event === 'decision.opened') {
+    if (event === 'decision.opened' || event === 'decision.created') {
+      sawDecisionEvent = true;
       const dec = data as DecisionEnvelope;
       if (dec && dec.id) {
-        if (!decisions.some((d) => d.id === dec.id)) {
+        const existing = decisions.find((entry) => entry.id === dec.id);
+        if (existing) {
+          if ((dec.revision ?? 1) > (existing.revision ?? 1)) {
+            revisedNotices[dec.id] = $t('decision.outcome.revised', {
+              change: dec.change || $t('decision.changed'),
+            });
+            decisions = decisions.map((entry) => (entry.id === dec.id ? dec : entry));
+          }
+        } else {
           decisions = [dec, ...decisions];
         }
+        notifyDecision(dec);
       } else {
         void loadDecisions();
       }
-    } else if (event === 'decision.answered' || event === 'decision.closed') {
-      const closeData = data as { id?: string; decision_id?: string };
-      const id = closeData?.id || closeData?.decision_id;
+    } else if (event === 'decision.revised') {
+      const revised = data as DecisionEnvelope;
+      if (revised?.id) {
+        revisedNotices[revised.id] = $t('decision.outcome.revised', {
+          change: revised.change || $t('decision.changed'),
+        });
+        decisions = decisions.map((entry) => (entry.id === revised.id ? revised : entry));
+      }
+    } else if (event === 'decision.answered') {
+      const answer = data as {
+        id?: string;
+        decision_id?: string;
+        channel?: string;
+        device?: string;
+        answer?: string;
+      };
+      const id = answer?.id || answer?.decision_id;
       if (id) {
+        const channel =
+          answer.channel === 'cli' ? $t('decision.channel.cli') : $t('decision.channel.web');
+        const text = $t('decision.outcome.answered_elsewhere', {
+          channel,
+          device: answer.device || '—',
+          answer: answer.answer || '—',
+        });
+        notices = [{ id: `${id}-answered`, text }, ...notices];
+        if (chatDecisionId === id) {
+          chatOpen = false;
+          chatNotice = $t('decision.chat.closed_elsewhere', {
+            id,
+            channel,
+            device: answer.device || '—',
+          });
+        }
         decisions = decisions.filter((d) => d.id !== id);
       } else {
         void loadDecisions();
       }
+      void refreshDecisionsCount();
+    } else if (event === 'decision.closed' || event === 'decision.withdrawn') {
+      const closeData = data as { id?: string; decision_id?: string; reason?: string };
+      const id = closeData?.id || closeData?.decision_id;
+      if (id) {
+        decisions = decisions.filter((d) => d.id !== id);
+        if (chatDecisionId === id) {
+          chatOpen = false;
+          chatNotice = $t('decision.chat.withdrawn', {
+            id,
+            reason: closeData.reason || $t('decision.outcome.withdrawn'),
+          });
+        }
+      } else {
+        void loadDecisions();
+      }
+      void refreshDecisionsCount();
     }
   }
 
@@ -83,10 +242,96 @@
     showEvidence[id] = !showEvidence[id];
   }
 
-  function selectOption(id: string, key: string) {
-    selectedOptions[id] = key;
-    isOwnWordsMode[id] = false;
-    interpretations[id] = null;
+  /** The key of one part of a decision, in the state maps. */
+  function keyOf(dec: DecisionEnvelope, part: DecisionPart, index: number): string {
+    return `${dec.id}:${part.part_id || index}`;
+  }
+
+  function answerOf(dec: DecisionEnvelope, part: DecisionPart, index: number): string {
+    return partAnswers[dec.id]?.[part.part_id || String(index)] ?? '';
+  }
+
+  function setAnswer(
+    dec: DecisionEnvelope,
+    part: DecisionPart,
+    index: number,
+    value: string,
+  ): void {
+    const partId = part.part_id || String(index);
+    partAnswers[dec.id] = { ...(partAnswers[dec.id] ?? {}), [partId]: value };
+  }
+
+  /** The 1-based part a dependency string names, if it names one. */
+  function dependencyIndex(dec: DecisionEnvelope, part: DecisionPart): number | null {
+    if (!part.dependency) return null;
+    const match = /(\d+)/.exec(part.dependency);
+    if (match) {
+      const number = Number.parseInt(match[1], 10);
+      if (number >= 1 && number <= dec.parts.length) return number;
+    }
+    const byId = dec.parts.findIndex((entry) => entry.part_id === part.dependency);
+    return byId >= 0 ? byId + 1 : null;
+  }
+
+  function partAvailable(dec: DecisionEnvelope, part: DecisionPart, index: number): boolean {
+    if (!part.dependency) return true;
+    const dependency = dependencyIndex(dec, part);
+    if (dependency === null) return true;
+    const earlier = dec.parts[dependency - 1];
+    if (!earlier) return true;
+    return Boolean(answerOf(dec, earlier, dependency - 1));
+  }
+
+  /** The answer of the part a dependency names, for the line that names it. */
+  function dependencyAnswer(dec: DecisionEnvelope, part: DecisionPart): string {
+    const dependency = dependencyIndex(dec, part);
+    if (dependency === null) return '';
+    const earlier = dec.parts[dependency - 1];
+    if (!earlier) return '';
+    const answer = answerOf(dec, earlier, dependency - 1);
+    const option = earlier.options.find((entry) => entry.key === answer);
+    return option?.label ?? answer;
+  }
+
+  function selectOption(
+    dec: DecisionEnvelope,
+    part: DecisionPart,
+    index: number,
+    key: string,
+  ): void {
+    setAnswer(dec, part, index, key);
+    ownWordsMode[keyOf(dec, part, index)] = false;
+    interpretations[keyOf(dec, part, index)] = null;
+    reopenDependants(dec, index + 1);
+  }
+
+  /** Opens the parts that depend on the one just changed, and drops their answers. */
+  function reopenDependants(dec: DecisionEnvelope, changedPart: number): void {
+    dec.parts.forEach((entry, index) => {
+      if (dependencyIndex(dec, entry) !== changedPart) return;
+      const partId = entry.part_id || String(index);
+      if (partAnswers[dec.id]?.[partId]) {
+        const next = { ...(partAnswers[dec.id] ?? {}) };
+        delete next[partId];
+        partAnswers[dec.id] = next;
+        reopened[dec.id] = { n: index + 1, m: changedPart };
+      }
+    });
+  }
+
+  function allPartsAnswered(dec: DecisionEnvelope): boolean {
+    return dec.parts.every((part, index) => {
+      if (!partAvailable(dec, part, index)) return false;
+      return Boolean(answerOf(dec, part, index));
+    });
+  }
+
+  function isSubmittingDecision(dec: DecisionEnvelope): boolean {
+    return dec.parts.some((part, index) => Boolean(isSubmitting[keyOf(dec, part, index)]));
+  }
+
+  function isChatting(dec: DecisionEnvelope): boolean {
+    return chatOpen && chatDecisionId === dec.id;
   }
 
   async function handleWaiver(id: string, action: 'waive' | 'decline') {
@@ -104,72 +349,193 @@
     }
   }
 
-  async function interpretOwnWords(id: string, part: DecisionPart) {
-    const words = ownWordsTexts[id]?.trim() || '';
+  async function interpretOwnWords(
+    dec: DecisionEnvelope,
+    part: DecisionPart,
+    index: number,
+  ): Promise<void> {
+    const key = keyOf(dec, part, index);
+    const words = ownWordsTexts[key]?.trim() || '';
     if (!words) return;
-    isInterpreting[id] = true;
+    isInterpreting[key] = true;
     try {
-      const res = await apiClient.interpretDecision(id, words);
-      interpretations[id] = res;
+      interpretations[key] = await apiClient.interpretDecision(dec.id, words);
     } catch (err: unknown) {
       errorMessage = (err as Error)?.message || $t('decision.interpret.failed');
     } finally {
-      isInterpreting[id] = false;
+      isInterpreting[key] = false;
     }
   }
 
-  async function submitOwnWordsAnswer(id: string, part: DecisionPart) {
-    const interp = interpretations[id];
-    isSubmitting[id] = true;
+  async function submitOwnWordsAnswer(
+    dec: DecisionEnvelope,
+    part: DecisionPart,
+    index: number,
+  ): Promise<void> {
+    const key = keyOf(dec, part, index);
+    const interp = interpretations[key];
+    const option = interp?.mapped_option_key || 'own_words';
+    isSubmitting[key] = true;
     try {
-      await apiClient.answerDecision(id, {
-        words: ownWordsTexts[id],
-        option: interp?.mapped_option_key || 'own_words',
-        note: notes[id],
-      });
-      decisions = decisions.filter((d) => d.id !== id);
-      void refreshDecisionsCount();
+      if (dec.parts.length > 1) {
+        const partId = part.part_id || String(index);
+        await apiClient.answerDecision(dec.id, {
+          words: ownWordsTexts[key],
+          part_answers: { [partId]: option },
+          option,
+          note: partNotes[key],
+        });
+      } else {
+        await apiClient.answerDecision(dec.id, {
+          words: ownWordsTexts[key],
+          option,
+          note: partNotes[key],
+        });
+      }
+      setAnswer(dec, part, index, option);
+      closeDecision(dec.id);
     } catch (err: unknown) {
       errorMessage = (err as Error)?.message || $t('decision.answer.failed');
     } finally {
-      isSubmitting[id] = false;
+      isSubmitting[key] = false;
     }
   }
 
-  async function submitOptionAnswer(id: string) {
-    const option = selectedOptions[id];
-    if (!option) return;
-    isSubmitting[id] = true;
+  async function submitDecision(dec: DecisionEnvelope): Promise<void> {
+    if (!allPartsAnswered(dec)) return;
+    const submittingKey = dec.parts[0] ? keyOf(dec, dec.parts[0], 0) : dec.id;
+    isSubmitting[submittingKey] = true;
     try {
-      await apiClient.answerDecision(id, {
-        option,
-        note: notes[id],
-      });
-      decisions = decisions.filter((d) => d.id !== id);
-      void refreshDecisionsCount();
+      if (dec.parts.length === 1) {
+        const part = dec.parts[0];
+        await apiClient.answerDecision(dec.id, {
+          option: answerOf(dec, part, 0),
+          note: partNotes[keyOf(dec, part, 0)],
+        });
+      } else {
+        const answers: Record<string, string> = {};
+        for (const [index, part] of dec.parts.entries()) {
+          const partId = part.part_id || String(index);
+          answers[partId] = answerOf(dec, part, index);
+        }
+        await apiClient.answerDecision(dec.id, { part_answers: answers });
+      }
+      closeDecision(dec.id);
     } catch (err: unknown) {
       errorMessage = (err as Error)?.message || $t('decision.answer.failed');
     } finally {
-      isSubmitting[id] = false;
+      isSubmitting[submittingKey] = false;
     }
   }
 
-  async function submitWithdraw(id: string) {
-    isSubmitting[id] = true;
+  async function submitWithdraw(dec: DecisionEnvelope) {
+    isSubmitting[dec.id] = true;
     try {
-      await apiClient.withdrawDecision(id);
-      decisions = decisions.filter((d) => d.id !== id);
-      void refreshDecisionsCount();
+      await apiClient.withdrawDecision(dec.id);
+      closeDecision(dec.id);
     } catch (err: unknown) {
       errorMessage = (err as Error)?.message || $t('decision.withdraw.failed');
     } finally {
-      isSubmitting[id] = false;
+      isSubmitting[dec.id] = false;
     }
+  }
+
+  function closeDecision(id: string) {
+    decisions = decisions.filter((d) => d.id !== id);
+    if (chatDecisionId === id) {
+      chatOpen = false;
+      chat = null;
+    }
+    void refreshDecisionsCount();
   }
 
   function handleLater(id: string) {
     // Decision stays open; operator moves away
     decisions = decisions.filter((d) => d.id !== id);
+  }
+
+  function reasonOf(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+  }
+
+  async function openChat(dec: DecisionEnvelope): Promise<void> {
+    chatDecisionId = dec.id;
+    chatOpen = true;
+    chat = null;
+    chatNotice = '';
+    try {
+      chat = await apiClient.getDecisionChat(dec.id);
+    } catch (err: unknown) {
+      chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+    }
+  }
+
+  async function sendChat(text: string): Promise<void> {
+    if (!chatDecisionId) return;
+    chatBusy = true;
+    try {
+      chat = await apiClient.decisionChatTurn(chatDecisionId, text);
+    } catch (err: unknown) {
+      chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+    } finally {
+      chatBusy = false;
+    }
+  }
+
+  async function answerChatProposal(accept: boolean): Promise<void> {
+    if (!chatDecisionId) return;
+    const proposal = chat?.proposal;
+    chatBusy = true;
+    try {
+      chat = await apiClient.answerDecisionChatProposal(chatDecisionId, accept);
+      if (accept && proposal?.after) {
+        takeProposedAnswer(proposal.after, proposal.applies ?? '');
+      }
+    } catch (err: unknown) {
+      chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+    } finally {
+      chatBusy = false;
+    }
+  }
+
+  /** Takes a proposed answer as the operator's own words and reads it back. */
+  function takeProposedAnswer(words: string, applies: string): void {
+    const dec = decisions.find((entry) => entry.id === chatDecisionId);
+    if (!dec || dec.parts.length === 0) return;
+    const match = /part\s+(\d+)/i.exec(applies);
+    const index = match ? Math.min(dec.parts.length - 1, Number.parseInt(match[1], 10) - 1) : 0;
+    const part = dec.parts[index];
+    const key = keyOf(dec, part, index);
+    ownWordsTexts[key] = words;
+    ownWordsMode[key] = true;
+    interpretations[key] = null;
+    chatOpen = false;
+    void interpretOwnWords(dec, part, index);
+  }
+
+  async function endTheChat(): Promise<void> {
+    if (!chatDecisionId) return;
+    chatBusy = true;
+    try {
+      await apiClient.endDecisionChat(chatDecisionId);
+    } catch {
+      // Closing the panel is the operator's act; a chat the runtime already closed stays closed.
+    } finally {
+      chatOpen = false;
+      chat = null;
+      chatNotice = '';
+      chatDecisionId = null;
+      chatBusy = false;
+    }
+  }
+
+  /** Whether a costly or irreversible decision keeps its recommendation one step away. */
+  function recommendationOnRequest(dec: DecisionEnvelope): boolean {
+    return dec.reversibility === 'costly' || dec.reversibility === 'irreversible';
+  }
+
+  function recommendationVisible(dec: DecisionEnvelope): boolean {
+    return !recommendationOnRequest(dec) || Boolean(revealed[dec.id]);
   }
 </script>
 
@@ -183,6 +549,41 @@
         {/if}
       </h1>
     </header>
+
+    {#if notifyState === 'default' && !notifyAsked && sawDecisionEvent && decisions.length > 0}
+      <div class="notify-banner" data-testid="notify-banner" role="region">
+        <p class="notify-banner__text">{$t('decision.notify.ask')}</p>
+        <div class="notify-banner__actions">
+          <Button variant="secondary" onclick={denyNotifications}>
+            {$t('decision.notify.deny')}
+          </Button>
+          <Button variant="primary" onclick={allowNotifications}>
+            {$t('decision.notify.allow')}
+          </Button>
+        </div>
+      </div>
+    {/if}
+    {#if notifyMessage}
+      <p class="notify-message" data-testid="notify-message" role="status">{notifyMessage}</p>
+    {/if}
+
+    {#if notices.length > 0}
+      <div class="notice-list" data-testid="decision-notices">
+        {#each notices as notice (notice.id)}
+          <div class="notice-line" role="status">
+            <span>{notice.text}</span>
+            <button
+              type="button"
+              class="notice-dismiss"
+              aria-label={$t('common.close')}
+              onclick={() => (notices = notices.filter((entry) => entry.id !== notice.id))}
+            >
+              ×
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
 
     {#if errorMessage}
       <div class="error-banner" role="alert">
@@ -338,165 +739,236 @@
 
                     <p class="part-question">{part.question}</p>
 
-                    {#if part.recommendation}
-                      <div class="recommendation-banner">
-                        {$t('decision.recommendation.by', {
-                          role: part.recommending_role || dec.asking_role || 'reviewer',
-                          option: part.recommendation,
+                    {#if revisedNotices[dec.id]}
+                      <p
+                        class="decision-revised"
+                        data-testid="decision-revised-{dec.id}"
+                        role="status"
+                      >
+                        {revisedNotices[dec.id]}
+                      </p>
+                    {/if}
+
+                    {#if part.dependency}
+                      {#if partAvailable(dec, part, pIdx)}
+                        <p class="part-dependency" data-testid="part-dependency-{dec.id}">
+                          {$t('decision.part.depends_on', {
+                            n: dependencyIndex(dec, part) ?? 0,
+                            answer: dependencyAnswer(dec, part),
+                          })}
+                        </p>
+                      {:else}
+                        <p class="part-dependency part-dependency--waiting">
+                          {$t('decision.part.waiting', {
+                            n: dependencyIndex(dec, part) ?? 0,
+                          })}
+                        </p>
+                      {/if}
+                    {/if}
+
+                    {#if reopened[dec.id]?.n === pIdx + 1}
+                      <p class="part-reopened" data-testid="part-reopened-{dec.id}" role="status">
+                        {$t('decision.part.reopened', {
+                          n: reopened[dec.id].n,
+                          m: reopened[dec.id].m,
                         })}
-                      </div>
+                      </p>
+                    {/if}
+
+                    {#if part.recommendation}
+                      {#if recommendationVisible(dec)}
+                        <div class="recommendation-banner" data-testid="recommendation-{dec.id}">
+                          {$t('decision.recommendation.by', {
+                            role: part.recommending_role || dec.asking_role || 'reviewer',
+                            option: part.recommendation,
+                          })}
+                        </div>
+                        {#if part.recommendation_rationale}
+                          <p class="recommendation-rationale">
+                            {$t('decision.recommendation.rationale', {
+                              rationale: part.recommendation_rationale,
+                            })}
+                          </p>
+                        {/if}
+                      {:else}
+                        <div
+                          class="recommendation-on-request"
+                          data-testid="recommendation-hidden-{dec.id}"
+                        >
+                          <p class="recommendation-request-text">
+                            {$t('decision.recommendation.on_request')}
+                          </p>
+                          <Button
+                            size="small"
+                            variant="secondary"
+                            onclick={() => (revealed[dec.id] = true)}
+                          >
+                            {$t('decision.recommendation.show')}
+                          </Button>
+                        </div>
+                      {/if}
                     {/if}
 
                     <!-- Options list -->
-                    <div class="options-list" role="radiogroup" aria-label={part.question}>
-                      {#each part.options as opt}
-                        <label
-                          class="option-card"
-                          class:selected={selectedOptions[dec.id] === opt.key &&
-                            !isOwnWordsMode[dec.id]}
-                          class:recommended={part.recommendation === opt.key}
-                        >
-                          <input
-                            type="radio"
-                            name="opt-{dec.id}-{pIdx}"
-                            value={opt.key}
-                            checked={selectedOptions[dec.id] === opt.key && !isOwnWordsMode[dec.id]}
-                            onchange={() => selectOption(dec.id, opt.key)}
-                          />
-                          <div class="option-content">
-                            <div class="option-label-row">
-                              <span class="option-label">{opt.label}</span>
-                              {#if part.recommendation === opt.key}
-                                <span class="recommended-tag"
-                                  >← {$t('decision.recommendation.marker')}</span
-                                >
+                    {#if partAvailable(dec, part, pIdx)}
+                      <div class="options-list" role="radiogroup" aria-label={part.question}>
+                        {#each part.options as opt}
+                          {@const chosen =
+                            answerOf(dec, part, pIdx) === opt.key &&
+                            !ownWordsMode[keyOf(dec, part, pIdx)]}
+                          <label
+                            class="option-card"
+                            class:selected={chosen}
+                            class:recommended={recommendationVisible(dec) &&
+                              part.recommendation === opt.key}
+                          >
+                            <input
+                              type="radio"
+                              name="opt-{dec.id}-{pIdx}"
+                              value={opt.key}
+                              checked={chosen}
+                              disabled={isChatting(dec)}
+                              onchange={() => selectOption(dec, part, pIdx, opt.key)}
+                            />
+                            <div class="option-content">
+                              <div class="option-label-row">
+                                <span class="option-label">{opt.label}</span>
+                                {#if recommendationVisible(dec) && part.recommendation === opt.key}
+                                  <span class="recommended-tag"
+                                    >← {$t('decision.recommendation.marker')}</span
+                                  >
+                                {/if}
+                                {#if opt.quorum_support}
+                                  <span class="support-badge">
+                                    {$t('decision.support.votes', {
+                                      votes: opt.quorum_support.votes_count,
+                                      total: opt.quorum_support.total_votes,
+                                      models: opt.quorum_support.models_count,
+                                    })}
+                                    · {$t(`decision.support.band.${opt.quorum_support.band}`)}
+                                  </span>
+                                {/if}
+                              </div>
+                              {#if opt.tradeoff_description}
+                                <p class="option-tradeoff">{opt.tradeoff_description}</p>
                               {/if}
-                              {#if opt.quorum_support}
-                                <span class="support-badge">
-                                  {$t('decision.support.votes', {
-                                    votes: opt.quorum_support.votes_count,
-                                    total: opt.quorum_support.total_votes,
-                                    models: opt.quorum_support.models_count,
+                              {#if opt.consequences}
+                                <p class="option-consequences">{opt.consequences}</p>
+                              {/if}
+                              {#if opt.quorum_support?.dissent_summary}
+                                <blockquote class="option-dissent">
+                                  {$t('decision.dissent', {
+                                    role: part.recommending_role || 'reviewer',
+                                    reason: opt.quorum_support.dissent_summary,
                                   })}
-                                  · {$t(`decision.support.band.${opt.quorum_support.band}`)}
-                                </span>
+                                </blockquote>
                               {/if}
                             </div>
-                            {#if opt.tradeoff_description}
-                              <p class="option-tradeoff">{opt.tradeoff_description}</p>
-                            {/if}
-                            {#if opt.consequences}
-                              <p class="option-consequences">{opt.consequences}</p>
-                            {/if}
-                            {#if opt.quorum_support?.dissent_summary}
-                              <blockquote class="option-dissent">
-                                {$t('decision.dissent', {
-                                  role: 'reviewer',
-                                  reason: opt.quorum_support.dissent_summary,
-                                })}
-                              </blockquote>
-                            {/if}
-                          </div>
-                        </label>
-                      {/each}
-                    </div>
+                          </label>
+                        {/each}
+                      </div>
 
-                    <!-- Own words section -->
-                    {#if part.allow_own_words !== false}
-                      <div class="own-words-section">
-                        <button
-                          type="button"
-                          class="btn-toggle-own-words"
-                          onclick={() => {
-                            isOwnWordsMode[dec.id] = !isOwnWordsMode[dec.id];
-                            if (isOwnWordsMode[dec.id]) {
-                              selectedOptions[dec.id] = '';
-                            }
-                          }}
-                        >
-                          ✎ {$t('decision.answer.own_words')}
-                        </button>
+                      <!-- Own words section -->
+                      {#if part.allow_own_words !== false}
+                        <div class="own-words-section">
+                          <button
+                            type="button"
+                            class="btn-toggle-own-words"
+                            disabled={isChatting(dec)}
+                            onclick={() => {
+                              const key = keyOf(dec, part, pIdx);
+                              ownWordsMode[key] = !ownWordsMode[key];
+                              if (ownWordsMode[key]) {
+                                setAnswer(dec, part, pIdx, '');
+                              }
+                            }}
+                          >
+                            ✎ {$t('decision.answer.own_words')}
+                          </button>
 
-                        {#if isOwnWordsMode[dec.id]}
-                          <div class="own-words-box">
-                            {#if !interpretations[dec.id]}
-                              <textarea
-                                class="form-textarea"
-                                rows="3"
-                                placeholder={$t('decision.answer.own_words_placeholder')}
-                                bind:value={ownWordsTexts[dec.id]}
-                              ></textarea>
-                              <div class="own-words-actions">
-                                <Button
-                                  size="small"
-                                  variant="secondary"
-                                  disabled={!ownWordsTexts[dec.id]?.trim() ||
-                                    isInterpreting[dec.id]}
-                                  onclick={() => interpretOwnWords(dec.id, part)}
-                                >
-                                  {isInterpreting[dec.id]
-                                    ? $t('decision.interpret.working', {
-                                        role: part.recommending_role || 'interpret',
-                                      })
-                                    : $t('decision.readback.action')}
-                                </Button>
-                              </div>
-                            {:else}
-                              <div class="readback-box">
-                                <p class="readback-text">
-                                  {$t('decision.readback.understood', {
-                                    reading: interpretations[dec.id]?.read_back_text || '',
-                                  })}
-                                </p>
-                                <div class="readback-actions">
-                                  <Button
-                                    size="small"
-                                    variant="primary"
-                                    onclick={() => submitOwnWordsAnswer(dec.id, part)}
-                                  >
-                                    {$t('decision.readback.confirm')}
-                                  </Button>
+                          {#if ownWordsMode[keyOf(dec, part, pIdx)]}
+                            <div class="own-words-box">
+                              {#if !interpretations[keyOf(dec, part, pIdx)]}
+                                <textarea
+                                  class="form-textarea"
+                                  rows="3"
+                                  placeholder={$t('decision.answer.own_words_placeholder')}
+                                  bind:value={ownWordsTexts[keyOf(dec, part, pIdx)]}
+                                ></textarea>
+                                <div class="own-words-actions">
                                   <Button
                                     size="small"
                                     variant="secondary"
-                                    onclick={() => {
-                                      interpretations[dec.id] = null;
-                                    }}
+                                    disabled={!ownWordsTexts[keyOf(dec, part, pIdx)]?.trim() ||
+                                      isInterpreting[keyOf(dec, part, pIdx)]}
+                                    onclick={() => interpretOwnWords(dec, part, pIdx)}
                                   >
-                                    {$t('decision.readback.edit')}
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="secondary"
-                                    onclick={() => {
-                                      isOwnWordsMode[dec.id] = false;
-                                      interpretations[dec.id] = null;
-                                    }}
-                                  >
-                                    {$t('decision.readback.choose')}
+                                    {isInterpreting[keyOf(dec, part, pIdx)]
+                                      ? $t('decision.interpret.working', {
+                                          role: part.recommending_role || 'interpret',
+                                        })
+                                      : $t('decision.readback.action')}
                                   </Button>
                                 </div>
-                              </div>
-                            {/if}
-                          </div>
-                        {/if}
-                      </div>
-                    {/if}
+                              {:else}
+                                <div class="readback-box">
+                                  <p class="readback-text">
+                                    {$t('decision.readback.understood', {
+                                      reading:
+                                        interpretations[keyOf(dec, part, pIdx)]?.read_back_text ||
+                                        '',
+                                    })}
+                                  </p>
+                                  <div class="readback-actions">
+                                    <Button
+                                      size="small"
+                                      variant="primary"
+                                      onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
+                                    >
+                                      {$t('decision.readback.confirm')}
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="secondary"
+                                      onclick={() => {
+                                        interpretations[keyOf(dec, part, pIdx)] = null;
+                                      }}
+                                    >
+                                      {$t('decision.readback.edit')}
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="secondary"
+                                      onclick={() => {
+                                        ownWordsMode[keyOf(dec, part, pIdx)] = false;
+                                        interpretations[keyOf(dec, part, pIdx)] = null;
+                                      }}
+                                    >
+                                      {$t('decision.readback.choose')}
+                                    </Button>
+                                  </div>
+                                </div>
+                              {/if}
+                            </div>
+                          {/if}
+                        </div>
+                      {/if}
 
-                    <!-- Optional note -->
-                    {#if part.allow_note}
-                      <div class="note-section">
-                        <label for="note-{dec.id}" class="form-label">
-                          {$t('decision.answer.note')}
-                        </label>
-                        <input
-                          id="note-{dec.id}"
-                          type="text"
-                          class="form-input"
-                          placeholder={$t('decision.answer.note_placeholder')}
-                          bind:value={notes[dec.id]}
-                        />
-                      </div>
+                      <!-- Optional note -->
+                      {#if part.allow_note}
+                        <div class="note-section">
+                          <label for="note-{dec.id}-{pIdx}" class="form-label">
+                            {$t('decision.answer.note')}
+                          </label>
+                          <input
+                            id="note-{dec.id}-{pIdx}"
+                            type="text"
+                            class="form-input"
+                            placeholder={$t('decision.answer.note_placeholder')}
+                            bind:value={partNotes[keyOf(dec, part, pIdx)]}
+                          />
+                        </div>
+                      {/if}
                     {/if}
                   </div>
                 {/each}
@@ -504,15 +976,26 @@
                 <footer class="card-actions">
                   <Button
                     variant="primary"
-                    disabled={!selectedOptions[dec.id] || isSubmitting[dec.id]}
-                    onclick={() => submitOptionAnswer(dec.id)}
+                    disabled={!allPartsAnswered(dec) ||
+                      isSubmittingDecision(dec) ||
+                      isChatting(dec)}
+                    onclick={() => submitDecision(dec)}
                   >
                     {$t('decision.confirm.action')}
                   </Button>
+                  {#if !dec.is_waiver}
+                    <Button
+                      variant="secondary"
+                      disabled={isChatting(dec) || isSubmittingDecision(dec)}
+                      onclick={() => openChat(dec)}
+                    >
+                      {$t('decision.answer.chat')}
+                    </Button>
+                  {/if}
                   <Button
                     variant="secondary"
-                    disabled={isSubmitting[dec.id]}
-                    onclick={() => submitWithdraw(dec.id)}
+                    disabled={isSubmittingDecision(dec) || isChatting(dec)}
+                    onclick={() => submitWithdraw(dec)}
                   >
                     {$t('decision.answer.none_fits', { subject: dec.scope || 'plan' })}
                   </Button>
@@ -520,6 +1003,39 @@
                     {$t('decision.answer.later')}
                   </Button>
                 </footer>
+
+                {#if isChatting(dec)}
+                  <div class="decision-chat" data-testid="decision-chat-{dec.id}">
+                    <ChatPanel
+                      open={true}
+                      role={chat?.role ?? ''}
+                      subject={chat?.subject_id ?? dec.id}
+                      turns={chat?.turns ?? []}
+                      proposal={chat?.proposal ?? null}
+                      available={chat !== null}
+                      busy={chatBusy}
+                      onSend={sendChat}
+                      onEnd={endTheChat}
+                      onAccept={() => answerChatProposal(true)}
+                      onReject={() => answerChatProposal(false)}
+                      onToggle={() => openChat(dec)}
+                      acceptLabel={$t('decision.chat.answer_proposed')}
+                    />
+                    {#if chatNotice}
+                      <p
+                        class="decision-chat__notice"
+                        role="alert"
+                        data-testid="decision-chat-notice"
+                      >
+                        {chatNotice}
+                      </p>
+                    {:else}
+                      <p class="decision-chat__open" role="status">
+                        {$t('decision.chat.stays_open', { id: dec.id })}
+                      </p>
+                    {/if}
+                  </div>
+                {/if}
               </div>
             {/if}
           </article>
@@ -925,6 +1441,123 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+  }
+
+  .notify-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    background-color: var(--color-primary-subtle);
+  }
+
+  .notify-banner__text {
+    margin: 0;
+    font-size: var(--text-sm);
+    flex: 1 1 18rem;
+  }
+
+  .notify-banner__actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .notify-message {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .notice-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .notice-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-left: 3px solid var(--color-primary);
+    background-color: var(--color-bg-subtle);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+  }
+
+  .notice-dismiss {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: var(--text-base);
+  }
+
+  .decision-revised,
+  .part-reopened,
+  .part-dependency {
+    margin: var(--space-2) 0;
+    padding: var(--space-2);
+    border-left: 3px solid var(--color-warning);
+    background-color: var(--color-warning-subtle);
+    color: var(--color-warning);
+    font-size: var(--text-xs);
+  }
+
+  .part-dependency {
+    border-left-color: var(--color-primary);
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary);
+  }
+
+  .part-dependency--waiting {
+    border-left-color: var(--color-text-muted);
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-secondary);
+  }
+
+  .recommendation-rationale {
+    margin: 0 0 var(--space-3) 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .recommendation-on-request {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .recommendation-request-text {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+    flex: 1 1 14rem;
+  }
+
+  .decision-chat {
+    margin-top: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: var(--space-3);
+  }
+
+  .decision-chat__notice {
+    margin: var(--space-2) 0 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-danger);
+  }
+
+  .decision-chat__open {
+    margin: var(--space-2) 0 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
   }
 
   @media (max-width: 640px) {

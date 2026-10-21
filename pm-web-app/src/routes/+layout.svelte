@@ -83,6 +83,51 @@
   function toggleLocale() {
     setLocale($currentLocale === 'en' ? 'de' : 'en');
   }
+
+  /**
+   * The title the address bar carries for the route, before the open decisions are counted.
+   *
+   * @param route the route shown
+   * @returns the catalogue title of that route
+   */
+  function routeTitle(route: AppRoute): string {
+    switch (route) {
+      case 'overview':
+        return $t('overview.running.title');
+      case 'plan':
+        return $t('plan.view.title');
+      case 'epic':
+      case 'decomposition':
+        return $t('epic.view.title');
+      case 'decisions':
+        return $t('decisions.list.title');
+      case 'projects':
+      case 'project-onboarding':
+        return $t('project.explorer.title');
+      case 'reports':
+        return $t('report.list.title');
+      case 'system':
+      case 'cleanup':
+        return $t('system.view.title');
+      case 'settings':
+      case 'machine-settings':
+        return $t('web.settings.page.title');
+      case 'start':
+      case 'entry':
+        return $t('start.plan.title');
+      default:
+        return $t('web.frame.brand');
+    }
+  }
+
+  // The tab title counts the open decisions, so an operator in another tab sees them without
+  // opening the app; the list and the badge carry the same count.
+  $effect(() => {
+    if (typeof document === 'undefined') return;
+    const count = $runtimeStore.openDecisionsCount;
+    const base = routeTitle($runtimeStore.currentRoute);
+    document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
+  });
 </script>
 
 {#if !$runtimeStore.isInitialized}
