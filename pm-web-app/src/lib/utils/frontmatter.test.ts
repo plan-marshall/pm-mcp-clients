@@ -77,6 +77,17 @@ describe('frontmatter', () => {
     expect(edited).toContain('custom: kept');
   });
 
+  it('keeps the lines after a changed interface', () => {
+    const edited = editFrontmatter(unit, (fields) => {
+      fields.entries.push({ id: 'adopt', description: 'A plan of source pr.' });
+    });
+
+    expect(edited).toContain('entry adopt\n  A plan of source pr.');
+    expect(edited).toContain('author: Oliver Wolff');
+    expect(edited).toContain('custom: kept');
+    expect(edited).toContain('state finalize.review');
+  });
+
   it('adds a frontmatter to a unit that has none', () => {
     const bare = 'workflow new-unit version 1 format 1\nstate start\n';
     expect(parseUnit(bare).hasFrontmatter).toBe(false);

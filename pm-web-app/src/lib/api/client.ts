@@ -1067,6 +1067,9 @@ export interface CleanupSummary {
   next_check_at?: string;
 }
 
+/** The windows the system view offers. */
+export type SystemWindow = 'hour' | 'today' | '7d';
+
 export interface SystemSnapshot {
   runtime: RuntimeMetrics;
   work: WorkMetrics;
@@ -1078,7 +1081,7 @@ export interface SystemSnapshot {
   };
   models: ModelMetric[];
   cleanup: CleanupSummary;
-  window: 'hour' | 'today' | '7d';
+  window: SystemWindow;
   project?: string | null;
 }
 
@@ -1854,7 +1857,7 @@ function normaliseSystemSnapshot(raw: SystemSnapshot): SystemSnapshot {
     jobs: (snapshot['jobs'] ?? {}) as SystemSnapshot['jobs'],
     models: (Array.isArray(snapshot['models']) ? snapshot['models'] : []).map(normaliseModelMetric),
     cleanup: normaliseCleanupSummary(snapshot['cleanup']),
-    window: (snapshot['window'] ?? 'hour') as 'hour' | 'today' | '7d',
+    window: (snapshot['window'] ?? 'hour') as SystemWindow,
     project: typeof snapshot['project'] === 'string' ? snapshot['project'] : null,
   };
 }
@@ -2744,10 +2747,7 @@ export class ApiClient {
     );
   }
 
-  public async getSystemSnapshot(
-    window?: 'hour' | 'today' | '7d',
-    project?: string,
-  ): Promise<SystemSnapshot> {
+  public async getSystemSnapshot(window?: SystemWindow, project?: string): Promise<SystemSnapshot> {
     const params = new URLSearchParams();
     if (window) params.set('window', window);
     if (project) params.set('project', project);

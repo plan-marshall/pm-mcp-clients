@@ -203,9 +203,11 @@ export function parseUnit(text: string): ParsedUnit {
  */
 function serialiseFrontmatter(fields: FrontmatterFields): string[] {
   const block: string[] = [OPEN];
-  block.push(`name: ${fields.displayName}`.trimEnd());
-  block.push(`description: ${fields.description}`.trimEnd());
-  block.push(`type: ${fields.type}`.trimEnd());
+  block.push(
+    `name: ${fields.displayName}`.trimEnd(),
+    `description: ${fields.description}`.trimEnd(),
+    `type: ${fields.type}`.trimEnd(),
+  );
   for (const entry of fields.entries) {
     block.push(
       `entry ${entry.id}`.trimEnd(),
@@ -218,9 +220,11 @@ function serialiseFrontmatter(fields: FrontmatterFields): string[] {
       ...(exit.description ? exit.description.split('\n').map((line) => `  ${line}`) : []),
     );
   }
-  block.push(`author: ${fields.author}`.trimEnd());
-  block.push(`modified: ${fields.modified}`.trimEnd());
-  block.push(`release: ${fields.release}`.trimEnd());
+  block.push(
+    `author: ${fields.author}`.trimEnd(),
+    `modified: ${fields.modified}`.trimEnd(),
+    `release: ${fields.release}`.trimEnd(),
+  );
   if (fields.signature) block.push(`signature: ${fields.signature}`.trimEnd());
   for (const [key, value] of fields.extras) {
     block.push(`${key}: ${value}`.trimEnd());
@@ -283,31 +287,42 @@ function writeScalar(block: string[], key: string, value: string): void {
  * @param block the frontmatter body, without delimiters
  * @param fields the fields to write
  */
-function writeInterface(block: string[], fields: FrontmatterFields): void {
-  const first = block.findIndex((line) => isInterfaceLine(line));
+function withoutInterfaceLines(block: string[]): { kept: string[]; first: number } {
   const kept: string[] = [];
+  let first = -1;
   for (let index = 0; index < block.length; index++) {
-    if (isInterfaceLine(block[index])) {
-      index++;
-      while (index < block.length && isContinuation(block[index])) index++;
-      index--;
+    if (!isInterfaceLine(block[index])) {
+      kept.push(block[index]);
       continue;
     }
-    kept.push(block[index]);
+    if (first < 0) first = kept.length;
+    index++;
+    while (index < block.length && isContinuation(block[index])) index++;
+    index--;
   }
-  const interfaceLines: string[] = [];
-  for (const entry of fields.entries) {
-    interfaceLines.push(`entry ${entry.id}`);
-    if (entry.description) {
-      for (const line of entry.description.split('\n')) interfaceLines.push(`  ${line}`);
+  return { kept, first };
+}
+
+/**
+ * @param fields the fields to write
+ * @returns the entry and exit lines with their descriptions
+ */
+function interfaceLinesOf(fields: FrontmatterFields): string[] {
+  const lines: string[] = [];
+  const push = (kind: 'entry' | 'exit', item: InterfaceItem): void => {
+    lines.push(`${kind} ${item.id}`);
+    if (item.description) {
+      for (const line of item.description.split('\n')) lines.push(`  ${line}`);
     }
-  }
-  for (const exit of fields.exits) {
-    interfaceLines.push(`exit ${exit.id}`);
-    if (exit.description) {
-      for (const line of exit.description.split('\n')) interfaceLines.push(`  ${line}`);
-    }
-  }
+  };
+  for (const entry of fields.entries) push('entry', entry);
+  for (const exit of fields.exits) push('exit', exit);
+  return lines;
+}
+
+function writeInterface(block: string[], fields: FrontmatterFields): void {
+  const { kept, first } = withoutInterfaceLines(block);
+  const interfaceLines = interfaceLinesOf(fields);
   const position = first >= 0 ? Math.min(first, kept.length) : kept.length;
   kept.splice(position, 0, ...interfaceLines);
   block.splice(0, block.length, ...kept);
