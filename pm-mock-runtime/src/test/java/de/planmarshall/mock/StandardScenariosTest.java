@@ -51,6 +51,7 @@ class StandardScenariosTest {
         assertEquals("plan-view", StandardScenarios.PLAN_VIEW);
         assertEquals("control", StandardScenarios.CONTROL);
         assertEquals("designer", StandardScenarios.DESIGNER);
+        assertEquals("fully-onboarded", StandardScenarios.FULLY_ONBOARDED);
 
         // ALL lists exactly the scenario constants declared here. Reading them by reflection keeps
         // the test correct when a scenario is added, so it does not break on a sibling change.
@@ -64,13 +65,14 @@ class StandardScenariosTest {
     }
 
     @Test
-    @DisplayName("defines exactly the five canonical primary scenarios")
-    void shouldDefineFivePrimaryScenarios() {
-        assertEquals(5, StandardScenarios.PRIMARY_SCENARIOS.size());
+    @DisplayName("defines exactly the six canonical primary scenarios")
+    void shouldDefineSixPrimaryScenarios() {
+        assertEquals(6, StandardScenarios.PRIMARY_SCENARIOS.size());
         assertEquals(StandardScenarios.PRIMARY_SCENARIOS, List.of("onboarding", "running-work", "projects-and-start",
-                "reports-and-system", "designer"));
+                "reports-and-system", "designer", "fully-onboarded"));
         assertEquals("projects-and-start", StandardScenarios.PROJECTS_AND_START);
         assertEquals("reports-and-system", StandardScenarios.REPORTS_AND_SYSTEM);
+        assertEquals("fully-onboarded", StandardScenarios.FULLY_ONBOARDED);
     }
 
     @Test

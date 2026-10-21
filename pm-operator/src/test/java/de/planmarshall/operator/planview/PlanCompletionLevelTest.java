@@ -13,9 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.stream.Collectors;
 
 import de.planmarshall.api.report.PlanCompletionReport;
+import de.planmarshall.api.report.ReportItem;
 import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
@@ -65,18 +68,21 @@ class PlanCompletionLevelTest {
     @Test
     @DisplayName("a minimal report shows the raw time and omits the empty sections")
     void minimalReport() throws Exception {
+        // The report formats the age of its end instant, so the fixture names an instant two days
+        // back instead of a fixed date that ages out of the assertion.
+        var endedAt = Instant.now().minus(2, ChronoUnit.DAYS);
         var minimal = """
                             {
                               "plan_id": "docs-typo", "title": "Docs", "outcome": "no_change",
-                              "started_at": "2026-10-18T10:00:00Z", "ended_at": "2026-10-18T10:05:00Z",
+                              "started_at": "2026-10-18T10:00:00Z", "ended_at": "%s",
                               "ended": "5 min ago", "ran": "5 min",
                               "duration_seconds": 300
                             }
-                            """;
+                            """.formatted(endedAt);
         var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(minimal));
         var text = level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
         assertAll(
-                            () -> assertTrue(text.contains("ago"), text),
+                            () -> assertTrue(text.contains(ReportItem.formatTime(endedAt)), text),
                             () -> assertTrue(text.contains("5 min"), text),
                             () -> assertFalse(text.contains("Deliverables"), text),
                             () -> assertFalse(text.contains("Decisions"), text),

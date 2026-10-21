@@ -123,7 +123,7 @@ done
 FINAL_ARGS=()
 
 if [ "$HAS_SCENARIO" = false ]; then
-    # The five canonical scenarios of the consolidated catalog come from the same resource the Java
+    # The canonical scenarios of the consolidated catalog come from the same resource the Java
     # catalog reads (StandardScenarios.PRIMARY_SCENARIOS), so the menu cannot drift from it. The
     # fine-grained case files still exist during migration but are deliberately not offered here;
     # -s <name> reaches any of them.

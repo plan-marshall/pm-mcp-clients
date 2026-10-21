@@ -56,11 +56,9 @@ export interface RuntimeState {
   /** The steps the runtime reports as done, 1-based. */
   completedSteps: number;
   unreadReportsCount: number;
-  unreadReportsArrivalNotice?: string | null;
   quietReportNotice?: string | null;
   selectedReportDetailPlanId?: string | null;
   openDecisionsCount: number;
-  newDecisionArrivalNotice?: string | null;
   quietDecisionNotice?: string | null;
   projectEventNotice?: string | null;
   selectedPlanId?: string | null;
@@ -111,11 +109,9 @@ const initialState: RuntimeState = {
   activeStep: 1,
   completedSteps: 0,
   unreadReportsCount: 0,
-  unreadReportsArrivalNotice: null,
   quietReportNotice: null,
   selectedReportDetailPlanId: null,
   openDecisionsCount: 0,
-  newDecisionArrivalNotice: null,
   quietDecisionNotice: null,
   projectEventNotice: null,
   selectedPlanId: null,
@@ -378,24 +374,10 @@ export async function refreshReportsCount(): Promise<void> {
   if (!apiClient.isPaired()) return;
   try {
     const page = await apiClient.getReports();
-    runtimeStore.update((s) => {
-      let arrivalNotice = s.unreadReportsArrivalNotice;
-      if (page.unread_count > 0 && !arrivalNotice) {
-        arrivalNotice = page.oldest_unread_time
-          ? translate(get(currentLocale), 'report.arrival.line', {
-              count: page.unread_count,
-              time: page.oldest_unread_time,
-            })
-          : translate(get(currentLocale), 'report.arrival.line_now', {
-              count: page.unread_count,
-            });
-      }
-      return {
-        ...s,
-        unreadReportsCount: page.unread_count,
-        unreadReportsArrivalNotice: arrivalNotice,
-      };
-    });
+    runtimeStore.update((s) => ({
+      ...s,
+      unreadReportsCount: page.unread_count,
+    }));
   } catch {
     // Ignore fetch failures
   }
@@ -405,19 +387,10 @@ export async function refreshDecisionsCount(): Promise<void> {
   if (!apiClient.isPaired()) return;
   try {
     const decisions = await apiClient.getDecisions();
-    runtimeStore.update((s) => {
-      let arrivalNotice = s.newDecisionArrivalNotice;
-      if (decisions.length > 0 && !arrivalNotice && s.openDecisionsCount === 0) {
-        arrivalNotice = translate(get(currentLocale), 'decisions.list.open', {
-          count: decisions.length,
-        });
-      }
-      return {
-        ...s,
-        openDecisionsCount: decisions.length,
-        newDecisionArrivalNotice: arrivalNotice,
-      };
-    });
+    runtimeStore.update((s) => ({
+      ...s,
+      openDecisionsCount: decisions.length,
+    }));
   } catch {
     // Ignore fetch failures
   }
@@ -497,7 +470,6 @@ function handleDecisionEvent(event: string, data: unknown): void {
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: s.openDecisionsCount + 1,
-      newDecisionArrivalNotice: notice,
       quietDecisionNotice: notice,
     }));
   } else {

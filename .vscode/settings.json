@@ -1,0 +1,21 @@
+{
+  // The Java language server keeps its own copy of the Maven project model. When a POM changes
+  // and that model is not refreshed, the editor reports unresolved symbols that Maven never
+  // sees, so the build configuration and the background build stay on.
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.autobuild.enabled": true,
+  "java.compile.nullAnalysis.mode": "automatic",
+  "java.import.maven.enabled": true,
+  "java.import.gradle.enabled": false,
+  "java.import.exclusions": [
+    "**/node_modules/**",
+    "**/.metadata/**",
+    "**/archetype-resources/**",
+    "**/META-INF/maven/**",
+    "**/target/**",
+    "**/build/**",
+    "**/.svelte-kit/**",
+    // Fixture POMs that prove the build guards fail; they are not modules of this project.
+    "**/src/guard-controls/**"
+  ]
+}

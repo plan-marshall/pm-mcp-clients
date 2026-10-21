@@ -288,6 +288,8 @@ public final class ScenarioRegistry {
             registry.registerLegacyAlias("system", "reports-and-system#system.ready");
 
             // Scenario 5 (designer) is a primary scenario already; it needs no alias.
+            // Scenario 6 (fully-onboarded) is a primary scenario too: its name resolves directly to
+            // scenarios/fully-onboarded.json, so no legacy alias can shadow it.
         }
     }
 }
