@@ -267,6 +267,12 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/report-contract.adoc[`report-contract`]; link:implemented/system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
 |epic clients
 
+|link:completion-own-calls-change-map.adoc[`completion-own-calls-change-map`]
+|A plan's own calls and change map in the completion report: design, contract, mock runtime, and both clients
+|`open`
+|link:implemented/cli-reports.adoc[`cli-reports`]; link:implemented/web-reports.adoc[`web-reports`]
+|Milestone 10; epic clients
+
 |link:implemented/system-contract.adoc[`system-contract`]
 |The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
 |`done`

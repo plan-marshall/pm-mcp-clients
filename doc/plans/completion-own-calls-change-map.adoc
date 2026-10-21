@@ -1,0 +1,29 @@
+= Own calls and change map in the completion report
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `completion-own-calls-change-map`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6] (the variation _What a plan decided on its own_); link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 10
+Where:: `pm-api` (the completion resource), the mock runtime, `pm-cli`, `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* *Design first*: add the rows _Own calls_ and _Change map_ to link:../design/shared/completion-report.adoc#layout[Completion Report, Layout] and have the operator accept them: the own calls apart from _Decisions_, shortcuts first with their limit and the condition that ends them, each with the self-review's judgment (`consistent`, or `conflicts` with the item named); the change map as the fixed-width text diagram the runtime renders, `partial` or `indeterminate` with its cause, and its lists one step away.
+* The contract: the completion resource `GET /api/v1/plans/{plan_id}/completion` gains the own calls and the change map as the runtime records them; the mock runtime serves a fixture plan with a design call, a shortcut, a replaced dependency, and a partial map.
+* Both clients show the two rows from the contract and compute nothing; the diagram is shown as delivered, in a fixed-width font, never redrawn.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here.
+
+* Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-21[PM-WF-21], link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-11[PM-WF-11], link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-13[PM-WF-13]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#completion-report[Runtime & Interaction Model, Completion Report of a Plan]; link:../../../pm-mcp-core/doc/specification/phase-workflows/03-q-gate-and-execute.adoc#own-calls[Phase Workflows § Own Calls of a Writer]; link:../../../pm-mcp-core/doc/specification/phase-workflows/05-finalize-review-metrics-descriptor.adoc#change-map[Phase Workflows § Change Map]
+* Design: link:../design/shared/completion-report.adoc[Completion Report]
+
+== Done When
+
+The operator accepted the two rows of the design; both clients show them for the mock runtime's fixture plan at terminal, desktop, and phone width, and the contract tests of the completion resource cover a plan with own calls and one without.
