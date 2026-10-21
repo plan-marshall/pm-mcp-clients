@@ -848,11 +848,16 @@ public final class OverviewFullScreenApp {
         return ended != null ? ended.projectId() : null;
     }
 
-    private void openWhatWaits() {
+    /**
+     * Opens what waits for the operator in the selected row.
+     *
+     * @return {@code false} when the decision is handed to the console and the view must leave
+     */
+    private boolean openWhatWaits() {
         var lvl = stack.level();
         var selected = stack.selected();
         if (lvl == null || selected == null) {
-            return;
+            return true;
         }
         if (lvl.kind() == TuiLevel.Kind.EPIC) {
             var view = currentEpicView.get();
@@ -869,7 +874,7 @@ public final class OverviewFullScreenApp {
                         statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
                     }
                 }
-                return;
+                return true;
             }
         }
         if (lvl.kind() == TuiLevel.Kind.PLAN) {
@@ -878,10 +883,11 @@ public final class OverviewFullScreenApp {
             if (waiting != null) {
                 pendingAnswerPlanId = waiting;
                 stop();
-                return;
+                return false;
             }
         }
         openActions();
+        return true;
     }
 
     private Thread startEventListener() {
@@ -1220,7 +1226,9 @@ public final class OverviewFullScreenApp {
                 case PROJECT -> jumpToProject();
                 case COMPLETION -> planOpenCompletion();
                 case ACTIONS -> openActions();
-                case WAITS -> openWhatWaits();
+                case WAITS -> {
+                    return openWhatWaits();
+                }
                 default -> {
                     // unhandled key actions
                 }
