@@ -3,6 +3,7 @@
 **Plan:** [`doc/agy/implemented/web-decisions-and-actions-plan.md`](implemented/web-decisions-and-actions-plan.md)
 **Work package:** `web-actions` (`doc/plans/implemented/web-actions.adoc`), plus the remediation of `web-decisions`
 **Branch:** `feat/web-decisions-actions`
+**Pull request:** [#151](https://github.com/plan-marshall/pm-mcp-clients/pull/151)
 **Worktree:** `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions`
 
 ## 1. Executive Summary
