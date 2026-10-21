@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -68,24 +67,21 @@ class HostDetectionTest {
     }
 
     @Test
-    @DisplayName("reads the host session identifier from the session ID variable")
-    void sessionId() {
-        var claude = HostDetection.host("claude").orElseThrow();
-        var opencode = HostDetection.host("opencode").orElseThrow();
+    @DisplayName("a profile of the current schema carries no session ID variable")
+    void noSessionIdVariable() {
+        var environment = env("CLAUDE_CODE_SESSION_ID", "abc", "ANTIGRAVITY_CONVERSATION_ID", "c-1");
 
-        assertEquals(Optional.of("abc"), claude.sessionId(env("CLAUDE_CODE_SESSION_ID", "abc")));
-        assertEquals(Optional.empty(), claude.sessionId(env("CLAUDE_CODE_SESSION_ID", " ")));
-        assertEquals(Optional.empty(), opencode.sessionId(env("OPENCODE", "1")));
-        assertEquals(Optional.of("c-1"), HostDetection.host("antigravity").orElseThrow()
-                .sessionId(env("ANTIGRAVITY_CONVERSATION_ID", "c-1")));
+        assertTrue(List.of("claude", "opencode", "antigravity", "codex").stream()
+                .map(client -> HostDetection.host(client).orElseThrow().sessionId(environment))
+                .allMatch(Optional::isEmpty));
     }
 
     @Test
     @DisplayName("carries the version probes and the client ids")
     void probes() {
         assertEquals(List.of("claude", "--version"), HostDetection.host("claude").orElseThrow().versionProbe());
-        assertEquals(List.of(), HostDetection.host("antigravity").orElseThrow().versionProbe());
-        assertTrue(HostDetection.host("codex").orElseThrow().provisional());
+        assertEquals(List.of("agy", "--version"), HostDetection.host("antigravity").orElseThrow().versionProbe());
+        assertFalse(HostDetection.host("codex").orElseThrow().provisional());
         assertEquals(Optional.empty(), HostDetection.host(HostDetection.NEUTRAL));
         assertEquals(List.of("antigravity", "opencode", "claude", "codex", "neutral"), HostDetection.clientIds());
     }

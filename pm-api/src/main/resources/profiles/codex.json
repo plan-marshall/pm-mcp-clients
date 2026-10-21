@@ -1,5 +1,79 @@
 {
+  "schema_version": 1,
   "client_id": "codex",
+  "display_name": "Codex",
+  "icon": null,
+  "min_daemon_version": "0.1.0",
+  "tools": {
+    "read_file": "read_file",
+    "write_file": "write_file",
+    "edit_file": "apply_patch",
+    "search_code": "grep",
+    "find_files": "list_files",
+    "run_shell": "shell",
+    "ask_user": "ask_user",
+    "idioms": {}
+  },
+  "skill_loading": {
+    "mode": "view_file",
+    "load_directive_template": "pm_skill(uri=\"{{uri}}\")",
+    "schema_residency": "on_demand",
+    "skills_extension": false
+  },
+  "headless": {
+    "executable": "codex",
+    "install_locations": [ "~/.local/bin", "/usr/local/bin" ],
+    "install_hint": "install.codex",
+    "auth_probe": {
+      "argv": [ "codex", "login", "status" ],
+      "logged_in_exit_codes": [ 0 ],
+      "logged_out_exit_codes": [ 1 ],
+      "login_command": [ "codex", "login" ]
+    },
+    "models_probe": null,
+    "weights_probe": null,
+    "model_tiers": { "frontier": null, "standard": null, "fast": null },
+    "supported_versions": ">=0.1.0 <1.0.0",
+    "update_evidence": { "method": "none", "signer": null },
+    "agent_mode": "flags",
+    "argv": [ "exec", "{{prompt_file}}", "--model", "{{model}}" ],
+    "mcp_config": { "delivery": "slot", "path": null, "exclusive": true },
+    "classes": { "writer": null, "read_only": null, "zero_tool": null },
+    "env": {},
+    "capabilities": [ "result_schema", "usage_fields" ],
+    "output": { "format": "json", "result_pointer": "/result" },
+    "usage": {
+      "input_tokens": null,
+      "output_tokens": null,
+      "cache_read": null,
+      "cache_creation": null,
+      "reasoning": null,
+      "cost_usd": null,
+      "tool_uses": null
+    },
+    "events": null,
+    "endpoints": [ "api.openai.com:443" ],
+    "writable_paths": [ "~/.codex/auth.json", "~/.codex/sessions" ],
+    "data_home": null,
+    "tool_result_limit_chars": null,
+    "resource_tools": [],
+    "session_residue": "persisted",
+    "resumability": { "hold": false, "resume": null }
+  },
+  "connection": {
+    "transport": "stdio",
+    "idle_timeout_seconds": 270,
+    "bounded_wait_seconds": 240,
+    "progress_resets_timeout": false
+  },
+  "worker": {
+    "eligible": false,
+    "restricted_models": null,
+    "ack_deadline_seconds": null,
+    "ack_informational": null,
+    "silence_grace_seconds": null,
+    "idle_wakeups": null
+  },
   "detection": {
     "precedence": 40,
     "primary_signals": [
@@ -8,13 +82,12 @@
       { "variable": "CODEX_THREAD_ID", "equals": null }
     ],
     "secondary_signals": [],
-    "process_markers": []
+    "process_markers": [],
+    "ai_agent_prefixes": [ "codex" ],
+    "reaches": [ "command", "serve" ]
   },
   "identity": {
-    "session_id_variable": "CODEX_THREAD_ID",
     "version_probe": [ "codex", "--version" ],
-    "version_pattern": "(\\d+(?:\\.\\d+)+)",
-    "model_source": "declared",
-    "provisional": true
+    "version_pattern": "(\\d+(?:\\.\\d+)+)"
   }
 }
