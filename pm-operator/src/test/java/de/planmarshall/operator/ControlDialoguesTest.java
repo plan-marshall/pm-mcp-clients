@@ -861,4 +861,58 @@ class ControlDialoguesTest {
         assertNotNull(view.closeRow(de.planmarshall.operator.epicview.EpicViewLevel
                             .WORKSTREAM_PREFIX + "WS-1"));
     }
+
+    @Test
+    @DisplayName("plan cancel asks its reason, the pull request, and confirms")
+    void verbEndAsksReason() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/plans/p/cancel")) {
+                response.json(200, "{}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("the approach changed\n1\ny\n");
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
+                            "plan", "cancel", "p");
+        assertEquals(0, code, out.toString());
+        assertTrue(out.toString().contains("cancelled and archived"), out.toString());
+    }
+
+    @Test
+    @DisplayName("plan pause without a flag asks its point")
+    void verbPauseAsksPoint() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/plans/p/pause")) {
+                response.json(200, "{}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("2\n");
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
+                            "plan", "pause", "p");
+        assertEquals(0, code, out.toString());
+        assertTrue(out.toString().contains("pausing after the task"), out.toString());
+    }
+
+    @Test
+    @DisplayName("config <aspect> --plan opens the plan's settings")
+    void verbConfigPlan() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                response.json(200, PlanSettingsUpdateResult.applied(8).toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\n2\n");
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
+                            "config", "plan-defaults", "--plan", "p");
+        assertEquals(0, code, out.toString());
+        assertTrue(out.toString().contains("version becomes 8"), out.toString());
+    }
 }

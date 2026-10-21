@@ -70,6 +70,7 @@
             **/de/planmarshall/operator/actions/ActionMenus.java,
             **/de/planmarshall/operator/actions/ActionsMenu.java,
             **/de/planmarshall/operator/epicview/**,
+            **/de/planmarshall/operator/overview/OverviewFullScreenApp.java,
             **/de/planmarshall/operator/tui/TuiMenu*.java
         </sonar.coverage.exclusions>
     </properties>
