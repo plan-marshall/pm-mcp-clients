@@ -42,6 +42,33 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
  */
 public final class MockRuntime implements AutoCloseable {
 
+    /**
+     * The legacy case names of Scenario 3 mapped to their consolidated state. The registry's coarse
+     * alias table points every project/start alias at the scenario's primary state; a client (and a
+     * transcript test) that still names a case receives the case it names.
+     */
+    private static final Map<String, String> LEGACY_CASE_STATES = Map.ofEntries(
+            Map.entry(StandardScenarios.PROJECTS, "projects.explorer"),
+            Map.entry(StandardScenarios.ENROLMENT, "enrol.scan"),
+            Map.entry(StandardScenarios.GIT_SOURCES, "sources.git"),
+            Map.entry(StandardScenarios.LESSON_SOURCE, "sources.lessons"),
+            Map.entry(StandardScenarios.START, "start.sources"),
+            Map.entry(StandardScenarios.START_SOURCES, "start.sources"),
+            Map.entry(StandardScenarios.START_CHAT, "start.chat"),
+            Map.entry(StandardScenarios.START_DOCUMENTS, "start.documents"),
+            Map.entry(StandardScenarios.START_ENTRY_CONTINUE, "start.entry-continue"),
+            Map.entry(StandardScenarios.START_EPIC, "start.epic"),
+            Map.entry(StandardScenarios.START_EPIC_ADOPT, "start.epic-adopt"),
+            Map.entry(StandardScenarios.START_FOLLOW_UP, "start.follow-up"),
+            Map.entry(StandardScenarios.START_ISSUE_FAILED, "start.issue-failed"),
+            Map.entry(StandardScenarios.START_LESSON, "start.lesson"),
+            Map.entry(StandardScenarios.START_LOCAL_CHANGES, "start.local-changes"),
+            Map.entry(StandardScenarios.START_PULL_REQUEST, "start.pull-request"),
+            Map.entry(StandardScenarios.START_RATE_LIMITED, "start.rate-limited"),
+            Map.entry(StandardScenarios.START_RECIPE, "start.recipe"),
+            Map.entry(StandardScenarios.START_REFUSED, "start.refused"),
+            Map.entry(StandardScenarios.START_UNSCREENED, "start.unscreened"));
+
     private final Path base;
     private final Path cleanupDir;
     private final MachinePaths paths;
@@ -156,6 +183,7 @@ public final class MockRuntime implements AutoCloseable {
 
         // 2. Load scenario
         var registry = config.getRegistry() != null ? config.getRegistry() : new ScenarioRegistry();
+        registerLegacyCaseStates(registry);
         Scenario initialScenario;
         if (config.getInitialScenario() != null) {
             initialScenario = config.getInitialScenario();
@@ -190,6 +218,11 @@ public final class MockRuntime implements AutoCloseable {
 
         return new MockRuntime(new RuntimeContext(
                 baseDir, cleanupDir, paths, token, deviceSecret, cleanup, engine, unixServer, tcpServer));
+    }
+
+    private static void registerLegacyCaseStates(ScenarioRegistry registry) {
+        LEGACY_CASE_STATES.forEach((caseName, stateId) -> registry.registerLegacyAlias(caseName,
+                StandardScenarios.PROJECTS_AND_START + "#" + stateId));
     }
 
     private static void setupFilesystem(MachinePaths paths, String token) throws IOException {

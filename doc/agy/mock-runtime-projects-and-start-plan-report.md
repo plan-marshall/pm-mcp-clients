@@ -23,6 +23,7 @@ All project and start contract cases are exercised against the consolidated scen
 |---|---|
 | `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/StartRegistry.java` | Seeds from the active state's operator representation (`facts.runtime.start`) merged over the base state `running_work.active`; falls back to the `GET /api/v1/recipes` route when the state names no recipe; keeps the transitional top-level `start_case` fallback for the showroom. |
 | `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` | `declaresProjects()` recognises the consolidated scenario so the live project explorer and single-project handler stay authoritative (the static `GET /api/v1/projects` route is not shadowed); fixture-presence check allows an intentionally empty `facts.runtime.projects` list. |
+| `pm-mock-runtime/src/main/java/de/planmarshall/mock/MockRuntime.java` | Registers the twenty legacy case names on the runtime's registry so a client that still names `start-epic-adopt`, `git_sources`, or `projects` resolves to its consolidated state instead of the registry's coarse `start.sources`/`projects.explorer` fallback. |
 
 ### 2.2 Scenario resource
 
@@ -58,9 +59,11 @@ State inventory:
 ```
 ./mvnw verify -Ppre-commit -pl pm-mock-runtime -am
 ...
-Tests run: 394, Failures: 0, Errors: 0, Skipped: 0
+Tests run: 395, Failures: 0, Errors: 0, Skipped: 0
 BUILD SUCCESS
 ```
+
+- **`pm-operator` compatibility check**: `./mvnw -pl pm-operator -am test` passes with the consolidated scenario, including `StartDialogueTest` (15 previously failing cases) and `EpicCommandTest`; the legacy case names now resolve to their consolidated states.
 
 - **`ScenarioLoaderTest`**: loads the consolidated scenario against the closed schema, including operator-state link/event validation.
 - **`ProjectsScenarioTest`**: explorer, favourites reordering/toggling, onboarding/abandon, release, unenrolment, empty/attention/being-added/unenrolled/ready cases.
@@ -81,7 +84,7 @@ No test was skipped, weakened, or removed to obtain a green build. The malformed
 | Java 25+ and CUI code standards | Preserved; no new dependencies. |
 | Closed scenario schema | Preserved; `projects-and-start.json` loads with operator-state validation. No `start_case` member in the consolidated file. |
 | Standard-scenario architecture | Scenario 3 now hosts all project/start cases; the launcher's `primary.txt` is unchanged. |
-| Legacy alias stability | `ScenarioRegistry`'s pre-registered aliases resolve to the consolidated states (`projects.explorer`, `start.sources`, …). |
+| Legacy alias stability | The runtime maps every legacy Scenario 3 case name to its consolidated state, so existing clients (including `pm-operator`'s transcript tests) keep the fixture they name; `ScenarioRegistry`'s own coarse alias table is untouched. |
 | Module boundaries | Only `pm-mock-runtime` production code, resources, and tests changed. `pm-operator` and `pm-web-app` untouched. `Scenario.java`, `ScenarioLoader.java`, `ScenarioRegistry.java`, and `StandardScenarios.java` untouched. |
 | Wire contracts | No `pm-api` record changed. The operator states in the scenario decode with the existing `pm-api` codecs. |
 | SSE integrity | Existing event assertions pass unchanged; no static timed events were added to start states, so they cannot inject spurious frames before an act's event. |

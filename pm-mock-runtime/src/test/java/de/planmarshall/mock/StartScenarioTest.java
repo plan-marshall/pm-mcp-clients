@@ -966,6 +966,16 @@ class StartScenarioTest {
     }
 
     @Test
+    @DisplayName("a legacy start case name resolves to its consolidated state")
+    void legacyCaseNameResolvesToItsState() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.START_EPIC_ADOPT)) {
+            assertEquals(SCENARIO, runtime.currentScenarioName());
+            assertEquals("start.epic-adopt", runtime.currentStateName());
+            assertEquals(StartState.EPIC_ADOPT, fetch(runtime, "ent-7a2e4f01").state());
+        }
+    }
+
+    @Test
     @DisplayName("the start cases' entry ids are the ones their fixtures name")
     void scenarioEntryIds() {
         var scenario = ScenarioLoader.load(SCENARIO);
