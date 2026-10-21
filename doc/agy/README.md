@@ -26,7 +26,7 @@ Waves execute across three modularly disjoint streams (1 Mock, 1 CLI, 1 Web):
 |---|---|---|---|---|
 | **Mock** | [`mock-runtime-projects-and-start-plan.md`](mock-runtime-projects-and-start-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-mock-projects-start` | `feat/mock-projects-start` | Ready to launch |
 | **CLI** | [`cli-fullscreen-actions-plan.md`](cli-fullscreen-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-actions` | `feat/cli-fullscreen-actions` | Active implementation |
-| **Web** | [`web-decisions-and-actions-plan.md`](web-decisions-and-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` | `feat/web-decisions-actions` | Ready to launch |
+| **Web** | [`web-decisions-and-actions-plan.md`](implemented/web-decisions-and-actions-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` | `feat/web-decisions-actions` | Worker complete; PR #151 in review |
 
 ---
 
@@ -65,7 +65,7 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 3. **Overview, Plan & Epic View (Landed & Verified)**: [`web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) ([Report](verified/web-overview-plan-and-epic-view-plan-report.md) — PR #134, commit `aad7e44`)
 4. **Arrival Banners & i18n Cache (Landed & Verified)**: [`web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md) ([Report](verified/web-arrival-banners-and-i18n-cache-plan-report.md) — PR #142, commit `8db8629`)
    *(Complete removal of redundant top arrival notice banners; localStorage catalogue caching with SWR, synchronous hydration, and missing-key shielding)*
-5. **Decisions & Actions (Active)**: [`web-decisions-and-actions-plan.md`](web-decisions-and-actions-plan.md)
+5. **Decisions & Actions (Worker complete, PR #151 in review)**: [`web-decisions-and-actions-plan.md`](implemented/web-decisions-and-actions-plan.md) ([Report](web-decisions-and-actions-plan-report.md))
 6. **Reports, System & Designer**: `web-reports-system-and-designer-plan.md`
 
 ---

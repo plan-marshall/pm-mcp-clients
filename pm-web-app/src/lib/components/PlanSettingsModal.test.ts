@@ -14,7 +14,12 @@ describe('PlanSettingsModal component', () => {
         origin: 'project',
         choices: ['landing.pull-request', 'landing.main', 'landing.files'],
       },
-      { aspect: 'method', value: 'method.test-first', origin: 'machine', choices: ['method.test-first', 'method.tests-after'] },
+      {
+        aspect: 'method',
+        value: 'method.test-first',
+        origin: 'machine',
+        choices: ['method.test-first', 'method.tests-after'],
+      },
       { aspect: 'role.implement', value: 'Claude Code - sonnet-5.5', origin: 'plan', choices: [] },
       { aspect: 'integration.git', value: 'native', origin: 'project', choices: [] },
       { aspect: 'provider.issues', value: 'GitHub', origin: 'project', choices: [] },
@@ -73,5 +78,78 @@ describe('PlanSettingsModal component', () => {
 
     await fireEvent.click(screen.getByTestId('settings-close-button'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a value another client changed first, with both choices', async () => {
+    const onApplyAgain = vi.fn();
+    const onKeepCurrent = vi.fn();
+    render(PlanSettingsModal, {
+      props: {
+        planId: 'fix-relay',
+        settings,
+        open: true,
+        conflict: {
+          aspect: 'landing',
+          currentValue: 'landing.main',
+          wantedValue: 'landing.files',
+          revision: 8,
+        },
+        onApplyAgain,
+        onKeepCurrent,
+      },
+    });
+
+    expect(screen.getByTestId('settings-conflict')).toHaveTextContent(
+      'Changed meanwhile: it is now landing.main. Yours was not applied.',
+    );
+    expect(screen.getByTestId('settings-conflict-yours')).toHaveTextContent('landing.files');
+    expect(screen.getByTestId('settings-conflict-current')).toHaveTextContent('landing.main');
+
+    await fireEvent.click(screen.getByTestId('settings-conflict-apply-again'));
+    expect(onApplyAgain).toHaveBeenCalledWith({
+      aspect: 'landing',
+      value: 'landing.files',
+      revision: 8,
+    });
+
+    await fireEvent.click(screen.getByTestId('settings-conflict-keep'));
+    expect(onKeepCurrent).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a refusal the runtime gave for the dialogue', () => {
+    render(PlanSettingsModal, {
+      props: {
+        planId: 'fix-relay',
+        settings,
+        open: true,
+        notice: 'landing.main is refused: the base branch is protected',
+      },
+    });
+
+    expect(screen.getByTestId('settings-notice')).toHaveTextContent(
+      'landing.main is refused: the base branch is protected',
+    );
+  });
+
+  it('reseeds the select when the runtime reports a newer revision', async () => {
+    const { rerender } = render(PlanSettingsModal, {
+      props: { planId: 'fix-relay', settings, open: true },
+    });
+
+    expect(screen.getByTestId('settings-value-landing')).toHaveValue('landing.pull-request');
+
+    await rerender({
+      planId: 'fix-relay',
+      open: true,
+      settings: {
+        ...settings,
+        revision: 8,
+        values: settings.values.map((entry) =>
+          entry.aspect === 'landing' ? { ...entry, value: 'landing.main' } : entry,
+        ),
+      },
+    });
+
+    expect(screen.getByTestId('settings-value-landing')).toHaveValue('landing.main');
   });
 });

@@ -105,9 +105,11 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('epic-title')).toHaveText('Relay Hardening');
     await expect(page.getByTestId('epic-state')).toHaveText('running');
     await expect(page.getByTestId('epic-tokens')).toContainText('Tokens');
-    await expect(page.getByTestId('running-plan-fix-relay')).toBeVisible();
-    await expect(page.getByTestId('staged-plan-relay-auth-v2')).toBeVisible();
-    await expect(page.getByTestId('epic-alongside-section')).toBeVisible();
+    await expect(page.getByTestId('epic-workstreams')).toBeVisible();
+    await expect(page.getByTestId('workstream-WS-1')).toBeVisible();
+    await expect(page.getByTestId('epic-token-breakdown')).toBeVisible();
+    await expect(page.getByTestId('epic-own-tokens')).toBeVisible();
+    await expect(page.getByTestId('epic-events')).toBeVisible();
   });
 
   test('answers the three decisions, revealing a recommendation and switching parts', async ({

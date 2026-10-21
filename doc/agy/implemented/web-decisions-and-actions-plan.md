@@ -1,6 +1,6 @@
 # Implementation Plan: `web-decisions-and-actions` (Decisions, Plan & Epic Control Actions, Hold Resolution & Review in the Web App)
 
-This implementation plan governs the remediation of `web-decisions` (`doc/plans/implemented/web-decisions.adoc`) and the execution of the `web-actions` work package (`doc/plans/web-actions.adoc`, epic clients) in `pm-web-app` and `pm-web-e2e`, consuming the shared `ChatPanel.svelte` built by the in-flight [`doc/agy/web-start-plan.md`](web-start-plan.md).
+This implementation plan governs the remediation of `web-decisions` (`doc/plans/implemented/web-decisions.adoc`) and the execution of the `web-actions` work package (`doc/plans/implemented/web-actions.adoc`, epic clients, `done`) in `pm-web-app` and `pm-web-e2e`, consuming the shared `ChatPanel.svelte` built by the in-flight [`doc/agy/web-start-plan.md`](web-start-plan.md).
 
 It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
@@ -13,7 +13,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | **Use Cases** | [`UC-PLN-2`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2) (Decisions), [`UC-PLN-5`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5) (Epic View), [`UC-CTL-1` to `UC-CTL-5`](../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc) |
 | **Specifications** | [`decision-contract.adoc`](../plans/implemented/decision-contract.adoc), [`control-contract.adoc`](../plans/implemented/control-contract.adoc), [`state-catalogue.adoc#chat`](../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
 | **Local Client Design** | [`doc/design/shared/decisions.adoc`](../design/shared/decisions.adoc), [`doc/design/shared/work-actions.adoc`](../design/shared/work-actions.adoc), [`doc/design/shared/epic-view.adoc`](../design/shared/epic-view.adoc), [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) |
-| **Roadmap Packages** | [`doc/plans/implemented/web-decisions.adoc`](../plans/implemented/web-decisions.adoc), [`doc/plans/web-actions.adoc`](../plans/web-actions.adoc) (`open`) |
+| **Roadmap Packages** | [`doc/plans/implemented/web-decisions.adoc`](../../plans/implemented/web-decisions.adoc), [`doc/plans/implemented/web-actions.adoc`](../../plans/implemented/web-actions.adoc) (`done`) |
 | **Prerequisite Plans** | [`doc/agy/implemented/web-start-plan.md`](implemented/web-start-plan.md) (landed, PR #117; provides `ChatPanel.svelte`), [`doc/agy/implemented/web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md) (landed, PR #126), [`doc/agy/implemented/web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) (landed, PR #134), [`doc/agy/implemented/web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md) (landed, PR #142), [`doc/agy/implemented/mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) (landed, PR #136) |
 | **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
@@ -73,16 +73,16 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` on branch `feat/web-decisions-and-actions` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-decisions-actions` on branch `feat/web-decisions-actions` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `pm-dev-frontend-javascript` for `DecisionView`, `ControlActionsBar`, `HoldResolutionModal`, `PlanSettingsModal`, `FindingsReviewModal`, and `EpicView`.
   - `pm-dev-frontend-css` for modal dialogues, docked chat panel layout, and responsive styling.
   - `persona-module-tester` & `pm-dev-frontend-jest-testing` for Vitest unit tests and Playwright E2E tests.
   - `persona-code-reviewer` for finding evaluation & bot review resolution.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/web-decisions-and-actions-plan-report.md`), initial plan moved to `doc/agy/implemented/web-decisions-and-actions-plan.md`, `doc/plans/web-actions.adoc` moved to `doc/plans/implemented/web-actions.adoc`, and `web-actions` marked `done` in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/web-decisions-and-actions-plan-report.md`), initial plan moved to `doc/agy/implemented/web-decisions-and-actions-plan.md`, `doc/plans/web-actions.adoc` moved to `doc/plans/implemented/web-actions.adoc`, and `web-actions` marked `done` in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 6. PR opened ([#151](https://github.com/plan-marshall/pm-mcp-clients/pull/151), NEVER `skip-bot-review`), review timer scheduled, 100% of bot findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-decisions-and-actions-plan-report.md` by orchestrator session.
 
@@ -103,23 +103,23 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Complete `DecisionView.svelte` & Browser Notifications
-- [ ] **1.1 Tab Title Count & Browser Notifications**:
+- [x] **1.1 Tab Title Count & Browser Notifications**:
   - Prefix `document.title` with `({count})` when pending decisions exist, prompt once for browser `Notification` permission, and fire desktop notifications on `decision.created`.
-- [ ] **1.2 Recommendation Reveal, Multi-Part Reopen & Decision Chat**:
+- [x] **1.2 Recommendation Reveal, Multi-Part Reopen & Decision Chat**:
   - Hide high-stakes recommendations behind one click (`decision.recommendation.show`), handle multi-part `depends_on` / `reopened` and `answered_elsewhere` / `revised` states, and dock `ChatPanel.svelte` when clicking *"Chat about it first"*.
 
 ### Phase 2: Mount & Complete Control Actions, Settings Conflict & Hold Resolution
-- [ ] **2.1 Mount `ControlActionsBar`, `HoldResolutionModal`, and `PlanSettingsModal`**:
+- [x] **2.1 Mount `ControlActionsBar`, `HoldResolutionModal`, and `PlanSettingsModal`**:
   - Mount the three components in `PlanView.svelte`, `EpicView.svelte`, and `OverviewView.svelte`.
   - Add the pause-point selector (`after_task` vs `after_phase`), end/abort confirmation with branch/worktree disposition, settings `conflict` resolution (`Keep` vs `Apply again`), and epic controls (`raise_limit`, `auto` toggle, `archive` check, `decompose`, `cancel`).
 
 ### Phase 3: Epic View Sections, Findings Review & Ended-Work Chat
-- [ ] **3.1 Complete `EpicView.svelte` & `FindingsReviewModal.svelte`**:
+- [x] **3.1 Complete `EpicView.svelte` & `FindingsReviewModal.svelte`**:
   - Render workstreams, sources, landings, findings/watches, per-plan + epic-own tokens, and events in `EpicView.svelte`.
   - Build `FindingsReviewModal.svelte` for keeping/dropping findings and watches, editing drafted plans with read-back, and chatting.
   - Wire ended-work chat and follow-up plan transition to `/start`.
 
 ### Phase 4: Verification & Package Completion
-- [ ] **4.1 Unit & E2E Tests**:
+- [x] **4.1 Unit & E2E Tests**:
   - Run `cd pm-web-app && npm test`, `cd pm-web-e2e && npx playwright test tests/decisions.spec.js tests/control.spec.js`, and `./mvnw verify -Ppre-commit`.
   - Move `doc/plans/web-actions.adoc` to `doc/plans/implemented/web-actions.adoc` and update `doc/plans/README.adoc`.

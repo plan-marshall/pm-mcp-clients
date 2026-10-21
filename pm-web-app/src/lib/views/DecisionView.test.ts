@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
-import { apiClient, type DecisionEnvelope } from '../api/client';
+import { apiClient, type ChatReadBack, type DecisionEnvelope } from '../api/client';
 
 describe('DecisionView component', () => {
   const mockDecision: DecisionEnvelope = {
@@ -100,7 +100,12 @@ describe('DecisionView component', () => {
       read_back_text: 'Rebase onto main',
     });
     vi.spyOn(apiClient, 'withdrawDecision').mockResolvedValue({ status: 'withdrawn' });
+    vi.spyOn(apiClient, 'getDecisionChat').mockRejectedValue(new Error('no chat'));
+    vi.spyOn(apiClient, 'decisionChatTurn').mockRejectedValue(new Error('no chat'));
+    vi.spyOn(apiClient, 'answerDecisionChatProposal').mockRejectedValue(new Error('no chat'));
+    vi.spyOn(apiClient, 'endDecisionChat').mockRejectedValue(new Error('no chat'));
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    localStorage.clear();
   });
 
   it('renders open decisions and waivers', async () => {
@@ -234,5 +239,353 @@ describe('DecisionView component', () => {
     await fireEvent.click(withdrawBtn);
 
     expect(apiClient.withdrawDecision).toHaveBeenCalledWith('dec-101');
+  });
+
+  const costlyDecision: DecisionEnvelope = {
+    id: 'dec-costly',
+    revision: 1,
+    title: 'Delete published v1 endpoints?',
+    subject: 'plan drop-legacy-api',
+    scope: 'plan',
+    asking_phase: 'finalize',
+    asking_role: 'architecture',
+    blocks: 'plan',
+    reversibility: 'irreversible',
+    description: 'Delete the published v1 endpoints from the release branch?',
+    parts: [
+      {
+        part_id: '1',
+        question: 'Delete the published v1 endpoints?',
+        answer_type: 'one_option',
+        recommendation: '2',
+        recommendation_rationale: 'Deprecate first.',
+        recommending_role: 'architecture',
+        allow_own_words: true,
+        allow_note: false,
+        options: [
+          { key: '1', label: 'Delete them now' },
+          { key: '2', label: 'Deprecate them' },
+        ],
+      },
+    ],
+  };
+
+  const multipartDecision: DecisionEnvelope = {
+    id: 'dec-multipart',
+    revision: 1,
+    title: 'How should the new store be introduced?',
+    subject: 'plan storage-v2',
+    scope: 'plan',
+    asking_phase: 'outline',
+    asking_role: 'outline',
+    blocks: 'plan',
+    reversibility: 'reversible',
+    description: 'Two dependent parts.',
+    parts: [
+      {
+        part_id: '1',
+        question: 'Where does the data live?',
+        answer_type: 'one_option',
+        allow_own_words: false,
+        allow_note: false,
+        options: [
+          { key: '1', label: 'A file per plan' },
+          { key: '2', label: 'One database for the machine' },
+        ],
+      },
+      {
+        part_id: '2',
+        question: 'How is it migrated?',
+        answer_type: 'one_option',
+        dependency: 'depends on part 1: A file per plan',
+        allow_own_words: false,
+        allow_note: false,
+        options: [
+          { key: '1', label: 'Automatically' },
+          { key: '2', label: 'By a verb' },
+        ],
+      },
+    ],
+  };
+
+  const decisionChat: ChatReadBack = {
+    chat_id: 'C-0001',
+    subject_id: 'dec-101',
+    subject_kind: 'decision',
+    role: 'implement',
+    scope: 'decision',
+    state: 'read-back',
+    turns: [
+      {
+        role: 'operator',
+        text: 'What does option B mean?',
+        at: '2026-10-14T10:00:00Z',
+        untrusted: false,
+      },
+      {
+        role: 'implement',
+        text: 'It merges main into the branch.',
+        at: '2026-10-14T10:00:00Z',
+        untrusted: false,
+      },
+    ],
+    proposal: {
+      summary: 'a proposed answer',
+      after: 'Merge main into the branch',
+      applies: 'part 1',
+    },
+  };
+
+  it('keeps a costly recommendation one step away until it is asked for', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([costlyDecision]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('recommendation-hidden-dec-costly')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('recommendation-dec-costly')).not.toBeInTheDocument();
+    expect(screen.queryByText('← recommended')).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByText('Show the recommendation'));
+
+    expect(screen.getByTestId('recommendation-dec-costly')).toHaveTextContent(
+      'Recommended by architecture: 2',
+    );
+    expect(screen.getByText('← recommended')).toBeInTheDocument();
+  });
+
+  it('waits for an earlier part and reopens the dependent part when it changes', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([multipartDecision]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('How is it migrated?')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Answer part 1 first.')).toBeInTheDocument();
+
+    const firstGroups = screen.getAllByRole('radiogroup');
+    await fireEvent.click(firstGroups[0].querySelector('input[value="1"]')!);
+    await waitFor(() => {
+      expect(screen.getByText('Automatically')).toBeInTheDocument();
+    });
+
+    const answeredGroups = screen.getAllByRole('radiogroup');
+    await fireEvent.click(answeredGroups[1].querySelector('input[value="2"]')!);
+    await waitFor(() => {
+      expect(screen.getByText('Decide')).not.toBeDisabled();
+    });
+
+    // Changing part 1 reopens part 2 and drops its answer.
+    await fireEvent.click(answeredGroups[0].querySelector('input[value="2"]')!);
+    expect(screen.getByTestId('part-reopened-dec-multipart')).toHaveTextContent(
+      'Part 2 was opened again, because part 1 changed.',
+    );
+    expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+  });
+
+  it('answers a multi-part decision with one answer per part', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([multipartDecision]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
+    });
+
+    const firstGroups = screen.getAllByRole('radiogroup');
+    await fireEvent.click(firstGroups[0].querySelector('input[value="1"]')!);
+    await waitFor(() => {
+      expect(screen.getAllByRole('radiogroup')).toHaveLength(2);
+    });
+    const parts = screen.getAllByRole('radiogroup');
+    await fireEvent.click(parts[1].querySelector('input[value="2"]')!);
+    await fireEvent.click(screen.getByText('Decide'));
+
+    expect(apiClient.answerDecision).toHaveBeenCalledWith('dec-multipart', {
+      part_answers: { '1': '1', '2': '2' },
+    });
+  });
+
+  it('says where a decision was answered elsewhere', async () => {
+    const captured: { handler?: (event: string, data: unknown) => void } = {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      captured.handler = callback as (event: string, data: unknown) => void;
+      return () => {};
+    });
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    });
+
+    captured.handler?.('decision.answered', {
+      id: 'dec-101',
+      channel: 'cli',
+      device: 'terminal-01',
+      answer: 'Rebase onto main',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('decision-notices')).toHaveTextContent(
+        'answered in the console (terminal-01): Rebase onto main',
+      );
+    });
+    expect(screen.queryByText('Select merge strategy')).not.toBeInTheDocument();
+  });
+
+  it('opens the chat about a decision beside it', async () => {
+    vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('chat about it first')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('chat about it first'));
+
+    expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-transcript')).toHaveTextContent('What does option B mean?');
+    expect(screen.getByTestId('decision-chat-dec-101')).toHaveTextContent(
+      'dec-101 stays open; answer it once the chat has ended.',
+    );
+  });
+
+  it('takes a proposed answer through the read-back', async () => {
+    vi.spyOn(apiClient, 'getDecisionChat').mockResolvedValue(decisionChat);
+    vi.spyOn(apiClient, 'answerDecisionChatProposal').mockResolvedValue({
+      ...decisionChat,
+      proposal: undefined,
+    });
+    render(DecisionView);
+
+    await fireEvent.click(await screen.findByText('chat about it first'));
+    await fireEvent.click(await screen.findByTestId('chat-accept'));
+
+    await waitFor(() => {
+      expect(apiClient.interpretDecision).toHaveBeenCalledWith(
+        'dec-101',
+        'Merge main into the branch',
+      );
+    });
+  });
+
+  it('asks once for notification permission after a decision arrives', async () => {
+    const captured: { handler?: (event: string, data: unknown) => void } = {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      captured.handler = callback as (event: string, data: unknown) => void;
+      return () => {};
+    });
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('notify-banner')).not.toBeInTheDocument();
+
+    captured.handler?.('decision.opened', {
+      ...costlyDecision,
+      id: 'dec-arrived',
+      subject: 'epic relay-hardening',
+    });
+
+    expect(await screen.findByTestId('notify-banner')).toHaveTextContent(
+      'Should the web app notify you',
+    );
+    await fireEvent.click(screen.getByText('Not now'));
+
+    expect(screen.queryByTestId('notify-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('notify-message')).toHaveTextContent('Notifications stay off');
+    expect(localStorage.getItem('pm_decision_notify')).toBe('denied');
+  });
+
+  it('drops the answers of the earlier revision when a decision is revised', async () => {
+    const captured: { handler?: (event: string, data: unknown) => void } = {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      captured.handler = callback as (event: string, data: unknown) => void;
+      return () => {};
+    });
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([multipartDecision]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
+    });
+    const groups = screen.getAllByRole('radiogroup');
+    await fireEvent.click(groups[0].querySelector('input[value="1"]')!);
+
+    captured.handler?.('decision.opened', {
+      ...multipartDecision,
+      revision: 2,
+      change: 'the migration part changed',
+    });
+
+    expect(await screen.findByTestId('decision-revised-dec-multipart')).toHaveTextContent(
+      'The decision changed: the migration part changed. Please answer again.',
+    );
+    expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+  });
+
+  it('records an own-words answer for one part without closing the decision', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+      {
+        ...multipartDecision,
+        parts: multipartDecision.parts.map((part) => ({
+          ...part,
+          allow_own_words: true,
+        })),
+      },
+    ]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getAllByText('✎ in my own words')[0]);
+    await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
+      target: { value: 'Use a file per plan' },
+    });
+    await fireEvent.click(screen.getByText('Read back'));
+    await waitFor(() => {
+      expect(screen.getByText('I understood: Rebase onto main')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByText('Correct'));
+
+    expect(apiClient.answerDecision).not.toHaveBeenCalled();
+    expect(screen.getByText('How is it migrated?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+  });
+
+  it('sends the notes of every part with a multi-part answer', async () => {
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+      {
+        ...multipartDecision,
+        parts: multipartDecision.parts.map((part) => ({
+          ...part,
+          allow_note: true,
+        })),
+      },
+    ]);
+    render(DecisionView);
+
+    await waitFor(() => {
+      expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
+    });
+
+    const firstGroups = screen.getAllByRole('radiogroup');
+    await fireEvent.click(firstGroups[0].querySelector('input[value="1"]')!);
+    await waitFor(() => {
+      expect(screen.getAllByRole('radiogroup')).toHaveLength(2);
+    });
+    const parts = screen.getAllByRole('radiogroup');
+    await fireEvent.click(parts[1].querySelector('input[value="2"]')!);
+
+    const notes = screen.getAllByPlaceholderText('Optional note');
+    await fireEvent.input(notes[0], { target: { value: 'one file per plan' } });
+    await fireEvent.input(notes[1], { target: { value: 'run the verb by hand' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Decide' }));
+
+    expect(apiClient.answerDecision).toHaveBeenCalledWith('dec-multipart', {
+      part_answers: { '1': '1', '2': '2' },
+      note: 'one file per plan\nrun the verb by hand',
+    });
   });
 });

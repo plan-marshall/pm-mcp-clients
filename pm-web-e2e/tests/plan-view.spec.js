@@ -46,7 +46,7 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
 
     // Verify breadcrumb path project › epic › plan
     await expect(page.locator('[data-testid="breadcrumb-project"]')).toHaveText('pm-mcp-clients');
-    await expect(page.locator('[data-testid="breadcrumb-epic"]')).toHaveText('relay-hardening');
+    await expect(page.locator('[data-testid="breadcrumb-epic"]')).toHaveText('Relay Hardening');
     await expect(page.locator('[data-testid="breadcrumb-plan"]')).toHaveText('fix-relay');
 
     // Verify title and badges
@@ -116,21 +116,29 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(page.locator('[data-testid="epic-title"]')).toHaveText('Relay Hardening');
     await expect(page.locator('[data-testid="epic-state"]')).toHaveText('running');
 
-    // Verify running plans
-    const runningPlan = page.locator('[data-testid="running-plan-fix-relay"]');
-    await expect(runningPlan).toBeVisible();
-    await expect(runningPlan).toContainText('Fix Relay Transport');
-    await expect(runningPlan).toContainText('execute');
+    // Verify the workstreams and their member plans
+    await expect(page.locator('[data-testid="epic-workstreams"]')).toBeVisible();
+    const reconnect = page.locator('[data-testid="workstream-WS-1"]');
+    await expect(reconnect).toBeVisible();
+    await expect(reconnect).toContainText('Reconnect');
+    await expect(page.locator('[data-testid="epic-row-relay-cursor-order"]')).toContainText(
+      'relay-cursor-order',
+    );
 
-    // Verify staged plans
-    const stagedPlan = page.locator('[data-testid="staged-plan-relay-auth-v2"]');
-    await expect(stagedPlan).toBeVisible();
-    await expect(stagedPlan).toContainText('Relay Auth v2');
+    const auth = page.locator('[data-testid="workstream-WS-2"]');
+    await expect(auth).toBeVisible();
+    await expect(auth).toContainText('Authentication');
+    await expect(page.locator('[data-testid="epic-row-relay-auth-v2"]')).toContainText(
+      'relay-auth-v2',
+    );
 
-    // Verify alongside landings
-    const alongsideSection = page.locator('[data-testid="epic-alongside-section"]');
-    await expect(alongsideSection).toBeVisible();
-    await expect(alongsideSection).toContainText('remediation.ci-failure · done');
+    // Verify sources, landings, registers, tokens, and events
+    await expect(page.locator('[data-testid="epic-sources"]')).toBeVisible();
+    await expect(page.locator('[data-testid="epic-landing-count"]')).toContainText('2 landings');
+    await expect(page.locator('[data-testid="epic-findings"]')).toBeVisible();
+    await expect(page.locator('[data-testid="epic-watches"]')).toBeVisible();
+    await expect(page.locator('[data-testid="epic-token-breakdown"]')).toBeVisible();
+    await expect(page.locator('[data-testid="epic-events"]')).toBeVisible();
 
     // Back returns to the plan the epic was opened from, not to the overview
     const backBtn = page.locator('[data-testid="back-btn"]');
