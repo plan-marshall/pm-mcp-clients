@@ -14,7 +14,7 @@ The client contract of [plan-marshall-mcp](https://github.com/plan-marshall/plan
 
 The modules are proprietary software; see [LICENSE.md](LICENSE.md). They are deployed as `SNAPSHOT` versions to the GitHub Packages registry of the organisation `plan-marshall` on every merge to `main` and are never released; the product consumes them from there.
 
-A machine that builds needs a token for the registry; the setup is described in the developer documentation of plan-marshall-mcp (`doc/developer/registry-setup.adoc`).
+A machine that builds needs a token for the registry; the setup is described in the developer documentation of plan-marshall-mcp (`doc/developer/registry-setup.adoc`). The Maven CLI reads the registry profile from [`.mvn/settings.xml`](.mvn/settings.xml) through `.mvn/maven.config`; IDEs (the Java extension's m2e importer in VS Code among them) do not, so the same `plan-marshall` profile and repositories must also be in `~/.m2/settings.xml` beside the token. Without it the editor reports the parent POM as unresolvable while `./mvnw` builds.
 
 ---
 
