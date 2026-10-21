@@ -26,6 +26,7 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.EpicWaitReason;
+import de.planmarshall.api.control.EpicWorkstream;
 import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
@@ -47,8 +48,8 @@ class EpicViewScenarioTest {
     private static final String EPIC_EVENTS_PATH = EPIC_PATH + "/events";
 
     @Test
-    @DisplayName("running-work serves the whole epic with its workstreams, waits, sources, and landings")
-    void runningWorkServesTheWholeEpic() throws Exception {
+    @DisplayName("running-work serves the epic's header and its two workstreams with their rows")
+    void runningWorkServesTheEpicHeaderAndWorkstreams() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
             var epic = EpicResource.fromJson(get(runtime, EPIC_PATH).bodyText());
 
@@ -61,7 +62,7 @@ class EpicViewScenarioTest {
             assertEquals(3, epic.running());
 
             assertEquals(List.of("WS-1", "WS-2"),
-                    epic.workstreams().stream().map(workstream -> workstream.id()).toList());
+                    epic.workstreams().stream().map(EpicWorkstream::id).toList());
             var reconnect = epic.workstreams().getFirst();
             assertEquals("Reconnect", reconnect.name());
             assertTrue(reconnect.open());
@@ -74,9 +75,16 @@ class EpicViewScenarioTest {
             assertEquals(211, backoff.pullRequestNumber());
             assertEquals("https://github.com/plan-marshall/pm-mcp-clients/pull/211",
                     backoff.pullRequestUrl());
+        }
+    }
 
-            var metrics = row(epic, "relay-reconnect-metrics");
-            assertEquals(EpicWaitReason.NONE, metrics.waits());
+    @Test
+    @DisplayName("running-work names every staged wait, its sources, landings, registers, tokens, and events")
+    void runningWorkNamesTheWaitsAndTheSections() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+            var epic = EpicResource.fromJson(get(runtime, EPIC_PATH).bodyText());
+
+            assertEquals(EpicWaitReason.NONE, row(epic, "relay-reconnect-metrics").waits());
 
             var rotation = row(epic, "relay-token-rotation");
             assertEquals(EpicWaitReason.DEPENDENCY, rotation.waits());

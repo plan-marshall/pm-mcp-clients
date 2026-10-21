@@ -207,6 +207,11 @@ class ControlResourcesTest {
         assertTrue(shipped.isLocked());
         assertFalse(staged.isLocked());
 
+        var parsedShipped = WorkRow.fromJson(shipped.toJson());
+        assertEquals("https://github.com/plan-marshall/pm-mcp-clients/pull/211",
+                parsedShipped.pullRequestUrl());
+        assertNull(WorkRow.fromJson(staged.toJson()).pullRequestUrl());
+
         var epic = new EpicResource("e", "prj", "prj", null, "running", true, 0, 3, 1, null,
                 List.of(new EpicWorkstream("WS-1", "one", true, List.of(staged, shipped))),
                 List.of(), 0, new RegisterSummary(0, 0, 0), new RegisterSummary(0, 0, 0),
