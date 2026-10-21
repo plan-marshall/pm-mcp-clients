@@ -106,7 +106,7 @@ entries only.
 | `EpicViewFullScreenTest` (10 screen tests) | Open from the project, from a plan's `e` with `Esc` return, epic actions and closing, `u` automatic off with the request body, `p` to the project and back, a staged plan's details, `*`, an ended epic's read-only view and chat-only menu, caller return. |
 | `ActionsFullScreenTest` (11 screen tests) | Plan actions below the row, menu modality and closing, the arrows moving the menu’s own selection with Enter running it, pause with its point and request body, start in place, hold acts and retry resolving the hold, actions in the plan view, ended work chat alone, epic actions below the epic row, an inert key while a menu is open. |
 | `AnswersTest` (2) | Yes and no are accepted in English and German, and nothing else. |
-| `ControlDialoguesTest` (36) | Every control dialogue with a scripted terminal: hold retry/accept/still-held, review keep/drop/finish, chat turn/accept/ended follow-up, settings conflict/refusal, pause/start/cancel, epic automatic/common files/next/archive, and the client's reads and writes of every control resource, the landing retry and the plan chat from the menu. |
+| `ControlDialoguesTest` (38) | Every control dialogue with a scripted terminal: hold retry/accept/still-held, review keep/drop/finish, chat turn/accept/ended follow-up, settings conflict/refusal, pause/start/cancel, epic automatic/common files/next/archive, and the client's reads and writes of every control resource, the landing retry and the plan chat from the menu. |
 | `ConfigCommandTest` (+2) | `config <aspect> --plan` refuses the verb’s other options, and a blank `--plan` is rejected. |
 | `EpicCommandTest` (+2) | `epic <id>` as a tree from the resource and `--tokens`. |
 | `ControlEpicTranscriptTest` + `control-epic.transcript` (1) | The scrollback epic tree against the `running-work` mock scenario, JVM and native. |
@@ -115,9 +115,9 @@ entries only.
 
 - `./mvnw verify -Ppre-commit`: **BUILD SUCCESS** (all eight modules, 25:21),
   including `pm-web-app`'s `svelte-check` with 0 errors and 0 warnings.
-- `pm-operator` surefire: **848 tests, 0 failures, 0 errors, 0 skipped** (the previous suite plus
-  88 new ones; `ActionSupportTest` was updated).
-- New tests: 88 (9 + 10 + 5 + 9 + 11 + 2 + 1 + 2 + 2 + 36 + 1 + 3 verbs).
+- `pm-operator` surefire: **850 tests, 0 failures, 0 errors, 0 skipped** (the previous suite plus
+  90 new ones; `ActionSupportTest` was updated).
+- New tests: 90 (9 + 10 + 5 + 9 + 11 + 2 + 1 + 2 + 2 + 38 + 1 + 3 verbs + 1 client refusals).
 - `pm-web-app`: `npm run build && npm run check` → **0 errors, 0 warnings** (see the note in
   section 6).
 
@@ -177,7 +177,7 @@ BUILD SUCCESS
 - The pre-commit gate ran OpenRewrite, the license headers, Checkstyle, the Enforcer rules,
   Javadoc, the frontend build, lint, typecheck, tests, and the full unit-test suite of all eight
   modules (25:21).
-- `pm-operator` surefire: **848 tests, 0 failures, 0 errors, 0 skipped**.
+- `pm-operator` surefire: **850 tests, 0 failures, 0 errors, 0 skipped**.
 
 > **Worktree note (`pm-web-app`):** SvelteKit 3 writes its typecheck config into
 > `node_modules/$app/` during `npm run build`. In a *fresh* worktree whose `npm ci` runs after the
