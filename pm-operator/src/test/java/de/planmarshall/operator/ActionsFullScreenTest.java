@@ -267,6 +267,48 @@ class ActionsFullScreenTest {
         }
     }
 
+
+    @Test
+    @DisplayName("a on a failed alongside landing offers its acts and retries it")
+    void shouldRetryLanding() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var thread = openProject(context, virtual);
+            select(virtual, "landing remediation.ci-failure");
+            virtual.type("a");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Retry now"));
+            virtual.type("r");
+            ControlFixture.await(() -> control.requests().stream().anyMatch(
+                                request -> request.contains("/landings/remediation.ci-failure/actions/retry")));
+            assertTrue(control.requests().stream().anyMatch(
+                                request -> request.contains("/landings/remediation.ci-failure/actions/retry")));
+            ControlFixture.delay(150L);
+            virtual.type("q");
+            ControlFixture.join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("h in the plan menu opens the chat and an empty line ends it")
+    void shouldChatFromTheMenu() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var out = new StringWriter();
+            var thread = openProject(context, virtual, out);
+            select(virtual, "Fix Relay Transport");
+            virtual.type("a");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Chat\u2026"));
+            virtual.type("h");
+            ControlFixture.await(() -> out.toString().contains("The cursor is written late."));
+            virtual.type("\r");
+            ControlFixture.await(() -> out.toString().contains("The chat is kept with fix-relay"));
+            assertTrue(out.toString().contains("The chat is kept with fix-relay"), out.toString());
+            ControlFixture.delay(150L);
+            virtual.type("q");
+            ControlFixture.join(thread);
+        }
+    }
+
     private Thread openProject(OperatorContext context, VirtualScreenTerminal virtual) throws Exception {
         return openProject(context, virtual, new StringWriter());
     }

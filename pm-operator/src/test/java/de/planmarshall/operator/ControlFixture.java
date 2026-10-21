@@ -228,6 +228,25 @@ final class ControlFixture implements AutoCloseable {
             response.json(200, RUNNING_PLAN_ACTIONS);
         } else if ("/api/v1/plans/fix-relay/holds".equals(path)) {
             response.json(200, "[]");
+        } else if ("/api/v1/plans/fix-relay/chat".equals(path)) {
+            response.json(200, """
+                                {"chat_id":"C-1","subject_id":"fix-relay","subject_kind":"plan",
+                                 "role":"replan","scope":"plan","state":"turn","turns":[
+                                   {"role":"operator","text":"Why?","at":"2026-10-16T10:00:00Z",
+                                    "untrusted":false},
+                                   {"role":"replan","text":"The cursor is written late.",
+                                    "at":"2026-10-16T10:01:00Z","untrusted":false}]}
+                                """);
+        } else if ("/api/v1/epics/relay-hardening/review".equals(path)
+                            || path.startsWith("/api/v1/epics/relay-hardening/review?")) {
+            response.json(200, """
+                                {"review_id":"R-1","epic_id":"relay-hardening","register":"findings",
+                                 "state":"open","decided":0,"total":1,"items":[
+                                   {"item_id":"F-1","register":"findings","statement":"The cursor is late",
+                                    "rules":[],"origin":"landing","trust":"trusted","state":"open"}]}
+                                """);
+        } else if (path.contains("/landings/remediation.ci-failure/actions/")) {
+            response.json(200, "{}");
         } else if ("/api/v1/plans/relay-metrics/actions".equals(path)) {
             response.json(200, PAUSED_PLAN_ACTIONS);
         } else if ("/api/v1/plans/relay-metrics/holds".equals(path)) {

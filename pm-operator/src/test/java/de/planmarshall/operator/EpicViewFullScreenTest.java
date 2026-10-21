@@ -240,6 +240,30 @@ class EpicViewFullScreenTest {
         }
     }
 
+
+    @Test
+    @DisplayName("! on a held plan shows what holds it")
+    void shouldOpenTheHold() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var out = new StringWriter();
+            var thread = openEpic(context, virtual, out);
+            for (int step = 0; step < 3; step++) {
+                virtual.type("j");
+                ControlFixture.delay(40L);
+            }
+            ControlFixture.await(() -> virtual.screen().lines().stream()
+                                .anyMatch(line -> line.startsWith("\u25b6") && line.contains("relay-cursor-order")));
+            virtual.type("!");
+            ControlFixture.await(() -> out.toString().contains("holds: an integrity pause"));
+            assertTrue(out.toString().contains("references.json"), out.toString());
+            virtual.type("\r");
+            ControlFixture.delay(300L);
+            virtual.type("q");
+            ControlFixture.join(thread);
+        }
+    }
+
     private Thread openEpic(OperatorContext context, VirtualScreenTerminal virtual) throws Exception {
         return openEpic(context, virtual, new StringWriter());
     }

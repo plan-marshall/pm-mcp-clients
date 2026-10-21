@@ -144,10 +144,9 @@ final class HoldDialogue {
     }
 
     private void show(HoldRecord hold) {
-        var kind = MessageCatalogue.format(prompt.locale(), "control.hold.kind." + hold.kind(), Map.of());
         prompt.raw(MessageCatalogue.format(prompt.locale(), "control.hold.title",
                             Map.of("name", OutputSafety.stripControlSequences(hold.subjectId()),
-                                                "kind", kind)));
+                                                "kind", hold.kind())));
         prompt.line("operator.actions.hold.cause",
                             Map.of("cause", OutputSafety.stripControlSequences(hold.cause())));
         if (hold.attempts() > 0) {

@@ -66,7 +66,8 @@ class ControlDialoguesTest {
     private static final String EPIC_ACTIONS = """
                         {"subject_id":"e","subject_kind":"epic","state":"running",
                          "actions":[{"action":"next","available":true},{"action":"auto","available":true},
-                           {"action":"common_files","available":true},{"action":"archive","available":true}]}
+                           {"action":"common_files","available":true},{"action":"archive","available":true},
+                           {"action":"cancel","available":true}]}
                         """;
 
     private static final String STALLED_HOLD = """
@@ -557,5 +558,307 @@ class ControlDialoguesTest {
         assertTrue(Answers.isNo("nein"));
         assertTrue(Answers.isYes("y"));
         assertTrue(Answers.isNo("n"));
+    }
+
+    @Test
+    @DisplayName("cancelling an epic asks for the plans and the reason")
+    void workActionCancelEpic() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions/cancel")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\nbecause the scope moved\ny\n");
+        assertEquals(0, dialogue("epic", "e", "cancel"), out.toString());
+        var text = out.toString();
+        assertTrue(text.contains("Cancel e?"), text);
+        assertTrue(text.contains("e cancelled and archived"), text);
+    }
+
+    @Test
+    @DisplayName("an archive that does not pass names what to decide")
+    void workActionArchiveNotPassed() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/archive-check")) {
+                response.json(200, ARCHIVE_CHECK.replace("\"passed\":true,\n", "\"passed\":false,\n")
+                                    .replace("\"passed\":true}]", "\"passed\":false}]"));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        assertEquals(1, dialogue("epic", "e", "archive"));
+        assertTrue(out.toString().contains("cannot be archived yet"), out.toString());
+    }
+
+    @Test
+    @DisplayName("an archive whose completion review runs first stops there")
+    void workActionArchiveReviewFirst() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/archive-check")) {
+                response.json(200, ARCHIVE_CHECK.replace("\"completion_review_first\":false",
+                                    "\"completion_review_first\":true"));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        assertEquals(0, dialogue("epic", "e", "archive"));
+        assertTrue(out.toString().contains("completion review runs first"), out.toString());
+    }
+
+    @Test
+    @DisplayName("next with nothing launchable names why")
+    void workActionNextNone() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions/next")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var noWork = EPIC.replace("\"status\":\"staged\",\"wait_reason\":\"none\"",
+                            "\"status\":\"shipped\"");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(noWork), null));
+        assertTrue(out.toString().contains("No plan can start"), out.toString());
+    }
+
+    @Test
+    @DisplayName("automatic off keeps what runs and starts nothing")
+    void workActionAutoOff() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions/auto")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var running = EpicResource.fromJson(EPIC.replace("\"auto_start\":false", "\"auto_start\":true"));
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "auto", false,
+                            running, null));
+        assertTrue(out.toString().contains("starts no plan by itself any more"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a common-files answer that is not a number is refused")
+    void workActionCommonFilesInvalid() throws Exception {
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("many\n");
+        assertEquals(1, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "common_files",
+                            false, EpicResource.fromJson(EPIC), null));
+        assertTrue(out.toString().contains("Give the number"), out.toString());
+    }
+
+    @Test
+    @DisplayName("the settings action hands over to the settings dialogue")
+    void workActionSettings() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/actions")) {
+                response.json(200, PLAN_ACTIONS);
+            } else if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                response.json(200, PlanSettingsUpdateResult.applied(8).toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\n1\n2\n");
+        assertEquals(0, dialogue("plan", "p", "settings"));
+        assertTrue(out.toString().contains("version becomes 8"), out.toString());
+    }
+
+    @Test
+    @DisplayName("the findings action opens the review")
+    void workActionFindings() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS.replace("{\"action\":\"next\",\"available\":true},",
+                                    "{\"action\":\"findings\",\"available\":true},"
+                                                        + "{\"action\":\"next\",\"available\":true},"));
+            } else if (path.contains("/review")) {
+                response.json(200, REVIEW_KEPT);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("y\n");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "findings", false,
+                            EpicResource.fromJson(EPIC), null));
+        assertTrue(out.toString().contains("written to the ledger"), out.toString());
+    }
+
+    @Test
+    @DisplayName("the remaining review proposals are accepted once")
+    void reviewRemaining() throws Exception {
+        var two = REVIEW.replace("\"total\":1", "\"total\":2").replace("]}" , "," +
+                            "{\"item_id\":\"F-2\",\"register\":\"findings\",\"statement\":\"Second\"," +
+                            "\"rules\":[],\"origin\":\"landing\",\"trust\":\"trusted\",\"state\":\"open\"," +
+                            "\"proposal\":\"keep\"}]}");
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.contains("/review?")) {
+                response.json(200, two);
+            } else if (path.contains("/disposition")) {
+                response.json(200, REVIEW_KEPT);
+            } else if (path.endsWith("/review/commit")) {
+                response.json(200, REVIEW_COMMITTED);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("r\ny\ny\n");
+        assertEquals(0, ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+        assertTrue(out.toString().contains("kept as a finding"), out.toString());
+    }
+
+    @Test
+    @DisplayName("an untrusted item is printed between quotes")
+    void reviewUntrusted() throws Exception {
+        serve((request, response) -> {
+            if (request.target().contains("/review")) {
+                response.json(200, REVIEW.replace("\"trust\":\"trusted\"", "\"trust\":\"untrusted\""));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("y\n");
+        ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false);
+        assertTrue(out.toString().contains("\"Reconnect loses the last event\""), out.toString());
+    }
+
+    @Test
+    @DisplayName("a plan's own value is removed with the inherited choice")
+    void settingsRemoved() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                response.json(200, PlanSettingsUpdateResult.applied(8).toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\n0\n");
+        assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+        assertTrue(out.toString().contains("uses the inherited value"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a change that is too late changes nothing")
+    void settingsTooLate() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                response.json(409, PlanSettingsUpdateResult.tooLate("landing").toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\n2\n");
+        assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+        assertTrue(out.toString().contains("Too late"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a conflict applied again writes the value")
+    void settingsConflictApplyAgain() throws Exception {
+        var attempts = new java.util.concurrent.atomic.AtomicInteger();
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                if (attempts.getAndIncrement() == 0) {
+                    response.json(409, PlanSettingsUpdateResult.conflict(8, "landing.main").toJson());
+                } else {
+                    response.json(200, PlanSettingsUpdateResult.applied(9).toJson());
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\n2\n\n");
+        assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+        assertTrue(out.toString().contains("version becomes 9"), out.toString());
+    }
+
+    @Test
+    @DisplayName("the group is asked when the verb names none")
+    void settingsGroupAsked() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                response.json(200, PlanSettingsUpdateResult.applied(8).toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\n1\n2\n");
+        assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", null, false));
+        assertTrue(out.toString().contains("Which settings of p?"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a chat proposal is rejected and the chat goes on")
+    void chatReject() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/chat")) {
+                response.json(200, CHAT_PROPOSAL);
+            } else if (path.endsWith("/proposal/reject")) {
+                response.json(200, CHAT);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("r\n\n");
+        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
+        assertTrue(out.toString().contains("The chat is kept with p"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a chat can be rendered without asking")
+    void chatRender() throws Exception {
+        WorkChatDialogue.render(context, new PrintWriter(out), de.planmarshall.api.control
+                            .ChatReadBackResource.fromJson(CHAT_PROPOSAL));
+        assertTrue(out.toString().contains("Proposed change"), out.toString());
+        assertTrue(out.toString().contains("websocket and SSE"), out.toString());
+    }
+
+    @Test
+    @DisplayName("the epic view closes rows and expands every section")
+    void epicViewCloseAndExpand() throws Exception {
+        var view = new de.planmarshall.operator.epicview.EpicViewLevel(EpicResource.fromJson(EPIC));
+        view.expandAll();
+        assertTrue(view.rows("en").stream().anyMatch(row -> row.line().contains("Tokens")),
+                            view.rows("en").toString());
+        assertNotNull(view.closeRow(de.planmarshall.operator.epicview.EpicViewLevel.SOURCES_ID));
+        assertNotNull(view.closeRow(de.planmarshall.operator.epicview.EpicViewLevel
+                            .WORKSTREAM_PREFIX + "WS-1"));
     }
 }
