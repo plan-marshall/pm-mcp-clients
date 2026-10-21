@@ -487,10 +487,11 @@ class StartContractTest {
     @DisplayName("every start state's fixture names only members of the closed contract catalogues")
     void fixturesUseTheContract() {
         var scenario = ScenarioLoader.load(SCENARIO);
-        var startStates = List.of("start.sources", "start.chat", "start.documents",
-                "start.entry-continue", "start.epic", "start.epic-adopt", "start.follow-up",
-                "start.issue-failed", "start.lesson", "start.local-changes", "start.pull-request",
-                "start.rate-limited", "start.recipe", "start.refused", "start.unscreened");
+        var startStates = scenario.states().keySet().stream()
+                .filter(stateId -> stateId.startsWith("start."))
+                .sorted()
+                .toList();
+        assertEquals(15, startStates.size(), "every start case is a state");
         for (var stateId : startStates) {
             var startCase = startFixture(scenario, stateId);
             assertNotNull(StartState.fromWire((String) startCase.get("state")), stateId);

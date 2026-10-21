@@ -60,6 +60,7 @@ import de.planmarshall.api.start.StartStateResource;
 import de.planmarshall.api.start.StartTranscriptState;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioLoader;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 @DisplayName("StartScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -237,10 +238,11 @@ class StartScenarioTest {
     @DisplayName("the consolidated scenario carries every start case as a state")
     void allStartCasesAreStates() {
         var scenario = ScenarioLoader.load(SCENARIO);
-        var startStates = List.of("start.sources", "start.chat", "start.documents",
-                "start.entry-continue", "start.epic", "start.epic-adopt", "start.follow-up",
-                "start.issue-failed", "start.lesson", "start.local-changes", "start.pull-request",
-                "start.rate-limited", "start.recipe", "start.refused", "start.unscreened");
+        var startStates = scenario.states().keySet().stream()
+                .filter(stateId -> stateId.startsWith("start."))
+                .sorted()
+                .toList();
+        assertEquals(15, startStates.size(), "every start case is a state");
 
         for (var stateId : startStates) {
             var fixture = startFixture(scenario, stateId);
@@ -260,13 +262,11 @@ class StartScenarioTest {
         if (!Files.isDirectory(scenarios)) {
             scenarios = Path.of("pm-mock-runtime", "src", "main", "resources", "scenarios");
         }
-        var superseded = List.of("projects.json", "enrolment.json", "git_sources.json",
-                "lesson_source.json", "start.json", "start-chat.json", "start-documents.json",
-                "start-entry-continue.json", "start-epic-adopt.json", "start-epic.json",
-                "start-follow-up.json", "start-issue-failed.json", "start-lesson.json",
-                "start-local-changes.json", "start-pull-request.json", "start-rate-limited.json",
-                "start-recipe.json", "start-refused.json", "start-sources.json",
-                "start-unscreened.json");
+        var superseded = new ScenarioRegistry().legacyAliases().entrySet().stream()
+                .filter(alias -> alias.getValue().startsWith(SCENARIO + "#"))
+                .map(alias -> alias.getKey() + ".json")
+                .toList();
+        assertEquals(20, superseded.size(), "the project and start aliases name the superseded files");
         try (var files = Files.list(scenarios)) {
             var present = files.map(file -> file.getFileName().toString())
                     .filter(superseded::contains)
