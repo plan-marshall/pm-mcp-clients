@@ -1,20 +1,111 @@
 {
+  "schema_version": 1,
   "client_id": "claude",
+  "display_name": "Claude Code",
+  "icon": null,
+  "min_daemon_version": "0.1.0",
+  "tools": {
+    "read_file": "Read",
+    "write_file": "Write",
+    "edit_file": "Edit",
+    "search_code": "Grep",
+    "find_files": "Glob",
+    "run_shell": "Bash",
+    "ask_user": "AskUserQuestion",
+    "idioms": {}
+  },
+  "skill_loading": {
+    "mode": "view_file",
+    "load_directive_template": "pm_skill(uri=\"{{uri}}\")",
+    "schema_residency": "on_demand",
+    "skills_extension": false
+  },
+  "headless": {
+    "executable": "claude",
+    "install_locations": [ "~/.local/bin", "/usr/local/bin" ],
+    "install_hint": "install.claude",
+    "auth_probe": {
+      "argv": [ "claude", "auth", "status" ],
+      "logged_in_exit_codes": [ 0 ],
+      "logged_out_exit_codes": [ 1 ],
+      "login_command": [ "claude", "login" ]
+    },
+    "models_probe": null,
+    "weights_probe": null,
+    "model_tiers": {
+      "frontier": "claude-opus-4",
+      "standard": "claude-sonnet-4",
+      "fast": "claude-haiku-4"
+    },
+    "supported_versions": ">=2.1.0 <3.0.0",
+    "update_evidence": { "method": "none", "signer": null },
+    "agent_mode": "inline",
+    "argv": [ "-p", "{{prompt_file}}", "--model", "{{model}}", "--output-format", "stream-json",
+      "--strict-mcp-config", "--agents", "{{agent}}" ],
+    "mcp_config": { "delivery": "slot", "path": null, "exclusive": true },
+    "classes": {
+      "writer": { "args": [ "--permission-mode", "acceptEdits" ], "tool_set": "enforced" },
+      "read_only": { "args": [ "--permission-mode", "plan" ], "tool_set": "enforced" },
+      "zero_tool": { "args": [ "--tools", "none" ] }
+    },
+    "env": {},
+    "capabilities": [ "result_schema", "usage_fields", "cost_field", "exit_reliable",
+      "project_settings_control", "extension_isolation" ],
+    "output": { "format": "stream_json", "result_pointer": "/result" },
+    "usage": {
+      "input_tokens": "/usage/input_tokens",
+      "output_tokens": "/usage/output_tokens",
+      "cache_read": "/usage/cache_read_input_tokens",
+      "cache_creation": "/usage/cache_creation_input_tokens",
+      "reasoning": "not_applicable",
+      "cost_usd": "/cost_usd",
+      "tool_uses": "/num_turns"
+    },
+    "events": {
+      "kind_pointer": "/type",
+      "kinds": {
+        "text": { "match": [ "assistant" ], "text": "/message/content/0/text" },
+        "tool_call": { "match": [ "tool_use" ], "tool": "/name",
+          "target": [ "/input/file_path", "/input.command" ] },
+        "tool_result": { "match": [ "user" ], "size": "/size", "is_error": null },
+        "file_changed": { "match": [ "file_changed" ], "path": "/path" },
+        "turn": { "match": [ "result" ] }
+      }
+    },
+    "endpoints": [ "api.anthropic.com:443" ],
+    "writable_paths": [ "~/.claude.json", "~/.claude/backups", "~/.claude/.credentials.json",
+      "~/.claude/projects", "~/.claude/sessions", "~/.cache/claude", "~/.cache/claude-cli-nodejs",
+      "~/.local/state/claude", "~/.local/share/claude" ],
+    "data_home": null,
+    "tool_result_limit_chars": null,
+    "resource_tools": [],
+    "session_residue": "persisted",
+    "resumability": { "hold": false, "resume": null }
+  },
+  "connection": {
+    "transport": "stdio",
+    "idle_timeout_seconds": 1800,
+    "bounded_wait_seconds": 240,
+    "progress_resets_timeout": true
+  },
+  "worker": {
+    "eligible": true,
+    "restricted_models": [ "*" ],
+    "ack_deadline_seconds": null,
+    "ack_informational": false,
+    "silence_grace_seconds": 30,
+    "idle_wakeups": 3
+  },
   "detection": {
     "precedence": 30,
-    "primary_signals": [
-      { "variable": "CLAUDE_CODE_SESSION_ID", "equals": null }
-    ],
-    "secondary_signals": [
-      { "variable": "CLAUDECODE", "equals": "1" }
-    ],
-    "process_markers": [ "CLAUDE_PID" ]
+    "primary_signals": [ { "variable": "CLAUDE_CODE_SESSION_ID", "equals": null } ],
+    "secondary_signals": [ { "variable": "CLAUDECODE", "equals": "1" } ],
+    "process_markers": [ "CLAUDE_PID" ],
+    "ai_agent_prefixes": [ "claude" ],
+    "reaches": [ "command", "serve" ]
   },
   "identity": {
-    "session_id_variable": "CLAUDE_CODE_SESSION_ID",
     "version_probe": [ "claude", "--version" ],
-    "version_pattern": "(\\d+(?:\\.\\d+)+)",
-    "model_source": "declared",
-    "provisional": true
+    "version_pattern": "(\\d+(?:\\.\\d+)+)"
   }
 }

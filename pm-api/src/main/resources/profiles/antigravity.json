@@ -1,18 +1,89 @@
 {
+  "schema_version": 1,
   "client_id": "antigravity",
+  "display_name": "Antigravity",
+  "icon": null,
+  "min_daemon_version": "0.1.0",
+  "tools": {
+    "read_file": "view_file",
+    "write_file": "write_file",
+    "edit_file": "replace_file_content",
+    "search_code": "grep_search",
+    "find_files": "find_by_name",
+    "run_shell": "run_command",
+    "ask_user": "ask_user",
+    "idioms": {}
+  },
+  "skill_loading": {
+    "mode": "view_file",
+    "load_directive_template": "pm_skill(uri=\"{{uri}}\")",
+    "schema_residency": "on_demand",
+    "skills_extension": false
+  },
+  "headless": {
+    "executable": "agy",
+    "install_locations": [ "~/.local/bin", "/usr/local/bin" ],
+    "install_hint": "install.antigravity",
+    "auth_probe": {
+      "argv": [ "agy", "status" ],
+      "logged_in_exit_codes": [ 0 ],
+      "logged_out_exit_codes": [ 1 ],
+      "login_command": [ "agy", "login" ]
+    },
+    "models_probe": null,
+    "weights_probe": null,
+    "model_tiers": { "frontier": null, "standard": null, "fast": null },
+    "supported_versions": ">=1.0.0 <2.0.0",
+    "update_evidence": { "method": "none", "signer": null },
+    "agent_mode": "inline",
+    "argv": [ "run", "{{prompt_file}}", "--model", "{{model}}" ],
+    "mcp_config": { "delivery": "file", "path": ".agents/mcp_config.json", "exclusive": false },
+    "classes": { "writer": null, "read_only": null, "zero_tool": null },
+    "env": {},
+    "capabilities": [ "result_schema", "usage_fields", "exit_reliable" ],
+    "output": { "format": "json", "result_pointer": "/result" },
+    "usage": {
+      "input_tokens": "/usage/input_tokens",
+      "output_tokens": "/usage/output_tokens",
+      "cache_read": "/usage/cache_read_input_tokens",
+      "cache_creation": "not_applicable",
+      "reasoning": "/usage/thinking_tokens",
+      "cost_usd": null,
+      "tool_uses": null
+    },
+    "events": null,
+    "endpoints": [ "generativelanguage.googleapis.com:443" ],
+    "writable_paths": [],
+    "data_home": null,
+    "tool_result_limit_chars": null,
+    "resource_tools": [],
+    "session_residue": "persisted",
+    "resumability": { "hold": false, "resume": null }
+  },
+  "connection": {
+    "transport": "stdio",
+    "idle_timeout_seconds": 180,
+    "bounded_wait_seconds": 150,
+    "progress_resets_timeout": false
+  },
+  "worker": {
+    "eligible": false,
+    "restricted_models": null,
+    "ack_deadline_seconds": null,
+    "ack_informational": null,
+    "silence_grace_seconds": null,
+    "idle_wakeups": null
+  },
   "detection": {
     "precedence": 10,
-    "primary_signals": [
-      { "variable": "ANTIGRAVITY_AGENT", "equals": null }
-    ],
+    "primary_signals": [ { "variable": "ANTIGRAVITY_AGENT", "equals": null } ],
     "secondary_signals": [],
-    "process_markers": []
+    "process_markers": [],
+    "ai_agent_prefixes": [ "antigravity" ],
+    "reaches": [ "command", "serve" ]
   },
   "identity": {
-    "session_id_variable": "ANTIGRAVITY_CONVERSATION_ID",
-    "version_probe": null,
-    "version_pattern": null,
-    "model_source": "declared",
-    "provisional": true
+    "version_probe": [ "agy", "--version" ],
+    "version_pattern": "(\\d+(?:\\.\\d+)+)"
   }
 }
