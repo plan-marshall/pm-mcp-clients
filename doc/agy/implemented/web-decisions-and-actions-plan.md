@@ -13,7 +13,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | **Use Cases** | [`UC-PLN-2`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2) (Decisions), [`UC-PLN-5`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5) (Epic View), [`UC-CTL-1` to `UC-CTL-5`](../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc) |
 | **Specifications** | [`decision-contract.adoc`](../plans/implemented/decision-contract.adoc), [`control-contract.adoc`](../plans/implemented/control-contract.adoc), [`state-catalogue.adoc#chat`](../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
 | **Local Client Design** | [`doc/design/shared/decisions.adoc`](../design/shared/decisions.adoc), [`doc/design/shared/work-actions.adoc`](../design/shared/work-actions.adoc), [`doc/design/shared/epic-view.adoc`](../design/shared/epic-view.adoc), [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) |
-| **Roadmap Packages** | [`doc/plans/implemented/web-decisions.adoc`](../plans/implemented/web-decisions.adoc), [`doc/plans/implemented/web-actions.adoc`](../plans/implemented/web-actions.adoc) (`done`) |
+| **Roadmap Packages** | [`doc/plans/implemented/web-decisions.adoc`](../../plans/implemented/web-decisions.adoc), [`doc/plans/implemented/web-actions.adoc`](../../plans/implemented/web-actions.adoc) (`done`) |
 | **Prerequisite Plans** | [`doc/agy/implemented/web-start-plan.md`](implemented/web-start-plan.md) (landed, PR #117; provides `ChatPanel.svelte`), [`doc/agy/implemented/web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md) (landed, PR #126), [`doc/agy/implemented/web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) (landed, PR #134), [`doc/agy/implemented/web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md) (landed, PR #142), [`doc/agy/implemented/mock-runtime-running-work-plan.md`](implemented/mock-runtime-running-work-plan.md) (landed, PR #136) |
 | **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
@@ -81,7 +81,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - `persona-code-reviewer` for finding evaluation & bot review resolution.
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Final completion report written (`doc/agy/web-decisions-and-actions-plan-report.md`), initial plan moved to `doc/agy/implemented/web-decisions-and-actions-plan.md`, `doc/plans/web-actions.adoc` moved to `doc/plans/implemented/web-actions.adoc`, and `web-actions` marked `done` in `doc/plans/README.adoc`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit -pl pm-web-app,pm-web-e2e -am`).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review`), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-decisions-and-actions-plan-report.md` by orchestrator session.

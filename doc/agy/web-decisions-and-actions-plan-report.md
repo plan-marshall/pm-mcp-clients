@@ -62,7 +62,7 @@ the epic resource sections.
 | `npx playwright test tests/decisions.spec.js tests/control.spec.js` | **23 tests passed** |
 | `npx playwright test tests/plan-view.spec.js` | 4 tests passed |
 | `npx playwright test tests/showroom.spec.js` | 10 tests passed |
-| `./mvnw verify -Ppre-commit -pl pm-web-app,pm-web-e2e -am` | **BUILD SUCCESS** |
+| `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** |
 | `./mvnw test -pl pm-api` | passed (catalogue parity) |
 
 The repository-wide Playwright suite still contains suites outside this plan's surface (decomposition,
@@ -83,6 +83,6 @@ consolidated scenarios; they were not touched here. The suites this plan owns pa
 
 ## 5. Build & Quality Evidence
 
-`./mvnw verify -Ppre-commit -pl pm-web-app,pm-web-e2e -am` completed with `BUILD SUCCESS` after the
+`./mvnw verify -Ppre-commit` completed with `BUILD SUCCESS` after the
 web-app build, lint, type check, unit tests, and the e2e module's lint. The working tree contains only
 the intended source, catalogue, test, and documentation changes.
