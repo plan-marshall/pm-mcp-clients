@@ -67,7 +67,7 @@
           "target": [ "/part/state/input/filePath", "/part/state/input/command" ] },
         "tool_result": { "match": [ "tool_result" ], "size": "/part/state/output/size", "is_error": null },
         "file_changed": { "match": [ "file" ], "path": "/part/state/input/filePath" },
-        "turn": { "match": [ "step_finish" ] }
+        "turn": { "match": [ "step_finish" ], "stop_reason": null }
       }
     },
     "endpoints": [ "api.opencode.ai:443" ],
