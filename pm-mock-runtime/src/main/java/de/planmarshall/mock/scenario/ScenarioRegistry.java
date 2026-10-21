@@ -178,9 +178,7 @@ public final class ScenarioRegistry {
                 stateId,
                 base.pairingCode(),
                 base.routes(),
-                base.states(),
-                base.designer(),
-                base.startCase());
+                base.states());
     }
 
     /**
@@ -284,8 +282,8 @@ public final class ScenarioRegistry {
             registry.registerLegacyAlias("start-unscreened", "projects-and-start#start.sources");
 
             // Scenario 4: reports and system.
-            registry.registerLegacyAlias("reports", "reports-and-system#reports.list");
-            registry.registerLegacyAlias("system", "reports-and-system#system.ready");
+            registry.registerLegacyAlias("reports", "reports-and-system#reports.unread");
+            registry.registerLegacyAlias("system", "reports-and-system#system.running");
 
             // Scenario 5 (designer) is a primary scenario already; it needs no alias.
             // Scenario 6 (fully-onboarded) is a primary scenario too: its name resolves directly to

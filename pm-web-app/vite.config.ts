@@ -20,6 +20,10 @@ export default defineConfig({
     conditions: ['browser'],
   },
   server: {
+    // The scenario tests read the mock runtime's scenario files from the sibling module.
+    fs: {
+      allow: ['..'],
+    },
     port: 5173,
     proxy: {
       '/api': {

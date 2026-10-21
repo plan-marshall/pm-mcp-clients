@@ -17,89 +17,220 @@
           "open": true
         }
       }
-    }
-  },
-  "states": {
-    "designer.ready": {
-      "representation": {
-        "scope": "designer",
-        "state": "designer.ready",
-        "summary": "The process designer is ready",
-        "links": {
-          "workflows": {
-            "method": "GET",
-            "href": "/api/v1/workflows"
-          }
+    },
+    "GET /api/v1/workflows": {
+      "representation": [
+        {
+          "name": "landing.pull-request",
+          "group": "axis_variant",
+          "level_in_force": "machine",
+          "frontmatter": {
+            "display_name": "Landing Pull Request",
+            "description": "Lands the plan as a pull request.",
+            "type": "subworkflow",
+            "entries": [
+              "start"
+            ],
+            "exits": [
+              "merged",
+              "no_change"
+            ],
+            "author": "Oliver Wolff",
+            "release": "0.9.0",
+            "signed": false
+          },
+          "levels": [
+            {
+              "level": "machine",
+              "revision": 3,
+              "digest": "sha256:lp-m3",
+              "text": "workflow landing.pull-request version 3 format 1\n---\nname: Landing Pull Request\ndescription: Lands the plan as a pull request.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\n---\nstate landing.open\n  call git.commit_and_push\n  done -> merged\n"
+            }
+          ]
+        },
+        {
+          "name": "git.commit_and_push",
+          "group": "recipe",
+          "level_in_force": "machine",
+          "frontmatter": {
+            "display_name": "Commit and Push",
+            "description": "Commits the changes of the plan's worktree and pushes its branch.",
+            "type": "subworkflow",
+            "entries": [
+              "commit"
+            ],
+            "exits": [
+              "done",
+              "stepped_out"
+            ],
+            "author": "Oliver Wolff",
+            "release": "0.9.0",
+            "signed": false
+          },
+          "levels": [
+            {
+              "level": "machine",
+              "revision": 1,
+              "digest": "sha256:gcp-m1",
+              "text": "workflow git.commit_and_push version 1 format 1\n---\nname: Commit and Push\ndescription: Commits the changes and pushes the branch.\ntype: recipe\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry commit\nexit done\n---\nstate commit.push\n  done -> done\n"
+            }
+          ]
+        },
+        {
+          "name": "epic",
+          "group": "compiled_only",
+          "level_in_force": "default",
+          "levels": [
+            {
+              "level": "default",
+              "revision": 1,
+              "digest": "sha256:epic-d1",
+              "text": "workflow epic version 1 format 1\n"
+            }
+          ]
         }
+      ]
+    },
+    "GET /api/v1/workflows/catalogue": {
+      "representation": {
+        "scope": "machine",
+        "version": "0.9.0",
+        "digest": "sha256:machine-r1",
+        "blocks": [
+          {
+            "kind": "keyword",
+            "name": "state",
+            "summary": "A state of the unit, with its outcomes and transitions.",
+            "template": "state <name>\n  done -> <next>",
+            "parameters": [],
+            "constraints": [],
+            "outcomes": [],
+            "used_in": [
+              "any unit body"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "primitive",
+            "name": "git.stage-and-commit",
+            "summary": "Stages and commits the worktree's changes.",
+            "template": "auto git.stage-and-commit",
+            "parameters": [
+              "message_mode enum[auto_deliverable|step_or_fallback]"
+            ],
+            "constraints": [],
+            "outcomes": [
+              "done (success)",
+              "failed"
+            ],
+            "used_in": [
+              "the auto clause of a state"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "guard",
+            "name": "depends_on_config",
+            "summary": "Holds the plan until a configuration key is present.",
+            "template": "guard depends_on_config key=<key>",
+            "parameters": [
+              "key string"
+            ],
+            "constraints": [
+              "the configuration key"
+            ],
+            "outcomes": [
+              "satisfied",
+              "missing"
+            ],
+            "used_in": [
+              "the guard clause of a state"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "link_relation",
+            "name": "opens",
+            "summary": "Opens the linked resource.",
+            "template": "link opens <target>",
+            "parameters": [],
+            "constraints": [],
+            "outcomes": [],
+            "used_in": [
+              "the link clause of a state"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "condition",
+            "name": "in_worktree",
+            "summary": "True while the plan has a worktree.",
+            "template": "condition in_worktree",
+            "parameters": [],
+            "constraints": [],
+            "outcomes": [
+              "true",
+              "false"
+            ],
+            "used_in": [
+              "the condition clause of a state"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "sub_workflow",
+            "name": "git.commit_and_push",
+            "summary": "Commits the changes of the plan's worktree and pushes its branch.",
+            "template": "call git.commit_and_push entry commit\n  done -> <next>\n  stepped_out -> <next>",
+            "parameters": [
+              "message_mode enum",
+              "push_mode enum"
+            ],
+            "constraints": [
+              "a push remote"
+            ],
+            "outcomes": [
+              "done (success)",
+              "stepped_out"
+            ],
+            "used_in": [
+              "the call clause of a state, in any unit kind"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "role",
+            "name": "implementer",
+            "summary": "The role that builds the plan's deliverables.",
+            "template": "role implementer",
+            "parameters": [],
+            "constraints": [
+              "a qualified model"
+            ],
+            "outcomes": [],
+            "used_in": [
+              "a task state and a consult"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "parameter",
+            "name": "message_mode",
+            "summary": "How the commit message is derived.",
+            "template": "declare message_mode enum[auto_deliverable|step_or_fallback]",
+            "parameters": [],
+            "constraints": [],
+            "outcomes": [],
+            "used_in": [
+              "the declare clause of a unit"
+            ],
+            "compiled_only": false
+          }
+        ]
       }
-    }
-  },
-  "designer": {
-    "runtime_version": "0.9.0",
-    "projects": ["pm-mcp-clients"],
-    "machine_units": [
-      {
-        "name": "landing.pull-request",
-        "group": "axis_variant",
-        "level_in_force": "machine",
-        "frontmatter": {
-          "display_name": "Landing Pull Request",
-          "description": "Lands the plan as a pull request.",
-          "type": "subworkflow",
-          "entries": ["start"],
-          "exits": ["merged", "no_change"],
-          "author": "Oliver Wolff",
-          "release": "0.9.0",
-          "signed": false
-        },
-        "levels": [
-          {
-            "level": "machine",
-            "revision": 3,
-            "digest": "sha256:lp-m3",
-            "text": "workflow landing.pull-request version 3 format 1\n---\nname: Landing Pull Request\ndescription: Lands the plan as a pull request.\ntype: subworkflow\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry start\n---\nstate landing.open\n  call git.commit_and_push\n  done -> merged\n"
-          }
-        ]
-      },
-      {
-        "name": "git.commit_and_push",
-        "group": "recipe",
-        "level_in_force": "machine",
-        "frontmatter": {
-          "display_name": "Commit and Push",
-          "description": "Commits the changes of the plan's worktree and pushes its branch.",
-          "type": "subworkflow",
-          "entries": ["commit"],
-          "exits": ["done", "stepped_out"],
-          "author": "Oliver Wolff",
-          "release": "0.9.0",
-          "signed": false
-        },
-        "levels": [
-          {
-            "level": "machine",
-            "revision": 1,
-            "digest": "sha256:gcp-m1",
-            "text": "workflow git.commit_and_push version 1 format 1\n---\nname: Commit and Push\ndescription: Commits the changes and pushes the branch.\ntype: recipe\nauthor: Oliver Wolff\nrelease: 0.9.0\nentry commit\nexit done\n---\nstate commit.push\n  done -> done\n"
-          }
-        ]
-      },
-      {
-        "name": "epic",
-        "group": "compiled_only",
-        "level_in_force": "default",
-        "levels": [
-          {
-            "level": "default",
-            "revision": 1,
-            "digest": "sha256:epic-d1",
-            "text": "workflow epic version 1 format 1\n"
-          }
-        ]
-      }
-    ],
-    "project_units": {
-      "pm-mcp-clients": [
+    },
+    "GET /api/v1/projects/pm-mcp-clients/workflows": {
+      "representation": [
         {
           "name": "phase-6-finalize",
           "group": "project_owned",
@@ -108,8 +239,14 @@
             "display_name": "Finalize",
             "description": "Settles and reviews the plan's change, lands it.",
             "type": "subworkflow",
-            "entries": ["start", "adopt"],
-            "exits": ["merged", "no_change"],
+            "entries": [
+              "start",
+              "adopt"
+            ],
+            "exits": [
+              "merged",
+              "no_change"
+            ],
             "author": "Oliver Wolff",
             "release": "0.9.0",
             "signed": false
@@ -143,8 +280,12 @@
             "display_name": "CI Failure",
             "description": "Returns a plan to execute after a CI failure.",
             "type": "subworkflow",
-            "entries": ["start"],
-            "exits": ["returned"],
+            "entries": [
+              "start"
+            ],
+            "exits": [
+              "returned"
+            ],
             "author": "Oliver Wolff",
             "release": "0.9.0",
             "signed": false
@@ -160,121 +301,247 @@
         }
       ]
     },
-    "machine_blocks": [
-      {
-        "kind": "keyword",
-        "name": "state",
-        "summary": "A state of the unit, with its outcomes and transitions.",
-        "template": "state <name>\n  done -> <next>",
-        "parameters": [],
-        "constraints": [],
-        "outcomes": [],
-        "used_in": ["any unit body"],
-        "compiled_only": false
-      },
-      {
-        "kind": "primitive",
-        "name": "git.stage-and-commit",
-        "summary": "Stages and commits the worktree's changes.",
-        "template": "auto git.stage-and-commit",
-        "parameters": ["message_mode enum[auto_deliverable|step_or_fallback]"],
-        "constraints": [],
-        "outcomes": ["done (success)", "failed"],
-        "used_in": ["the auto clause of a state"],
-        "compiled_only": false
-      },
-      {
-        "kind": "guard",
-        "name": "depends_on_config",
-        "summary": "Holds the plan until a configuration key is present.",
-        "template": "guard depends_on_config key=<key>",
-        "parameters": ["key string"],
-        "constraints": ["the configuration key"],
-        "outcomes": ["satisfied", "missing"],
-        "used_in": ["the guard clause of a state"],
-        "compiled_only": false
-      },
-      {
-        "kind": "link_relation",
-        "name": "opens",
-        "summary": "Opens the linked resource.",
-        "template": "link opens <target>",
-        "parameters": [],
-        "constraints": [],
-        "outcomes": [],
-        "used_in": ["the link clause of a state"],
-        "compiled_only": false
-      },
-      {
-        "kind": "condition",
-        "name": "in_worktree",
-        "summary": "True while the plan has a worktree.",
-        "template": "condition in_worktree",
-        "parameters": [],
-        "constraints": [],
-        "outcomes": ["true", "false"],
-        "used_in": ["the condition clause of a state"],
-        "compiled_only": false
-      },
-      {
-        "kind": "sub_workflow",
-        "name": "git.commit_and_push",
-        "summary": "Commits the changes of the plan's worktree and pushes its branch.",
-        "template": "call git.commit_and_push entry commit\n  done -> <next>\n  stepped_out -> <next>",
-        "parameters": ["message_mode enum", "push_mode enum"],
-        "constraints": ["a push remote"],
-        "outcomes": ["done (success)", "stepped_out"],
-        "used_in": ["the call clause of a state, in any unit kind"],
-        "compiled_only": false
-      },
-      {
-        "kind": "role",
-        "name": "implementer",
-        "summary": "The role that builds the plan's deliverables.",
-        "template": "role implementer",
-        "parameters": [],
-        "constraints": ["a qualified model"],
-        "outcomes": [],
-        "used_in": ["a task state and a consult"],
-        "compiled_only": false
-      },
-      {
-        "kind": "parameter",
-        "name": "message_mode",
-        "summary": "How the commit message is derived.",
-        "template": "declare message_mode enum[auto_deliverable|step_or_fallback]",
-        "parameters": [],
-        "constraints": [],
-        "outcomes": [],
-        "used_in": ["the declare clause of a unit"],
-        "compiled_only": false
+    "GET /api/v1/projects/pm-mcp-clients/workflows/catalogue": {
+      "representation": {
+        "scope": "pm-mcp-clients",
+        "version": "0.9.0",
+        "digest": "sha256:pm-mcp-clients-r1",
+        "blocks": [
+          {
+            "kind": "sub_workflow",
+            "name": "phase-6-finalize",
+            "summary": "Settles and reviews the plan's change, lands it.",
+            "template": "call phase-6-finalize entry start\n  merged -> <next>\n  no_change -> <next>",
+            "parameters": [],
+            "constraints": [],
+            "outcomes": [
+              "merged",
+              "no_change"
+            ],
+            "used_in": [
+              "the call clause of a state"
+            ],
+            "compiled_only": false
+          },
+          {
+            "kind": "role",
+            "name": "reviewer",
+            "summary": "The role that reviews the plan's change.",
+            "template": "role reviewer",
+            "parameters": [],
+            "constraints": [
+              "a qualified model"
+            ],
+            "outcomes": [],
+            "used_in": [
+              "a task state and a consult"
+            ],
+            "compiled_only": false
+          }
+        ]
       }
-    ],
-    "project_blocks": {
-      "pm-mcp-clients": [
-        {
-          "kind": "sub_workflow",
-          "name": "phase-6-finalize",
-          "summary": "Settles and reviews the plan's change, lands it.",
-          "template": "call phase-6-finalize entry start\n  merged -> <next>\n  no_change -> <next>",
-          "parameters": [],
-          "constraints": [],
-          "outcomes": ["merged", "no_change"],
-          "used_in": ["the call clause of a state"],
-          "compiled_only": false
+    }
+  },
+  "states": {
+    "designer.ready": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
         },
-        {
-          "kind": "role",
-          "name": "reviewer",
-          "summary": "The role that reviews the plan's change.",
-          "template": "role reviewer",
-          "parameters": [],
-          "constraints": ["a qualified model"],
-          "outcomes": [],
-          "used_in": ["a task state and a consult"],
-          "compiled_only": false
+        "state": {
+          "state_id": "designer.ready",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "The process designer is ready",
+          "runtime": {
+            "designer": {
+              "runtime_version": "0.9.0",
+              "projects": [
+                "pm-mcp-clients"
+              ]
+            }
+          }
         }
-      ]
+      },
+      "links": {}
+    },
+    "designer.empty-catalogue": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.empty-catalogue",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "No building blocks are installed",
+          "runtime": {
+            "designer": {
+              "projects": [],
+              "machine_blocks": [],
+              "project_blocks": {}
+            }
+          }
+        }
+      },
+      "links": {}
+    },
+    "designer.no-project": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.no-project",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "No project is enrolled; a machine unit cannot be placed",
+          "runtime": {
+            "designer": {
+              "projects": []
+            }
+          }
+        }
+      },
+      "links": {}
+    },
+    "designer.unit-invalid": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.unit-invalid",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "The unit does not validate",
+          "findings": [
+            {
+              "stage": "rules",
+              "rule": "Rule 6",
+              "line": 6,
+              "column": 1,
+              "severity": "error",
+              "message": "'goto' is not a keyword of the language"
+            }
+          ]
+        }
+      },
+      "links": {}
+    },
+    "designer.digest-conflict": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.digest-conflict",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "The unit changed meanwhile",
+          "current": {
+            "name": "phase-6-finalize",
+            "digest": "sha256:pf6-p4"
+          }
+        }
+      },
+      "links": {}
+    },
+    "designer.placed": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.placed",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "The unit is placed in the project",
+          "result": {
+            "name": "landing.custom",
+            "target": "pm-mcp-clients",
+            "status": "landed",
+            "catalogue_digest": "sha256:pm-mcp-clients-r2"
+          }
+        }
+      },
+      "links": {}
+    },
+    "designer.landed-pr": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.landed-pr",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "The unit landed as a pull request",
+          "landing": "landing.pull-request"
+        }
+      },
+      "links": {}
+    },
+    "designer.landed-direct": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.landed-direct",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "The unit landed in the working tree",
+          "landing": "landing.files"
+        }
+      },
+      "links": {}
+    },
+    "designer.removed": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "designer.removed",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "summary": "The unit is removed and the next level is in force",
+          "result": {
+            "name": "landing.custom",
+            "target": "pm-mcp-clients",
+            "status": "landed"
+          }
+        }
+      },
+      "links": {}
     }
   }
 }

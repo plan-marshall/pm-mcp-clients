@@ -74,7 +74,11 @@ class ScenarioRegistryTest {
                   "start": "init",
                   "states": {
                     "init": {
-                      "representation": { "hello": "world" }
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "init", "kind": "operator_wait" },
+                        "links": []
+                      }
                     }
                   }
                 }
@@ -131,9 +135,10 @@ class ScenarioRegistryTest {
         assertEquals(StandardScenarios.PROJECTS_AND_START, aliased.name());
         assertEquals("projects.explorer", aliased.start());
 
-        // A legacy file that still exists wins over its alias, so migration can delete file by file.
-        registry.registerLegacyAlias(StandardScenarios.REPORTS, "designer#designer.ready");
-        assertEquals(StandardScenarios.REPORTS, registry.resolve(StandardScenarios.REPORTS).name());
+        // A consolidated scenario resolves through its alias once the legacy file is gone.
+        assertEquals(StandardScenarios.REPORTS_AND_SYSTEM,
+                registry.resolve(StandardScenarios.REPORTS).name());
+        assertEquals("reports.unread", registry.resolve(StandardScenarios.REPORTS).start());
         assertEquals("projects-and-start#projects.explorer",
                 new ScenarioRegistry().legacyAlias(StandardScenarios.PROJECTS));
     }
@@ -144,7 +149,8 @@ class ScenarioRegistryTest {
         var aliases = registry.legacyAliases();
         assertEquals("onboarding#harness.not-logged-in", aliases.get("onboarding-harness-not-logged-in"));
         assertEquals("projects-and-start#start.sources", aliases.get("start"));
-        assertEquals("reports-and-system#reports.list", aliases.get("reports"));
+        assertEquals("reports-and-system#reports.unread", aliases.get("reports"));
+        assertEquals("reports-and-system#system.running", aliases.get("system"));
         assertNull(aliases.get("designer"), "a primary scenario needs no alias");
     }
 
