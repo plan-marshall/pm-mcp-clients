@@ -13,7 +13,7 @@
     type WorkflowValidationResult,
   } from '../api/client';
   import { runtimeStore, navigateTo } from '../stores/runtime';
-  import { diffLines, type LineDiff } from '../utils/lineDiff';
+  import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
     editFrontmatter,
     parseUnit,
@@ -523,7 +523,7 @@
     }
     try {
       const content = await file.text();
-      openIntakeText(content);
+      guardDraft(() => openIntakeText(content));
     } catch {
       intakeError = $t('designer.input.read_failed');
     } finally {
@@ -534,7 +534,7 @@
   /** Opens a pasted text in the editor. */
   function openPastedText(): void {
     if (pasteText.trim().length === 0) return;
-    openIntakeText(pasteText);
+    guardDraft(() => openIntakeText(pasteText));
   }
 
   /** Starts a draft from an empty unit template. */
@@ -556,7 +556,7 @@
       '  done -> done',
       '',
     ].join('\n');
-    openIntakeText(template);
+    guardDraft(() => openIntakeText(template));
   }
 
   /**
@@ -786,6 +786,19 @@
     return value ?? '';
   }
 </script>
+
+{#snippet diffTable(rows: DiffRow[], testId: string)}
+  <div class="designer__diff" data-testid={testId}>
+    {#each rows as row}
+      <div class="diff-row diff-row--{row.kind}">
+        <span class="diff-no">{row.leftNo ?? ''}</span>
+        <pre class="diff-line">{diffText(row.left)}</pre>
+        <span class="diff-no">{row.rightNo ?? ''}</span>
+        <pre class="diff-line">{diffText(row.right)}</pre>
+      </div>
+    {/each}
+  </div>
+{/snippet}
 
 <div class="designer" data-testid="process-designer">
   <header class="designer__head">
@@ -1320,16 +1333,7 @@
             removed: placeDiff.removed,
           })}
         </p>
-        <div class="designer__diff" data-testid="designer-diff">
-          {#each placeDiff.rows as row}
-            <div class="diff-row diff-row--{row.kind}">
-              <span class="diff-no">{row.leftNo ?? ''}</span>
-              <pre class="diff-line">{diffText(row.left)}</pre>
-              <span class="diff-no">{row.rightNo ?? ''}</span>
-              <pre class="diff-line">{diffText(row.right)}</pre>
-            </div>
-          {/each}
-        </div>
+        {@render diffTable(placeDiff.rows, 'designer-diff')}
         <p class="text-muted text-sm">
           {$t('designer.confirm.projects', {
             projects:
@@ -1401,15 +1405,8 @@
         <p class="designer__notice" role="alert" data-testid="designer-place-conflict">
           {$t('designer.place.conflict', { unit: unitName })}
         </p>
-        <div class="designer__diff designer__diff--conflict" data-testid="designer-conflict-diff">
-          {#each conflictDiff.rows as row}
-            <div class="diff-row diff-row--{row.kind}">
-              <span class="diff-no">{row.leftNo ?? ''}</span>
-              <pre class="diff-line">{diffText(row.left)}</pre>
-              <span class="diff-no">{row.rightNo ?? ''}</span>
-              <pre class="diff-line">{diffText(row.right)}</pre>
-            </div>
-          {/each}
+        <div class="designer__diff--conflict">
+          {@render diffTable(conflictDiff.rows, 'designer-conflict-diff')}
         </div>
         <div class="designer__modal-actions">
           <Button variant="secondary" onclick={closePlace}>{$t('web.common.close')}</Button>
