@@ -11,6 +11,7 @@ package de.planmarshall.api.report;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -41,6 +42,14 @@ public record ChangeMapRecord(
     public ChangeMapRecord {
         Objects.requireNonNull(diagram, FIELD_DIAGRAM);
         Objects.requireNonNull(state, FIELD_STATE);
+        var normalized = state.toLowerCase(Locale.ROOT);
+        if (("partial".equals(normalized) || "indeterminate".equals(normalized))
+                            && (cause == null || cause.isBlank())) {
+            throw new IllegalArgumentException("A " + normalized + " change map requires its cause");
+        }
+        if ("ok".equals(normalized) && cause != null && !cause.isBlank()) {
+            throw new IllegalArgumentException("A complete change map carries no cause");
+        }
     }
 
     /**

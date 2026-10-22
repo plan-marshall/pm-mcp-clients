@@ -326,10 +326,54 @@ class ReportRecordsTest {
                 () -> assertThrows(JsonFormatException.class,
                         () -> OwnCallRecord.fromMap(Map.of("kind", "design", "description", "a call"))),
                 () -> assertThrows(JsonFormatException.class,
+                        () -> OwnCallRecord.fromMap(Map.of("kind", "design", "judgment", "consistent"))),
+                () -> assertThrows(JsonFormatException.class,
                         () -> ChangeMapRecord.fromMap(Map.of("state", "ok"))),
                 () -> assertThrows(JsonFormatException.class,
                         () -> ChangeMapRecord.fromMap(Map.of("diagram", "relay -> cursor")))
         );
+    }
+
+    @Test
+    void shouldRejectAnOwnCallOrChangeMapThatViolatesItsStateInvariants() {
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new OwnCallRecord("shortcut", "a shortcut", null, "a second subscriber",
+                                "consistent", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new OwnCallRecord("shortcut", "a shortcut", "single subscriber", null,
+                                "consistent", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new OwnCallRecord("design", "a call", null, null, "conflicts", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new ChangeMapRecord("relay -> cursor", "partial", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new ChangeMapRecord("relay -> cursor", "indeterminate", " ")),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new ChangeMapRecord("relay -> cursor", "ok", "not a cause"))
+        );
+    }
+
+    @Test
+    void shouldRejectMalformedOwnCallAndChangeMapSections() {
+        var base = Map.<String, Object>of(
+                "plan_id", "p",
+                "started_at", "2026-10-16T08:40:00Z",
+                "ended_at", "2026-10-16T09:00:00Z");
+        assertAll(
+                () -> assertThrows(JsonFormatException.class,
+                        () -> PlanCompletionReport.fromMap(with(base, "own_calls", "not-an-array"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> PlanCompletionReport.fromMap(with(base, "own_calls", List.of("not-an-object")))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> PlanCompletionReport.fromMap(with(base, "change_map", "not-an-object")))
+        );
+    }
+
+    private static Map<String, Object> with(Map<String, Object> base, String key, Object value) {
+        var map = new java.util.LinkedHashMap<String, Object>(base);
+        map.put(key, value);
+        return map;
     }
 
     @Test

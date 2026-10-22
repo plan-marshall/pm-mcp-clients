@@ -50,6 +50,17 @@ public record OwnCallRecord(
         Objects.requireNonNull(kind, FIELD_KIND);
         Objects.requireNonNull(description, FIELD_DESCRIPTION);
         Objects.requireNonNull(judgment, FIELD_JUDGMENT);
+        if ("shortcut".equalsIgnoreCase(kind)) {
+            if (limit == null || limit.isBlank()) {
+                throw new IllegalArgumentException("A shortcut requires the limit it accepts");
+            }
+            if (endsWhen == null || endsWhen.isBlank()) {
+                throw new IllegalArgumentException("A shortcut requires the condition that ends it");
+            }
+        }
+        if ("conflicts".equalsIgnoreCase(judgment) && (conflictTarget == null || conflictTarget.isBlank())) {
+            throw new IllegalArgumentException("A conflicting own call requires the item it conflicts with");
+        }
     }
 
     /**
@@ -81,7 +92,7 @@ public record OwnCallRecord(
         if (kind == null) throw new JsonFormatException("Missing kind in OwnCallRecord");
         var description = JsonTree.string(map, FIELD_DESCRIPTION);
         if (description == null) description = JsonTree.string(map, "text");
-        if (description == null) description = "";
+        if (description == null) throw new JsonFormatException("Missing description in OwnCallRecord");
         var limit = JsonTree.string(map, FIELD_LIMIT);
         var endsWhen = JsonTree.string(map, FIELD_ENDS_WHEN);
         if (endsWhen == null) endsWhen = JsonTree.string(map, "condition");

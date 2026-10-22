@@ -363,23 +363,33 @@ public record PlanCompletionReport(
     }
 
     private static List<OwnCallRecord> parseOwnCalls(Map<String, Object> map) throws IOException {
-        var list = new ArrayList<OwnCallRecord>();
+        if (!map.containsKey(FIELD_OWN_CALLS)) {
+            return List.of();
+        }
         var ownCallsObj = map.get(FIELD_OWN_CALLS);
-        if (ownCallsObj instanceof List<?> ocl) {
-            for (var elem : ocl) {
-                var m = JsonTree.asObject(elem);
-                if (m != null) list.add(OwnCallRecord.fromMap(m));
+        if (!(ownCallsObj instanceof List<?> ocl)) {
+            throw new JsonFormatException("Expected an array for " + FIELD_OWN_CALLS);
+        }
+        var list = new ArrayList<OwnCallRecord>();
+        for (var elem : ocl) {
+            var m = JsonTree.asObject(elem);
+            if (m == null) {
+                throw new JsonFormatException("Expected an object in " + FIELD_OWN_CALLS);
             }
+            list.add(OwnCallRecord.fromMap(m));
         }
         return list;
     }
 
     private static @Nullable ChangeMapRecord parseChangeMap(Map<String, Object> map) throws IOException {
-        var changeMapObj = map.get(FIELD_CHANGE_MAP);
-        if (changeMapObj == null || JsonTree.asObject(changeMapObj) == null) {
+        if (!map.containsKey(FIELD_CHANGE_MAP)) {
             return null;
         }
-        return ChangeMapRecord.fromMap(JsonTree.asObject(changeMapObj));
+        var changeMap = JsonTree.asObject(map.get(FIELD_CHANGE_MAP));
+        if (changeMap == null) {
+            throw new JsonFormatException("Expected an object for " + FIELD_CHANGE_MAP);
+        }
+        return ChangeMapRecord.fromMap(changeMap);
     }
 
     private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) {
