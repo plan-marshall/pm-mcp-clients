@@ -1,16 +1,84 @@
 {
+  "schema_version": 1,
   "client_id": "neutral",
+  "display_name": "Neutral",
+  "icon": null,
+  "min_daemon_version": "0.1.0",
+  "tools": {
+    "read_file": "read",
+    "write_file": "write",
+    "edit_file": "edit",
+    "search_code": "grep",
+    "find_files": "find",
+    "run_shell": "shell",
+    "ask_user": "ask",
+    "idioms": {}
+  },
+  "skill_loading": {
+    "mode": "view_file",
+    "load_directive_template": "pm_skill(uri=\"{{uri}}\")",
+    "schema_residency": "on_demand",
+    "skills_extension": false
+  },
+  "headless": {
+    "executable": "neutral",
+    "install_locations": [ "~/.local/bin" ],
+    "install_hint": "install.neutral",
+    "auth_probe": null,
+    "models_probe": null,
+    "weights_probe": null,
+    "model_tiers": { "frontier": null, "standard": null, "fast": null },
+    "supported_versions": ">=0.1.0 <1.0.0",
+    "update_evidence": { "method": "none", "signer": null },
+    "agent_mode": "flags",
+    "argv": [ "run", "{{prompt_file}}" ],
+    "mcp_config": { "delivery": "slot", "path": null, "exclusive": true },
+    "classes": { "writer": null, "read_only": null, "zero_tool": null },
+    "env": {},
+    "capabilities": [],
+    "output": { "format": "json", "result_pointer": null },
+    "usage": {
+      "input_tokens": null,
+      "output_tokens": null,
+      "cache_read": null,
+      "cache_creation": null,
+      "reasoning": null,
+      "cost_usd": null,
+      "tool_uses": null
+    },
+    "events": null,
+    "endpoints": [ "localhost:8080" ],
+    "writable_paths": [],
+    "data_home": null,
+    "tool_result_limit_chars": null,
+    "resource_tools": [],
+    "session_residue": "persisted",
+    "resumability": { "hold": false, "resume": null }
+  },
+  "connection": {
+    "transport": "stdio",
+    "idle_timeout_seconds": 60,
+    "bounded_wait_seconds": 30,
+    "progress_resets_timeout": true
+  },
+  "worker": {
+    "eligible": false,
+    "restricted_models": null,
+    "ack_deadline_seconds": null,
+    "ack_informational": null,
+    "silence_grace_seconds": null,
+    "idle_wakeups": null
+  },
   "detection": {
     "precedence": 50,
-    "primary_signals": [],
+    "primary_signals": [ { "variable": "PM_MCP_NEUTRAL_HOST", "equals": null } ],
     "secondary_signals": [],
-    "process_markers": []
+    "process_markers": [],
+    "ai_agent_prefixes": [],
+    "reaches": [ "command" ]
   },
   "identity": {
-    "session_id_variable": null,
     "version_probe": null,
-    "version_pattern": null,
-    "model_source": "declared",
-    "provisional": false
+    "version_pattern": null
   }
 }

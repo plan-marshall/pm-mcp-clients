@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.TreeSet;
+
 import lombok.experimental.UtilityClass;
 
 import com.fasterxml.jackson.core.JsonFactory;
@@ -65,7 +66,7 @@ public class ProfileDocumentReader {
      * @param secondarySignals the signals consulted only when no primary signal of any host matched
      */
     public record Detection(int precedence, List<HostDetection.Signal> primarySignals,
-                            List<HostDetection.Signal> secondarySignals) {
+    List<HostDetection.Signal> secondarySignals) {
 
         /**
          * Copies the lists.
@@ -81,7 +82,9 @@ public class ProfileDocumentReader {
     }
 
     /**
-     * One identity object: the version probe of the host and what the host reports about itself.
+     * One identity object: the version probe of the host. The fields after {@code versionPattern} are the legacy
+     * members of the earlier profile schema; a document of the current schema omits them, and the reader then reports
+     * a host without a session-id variable, the model source {@code declared}, and no provisional marker.
      *
      * @param sessionIdVariable the variable holding the host session identifier, {@code null} if none
      * @param versionProbe      the argument vector printing the host build, {@code null} if none
@@ -90,7 +93,7 @@ public class ProfileDocumentReader {
      * @param provisional       {@code true} if a value is provisional
      */
     public record Identity(String sessionIdVariable, List<String> versionProbe, String versionPattern,
-                           String modelSource, boolean provisional) {
+    String modelSource, boolean provisional) {
 
         /**
          * Copies the probe.
@@ -276,19 +279,15 @@ public class ProfileDocumentReader {
         String sessionIdVariable = null;
         List<String> versionProbe = null;
         String versionPattern = null;
-        String modelSource = null;
-        Boolean provisional = null;
-        var sessionDeclared = false;
+        String modelSource = "declared";
+        var provisional = false;
         var probeDeclared = false;
         var patternDeclared = false;
         while (parser.nextToken() == JsonToken.FIELD_NAME) {
             var field = parser.currentName();
             parser.nextToken();
             switch (field) {
-                case "session_id_variable" -> {
-                    sessionIdVariable = readText(parser, "identity.session_id_variable");
-                    sessionDeclared = true;
-                }
+                case "session_id_variable" -> sessionIdVariable = readText(parser, "identity.session_id_variable");
                 case "version_probe" -> {
                     versionProbe = readStrings(parser, "identity.version_probe");
                     probeDeclared = true;
@@ -297,20 +296,19 @@ public class ProfileDocumentReader {
                     versionPattern = readText(parser, "identity.version_pattern");
                     patternDeclared = true;
                 }
-                case "model_source" -> modelSource = readText(parser, "identity.model_source");
+                case "model_source" -> {
+                    var declared = readText(parser, "identity.model_source");
+                    if (declared != null && !declared.isBlank()) {
+                        modelSource = declared;
+                    }
+                }
                 case "provisional" -> provisional = readBoolean(parser, "identity.provisional");
                 default -> parser.skipChildren();
             }
         }
-        if (!sessionDeclared || !probeDeclared || !patternDeclared) {
-            throw new IllegalStateException("identity.session_id_variable, identity.version_probe, and "
-                    + "identity.version_pattern are required, null declared where absent");
-        }
-        if (modelSource == null || modelSource.isBlank()) {
-            throw new IllegalStateException("identity.model_source is required");
-        }
-        if (provisional == null) {
-            throw new IllegalStateException("identity.provisional is required");
+        if (!probeDeclared || !patternDeclared) {
+            throw new IllegalStateException("identity.version_probe and identity.version_pattern are required, "
+                    + "null declared where absent");
         }
         if ((versionProbe == null) != (versionPattern == null)) {
             throw new IllegalStateException("identity.version_pattern is null if and only if version_probe is null");

@@ -30,7 +30,6 @@ import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.stream.Collectors;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,13 +43,13 @@ class ProfileDocumentReaderTest {
                 .parseDocument(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
     }
 
-    /** A minimal document in the closed form, for a client id and a precedence. */
+    /** A minimal document in the closed form of the current schema, for a client id and a precedence. */
     private static String document(String clientId, int precedence) {
         return """
-                { "client_id": "%s",
-                  "detection": { "precedence": %d, "primary_signals": [], "secondary_signals": [] },
-                  "identity": { "session_id_variable": null, "version_probe": null, "version_pattern": null,
-                    "model_source": "declared", "provisional": false } }
+                { "schema_version": 1, "client_id": "%s",
+                  "detection": { "precedence": %d, "primary_signals": [], "secondary_signals": [],
+                    "process_markers": [], "ai_agent_prefixes": [], "reaches": [ "command" ] },
+                  "identity": { "version_probe": null, "version_pattern": null } }
                 """.formatted(clientId, precedence);
     }
 
@@ -172,18 +171,19 @@ class ProfileDocumentReaderTest {
         void extractsTheTwoObjects() {
             var profile = parse("""
                     {
+                      "schema_version": 1,
                       "client_id": "fixture",
                       "detection": {
                         "precedence": 7,
                         "primary_signals": [ { "variable": "FIXTURE_PRIMARY", "equals": null } ],
-                        "secondary_signals": [ { "variable": "FIXTURE_SECONDARY", "equals": "1" } ]
+                        "secondary_signals": [ { "variable": "FIXTURE_SECONDARY", "equals": "1" } ],
+                        "process_markers": [ "FIXTURE_PID" ],
+                        "ai_agent_prefixes": [ "fixture" ],
+                        "reaches": [ "command", "serve" ]
                       },
                       "identity": {
-                        "session_id_variable": "FIXTURE_SESSION",
                         "version_probe": [ "fixture", "--version" ],
-                        "version_pattern": "(\\\\d+(?:\\\\.\\\\d+)+)",
-                        "model_source": "declared",
-                        "provisional": true
+                        "version_pattern": "(\\\\d+(?:\\\\.\\\\d+)+)"
                       }
                     }
                     """);
@@ -195,15 +195,15 @@ class ProfileDocumentReaderTest {
                             profile.detection().primarySignals()),
                     () -> assertEquals(List.of(new HostDetection.Signal("FIXTURE_SECONDARY", "1")),
                             profile.detection().secondarySignals()),
-                    () -> assertEquals("FIXTURE_SESSION", profile.identity().sessionIdVariable()),
+                    () -> assertNull(profile.identity().sessionIdVariable()),
                     () -> assertEquals(List.of("fixture", "--version"), profile.identity().versionProbe()),
                     () -> assertEquals("(\\d+(?:\\.\\d+)+)", profile.identity().versionPattern()),
                     () -> assertEquals("declared", profile.identity().modelSource()),
-                    () -> assertTrue(profile.identity().provisional()));
+                    () -> assertFalse(profile.identity().provisional()));
         }
 
         @Test
-        @DisplayName("skips every unrelated section")
+        @DisplayName("skips every unrelated section and still reads the legacy identity members")
         void skipsUnrelatedSections() {
             var profile = assertDoesNotThrow(() -> parse("""
                     {
@@ -218,11 +218,11 @@ class ProfileDocumentReaderTest {
                         "reaches": [ "command", "serve" ]
                       },
                       "identity": {
-                        "session_id_variable": null,
+                        "session_id_variable": "FIXTURE_SESSION",
                         "version_probe": null,
                         "version_pattern": null,
-                        "model_source": "declared",
-                        "provisional": false
+                        "model_source": "measured",
+                        "provisional": true
                       },
                       "prompt_extensions": [ { "text": "ignored" } ]
                     }
@@ -230,8 +230,10 @@ class ProfileDocumentReaderTest {
 
             assertAll(
                     () -> assertEquals("fixture", profile.clientId()),
-                    () -> assertNull(profile.identity().sessionIdVariable()),
-                    () -> assertNull(profile.identity().versionProbe()));
+                    () -> assertEquals("FIXTURE_SESSION", profile.identity().sessionIdVariable()),
+                    () -> assertNull(profile.identity().versionProbe()),
+                    () -> assertEquals("measured", profile.identity().modelSource()),
+                    () -> assertTrue(profile.identity().provisional()));
         }
 
         @Test
@@ -297,13 +299,12 @@ class ProfileDocumentReaderTest {
         }
 
         @Test
-        @DisplayName("refuses an identity without the session id variable")
-        void refusesIdentityWithoutSessionVariable() {
+        @DisplayName("refuses an identity without a declared version probe")
+        void refusesIdentityWithoutProbe() {
             assertThrows(IllegalStateException.class, () -> parse("""
                     { "client_id": "fixture",
                       "detection": { "precedence": 1, "primary_signals": [], "secondary_signals": [] },
-                      "identity": { "version_probe": null, "version_pattern": null,
-                        "model_source": "declared", "provisional": false } }
+                      "identity": { "version_pattern": null } }
                     """));
         }
 

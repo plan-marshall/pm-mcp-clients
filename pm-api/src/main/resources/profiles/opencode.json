@@ -1,5 +1,97 @@
 {
+  "schema_version": 1,
   "client_id": "opencode",
+  "display_name": "OpenCode",
+  "icon": null,
+  "min_daemon_version": "0.1.0",
+  "tools": {
+    "read_file": "read",
+    "write_file": "write",
+    "edit_file": "edit",
+    "search_code": "grep",
+    "find_files": "glob",
+    "run_shell": "bash",
+    "ask_user": "ask",
+    "idioms": {}
+  },
+  "skill_loading": {
+    "mode": "view_file",
+    "load_directive_template": "pm_skill(uri=\"{{uri}}\")",
+    "schema_residency": "on_demand",
+    "skills_extension": false
+  },
+  "headless": {
+    "executable": "opencode",
+    "install_locations": [ "~/.local/bin", "/usr/local/bin" ],
+    "install_hint": "install.opencode",
+    "auth_probe": {
+      "argv": [ "opencode", "auth", "list" ],
+      "logged_in_exit_codes": [ 0 ],
+      "logged_out_exit_codes": [ 1 ],
+      "login_command": [ "opencode", "auth", "login" ]
+    },
+    "models_probe": null,
+    "weights_probe": null,
+    "model_tiers": {
+      "frontier": "opencode-go/muse-spark-1.3-contributor",
+      "standard": "opencode-go/muse-spark-1.3-contributor",
+      "fast": "opencode-go/muse-spark-1.3-contributor"
+    },
+    "supported_versions": ">=1.0.0 <2.0.0",
+    "update_evidence": { "method": "none", "signer": null },
+    "agent_mode": "inline",
+    "argv": [ "run", "{{prompt_file}}", "--model", "{{model}}", "--format", "json" ],
+    "mcp_config": { "delivery": "slot", "path": null, "exclusive": true },
+    "classes": {
+      "writer": { "args": [ "--agent", "build" ], "tool_set": "enforced" },
+      "read_only": { "args": [ "--agent", "plan" ], "tool_set": "enforced" },
+      "zero_tool": null
+    },
+    "env": { "OPENCODE_CONFIG_CONTENT": "{{agent}}" },
+    "capabilities": [ "result_schema", "usage_fields", "exit_reliable", "extension_isolation" ],
+    "output": { "format": "jsonl", "result_pointer": null },
+    "usage": {
+      "input_tokens": "/part/tokens/input",
+      "output_tokens": "/part/tokens/output",
+      "cache_read": "/part/tokens/cache/read",
+      "cache_creation": "/part/tokens/cache/write",
+      "reasoning": "/part/tokens/reasoning",
+      "cost_usd": null,
+      "tool_uses": null
+    },
+    "events": {
+      "kind_pointer": "/type",
+      "kinds": {
+        "text": { "match": [ "text" ], "text": "/part/text" },
+        "tool_call": { "match": [ "tool" ], "tool": "/part/tool",
+          "target": [ "/part/state/input/filePath", "/part/state/input/command" ] },
+        "tool_result": { "match": [ "tool_result" ], "size": "/part/state/output/size", "is_error": null },
+        "file_changed": { "match": [ "file" ], "path": "/part/state/input/filePath" },
+        "turn": { "match": [ "step_finish" ], "stop_reason": null }
+      }
+    },
+    "endpoints": [ "api.opencode.ai:443" ],
+    "writable_paths": [ "~/.cache/opencode", "~/.local/state/opencode" ],
+    "data_home": { "variable": "XDG_DATA_HOME", "login_file": "opencode/auth.json" },
+    "tool_result_limit_chars": 32000,
+    "resource_tools": [ "list_resources", "read_resource" ],
+    "session_residue": "persisted",
+    "resumability": { "hold": false, "resume": null }
+  },
+  "connection": {
+    "transport": "stdio",
+    "idle_timeout_seconds": 60,
+    "bounded_wait_seconds": 240,
+    "progress_resets_timeout": true
+  },
+  "worker": {
+    "eligible": true,
+    "restricted_models": [ "opencode-go/muse-spark-1.3-contributor" ],
+    "ack_deadline_seconds": 270,
+    "ack_informational": true,
+    "silence_grace_seconds": 30,
+    "idle_wakeups": 3
+  },
   "detection": {
     "precedence": 20,
     "primary_signals": [
@@ -7,13 +99,12 @@
       { "variable": "OPENCODE_PID", "equals": null }
     ],
     "secondary_signals": [],
-    "process_markers": [ "OPENCODE_PID" ]
+    "process_markers": [ "OPENCODE_PID" ],
+    "ai_agent_prefixes": [ "opencode" ],
+    "reaches": [ "command", "serve" ]
   },
   "identity": {
-    "session_id_variable": null,
     "version_probe": [ "opencode", "--version" ],
-    "version_pattern": "(\\d+(?:\\.\\d+)+)",
-    "model_source": "declared",
-    "provisional": true
+    "version_pattern": "(\\d+(?:\\.\\d+)+)"
   }
 }
