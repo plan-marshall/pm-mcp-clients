@@ -12,11 +12,13 @@ package de.planmarshall.operator.tui;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jline.keymap.BindingReader;
 import org.jline.keymap.KeyMap;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Attributes;
 import org.jline.terminal.Terminal;
 import org.jline.utils.Display;
 import org.jline.utils.InfoCmp;
@@ -34,7 +36,10 @@ import de.planmarshall.operator.OperatorContext;
  *
  * <p>Everything it changes is restored in a {@code finally}, also when the renderer or a handler
  * throws: the terminal's attributes, the keypad mode, the cursor, and the alternate screen. A
- * terminal is never left in the alternate screen or with the cursor hidden.
+ * terminal is never left in the alternate screen or with the cursor hidden. While the alternate
+ * screen is open a shutdown hook restores it as well, so an interrupt, a {@code SIGTERM}, or any
+ * other shutdown that skips the {@code finally} does not leave the operator's terminal unreadable;
+ * the two paths are idempotent and may race.
  *
  * <p>The driver knows nothing about the content of a view. A {@link Renderer} supplies the
  * {@link TuiScreen} to draw; a {@link KeyHandler} receives the actions and returns {@code false}
@@ -115,7 +120,12 @@ public final class TuiScreenDriver {
     private final Terminal terminal;
     private final TuiLayout layout;
     private final String locale;
+    private final AtomicBoolean alternateActive = new AtomicBoolean();
+    private final AtomicBoolean restored = new AtomicBoolean(true);
+    private final AtomicBoolean stopping = new AtomicBoolean();
     private @Nullable Display activeDisplay;
+    private volatile @Nullable Attributes savedAttributes;
+    private volatile @Nullable Thread shutdownHook;
     private boolean suspended;
 
     /**
@@ -203,6 +213,7 @@ public final class TuiScreenDriver {
         }
 
         var previousAttributes = terminal.enterRawMode();
+        savedAttributes = previousAttributes;
         var previousWinch = terminal.handle(Terminal.Signal.WINCH, _ -> {
             // The loop resizes and redraws on its next turn; the handler only has to exist so the
             // signal does not reach the default, which would interrupt the process.
@@ -210,6 +221,7 @@ public final class TuiScreenDriver {
         boolean alternate = false;
         try {
             alternate = true;
+            stopping.set(false);
             enterAlternate();
             var display = new Display(terminal, true);
             activeDisplay = display;
@@ -220,8 +232,11 @@ public final class TuiScreenDriver {
             int previousColumns = -1;
             int previousRows = -1;
             boolean running = true;
-            while (running) {
+            while (running && !stopping.get()) {
                 display.resize(terminal);
+                if (stopping.get()) {
+                    break;
+                }
                 var screen = renderer.screen();
                 if (screen.kind() != keyMapKind) {
                     keyMap = keyMap(screen.kind());
@@ -313,6 +328,10 @@ public final class TuiScreenDriver {
     }
 
     private void enterAlternate() {
+        if (alternateActive.compareAndSet(false, true)) {
+            restored.set(false);
+            registerShutdownHook();
+        }
         terminal.puts(InfoCmp.Capability.enter_ca_mode);
         terminal.puts(InfoCmp.Capability.cursor_invisible);
         terminal.puts(InfoCmp.Capability.keypad_xmit);
@@ -333,10 +352,84 @@ public final class TuiScreenDriver {
     }
 
     private void restore() {
-        terminal.puts(InfoCmp.Capability.keypad_local);
-        terminal.puts(InfoCmp.Capability.cursor_normal);
-        terminal.puts(InfoCmp.Capability.exit_ca_mode);
-        terminal.flush();
+        alternateActive.set(false);
+        restoreImmediately();
+        removeShutdownHook();
+    }
+
+    /**
+     * Leaves the alternate screen, shows the cursor again, restores the keypad mode, and restores
+     * the terminal attributes the raw mode replaced. This is the path the shutdown hook runs on the
+     * JVM's shutdown thread, so it is idempotent and never lets an exception escape: the normal exit
+     * and the hook may race, and a failed restore must not turn a clean exit into a failed one.
+     *
+     * <p>The flag is the idempotence latch: the first caller writes the sequences, every later
+     * caller returns without touching the terminal. A run that opens the alternate screen again
+     * clears the latch.
+     */
+    void restoreImmediately() {
+        if (!restored.compareAndSet(false, true)) {
+            return;
+        }
+        stopping.set(true);
+        try {
+            try {
+                terminal.puts(InfoCmp.Capability.keypad_local);
+                terminal.puts(InfoCmp.Capability.cursor_normal);
+                terminal.puts(InfoCmp.Capability.exit_ca_mode);
+                terminal.flush();
+            } finally {
+                var attributes = savedAttributes;
+                if (attributes != null) {
+                    terminal.setAttributes(attributes);
+                }
+            }
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (RuntimeException _) {
+            // The terminal is already gone; there is nothing left to restore.
+        }
+    }
+
+    /**
+     * Registers the shutdown hook that restores the terminal when the process is interrupted or
+     * terminated with {@code SIGINT} or {@code SIGTERM}. A hook cannot be added while the JVM is
+     * already shutting down; the {@code finally} of {@link #run} still restores the terminal in
+     * that case.
+     */
+    private void registerShutdownHook() {
+        var hook = new Thread(this::restoreImmediately, "tui-terminal-restore");
+        shutdownHook = hook;
+        try {
+            Runtime.getRuntime().addShutdownHook(hook);
+        } catch (IllegalStateException _) {
+            shutdownHook = null;
+        }
+    }
+
+    /**
+     * Removes the shutdown hook after a clean exit. The JVM refuses the removal while it shuts
+     * down, and then the hook is already running or has run; the idempotence latch keeps the two
+     * paths from writing the sequences twice.
+     */
+    private void removeShutdownHook() {
+        var hook = shutdownHook;
+        shutdownHook = null;
+        if (hook == null) {
+            return;
+        }
+        try {
+            Runtime.getRuntime().removeShutdownHook(hook);
+        } catch (IllegalStateException _) {
+            // The JVM is already shutting down; the hook restores, or has restored, the terminal.
+        }
+    }
+
+    /**
+     * @return {@code true} while the shutdown hook of an open view is registered
+     */
+    boolean shutdownHookRegistered() {
+        return shutdownHook != null;
     }
 
     private static boolean boundOn(TuiLevel.Kind kind, TuiKeyAction action) {

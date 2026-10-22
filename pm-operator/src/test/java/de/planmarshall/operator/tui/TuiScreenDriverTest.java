@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import org.jline.terminal.Attributes;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.operator.OperatorContext;
@@ -279,6 +280,86 @@ class TuiScreenDriverTest {
                                 () -> assertEquals(1, after.alternation().exits()),
                                 () -> assertTrue(after.cursorVisible())
             );
+        }
+    }
+
+    @Test
+    @DisplayName("registers the terminal-restore hook while the view is open and removes it on a clean exit")
+    void registersAndRemovesShutdownHook() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var stack = stack(3);
+            var driver = new TuiScreenDriver(virtual.terminal(), "en");
+            var thread = new Thread(() -> {
+                try {
+                    driver.run(() -> screen(stack, true), handler(stack));
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(line -> line.contains("row number 0")));
+            assertTrue(driver.shutdownHookRegistered(), "an open view must register its restore hook");
+
+            virtual.type("q");
+            join(thread);
+            assertFalse(driver.shutdownHookRegistered(), "a clean exit must remove the restore hook");
+        }
+    }
+
+    @Test
+    @DisplayName("the shutdown hook restores the terminal once and the normal exit writes nothing more")
+    void shutdownHookRestoresOnce() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var stack = stack(3);
+            var driver = new TuiScreenDriver(virtual.terminal(), "en");
+            boolean echoBefore = virtual.terminal().getAttributes().getLocalFlag(Attributes.LocalFlag.ECHO);
+            var thread = new Thread(() -> {
+                try {
+                    driver.run(() -> screen(stack, true), handler(stack));
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            });
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && virtual.screen().lines().stream().anyMatch(line -> line.contains("row number 0")));
+            assertFalse(virtual.terminal().getAttributes().getLocalFlag(Attributes.LocalFlag.ECHO),
+                                "the view runs in raw mode");
+
+            driver.restoreImmediately();
+            var afterHook = virtual.screen();
+            assertAll(
+                                () -> assertFalse(afterHook.alternateScreenActive()),
+                                () -> assertTrue(afterHook.cursorVisible()),
+                                () -> assertEquals(echoBefore,
+                                                    virtual.terminal().getAttributes()
+                                                                        .getLocalFlag(Attributes.LocalFlag.ECHO),
+                                                    "the hook restores the attributes of the terminal"),
+                                () -> assertEquals(1, afterHook.alternation().entries()),
+                                () -> assertEquals(1, afterHook.alternation().exits())
+            );
+
+            join(thread);
+            var afterExit = virtual.screen();
+            assertAll(
+                                () -> assertFalse(afterExit.alternateScreenActive()),
+                                () -> assertEquals(1, afterExit.alternation().exits(),
+                                                    "the finally must not restore a terminal the hook restored"),
+                                () -> assertFalse(driver.shutdownHookRegistered())
+            );
+        }
+    }
+
+    @Test
+    @DisplayName("a restore before the view opened writes nothing")
+    void restoreBeforeOpeningWritesNothing() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var driver = new TuiScreenDriver(virtual.terminal(), "en");
+
+            driver.restoreImmediately();
+
+            assertEquals("", virtual.rawOutput());
         }
     }
 

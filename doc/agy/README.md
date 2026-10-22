@@ -24,7 +24,7 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 
 | Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Post-Run Remediation** | [`post-run-remediation-plan.md`](post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Active (Dispatched) |
+| **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Implemented (PR pending) |
 
 ---
 

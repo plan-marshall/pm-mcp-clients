@@ -38,6 +38,8 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.tui.TuiLayout;
+import de.planmarshall.operator.tui.TuiScreenDriver;
 
 /**
  * The operator's interactive console REPL (04-console.adoc#console).
@@ -97,8 +99,9 @@ public final class PmConsole {
         }
 
         var completer = new StringsCompleter(
-                            "exit", "quit", "help", "status", "plans", "plan", "epic", "questions", "answer",
-                            "web", "runtime", "config", "credentials", "projects", "project", "client", "drain"
+                            "exit", "quit", "help", "status", "plans", "tui", "plan", "epic", "questions",
+                            "answer", "web", "runtime", "config", "credentials", "projects", "project",
+                            "client", "drain"
         );
 
         var reader = LineReaderBuilder.builder()
@@ -115,6 +118,7 @@ public final class PmConsole {
         webPort = EntryFlow.getWebPort(entryResult.status());
         badges.addAll(entryResult.initialBadges());
         updateWindowTitle(terminal);
+        printFullScreenHint(out, terminal);
 
         Thread sseThread = startEventListener(reader);
 
@@ -255,17 +259,25 @@ public final class PmConsole {
         switch (verb) {
             case "help" -> printHelp(out, parts);
             case "web" -> handleWebCommand(out, parts);
-            default -> {
-                var args = parseArgs(line);
-                var selection = ProjectSelector.rewrite(context, out, out, args.toArray(String[]::new), reader);
-                if (!selection.proceed()) {
-                    out.flush();
-                    return;
-                }
-                PmOperator.execute(context, out, out, selection.args().toArray(String[]::new));
-            }
+            case "tui" -> runOperatorVerb("plans" + line.substring(verb.length()), out, reader);
+            default -> runOperatorVerb(line, out, reader);
         }
         out.flush();
+    }
+
+    /**
+     * Runs one operator verb of the console, with the project selector in front of it.
+     *
+     * @param line   the command line to run
+     * @param out    the console's writer
+     * @param reader the line reader
+     */
+    private void runOperatorVerb(String line, PrintWriter out, LineReader reader) {
+        var args = parseArgs(line);
+        var selection = ProjectSelector.rewrite(context, out, out, args.toArray(String[]::new), reader);
+        if (selection.proceed()) {
+            PmOperator.execute(context, out, out, selection.args().toArray(String[]::new));
+        }
     }
 
     private void handleWebCommand(PrintWriter out, String[] parts) {
@@ -519,6 +531,20 @@ public final class PmConsole {
             title.append(" [").append(String.join(" \u00b7 ", badges)).append(']');
         }
         TerminalTitle.set(terminal, title.toString());
+    }
+
+    /**
+     * Tells the operator once, in the greeting, that the full-screen overview is one word away.
+     * The hint is left out where the view cannot open, so it never names a verb that falls back.
+     *
+     * @param out      the console's writer
+     * @param terminal the terminal the console runs on
+     */
+    private void printFullScreenHint(PrintWriter out, Terminal terminal) {
+        if (TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+            out.println(MessageCatalogue.format(locale(), "operator.console.hint.tui", Map.of()));
+            out.flush();
+        }
     }
 
     /**

@@ -25,16 +25,24 @@ import java.util.Set;
 
 import lombok.experimental.UtilityClass;
 
+import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.designer.WorkflowCatalogue;
 import de.planmarshall.api.designer.WorkflowUnit;
 import de.planmarshall.api.event.EventEnvelope;
 import de.planmarshall.api.event.EventName;
+import de.planmarshall.api.intent.EpicIntentResource;
+import de.planmarshall.api.intent.OutlineResource;
+import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
+import de.planmarshall.api.process.EpicProcess;
+import de.planmarshall.api.process.ProcessTree;
+import de.planmarshall.api.process.TaskActivity;
 import de.planmarshall.api.project.ProjectExplorer;
+import de.planmarshall.api.report.PlanCompletionReport;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.system.CleanupJob;
@@ -528,15 +536,79 @@ public class ScenarioLoader {
                 case "GET /api/v1/system" -> SystemSnapshot.fromMap(map);
                 case "GET /api/v1/workflows/catalogue" -> WorkflowCatalogue.fromMap(map);
                 case "GET /api/v1/system/cleanup" -> CleanupJob.fromMap(map);
-                default -> {
-                    // No closed codec is registered for this endpoint yet.
-                }
+                default -> decodePlanOrEpicRoute(routeKey, map);
             }
         }
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException e) {
             throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
                     "representation does not decode with the pm-api codec: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Decodes a route that names a plan or an epic by id with the codec of its resource. The
+     * registry covers the detail, process, intent, outline, activity, and completion resources, so
+     * a scenario cannot declare one the operator contract refuses; a route of another shape keeps
+     * the generic fallback.
+     *
+     * @param routeKey the route key of the scenario
+     * @param map      the route representation
+     * @throws IOException if the representation does not decode with the resource's codec
+     */
+    private static void decodePlanOrEpicRoute(String routeKey, Map<String, Object> map) throws IOException {
+        if (!routeKey.startsWith("GET ")) {
+            return;
+        }
+        var path = routeKey.substring("GET ".length());
+        if (!path.startsWith("/api/v1/plans/") && !path.startsWith("/api/v1/epics/")) {
+            return;
+        }
+        var segments = path.substring(1).split("/", -1);
+        var collection = segments[2];
+        if (segments.length == 4) {
+            if ("epics".equals(collection) && !segments[3].isBlank()) {
+                EpicResource.fromMap(map);
+            }
+            // A plan's own detail has no codec of its own; its view is the process resource.
+            return;
+        }
+        if (segments.length == 5 && !segments[3].isBlank()) {
+            switch (segments[4]) {
+                case "process" -> {
+                    if ("plans".equals(collection)) {
+                        ProcessTree.fromMap(map);
+                    } else {
+                        EpicProcess.fromMap(map);
+                    }
+                }
+                case "intent" -> {
+                    if ("plans".equals(collection)) {
+                        PlanIntentResource.fromMap(map);
+                    } else {
+                        EpicIntentResource.fromMap(map);
+                    }
+                }
+                case "outline" -> {
+                    if ("plans".equals(collection)) {
+                        OutlineResource.fromMap(map);
+                    }
+                }
+                case "completion" -> {
+                    if ("plans".equals(collection)) {
+                        PlanCompletionReport.fromMap(map);
+                    }
+                }
+                default -> {
+                    // No closed codec is registered for this sub-resource yet.
+                }
+            }
+            return;
+        }
+        if (segments.length == 7 && "plans".equals(collection) && "tasks".equals(segments[4])
+                && "activity".equals(segments[6]) && !segments[3].isBlank()
+                && !segments[5].isBlank()) {
+            TaskActivity.fromMap(map);
         }
     }
 
