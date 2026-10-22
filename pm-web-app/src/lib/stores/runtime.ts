@@ -702,6 +702,12 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
     taskId: state.selectedTaskId ?? undefined,
     reportPlanId: state.selectedReportDetailPlanId ?? undefined,
     explorerProjectId: state.selectedProjectId ?? undefined,
+    // The onboarding step is part of the address while the onboarding is the shown route. The view
+    // consumes the store's copy once, but the address keeps it so a reload opens the same aspect.
+    onboardingStep:
+      state.currentRoute === 'onboarding'
+        ? (requestedOnboardingStepFromUrl() ?? state.onboardingStep ?? undefined)
+        : undefined,
   };
 }
 
@@ -856,6 +862,8 @@ export function adoptRouteFromLocation(): AppRoute | null {
         match.route === 'designer'
           ? new URLSearchParams(window.location.search).get('project')
           : null,
+      // The onboarding keeps the step the address names, so a later store update cannot drop it.
+      onboardingStep: match.route === 'onboarding' ? requestedOnboardingStepFromUrl() : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       startProjectId: match.projectId ?? s.startProjectId ?? null,
@@ -1087,6 +1095,20 @@ export function openOnboardingStep(step: number): void {
 }
 
 /**
+ * @returns the step the address bar names, or `null` when it names none
+ */
+function requestedOnboardingStepFromUrl(): number | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  const requested = Number.parseInt(
+    new URLSearchParams(window.location.search).get('step') ?? '',
+    10,
+  );
+  return Number.isInteger(requested) ? requested : null;
+}
+
+/**
  * The step the address bar or the store asked the onboarding to open at.
  *
  * @param maxStep the last step the screen offers
@@ -1094,11 +1116,8 @@ export function openOnboardingStep(step: number): void {
  */
 export function requestedOnboardingStep(maxStep: number): number | null {
   const fromStore = get(runtimeStore).onboardingStep;
-  const fromUrl =
-    typeof window !== 'undefined'
-      ? Number.parseInt(new URLSearchParams(window.location.search).get('step') ?? '', 10)
-      : Number.NaN;
-  const requested = Number.isFinite(fromUrl) ? fromUrl : fromStore;
+  const fromUrl = requestedOnboardingStepFromUrl();
+  const requested = fromUrl ?? fromStore;
   if (typeof requested !== 'number' || !Number.isInteger(requested)) return null;
   return requested >= 1 && requested <= maxStep ? requested : null;
 }

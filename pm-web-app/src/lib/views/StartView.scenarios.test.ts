@@ -465,6 +465,30 @@ describe('start-local-changes: offered only with a landing that commits', () => 
       preview_id: 'preview-1',
     });
   });
+
+  it('refuses the preview when the landing does not commit', async () => {
+    arrangeOpen(sources());
+    vi.spyOn(apiClient, 'previewLocalChanges').mockResolvedValue({
+      status: 'preview',
+      preview_id: 'preview-2',
+      branch: 'main',
+      changed_files: [],
+      landing: 'landing.files',
+      landing_commits: false,
+      // The runtime names the landing as the cause of the refusal (PM-WF-25).
+      reason: 'landing_files',
+      eligible: false,
+    });
+
+    render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
+    await screen.findByTestId('source-list');
+    await fireEvent.click(screen.getByTestId('add-local_changes'));
+
+    expect(await screen.findByTestId('local-changes-ineligible')).toHaveTextContent(
+      'landing.files',
+    );
+    expect(screen.getByTestId('local-changes-add')).toBeDisabled();
+  });
 });
 
 describe('start-pull-request: the changed files stay untrusted', () => {

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { pair, switchScenario } from './helpers/pairing.js';
 
 /**
  * The web chrome, navigation and action advisories: the header is the only always-on status row,
@@ -7,15 +8,8 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Web chrome, navigation and action advisories', () => {
   test.beforeEach(async ({ page, request }) => {
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
-      data: { scenario: 'plan-view' },
-    });
-    expect(res.ok()).toBeTruthy();
-
-    await page.goto('/');
-    await page.evaluate(() => localStorage.clear());
-    await page.goto('/#code=KXQB-MRTN');
-    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+    await switchScenario(request, 'plan-view');
+    await pair(page, request);
   });
 
   test.afterAll(async ({ request }) => {

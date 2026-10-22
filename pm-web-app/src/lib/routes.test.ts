@@ -63,6 +63,11 @@ describe('the routes of the app', () => {
     expect(pathForRoute('designer', { projectId: 'a b' })).toBe('/designer?project=a%20b');
   });
 
+  it('carries the onboarding step in the query', () => {
+    expect(pathForRoute('onboarding', { onboardingStep: 6 })).toBe('/onboarding?step=6');
+    expect(matchPath('/onboarding')).toEqual({ route: 'onboarding' });
+  });
+
   it('resolves a plan and an epic by their id', () => {
     expect(matchPath('/plans/plan-42')).toEqual({ route: 'plan', planId: 'plan-42' });
     expect(matchPath('/epics/epic-7')).toEqual({ route: 'epic', epicId: 'epic-7' });

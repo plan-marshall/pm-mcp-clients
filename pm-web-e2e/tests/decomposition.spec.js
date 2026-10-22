@@ -1,15 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { pair, switchScenario } from './helpers/pairing.js';
 
 async function pairOnDecompositionScenario(page, request) {
-  const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
-    data: { scenario: 'decomposition' },
-  });
-  expect(res.ok()).toBeTruthy();
-
-  await page.goto('/');
-  await page.evaluate(() => localStorage.clear());
-  await page.goto('/#code=DCMP-2606');
-  await expect(page.locator('.app-header__machine')).toBeVisible({ timeout: 15000 });
+  await switchScenario(request, 'decomposition');
+  await pair(page, request);
 
   await page.goto('/epics/relay-hardening/decomposition?project=pm-mcp-clients');
   await expect(page.getByTestId('decomposition-title')).toContainText(

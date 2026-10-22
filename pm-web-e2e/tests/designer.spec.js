@@ -175,8 +175,18 @@ test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC
 
   test('jumps to the line of a validation finding', async ({ page }) => {
     await page.getByTestId('workflow-text').fill('this is not a workflow');
+
+    const validated = page.waitForResponse(
+      (response) => response.url().includes('/api/v1/workflows/validate'),
+      { timeout: 15000 },
+    );
     await page.getByTestId('validate-button').click();
-    await expect(page.getByTestId('validation-summary')).toContainText('1 finding');
+    const response = await validated;
+    expect(response.status()).toBe(200);
+
+    await expect(page.getByTestId('validation-summary')).toContainText('1 finding', {
+      timeout: 15000,
+    });
 
     await page.getByTestId('finding-0').getByRole('button').click();
 

@@ -304,8 +304,8 @@ class StartScenarioTest {
 
                 var created = StartStateResource.fromJson(opened.bodyText());
                 assertTrue(created.entryId().startsWith("ent-"));
-                assertEquals(StartState.RECIPE, created.state(),
-                        "a plan whose project offers recipes first chooses between sources and a recipe");
+                assertEquals(StartState.CHOOSE, created.state(),
+                        "a plan first chooses between sources and a recipe");
                 assertEquals("pm-mcp-clients", created.entry().projectId());
 
                 var sources = client.send(HttpRequest.json("POST",
