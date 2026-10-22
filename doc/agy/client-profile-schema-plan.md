@@ -49,7 +49,7 @@ It unblocks `pm-mcp-core PLAN-19 profile-loader` and adheres strictly to [`doc/m
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-client-profile-schema` on branch `feature/client-profile-schema` rebased on latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-client-profile-schema` on branch `feature/client-profile-schema` rebased on latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-code-reviewer` for CodeRabbit finding remediation
