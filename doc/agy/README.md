@@ -26,7 +26,7 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 |---|---|---|---|---|
 | **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed & Verified (PR #168) |
 | **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Landed & Verified (PR #173); [report](verified/web-session-pairing-and-dev-host-plan-report.md) |
-| **Web Session Follow-Up Fixes** | [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` | `fix/web-session-follow-up-fixes` | Implemented; [report](web-session-follow-up-fixes-plan-report.md); PR review pending (Step 8 pending) |
+| **Web Session Follow-Up Fixes** | [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` | `fix/web-session-follow-up-fixes` | Implemented; [report](web-session-follow-up-fixes-plan-report.md); PR #175 review pending (Step 8 pending) |
 
 *(Note: The web-session follow-up fixes plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete).*
 
@@ -85,7 +85,7 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 ### Stream D: Web Session, Pairing & Dev Host Remediation (`pm-web-app` / `pm-mock-runtime`)
 1. **Landed & Verified (PR #173)**: [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) ([Report](verified/web-session-pairing-and-dev-host-plan-report.md) — Step 8 complete; three follow-ups recorded)
    *(Session persistence across mock restarts; authenticated-only `401` handling; system-name Vite/start-script host for phone access; already-paired code probe; fresh-code control endpoint and second-device pairing; single-use pairing copy; redundant-banner removal, clickable brand, action hover advisories, and discoverable process designer)*
-2. **Follow-up fixes (Implemented; PR review pending)**: [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) ([Report](web-session-follow-up-fixes-plan-report.md) — Step 8 pending)
+2. **Follow-up fixes (Implemented; PR #175 review pending)**: [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) ([Report](web-session-follow-up-fixes-plan-report.md) — Step 8 pending)
    *(Loopback dev-host output, designer route/dirty-draft reconciliation, and removal of the unreachable pre-pairing status probe)*
 
 ---

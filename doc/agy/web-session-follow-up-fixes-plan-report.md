@@ -31,6 +31,7 @@ The three findings left open by the Step 8 verification of [`web-session-pairing
 ### Documentation
 
 - This report.
+- Pull request [#175](https://github.com/plan-marshall/pm-mcp-clients/pull/175) on branch `fix/web-session-follow-up-fixes`.
 - The plan archived at [`implemented/web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md), with every relative link rebased for the new location.
 - [`doc/agy/README.md`](README.md) dashboard row and the [`implemented/README.md`](implemented/README.md) archive index updated.
 - [`doc/findings-web.txt`](../findings-web.txt) — the follow-up pointer now names the archived plan.
