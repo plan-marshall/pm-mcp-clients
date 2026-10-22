@@ -18,17 +18,13 @@ Every work package in `doc/agy/` is governed by coordinated architectural layers
 
 ---
 
-## 2. Active Wave: 3-Stream Parallel Model
+## 2. Active Wave: Post-Run Remediation Wave
 
-All implementation packages and client streams in `pm-mcp-clients` are complete, landed on `main`, and passed Step 8 post-landing verification.
+Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc) identified four cross-cutting findings (CLI signal restoration, interactive entry flag, dynamic route codec validation closure, and mobile viewport E2E coverage) unified into one remediation plan.
 
-| Stream | Last Completed Plan | Isolated Worktree Directory | Topic Branch | State |
+| Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Profiles & Schemas (Stream A)** | [`client-profile-schema-plan.md`](implemented/client-profile-schema-plan.md) | Cleaned up | `feature/client-profile-schema` | Landed & Verified (PR #161, #166) |
-| **CLI Full-Screen (Stream B)** | [`cli-fullscreen-reports-system-plan.md`](implemented/cli-fullscreen-reports-system-plan.md) | Cleaned up | `feat/cli-fullscreen-reports-system` | Landed & Verified (PR #165) |
-| **Completion Report (Stream C)** | [`completion-own-calls-change-map-plan.md`](implemented/completion-own-calls-change-map-plan.md) | Cleaned up | `feat/completion-own-calls-change-map` | Landed & Verified (PR #163) |
-
-*(Note: There are currently no open work packages remaining in `doc/plans/`. All planned client deliverables and full-screen TUI levels are 100% complete).*
+| **Post-Run Remediation** | [`post-run-remediation-plan.md`](post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Active (Dispatched) |
 
 ---
 
