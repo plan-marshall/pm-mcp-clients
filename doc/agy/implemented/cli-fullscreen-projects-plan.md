@@ -72,9 +72,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Final completion report written (`doc/agy/cli-fullscreen-projects-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-projects-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-projects-plan-report.md` by orchestrator session.
+- [x] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-projects-plan-report.md` by orchestrator session.
 
 ---
 
