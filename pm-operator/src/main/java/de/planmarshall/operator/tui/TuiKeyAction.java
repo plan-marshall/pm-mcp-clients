@@ -64,6 +64,30 @@ public enum TuiKeyAction {
     FILTER("filter"),
     /** Read everything again from the runtime. */
     RELOAD("reload"),
+    /** Mark or unmark the selected project as a favourite. */
+    FAVOURITE("favourite"),
+    /** Move the selected favourite down in the operator's order. */
+    MOVE_FAVOURITE_DOWN("move_favourite_down"),
+    /** Move the selected favourite up in the operator's order. */
+    MOVE_FAVOURITE_UP("move_favourite_up"),
+    /** Switch the project list between by name and by most used. */
+    SORT("sort"),
+    /** Leave the explorer and start onboarding a project. */
+    ADD_PROJECT("add_project"),
+    /** Leave the explorer and start an epic in the selected project. */
+    ADD_EPIC("add_epic"),
+    /** Leave the explorer and start a plan in the selected project. */
+    ADD_PLAN("add_plan"),
+    /** Open the selected project's level of the overview. */
+    RUNNING_WORK("running_work"),
+    /** Leave the explorer and run the project's setup. */
+    SETUP("setup"),
+    /** Continue the selected onboarding, setup, or open start entry. */
+    CONTINUE("continue"),
+    /** Abandon the selected onboarding run. */
+    ABANDON("abandon"),
+    /** Enrol a released project again from its identity. */
+    ENROL_AGAIN("enrol_again"),
     /** Show the keys and the selected row's details. */
     HELP("help"),
     /** Leave the view to the prompt. */

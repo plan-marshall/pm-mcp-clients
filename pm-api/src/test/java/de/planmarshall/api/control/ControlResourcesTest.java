@@ -52,10 +52,10 @@ class ControlResourcesTest {
     @DisplayName("round-trips the epic resource with its rows, waits, and tokens")
     void epicResource() throws Exception {
         var row = new WorkRow("relay-token-rotation", "relay-token-rotation", "staged", "dependency",
-                "relay-auth-v2", List.of(), null, null, "rotate the tokens",
+                "relay-auth-v2", List.of(), null, null, null, "rotate the tokens",
                 List.of("the rotation", "a test"), List.of("pm-api/src/token"), List.of("relay-auth-v2"));
         var overlap = new WorkRow("relay-docs", "relay-docs", "staged", "overlap", "relay-auth-v2",
-                List.of("pm-api/src/store/Doc.java"), null, null, null, List.of(), List.of(), List.of());
+                List.of("pm-api/src/store/Doc.java"), null, null, null, null, List.of(), List.of(), List.of());
         var resource = new EpicResource("relay-hardening", "pm-mcp-clients", "pm-mcp-clients",
                 "https://github.com/plan-marshall/pm-mcp-clients/tree/epic/relay-hardening",
                 "running", true, 0, 3, 2, null,
@@ -199,12 +199,18 @@ class ControlResourcesTest {
     @Test
     @DisplayName("answers the derived states of the resources")
     void derivedStates() throws Exception {
-        var shipped = new WorkRow("p", "p", "shipped", null, null, List.of(), 211, null, null,
+        var shipped = new WorkRow("p", "p", "shipped", null, null, List.of(), 211,
+                "https://github.com/plan-marshall/pm-mcp-clients/pull/211", null, null,
                 List.of(), List.of(), List.of());
-        var staged = new WorkRow("q", "q", "staged", "none", null, List.of(), null, null, null,
+        var staged = new WorkRow("q", "q", "staged", "none", null, List.of(), null, null, null, null,
                 List.of(), List.of(), List.of());
         assertTrue(shipped.isLocked());
         assertFalse(staged.isLocked());
+
+        var parsedShipped = WorkRow.fromJson(shipped.toJson());
+        assertEquals("https://github.com/plan-marshall/pm-mcp-clients/pull/211",
+                parsedShipped.pullRequestUrl());
+        assertNull(WorkRow.fromJson(staged.toJson()).pullRequestUrl());
 
         var epic = new EpicResource("e", "prj", "prj", null, "running", true, 0, 3, 1, null,
                 List.of(new EpicWorkstream("WS-1", "one", true, List.of(staged, shipped))),

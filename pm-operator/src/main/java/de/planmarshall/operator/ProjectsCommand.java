@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -27,6 +29,10 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectExplorer;
+import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.overview.OverviewFullScreenApp.InitialSelection;
+import de.planmarshall.operator.tui.TuiLayout;
+import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -60,6 +66,34 @@ public final class ProjectsCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         context.gate().verify();
+        if (!list && (filter == null || filter.isBlank())) {
+            Terminal terminal = null;
+            try {
+                terminal = context.createTerminal();
+            } catch (IOException _) {
+                // Without a terminal the scrollback list is the whole view.
+            }
+            try {
+                if (terminal != null
+                                    && TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+                    var app = new OverviewFullScreenApp(context, terminal, InitialSelection.explorerRoot(),
+                                        Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
+                                        context.noticeBuffer());
+                    var result = app.run(spec.commandLine().getOut());
+                    if (result != TuiScreenDriver.Result.TOO_NARROW) {
+                        return 0;
+                    }
+                }
+            } finally {
+                if (terminal != null) {
+                    terminal.close();
+                }
+            }
+        }
+        return printList();
+    }
+
+    private int printList() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
         var out = spec.commandLine().getOut();
         if (response.status() == 200) {

@@ -116,6 +116,10 @@ public final class PmOperator implements Callable<Integer> {
      * @return the exit code
      */
     public static int execute(OperatorContext context, PrintWriter out, PrintWriter err, String... args) {
+        var selection = ProjectSelector.rewrite(context, out, err, args);
+        if (!selection.proceed()) {
+            return selection.exitCode();
+        }
         var commandLine = new CommandLine(new PmOperator(context), new Factory(context));
         commandLine.setOut(out);
         commandLine.setErr(err);
@@ -129,7 +133,7 @@ public final class PmOperator implements Callable<Integer> {
             err.flush();
             return EXIT_FAILURE;
         });
-        var code = commandLine.execute(args);
+        var code = commandLine.execute(selection.args().toArray(String[]::new));
         out.flush();
         err.flush();
         return code;
