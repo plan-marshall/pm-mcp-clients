@@ -51,8 +51,10 @@ Mock runtime started successfully:
   Scenario:           onboarding-happy
   Runtime Token:      mock-token-abcde-12345
   Pairing Code:       MOCKMOCK
-  Web App URL:        http://localhost:5173/pair#code=MOCKMOCK
+  Web App URL:        http://mbp-oliver.local:5173/pair#code=MOCKMOCK
 ```
+
+The URL names the machine rather than `localhost`, so a phone on the same network can reach the development server; `PM_WEB_HOST` overrides the name. `start.sh` keeps the mock's device secret on a stable base (`pm-mock-runtime/target/machine`), so a paired browser survives a mock restart; a checkout too deep for a Unix-domain socket falls back to a short stable base under the temp directory (the printed `Base` names it). `rm -rf pm-mock-runtime/target/machine` starts a fresh machine. When a code was already consumed, `POST /mock/pairing` returns the open code or issues the next one; the consumed code stays refused.
 
 ---
 

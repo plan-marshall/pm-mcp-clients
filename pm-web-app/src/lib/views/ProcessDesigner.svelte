@@ -29,6 +29,13 @@
   /** The largest unit text the intake reads from a chosen file. */
   const FILE_LIMIT_BYTES = 1_048_576;
 
+  interface Props {
+    /** The project the route was opened for, unless a restored draft names one. */
+    projectId?: string | null;
+  }
+
+  let { projectId: routeProjectId = null }: Props = $props();
+
   interface Draft {
     text: string;
     unitName: string;
@@ -149,6 +156,8 @@
   );
 
   onMount(() => {
+    // The route seeds the selection; a restored draft overrides it in loadAll.
+    projectId = routeProjectId;
     savedAuthor = readAuthor();
     if (typeof window !== 'undefined' && window.matchMedia) {
       mediaQuery = window.matchMedia('(max-width: 639px)');

@@ -55,6 +55,14 @@ describe('the routes of the app', () => {
     expect(pathForRoute('decomposition')).toBe('/epics/decompose');
   });
 
+  it('carries the designer’s project in the query', () => {
+    expect(pathForRoute('designer')).toBe('/designer');
+    expect(pathForRoute('designer', { projectId: 'pm-mcp-clients' })).toBe(
+      '/designer?project=pm-mcp-clients',
+    );
+    expect(pathForRoute('designer', { projectId: 'a b' })).toBe('/designer?project=a%20b');
+  });
+
   it('resolves a plan and an epic by their id', () => {
     expect(matchPath('/plans/plan-42')).toEqual({ route: 'plan', planId: 'plan-42' });
     expect(matchPath('/epics/epic-7')).toEqual({ route: 'epic', epicId: 'epic-7' });

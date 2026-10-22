@@ -25,8 +25,11 @@
       : '';
 
   onMount(async () => {
-    // The fingerprint and the listener state are shown on the network listener only.
-    if (!isLoopback) {
+    // The fingerprint and the listener state are shown on the network listener only. An unpaired
+    // page carries no device secret, so it must not probe an authenticated route: a 401 there
+    // means "this route needs pairing", not "the device was revoked". The browser's own TLS
+    // warning carries the fingerprint before pairing.
+    if (!isLoopback && apiClient.isPaired()) {
       try {
         status = await apiClient.getConnectionStatus();
       } catch {
@@ -34,6 +37,23 @@
       }
     }
   });
+
+  /**
+   * Explains a refused pairing attempt without treating every failure as an invalid code.
+   *
+   * @param err the caught failure
+   * @returns the catalogue text for the failure
+   */
+  function pairingErrorText(err: unknown): string {
+    const message = err instanceof Error ? err.message : '';
+    if (message === 'network_offline') {
+      return $t('web.pair.page.offline');
+    }
+    if (message === 'unauthorized') {
+      return $t('web.revoked.reason.unknown');
+    }
+    return $t('web.pair.page.invalid');
+  }
 
   async function submitPairing(codeToPair: string) {
     if (!codeToPair || isPairing) return;
@@ -44,8 +64,8 @@
     try {
       await pairBrowser(codeToPair);
       navigateTo($runtimeStore.currentRoute);
-    } catch {
-      errorMessage = $t('web.pair.page.invalid');
+    } catch (err: unknown) {
+      errorMessage = pairingErrorText(err);
     } finally {
       isPairing = false;
     }

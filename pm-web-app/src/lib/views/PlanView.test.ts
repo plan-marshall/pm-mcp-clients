@@ -322,6 +322,19 @@ describe('PlanView component', () => {
     expect(window.location.search).toBe('?project=pm-mcp-clients');
   });
 
+  it('opens the process designer for the plan’s project', async () => {
+    render(PlanView);
+
+    await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('design-process-btn'));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('designer');
+    expect(state.designerProjectId).toBe('pm-mcp-clients');
+    expect(window.location.pathname).toBe('/designer');
+    expect(window.location.search).toBe('?project=pm-mcp-clients');
+  });
+
   it('discloses the token breakdown by phase and role with raw components', async () => {
     const planWithBreakdown: ProcessTree = {
       ...mockPlan,

@@ -1989,6 +1989,10 @@ export class ApiClient {
   private readonly baseUrl: string;
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
   private onOfflineCallback?: () => void;
+  private onOnlineCallback?: () => void;
+  /** The listeners of the one shared `/api/v1/events` connection. */
+  private readonly eventSubscribers = new Set<(event: string, data: unknown) => void>();
+  private eventStreamAbort: (() => void) | null = null;
 
   constructor(baseUrl = '') {
     this.baseUrl = baseUrl;
@@ -2000,6 +2004,18 @@ export class ApiClient {
 
   public setOnOffline(callback: () => void): void {
     this.onOfflineCallback = callback;
+  }
+
+  /**
+   * Registers the callback for a successful request or event-stream reconnect.
+   *
+   * The runtime store clears its offline state from it, so a transient blip does not leave the
+   * offline banner up until a manual reload.
+   *
+   * @param callback called on every successful request and on every SSE connect
+   */
+  public setOnOnline(callback: () => void): void {
+    this.onOnlineCallback = callback;
   }
 
   public getSecret(): string | null {
@@ -2915,8 +2931,12 @@ export class ApiClient {
     }
 
     if (res.status === 401) {
-      this.clearAuth();
-      this.onRevokedCallback?.('unauthorized');
+      // Only an authenticated request can lose a pairing: an unauthenticated 401 means the route
+      // needs pairing, not that the device was revoked.
+      if (secret) {
+        this.clearAuth();
+        this.onRevokedCallback?.('unauthorized');
+      }
       throw new Error('unauthorized');
     }
 
@@ -2925,6 +2945,7 @@ export class ApiClient {
       throw httpError(err.error || `HTTP ${res.status}`, res.status);
     }
 
+    this.onOnlineCallback?.();
     return res.json() as Promise<T>;
   }
 
@@ -3356,11 +3377,15 @@ export class ApiClient {
       throw new Error('network_offline');
     }
     if (res.status === 401) {
-      this.clearAuth();
-      this.onRevokedCallback?.('unauthorized');
+      // As in `request`: only a 401 to a request that carried a secret is auth loss.
+      if (secret) {
+        this.clearAuth();
+        this.onRevokedCallback?.('unauthorized');
+      }
       throw new Error('unauthorized');
     }
     if (res.status === 409 || res.ok) {
+      this.onOnlineCallback?.();
       return (await res.json()) as T;
     }
     const err = await res.json().catch(() => ({}));
@@ -3442,11 +3467,50 @@ export class ApiClient {
     return abortAll;
   }
 
+  /**
+   * Subscribes to the runtime's events.
+   *
+   * All subscribers share one `/api/v1/events` connection: the first listener starts it, the last
+   * unsubscribe aborts it, and one auth loss is reported once. A second stream could otherwise
+   * observe the same `401` and independently invalidate the session.
+   *
+   * @param onEvent the callback per event
+   * @param signal an optional abort signal
+   * @returns the unsubscribe function
+   */
   public subscribeEvents(
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
   ): () => void {
-    return this.subscribeStream('/api/v1/events', onEvent, signal);
+    this.eventSubscribers.add(onEvent);
+    if (signal) {
+      if (signal.aborted) {
+        this.eventSubscribers.delete(onEvent);
+        return () => {};
+      }
+      signal.addEventListener('abort', () => this.unsubscribeEvent(onEvent), { once: true });
+    }
+    if (!this.eventStreamAbort) {
+      this.eventStreamAbort = this.subscribeStream('/api/v1/events', (event, data) => {
+        for (const listener of [...this.eventSubscribers]) {
+          listener(event, data);
+        }
+      });
+    }
+    return () => this.unsubscribeEvent(onEvent);
+  }
+
+  /**
+   * Removes one listener; the last one to leave closes the shared stream.
+   *
+   * @param onEvent the listener to remove
+   */
+  private unsubscribeEvent(onEvent: (event: string, data: unknown) => void): void {
+    const removed = this.eventSubscribers.delete(onEvent);
+    if (removed && this.eventSubscribers.size === 0 && this.eventStreamAbort) {
+      this.eventStreamAbort();
+      this.eventStreamAbort = null;
+    }
   }
 
   /**
@@ -3517,8 +3581,11 @@ export class ApiClient {
         });
 
         if (res.status === 401) {
-          this.clearAuth();
-          this.onRevokedCallback?.('unauthorized');
+          // The stream always carries the secret, so this is a genuine auth loss.
+          if (secret) {
+            this.clearAuth();
+            this.onRevokedCallback?.('unauthorized');
+          }
           abortAll();
           return;
         }
@@ -3527,6 +3594,7 @@ export class ApiClient {
           throw new Error(`SSE failed: ${res.status}`);
         }
 
+        this.onOnlineCallback?.();
         const reader = res.body.getReader();
         currentReader = reader;
         const decoder = new TextDecoder();

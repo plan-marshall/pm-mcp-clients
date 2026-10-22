@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import PairingView from './PairingView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -59,7 +60,7 @@ describe('PairingView against the mock runtime scenarios', () => {
     expect(submit).not.toBeDisabled();
   });
 
-  it('reports a code that does not work with one answer', async () => {
+  it('reports a code that does not work with the single-use explanation', async () => {
     vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('invalid_code'));
 
     render(PairingView);
@@ -68,7 +69,21 @@ describe('PairingView against the mock runtime scenarios', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('pairing-error')).toHaveTextContent(
-        'This code does not work. Get a new one in a terminal of the machine.',
+        'A code works once. Get a fresh one in a terminal of the machine.',
+      );
+    });
+  });
+
+  it('explains an unreachable machine instead of blaming the code', async () => {
+    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('network_offline'));
+
+    render(PairingView);
+    await fireEvent.input(screen.getByLabelText(/code/i), { target: { value: 'KXQB-MRTN' } });
+    await fireEvent.click(screen.getByRole('button', { name: /pair this browser/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pairing-error')).toHaveTextContent(
+        'The machine cannot be reached right now. Check the connection and try again.',
       );
     });
   });
@@ -115,6 +130,8 @@ describe('PairingView against the mock runtime scenarios', () => {
   });
 
   it('shows the network certificate fingerprint on the network listener', async () => {
+    // The probe is authenticated: only a browser that is already paired reads it.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
       loopback_open: true,
       lan_enabled: true,
@@ -135,6 +152,22 @@ describe('PairingView against the mock runtime scenarios', () => {
 
     await waitFor(() => expect(screen.getByTestId('pairing-fingerprint')).toBeInTheDocument());
     expect(screen.getByTestId('pairing-fingerprint')).toHaveTextContent('Fingerprint SHA-256');
+  });
+
+  it('does not probe the authenticated connection status before pairing', async () => {
+    const probe = vi.spyOn(apiClient, 'getConnectionStatus');
+    vi.spyOn(window, 'location', 'get').mockReturnValue({
+      ...window.location,
+      hostname: '192.168.1.20',
+      origin: 'https://192.168.1.20:7421',
+      pathname: '/pair',
+    } as Location);
+
+    render(PairingView);
+
+    await waitFor(() => expect(screen.getByTestId('pairing-view')).toBeInTheDocument());
+    expect(probe).not.toHaveBeenCalled();
+    expect(get(runtimeStore).isRevoked).toBe(false);
   });
 
   it('presents the pairing URL as a QR code on the network listener', async () => {

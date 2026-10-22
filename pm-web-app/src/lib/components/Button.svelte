@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { advisory } from '../utils/advisoryTitle';
+
   export let variant: 'primary' | 'secondary' | 'danger' | 'ghost' = 'secondary';
   export let type: 'button' | 'submit' | 'reset' = 'button';
   export let disabled = false;
@@ -11,6 +13,7 @@
   class:btn--loading={loading}
   disabled={disabled || loading}
   {...$$restProps}
+  use:advisory
   on:click
 >
   {#if loading}

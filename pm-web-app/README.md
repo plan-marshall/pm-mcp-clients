@@ -56,13 +56,25 @@ npm install
 npm run dev
 ```
 
-The development server starts at `http://localhost:5173`. When `pm-mock-runtime` is running, `start.sh` automatically prints the direct paired URL beneath the plain local URL:
+The development server starts at `http://localhost:5173`. `start.sh` prints every coordinate a phone can use, and the direct paired URL with a code that works right now:
+
 ```text
 pm-web-app started successfully (PID: 65428).
-Local:   http://localhost:5173
-Paired:  http://localhost:5173/pair#code=KXQB-MRTN
+Local:       http://localhost:5173
+Network:     http://mbp-oliver.local:5173
+Network (IP): http://192.168.1.20:5173
+Paired:      http://mbp-oliver.local:5173/pair#code=KXQB-MRTN
 ```
+
 Vite is configured to automatically proxy `/api` and `/mock` calls to `http://127.0.0.1:7420`.
+
+### Reaching the app from a phone
+
+The Vite development server binds to all interfaces on purpose, so a phone on the same network opens the `Network` URL. This is a development-only exposure: the `/api` and `/mock` proxies keep the mock runtime's own listener on loopback, and the real runtime keeps its loopback/LAN listener security. Set `PM_WEB_HOST=127.0.0.1` when no network exposure is wanted; `start.sh` then prints only the local URL.
+
+The machine's name is preferred over its IP: the name survives DHCP address changes and resolves through mDNS/Bonjour, while `Network (IP)` is the fallback for networks that block name resolution. `PM_WEB_HOST` sets the name explicitly, and `PM_WEB_ALLOWED_HOSTS` (comma separated) extends the host names Vite accepts. IP addresses are allowed by Vite without an entry.
+
+A pairing code works once. When the code was already consumed, `start.sh` asks `POST /mock/pairing` for the replacement and prints it as the `Paired:` URL; re-running `start.sh` while a code is open returns the same code. The header is the only always-on status row: its machine badge carries the listener mode and the paired-device count as a hover title, the brand opens the start page, and the header offers the Process Designer. Every action explains itself on hover.
 
 ### Step 3: Interactive Testing in the Browser
 1. **Pairing Flow**: Navigate to `http://localhost:5173/pair#code=TEST-CODE` to test browser pairing and device pairing.

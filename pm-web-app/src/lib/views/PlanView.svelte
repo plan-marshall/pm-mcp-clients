@@ -482,6 +482,14 @@
         </nav>
 
         <div class="plan-header__actions">
+          <Button
+            variant="secondary"
+            onclick={() => navigateTo('designer', { projectId: plan!.project.project_id })}
+            data-testid="design-process-btn"
+            data-advisory={$t('designer.plan.hint')}
+          >
+            {$t('designer.plan.open')}
+          </Button>
           <Button variant="secondary" onclick={jumpToCurrentPosition} data-testid="jump-btn">
             {$t('plan.path.jump')}
           </Button>

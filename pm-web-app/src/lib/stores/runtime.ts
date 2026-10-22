@@ -73,6 +73,8 @@ export interface RuntimeState {
   startKind?: 'plan' | 'epic';
   /** The project onboarding the project route opens, when it names one. */
   selectedOnboardingId?: string | null;
+  /** The project the designer opens, carried in `/designer?project=…`. */
+  designerProjectId?: string | null;
   /** The onboarding step another screen opened the onboarding at, 1-based. */
   onboardingStep?: number | null;
   /** How an ended plan ended, when a view opened it from Ended Work. */
@@ -132,6 +134,7 @@ const initialState: RuntimeState = {
   startEntryId: null,
   startKind: 'plan',
   selectedOnboardingId: null,
+  designerProjectId: null,
   onboardingStep: null,
   selectedPlanEnded: null,
   cleanupUncheckedIds: {},
@@ -175,6 +178,24 @@ export async function checkUrlHashForCode(): Promise<boolean> {
     const match = /code=([^&]+)/.exec(window.location.hash);
     if (match?.[1]) {
       const extracted = decodeURIComponent(match[1]);
+      // A code is single use and this browser already holds a secret: probe it rather than
+      // redeeming again (the spec's Redeem rule). Only a refused secret falls through.
+      if (apiClient.isPaired()) {
+        try {
+          await apiClient.getStatus();
+          // The pairing still works: drop the fragment and continue normal startup.
+          history.replaceState(null, '', window.location.pathname);
+          runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
+          return false;
+        } catch (err: unknown) {
+          if ((err as Error)?.message !== 'unauthorized') {
+            // The runtime is offline: keep the fragment so a later visit can retry.
+            runtimeStore.update((s) => ({ ...s, isOffline: true, pairingFailed: false }));
+            return false;
+          }
+        }
+        // The stored secret is no longer accepted: redeem the code instead.
+      }
       try {
         await pairBrowser(extracted);
         // Redeemed: drop the fragment so a reload does not replay a single-use code.
@@ -292,6 +313,25 @@ function hasWork(summary: ProjectOverviewResponse | null): boolean {
   });
 }
 
+/**
+ * Opens the operator's start page by the same rule as a first visit.
+ *
+ * The remembered start route wins; otherwise the overview while work runs or waits and the
+ * projects otherwise. A route already shown is not pushed again, so the brand click adds no
+ * duplicate history entry.
+ */
+export async function openStartPage(): Promise<void> {
+  if (!apiClient.isPaired()) {
+    return;
+  }
+  const onboarded = get(runtimeStore).isOnboarded;
+  const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
+  const target = landingRoute(null, onboarded, hasWork(summary));
+  if (target !== get(runtimeStore).currentRoute) {
+    navigateTo(target);
+  }
+}
+
 export async function initRuntime(): Promise<void> {
   if (typeof window !== 'undefined' && !hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
@@ -319,6 +359,14 @@ export async function initRuntime(): Promise<void> {
       ...s,
       isOffline: true,
     }));
+  });
+
+  apiClient.setOnOnline(() => {
+    // Only a real state change notifies: the request that reports it must not restart the
+    // observers that issued it.
+    if (get(runtimeStore).isOffline) {
+      runtimeStore.update((s) => ({ ...s, isOffline: false }));
+    }
   });
 
   const hasCodeInHash = await checkUrlHashForCode();
@@ -618,8 +666,9 @@ const navigationStack: NavigationEntry[] = [];
  * @returns the identifiers of the route it holds
  */
 export function routeParamsOf(state: RuntimeState): RouteParams {
+  const designer = state.currentRoute === 'designer';
   return {
-    projectId: state.startProjectId ?? undefined,
+    projectId: (designer ? state.designerProjectId : state.startProjectId) ?? undefined,
     entryId: state.startEntryId ?? undefined,
     planId: state.selectedPlanId ?? undefined,
     epicId: state.selectedEpicId ?? undefined,
@@ -659,6 +708,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     ...(route === 'reports' ? { selectedReportDetailPlanId: params.reportPlanId ?? null } : {}),
     // The explorer focuses the project a caller named; a plain visit starts from the list.
     ...(route === 'projects' ? { selectedProjectId: params.explorerProjectId ?? null } : {}),
+    // The designer carries the project it was opened for; a plain visit preselects none.
+    ...(route === 'designer' ? { designerProjectId: params.projectId ?? null } : {}),
   }));
 }
 
@@ -756,6 +807,11 @@ export function adoptRouteFromLocation(): AppRoute | null {
       // between two reports opens the one the address names.
       selectedReportDetailPlanId:
         match.route === 'reports' ? new URLSearchParams(window.location.search).get('plan') : null,
+      // The designer keeps the project it was opened for the same way.
+      designerProjectId:
+        match.route === 'designer'
+          ? new URLSearchParams(window.location.search).get('project')
+          : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       startProjectId: match.projectId ?? s.startProjectId ?? null,

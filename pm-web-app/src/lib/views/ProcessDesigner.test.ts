@@ -180,6 +180,23 @@ describe('ProcessDesigner view', () => {
     );
   });
 
+  it('opens with the project the route named', async () => {
+    localStorage.removeItem('pm_designer_draft');
+    const workflows = vi.spyOn(apiClient, 'getWorkflows');
+
+    render(ProcessDesigner, { props: { projectId: 'pm-mcp-clients' } });
+
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('pm-mcp-clients'));
+    expect(screen.getByTestId('designer-checked')).toHaveTextContent(
+      'checked against pm-mcp-clients',
+    );
+    await waitFor(() =>
+      expect((screen.getByTestId('project-select') as HTMLSelectElement).value).toBe(
+        'pm-mcp-clients',
+      ),
+    );
+  });
+
   it('marks a compiled-only unit and offers no removal for it', async () => {
     render(ProcessDesigner);
 

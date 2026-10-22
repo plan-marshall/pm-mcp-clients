@@ -60,7 +60,7 @@
 {:else if $runtimeStore.currentRoute === 'cleanup'}
   <CleanupView />
 {:else if $runtimeStore.currentRoute === 'designer'}
-  <ProcessDesigner />
+  <ProcessDesigner projectId={$runtimeStore.designerProjectId ?? null} />
 {:else if $runtimeStore.currentRoute === 'plan'}
   <PlanView />
 {:else if $runtimeStore.currentRoute === 'epic'}

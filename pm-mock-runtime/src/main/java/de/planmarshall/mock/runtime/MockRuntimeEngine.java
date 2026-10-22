@@ -5655,6 +5655,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleControlBroadcast(request, response);
             return;
         }
+        // The development loop has no terminal client to ask for a replacement code. This route
+        // returns the open code or issues a fresh one; it never makes a consumed code valid again.
+        if ("/mock/pairing".equals(path) && "POST".equals(request.method())) {
+            handleCreatePairing(response);
+            return;
+        }
         response.json(404, Map.of(KEY_ERROR, "unknown_control_endpoint"));
     }
 

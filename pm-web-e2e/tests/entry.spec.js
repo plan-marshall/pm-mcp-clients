@@ -14,12 +14,17 @@ test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
   });
 
-  test('shows the connection status banner in loopback mode after pairing', async ({ page }) => {
-    const banner = page.getByTestId('connection-status-banner');
-    await expect(banner).toBeVisible();
-    await expect(banner).toHaveAttribute('data-mode', 'loopback');
-    await expect(banner).toContainText('Connected over loopback');
-    await expect(banner).toContainText('paired device');
+  test('shows the connection status in the header badge after pairing', async ({ page }) => {
+    await expect(page.getByTestId('connection-status-banner')).toHaveCount(0);
+
+    const badge = page.getByTestId('header-machine');
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveAttribute('data-connection-mode', 'loopback');
+    await expect(badge).toHaveAttribute(
+      'title',
+      /This browser is on the machine or reaches it through an SSH forward/,
+    );
+    await expect(badge).toHaveAttribute('title', /paired device/);
   });
 
   test('opens the network access modal from settings and shows the fingerprint', async ({
