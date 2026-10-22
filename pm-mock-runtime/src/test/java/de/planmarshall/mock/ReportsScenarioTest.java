@@ -188,7 +188,21 @@ class ReportsScenarioTest {
             assertEquals(3, report.tokenUsage().wasteRecords().size());
             assertEquals(52000L, report.tokenUsage().totalWasteTokens());
             assertEquals(13, report.tokenUsage().wasteSharePercent());
+        }
+    }
 
+    @Test
+    @DisplayName("serves a completion report with the plan's own calls and a change map")
+    void shouldServeOwnCallsAndChangeMap() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.REPORTS)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/plans/fix-relay/completion")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+
+            var report = PlanCompletionReport.fromJson(res.bodyText());
             assertEquals(3, report.ownCalls().size());
             var shortcut = report.ownCalls().getFirst();
             assertEquals("shortcut", shortcut.kind());

@@ -37,6 +37,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
     private static final String LABEL_WIDTH = "%-16s";
     private static final String OWN_CALL_KIND_WIDTH = "%-19s";
     private static final String KEY_SEPARATOR = ": ";
+    private static final String OWN_CALL_ROW_PREFIX = "completion:own-call:";
 
     /**
      * @param report the plan's completion report
@@ -157,7 +158,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
             var judgment = judgmentText(locale, ownCall);
             var line = INDENT + INDENT + String.format(OWN_CALL_KIND_WIDTH, kind) + description;
             if (hasShortcutDetails(ownCall)) {
-                rows.add(TuiRow.leaf("completion:own-call:" + index++, line));
+                rows.add(TuiRow.leaf(OWN_CALL_ROW_PREFIX + index++, line));
                 var details = new ArrayList<String>();
                 if (ownCall.limit() != null && !ownCall.limit().isBlank()) {
                     details.add(MessageCatalogue.format(locale, "report.completion.own_call_limit",
@@ -168,10 +169,10 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
                                         Map.of("condition", PlanViewFormatting.clean(ownCall.endsWhen()))));
                 }
                 details.add(judgment);
-                rows.add(TuiRow.leaf("completion:own-call:" + index++ + ":detail",
+                rows.add(TuiRow.leaf(OWN_CALL_ROW_PREFIX + index++ + ":detail",
                                     INDENT + INDENT + INDENT + String.join(PlanViewFormatting.DOT_SEPARATOR, details)));
             } else {
-                rows.add(TuiRow.leaf("completion:own-call:" + index++, line
+                rows.add(TuiRow.leaf(OWN_CALL_ROW_PREFIX + index++, line
                                     + PlanViewFormatting.DOT_SEPARATOR + judgment));
             }
         }

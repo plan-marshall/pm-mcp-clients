@@ -75,8 +75,8 @@ All deliverables of the six-phase recipe are complete. Both rows are covered by 
 | Layer | Command | Result |
 |---|---|---|
 | `pm-api` unit tests | `./mvnw test -pl pm-api` | 647 tests, 0 failures |
-| `pm-mock-runtime` contract tests | `./mvnw test -pl pm-mock-runtime` | 406 tests, 0 failures |
-| `pm-operator` unit, dialogue, and virtual-terminal tests | `./mvnw test -pl pm-operator` | 880 tests, 0 failures |
+| `pm-mock-runtime` contract tests | `./mvnw test -pl pm-mock-runtime` | 407 tests, 0 failures |
+| `pm-operator` unit, dialogue, and virtual-terminal tests | `./mvnw test -pl pm-operator` | 883 tests, 0 failures |
 | Web component and catalogue tests | `npm run test` in `pm-web-app` | 413 tests, 0 failures (50 files) |
 | Web type check | `npm run check` | 0 errors, 0 warnings |
 | Web lint | `npm run lint` | clean |

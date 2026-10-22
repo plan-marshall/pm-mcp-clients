@@ -1047,7 +1047,7 @@ public final class PlanCommand implements Callable<Integer> {
             if (changeMap.cause() != null && !changeMap.cause().isBlank()) {
                 value += " · cause: " + ConsoleNotice.stripControlSequences(changeMap.cause());
             }
-            out.printf("  %-14s %s%n", "change map", value);
+            out.printf(FMT_14S, "change map", value);
             for (var line : changeMap.diagram().split("\n", -1)) {
                 out.printf("                   %s%n", ConsoleNotice.stripControlSequences(line));
             }
