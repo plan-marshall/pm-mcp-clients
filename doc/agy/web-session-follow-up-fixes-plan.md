@@ -119,7 +119,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` on branch `fix/web-session-follow-up-fixes` off latest `main`; Step 1 committed and pushed.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` on branch `fix/web-session-follow-up-fixes` off latest `main`; Step 1 committed and pushed.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the start-script helper, store helper, and designer reconciliation.
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for the Bash/Vitest regression cases.

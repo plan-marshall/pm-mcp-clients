@@ -26,7 +26,7 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 |---|---|---|---|---|
 | **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed & Verified (PR #168) |
 | **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Landed & Verified (PR #173); [report](verified/web-session-pairing-and-dev-host-plan-report.md) |
-| **Web Session Follow-Up Fixes** | [`web-session-follow-up-fixes-plan.md`](web-session-follow-up-fixes-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` | `fix/web-session-follow-up-fixes` | Staged; Step 1 pending |
+| **Web Session Follow-Up Fixes** | [`web-session-follow-up-fixes-plan.md`](web-session-follow-up-fixes-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` | `fix/web-session-follow-up-fixes` | Step 1 allocated; ready to launch |
 
 *(Note: The web-session follow-up fixes plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete).*
 
