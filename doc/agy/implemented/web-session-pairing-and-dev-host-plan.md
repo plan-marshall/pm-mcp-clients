@@ -1,14 +1,14 @@
 # Implementation Plan: `web-session-pairing-and-dev-host` (Keep Web Sessions Alive, Reach the Dev App from a Phone, Make Single-Use Pairing Codes Understandable, and Close the Web Chrome, Navigation & Action-Advisory Gaps)
 
-This implementation plan resolves the eight live findings recorded in [`doc/findings-web.txt`](../findings-web.txt) for the browser client (`pm-web-app`), the mock runtime (`pm-mock-runtime`), and the development launch scripts.
+This implementation plan resolves the eight live findings recorded in [`doc/findings-web.txt`](../../findings-web.txt) for the browser client (`pm-web-app`), the mock runtime (`pm-mock-runtime`), and the development launch scripts.
 
 The first four findings are not independent bugs. Finding 1 has two root causes: the mock runtime generates a fresh device secret on every start, and the browser treats every `401` as a revocation. Findings 3 and 4 share one root cause: a pairing code is single use by contract, while the web-only development loop never issues or shows the next code. Finding 2 is an independent development-host defect.
 
 The four additional findings are web-chrome and discoverability gaps: a full-width connection banner duplicates the header, the brand/logo is inert, action buttons carry no hover advisory, and the process designer has no visible entry point from the app shell or a plan. They are independent of the session/pairing work but share the same web-app shell and catalogue surfaces.
 
-The single-use rule of [`03-web-server.adoc#web-pairing`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing) is load-bearing security and is **not** changed by this plan. What changes is the surrounding development experience: sessions survive a mock restart, a phone reaches the Vite development server by the machine's real name, a paired browser never re-redeems a code, a second device can always obtain a fresh one, the shell carries only the status that is not already in the header, and every action is discoverable and explains itself on hover.
+The single-use rule of [`03-web-server.adoc#web-pairing`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing) is load-bearing security and is **not** changed by this plan. What changes is the surrounding development experience: sessions survive a mock restart, a phone reaches the Vite development server by the machine's real name, a paired browser never re-redeems a code, a second device can always obtain a fresh one, the shell carries only the status that is not already in the header, and every action is discoverable and explains itself on hover.
 
-It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -16,14 +16,14 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Findings Source** | [`doc/findings-web.txt`](../findings-web.txt) (all eight findings are planned here; the finding list is emptied when the plan is updated) |
-| **Use Cases** | [`UC-ENT-1`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ENT-2`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2) (Manage Paired Devices), [`UC-ONB-3`](../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3) (Languages and Message Catalogue), [`UC-PLN-1`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-PLN-3`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3) (Design a Plan's Process), [`UC-PLN-4`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs, Across Projects) |
-| **Specifications** | [`03-web-server.adoc#web-pairing`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing), [`#fresh-code`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code), [`#devices`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices), [`#two-listeners`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners), [`#web-listener`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-listener) |
-| **Local Client Design** | [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc), [`doc/design/terminal-client/05-transcripts-entry.adoc`](../design/terminal-client/05-transcripts-entry.adoc) |
-| **Roadmap Packages** | [`entry-contract.adoc`](../plans/implemented/entry-contract.adoc), [`web-app-foundation.adoc`](../plans/implemented/web-app-foundation.adoc) (delivered) |
-| **Prerequisite Plans** | [`implemented/entry-contract-plan.md`](implemented/entry-contract-plan.md), [`implemented/web-onboarding-plan.md`](implemented/web-onboarding-plan.md), [`implemented/web-foundation-routing-and-catalogue-plan.md`](implemented/web-foundation-routing-and-catalogue-plan.md), [`implemented/mock-runtime-onboarding-and-entry-plan.md`](implemented/mock-runtime-onboarding-and-entry-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Findings Source** | [`doc/findings-web.txt`](../../findings-web.txt) (all eight findings are planned here; the finding list is emptied when the plan is updated) |
+| **Use Cases** | [`UC-ENT-1`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ENT-2`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2) (Manage Paired Devices), [`UC-ONB-3`](../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3) (Languages and Message Catalogue), [`UC-PLN-1`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-PLN-3`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3) (Design a Plan's Process), [`UC-PLN-4`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs, Across Projects) |
+| **Specifications** | [`03-web-server.adoc#web-pairing`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing), [`#fresh-code`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code), [`#devices`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices), [`#two-listeners`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners), [`#web-listener`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-listener) |
+| **Local Client Design** | [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc), [`doc/design/terminal-client/05-transcripts-entry.adoc`](../../design/terminal-client/05-transcripts-entry.adoc) |
+| **Roadmap Packages** | [`entry-contract.adoc`](../../plans/implemented/entry-contract.adoc), [`web-app-foundation.adoc`](../../plans/implemented/web-app-foundation.adoc) (delivered) |
+| **Prerequisite Plans** | [`implemented/entry-contract-plan.md`](entry-contract-plan.md), [`implemented/web-onboarding-plan.md`](web-onboarding-plan.md), [`implemented/web-foundation-routing-and-catalogue-plan.md`](web-foundation-routing-and-catalogue-plan.md), [`implemented/mock-runtime-onboarding-and-entry-plan.md`](mock-runtime-onboarding-and-entry-plan.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis (verbatim finding -> root cause -> correction)
 
@@ -147,7 +147,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - `pm-mock-runtime/src/test/java/de/planmarshall/mock/MockRuntimeTest.java`, `MockRuntimeCliTest.java`, `runtime/MockRuntimeEngineTest.java`
   - `pm-web-app/src/lib/i18n/catalogue.test.ts`
   - `pm-web-e2e/tests/pairing.spec.js` and a new browser test for the logo, designer, and action advisories
-  - `README.md` and [`doc/agy/README.md`](README.md)
+  - `README.md` and [`doc/agy/README.md`](../README.md)
 - **No Touch**:
   - Other web views (`OverviewView`, `ReportsView`, `SystemView`, `ProjectExplorerView`, etc.) except a test mock if a shared component changes.
   - `pm-operator` production verbs and the real runtime's pairing implementation.
@@ -170,9 +170,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Final completion report written (`doc/agy/web-session-pairing-and-dev-host-plan-report.md`), initial plan moved to `doc/agy/implemented/web-session-pairing-and-dev-host-plan.md`, and the dashboard updated (no `doc/plans` package applies; this is a finding-driven remediation). (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes Java, TypeScript, and shell files).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on a worker PR), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-session-pairing-and-dev-host-plan-report.md` by the orchestrator session.
+- [x] 6. PR #173 opened (no `skip-bot-review`), review window observed, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed with three follow-ups recorded in `doc/agy/web-session-follow-up-fixes-plan.md`; verified report moved to `doc/agy/verified/web-session-pairing-and-dev-host-plan-report.md` by orchestrator session.
 
 ---
 
@@ -234,7 +234,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     ```
     Print `Network (IP)` only when `<ipv4>` is non-empty and differs from `<host>`; omit the `Network`/`Paired` lines when `<host>` is `localhost` and no code is available. Prefer the name for `Paired`; use the IP only when no name resolves. `print_paired_url_if_available` uses the resolved name, not `localhost`.
   - Keep `--host` passthrough to Vite if the operator supplies it; the config default already binds the network.
-  - Follow the shell invariants of [`doc/agy/runbook.md`](runbook.md): Bash 3.2-safe empty-array expansion, no direct empty-array expansion under `set -u`, and atomic temporary-file publication where the script writes shared state.
+  - Follow the shell invariants of [`doc/agy/runbook.md`](../runbook.md): Bash 3.2-safe empty-array expansion, no direct empty-array expansion under `set -u`, and atomic temporary-file publication where the script writes shared state.
 - [x] **2.3 Align `MockRuntimeCli` and its test**:
   - Add a small `systemHost()` helper in `MockRuntimeCli`: `PM_WEB_HOST` -> `InetAddress.getLocalHost().getCanonicalHostName()` -> `getHostName()` -> `localhost`, with a `try/catch` fallback.
   - Print `Web App URL: http://<host>:5173/pair#code=<code>` and keep the loopback listener line (`http://127.0.0.1:<port>`) as the local coordinate.
@@ -323,7 +323,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - [x] **5.4 Documentation and report**:
   - Update `pm-web-app/README.md`, `pm-mock-runtime/README.adoc`, and the root `README.md` with the final output, the single-use/fresh-code explanation, and the new header/designer/advisory behavior.
   - Write `doc/agy/web-session-pairing-and-dev-host-plan-report.md` with the eight findings, their root causes, delivered artifacts, test evidence, and the manual phone/session/chrome checks.
-  - Mark the plan done in [`doc/agy/README.md`](README.md) when archiving, and move it to `doc/agy/implemented/`.
+  - Mark the plan done in [`doc/agy/README.md`](../README.md) when archiving, and move it to `doc/agy/implemented/`.
 
 ---
 

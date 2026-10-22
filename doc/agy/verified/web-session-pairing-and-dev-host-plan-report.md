@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The eight live findings in [`doc/findings-web.txt`](../findings-web.txt) are resolved across `pm-web-app`, `pm-mock-runtime`, `pm-api` (catalogue), `pm-web-e2e`, and the development launch scripts. The plan's security contract is preserved: a pairing code is still single use, the bounded failed-redemption rule is unchanged, and the real runtime's `web.enabled`/`web.lan` listener configuration is untouched. What changed is the surrounding development experience:
+The eight live findings in [`doc/findings-web.txt`](../../findings-web.txt) are resolved across `pm-web-app`, `pm-mock-runtime`, `pm-api` (catalogue), `pm-web-e2e`, and the development launch scripts. The plan's security contract is preserved: a pairing code is still single use, the bounded failed-redemption rule is unchanged, and the real runtime's `web.enabled`/`web.lan` listener configuration is untouched. What changed is the surrounding development experience:
 
 - **Sessions survive a mock restart.** The mock keeps its web device secret on a stable base, and the browser treats a `401` as auth loss only when it actually sent a secret.
 - **The app is reachable from a phone.** Vite binds the network for development, accepts the machine's real names, and `start.sh` prints `Local`, `Network`, `Network (IP)`, and a working `Paired` URL.
@@ -49,7 +49,7 @@ The eight live findings in [`doc/findings-web.txt`](../findings-web.txt) are res
 ### Documentation
 
 - Root `README.md`, `pm-mock-runtime/README.adoc`, `pm-web-app/README.md`.
-- This report; the plan is archived at [`implemented/web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md).
+- This report; the plan is archived at [`doc/agy/implemented/web-session-pairing-and-dev-host-plan.md`](../implemented/web-session-pairing-and-dev-host-plan.md).
 
 ## Finding-by-Finding Resolution
 
@@ -97,7 +97,7 @@ pm-web-e2e ......... SUCCESS
 BUILD SUCCESS   (07:33 min)
 ```
 
-The working tree was checked before and after: the intended 38-file footprint is byte-identical to the change set, and only this plan's files are modified. The pre-commit profile's OpenRewrite pass also reformats 226 untouched `pm-api`/`pm-operator` files in this checkout (pre-existing drift between `main` and the parent POM's import recipe); those unrelated rewrites were reverted and are **not** part of this change.
+The working tree was checked before and after: the final **46-file** change set is exactly what landed, and only this plan's files are modified. The pre-commit profile's OpenRewrite pass also reformatted 226 untouched `pm-api`/`pm-operator` files in this checkout (pre-existing drift between `main` and the parent POM's import recipe); those unrelated rewrites were reverted and are **not** part of this change.
 
 ## Domain Invariants
 
@@ -137,8 +137,18 @@ Recorded against the real launch scripts on this machine:
 - **The `/mock` proxy is loopback-only.** Vite is network-bound for the app, but the mock's control routes are unauthenticated development tooling. A proxy `bypass` refuses non-loopback clients with `403`, while `/api` remains reachable; the web app itself never calls `/mock`. Verified with a request through the machine's LAN address.
 - **`PM_WEB_ALLOWED_HOSTS` adds names.** It is merged with the machine's own name forms rather than replacing them, and the `PM_WEB_HOST` name is part of the machine names, so every non-loopback host `start.sh` prints is accepted by Vite.
 - **Advisories follow their source.** The advisory layer remembers the title it generated, so a changed `data-advisory`, `aria-label`, or visible label updates the hover text, while a view-authored `title` is still never overwritten.
-- **A designer route change while mounted reloads the selection.** `/designer?project=A` → `/designer?project=B` follows the same leave guard as the project selector instead of keeping the old project.
+- **A clean designer route change while mounted reloads the selection.** `/designer?project=A` → `/designer?project=B` follows the same leave guard as the project selector. The dirty-draft “Stay” path is the post-landing follow-up recorded above; the audit found it could leave the URL and select out of step.
 - **SonarCloud findings resolved.** The owner-only file mode is a single constant, the shared-stream guard uses `??=`, listeners are dispatched with `Set.forEach`, and `checkUrlHashForCode` is split into a pairing probe and a fragment drop so its cognitive complexity is under the limit. Tests were added for the probe paths, an already-aborted subscription, the LAN badge with an unavailable status, a regenerated empty device-secret file, and the advisory layer removing a title it wrote.
+
+## Post-Landing Follow-Ups
+
+The Step 8 audit found two user-facing follow-ups and one dead code path. They are planned in `doc/agy/web-session-follow-up-fixes-plan.md`:
+
+- `PM_WEB_HOST=127.0.0.1` still printed `Network`/`Paired` coordinates on the primary IPv4 instead of only the local URL.
+- A designer route change from `/designer?project=A` to `/designer?project=B` with a dirty draft could leave the URL on B while the select kept A after “Stay”.
+- The pre-pairing `PairingView` status probe and fingerprint block were unreachable because the view renders only while unpaired.
+
+The pairing contract, the mock runtime's device-secret persistence, the authenticated-only `401` behavior, and the Vite network binding are unaffected by these follow-ups.
 
 ## Workflow Status
 
@@ -146,5 +156,5 @@ Recorded against the real launch scripts on this machine:
 - Step 2 (personas, implementation, tests) — complete.
 - Step 3 (this report, plan archived, dashboard) — complete.
 - Step 4 (pre-commit gate) — `BUILD SUCCESS`; see the OpenRewrite note above.
-- Steps 5–7 (PR, review window, merge queue, cleanup) — PR [#173](https://github.com/plan-marshall/pm-mcp-clients/pull/173) opened; the CodeRabbit review's ten findings were evaluated with the code-reviewer lens and addressed (checklist consistency, dashboard entry, fresh-machine instructions, the allowed-host override, `/mock` LAN exposure, subscriber isolation, advisory updates, designer same-route navigation, and the async header-status test).
-- Step 8 (post-landing verification) is performed by the orchestrator session after the merge.
+- Steps 5–7 (PR, review window, merge queue, cleanup) — PR [#173](https://github.com/plan-marshall/pm-mcp-clients/pull/173) merged; the CodeRabbit review's ten findings were evaluated with the code-reviewer lens and addressed (checklist consistency, dashboard entry, fresh-machine instructions, the allowed-host override, `/mock` LAN exposure, subscriber isolation, advisory updates, designer same-route navigation, and the async header-status test); the worktree and branch were removed.
+- Step 8 (post-landing verification) — complete with follow-ups: the audit verified the eight findings, recorded the three follow-ups above, and moved this report to `doc/agy/verified/`.
