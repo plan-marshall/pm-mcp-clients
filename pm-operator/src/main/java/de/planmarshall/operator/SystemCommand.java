@@ -11,16 +11,19 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeRecord;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.CleanupSummary;
@@ -30,6 +33,10 @@ import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.api.system.SystemWindow;
 import de.planmarshall.api.system.WorkMetrics;
 import de.planmarshall.api.system.WorkerMetric;
+import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.system.SystemFormatting;
+import de.planmarshall.operator.tui.TuiLayout;
+import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -52,11 +59,13 @@ public final class SystemCommand implements Callable<Integer> {
     @Nullable
     String project;
 
-    @Option(names = "--window", description = "Time window for metrics: hour, today, 7d", defaultValue = "hour")
-    String window = "hour";
+    @Option(names = "--window", description = "Time window for metrics: hour, today, 7d")
+    @Nullable
+    String window;
 
-    @Option(names = "--by", description = "Group metrics by model or role", defaultValue = "model")
-    String by = "model";
+    @Option(names = "--by", description = "Group metrics by model or role")
+    @Nullable
+    String by;
 
     @Option(names = "--watch", description = "Watch updates")
     boolean watch;
@@ -76,6 +85,13 @@ public final class SystemCommand implements Callable<Integer> {
             out.println("runtime   not running");
             out.flush();
             return 0;
+        }
+
+        if (!json && context.isConsoleActive()) {
+            var fullScreen = openFullScreen(out);
+            if (fullScreen != null) {
+                return fullScreen;
+            }
         }
 
         try {
@@ -107,6 +123,54 @@ public final class SystemCommand implements Callable<Integer> {
             out.flush();
             return 0;
         }
+    }
+
+    /**
+     * Opens the system view on the alternate screen where the console can show it. Below the
+     * minimum width it prints {@code operator.system.too_narrow} and returns {@code null}, so the
+     * caller prints the snapshot instead
+     * ({@code doc/design/terminal-client/25-system.adoc#full-screen}).
+     *
+     * @param out the console's writer
+     * @return the exit code when the view ran, or {@code null} to print the snapshot
+     */
+    private @Nullable Integer openFullScreen(PrintWriter out) {
+        var locale = context.clientEnvironment().locale();
+        Terminal terminal = null;
+        try {
+            terminal = context.createTerminal();
+        } catch (IOException _) {
+            return null;
+        }
+        try {
+            if (terminal.getColumns() < TuiLayout.MIN_COLUMNS) {
+                out.println(MessageCatalogue.format(locale, "operator.system.too_narrow",
+                                    Map.of("columns", TuiLayout.MIN_COLUMNS)));
+                out.flush();
+                return null;
+            }
+            if (!TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+                return null;
+            }
+            var app = new OverviewFullScreenApp(context, terminal,
+                                OverviewFullScreenApp.InitialSelection.system(window, by, resolvedProject()),
+                                Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
+                                context.noticeBuffer());
+            app.run(out);
+            return 0;
+        } catch (IOException _) {
+            return null;
+        } finally {
+            try {
+                terminal.close();
+            } catch (IOException _) {
+                // The terminal is gone; the snapshot is printed all the same.
+            }
+        }
+    }
+
+    private @Nullable String resolvedProject() {
+        return project == null || project.isBlank() || ".".equals(project) ? null : project;
     }
 
     void printSnapshot(PrintWriter out, SystemSnapshot snapshot) {
@@ -296,37 +360,10 @@ public final class SystemCommand implements Callable<Integer> {
     }
 
     public static String formatBytes(long bytes) {
-        if (bytes < 1024L) {
-            return bytes + " B";
-        }
-        double kb = bytes / 1024.0;
-        if (kb < 1024.0) {
-            return Math.round(kb) + " KB";
-        }
-        double mb = kb / 1024.0;
-        if (mb < 1024.0) {
-            long roundedMb = Math.round(mb);
-            return roundedMb + " MB";
-        }
-        double gb = mb / 1024.0;
-        if (gb >= 10.0) {
-            return Math.round(gb) + " GB";
-        } else {
-            double rounded1 = Math.round(gb * 10.0) / 10.0;
-            if (rounded1 == Math.floor(rounded1)) {
-                return (long) rounded1 + " GB";
-            }
-            return String.format(Locale.ROOT, "%.1f GB", rounded1);
-        }
+        return SystemFormatting.bytes(bytes);
     }
 
     public static String formatTokens(long tokens) {
-        if (tokens >= 100_000L) {
-            return String.format(Locale.ROOT, "%.2f M", tokens / 1_000_000.0);
-        }
-        if (tokens >= 1_000L) {
-            return String.format(Locale.ROOT, "%.1f k", tokens / 1000.0);
-        }
-        return String.valueOf(tokens);
+        return SystemFormatting.tokens(tokens);
     }
 }

@@ -71,17 +71,17 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-reports-system` on branch `feat/cli-fullscreen-reports-system` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-reports-system` on branch `feat/cli-fullscreen-reports-system` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for trust boundaries & input validation
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/cli-fullscreen-reports-system-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-reports-system-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/cli-fullscreen-reports-system-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-reports-system-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
+- [x] 6. PR opened (#165, no `skip-bot-review`), review window waited, 100% of bot & Sonar findings resolved via `persona-code-reviewer` (8 CodeRabbit findings fixed in `411f9f5`; SonarCloud green).
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-reports-system-plan-report.md` by orchestrator session.
 
@@ -102,29 +102,29 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 6. Phased Technical Recipe
 
 ### Phase 1: Catalogue & `reports-and-system` Scenario Verification
-- [ ] **1.1 Message Catalogue & Scenario Audit**:
+- [x] **1.1 Message Catalogue & Scenario Audit**:
   - Verify all keys in `doc/design/terminal-client/24-reports.adoc#texts` and `25-system.adoc#texts` (`operator.reports.*`, `operator.system.*`, `operator.system.too_narrow`) exist in `pm-api/src/main/resources/messages/` in both English and German, and verify the `reports.*` and `system.*` states in `reports-and-system.json` (delivered by `mock-runtime-reports-system-designer-plan.md`).
 
 ### Phase 2: `ReportsLevel` (`R`) & `CompletionReportLevel` (`c`)
-- [ ] **2.1 `ReportsLevel` Implementation**:
+- [x] **2.1 `ReportsLevel` Implementation**:
   - Group unread reports by project, epic, and plan; wire `R` in `ProjectsOverviewLevel` (displaying unread count in the footer when `> 0`).
   - Implement `m` (mark selected read, move selection to neighbour), `M` (mark all shown read by IDs), `Enter` (open target detail view and mark read), `p` and `e` (jump to project or epic view without marking read), and `?` (full report body, timestamps, ID).
   - Handle live SSE report arrival (insert in place without moving selection) and external read events.
-- [ ] **2.2 `CompletionReportLevel` Implementation**:
+- [x] **2.2 `CompletionReportLevel` Implementation**:
   - Render a plan's completion report in full-screen when opened via `Enter` from `ReportsLevel` or `c` from an ended plan's `PlanViewLevel`.
 
 ### Phase 3: `SystemLevel` (`S` & `system`)
-- [ ] **3.1 `SystemLevel` & Figure Drill-Downs**:
+- [x] **3.1 `SystemLevel` & Figure Drill-Downs**:
   - Render the six figures (`Runtime`, `Work`, `Workers`, `Jobs`, `Models`, `Cleanup`) and live drain/upgrade progress line below the header.
   - Implement `w` (cycle `hour`/`today`/`7d`), `b` (toggle `model`/`role`), `p` (all projects vs per-project), `r` (reload), `?` (figure details), and `Enter` drill-downs into `Workers`, `Jobs`, `Locks`, `Models`, `Cleanup`, or filtered Overview.
   - Implement `a` inline runtime actions (`Stop…`, `Restart…`, `Upgrade…`, `Check for a newer version`), suspending the full-screen view for confirmation dialogues and returning on `q`.
-- [ ] **3.2 Width Thresholds & Persistence**:
+- [x] **3.2 Width Thresholds & Persistence**:
   - Omit detail lines below 80 columns (`?` shows them); below 60 columns print `operator.system.too_narrow` with `{columns}` and fall back to the printed snapshot.
   - Persist and restore `(systemWindow, systemGroupBy, systemProjectId)` in `OverviewStateStore` (`overview.json`).
 
 ### Phase 4: Screen Tests & Integration Verification
-- [ ] **4.1 `ReportsFullScreenTest` & `SystemFullScreenTest` (`VirtualScreenTerminal`)**:
+- [x] **4.1 `ReportsFullScreenTest` & `SystemFullScreenTest` (`VirtualScreenTerminal`)**:
   - Assert `R` opening `ReportsLevel`, grouping by project/epic/plan, `m` single read, `M` mark all shown read, `p`/`e` navigation without marking read, `Enter` opening detail & marking read, `c` opening `CompletionReportLevel`, and live report arrival preserving selection.
   - Assert `S` and `system` opening `SystemLevel`, `w`/`b`/`p` toggles persisted to `overview.json`, `Enter` drill-downs, `a` runtime action menu, 80-col compact mode, and `< 60`-col `too_narrow` snapshot fallback.
-- [ ] **4.2 Pre-Commit & Operational Gate**:
+- [x] **4.2 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).
