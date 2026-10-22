@@ -6,6 +6,7 @@ import {
   initRuntime,
   openStartPage,
   replaceDesignerProject,
+  routeParamsOf,
   runtimeStore,
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -160,5 +161,17 @@ describe('the runtime store', () => {
     // Assert
     expect(get(runtimeStore).designerProjectId).toBeNull();
     expect(window.location.pathname + window.location.search).toBe('/designer');
+  });
+
+  it('keeps the onboarding step the address names in the route params', () => {
+    // Arrange: the view consumes the store's step, but the address keeps the aspect.
+    window.history.replaceState(null, '', '/onboarding?step=6');
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'onboarding', onboardingStep: null }));
+
+    // Act
+    const params = routeParamsOf(get(runtimeStore));
+
+    // Assert
+    expect(params.onboardingStep).toBe(6);
   });
 });

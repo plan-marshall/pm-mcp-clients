@@ -1,84 +1,71 @@
 import { test, expect } from '@playwright/test';
-
-async function pairOnStartScenario(page, request) {
-  const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
-    data: { scenario: 'start' },
-  });
-  expect(res.ok()).toBeTruthy();
-
-  await page.goto('/');
-  await page.evaluate(() => localStorage.clear());
-  await page.goto('/#code=KXQB-MRTN');
-  await expect(page.locator('.app-header__machine')).toContainText('Machine:');
-
-  const overviewNav = page.locator('.app-header').getByRole('button', { name: /Running work/i });
-  await expect(overviewNav).toBeVisible();
-  await overviewNav.click();
-  await expect(page.locator('.overview')).toBeVisible();
-
-  // The scenario's plan-marshall asks for setup; select the ready project explicitly.
-  await page
-    .locator('.project-list')
-    .getByRole('tab', { name: /pm-mcp-clients/i })
-    .click();
-  await expect(page.locator('.project-title')).toContainText('pm-mcp-clients');
-}
+import {
+  addDescription,
+  continueAndStart,
+  openProject,
+  openStartSources,
+  pair,
+  switchScenario,
+} from './helpers/pairing.js';
 
 test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
   test.beforeEach(async ({ page, request }) => {
-    await pairOnStartScenario(page, request);
+    await switchScenario(request, 'start');
+    await pair(page, request);
+    await openProject(page, 'pm-mcp-clients');
   });
 
-  test('starts a plan from a description and a document', async ({ page }) => {
-    await page.getByRole('button', { name: 'Start the plan' }).click();
+  test('starts a plan from a description', async ({ page }) => {
+    await openStartSources(page);
+    await addDescription(page, 'Add a Codeberg provider for issues');
 
-    const modal = page.getByTestId('start-modal');
-    await expect(modal).toBeVisible();
-    await expect(page.getByTestId('start-title')).toContainText('Start a plan in pm-mcp-clients');
+    await continueAndStart(page);
 
-    await page.getByTestId('source-description').fill('Add a Codeberg provider for issues');
-    await page.getByTestId('source-documents').fill('doc/concepts/forgejo.adoc');
-    await page.getByTestId('source-issue').fill('4711');
-    await page.getByTestId('start-submit').click();
-
-    await expect(page.getByTestId('start-done')).toContainText(
-      'add-a-codeberg-provider-for-issues has started',
+    await expect(page.getByTestId('started-title')).toContainText(
+      'Add a Codeberg provider for issues has started',
     );
   });
 
   test('runs a recipe and derives its plan id', async ({ page }) => {
     await page.getByRole('button', { name: 'Start the plan' }).click();
-    await page.getByTestId('start-mode-recipe').click();
+    await expect(page.getByTestId('start-choose')).toBeVisible();
+    await page.getByTestId('choose-recipe').click();
 
-    await expect(page.getByTestId('recipe-select')).toBeVisible();
-    await page.getByTestId('recipe-select').selectOption('coverage');
-    await expect(page.getByTestId('recipe-parameters-title')).toContainText('coverage');
+    await expect(page.getByTestId('start-recipe')).toBeVisible();
+    await page.getByTestId('recipe-choose-code-review').click();
 
-    await page.getByTestId('start-submit').click();
-    await expect(page.getByTestId('start-done')).toContainText('has started');
-    await expect(page.getByTestId('start-done')).toContainText('recipe-coverage-');
+    // A recipe with parameters asks for them first.
+    await expect(page.getByTestId('recipe-parameters')).toBeVisible();
+    await page.getByTestId('recipe-continue').click();
+
+    await expect(page.getByTestId('recipe-ready')).toBeVisible();
+    await expect(page.getByTestId('ready-id')).toHaveValue(/^recipe-code-review-/);
+
+    await page.getByTestId('ready-start').click();
+    await expect(page.getByTestId('started-title')).toContainText(/recipe-code-review-/);
   });
 
   test('starts an epic and reports it', async ({ page }) => {
-    await page.getByRole('button', { name: 'Start the epic' }).click();
+    await openStartSources(page, 'epic');
+    await addDescription(page, 'Relay hardening');
 
-    await expect(page.getByTestId('start-title')).toContainText('Start an epic in pm-mcp-clients');
-    await page.getByTestId('source-description').fill('Relay hardening');
-    await page.getByTestId('start-submit').click();
+    await continueAndStart(page);
 
-    await expect(page.getByTestId('start-done')).toContainText('relay-hardening has started');
+    await expect(page.getByTestId('started-title')).toContainText('Relay hardening has started');
+    await expect(page.getByTestId('started-decompose')).toBeVisible();
   });
 
   test('refuses a start in a project that is not ready', async ({ page }) => {
-    // The start scenario serves three projects; select the one that is not ready.
+    // The scenario serves three projects; the bare plan-marshall one still asks for setup.
     await page
       .locator('.project-list')
-      .getByRole('tab', { name: /plan-marshall/i })
+      .getByRole('tab', { name: /^! 1 plan-marshall$/ })
       .click();
-    await page.getByRole('button', { name: 'Start the plan' }).click();
-    await page.getByTestId('source-description').fill('something');
-    await page.getByTestId('start-submit').click();
+    await expect(page.locator('.project-title')).toContainText('plan-marshall');
 
-    await expect(page.getByTestId('start-error')).toBeVisible();
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+
+    await expect(page.getByTestId('start-error')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('start-error')).toContainText('start_refused');
   });
 });

@@ -1,99 +1,55 @@
 import { test, expect } from '@playwright/test';
-
-async function pairOnGitSourcesScenario(page, request) {
-  const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
-    data: { scenario: 'git_sources' },
-  });
-  expect(res.ok()).toBeTruthy();
-
-  await page.goto('/');
-  await page.evaluate(() => localStorage.clear());
-  await page.goto('/#code=GTSR-CMTR');
-  await expect(page.locator('.app-header__machine')).toContainText('Machine:');
-
-  const overviewNav = page.locator('.app-header').getByRole('button', { name: /Running work/i });
-  await expect(overviewNav).toBeVisible();
-  await overviewNav.click();
-  await expect(page.locator('.overview')).toBeVisible();
-
-  // The scenario serves a not-ready project too; select the ready one explicitly.
-  await page
-    .locator('.project-list')
-    .getByRole('tab', { name: /pm-mcp-clients/i })
-    .click();
-  await expect(page.locator('.project-title')).toContainText('pm-mcp-clients');
-}
-
-async function openGitSourceModal(page) {
-  await page.getByRole('button', { name: 'Adopt a pull request' }).click();
-  await expect(page.getByTestId('git-source-modal')).toBeVisible();
-}
+import {
+  continueAndStart,
+  openProject,
+  openStartSources,
+  pair,
+  switchScenario,
+} from './helpers/pairing.js';
 
 test.describe('Web Client Git Plan Sources (UC-STA-7, UC-STA-9)', () => {
   test.beforeEach(async ({ page, request }) => {
-    await pairOnGitSourcesScenario(page, request);
+    await switchScenario(request, 'git_sources');
+    await pair(page, request);
+    await openProject(page, 'pm-mcp-clients');
   });
 
-  test('observes and adopts a pull request', async ({ page }) => {
-    await openGitSourceModal(page);
-    await expect(page.getByTestId('git-source-title')).toContainText(
-      'Git sources in pm-mcp-clients',
-    );
+  test('adds a pull request with its changed files and starts the plan', async ({ page }) => {
+    await openStartSources(page);
+    await page.getByTestId('add-pull_request').click();
 
-    await page.getByTestId('pr-reference-input').fill('4711');
-    await page.getByTestId('pr-observe').click();
-
-    await expect(page.getByTestId('pr-observation')).toBeVisible();
-    await expect(page.getByTestId('pr-files')).toContainText('untrusted');
-
-    await page.getByTestId('pr-adopt-submit').click();
-    await expect(page.getByTestId('git-source-done')).toContainText(
-      'adopt-pr-4711 adopted the pull request',
-    );
-  });
-
-  test('requires an explicit acceptance for a flagged pull request', async ({ page }) => {
-    await openGitSourceModal(page);
-
-    await page.getByTestId('pr-reference-input').fill('6677');
-    await page.getByTestId('pr-observe').click();
-
-    await expect(page.getByTestId('pr-flagged-title')).toBeVisible();
-    await expect(page.getByTestId('pr-adopt-submit')).toBeDisabled();
-
-    await page.getByTestId('pr-accept-screening').check();
-    await page.getByTestId('pr-adopt-submit').click();
-    await expect(page.getByTestId('git-source-done')).toContainText('adopted the pull request');
-  });
-
-  test('previews and captures the local changes', async ({ page }) => {
-    await openGitSourceModal(page);
-    await page.getByTestId('git-source-tab-local').click();
-
-    await expect(page.getByTestId('local-preview')).toBeVisible();
-    await expect(page.getByTestId('local-eligible')).toBeVisible();
-    await expect(page.getByTestId('local-capture')).toBeDisabled();
-
-    await page.getByTestId('local-confirm').check();
-    await page.getByTestId('local-capture').click();
-
-    await expect(page.getByTestId('git-source-done')).toContainText('captured the local changes');
-    await expect(page.getByTestId('git-source-snapshot')).toContainText('snapshot commit');
-  });
-
-  test('refuses local changes where the landing does not commit (PM-WF-25)', async ({ page }) => {
-    // pm-mcp-core stands in for a project whose landing is landing.files.
+    await expect(page.getByTestId('pr-panel')).toBeVisible();
     await page
-      .locator('.project-list')
-      .getByRole('tab', { name: /pm-mcp-core/i })
-      .click();
-    await expect(page.locator('.project-title')).toContainText('pm-mcp-core');
+      .getByTestId('pr-input')
+      .fill('https://github.com/plan-marshall/pm-mcp-clients/pull/214');
+    await page.getByTestId('pr-submit').click();
 
-    await openGitSourceModal(page);
-    await page.getByTestId('git-source-tab-local').click();
+    await expect(page.getByTestId('pr-panel')).toHaveCount(0);
+    const source = page.getByTestId('source-list');
+    await expect(source).toContainText('Add the Codeberg provider');
+    await expect(page.locator('[data-testid^="pr-files-"]')).toBeVisible();
+    await expect(page.locator('[data-testid^="pr-files-"]')).toContainText('untrusted');
 
-    await expect(page.getByTestId('local-ineligible')).toBeVisible();
-    await expect(page.getByTestId('local-pm-wf-25')).toContainText('PM-WF-25');
-    await expect(page.getByTestId('local-capture')).toBeDisabled();
+    await continueAndStart(page);
+
+    await expect(page.getByTestId('started-title')).toBeVisible();
+  });
+
+  test('previews and adds the local changes', async ({ page }) => {
+    await openStartSources(page);
+    await page.getByTestId('add-local_changes').click();
+
+    const panel = page.getByTestId('local-changes-panel');
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId('local-changes-summary')).toBeVisible();
+    await expect(page.getByTestId('local-changes-ineligible')).toHaveCount(0);
+
+    await page.getByTestId('local-changes-add').click();
+
+    await expect(page.getByTestId('local-changes-panel')).toHaveCount(0);
+    await expect(page.getByTestId('source-list')).toContainText('2 files changed');
+
+    await continueAndStart(page);
+    await expect(page.getByTestId('started-title')).toBeVisible();
   });
 });

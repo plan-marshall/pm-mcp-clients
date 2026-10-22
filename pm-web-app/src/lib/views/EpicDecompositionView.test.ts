@@ -137,6 +137,9 @@ describe('EpicDecompositionView', () => {
       ],
     });
     const instruct = vi.spyOn(apiClient, 'instructDecomposition').mockResolvedValue(rewritten);
+    const check = vi
+      .spyOn(apiClient, 'checkDecomposition')
+      .mockResolvedValue({ ...rewritten, status: 'review', findings: [] });
 
     render(EpicDecompositionView);
     await screen.findByTestId('plan-edit-relay-auth-v2');
@@ -164,6 +167,9 @@ describe('EpicDecompositionView', () => {
     expect(screen.getByTestId('plan-surface-relay-auth-v2')).toHaveTextContent(
       'pm-relay/src/relay-auth-v2',
     );
+    // The accepted edit re-runs the checks, so a resolved finding opens the commit gate.
+    expect(check).toHaveBeenCalledWith('pm-mcp-clients', 'relay-hardening');
+    expect(await screen.findByTestId('agree-commit')).not.toBeDisabled();
   });
 
   it('agrees and commits a passing cut', async () => {

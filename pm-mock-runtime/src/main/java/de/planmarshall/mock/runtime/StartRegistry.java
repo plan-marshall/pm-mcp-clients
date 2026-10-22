@@ -143,6 +143,7 @@ final class StartRegistry {
     private static final String KEY_PARAMETERS = "parameters";
 
     private static final String STATE_SOURCES = StartState.SOURCES.wireValue();
+    private static final String STATE_CHOOSE = StartState.CHOOSE.wireValue();
     private static final String STATE_READY = StartState.READY.wireValue();
     private static final String STATE_RECIPE = StartState.RECIPE.wireValue();
     private static final String STATE_REFUSED = StartState.REFUSED.wireValue();
@@ -554,7 +555,7 @@ final class StartRegistry {
         if (!projectLandings.containsKey(projectId)) {
             return null;
         }
-        var entry = new StartEntry(nextEntryId(), request.kind(), projectId, openingState(request, projectId));
+        var entry = new StartEntry(nextEntryId(), request.kind(), projectId, openingState(request));
         entry.title = request.title();
         entry.objective = request.objective();
         entry.landing = projectLandings.get(projectId);
@@ -850,11 +851,12 @@ final class StartRegistry {
     // ---------------------------------------------------------------------------------------------
     // Acts
 
-    private String openingState(EntryOpenRequest request, String projectId) {
+    private String openingState(EntryOpenRequest request) {
         if (request.kind().epic() || request.recipeKey() != null) {
             return STATE_SOURCES;
         }
-        return projectRecipes.getOrDefault(projectId, List.of()).isEmpty() ? STATE_SOURCES : STATE_RECIPE;
+        // A plan first chooses between a start from sources and a recipe (design "Starting Work").
+        return STATE_CHOOSE;
     }
 
     private void addSourceAct(StartEntry entry, String kindWire, Map<String, Object> body) throws ActRefused {

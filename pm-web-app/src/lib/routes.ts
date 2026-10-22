@@ -46,6 +46,8 @@ export interface RouteParams {
   reportPlanId?: string;
   /** The project the explorer focuses, so a plan's project is one step away. */
   explorerProjectId?: string;
+  /** The onboarding step the screen opens at, carried in `/onboarding?step=…`. */
+  onboardingStep?: number;
 }
 
 /** The project and the entry a start path names. */
@@ -217,6 +219,10 @@ export function pathForRoute(route: AppRoute, params: RouteParams = {}): string 
     return params.projectId
       ? `/designer?project=${encodeURIComponent(params.projectId)}`
       : '/designer';
+  }
+  if (route === 'onboarding' && params.onboardingStep) {
+    // The step travels in the query, so a reload and the browser's back keep it.
+    return `/onboarding?step=${params.onboardingStep}`;
   }
   return FIXED_ROUTE_PATHS[route] ?? null;
 }

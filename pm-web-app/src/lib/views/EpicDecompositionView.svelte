@@ -121,10 +121,20 @@
     }
   }
 
-  function acceptReadBack() {
-    if (readBack) {
-      cut = readBack.after;
-      readBack = null;
+  async function acceptReadBack(): Promise<void> {
+    if (!readBack) return;
+    cut = readBack.after;
+    readBack = null;
+    // An edit can resolve a check: re-run the server's checks so the commit gate follows the
+    // changed plan instead of the findings of the cut before the edit.
+    busy = true;
+    errorMessage = '';
+    try {
+      cut = await apiClient.checkDecomposition(projectId, epicId);
+    } catch (err: unknown) {
+      errorMessage = (err as Error)?.message || 'error';
+    } finally {
+      busy = false;
     }
   }
 
