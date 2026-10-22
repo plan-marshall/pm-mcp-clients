@@ -18,13 +18,16 @@ Every work package in `doc/agy/` is governed by coordinated architectural layers
 
 ---
 
-## 2. Active Wave: Post-Run Remediation Wave
+## 2. Active Wave: Post-Run Remediation & Web Remediation
 
-Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc) identified four cross-cutting findings (CLI signal restoration, interactive entry flag, dynamic route codec validation closure, and mobile viewport E2E coverage) unified into one remediation plan.
+Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc) identified four cross-cutting findings (CLI signal restoration, interactive entry flag, dynamic route codec validation closure, and mobile viewport E2E coverage) unified into one remediation plan, which has landed on `main` (PR #168). A second, independent remediation plan is now staged from the web-client findings in [`doc/findings-web.txt`](../findings-web.txt).
 
-| Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
+| Stream | Active / Last Completed Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Implemented (PR pending) |
+| **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed (PR #168) |
+| **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Staged; Step 1 pending |
+
+*(Note: The web remediation plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete).*
 
 ---
 
@@ -77,6 +80,10 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Decisions tab count, notifications, one-step reveal, control actions bar, hold resolution, settings conflict dialogue, epic resource sections, findings/watches review, and ended-work chat)*
 6. **Reports, System & Designer (Landed & Verified)**: [`web-reports-system-and-designer-plan.md`](implemented/web-reports-system-and-designer-plan.md) ([Report](verified/web-reports-system-and-designer-plan-report.md) — PR #154, commit `2e4ae7d`)
    *(Complete reports view, system view, cleanup inspection, and process designer in pm-web-app)*
+
+### Stream D: Web Session, Pairing & Dev Host Remediation (`pm-web-app` / `pm-mock-runtime`)
+1. **Active (Staged)**: [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md)
+   *(Session persistence across mock restarts; authenticated-only `401` handling; system-name Vite/start-script host for phone access; already-paired code probe; fresh-code control endpoint and second-device pairing; single-use pairing copy)*
 
 ---
 
