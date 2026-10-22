@@ -69,9 +69,9 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.adoc
 - [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
 - [x] 4. Final completion report written (`doc/agy/completion-own-calls-change-map-plan-report.md`) and initial plan moved to `doc/agy/implemented/completion-own-calls-change-map-plan.md`.
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/completion-own-calls-change-map-plan-report.md` by orchestrator session.
+- [x] 6. PR opened (NEVER use `skip-bot-review` on worker PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/completion-own-calls-change-map-plan-report.md` by orchestrator session.
 
 ---
 

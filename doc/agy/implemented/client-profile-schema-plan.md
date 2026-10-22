@@ -56,9 +56,9 @@ It unblocks `pm-mcp-core PLAN-19 profile-loader` and adheres strictly to [`doc/m
 - [x] 3. Fixes implemented, local tests passing, all profiles valid.
 - [x] 4. Final completion report written (`doc/agy/client-profile-schema-plan-report.md`) and initial plan moved to `doc/agy/implemented/client-profile-schema-plan.md`.
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. Push to `feature/client-profile-schema`, all 29 CI checks green, CodeRabbit review verified resolved.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/client-profile-schema-plan-report.md` by orchestrator session.
+- [x] 6. Push to `feature/client-profile-schema`, all 29 CI checks green, CodeRabbit review verified resolved.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/client-profile-schema-plan-report.md` by orchestrator session.
 
 ---
 

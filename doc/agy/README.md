@@ -20,13 +20,15 @@ Every work package in `doc/agy/` is governed by coordinated architectural layers
 
 ## 2. Active Wave: 3-Stream Parallel Model
 
-Waves execute across disjoint parallel streams (CLI TUI, Cross-Module Completion, and Client Profiles):
+All implementation packages and client streams in `pm-mcp-clients` are complete, landed on `main`, and passed Step 8 post-landing verification.
 
-| Stream | Active Plan | Isolated Worktree Directory | Topic Branch | State |
+| Stream | Last Completed Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **CLI Full-Screen (Stream B)** | [`cli-fullscreen-reports-system-plan.md`](cli-fullscreen-reports-system-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-cli-fullscreen-reports-system` | `feat/cli-fullscreen-reports-system` | Step 1 allocated; ready to launch |
-| **Completion Report (Stream C)** | [`completion-own-calls-change-map-plan.md`](completion-own-calls-change-map-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-completion-own-calls-change-map` | `feat/completion-own-calls-change-map` | Step 1 allocated; ready to launch |
-| **Profiles & Schemas (Stream A)** | [`client-profile-schema-plan.md`](client-profile-schema-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-client-profile-schema` | `feature/client-profile-schema` | Step 1 allocated; ready to launch |
+| **Profiles & Schemas (Stream A)** | [`client-profile-schema-plan.md`](implemented/client-profile-schema-plan.md) | Cleaned up | `feature/client-profile-schema` | Landed & Verified (PR #161, #166) |
+| **CLI Full-Screen (Stream B)** | [`cli-fullscreen-reports-system-plan.md`](implemented/cli-fullscreen-reports-system-plan.md) | Cleaned up | `feat/cli-fullscreen-reports-system` | Landed & Verified (PR #165) |
+| **Completion Report (Stream C)** | [`completion-own-calls-change-map-plan.md`](implemented/completion-own-calls-change-map-plan.md) | Cleaned up | `feat/completion-own-calls-change-map` | Landed & Verified (PR #163) |
+
+*(Note: There are currently no open work packages remaining in `doc/plans/`. All planned client deliverables and full-screen TUI levels are 100% complete).*
 
 ---
 
@@ -47,8 +49,8 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Consolidated 20 project, enrolment, git/lesson source, and start files into projects-and-start.json; migrated StartRegistry)*
 6. **Wave 3b Reports, System & Designer (Landed & Verified)**: [`mock-runtime-reports-system-designer-plan.md`](implemented/mock-runtime-reports-system-designer-plan.md) ([Report](verified/mock-runtime-reports-system-designer-plan-report.md) — PR #158, commit `2d87d77`)
    *(Consolidated reports, system, and designer scenarios into canonical scenarios 4 & 5; scenario-driven web test fetch)*
-7. **Client Profile Schema (Active)**: [`client-profile-schema-plan.md`](client-profile-schema-plan.md)
-   *(Full profile schema across 5 profiles; PR #161 CI resolution and landing)*
+7. **Client Profile Schema (Landed & Verified)**: [`client-profile-schema-plan.md`](implemented/client-profile-schema-plan.md) ([Report](verified/client-profile-schema-plan-report.md) — PR #161 commit `725f62a`, PR #166 commit `a9e9122`)
+   *(Full profile schema across 5 profiles; antigravity version probe and OpenCode {{mcp_config}} slot verified)*
 
 ### Stream B: CLI Full-Screen TUI (`pm-operator`)
 1. **Foundation (Landed & Verified)**: [`cli-fullscreen-foundation-plan.md`](implemented/cli-fullscreen-foundation-plan.md) ([Report](verified/cli-fullscreen-foundation-plan-report.md) — PR #124, commit `e3ae1c0`)
@@ -61,7 +63,7 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Full-screen epic view, modal actions menu, hold dialogue, settings conflict, findings/watches review, ended-work chat)*
 5. **Projects (Landed & Verified)**: [`cli-fullscreen-projects-plan.md`](implemented/cli-fullscreen-projects-plan.md) ([Report](verified/cli-fullscreen-projects-plan-report.md) — PR #160, commit `beeea77`)
    *(Full-screen project explorer, enrol wizard, digest mismatch, git and lesson sources, interactive `--project ?` selector)*
-6. **Reports & System (Active)**: [`cli-fullscreen-reports-system-plan.md`](cli-fullscreen-reports-system-plan.md)
+6. **Reports & System (Landed & Verified)**: [`cli-fullscreen-reports-system-plan.md`](implemented/cli-fullscreen-reports-system-plan.md) ([Report](verified/cli-fullscreen-reports-system-plan-report.md) — PR #165, commit `07f2c87`)
    *(Full-screen reports browser and report view, system view, runtime lifecycle controls)*
 
 ### Stream C: Cross-Module Use Cases & Web Client Completion
@@ -72,11 +74,8 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 5. **Decisions & Actions (Landed & Verified)**: [`web-decisions-and-actions-plan.md`](implemented/web-decisions-and-actions-plan.md) ([Report](verified/web-decisions-and-actions-plan-report.md) — PR #151, commit `1090bbc`)
 6. **Reports, System & Designer (Landed & Verified)**: [`web-reports-system-and-designer-plan.md`](implemented/web-reports-system-and-designer-plan.md) ([Report](verified/web-reports-system-and-designer-plan-report.md) — PR #154, commit `2e4ae7d`)
 7. **Follow an Epic UC-PLN-5 (Landed & Verified)**: [`uc-pln-5-plan.md`](implemented/uc-pln-5-plan.md) ([Report](verified/uc-pln-5-plan-report.md) — PR #159, commit `84b6680`)
-8. **Own Calls & Change Map (Active)**: [`completion-own-calls-change-map-plan.md`](completion-own-calls-change-map-plan.md)
+8. **Own Calls & Change Map (Landed & Verified)**: [`completion-own-calls-change-map-plan.md`](implemented/completion-own-calls-change-map-plan.md) ([Report](verified/completion-own-calls-change-map-plan-report.md) — PR #163, commit `673067f`)
    *(Completion report own calls and ASCII change map across API, mock runtime, operator and web app)*
-   *(10-step project onboarding, build environment display, favourite ordering, setup conflict resolution)*
-3. **Overview, Plan & Epic View (Landed & Verified)**: [`web-overview-plan-and-epic-view-plan.md`](implemented/web-overview-plan-and-epic-view-plan.md) ([Report](verified/web-overview-plan-and-epic-view-plan-report.md) — PR #134, commit `aad7e44`)
-4. **Arrival Banners & i18n Cache (Landed & Verified)**: [`web-arrival-banners-and-i18n-cache-plan.md`](implemented/web-arrival-banners-and-i18n-cache-plan.md) ([Report](verified/web-arrival-banners-and-i18n-cache-plan-report.md) — PR #142, commit `8db8629`)
    *(Complete removal of redundant top arrival notice banners; localStorage catalogue caching with SWR, synchronous hydration, and missing-key shielding)*
 5. **Decisions & Actions (Landed & Verified)**: [`web-decisions-and-actions-plan.md`](implemented/web-decisions-and-actions-plan.md) ([Report](verified/web-decisions-and-actions-plan-report.md) — PR #151, commit `1090bbc`)
    *(Decisions tab count, notifications, one-step reveal, control actions bar, hold resolution, settings conflict dialogue, epic resource sections, findings/watches review, and ended-work chat)*
