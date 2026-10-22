@@ -158,6 +158,10 @@ Before committing changes, determine the nature of the changes:
     - Checkstyle and Enforcer rules (`clients-depend-on-pm-api-only`, `no-model-facing-content`, etc.).
     - Javadoc generation and validation.
     - Complete unit test suite across all modules in the reactor.
+  - **The OpenRewrite output is part of the change**:
+    - The recipes run in write mode. Every file the gate reformats — import order, text-block indentation, test-method names, and the other normalizations of the parent's recipe set — is committed together with the change that triggered the gate.
+    - **Never revert the reformatting to keep the diff small.** A reverted reformat leaves the repository baseline behind the recipe set, so the next gate run rewrites the same files and the worker has to revert them again. The first change after a parent or recipe bump therefore carries the whole baseline reformat.
+    - Commit the reformatted files in the same PR as the change; the requirement below is met when the committed tree is the tree the gate built.
   - **Requirement**: Must complete with `BUILD SUCCESS` and a clean `git status` (no untracked artifacts or uncommitted reformatted files).
 
 ### Step 5: Commit & Pull Request Creation

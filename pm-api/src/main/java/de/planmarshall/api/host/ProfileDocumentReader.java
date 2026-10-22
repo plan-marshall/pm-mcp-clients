@@ -66,7 +66,7 @@ public class ProfileDocumentReader {
      * @param secondarySignals the signals consulted only when no primary signal of any host matched
      */
     public record Detection(int precedence, List<HostDetection.Signal> primarySignals,
-    List<HostDetection.Signal> secondarySignals) {
+                            List<HostDetection.Signal> secondarySignals) {
 
         /**
          * Copies the lists.
@@ -93,7 +93,7 @@ public class ProfileDocumentReader {
      * @param provisional       {@code true} if a value is provisional
      */
     public record Identity(String sessionIdVariable, List<String> versionProbe, String versionPattern,
-    String modelSource, boolean provisional) {
+                           String modelSource, boolean provisional) {
 
         /**
          * Copies the probe.

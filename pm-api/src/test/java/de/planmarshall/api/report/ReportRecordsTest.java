@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -371,7 +372,7 @@ class ReportRecordsTest {
     }
 
     private static Map<String, Object> with(Map<String, Object> base, String key, Object value) {
-        var map = new java.util.LinkedHashMap<String, Object>(base);
+        var map = new LinkedHashMap<String, Object>(base);
         map.put(key, value);
         return map;
     }

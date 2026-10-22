@@ -19,11 +19,10 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
-
-import com.fasterxml.jackson.core.JsonFactory;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import com.fasterxml.jackson.core.JsonFactory;
 
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.json.JsonFormatException;
