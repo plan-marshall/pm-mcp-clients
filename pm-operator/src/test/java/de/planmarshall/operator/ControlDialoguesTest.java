@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.control.ArchiveCheck;
+import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionResult;
@@ -35,6 +36,7 @@ import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.epicview.EpicViewLevel;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -723,7 +725,7 @@ class ControlDialoguesTest {
     @Test
     @DisplayName("the remaining review proposals are accepted once")
     void reviewRemaining() throws Exception {
-        var two = REVIEW.replace("\"total\":1", "\"total\":2").replace("]}" , "," +
+        var two = REVIEW.replace("\"total\":1", "\"total\":2").replace("]}", "," +
                             "{\"item_id\":\"F-2\",\"register\":\"findings\",\"statement\":\"Second\"," +
                             "\"rules\":[],\"origin\":\"landing\",\"trust\":\"trusted\",\"state\":\"open\"," +
                             "\"proposal\":\"keep\"}]}");
@@ -798,7 +800,7 @@ class ControlDialoguesTest {
     @Test
     @DisplayName("a conflict applied again writes the value")
     void settingsConflictApplyAgain() throws Exception {
-        var attempts = new java.util.concurrent.atomic.AtomicInteger();
+        var attempts = new AtomicInteger();
         serve((request, response) -> {
             var path = request.target();
             if (path.endsWith("/settings") && "GET".equals(request.method())) {
@@ -857,8 +859,7 @@ class ControlDialoguesTest {
     @Test
     @DisplayName("a chat can be rendered without asking")
     void chatRender() throws Exception {
-        WorkChatDialogue.render(context, new PrintWriter(out), de.planmarshall.api.control
-                            .ChatReadBackResource.fromJson(CHAT_PROPOSAL));
+        WorkChatDialogue.render(context, new PrintWriter(out), ChatReadBackResource.fromJson(CHAT_PROPOSAL));
         assertTrue(out.toString().contains("Proposed change"), out.toString());
         assertTrue(out.toString().contains("websocket and SSE"), out.toString());
     }
@@ -866,12 +867,12 @@ class ControlDialoguesTest {
     @Test
     @DisplayName("the epic view closes rows and expands every section")
     void epicViewCloseAndExpand() throws Exception {
-        var view = new de.planmarshall.operator.epicview.EpicViewLevel(EpicResource.fromJson(EPIC));
+        var view = new EpicViewLevel(EpicResource.fromJson(EPIC));
         view.expandAll();
         assertTrue(view.rows("en").stream().anyMatch(row -> row.line().contains("Tokens")),
                             view.rows("en").toString());
-        assertNotNull(view.closeRow(de.planmarshall.operator.epicview.EpicViewLevel.SOURCES_ID));
-        assertNotNull(view.closeRow(de.planmarshall.operator.epicview.EpicViewLevel
+        assertNotNull(view.closeRow(EpicViewLevel.SOURCES_ID));
+        assertNotNull(view.closeRow(EpicViewLevel
                             .WORKSTREAM_PREFIX + "WS-1"));
     }
 

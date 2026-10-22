@@ -146,8 +146,8 @@ public final class EndedWorkLevel {
         }
 
         return items.stream()
-                .map(item -> formatItemRow(locale, clock, helpVisible, item))
-                .toList();
+                            .map(item -> formatItemRow(locale, clock, helpVisible, item))
+                            .toList();
     }
 
     private static TuiRow formatItemRow(String locale, Clock clock, boolean helpVisible, EndedWorkItem item) {

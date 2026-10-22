@@ -212,7 +212,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("isStructuralChange detects prefix matches, specific events, and non-structural events")
-    void testIsStructuralChange() {
+    void isStructuralChange() {
         assertTrue(OverviewFullScreenApp.isStructuralChange("project.created", ""));
         assertTrue(OverviewFullScreenApp.isStructuralChange("phase.entered", ""));
         assertTrue(OverviewFullScreenApp.isStructuralChange("scope.changed", ""));
@@ -241,7 +241,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("categoryOf maps event types to notice buffer categories")
-    void testCategoryOf() {
+    void categoryOf() {
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf(Map.of("type", "question")));
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf(Map.of("type", "decision")));
         assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf(Map.of("type", "waiver_request")));
@@ -253,7 +253,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("countOf handles report counts and caps at 10000")
-    void testCountOf() {
+    void countOf() {
         assertEquals(5, OverviewFullScreenApp.countOf(Map.of("count", 5), ConsoleNoticeBuffer.Category.REPORT));
         assertEquals(10_000, OverviewFullScreenApp.countOf(Map.of("count", 50_000), ConsoleNoticeBuffer.Category.REPORT));
         assertEquals(1, OverviewFullScreenApp.countOf(Map.of("count", 1), ConsoleNoticeBuffer.Category.REPORT));
@@ -264,7 +264,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("handleLiveEvent handles empty data, malformed data, and notices")
-    void testHandleLiveEvent() throws IOException {
+    void handleLiveEvent() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -289,7 +289,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("handleSseDisconnect marks connected false when stopped")
-    void testHandleSseDisconnect() throws IOException {
+    void handleSseDisconnect() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         app.stop();
@@ -299,7 +299,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("fetchTargetDetail and fetchTargetEnded validate kinds and project IDs")
-    void testFetchTargetDetailAndEnded() throws IOException {
+    void fetchTargetDetailAndEnded() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var runtime = createContext(virtual).runtime(false);
 
@@ -319,7 +319,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("fetchProjects and fetchUnreadReports populate cached data")
-    void testFetchProjectsAndReports() throws IOException {
+    void fetchProjectsAndReports() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -333,7 +333,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("isCurrentProjectSetupNeedingOperator checks cached project summary")
-    void testIsCurrentProjectSetupNeedingOperator() throws IOException {
+    void isCurrentProjectSetupNeedingOperator() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -356,7 +356,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("openProject and openEnded handle blank and invalid IDs")
-    void testOpenProjectAndEnded() throws IOException {
+    void openProjectAndEnded() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -374,7 +374,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("applyRefreshedData updates matching levels")
-    void testApplyRefreshedData() throws IOException {
+    void applyRefreshedData() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -404,7 +404,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("saveState persists view state across navigation levels")
-    void testSaveState() throws IOException {
+    void saveState() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var context = createContext(virtual);
         var store = new OverviewStateStore(context.stateDirectory());
@@ -440,7 +440,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("loadInitialData supports initial ended, initial project, and saved state")
-    void testLoadInitialDataVariants() throws IOException {
+    void loadInitialDataVariants() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var runtime = createContext(virtual).runtime(false);
 
@@ -470,7 +470,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("keyHandler covers navigation, help, system views, and exit")
-    void testKeyHandlerNavigationAndHelp() throws IOException {
+    void keyHandlerNavigationAndHelp() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -512,7 +512,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("keyHandler covers view switching, jump to epic, and drill-down")
-    void testKeyHandlerViewsAndDrillDown() throws IOException {
+    void keyHandlerViewsAndDrillDown() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);
@@ -553,7 +553,7 @@ class OverviewFullScreenAppTest {
 
     @Test
     @DisplayName("keyHandler covers ended work navigation and filtering")
-    void testKeyHandlerEndedWork() throws IOException {
+    void keyHandlerEndedWork() throws Exception {
         var virtual = VirtualScreenTerminal.create(120, 30);
         var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
         var runtime = createContext(virtual).runtime(false);

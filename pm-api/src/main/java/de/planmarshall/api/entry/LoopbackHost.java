@@ -12,6 +12,7 @@ package de.planmarshall.api.entry;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+
 import org.jspecify.annotations.Nullable;
 
 /**
