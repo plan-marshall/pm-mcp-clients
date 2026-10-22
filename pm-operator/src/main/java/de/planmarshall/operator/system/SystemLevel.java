@@ -399,7 +399,7 @@ public final class SystemLevel {
                             Map.of("used", SystemFormatting.bytes(runtime.heapUsedBytes()),
                                                 "max", SystemFormatting.bytes(runtime.heapMaxBytes()),
                                                 "resident", SystemFormatting.bytes(runtime.residentMemoryBytes())));
-        var cpu = runtime.cpuPercent() != null
+        var cpu = runtime.cpuPercent() != null && runtime.cpuPercent() >= 0.0
                             ? MessageCatalogue.format(locale, "system.runtime.cpu",
                             Map.of("percent", String.format(Locale.ROOT, "%.0f", runtime.cpuPercent())))
                             : MessageCatalogue.format(locale, "operator.system.runtime.cpu_unavailable", Map.of());

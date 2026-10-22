@@ -149,6 +149,27 @@ class SystemLevelTest {
     }
 
     @Test
+    @DisplayName("a negative CPU sentinel is unavailable, never a percentage")
+    void treatsANegativeCpuAsUnavailable() {
+        var base = sampleSnapshot().runtime();
+        var runtime = new RuntimeMetrics(base.version(), base.build(), base.startedAt(), base.uptimeSeconds(),
+                            base.heapUsedBytes(), base.heapMaxBytes(), base.residentMemoryBytes(), -1.0,
+                            base.machineStoreBytes(), base.diskFreeBytes(), base.measuredAt(),
+                            base.socketListener(), base.loopbackListener(), base.networkListener(),
+                            base.pairedDevicesCount(), base.relaysBehindCount(), base.relaysBehindVersion(),
+                            base.newerVersion(), base.newerVersionDate(), base.newerVersionCheckedAt(),
+                            base.releaseNotesLink(), base.upgradeSupported(), base.upgradeUnsupportedReason());
+        var snapshot = new SystemSnapshot(runtime, sampleSnapshot().work(), sampleSnapshot().workers(),
+                            sampleSnapshot().jobs(), sampleSnapshot().models(), sampleSnapshot().cleanup(),
+                            SystemWindow.HOUR, null);
+
+        var rows = SystemLevel.root(snapshot, SystemWindow.HOUR, "model", null).rows("en");
+
+        assertTrue(rows.get(0).details().contains("CPU not available"), rows.get(0).details());
+        assertFalse(rows.get(0).details().contains("CPU -1"), rows.get(0).details());
+    }
+
+    @Test
     @DisplayName("the models group per model or per role without reading the runtime again")
     void groupsTheModels() {
         var perModel = level().rows("en", SystemLevel.Section.MODELS);

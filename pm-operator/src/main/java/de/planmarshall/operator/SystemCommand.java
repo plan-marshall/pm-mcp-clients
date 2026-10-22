@@ -153,8 +153,9 @@ public final class SystemCommand implements Callable<Integer> {
                 return null;
             }
             var app = new OverviewFullScreenApp(context, terminal,
-                                OverviewFullScreenApp.InitialSelection.system(window, by), Clock.systemUTC(),
-                                new OverviewStateStore(context.stateDirectory()), context.noticeBuffer());
+                                OverviewFullScreenApp.InitialSelection.system(window, by, resolvedProject()),
+                                Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
+                                context.noticeBuffer());
             app.run(out);
             return 0;
         } catch (IOException _) {
@@ -166,6 +167,10 @@ public final class SystemCommand implements Callable<Integer> {
                 // The terminal is gone; the snapshot is printed all the same.
             }
         }
+    }
+
+    private @Nullable String resolvedProject() {
+        return project == null || project.isBlank() || ".".equals(project) ? null : project;
     }
 
     void printSnapshot(PrintWriter out, SystemSnapshot snapshot) {

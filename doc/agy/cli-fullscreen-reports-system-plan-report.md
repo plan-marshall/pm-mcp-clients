@@ -17,7 +17,7 @@ Key outcomes:
 2. **Completion report** — an ended plan's report opens from a `plan.ended` report (`Enter`) and from the existing `c` on the plan view; the renderer is the landed `PlanCompletionLevel` (`PLAN_COMPLETION`), not a second copy of it.
 3. **System level (`SystemLevel`, `S` and the console's `system`)** — the six figures `Runtime`, `Work`, `Workers`, `Jobs`, `Models`, `Cleanup` in their fixed order with the design's detail lines, the drain progress line below the header, the `w`/`b`/`p` toggles (persisted in `overview.json`), `r`, `?`, `a` runtime actions, and `Enter` drill-downs into `Workers`, `Jobs`, `Locks`, `Models`, `Cleanup` and back to the overview of running work.
 4. **Narrow terminals** — the system view keeps its detail lines from 80 columns, hides them below (and `?` shows them), and `system` below 60 columns prints `operator.system.too_narrow` followed by the printed snapshot.
-5. **Tests** — 35 new tests (`ReportsLevelTest`, `SystemLevelTest`, `ReportsFullScreenTest`, `SystemFullScreenTest`, two `TuiLayoutTest` cases), the screen tests driving the real `VirtualScreenTerminal` against the `FakeRuntimeServer`.
+5. **Tests** — 38 new tests (`ReportsLevelTest`, `SystemLevelTest`, `ReportsFullScreenTest`, `SystemFullScreenTest`, two `TuiLayoutTest` cases), the screen tests driving the real `VirtualScreenTerminal` against the `FakeRuntimeServer`.
 
 ---
 
@@ -55,8 +55,8 @@ Every key of the two design tables (`24-reports.adoc#reports-texts`, `25-system.
 |---|---|
 | `de.planmarshall.operator.reports.ReportsLevelTest` **(new)** | Grouping order (project → epic → plan → project-level), heading/report classification, details (body, id, created/sent), neighbour selection, `without`/`withoutAll` with the unread count, the empty line, the machine's own group. (7 tests) |
 | `de.planmarshall.operator.system.SystemLevelTest` **(new)** | The six figures and their order, the figure content (runtime, work, workers, jobs, models, cleanup), an unavailable figure, per-model and per-role grouping, jobs→locks, workers/cleanup sections, window/grouping cycles, header/footer, section ids and the no-snapshot level. (9 tests) |
-| `de.planmarshall.operator.ReportsFullScreenTest` **(new, `VirtualScreenTerminal`)** | `R` opens the grouped level with the selection on a report; `m`, `M` (ids, not `all`), `p`/`e` without reading, `Enter` → completion report + read + return, live arrival keeping the selection, `?` details, and the empty level. (8 tests) |
-| `de.planmarshall.operator.SystemFullScreenTest` **(new, `VirtualScreenTerminal`)** | `S` and the console's `system`; `w`/`b`/`p` with `overview.json` persistence; `Enter` drill-downs (Workers, Jobs, Locks); `a` actions menu; the 80-column threshold and `?`; the `< 60`-column too-narrow snapshot fallback. (9 tests) |
+| `de.planmarshall.operator.ReportsFullScreenTest` **(new, `VirtualScreenTerminal`)** | `R` opens the grouped level with the selection on a report; `m`, `M` (ids, not `all`), `p`/`e` without reading, `Enter` → completion report + read + return, live arrival keeping the selection, `?` details, the empty level, and a refused read keeping its report. (9 tests) |
+| `de.planmarshall.operator.SystemFullScreenTest` **(new, `VirtualScreenTerminal`)** | `S` and the console's `system`; `w`/`b`/`p` with `overview.json` persistence; `Enter` drill-downs (Workers, Jobs, Locks); `a` actions menu; the 80-column threshold and `?`; the `< 60`-column too-narrow snapshot fallback, the drain line, and `system --project` in the console. (10 tests) |
 | `de.planmarshall.operator.tui.TuiLayoutTest` | The banner below the header without changing the height; the system level's details drawn from 80 columns. (2 added tests) |
 
 ---
@@ -65,7 +65,7 @@ Every key of the two design tables (`24-reports.adoc#reports-texts`, `25-system.
 
 | Gate | Result |
 |---|---|
-| `./mvnw -o test -pl pm-operator -am` | **913 tests, 0 failures, 0 errors** (878 before the plan; 35 added) |
+| `./mvnw -o test -pl pm-operator -am` | **921 tests, 0 failures, 0 errors** (883 before the plan; 38 added) |
 | `./mvnw verify -Ppre-commit` (whole reactor) | **BUILD SUCCESS** — OpenRewrite, licence headers, Checkstyle, Enforcer (`clients-depend-on-pm-api-only`, `no-model-facing-content`, `jackson-core-only`), Javadoc, and the full unit suite. |
 | Design-key audit | Every `operator.reports.*`, `operator.system.*`, and overview key in `24-reports.adoc#reports-texts` and `25-system.adoc#texts` present in EN **and** DE. |
 | Mock scenario audit (Phase 1.1) | `pm-mock-runtime/scenarios/reports-and-system.json` (read-only for this plan) carries 18 states — `reports.unread`, `reports.all-read`, `reports.empty`, `reports.completion-{landed,nothing,aborted,failed}`, `system.{running,draining,restarting,stopped,force-stop}`, `cleanup.{idle,running,kept-items,residues,preview,completed}` — and the 8 routes the two views read (`/api/v1/reports`, `/api/v1/system`, `/api/v1/system/cleanup`, the four completion routes, `/api/v1/status`). |
@@ -115,6 +115,23 @@ Every key of the two design tables (`24-reports.adoc#reports-texts`, `25-system.
 4. **`Cleanup` is a read-only detail level.** The plan asks for the cleanup line to open `cleanup` as a level; the full cleanup job view is `26-cleanup.adoc` and outside this plan's scope. The section shows the due counts, the freed size, kept-for-good, and the next check, all from `SystemSnapshot.cleanup`.
 5. **Model figures are grouped in the client.** The snapshot serves per-model records with a `role`; `b` aggregates them per role (calls, tokens, floor, unmeasured) without a second request — as the design allows ("the client never adds them up" applies to *figures the runtime serves*, and the grouping of a served list is the view's choice).
 6. **Drain banner from `runtime.draining`.** `SystemSnapshot` has no lifecycle field, so the progress line is fed by the event the runtime already sends (`who`, `remaining_count`, `remaining_items`) and stands below the header; it is cleared when the view is reopened.
+
+---
+
+## 6a. Review Findings Addressed
+
+All eight actionable findings of the CodeRabbit review were accepted and fixed in code (no refutations):
+
+| Finding | Fix |
+|---|---|
+| Archive row linked the report in `verified/` before Step 8 | The row now links `../cli-fullscreen-reports-system-plan-report.md` and says *(verification pending)*. |
+| German `pro Role` in `operator.system.keys.by` | Corrected to `pro Rolle` in both the `operator.system.*` and the `operator.overview.*` copies. |
+| System choices persisted only when `q` was pressed on a system level | `saveState` now carries `currentSystem`'s window/grouping/project in **every** write path through `withSystemChoice(...)`; the screen test leaves via the overview after changing both. |
+| A slow `system.metrics` refresh could overwrite a newer `w`/`b`/`p` choice | `refreshSystem` publishes the fresh snapshot with `currentSystem.compareAndSet(level, fresh)` and drops a read the operator overtook. |
+| `Enter` removed a report even when the read request failed | `openSelectedReport` keeps the report and shows `report.list.mark_read_failed` when `markReportRead` is refused; the new screen test proves the row and the count stay. |
+| A failed choice fetch showed the previous scope's figures under the new scope | `applySystemChoice` falls back to `SystemLevel.unavailable(...)` instead of reusing the old snapshot. |
+| A negative CPU sentinel was drawn as a percentage | The full-screen view now treats `cpuPercent < 0` as unavailable, matching the printed view; a unit test covers it. |
+| `system --project` was dropped when opening the full-screen view | `InitialSelection.system(...)` and `openSystem(...)` carry the project (the saved one only when none was given); the new screen test asserts the breadcrumb and the request. |
 
 ---
 

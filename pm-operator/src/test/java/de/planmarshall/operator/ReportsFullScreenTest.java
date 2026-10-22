@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
@@ -212,6 +213,7 @@ class ReportsFullScreenTest {
     private final AtomicReference<FakeRuntimeServer.EventStream> activeStream = new AtomicReference<>();
     private final List<String> readIds = Collections.synchronizedList(new ArrayList<>());
     private final List<String> bulkReads = Collections.synchronizedList(new ArrayList<>());
+    private final AtomicBoolean failReads = new AtomicBoolean(false);
     private final BlockingQueue<String[]> pendingEvents = new LinkedBlockingQueue<>();
 
     @BeforeEach
@@ -221,6 +223,7 @@ class ReportsFullScreenTest {
         readIds.clear();
         bulkReads.clear();
         pendingEvents.clear();
+        failReads.set(false);
         fixture = RuntimeFixture.create();
         writeLiveRecord();
         fixture.writeToken("test-token");
@@ -244,7 +247,7 @@ class ReportsFullScreenTest {
             response.json(200, "{\"marked_count\":4}");
         } else if (path.startsWith("/api/v1/reports/") && path.endsWith("/read")) {
             readIds.add(path.substring("/api/v1/reports/".length(), path.length() - "/read".length()));
-            response.send(204, null, "");
+            response.send(failReads.get() ? 500 : 204, null, failReads.get() ? "{\"error\":\"boom\"}" : "");
         } else if (path.startsWith("/api/v1/epics/")) {
             response.send(404, null, "{\"error\":\"not_found\"}");
         } else if ("/api/v1/events".equals(path)) {
@@ -506,6 +509,28 @@ class ReportsFullScreenTest {
             var text = String.join("\n", virtual.screen().lines());
             assertTrue(text.contains("rep-0139"), text);
             assertTrue(text.contains("sent "), text);
+
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("a read the runtime refuses keeps the report in the level")
+    void keepsTheReportWhenTheReadFails() throws Exception {
+        failReads.set(true);
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+
+            await(() -> selectedRow(virtual).contains("fix-relay"));
+            virtual.type("\r");
+            await(() -> shows(virtual, "completion report"));
+            assertTrue(readIds.contains("rep-0142"));
+
+            virtual.type("\u001b");
+            await(() -> shows(virtual, "Reports \u00b7 4 unread"));
+            await(() -> shows(virtual, "\u25b8 fix-relay"));
 
             virtual.type("q");
             join(thread);

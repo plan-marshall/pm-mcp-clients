@@ -298,6 +298,9 @@ class SystemFullScreenTest {
             await(() -> shows(virtual, "b by model"));
             await(() -> shows(virtual, "planner"));
 
+            // Leaving from the overview, not from the system level, must keep the choice too.
+            virtual.type("\u001b");
+            await(() -> shows(virtual, "Running work"));
             virtual.type("q");
             join(thread);
         }
@@ -441,6 +444,26 @@ class SystemFullScreenTest {
             assertEquals(0, exit);
             assertTrue(out.toString().contains("The system view needs 60 columns"), out.toString());
             assertTrue(out.toString().contains("Runtime"), out.toString());
+        }
+    }
+
+    @Test
+    @DisplayName("system --project in the console opens the view of that project")
+    void keepsTheProjectOfTheConsoleOption() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            context.setConsoleActive(true);
+            var out = new StringWriter();
+            var thread = new Thread(() -> PmOperator.execute(context, new PrintWriter(out),
+                                new PrintWriter(new StringWriter()), "system", "--project", "pm-mcp-clients"));
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && shows(virtual, "System \u00b7 pm-mcpd 0.9.1 \u00b7 pm-mcp-clients"));
+            await(() -> systemTargets.stream()
+                                .anyMatch(target -> target.contains("project=pm-mcp-clients")));
+
+            virtual.type("q");
+            join(thread);
         }
     }
 

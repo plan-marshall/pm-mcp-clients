@@ -109,12 +109,13 @@ public final class OverviewFullScreenApp {
      * @param system       whether the system view opens above the root
      * @param systemWindow optional system view window ({@code hour}, {@code today}, {@code 7d})
      * @param systemGroup  optional system view grouping ({@code model} or {@code role})
+     * @param systemProject optional project the system view shows, or {@code null} for the saved one
      */
     public record InitialSelection(@Nullable String project, @Nullable String by, boolean ended,
     @Nullable String plan, boolean explorer, boolean system, @Nullable String systemWindow,
-    @Nullable String systemGroup) {
+    @Nullable String systemGroup, @Nullable String systemProject) {
         public static final InitialSelection DEFAULT =
-                            new InitialSelection(null, null, false, null, false, false, null, null);
+                            new InitialSelection(null, null, false, null, false, false, null, null, null);
 
         /**
          * @param project optional initial project ID
@@ -122,7 +123,7 @@ public final class OverviewFullScreenApp {
          * @param ended   whether the initial level is ended work
          */
         public InitialSelection(@Nullable String project, @Nullable String by, boolean ended) {
-            this(project, by, ended, null, false, false, null, null);
+            this(project, by, ended, null, false, false, null, null, null);
         }
 
         /**
@@ -130,23 +131,25 @@ public final class OverviewFullScreenApp {
          * @return the selection
          */
         public static InitialSelection plan(String plan) {
-            return new InitialSelection(null, null, false, plan, false, false, null, null);
+            return new InitialSelection(null, null, false, plan, false, false, null, null, null);
         }
 
         /**
          * @return the selection that opens the projects explorer as the root
          */
         public static InitialSelection explorerRoot() {
-            return new InitialSelection(null, null, false, null, true, false, null, null);
+            return new InitialSelection(null, null, false, null, true, false, null, null, null);
         }
 
         /**
-         * @param window the system view's window, or {@code null} for the saved one
-         * @param group  the system view's grouping, or {@code null} for the saved one
+         * @param window  the system view's window, or {@code null} for the saved one
+         * @param group   the system view's grouping, or {@code null} for the saved one
+         * @param project the project the system view shows, or {@code null} for the saved one
          * @return the selection that opens the system view above the overview's root
          */
-        public static InitialSelection system(@Nullable String window, @Nullable String group) {
-            return new InitialSelection(null, null, false, null, false, true, window, group);
+        public static InitialSelection system(@Nullable String window, @Nullable String group,
+                            @Nullable String project) {
+            return new InitialSelection(null, null, false, null, false, true, window, group, project);
         }
     }
 
@@ -314,7 +317,8 @@ public final class OverviewFullScreenApp {
 
         if (initialSelection.system()) {
             stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, null);
-            openSystem(initialSelection.systemWindow(), initialSelection.systemGroup());
+            openSystem(initialSelection.systemWindow(), initialSelection.systemGroup(),
+                                initialSelection.systemProject());
             return;
         }
 
@@ -585,14 +589,8 @@ public final class OverviewFullScreenApp {
                 return;
             }
             if (kind == TuiLevel.Kind.SYSTEM) {
-                var system = currentSystem.get();
-                stateStore.write(new OverviewSavedState(
-                                    existing.projectId(),
-                                    existing.projectView(),
-                                    existing.selectedId(),
-                                    system != null ? system.window().value() : existing.systemWindow(),
-                                    system != null ? system.groupBy() : existing.systemGroupBy(),
-                                    system != null ? system.projectId() : existing.systemProjectId()));
+                stateStore.write(withSystemChoice(existing, existing.projectId(), existing.projectView(),
+                                    existing.selectedId()));
                 return;
             }
             var sel = stack.selected();
@@ -620,18 +618,34 @@ public final class OverviewFullScreenApp {
                 }
             }
 
-            var updated = new OverviewSavedState(
-                                projectId,
-                                projectView,
-                                selectedId,
-                                existing.systemWindow(),
-                                existing.systemGroupBy(),
-                                existing.systemProjectId()
-            );
+            var updated = withSystemChoice(existing, projectId, projectView, selectedId);
             stateStore.write(updated);
         } catch (IOException _) {
             // best effort persistence
         }
+    }
+
+    /**
+     * The saved state with the operator's system choice carried over, whether or not the view
+     * ended on a system level: {@code w}, {@code b} and {@code p} must survive leaving the view
+     * from any level ({@code doc/design/terminal-client/15-overview.adoc#overview-persistence}).
+     *
+     * @param existing  the state as it was
+     * @param projectId the project the overview ended in, or {@code null}
+     * @param view      the overview's view, or {@code null}
+     * @param selected  the overview's selection, or {@code null}
+     * @return the state to write
+     */
+    private OverviewSavedState withSystemChoice(OverviewSavedState existing, @Nullable String projectId,
+                        @Nullable String view, @Nullable String selected) {
+        var system = currentSystem.get();
+        return new OverviewSavedState(
+                            projectId,
+                            view,
+                            selected,
+                            system != null ? system.window().value() : existing.systemWindow(),
+                            system != null ? system.groupBy() : existing.systemGroupBy(),
+                            system != null ? system.projectId() : existing.systemProjectId());
     }
 
     static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
@@ -1490,12 +1504,13 @@ public final class OverviewFullScreenApp {
      * @param initialWindow the window the caller asked for, or {@code null} for the saved one
      * @param initialGroup  the grouping the caller asked for, or {@code null} for the saved one
      */
-    void openSystem(@Nullable String initialWindow, @Nullable String initialGroup) {
+    void openSystem(@Nullable String initialWindow, @Nullable String initialGroup,
+                        @Nullable String initialProject) {
         var saved = stateStore.read().orElse(OverviewSavedState.empty());
         var window = initialWindow != null ? SystemWindow.fromValue(initialWindow)
                             : SystemWindow.fromValue(saved.systemWindow());
         var groupBy = initialGroup != null ? initialGroup : saved.systemGroupBy();
-        var projectId = saved.systemProjectId();
+        var projectId = initialProject != null ? initialProject : saved.systemProjectId();
         SystemSnapshot snapshot = null;
         try {
             snapshot = fetchSystemSnapshot(context.runtime(true), window, projectId);
@@ -1558,7 +1573,11 @@ public final class OverviewFullScreenApp {
             return;
         }
         var fresh = level.withSnapshot(snapshot);
-        currentSystem.set(fresh);
+        if (!currentSystem.compareAndSet(level, fresh)) {
+            // The operator changed the window, grouping, or project during the read; their choice
+            // and its own read win.
+            return;
+        }
         synchronized (this) {
             var lvl = stack.level();
             if (lvl == null || lvl.kind() != TuiLevel.Kind.SYSTEM) {
@@ -1747,7 +1766,7 @@ public final class OverviewFullScreenApp {
                     return false;
                 }
                 case REPORTS -> openReports();
-                case SYSTEM -> openSystem(null, null);
+                case SYSTEM -> openSystem(null, null, null);
                 case MARK_READ -> markSelectedReportRead();
                 case MARK_ALL_READ -> markShownReportsRead();
                 case WINDOW -> systemCycleWindow();
@@ -2395,7 +2414,10 @@ public final class OverviewFullScreenApp {
                 statusMessage = MessageCatalogue.format(locale, "report.list.load_failed", Map.of());
                 return true;
             }
-            markReportRead(report.id());
+            if (!markReportRead(report.id())) {
+                statusMessage = MessageCatalogue.format(locale, "report.list.mark_read_failed", Map.of());
+                return true;
+            }
             var updated = level.without(report.id());
             currentReports.set(updated);
             unreadReports.set(updated.unreadCount());
@@ -2413,7 +2435,7 @@ public final class OverviewFullScreenApp {
                 return planId != null && openCompletion(runtime, planId);
             }
             if (report.kind() == ReportKind.SYSTEM_CLEANUP_DUE) {
-                openSystem(null, null);
+                openSystem(null, null, null);
                 return pushSystemSection(SystemLevel.Section.CLEANUP);
             }
             if (planId != null && openPlan(runtime, planId, null)) {
@@ -2584,7 +2606,9 @@ public final class OverviewFullScreenApp {
             } catch (IOException _) {
                 // The choice stands; the figures stay as they were.
             }
-            var level = snapshot != null ? chosen.withSnapshot(snapshot) : chosen;
+            var level = snapshot != null
+                                ? chosen.withSnapshot(snapshot)
+                                : SystemLevel.unavailable(chosen.window(), chosen.groupBy(), chosen.projectId());
             currentSystem.set(level);
             var lvl = stack.level();
             var section = lvl != null ? SystemLevel.sectionOf(lvl.id()) : SystemLevel.Section.ROOT;
