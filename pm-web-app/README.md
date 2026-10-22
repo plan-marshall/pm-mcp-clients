@@ -7,7 +7,7 @@
 ## Capabilities & Views
 
 - **Onboarding route**: `/onboarding` renders the state the runtime reports — start, consents, language, harnesses with their token reporting, models, roles, credentials, providers, plan defaults, the automatic run, and the done screen with read-only step summaries.
-- **Entry & pairing**: `/pair` and `/entry` pair a browser with a code (or the URL fragment), present the pairing URL as a QR code, show the network listener's fingerprint, and hold the loopback credential entry.
+- **Entry & pairing**: `/pair` and `/entry` pair a browser with a code (or the URL fragment), present the pairing URL as a QR code, and hold the loopback credential entry. The browser's own TLS warning carries the certificate fingerprint before pairing; the listener fingerprint is shown in Settings after pairing.
 - **Machine settings**: `/settings/machine` shows the seven aspects, the remembered consents with their withdrawal, the documents mode, the cleanup durations, the tokens with rotate/replace, and the paired devices; a value changed in another client opens the 409 conflict dialogue.
 - **Paired devices**: `/settings` lists the browsers that can act on the machine, renames one inline, revokes one or all others, and turns the network listener off.
 - **Operator dashboard**: real-time status overview of active projects, epics, running plans, questions, and reports.
@@ -66,11 +66,15 @@ Network (IP): http://192.168.1.20:5173
 Paired:      http://mbp-oliver.local:5173/pair#code=KXQB-MRTN
 ```
 
+When the resolved host is a loopback address (`127.0.0.1`, `localhost`, `::1`, or `[::1]`), only the `Local:` line and a loopback `Paired:` line are printed: no `Network` coordinate is offered, even when the machine has a primary IPv4.
+
 Vite is configured to automatically proxy `/api` and `/mock` calls to `http://127.0.0.1:7420`.
 
 ### Reaching the app from a phone
 
-The Vite development server binds to all interfaces on purpose, so a phone on the same network opens the `Network` URL. This is a development-only exposure: the `/api` proxy keeps the mock runtime's own listener on loopback, and the real runtime keeps its loopback/LAN listener security. The `/mock` control proxy is restricted to clients on this machine, so a phone cannot change the scenario or read/issue pairing codes through the dev server. Set `PM_WEB_HOST=127.0.0.1` when no network exposure is wanted; `start.sh` then prints only the local URL.
+The Vite development server binds to all interfaces on purpose, so a phone on the same network opens the `Network` URL. This is a development-only exposure: the `/api` proxy keeps the mock runtime's own listener on loopback, and the real runtime keeps its loopback/LAN listener security. The `/mock` control proxy is restricted to clients on this machine, so a phone cannot change the scenario or read/issue pairing codes through the dev server. Set `PM_WEB_HOST=127.0.0.1` when no network exposure is wanted; `start.sh` then prints only the local URL and a loopback `Paired:` URL.
+
+The `Paired:` URL is printed on the resolved host, never on a substituted primary IPv4: a phone that opens it stays on the address the operator chose. With a loopback `PM_WEB_HOST`, that URL stays on the loopback host.
 
 The machine's name is preferred over its IP: the name survives DHCP address changes and resolves through mDNS/Bonjour, while `Network (IP)` is the fallback for networks that block name resolution. `PM_WEB_HOST` sets the name explicitly, and `PM_WEB_ALLOWED_HOSTS` (comma separated) adds further names Vite accepts; the machine's own names stay allowed. IP addresses are allowed by Vite without an entry.
 
@@ -95,6 +99,7 @@ A pairing code works once. When the code was already consumed, `start.sh` asks `
 | `npm run build` | Compiles production assets with SvelteKit static adapter. |
 | `npm run preview` | Serves the production build locally for verification. |
 | `npm test` | Runs unit and component tests using Vitest and Testing Library. |
+| `npm run test:urls` | Runs the Bash matrix test for the development connection URLs printed by `start.sh`. |
 | `npm run test:watch` | Runs Vitest in interactive watch mode. |
 | `npm run lint` | Lints TypeScript and Svelte components with ESLint. |
 | `npm run format:check` | Checks code formatting with Prettier. |

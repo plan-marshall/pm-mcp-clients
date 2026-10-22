@@ -817,6 +817,23 @@ export function syncUrl(path: string, replace: boolean): void {
 }
 
 /**
+ * Shows the designer for a project and keeps the address bar on it without a history entry.
+ *
+ * The local selector and a refused route change both converge on the project the designer
+ * actually shows. Replacing rather than pushing means Back does not walk through refused route
+ * changes.
+ *
+ * @param projectId the project the designer shows, or `null` for machine scope
+ */
+export function replaceDesignerProject(projectId: string | null): void {
+  runtimeStore.update((s) => ({ ...s, designerProjectId: projectId }));
+  const path = pathForRoute('designer', { projectId: projectId ?? undefined });
+  if (path) {
+    syncUrl(path, true);
+  }
+}
+
+/**
  * Takes the route the address bar names, if it names one of the app's routes.
  *
  * @returns the route taken, or `null` when the path names none

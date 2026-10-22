@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:ci": "vitest run",
     "test:ci-strict": "vitest run",
+    "test:urls": "bash scripts/connection-urls.test.sh",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
