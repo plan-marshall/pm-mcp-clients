@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.keymap.BindingReader;
 import org.jline.keymap.KeyMap;
 import org.jline.reader.EndOfFileException;
@@ -124,8 +125,8 @@ public final class TuiScreenDriver {
     private final AtomicBoolean restored = new AtomicBoolean(true);
     private final AtomicBoolean stopping = new AtomicBoolean();
     private @Nullable Display activeDisplay;
-    private volatile @Nullable Attributes savedAttributes;
-    private volatile @Nullable Thread shutdownHook;
+    private final AtomicReference<@Nullable Attributes> savedAttributes = new AtomicReference<>();
+    private final AtomicReference<@Nullable Thread> shutdownHook = new AtomicReference<>();
     private boolean suspended;
 
     /**
@@ -213,7 +214,7 @@ public final class TuiScreenDriver {
         }
 
         var previousAttributes = terminal.enterRawMode();
-        savedAttributes = previousAttributes;
+        savedAttributes.set(previousAttributes);
         var previousWinch = terminal.handle(Terminal.Signal.WINCH, _ -> {
             // The loop resizes and redraws on its next turn; the handler only has to exist so the
             // signal does not reach the default, which would interrupt the process.
@@ -234,9 +235,6 @@ public final class TuiScreenDriver {
             boolean running = true;
             while (running && !stopping.get()) {
                 display.resize(terminal);
-                if (stopping.get()) {
-                    break;
-                }
                 var screen = renderer.screen();
                 if (screen.kind() != keyMapKind) {
                     keyMap = keyMap(screen.kind());
@@ -249,41 +247,11 @@ public final class TuiScreenDriver {
                 previousRows = rows;
                 int peeked = terminal.reader().peek(POLL_MILLIS);
                 if (peeked == NonBlockingReader.EOF) {
-                    break;
-                }
-                if (peeked == NonBlockingReader.READ_EXPIRED) {
-                    continue;
-                }
-                var menu = screen.menu();
-                if (menu != null) {
-                    var binding = reader.readBinding(menuKeyMap(menu), null, false);
-                    if (binding == null) {
-                        continue;
-                    }
-                    suspended = false;
-                    running = dispatchMenu(handler, menu, binding);
-                    if (suspended) {
-                        previous = null;
-                    }
-                    continue;
-                }
-                var action = reader.readBinding(keyMap, null, false);
-                if (action == null || !boundOn(screen.kind(), action)) {
-                    continue;
-                }
-                if (action == TuiKeyAction.FILTER) {
-                    suspend(display);
-                    filter(handler);
-                    resume(display);
-                    // The alternate screen was left and entered again; its content is gone even
-                    // when the model did not change, so the next turn must draw a full frame.
-                    previous = null;
-                    continue;
-                }
-                suspended = false;
-                running = handler.handle(action);
-                if (suspended) {
-                    previous = null;
+                    running = false;
+                } else if (peeked != NonBlockingReader.READ_EXPIRED) {
+                    var turn = readTurn(reader, display, screen, keyMap, handler, previous);
+                    previous = turn.previous();
+                    running = turn.running();
                 }
             }
         } finally {
@@ -296,6 +264,57 @@ public final class TuiScreenDriver {
             terminal.flush();
         }
         return Result.LEFT;
+    }
+
+    /**
+     * Reads and dispatches one turn of the view: an open menu owns the keys, otherwise the level's
+     * key map does. The filter hands the terminal to a dialogue and leaves the alternate screen, so
+     * the next turn draws a full frame; a handler that suspends the view does the same.
+     *
+     * @param reader   the binding reader of the terminal
+     * @param display  the display of the view
+     * @param screen   the screen of the turn
+     * @param keyMap   the key map of the level
+     * @param handler  the receiver of the keys
+     * @param previous the screen drawn before, or {@code null}
+     * @return the screen to remember and whether the view stays open
+     * @throws IOException if the terminal cannot be read
+     */
+    private Turn readTurn(BindingReader reader, Display display, TuiScreen screen,
+                        KeyMap<TuiKeyAction> keyMap, KeyHandler handler, @Nullable TuiScreen previous)
+                        throws IOException {
+        var menu = screen.menu();
+        if (menu != null) {
+            var binding = reader.readBinding(menuKeyMap(menu), null, false);
+            if (binding == null) {
+                return new Turn(previous, true);
+            }
+            suspended = false;
+            boolean keep = dispatchMenu(handler, menu, binding);
+            return new Turn(suspended ? null : previous, keep);
+        }
+        var action = reader.readBinding(keyMap, null, false);
+        if (action == null || !boundOn(screen.kind(), action)) {
+            return new Turn(previous, true);
+        }
+        if (action == TuiKeyAction.FILTER) {
+            suspend(display);
+            filter(handler);
+            resume(display);
+            return new Turn(null, true);
+        }
+        suspended = false;
+        boolean keep = handler.handle(action);
+        return new Turn(suspended ? null : previous, keep);
+    }
+
+    /**
+     * What one turn of the view decided.
+     *
+     * @param previous the screen to remember for the next diff, or {@code null} to draw a full frame
+     * @param running  whether the view stays open
+     */
+    private record Turn(@Nullable TuiScreen previous, boolean running) {
     }
 
     private @Nullable TuiScreen renderIfChanged(Display display, TuiScreen screen,
@@ -360,8 +379,9 @@ public final class TuiScreenDriver {
     /**
      * Leaves the alternate screen, shows the cursor again, restores the keypad mode, and restores
      * the terminal attributes the raw mode replaced. This is the path the shutdown hook runs on the
-     * JVM's shutdown thread, so it is idempotent and never lets an exception escape: the normal exit
-     * and the hook may race, and a failed restore must not turn a clean exit into a failed one.
+     * JVM's shutdown thread, so it is idempotent: the normal exit and the hook may race, and the
+     * closed terminal's failure to take the attributes back is swallowed rather than turning a
+     * clean exit into a failed one.
      *
      * <p>The flag is the idempotence latch: the first caller writes the sequences, every later
      * caller returns without touching the terminal. A run that opens the alternate screen again
@@ -373,21 +393,24 @@ public final class TuiScreenDriver {
         }
         stopping.set(true);
         try {
-            try {
-                terminal.puts(InfoCmp.Capability.keypad_local);
-                terminal.puts(InfoCmp.Capability.cursor_normal);
-                terminal.puts(InfoCmp.Capability.exit_ca_mode);
-                terminal.flush();
-            } finally {
-                var attributes = savedAttributes;
-                if (attributes != null) {
-                    terminal.setAttributes(attributes);
-                }
-            }
+            terminal.puts(InfoCmp.Capability.keypad_local);
+            terminal.puts(InfoCmp.Capability.cursor_normal);
+            terminal.puts(InfoCmp.Capability.exit_ca_mode);
+            terminal.flush();
+        } finally {
+            restoreAttributes();
         }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (RuntimeException _) {
-            // The terminal is already gone; there is nothing left to restore.
+    }
+
+    private void restoreAttributes() {
+        var attributes = savedAttributes.get();
+        if (attributes == null) {
+            return;
+        }
+        try {
+            terminal.setAttributes(attributes);
+        } catch (IllegalStateException _) {
+            // The terminal was already closed; there is no attribute state left to restore.
         }
     }
 
@@ -399,11 +422,11 @@ public final class TuiScreenDriver {
      */
     private void registerShutdownHook() {
         var hook = new Thread(this::restoreImmediately, "tui-terminal-restore");
-        shutdownHook = hook;
+        shutdownHook.set(hook);
         try {
             Runtime.getRuntime().addShutdownHook(hook);
         } catch (IllegalStateException _) {
-            shutdownHook = null;
+            shutdownHook.set(null);
         }
     }
 
@@ -413,8 +436,7 @@ public final class TuiScreenDriver {
      * paths from writing the sequences twice.
      */
     private void removeShutdownHook() {
-        var hook = shutdownHook;
-        shutdownHook = null;
+        var hook = shutdownHook.getAndSet(null);
         if (hook == null) {
             return;
         }
@@ -429,7 +451,7 @@ public final class TuiScreenDriver {
      * @return {@code true} while the shutdown hook of an open view is registered
      */
     boolean shutdownHookRegistered() {
-        return shutdownHook != null;
+        return shutdownHook.get() != null;
     }
 
     private static boolean boundOn(TuiLevel.Kind kind, TuiKeyAction action) {

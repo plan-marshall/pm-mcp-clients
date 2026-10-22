@@ -75,6 +75,7 @@ All scoped remediation checks pass. One pre-existing, unrelated end-to-end test 
 |---|---|
 | `TuiScreenDriverTest` | 17 tests, 0 failures (3 new) |
 | `PmConsoleTest` | 7 tests, 0 failures (1 new) |
+| `PmOperatorTest` | 45 tests, 0 failures (1 new: `--tui` opens and leaves the full-screen overview) |
 | `ScenarioLoaderTest` | 24 tests, 0 failures (5 new), including the six canonical scenario files loaded from the classpath |
 | Full reactor unit suite (`./mvnw verify -Ppre-commit`) | `BUILD SUCCESS` across `pm-api`, `pm-exec`, `pm-mock-runtime`, `pm-relay`, `pm-operator`, `pm-web-app`, `pm-web-e2e` |
 
@@ -122,14 +123,14 @@ All six canonical scenario files (`designer`, `fully-onboarded`, `onboarding`, `
 ./mvnw verify -Ppre-commit
 ...
 [INFO] Reactor Summary for pm-mcp-clients 0.1.0-SNAPSHOT:
-[INFO] pm-mcp-clients ..................................... SUCCESS [  8.200 s]
+[INFO] pm-mcp-clients ..................................... SUCCESS [  7.749 s]
 [INFO] pm-api ............................................. SUCCESS [01:05 min]
-[INFO] pm-exec ............................................ SUCCESS [  9.361 s]
-[INFO] pm-mock-runtime .................................... SUCCESS [ 55.603 s]
-[INFO] pm-relay ........................................... SUCCESS [ 11.547 s]
-[INFO] pm-operator ........................................ SUCCESS [03:38 min]
-[INFO] pm-web-app ......................................... SUCCESS [ 52.144 s]
-[INFO] pm-web-e2e ......................................... SUCCESS [  7.678 s]
+[INFO] pm-exec ............................................ SUCCESS [  9.565 s]
+[INFO] pm-mock-runtime .................................... SUCCESS [ 46.641 s]
+[INFO] pm-relay ........................................... SUCCESS [ 11.287 s]
+[INFO] pm-operator ........................................ SUCCESS [03:31 min]
+[INFO] pm-web-app ......................................... SUCCESS [ 49.988 s]
+[INFO] pm-web-e2e ......................................... SUCCESS [  6.919 s]
 [INFO] BUILD SUCCESS
 ```
 

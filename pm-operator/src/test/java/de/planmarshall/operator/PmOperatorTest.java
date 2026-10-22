@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,6 +32,7 @@ import org.jline.terminal.impl.DumbTerminal;
 import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -104,6 +106,40 @@ class PmOperatorTest {
     void version() {
         assertEquals(0, run("--version"));
         assertEquals("pm-operator " + PmVersion.current(), out.toString().strip());
+    }
+
+    @Test
+    @DisplayName("--tui opens the full-screen overview and leaves on q")
+    void tuiOpensFullScreen() throws Exception {
+        runtime((request, response) -> {
+            var path = request.target();
+            if ("/api/v1/status".equals(path)) {
+                response.json(200, STATUS);
+            } else if ("/api/v1/projects".equals(path)) {
+                response.json(200, "{\"projects\":[]}");
+            } else if ("/api/v1/reports".equals(path)) {
+                response.json(200, "{\"unread_count\":0,\"items\":[]}");
+            } else if ("/api/v1/events".equals(path)) {
+                response.events(200);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = new OperatorContext(
+                                fixture.environment(), fixture.base().getParent(), true,
+                                ClientEnvironment.capture(fixture.environment()), virtual::terminal, null);
+            virtual.type("q");
+
+            var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "--tui");
+
+            assertAll(
+                                () -> assertEquals(0, code),
+                                () -> assertFalse(virtual.screen().alternateScreenActive()),
+                                () -> assertEquals(1, virtual.screen().alternation().entries()),
+                                () -> assertEquals(1, virtual.screen().alternation().exits())
+            );
+        }
     }
 
     @Test

@@ -614,19 +614,36 @@ public class ScenarioLoader {
             return !plans && !segments[3].isBlank() ? PlanEpicResource.EPIC_DETAIL : null;
         }
         if (segments.length == 5 && !segments[3].isBlank()) {
-            return switch (segments[4]) {
-                case "process" -> plans ? PlanEpicResource.PLAN_PROCESS : PlanEpicResource.EPIC_PROCESS;
-                case "intent" -> plans ? PlanEpicResource.PLAN_INTENT : PlanEpicResource.EPIC_INTENT;
-                case "outline" -> plans ? PlanEpicResource.PLAN_OUTLINE : null;
-                case "completion" -> plans ? PlanEpicResource.PLAN_COMPLETION : null;
-                default -> null;
-            };
+            return plans ? planResource(segments[4]) : epicResource(segments[4]);
         }
-        if (segments.length == 7 && plans && "tasks".equals(segments[4]) && "activity".equals(segments[6])
-                && !segments[3].isBlank() && !segments[5].isBlank()) {
+        if (isTaskActivity(segments)) {
             return PlanEpicResource.TASK_ACTIVITY;
         }
         return null;
+    }
+
+    private static @Nullable PlanEpicResource planResource(String name) {
+        return switch (name) {
+            case "process" -> PlanEpicResource.PLAN_PROCESS;
+            case "intent" -> PlanEpicResource.PLAN_INTENT;
+            case "outline" -> PlanEpicResource.PLAN_OUTLINE;
+            case "completion" -> PlanEpicResource.PLAN_COMPLETION;
+            default -> null;
+        };
+    }
+
+    private static @Nullable PlanEpicResource epicResource(String name) {
+        return switch (name) {
+            case "process" -> PlanEpicResource.EPIC_PROCESS;
+            case "intent" -> PlanEpicResource.EPIC_INTENT;
+            default -> null;
+        };
+    }
+
+    private static boolean isTaskActivity(String[] segments) {
+        return segments.length == 7 && "plans".equals(segments[2]) && "tasks".equals(segments[4])
+                && "activity".equals(segments[6]) && !segments[3].isBlank()
+                && !segments[5].isBlank();
     }
 
     private static void decodePlanOrEpicResource(PlanEpicResource resource, Map<String, Object> map)
