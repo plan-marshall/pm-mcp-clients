@@ -12,6 +12,7 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -187,6 +188,36 @@ class ReportsScenarioTest {
             assertEquals(3, report.tokenUsage().wasteRecords().size());
             assertEquals(52000L, report.tokenUsage().totalWasteTokens());
             assertEquals(13, report.tokenUsage().wasteSharePercent());
+
+            assertEquals(3, report.ownCalls().size());
+            var shortcut = report.ownCalls().getFirst();
+            assertEquals("shortcut", shortcut.kind());
+            assertEquals("the single-subscriber path only", shortcut.limit());
+            assertEquals("a second subscriber connects", shortcut.endsWhen());
+            assertEquals("conflicts", shortcut.judgment());
+            assertEquals("a test per transport, websocket and SSE", shortcut.conflictTarget());
+            assertNotNull(report.changeMap());
+            assertEquals("partial", report.changeMap().state());
+            assertEquals("the vendored tree is not tracked", report.changeMap().cause());
+            assertTrue(report.changeMap().diagram().contains("cursor"), report.changeMap().diagram());
+        }
+    }
+
+    @Test
+    @DisplayName("serves a completion report without own calls or a change map")
+    void shouldServeCompletionReportWithoutOwnCalls() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.REPORTS)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var res = client.send(HttpRequest.get("/api/v1/plans/docs-typo/completion")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+
+            var report = PlanCompletionReport.fromJson(res.bodyText());
+            assertEquals("docs-typo", report.planId());
+            assertTrue(report.ownCalls().isEmpty());
+            assertNull(report.changeMap());
         }
     }
 

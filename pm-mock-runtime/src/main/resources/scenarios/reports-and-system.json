@@ -211,6 +211,31 @@
             "by": "delegated"
           }
         ],
+        "own_calls": [
+          {
+            "kind": "shortcut",
+            "description": "reuse the existing SSE adapter for the websocket path",
+            "limit": "the single-subscriber path only",
+            "ends_when": "a second subscriber connects",
+            "judgment": "conflicts",
+            "conflict_target": "a test per transport, websocket and SSE"
+          },
+          {
+            "kind": "design",
+            "description": "the relay writes the cursor, the client never does",
+            "judgment": "consistent"
+          },
+          {
+            "kind": "dependency",
+            "description": "a file-backed cursor replaces the in-memory one",
+            "judgment": "consistent"
+          }
+        ],
+        "change_map": {
+          "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+          "state": "partial",
+          "cause": "the vendored tree is not tracked"
+        },
         "token_usage": {
           "total_tokens": 412000,
           "input_tokens": 380000,
@@ -963,6 +988,31 @@
                     "by": "delegated"
                   }
                 ],
+                "own_calls": [
+                  {
+                    "kind": "shortcut",
+                    "description": "reuse the existing SSE adapter for the websocket path",
+                    "limit": "the single-subscriber path only",
+                    "ends_when": "a second subscriber connects",
+                    "judgment": "conflicts",
+                    "conflict_target": "a test per transport, websocket and SSE"
+                  },
+                  {
+                    "kind": "design",
+                    "description": "the relay writes the cursor, the client never does",
+                    "judgment": "consistent"
+                  },
+                  {
+                    "kind": "dependency",
+                    "description": "a file-backed cursor replaces the in-memory one",
+                    "judgment": "consistent"
+                  }
+                ],
+                "change_map": {
+                  "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+                  "state": "partial",
+                  "cause": "the vendored tree is not tracked"
+                },
                 "token_usage": {
                   "total_tokens": 412000,
                   "input_tokens": 380000,
@@ -1546,6 +1596,31 @@
                     "by": "delegated"
                   }
                 ],
+                "own_calls": [
+                  {
+                    "kind": "shortcut",
+                    "description": "reuse the existing SSE adapter for the websocket path",
+                    "limit": "the single-subscriber path only",
+                    "ends_when": "a second subscriber connects",
+                    "judgment": "conflicts",
+                    "conflict_target": "a test per transport, websocket and SSE"
+                  },
+                  {
+                    "kind": "design",
+                    "description": "the relay writes the cursor, the client never does",
+                    "judgment": "consistent"
+                  },
+                  {
+                    "kind": "dependency",
+                    "description": "a file-backed cursor replaces the in-memory one",
+                    "judgment": "consistent"
+                  }
+                ],
+                "change_map": {
+                  "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+                  "state": "partial",
+                  "cause": "the vendored tree is not tracked"
+                },
                 "token_usage": {
                   "total_tokens": 412000,
                   "input_tokens": 380000,
@@ -1975,6 +2050,31 @@
                     "by": "delegated"
                   }
                 ],
+                "own_calls": [
+                  {
+                    "kind": "shortcut",
+                    "description": "reuse the existing SSE adapter for the websocket path",
+                    "limit": "the single-subscriber path only",
+                    "ends_when": "a second subscriber connects",
+                    "judgment": "conflicts",
+                    "conflict_target": "a test per transport, websocket and SSE"
+                  },
+                  {
+                    "kind": "design",
+                    "description": "the relay writes the cursor, the client never does",
+                    "judgment": "consistent"
+                  },
+                  {
+                    "kind": "dependency",
+                    "description": "a file-backed cursor replaces the in-memory one",
+                    "judgment": "consistent"
+                  }
+                ],
+                "change_map": {
+                  "diagram": "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+                  "state": "partial",
+                  "cause": "the vendored tree is not tracked"
+                },
                 "token_usage": {
                   "total_tokens": 412000,
                   "input_tokens": 380000,

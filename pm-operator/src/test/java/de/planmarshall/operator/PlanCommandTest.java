@@ -329,6 +329,15 @@ class PlanCommandTest {
                                 {"id": "Q-003", "text": "Rebase onto main", "by": "you, the web app"},
                                 {"id": "Q-005", "text": "", "by": "the plan"}
                               ],
+                              "own_calls": [
+                                {"kind": "shortcut", "description": "reuse the SSE adapter",
+                                 "limit": "single subscriber", "ends_when": "a second subscriber connects",
+                                 "judgment": "conflicts", "conflict_target": "the transport test"},
+                                {"kind": "design", "description": "the relay writes the cursor",
+                                 "judgment": "consistent"}
+                              ],
+                              "change_map": {"diagram": "relay -> cursor\\n  +--> sse",
+                                             "state": "partial", "cause": "the vendored tree is not tracked"},
                               "tokens": {
                                 "total": 412000,
                                 "input": 380000,
@@ -419,6 +428,15 @@ class PlanCommandTest {
                             () -> assertTrue(output.contains("3 of 3 done")),
                             () -> assertTrue(output.contains("cursor write order")),
                             () -> assertTrue(output.contains("after the base moved (09:55): TASK-5 added")),
+                            () -> assertTrue(output.contains("own calls")),
+                            () -> assertTrue(output.contains("shortcut")),
+                            () -> assertTrue(output.contains("limit single subscriber")),
+                            () -> assertTrue(output.contains("ends when a second subscriber connects")),
+                            () -> assertTrue(output.contains("conflicts with the transport test")),
+                            () -> assertTrue(output.contains("design call")),
+                            () -> assertTrue(output.contains("change map")),
+                            () -> assertTrue(output.contains("partial · cause: the vendored tree is not tracked")),
+                            () -> assertTrue(output.contains("relay -> cursor")),
                             () -> assertTrue(output.contains("plan report fix-relay --tokens"))
         );
 

@@ -1,8 +1,8 @@
 # Implementation Plan: `completion-own-calls-change-map` (Own Calls & Change Map in the Completion Report)
 
-This plan coordinates the end-to-end implementation and comprehensive verification of work package [`doc/plans/completion-own-calls-change-map.adoc`](../plans/completion-own-calls-change-map.adoc) across all client and runtime modules in `pm-mcp-clients`.
+This plan coordinates the end-to-end implementation and comprehensive verification of work package [`doc/plans/completion-own-calls-change-map.adoc`](../../plans/implemented/completion-own-calls-change-map.adoc) across all client and runtime modules in `pm-mcp-clients`.
 
-It operationalizes the technical recipe from [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md) and [`doc/meta/emit_rules.adoc`](../meta/emit_rules.adoc).
+It operationalizes the technical recipe from [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md) and [`doc/meta/emit_rules.adoc`](../../meta/emit_rules.adoc).
 
 ---
 
@@ -10,13 +10,13 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.adoc
 
 | Dimension | Reference |
 |---|---|
-| **Roadmap Package** | [`doc/plans/completion-own-calls-change-map.adoc`](../plans/completion-own-calls-change-map.adoc) (Roadmap Milestone 10; Client Work) |
-| **Use Cases** | [`plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6) (Completion Report, variation *What a plan decided on its own*) |
-| **Requirements** | [`PM-WF-21`](../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-21), [`PM-WF-11`](../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-11), [`PM-WF-13`](../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-13) |
-| **Specifications** | [`01-processes-and-transport.adoc#completion-report`](../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#completion-report), [`03-q-gate-and-execute.adoc#own-calls`](../../../pm-mcp-core/doc/specification/phase-workflows/03-q-gate-and-execute.adoc#own-calls), [`05-finalize-review-metrics-descriptor.adoc#change-map`](../../../pm-mcp-core/doc/specification/phase-workflows/05-finalize-review-metrics-descriptor.adoc#change-map) |
-| **Local Client Design** | Shared: [`doc/design/shared/completion-report.adoc#layout`](../design/shared/completion-report.adoc#layout)<br>CLI: [`doc/design/terminal-client/24-reports.adoc#completion`](../design/terminal-client/24-reports.adoc#completion)<br>Web: [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Roadmap Package** | [`doc/plans/completion-own-calls-change-map.adoc`](../../plans/implemented/completion-own-calls-change-map.adoc) (Roadmap Milestone 10; Client Work) |
+| **Use Cases** | [`plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6) (Completion Report, variation *What a plan decided on its own*) |
+| **Requirements** | [`PM-WF-21`](../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-21), [`PM-WF-11`](../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-11), [`PM-WF-13`](../../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-13) |
+| **Specifications** | [`01-processes-and-transport.adoc#completion-report`](../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#completion-report), [`03-q-gate-and-execute.adoc#own-calls`](../../../../pm-mcp-core/doc/specification/phase-workflows/03-q-gate-and-execute.adoc#own-calls), [`05-finalize-review-metrics-descriptor.adoc#change-map`](../../../../pm-mcp-core/doc/specification/phase-workflows/05-finalize-review-metrics-descriptor.adoc#change-map) |
+| **Local Client Design** | Shared: [`doc/design/shared/completion-report.adoc#layout`](../../design/shared/completion-report.adoc#layout)<br>CLI: [`doc/design/terminal-client/24-reports.adoc#completion`](../../design/terminal-client/24-reports.adoc#completion)<br>Web: [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ---
 
@@ -60,15 +60,15 @@ It operationalizes the technical recipe from [`doc/meta/implement_use-cases.adoc
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-completion-own-calls-change-map` on branch `feat/completion-own-calls-change-map` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-integration-tester` for multi-module/integration tests
   - `persona-security-expert` for text sanitization & output safety
   - `persona-documenter` for documentation & ADRs
   - `persona-code-reviewer` for finding evaluation & adversarial refutation
-- [ ] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
-- [ ] 4. Final completion report written (`doc/agy/completion-own-calls-change-map-plan-report.md`) and initial plan moved to `doc/agy/implemented/completion-own-calls-change-map-plan.md`.
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
+- [x] 3. Incremental implementation following the 6-Phase technical recipe with local tests passing.
+- [x] 4. Final completion report written (`doc/agy/completion-own-calls-change-map-plan-report.md`) and initial plan moved to `doc/agy/implemented/completion-own-calls-change-map-plan.md`.
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation changes).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/completion-own-calls-change-map-plan-report.md` by orchestrator session.

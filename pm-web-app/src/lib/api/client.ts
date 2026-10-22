@@ -910,9 +910,26 @@ export interface PlanCompletionReport {
   deliverables: DeliverableSummary[];
   replanning_records: ReplanningRecord[];
   decision_records: DecisionRecord[];
+  own_calls?: OwnCallRecord[];
+  change_map?: ChangeMapRecord;
   token_usage?: TokenUsageRecord;
   ended?: string;
   ran?: string;
+}
+
+export interface OwnCallRecord {
+  kind: string;
+  description: string;
+  limit?: string;
+  ends_when?: string;
+  judgment: string;
+  conflict_target?: string;
+}
+
+export interface ChangeMapRecord {
+  diagram: string;
+  state: string;
+  cause?: string;
 }
 
 export interface QuorumVote {
