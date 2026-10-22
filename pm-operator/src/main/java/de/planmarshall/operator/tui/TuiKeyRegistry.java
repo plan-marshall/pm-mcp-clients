@@ -115,6 +115,11 @@ public final class TuiKeyRegistry {
     public static String footer(TuiLevel.Kind kind, String locale, int reportsCount) {
         var parts = new ArrayList<String>();
         for (var entry : footerEntries(kind)) {
+            if (entry.action() == TuiKeyAction.REPORTS && kind == TuiLevel.Kind.OVERVIEW
+                                && reportsCount == 0) {
+                // The overview names the reports only while there are unread ones.
+                continue;
+            }
             parts.add(entry.display() + ' ' + label(entry.action(), kind, locale, reportsCount));
         }
         return String.join(FOOTER_SEPARATOR, parts);
@@ -145,6 +150,12 @@ public final class TuiKeyRegistry {
     private static String planKey(TuiKeyAction action, TuiLevel.Kind kind) {
         if (kind == TuiLevel.Kind.PROJECTS) {
             return projectKey(action);
+        }
+        if (kind == TuiLevel.Kind.REPORTS) {
+            return reportsKey(action);
+        }
+        if (kind == TuiLevel.Kind.SYSTEM) {
+            return systemKey(action);
         }
         if (kind != TuiLevel.Kind.PLAN) {
             return action.textKey();
@@ -178,6 +189,36 @@ public final class TuiKeyRegistry {
             case FILTER -> "operator.projects.keys.filter";
             case ADD_PROJECT -> "operator.projects.keys.add";
             case LEAVE -> "operator.projects.keys.leave";
+            default -> null;
+        };
+        return key != null ? key : action.textKey();
+    }
+
+    /**
+     * The reports level names its keys as {@code doc/design/terminal-client/24-reports.adoc#full-screen}
+     * lists them: {@code Enter} is the report's details, {@code m} reads, {@code M} reads all shown.
+     */
+    private static String reportsKey(TuiKeyAction action) {
+        var key = switch (action) {
+            case OPEN -> "operator.reports.keys.details";
+            case MARK_READ -> "operator.reports.keys.read";
+            case MARK_ALL_READ -> "operator.reports.keys.read_all";
+            case PROJECT -> "operator.plan.keys.project";
+            case EPIC -> "operator.plan.keys.epic";
+            default -> null;
+        };
+        return key != null ? key : action.textKey();
+    }
+
+    /**
+     * The system level names its keys in the {@code operator.system.keys.*} area
+     * ({@code doc/design/terminal-client/25-system.adoc#texts}).
+     */
+    private static String systemKey(TuiKeyAction action) {
+        var key = switch (action) {
+            case WINDOW -> "operator.system.keys.window";
+            case GROUP_BY -> "operator.system.keys.by";
+            case PER_PROJECT -> "operator.system.keys.per_project";
             default -> null;
         };
         return key != null ? key : action.textKey();
@@ -328,13 +369,28 @@ public final class TuiKeyRegistry {
 
         var reportsNavigation = new ArrayList<>(navigation);
         reportsNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
+        reportsNavigation.add(new Binding("m", TuiKeyAction.MARK_READ));
+        reportsNavigation.add(new Binding("M", TuiKeyAction.MARK_ALL_READ));
+        reportsNavigation.add(new Binding("p", TuiKeyAction.PROJECT));
+        reportsNavigation.add(new Binding("e", TuiKeyAction.EPIC));
         registry.put(TuiLevel.Kind.REPORTS, level(reportsNavigation,
                             footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
-                            footer("/", TuiKeyAction.FILTER), footer("Esc", TuiKeyAction.BACK)));
+                            footer("m", TuiKeyAction.MARK_READ),
+                            footer("M", TuiKeyAction.MARK_ALL_READ),
+                            footer("p", TuiKeyAction.PROJECT), footer("e", TuiKeyAction.EPIC),
+                            footer("Esc", TuiKeyAction.BACK)));
 
-        registry.put(TuiLevel.Kind.SYSTEM, level(navigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("/", TuiKeyAction.FILTER),
-                            footer("r", TuiKeyAction.RELOAD), footer("Esc", TuiKeyAction.BACK)));
+        var systemNavigation = new ArrayList<>(navigation);
+        systemNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
+        systemNavigation.add(new Binding("a", TuiKeyAction.ACTIONS));
+        systemNavigation.add(new Binding("w", TuiKeyAction.WINDOW));
+        systemNavigation.add(new Binding("b", TuiKeyAction.GROUP_BY));
+        systemNavigation.add(new Binding("p", TuiKeyAction.PER_PROJECT));
+        registry.put(TuiLevel.Kind.SYSTEM, level(systemNavigation,
+                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer("w", TuiKeyAction.WINDOW), footer("b", TuiKeyAction.GROUP_BY),
+                            footer("p", TuiKeyAction.PER_PROJECT), footer("a", TuiKeyAction.ACTIONS),
+                            footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
 
         return Map.copyOf(registry);
     }

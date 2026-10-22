@@ -77,7 +77,13 @@ public final class TuiLayout {
         var lines = new ArrayList<AttributedString>(height);
         lines.add(header(screen, width));
         lines.add(rule(width));
-        lines.addAll(body(screen, width, columns, height - HEADER_LINES - FOOTER_LINES));
+        int bodyHeight = height - HEADER_LINES - FOOTER_LINES;
+        var banner = screen.banner();
+        if (banner != null && !banner.isBlank() && height > MIN_HEIGHT) {
+            lines.add(new AttributedString(pad(INDENT + banner, width)));
+            bodyHeight--;
+        }
+        lines.addAll(body(screen, width, columns, bodyHeight));
         lines.add(rule(width));
         lines.add(footer(screen, width));
         return List.copyOf(lines);
@@ -192,7 +198,9 @@ public final class TuiLayout {
         if (selected != null) {
             lines.add(new BodyLine(new AttributedString(pad(INDENT + selected.line(), width)), 0));
             if (selected.details() != null) {
-                lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + selected.details(), width)), 0));
+                for (var detail : selected.details().split("\n", -1)) {
+                    lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + detail, width)), 0));
+                }
             }
         }
         var footer = screen.menu() != null
@@ -221,14 +229,28 @@ public final class TuiLayout {
             } else {
                 lines.add(new BodyLine(new AttributedString(pad(text, width)), index));
             }
-            if (columns >= DETAIL_COLUMNS && row.details() != null && !row.details().isBlank()) {
-                lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + row.details(), width)), index));
+            if (columns >= detailsFromColumns(screen.kind()) && row.details() != null && !row.details().isBlank()) {
+                for (var detail : row.details().split("\n", -1)) {
+                    lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + detail, width)), index));
+                }
             }
             if (menu != null && index == menuAfter) {
                 appendMenu(lines, menu, width, index);
             }
         }
         return lines;
+    }
+
+    /**
+     * The system view keeps its figures' details from 80 columns on
+     * ({@code doc/design/terminal-client/25-system.adoc#full-screen}); every other level draws them
+     * from {@link #DETAIL_COLUMNS}, where the second line has room beside a two-line row.
+     *
+     * @param kind the kind of level
+     * @return the narrowest width at which the level's details are drawn
+     */
+    private static int detailsFromColumns(TuiLevel.Kind kind) {
+        return kind == TuiLevel.Kind.SYSTEM ? COMPACT_COLUMNS : DETAIL_COLUMNS;
     }
 
     private static int menuAfter(@Nullable TuiMenu menu, List<TuiRow> rows, int selectedIndex) {
