@@ -25,7 +25,7 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | Stream | Active / Last Completed Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
 | **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed & Verified (PR #168) |
-| **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Staged; Step 1 pending |
+| **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Step 1 allocated; ready to launch |
 
 *(Note: The web remediation plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete).*
 

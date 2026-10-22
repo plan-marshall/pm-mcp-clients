@@ -158,7 +158,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` on branch `fix/web-session-pairing-and-dev-host` off latest `main`; Step 1 committed and pushed.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` on branch `fix/web-session-pairing-and-dev-host` off latest `main`; Step 1 committed and pushed.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the web session, pairing, navigation, advisory layer, and Vite changes.
   - `pm-dev-frontend:css` for the header badge, banner removal, and hover/focus styling.
