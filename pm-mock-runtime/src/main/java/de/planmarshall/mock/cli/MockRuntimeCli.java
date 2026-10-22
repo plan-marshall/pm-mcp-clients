@@ -13,6 +13,8 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
@@ -59,7 +61,8 @@ public final class MockRuntimeCli {
 
     private static boolean isValuedOption(String arg) {
         return switch (arg) {
-            case "--scenario", "-s", "--base", "-b", "--web-port", "-p", "--token", "-t" -> true;
+            case "--scenario", "-s", "--base", "-b", "--web-port", "-p", "--token", "-t",
+                "--device-secret", "-d" -> true;
             default -> false;
         };
     }
@@ -77,6 +80,7 @@ public final class MockRuntimeCli {
         Path base = null;
         int webPort = -1;
         String token = null;
+        String deviceSecret = null;
 
         var i = 0;
         while (i < args.length) {
@@ -93,6 +97,7 @@ public final class MockRuntimeCli {
                 case "--scenario", "-s" -> scenario = args[i++];
                 case "--base", "-b" -> base = Path.of(args[i++]);
                 case "--token", "-t" -> token = args[i++];
+                case "--device-secret", "-d" -> deviceSecret = args[i++];
                 case "--web-port", "-p" -> {
                     var portStr = args[i++];
                     try {
@@ -117,6 +122,10 @@ public final class MockRuntimeCli {
 
         if (token != null) {
             configBuilder.runtimeToken(token);
+        }
+
+        if (deviceSecret != null) {
+            configBuilder.deviceSecret(deviceSecret);
         }
 
         return new CliParseResult(0, configBuilder.build());
@@ -176,12 +185,39 @@ public final class MockRuntimeCli {
         var pairingCode = runtime.pairingCode();
         if (pairingCode != null && !pairingCode.isBlank() && runtime.webPort() >= 0) {
             out.println("  Pairing Code:       " + pairingCode);
-            out.println("  Web App URL:        http://localhost:5173/pair#code=" + pairingCode);
+            out.println("  Web App URL:        http://" + systemHost() + ":5173/pair#code=" + pairingCode);
         }
         out.println();
         out.println("Use 'pm-operator' with PM_MCP_BASE=" + runtime.base() + " to interact.");
         out.println("Press Ctrl+C to terminate.");
         out.flush();
+    }
+
+    /**
+     * The reachable name of this machine for the printed development URL.
+     * <p>
+     * The name is preferred over an address: it survives DHCP changes and resolves through mDNS.
+     * {@code PM_WEB_HOST} overrides it, so an operator can point the URL at another interface. The
+     * local host name is read without a reverse lookup, which can block for tens of seconds on a
+     * network with a slow DNS resolver.
+     *
+     * @return the machine's host name, or {@code localhost} as the fallback
+     */
+    static String systemHost() {
+        var override = System.getenv("PM_WEB_HOST");
+        if (override != null && !override.isBlank()) {
+            return override.trim();
+        }
+        try {
+            var name = InetAddress.getLocalHost().getHostName();
+            if (name != null && !name.isBlank()) {
+                return name;
+            }
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (UnknownHostException _) {
+            // A machine without a resolvable name still has the loopback coordinate.
+        }
+        return "localhost";
     }
 
     private static void printUsage(PrintStream out) {
@@ -191,6 +227,7 @@ public final class MockRuntimeCli {
         out.println("  -b, --base <dir>            Target machine directory <PM_MCP_BASE> (default: temporary dir)");
         out.println("  -p, --web-port <port>       Loopback TCP port for web client testing (default: disabled)");
         out.println("  -t, --token <token>         Fixed runtime token for authentication");
+        out.println("  -d, --device-secret <secret> Fixed web device secret, bypassing the persisted one");
         out.println("  -h, --help                  Print this help message");
     }
 }

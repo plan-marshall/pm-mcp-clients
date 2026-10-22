@@ -158,8 +158,8 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` on branch `fix/web-session-pairing-and-dev-host` off latest `main`; Step 1 committed and pushed.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` on branch `fix/web-session-pairing-and-dev-host` off latest `main`; Step 1 committed and pushed.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the web session, pairing, navigation, advisory layer, and Vite changes.
   - `pm-dev-frontend:css` for the header badge, banner removal, and hover/focus styling.
   - `plan-marshall-persona-security-expert` & `pm-dev-java:java-security` for the mock device-secret store, atomic `0600` publication, and the unauthenticated-probe boundary.
@@ -167,9 +167,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for Vitest and Playwright coverage.
   - `plan-marshall-persona-documenter` for the README and runbook-linked documentation.
   - `plan-marshall-persona-code-reviewer` for finding evaluation and adversarial refutation.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/web-session-pairing-and-dev-host-plan-report.md`), initial plan moved to `doc/agy/implemented/web-session-pairing-and-dev-host-plan.md`, and the dashboard updated (no `doc/plans` package applies; this is a finding-driven remediation). (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes Java, TypeScript, and shell files).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/web-session-pairing-and-dev-host-plan-report.md`), initial plan moved to `doc/agy/implemented/web-session-pairing-and-dev-host-plan.md`, and the dashboard updated (no `doc/plans` package applies; this is a finding-driven remediation). (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes Java, TypeScript, and shell files).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on a worker PR), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-session-pairing-and-dev-host-plan-report.md` by the orchestrator session.
@@ -193,36 +193,36 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 1: Keep the Web Session Alive
 
-- [ ] **1.1 Persist the mock device secret in a stable base**:
+- [x] **1.1 Persist the mock device secret in a stable base**:
   - In `MockRuntime.start` (after `setupFilesystem`), resolve the effective device secret as follows: an explicit `MockRuntimeConfig.deviceSecret` wins; otherwise read `<PM_MCP_BASE>/state/mock-web-device-secret`; if absent, generate it with `config.effectiveDeviceSecret()` and write it atomically (`*.tmp` in the same directory, mode `0600`, then `ATOMIC_MOVE`).
   - Keep the auto-created temporary base's cleanup behavior unchanged. The persistence matters only for an explicit stable base, which `start.sh` now supplies.
   - In `pm-mock-runtime/start.sh`, detect an explicit `--base`/`-b`; when absent, append `--base "$SCRIPT_DIR/target/machine"` (creating the directory). Document `rm -rf "$SCRIPT_DIR/target/machine"` as the "fresh machine" action.
   - Add `-d`/`--device-secret <secret>` to `MockRuntimeCli` and its usage text; it feeds `MockRuntimeConfig.deviceSecret` and bypasses the persisted file.
   - Tests: `MockRuntimeTest` starts two runtimes on the same explicit base, asserts `runtime.deviceSecret()` is equal, asserts the file is `rw-------`, and asserts a web request with the first secret still returns `200` after the restart. Add a test that an explicit config secret overrides the file.
-- [ ] **1.2 Only an authenticated `401` is auth loss**:
+- [x] **1.2 Only an authenticated `401` is auth loss**:
   - In `ApiClient.request`, capture the secret that was sent. On `401`: if `secret` is non-null, `clearAuth()` and `onRevoked('unauthorized')`; if `secret` is null, throw `unauthorized` without touching storage or the store. Apply the same rule in `requestWithConflict` and in `subscribeStream`.
   - Tests in `client.test.ts`: an unauthenticated `401` leaves a stored secret untouched and does not call `onRevoked`; an authenticated `401` still clears and calls it.
-- [ ] **1.3 Never probe an authenticated route before pairing**:
+- [x] **1.3 Never probe an authenticated route before pairing**:
   - In `PairingView.svelte`, call `getConnectionStatus()` only when `apiClient.isPaired()`; otherwise leave `status` null. Add a comment that an unpaired page has no device secret and must not turn a required-auth `401` into a revocation.
   - Update `PairingView.scenarios.test.ts`: the network-fingerprint test arranges a stored secret; add a test that an unpaired non-loopback render makes no `getConnectionStatus` call and never sets `isRevoked`.
-- [ ] **1.4 Share one runtime event stream**:
+- [x] **1.4 Share one runtime event stream**:
   - Refactor `ApiClient.subscribeEvents` to keep a listener set and one `/api/v1/events` connection: start on the first listener, abort on the last, keep the existing 2-second reconnect and `stream.closed` handling, and route the auth-loss callback through 1.2 once.
   - Keep `subscribeEntryEvents` per-entry and unchanged.
   - Tests: two subscribers cause one `fetch` to `/api/v1/events`; both receive an event; the last unsubscribe aborts the reader; a `401` on the shared stream triggers one revocation.
   - `ConnectionStatusBanner` keeps its existing public calls (`subscribeEvents`, `getConnectionStatus`) and needs no behavioral change.
-- [ ] **1.5 Recover from a transient connection drop**:
+- [x] **1.5 Recover from a transient connection drop**:
   - Add `setOnOnline(callback)` to `ApiClient` and call it on every successful `request` and `requestWithConflict` response and after a successful SSE connect/reconnect. Do not call it on an error response.
   - In `runtime.ts#initRuntime`, register `apiClient.setOnOnline(() => runtimeStore.update((s) => ({ ...s, isOffline: false })))` beside the existing `setOnRevoked`/`setOnOffline` registrations.
   - Tests in `client.test.ts`: `onOffline` is called on a rejected fetch; a subsequent successful `getStatus` calls `onOnline`; a stream reconnect calls it too. In the store test, an offline state returns to online after `onOnline`.
 
 ### Phase 2: Reach the Development App from a Phone
 
-- [ ] **2.1 Bind Vite to the network and allow the real host**:
+- [x] **2.1 Bind Vite to the network and allow the real host**:
   - In `pm-web-app/vite.config.ts`, add `import os from 'node:os'` and set:
     - `server.host: process.env.PM_WEB_HOST ?? true` (default: all interfaces for development).
     - `server.allowedHosts: process.env.PM_WEB_ALLOWED_HOSTS?.split(',').map((h) => h.trim()).filter(Boolean) ?? [os.hostname(), \`${os.hostname()}.local\`]`.
   - Keep `server.port: 5173`, the `/api` and `/mock` proxies to `127.0.0.1:7420`, and `server.fs.allow: ['..']` unchanged. Add a comment that this is a development-only server and the proxy keeps the mock's listener on loopback.
-- [ ] **2.2 Resolve and print the real host in `pm-web-app/start.sh`**:
+- [x] **2.2 Resolve and print the real host in `pm-web-app/start.sh`**:
   - Add `reachable_host()` before `web_port_from_args`: `PM_WEB_HOST` -> `scutil --get LocalHostName` + `.local` -> `hostname -f` (when it is not `localhost`) -> `hostname` -> `primary_ipv4` -> `localhost`.
   - Add `primary_ipv4()`: macOS tries `ipconfig getifaddr en0` then `en1`; Linux uses `hostname -I | awk '{print $1}'`; empty on failure.
   - Print in both the already-running and the start branches:
@@ -235,38 +235,38 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     Print `Network (IP)` only when `<ipv4>` is non-empty and differs from `<host>`; omit the `Network`/`Paired` lines when `<host>` is `localhost` and no code is available. Prefer the name for `Paired`; use the IP only when no name resolves. `print_paired_url_if_available` uses the resolved name, not `localhost`.
   - Keep `--host` passthrough to Vite if the operator supplies it; the config default already binds the network.
   - Follow the shell invariants of [`doc/agy/runbook.md`](runbook.md): Bash 3.2-safe empty-array expansion, no direct empty-array expansion under `set -u`, and atomic temporary-file publication where the script writes shared state.
-- [ ] **2.3 Align `MockRuntimeCli` and its test**:
+- [x] **2.3 Align `MockRuntimeCli` and its test**:
   - Add a small `systemHost()` helper in `MockRuntimeCli`: `PM_WEB_HOST` -> `InetAddress.getLocalHost().getCanonicalHostName()` -> `getHostName()` -> `localhost`, with a `try/catch` fallback.
   - Print `Web App URL: http://<host>:5173/pair#code=<code>` and keep the loopback listener line (`http://127.0.0.1:<port>`) as the local coordinate.
   - Update `MockRuntimeCliTest` to assert the URL matches `http://[^/]+:5173/pair#code=KXQB-MRTN` and does not hardcode `localhost`.
-- [ ] **2.4 Update the development documentation**:
+- [x] **2.4 Update the development documentation**:
   - `pm-web-app/README.md`: add a "Reaching the app from a phone" subsection with the `start.sh` `Local`/`Network`/`Paired` output, the system-name-vs-IP rationale (name is stable across DHCP changes; IP is the fallback), the LAN binding, and the single-use code note.
   - `pm-mock-runtime/README.adoc` and the root `README.md`: update the example `Web App URL` to the system host and document `POST /mock/pairing`.
 
 ### Phase 3: Make the Single-Use Pairing Lifecycle Understandable
 
-- [ ] **3.1 Do not redeem from an already paired browser**:
+- [x] **3.1 Do not redeem from an already paired browser**:
   - In `runtime.ts#checkUrlHashForCode`, when `apiClient.isPaired()`:
     - Probe `apiClient.getStatus()`.
     - On success: `history.replaceState` removes the fragment, clear `pairingFailed`, and return `false` so normal startup continues. Do **not** call `pairBrowser`.
     - On `unauthorized`: fall through to redemption (the stored secret is no longer accepted).
     - On any other error (offline): keep the fragment, mark `isOffline`, and return `false` without redeeming.
   - Add `runtime.test.ts`: a valid paired secret never calls `pairBrowser` and removes the fragment; a `401` falls through to `pairBrowser`; a network error keeps the fragment and does not redeem.
-- [ ] **3.2 Add the mock fresh-code control endpoint**:
+- [x] **3.2 Add the mock fresh-code control endpoint**:
   - In `MockRuntimeEngine.handleControlRequest`, add `POST /mock/pairing` -> `handleCreatePairing(response)`. It returns the currently open code, or a fresh deterministic code when the previous one was consumed. It changes no scenario state and keeps the single-use rule.
   - Tests in `MockRuntimeEngineTest` (or `EntryScenarioTest`): after a redemption, `POST /mock/pairing` returns a code different from the consumed one; the consumed code still yields `400 pairing_invalid`; the fresh code pairs successfully.
   - Document the endpoint in `pm-mock-runtime/README.adoc` under `Control Endpoints`.
-- [ ] **3.3 Make `start.sh` print the replacement code**:
+- [x] **3.3 Make `start.sh` print the replacement code**:
   - In `print_paired_url_if_available`, after reading `/mock/state`: if `pairing_code` is empty, `curl -s -m 1 -X POST http://127.0.0.1:7420/mock/pairing` and parse the `code` member. Use the returned code for the `Paired:` line.
   - The call is idempotent while a code is open; repeated `start.sh` runs do not invalidate an unconsumed code.
-- [ ] **3.4 Explain the refusal in the pairing UI**:
+- [x] **3.4 Explain the refusal in the pairing UI**:
   - In `PairingView.svelte`, map the caught error: `network_offline` -> `web.pair.page.offline`; `unauthorized` -> the existing pairing-lost copy; everything else -> `web.pair.page.invalid`. Keep the `pairingFailed` path on `web.pair.page.invalid`.
   - Update `pm-api/src/main/resources/messages/pairing.en.properties` and `pairing.de.properties`:
     - `web.pair.page.invalid`: a code works once; get a fresh one in a terminal of the machine.
     - `web.pair.page.offline`: the machine cannot be reached right now; check the connection and try again.
   - Add the new key to `pm-web-app/src/lib/i18n/catalogue.test.ts`.
   - Update `PairingView.scenarios.test.ts`: the existing invalid-code test asserts the single-use copy; add an offline test; add the no-authenticated-probe test from 1.3.
-- [ ] **3.5 Prove the second-device behavior end to end**:
+- [x] **3.5 Prove the second-device behavior end to end**:
   - In `pm-web-e2e/tests/pairing.spec.js`, add:
     1. **Already paired re-open**: pair via `/#code=KXQB-MRTN`, then navigate again to the same URL; the app must stay in the start view, the fragment is removed, and neither `pairing-error` nor the revoked view appears.
     2. **Second browser, consumed code**: open a second `browser.newContext()` and navigate to the consumed code; expect the single-use `pairing-error` message, not the revoked view.
@@ -275,17 +275,17 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 4: Close the Web Chrome, Navigation & Action-Advisory Gaps
 
-- [ ] **4.1 Remove the redundant connection banner and move its two useful facts into the header**:
+- [x] **4.1 Remove the redundant connection banner and move its two useful facts into the header**:
   - Remove `<ConnectionStatusBanner />` from `pm-web-app/src/routes/+layout.svelte` and delete the full-width banner markup/CSS (or reduce the component to a headless status helper). Keep the status loading, the 30-second heartbeat, and the `listener.changed` / `device.paired` / `device.revoked` subscriptions.
   - Render the listener mode and paired-device count in the existing `.app-header__machine` badge: `title` carries the `entry.connection.loopback.detail` / `entry.connection.lan.detail` text plus `entry.connection.devices`, and `data-connection-mode="loopback|lan"` drives a small colour marker. The header remains the only always-on status row.
   - Keep the LAN-off route/view and the listener-closed handling unchanged.
   - Tests: replace `ConnectionStatusBanner.test.ts` with a header-status test that asserts the title and mode; update any scenario/E2E expectation that looked for `connection-status-banner`.
-- [ ] **4.2 Make the brand/logo open the start page**:
+- [x] **4.2 Make the brand/logo open the start page**:
   - In `+layout.svelte`, turn `.app-header__brand` into a `<button type="button">` (or an anchor that calls the same handler) with `aria-label` and `title` from the catalogue. Add `web.frame.home` and `web.frame.home.hint` in EN and DE.
   - The handler opens the operator's start page: `rememberedStartRoute()` when set, otherwise the default landing route (`overview` while work runs or waits, `projects` otherwise). Use the existing `landingRoute`/`hasWork` logic rather than a new rule.
   - Keep the brand non-interactive while the browser is unpaired (pairing, onboarding, revoked, listener-off) and when it would land on the route already shown.
   - Tests: a layout test asserts a paired brand click navigates to the remembered/default route; an unpaired brand exposes no action.
-- [ ] **4.3 Give every action a hover advisory**:
+- [x] **4.3 Give every action a hover advisory**:
   - Add `pm-web-app/src/lib/utils/advisoryTitle.ts` with:
     - `advisory(node, text?)`: sets `title` from the explicit text, else an existing `title`, else `aria-label`, else the trimmed visible label; never overwrites an explicit `title`.
     - `installAdvisoryTitles(root = document)`: a `MutationObserver` that applies the same rule to every current and future `<button>` and disconnects cleanly.
@@ -293,13 +293,13 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - Add `data-advisory={$t('...')}` to icon-only or ambiguous controls: header theme/language, the brand, favourite/star toggles, list-row actions, modal close buttons, and any glyph-only control. Use visible labels as the fallback everywhere else.
   - Add the new hint keys to the EN and DE catalogues (common/overview/designer areas as appropriate) and to `catalogue.test.ts`.
   - Tests: `advisoryTitle.test.ts` covers explicit text, `aria-label`, visible-label fallback, no-overwrite, and dynamic insertion; a source guard fails any glyph-only button (no readable text) that lacks `aria-label`, `data-advisory`, or `title`; rendered tests for the shell and the main list views assert every button has a non-empty `title` after the observer runs.
-- [ ] **4.4 Make the process designer discoverable**:
+- [x] **4.4 Make the process designer discoverable**:
   - Add a `Process Designer` header action in `+layout.svelte`, visible while paired, using `web.frame.nav.designer`, with `aria-label`/`title`. It calls `navigateTo('designer')`.
   - Add a `Design process` action to `PlanView.svelte`'s header actions. It calls `navigateTo('designer', { projectId: plan.project.project_id })`.
   - Extend the designer route: `pathForRoute('designer', { projectId })` returns `/designer?project=<id>`; `adoptRouteFromLocation` reads the `project` query for the designer; `runtimeStore` carries `designerProjectId`; `AppRouter.svelte` passes it to `ProcessDesigner.svelte` as a prop; the designer uses it as the initial `projectId` when no draft overrides it.
   - Keep the existing `MachineSettingsView` designer button. Add `designer.plan.open` / `designer.plan.hint` catalogue keys in EN and DE.
   - Tests: `routes.test.ts` covers the designer query; `PlanView.test.ts` asserts the action navigates with the plan's project; `ProcessDesigner.test.ts` asserts the preselected project; a Playwright test opens the designer from the header and from a plan and survives a reload.
-- [ ] **4.5 Browser-level verification for the chrome findings**:
+- [x] **4.5 Browser-level verification for the chrome findings**:
   - Add a Playwright spec (or extend the existing overview/navigation spec) that asserts:
     1. The full-width connection banner is gone and the header machine badge carries the connection title/mode.
     2. The brand click reaches the start page.
@@ -308,19 +308,19 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 5: Verification & Archival
 
-- [ ] **5.1 Targeted tests**:
+- [x] **5.1 Targeted tests**:
   - `./mvnw -q test -pl pm-mock-runtime -am` (secret persistence, CLI URL, control endpoint, existing entry/pairing tests).
   - `cd pm-web-app && npm test` (client `401` matrix, shared stream, `checkUrlHashForCode`, pairing view, advisory layer, chrome/navigation, catalogue guard).
   - `cd pm-web-e2e && npx playwright test tests/pairing.spec.js` (already-paired re-open, second browser, fresh code) plus the chrome/navigation spec (banner, brand, advisories, designer).
-- [ ] **5.2 Full pre-commit gate**:
+- [x] **5.2 Full pre-commit gate**:
   - `./mvnw verify -Ppre-commit` with `BUILD SUCCESS` and a clean `git status`.
-- [ ] **5.3 Manual evidence for the findings**:
+- [x] **5.3 Manual evidence for the findings**:
   - Pair in a browser, stop `pm-mock-runtime`, start it again via `pm-mock-runtime/start.sh`, reload the browser: the session remains paired (no revoked page).
   - Run `pm-web-app/start.sh` and open the printed `Network`/`Paired` URL from a phone on the same network; pair and reach the start view.
   - Re-open the same `#code=` URL in the paired browser: it stays in the app.
   - Use the printed fresh code in a second browser/phone and pair it; the consumed code remains refused with the single-use message.
   - Confirm the full-width connection banner is gone, the header badge carries the connection title/mode, the logo opens the start page, hover text appears on header/list/modal actions, and the designer opens from the header and from a plan.
-- [ ] **5.4 Documentation and report**:
+- [x] **5.4 Documentation and report**:
   - Update `pm-web-app/README.md`, `pm-mock-runtime/README.adoc`, and the root `README.md` with the final output, the single-use/fresh-code explanation, and the new header/designer/advisory behavior.
   - Write `doc/agy/web-session-pairing-and-dev-host-plan-report.md` with the eight findings, their root causes, delivered artifacts, test evidence, and the manual phone/session/chrome checks.
   - Mark the plan done in [`doc/agy/README.md`](README.md) when archiving, and move it to `doc/agy/implemented/`.

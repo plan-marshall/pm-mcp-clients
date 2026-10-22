@@ -20,6 +20,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.concurrent.locks.LockSupport;
+import java.util.regex.Pattern;
 
 
 import org.junit.jupiter.api.BeforeEach;
@@ -114,6 +115,8 @@ class MockRuntimeCliTest {
         assertEquals(2, MockRuntimeCli.parse(new String[]{"-p"}, out, err).exitCode());
         assertEquals(2, MockRuntimeCli.parse(new String[]{"--token"}, out, err).exitCode());
         assertEquals(2, MockRuntimeCli.parse(new String[]{"-t"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"--device-secret"}, out, err).exitCode());
+        assertEquals(2, MockRuntimeCli.parse(new String[]{"-d"}, out, err).exitCode());
     }
 
     @Test
@@ -123,7 +126,8 @@ class MockRuntimeCliTest {
                 "-s", StandardScenarios.WEB_PAIRING,
                 "-b", "/tmp/base-short",
                 "-p", "9999",
-                "-t", "tok"
+                "-t", "tok",
+                "-d", "pmw_explicit"
         };
         var result = MockRuntimeCli.parse(args, out, err);
         assertEquals(0, result.exitCode());
@@ -132,6 +136,7 @@ class MockRuntimeCliTest {
         assertEquals(Path.of("/tmp/base-short"), result.config().getBase());
         assertEquals(9999, result.config().getWebPort());
         assertEquals("tok", result.config().effectiveRuntimeToken());
+        assertEquals("pmw_explicit", result.config().effectiveDeviceSecret());
     }
 
     @Test
@@ -177,7 +182,12 @@ class MockRuntimeCliTest {
         assertEquals(0, exitCode);
         assertTrue(stdout().contains("Mock runtime started successfully"));
         assertTrue(stdout().contains("Pairing Code:       KXQB-MRTN"));
-        assertTrue(stdout().contains("Web App URL:        http://localhost:5173/pair#code=KXQB-MRTN"));
+        // The development URL names the machine, not localhost, so a phone can reach it.
+        assertTrue(
+                Pattern.compile("Web App URL:\\s+http://[^/\\s]+:5173/pair#code=KXQB-MRTN")
+                        .matcher(stdout())
+                        .find(),
+                () -> "Web App URL with the machine host expected, got: " + stdout());
     }
 
     @Test

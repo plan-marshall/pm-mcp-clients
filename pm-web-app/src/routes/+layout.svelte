@@ -8,13 +8,14 @@
     initRuntime,
     navigateTo,
     adoptRouteFromLocation,
+    openStartPage,
     routeParamsOf,
     syncUrl,
   } from '../lib/stores/runtime';
-  import { apiClient } from '../lib/api/client';
+  import { apiClient, type ConnectionStatus } from '../lib/api/client';
   import { pathForRoute, type AppRoute } from '../lib/routes';
+  import { installAdvisoryTitles } from '../lib/utils/advisoryTitle';
   import Spinner from '../lib/components/Spinner.svelte';
-  import ConnectionStatusBanner from '../lib/components/ConnectionStatusBanner.svelte';
   import PairingView from '../lib/views/PairingView.svelte';
   import OnboardingView from '../lib/views/OnboardingView.svelte';
   import ListenerOffView from '../lib/views/ListenerOffView.svelte';
@@ -34,6 +35,72 @@
   // The first write settles the address bar on the route the store chose; every later one is a
   // history entry, so the browser's Back returns to the previous view.
   let addressBarSettled = false;
+
+  // The connection of this browser to the machine: the listener it reached and how many devices
+  // can act on it. The header badge is the only always-on status row; the two non-redundant facts
+  // live in its title and a mode marker.
+  const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
+  const CONNECTION_HEARTBEAT_MS = 30_000;
+  let connectionStatus = $state<ConnectionStatus | null>(null);
+
+  const isLoopback =
+    typeof window !== 'undefined' && loopbackHosts.includes(window.location.hostname);
+  const connectionMode = $derived(isLoopback ? 'loopback' : 'lan');
+  const connectionTitle = $derived.by(() => {
+    const detail = $t(
+      isLoopback ? 'entry.connection.loopback.detail' : 'entry.connection.lan.detail',
+    );
+    if (!connectionStatus) {
+      return detail;
+    }
+    const devices = $t('entry.connection.devices', {
+      count: connectionStatus.paired_devices_count,
+    });
+    return `${detail} · ${devices}`;
+  });
+
+  // The brand is inert while the app has no usable page to open; the start page is reachable only
+  // once the browser is paired and not on the listener-off page.
+  const canGoHome = $derived(
+    $runtimeStore.isPaired &&
+      !$runtimeStore.isRevoked &&
+      !($runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'),
+  );
+
+  onMount(() => {
+    // Native buttons and the views rendered later get their hover advisory from the observer.
+    const stopAdvisoryTitles = installAdvisoryTitles();
+    return () => stopAdvisoryTitles();
+  });
+
+  // The connection status follows the session: read on mount, on a listener/device event, and on
+  // a heartbeat, so a machine that went away or came back is seen without a reload.
+  $effect(() => {
+    if (!$runtimeStore.isInitialized || !$runtimeStore.isPaired) {
+      return;
+    }
+    let mounted = true;
+    const load = async (): Promise<void> => {
+      try {
+        const next = await apiClient.getConnectionStatus();
+        if (mounted) connectionStatus = next;
+      } catch {
+        if (mounted) connectionStatus = null;
+      }
+    };
+    void load();
+    const unsubscribe = apiClient.subscribeEvents((event) => {
+      if (event === 'listener.changed' || event === 'device.paired' || event === 'device.revoked') {
+        void load();
+      }
+    });
+    const heartbeat = setInterval(() => void load(), CONNECTION_HEARTBEAT_MS);
+    return () => {
+      mounted = false;
+      unsubscribe();
+      clearInterval(heartbeat);
+    };
+  });
 
   onMount(async () => {
     // Detect system theme
@@ -176,10 +243,31 @@
 
   <header class="app-header">
     <div class="app-header__brand">
-      <span class="app-header__logo" aria-hidden="true">✦</span>
-      <span class="app-header__title">{$t('web.frame.brand')}</span>
+      {#if canGoHome}
+        <button
+          type="button"
+          class="app-header__home"
+          aria-label={$t('web.frame.home')}
+          title={$t('web.frame.home.hint')}
+          data-testid="brand-home"
+          onclick={() => void openStartPage()}
+        >
+          <span class="app-header__logo" aria-hidden="true">✦</span>
+          <span class="app-header__title">{$t('web.frame.brand')}</span>
+        </button>
+      {:else}
+        <span class="app-header__home app-header__home--inert" data-testid="brand-inert">
+          <span class="app-header__logo" aria-hidden="true">✦</span>
+          <span class="app-header__title">{$t('web.frame.brand')}</span>
+        </span>
+      {/if}
       {#if $runtimeStore.isPaired}
-        <span class="app-header__machine mono">
+        <span
+          class="app-header__machine mono"
+          title={connectionTitle}
+          data-connection-mode={connectionMode}
+          data-testid="header-machine"
+        >
           {$t('web.frame.machine', { name: $runtimeStore.machineName })}
         </span>
       {/if}
@@ -238,6 +326,15 @@
         </button>
         <button
           class="header-action-btn"
+          aria-label={$t('web.frame.nav.designer')}
+          data-advisory={$t('web.frame.nav.designer')}
+          onclick={() => navigateTo('designer')}
+          data-testid="nav-designer-btn"
+        >
+          ✎ <span class="header-action-btn__text">{$t('web.frame.nav.designer')}</span>
+        </button>
+        <button
+          class="header-action-btn"
           aria-label={$t('system.view.title')}
           onclick={() => navigateTo('system')}
         >
@@ -256,6 +353,7 @@
         class="header-action-btn"
         onclick={toggleLocale}
         aria-label={$t('web.frame.toggle_language')}
+        data-advisory={$t('web.frame.toggle_language')}
       >
         {$currentLocale === 'en' ? 'DE' : 'EN'}
       </button>
@@ -264,15 +362,12 @@
         class="header-action-btn"
         onclick={toggleTheme}
         aria-label={$t('web.frame.toggle_theme')}
+        data-advisory={$t('web.frame.toggle_theme')}
       >
         {theme === 'light' ? '🌙' : '☀️'}
       </button>
     </div>
   </header>
-
-  {#if $runtimeStore.isPaired}
-    <ConnectionStatusBanner />
-  {/if}
 
   <main class="app-body">
     {#if $runtimeStore.isRevoked}
@@ -351,6 +446,31 @@
     gap: var(--space-3);
   }
 
+  .app-header__home {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+
+  .app-header__home:hover {
+    text-decoration: underline;
+  }
+
+  .app-header__home--inert {
+    cursor: default;
+  }
+
+  .app-header__home--inert:hover {
+    text-decoration: none;
+  }
+
   .app-header__logo {
     font-size: var(--text-lg);
     color: var(--color-primary);
@@ -368,6 +488,14 @@
     padding: 2px 8px;
     background-color: var(--color-bg-subtle);
     border-radius: var(--radius-sm);
+    border-left: 3px solid var(--color-border);
+  }
+
+  /* The mode marker: the network listener is the one that is not implied by the loopback page. */
+  .app-header__machine[data-connection-mode='lan'] {
+    color: var(--color-warning);
+    background-color: var(--color-warning-subtle);
+    border-left-color: var(--color-warning);
   }
 
   .app-header__actions {

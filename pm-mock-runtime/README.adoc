@@ -104,10 +104,14 @@ Mock runtime started successfully:
   Initial State:      onboard.mode
   Runtime Token:      mock-token-abcde-12345
   Pairing Code:       MOCKMOCK
-  Web App URL:        http://localhost:5173/pair#code=MOCKMOCK
+  Web App URL:        http://mbp-oliver.local:5173/pair#code=MOCKMOCK
 
 Use 'pm-operator' with PM_MCP_BASE=/tmp/pm-mock12345/b to interact.
 ----
+
+The web app URL names the machine, not `localhost`, so a phone on the same network can open it; `PM_WEB_HOST` overrides the name. The loopback listener line stays the local coordinate.
+
+`start.sh` starts the mock on a stable base (`pm-mock-runtime/target/machine`) by default, so the web device secret survives a restart and a paired browser stays paired. A checkout path too deep for a Unix-domain socket falls back to a short stable base under the temp directory; the printed `Base` names it. To start a fresh machine, stop the mock and remove that printed `Base` directory; an operator-supplied `--base` keeps its own directory. `-d`/`--device-secret` sets a fixed secret for a manual run.
 
 Export `PM_MCP_BASE` in another shell to run `pm-operator` against the mock runtime:
 
@@ -126,6 +130,7 @@ The mock runtime exposes dedicated control endpoints on both listeners for test 
 * `POST /mock/scenario`: Switches the active scenario dynamically using a name-based lookup. Accepts a JSON body `{"scenario": "<name>"}` or query parameters `?name=<name>`.
 * `POST /mock/goto/{state}`: Jumps directly to any target state within the active scenario (useful for skipping directly to a specific review or error screen).
 * `POST /mock/broadcast`: Triggers a custom Server-Sent Event broadcast to all connected SSE clients.
+* `POST /mock/pairing`: Returns the currently open pairing code, or issues a fresh one when the previous code was consumed. The development loop has no terminal client to ask for a replacement; the single-use rule is unchanged, so a consumed code never becomes valid again.
 
 === Testing Usage
 

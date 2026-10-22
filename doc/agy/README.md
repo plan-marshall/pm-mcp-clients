@@ -25,7 +25,7 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | Stream | Active / Last Completed Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
 | **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed & Verified (PR #168) |
-| **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Staged; Step 1 pending |
+| **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Implemented (PR #173); [completion report](web-session-pairing-and-dev-host-plan-report.md) written; pending review/merge |
 
 *(Note: The web remediation plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete).*
 
@@ -82,7 +82,7 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Complete reports view, system view, cleanup inspection, and process designer in pm-web-app)*
 
 ### Stream D: Web Session, Pairing & Dev Host Remediation (`pm-web-app` / `pm-mock-runtime`)
-1. **Active (Staged)**: [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md)
+1. **Implemented (PR #173)**: [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) ([Report](web-session-pairing-and-dev-host-plan-report.md) — pending Step 8 verification)
    *(Session persistence across mock restarts; authenticated-only `401` handling; system-name Vite/start-script host for phone access; already-paired code probe; fresh-code control endpoint and second-device pairing; single-use pairing copy; redundant-banner removal, clickable brand, action hover advisories, and discoverable process designer)*
 
 ---

@@ -11,9 +11,11 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
@@ -275,6 +277,127 @@ class MockRuntimeTest {
                     .build();
             var authRes = httpClient.send(authReq, HttpResponse.BodyHandlers.ofString());
             assertEquals(200, authRes.statusCode());
+        }
+    }
+
+    @Test
+    @DisplayName("keeps the web device secret across restarts on a stable base")
+    void deviceSecretPersistsAcrossRestarts() throws Exception {
+        var tempBase = Files.createTempDirectory(Path.of(System.getProperty("java.io.tmpdir")), "pms");
+        try {
+            String firstSecret;
+            var config = MockRuntimeConfig.builder()
+                    .scenario(StandardScenarios.WEB_PAIRING)
+                    .base(tempBase)
+                    .cleanupBaseOnClose(false)
+                    .webPort(0)
+                    .build();
+            try (var runtime = MockRuntime.start(config)) {
+                firstSecret = runtime.deviceSecret();
+                var secretFile = tempBase.resolve("state").resolve(MockRuntime.DEVICE_SECRET_FILE);
+                assertTrue(Files.exists(secretFile), "the device secret must be stored on a stable base");
+                assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(secretFile)));
+            }
+
+            try (var restarted = MockRuntime.start(config)) {
+                assertEquals(firstSecret, restarted.deviceSecret(), "a restart must reuse the stored secret");
+
+                // A browser that paired before the restart keeps its access with that secret.
+                var authReq = java.net.http.HttpRequest.newBuilder()
+                        .uri(URI.create("http://127.0.0.1:" + restarted.webPort() + "/api/v1/status"))
+                        .header("Authorization", "Bearer " + firstSecret)
+                        .GET()
+                        .build();
+                var authRes = HttpClient.newHttpClient().send(authReq, HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, authRes.statusCode());
+            }
+        } finally {
+            deleteTree(tempBase);
+        }
+    }
+
+    @Test
+    @DisplayName("an explicitly configured device secret overrides the stored one")
+    void explicitDeviceSecretOverridesStoredOne() throws Exception {
+        var tempBase = Files.createTempDirectory(Path.of(System.getProperty("java.io.tmpdir")), "pme");
+        try {
+            String storedSecret;
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .scenario(StandardScenarios.WEB_PAIRING)
+                         .base(tempBase)
+                         .cleanupBaseOnClose(false)
+                         .webPort(0)
+                         .build())) {
+                storedSecret = runtime.deviceSecret();
+            }
+
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .scenario(StandardScenarios.WEB_PAIRING)
+                         .base(tempBase)
+                         .cleanupBaseOnClose(false)
+                         .webPort(0)
+                         .deviceSecret("pmw_explicit_override")
+                         .build())) {
+                assertEquals("pmw_explicit_override", runtime.deviceSecret());
+                assertNotEquals(storedSecret, runtime.deviceSecret());
+
+                var authReq = java.net.http.HttpRequest.newBuilder()
+                        .uri(URI.create("http://127.0.0.1:" + runtime.webPort() + "/api/v1/status"))
+                        .header("Authorization", "Bearer pmw_explicit_override")
+                        .GET()
+                        .build();
+                var authRes = HttpClient.newHttpClient().send(authReq, HttpResponse.BodyHandlers.ofString());
+                assertEquals(200, authRes.statusCode());
+            }
+        } finally {
+            deleteTree(tempBase);
+        }
+    }
+
+    @Test
+    @DisplayName("regenerates an empty stored device secret")
+    void emptyStoredSecretIsRegenerated() throws Exception {
+        var tempBase = Files.createTempDirectory(Path.of(System.getProperty("java.io.tmpdir")), "pmz");
+        try {
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .scenario(StandardScenarios.WEB_PAIRING)
+                         .base(tempBase)
+                         .cleanupBaseOnClose(false)
+                         .build())) {
+                assertFalse(runtime.deviceSecret().isBlank());
+            }
+            var secretFile = tempBase.resolve("state").resolve(MockRuntime.DEVICE_SECRET_FILE);
+            Files.writeString(secretFile, "  \n");
+
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .scenario(StandardScenarios.WEB_PAIRING)
+                         .base(tempBase)
+                         .cleanupBaseOnClose(false)
+                         .build())) {
+                assertFalse(runtime.deviceSecret().isBlank());
+                assertEquals(runtime.deviceSecret(), Files.readString(secretFile).trim());
+                assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(secretFile)));
+            }
+        } finally {
+            deleteTree(tempBase);
+        }
+    }
+
+    /**
+     * Deletes a temporary base with everything below it.
+     *
+     * @param directory the directory to remove
+     */
+    private static void deleteTree(Path directory) {
+        if (!Files.exists(directory)) {
+            return;
+        }
+        try (var walk = Files.walk(directory)) {
+            for (var path : walk.sorted(Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(path);
+            }
+        } catch (IOException _) {
+            // Best effort: the operating system reclaims the temporary tree eventually.
         }
     }
 

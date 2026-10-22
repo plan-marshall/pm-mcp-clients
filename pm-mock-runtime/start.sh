@@ -79,6 +79,7 @@ fi
 # 3. Dynamic scenario selection
 HAS_SCENARIO=false
 HAS_PORT=false
+HAS_BASE=false
 REQUESTED_PORT=7420
 FOREGROUND=false
 PASSED_ARGS=()
@@ -87,6 +88,15 @@ while [ $# -gt 0 ]; do
     case "$1" in
         -s|--scenario)
             HAS_SCENARIO=true
+            PASSED_ARGS+=("$1" "$2")
+            shift 2
+            ;;
+        -b|--base)
+            if [ $# -lt 2 ]; then
+                echo "Error: $1 requires a directory." >&2
+                exit 1
+            fi
+            HAS_BASE=true
             PASSED_ARGS+=("$1" "$2")
             shift 2
             ;;
@@ -250,6 +260,22 @@ if [[ "$WEB_PORT" =~ ^[0-9]+$ ]] && [ "$WEB_PORT" -gt 0 ]; then
 fi
 
 FINAL_ARGS+=(--web-port "$WEB_PORT")
+
+# A stable base by default, so the web device secret survives a restart and a paired browser
+# stays paired. `rm -rf "$SCRIPT_DIR/target/machine"` is the explicit "fresh machine" action;
+# an operator-supplied --base keeps its own directory.
+if [ "$HAS_BASE" = false ]; then
+    STABLE_BASE="$SCRIPT_DIR/target/machine"
+    # A Unix socket path is limited (104 bytes on macOS and Linux). A deep worktree checkout can
+    # exceed that with the module's own target directory, so fall back to a short, stable path
+    # under the temp directory; the CLI prints the base it uses.
+    if [ "${#STABLE_BASE}" -ge 80 ]; then
+        STABLE_BASE="${TMPDIR:-/tmp}/pm-mock-$(printf '%s' "$REPO_ROOT" | cksum | awk '{print $1}')"
+    fi
+    mkdir -p "$STABLE_BASE"
+    FINAL_ARGS+=(--base "$STABLE_BASE")
+fi
+
 FINAL_ARGS+=(${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"})
 
 # 4. Launch runtime

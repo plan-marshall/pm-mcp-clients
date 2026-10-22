@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -280,6 +281,32 @@ class MockRuntimeEngineTest {
         var res3 = send("POST", "/pair?code=wrong", Map.of(), new byte[0], true);
         assertEquals(400, res3.status());
         assertEquals("pairing_invalid", res3.json().get("error"));
+    }
+
+    @Test
+    @DisplayName("control endpoint: POST /mock/pairing returns the open code or issues a fresh one")
+    void controlFreshPairingCode() throws Exception {
+        engine.switchScenario(StandardScenarios.WEB_PAIRING);
+
+        // 1. The scenario's code is consumed by a redemption.
+        var consumedBody = "{\"code\":\"KXQB-MRTN\"}".getBytes(StandardCharsets.UTF_8);
+        assertEquals(200, send("POST", "/api/v1/pair", Map.of(), consumedBody, true).status());
+
+        // 2. The development loop asks for the replacement; repeated calls keep the open code.
+        var issued = send("POST", "/mock/pairing", Map.of(), new byte[0], false);
+        assertEquals(201, issued.status());
+        var freshCode = String.valueOf(issued.json().get("code"));
+        assertFalse(freshCode.isEmpty());
+        assertNotEquals("KXQB-MRTN", freshCode, "a consumed code must never be reissued");
+        var again = send("POST", "/mock/pairing", Map.of(), new byte[0], false);
+        assertEquals(freshCode, again.json().get("code"));
+
+        // 3. The fresh code pairs; the consumed one stays refused.
+        var freshBody = ("{\"code\":\"" + freshCode + "\"}").getBytes(StandardCharsets.UTF_8);
+        assertEquals(200, send("POST", "/api/v1/pair", Map.of(), freshBody, true).status());
+        var refused = send("POST", "/api/v1/pair", Map.of(), consumedBody, true);
+        assertEquals(400, refused.status());
+        assertEquals("pairing_invalid", refused.json().get("error"));
     }
 
     @Test

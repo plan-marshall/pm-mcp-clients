@@ -10,6 +10,7 @@ describe('ApiClient', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -538,5 +539,154 @@ describe('ApiClient', () => {
     ).rejects.toThrow('unauthorized');
     expect(onRevoked).toHaveBeenCalledWith('unauthorized');
     expect(client.isPaired()).toBe(false);
+  });
+
+  it('leaves the pairing untouched when an unauthenticated call is refused with 401', async () => {
+    // Arrange: no secret is stored, so this 401 says "pair first", not "pairing revoked".
+    const onRevoked = vi.fn();
+    client.setOnRevoked(onRevoked);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'unauthorized' }),
+    });
+
+    // Act & Assert
+    await expect(client.getStatus()).rejects.toThrow('unauthorized');
+    expect(onRevoked).not.toHaveBeenCalled();
+    expect(client.getSecret()).toBeNull();
+  });
+
+  it('reports online again after a failed request and the next success', async () => {
+    // Arrange
+    const onOffline = vi.fn();
+    const onOnline = vi.fn();
+    client.setOnOffline(onOffline);
+    client.setOnOnline(onOnline);
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('down'));
+
+    // Act: the first call fails, the next one succeeds.
+    await expect(client.getStatus()).rejects.toThrow('network_offline');
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'ready' }),
+    });
+    await client.getStatus();
+
+    // Assert
+    expect(onOffline).toHaveBeenCalledTimes(1);
+    expect(onOnline).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares one event stream among subscribers', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    const encoder = new TextEncoder();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode('event: report.sent\ndata: {"subject":"Plan 7"}\n\n'));
+        },
+      }),
+    });
+    globalThis.fetch = fetchMock;
+    const first = vi.fn();
+    const second = vi.fn();
+
+    // Act
+    const offFirst = client.subscribeEvents(first);
+    const controller = new AbortController();
+    const offSecond = client.subscribeEvents(second, controller.signal);
+
+    // Assert: one connection carries the event to both listeners.
+    await vi.waitFor(() =>
+      expect(first).toHaveBeenCalledWith('report.sent', { subject: 'Plan 7' }),
+    );
+    expect(second).toHaveBeenCalledWith('report.sent', { subject: 'Plan 7' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/v1/events');
+
+    // The connection stays open until the last listener leaves.
+    const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal as AbortSignal;
+    offFirst();
+    expect(signal.aborted).toBe(false);
+    controller.abort();
+    expect(signal.aborted).toBe(true);
+    // The manual unsubscribe after the abort is a harmless no-op.
+    offSecond();
+  });
+
+  it('reports a 401 on the shared event stream once', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_revoked');
+    const onRevoked = vi.fn();
+    client.setOnRevoked(onRevoked);
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: async () => ({ error: 'unauthorized' }),
+    });
+
+    // Act
+    const offFirst = client.subscribeEvents(() => {});
+    const offSecond = client.subscribeEvents(() => {});
+
+    // Assert
+    await vi.waitFor(() => expect(onRevoked).toHaveBeenCalledTimes(1));
+    expect(onRevoked).toHaveBeenCalledWith('unauthorized');
+    expect(client.getSecret()).toBeNull();
+    offFirst();
+    offSecond();
+  });
+
+  it('reports online when the event stream reconnects', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    const onOnline = vi.fn();
+    client.setOnOnline(onOnline);
+    globalThis.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        body: new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.close();
+          },
+        }),
+      }),
+    );
+    vi.useFakeTimers();
+
+    // Act: the reader closes and reconnects after the retry delay.
+    const off = client.subscribeEvents(() => {});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onOnline).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(onOnline).toHaveBeenCalledTimes(2);
+
+    // Assert
+    off();
+    vi.useRealTimers();
+  });
+
+  it('does not open a stream for a subscriber whose signal is already aborted', () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+    const controller = new AbortController();
+    controller.abort();
+    const listener = vi.fn();
+
+    // Act
+    const off = client.subscribeEvents(listener, controller.signal);
+    off();
+
+    // Assert
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
   });
 });

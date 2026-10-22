@@ -212,5 +212,11 @@ export function pathForRoute(route: AppRoute, params: RouteParams = {}): string 
       ? `/projects?project=${encodeURIComponent(params.explorerProjectId)}`
       : '/projects';
   }
+  if (route === 'designer') {
+    // The selected project travels in the query, so a reload and a bookmark keep it.
+    return params.projectId
+      ? `/designer?project=${encodeURIComponent(params.projectId)}`
+      : '/designer';
+  }
   return FIXED_ROUTE_PATHS[route] ?? null;
 }

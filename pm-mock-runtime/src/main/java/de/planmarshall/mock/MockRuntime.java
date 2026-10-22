@@ -49,6 +49,9 @@ public final class MockRuntime implements AutoCloseable {
      * is owned by the Wave 3 finalization; this runtime seam is removed with the transitional
      * {@code startCase} fallback when that wave makes the mapping authoritative.
      */
+    /** The owner-only mode of the runtime token and the web device secret. */
+    private static final String FILE_MODE = "rw-------";
+
     private static final Map<String, String> LEGACY_CASE_STATES = Map.ofEntries(
             Map.entry(StandardScenarios.PROJECTS, "projects.explorer"),
             Map.entry(StandardScenarios.ENROLMENT, "enrol.scan"),
@@ -178,10 +181,13 @@ public final class MockRuntime implements AutoCloseable {
         }
 
         var token = config.effectiveRuntimeToken();
-        var deviceSecret = config.effectiveDeviceSecret();
 
         // 1. Initialize filesystem layout (<base>/run, <base>/state)
         setupFilesystem(paths, token);
+
+        // The device secret survives a restart on a stable base: a paired browser keeps its
+        // access across the mock's restart. An explicit secret still wins over the stored one.
+        var deviceSecret = resolveDeviceSecret(config, paths);
 
         // 2. Load scenario
         var registry = config.getRegistry() != null ? config.getRegistry() : new ScenarioRegistry();
@@ -242,7 +248,7 @@ public final class MockRuntime implements AutoCloseable {
             // runtime.token
             var tempToken = paths.runDir().resolve("runtime.token.tmp");
             Files.writeString(tempToken, token);
-            Files.setPosixFilePermissions(tempToken, PosixFilePermissions.fromString("rw-------"));
+            Files.setPosixFilePermissions(tempToken, PosixFilePermissions.fromString(FILE_MODE));
             Files.move(tempToken, paths.runtimeToken(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 
             // state/runtime.json
@@ -253,7 +259,7 @@ public final class MockRuntime implements AutoCloseable {
                     + ",\"socket_path\":\"" + paths.socket().toString().replace("\\", "\\\\") + "\"}";
             var tempRecord = paths.stateDir().resolve("runtime.json.tmp");
             Files.writeString(tempRecord, runtimeJson);
-            Files.setPosixFilePermissions(tempRecord, PosixFilePermissions.fromString("rw-------"));
+            Files.setPosixFilePermissions(tempRecord, PosixFilePermissions.fromString(FILE_MODE));
             Files.move(tempRecord, paths.runtimeRecord(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } else {
             Files.createDirectories(paths.runDir());
@@ -265,6 +271,64 @@ public final class MockRuntime implements AutoCloseable {
                     + ",\"listener\":\"unix\""
                     + ",\"socket_path\":\"" + paths.socket().toString().replace("\\", "\\\\") + "\"}";
             Files.writeString(paths.runtimeRecord(), runtimeJson);
+        }
+    }
+
+    /**
+     * The name of the file that keeps the web device secret on a stable base.
+     */
+    static final String DEVICE_SECRET_FILE = "mock-web-device-secret";
+
+    /**
+     * Resolves the device secret the web listener accepts.
+     * <p>
+     * An explicitly configured secret wins. Otherwise the secret of a previous start on the same
+     * base is reused, so a browser that paired once stays paired across a mock restart; only a
+     * base without a stored secret gets a freshly generated one, written atomically with owner-only
+     * permissions. Deleting the base (or {@code target/machine}) is the explicit "fresh machine".
+     *
+     * @param config the runtime configuration
+     * @param paths  the machine paths of the base
+     * @return the device secret to accept
+     * @throws IOException when the stored secret cannot be read or the new one cannot be written
+     */
+    private static String resolveDeviceSecret(MockRuntimeConfig config, MachinePaths paths) throws IOException {
+        var explicit = config.getDeviceSecret();
+        if (explicit != null && !explicit.isBlank()) {
+            return explicit;
+        }
+        var secretFile = paths.stateDir().resolve(DEVICE_SECRET_FILE);
+        if (Files.exists(secretFile)) {
+            var stored = Files.readString(secretFile).trim();
+            if (!stored.isEmpty()) {
+                return stored;
+            }
+        }
+        var generated = config.effectiveDeviceSecret();
+        publishSecret(secretFile, generated);
+        return generated;
+    }
+
+    /**
+     * Publishes the device secret atomically: a temporary file in the same directory, owner-only
+     * permissions, then an atomic move, so a failed start never leaves a partial secret behind.
+     *
+     * @param secretFile the live secret file
+     * @param secret     the secret to write
+     * @throws IOException when the file cannot be written or moved into place
+     */
+    private static void publishSecret(Path secretFile, String secret) throws IOException {
+        var temp = secretFile.resolveSibling(secretFile.getFileName() + ".tmp");
+        try {
+            Files.writeString(temp, secret);
+            try {
+                Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString(FILE_MODE));
+            } catch (UnsupportedOperationException _) {
+                // A non-POSIX file system has no mode to set: the state directory guards the file.
+            }
+            Files.move(temp, secretFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(temp);
         }
     }
 

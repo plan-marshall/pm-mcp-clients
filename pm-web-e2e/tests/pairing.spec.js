@@ -45,7 +45,73 @@ test.describe('Web Client Pairing Flow', () => {
 
     // Should automatically pair, strip the fragment, and open the app's route.
     await expect(page).not.toHaveURL(/#code=/);
-    await expect(page).toHaveURL(/\/(onboarding|workspace|projects)$/);
+    await expect(page).toHaveURL(/\/(onboarding|workspace|projects|overview)$/);
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+  });
+
+  test('keeps a paired browser in the app when the same code URL is opened again', async ({
+    page,
+  }) => {
+    // Arrange: pair once, which consumes the single-use code.
+    await page.goto('/#code=KXQB-MRTN');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+
+    // Act: open the very same URL in the already paired browser.
+    await page.goto('/#code=KXQB-MRTN');
+
+    // Assert: no re-redemption, no refusal, no revoked page; the fragment is dropped.
+    await expect(page).not.toHaveURL(/#code=/);
+    await expect(page.getByTestId('pairing-error')).toHaveCount(0);
+    await expect(page.getByText('This browser is no longer paired')).toHaveCount(0);
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+  });
+
+  test('refuses the consumed code in a second browser with the single-use message', async ({
+    page,
+    browser,
+  }) => {
+    // Arrange: the first browser consumes the scenario's code.
+    await page.goto('/#code=KXQB-MRTN');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+
+    // Act: a second browser redeems the same, already consumed code.
+    const secondContext = await browser.newContext();
+    const secondPage = await secondContext.newPage();
+    await secondPage.goto('/#code=KXQB-MRTN');
+
+    // Assert: a single-use explanation, not a revoked pairing.
+    await expect(secondPage.getByTestId('pairing-error')).toContainText(
+      'A code works once. Get a fresh one in a terminal of the machine.',
+    );
+    await expect(secondPage.getByText('This browser is no longer paired')).toHaveCount(0);
+
+    await secondContext.close();
+  });
+
+  test('pairs a second browser with the fresh code the development loop issues', async ({
+    page,
+    browser,
+    request,
+  }) => {
+    // Arrange: the first browser consumes the scenario's code, then the mock issues the next one.
+    await page.goto('/#code=KXQB-MRTN');
+    await expect(page.locator('.app-header__machine')).toContainText('Machine:');
+
+    const issued = await request.post('http://127.0.0.1:7420/mock/pairing');
+    expect(issued.ok()).toBeTruthy();
+    const { code } = await issued.json();
+    expect(code).toBeTruthy();
+    expect(code).not.toBe('KXQB-MRTN');
+
+    // Act: the second browser pairs with the fresh code.
+    const secondContext = await browser.newContext();
+    const secondPage = await secondContext.newPage();
+    await secondPage.goto(`/#code=${code}`);
+
+    // Assert
+    await expect(secondPage.locator('.app-header__machine')).toContainText('Machine:');
+    await expect(secondPage).not.toHaveURL(/#code=/);
+
+    await secondContext.close();
   });
 });
