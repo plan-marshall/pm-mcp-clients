@@ -50,12 +50,12 @@ It unblocks `pm-mcp-core PLAN-19 profile-loader` and adheres strictly to [`doc/m
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-client-profile-schema` on branch `feature/client-profile-schema` rebased on latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded for each task type:
+- [x] 2. Domain skills & engineering personas loaded for each task type:
   - `persona-implementer` & `persona-module-tester` for code & unit tests
   - `persona-code-reviewer` for CodeRabbit finding remediation
-- [ ] 3. Fixes implemented, local tests passing, all profiles valid.
-- [ ] 4. Final completion report written (`doc/agy/client-profile-schema-plan-report.md`) and initial plan moved to `doc/agy/implemented/client-profile-schema-plan.md`.
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
+- [x] 3. Fixes implemented, local tests passing, all profiles valid.
+- [x] 4. Final completion report written (`doc/agy/client-profile-schema-plan-report.md`) and initial plan moved to `doc/agy/implemented/client-profile-schema-plan.md`.
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [ ] 6. Push to `feature/client-profile-schema`, all 29 CI checks green, CodeRabbit review verified resolved.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/client-profile-schema-plan-report.md` by orchestrator session.

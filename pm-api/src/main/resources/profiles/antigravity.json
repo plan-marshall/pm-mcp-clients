@@ -83,7 +83,7 @@
     "reaches": [ "command", "serve" ]
   },
   "identity": {
-    "version_probe": null,
-    "version_pattern": null
+    "version_probe": [ "agy", "--version" ],
+    "version_pattern": "(\\d+(?:\\.\\d+)+)"
   }
 }

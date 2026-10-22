@@ -80,7 +80,7 @@ class HostDetectionTest {
     @DisplayName("carries the version probes and the client ids")
     void probes() {
         assertEquals(List.of("claude", "--version"), HostDetection.host("claude").orElseThrow().versionProbe());
-        assertEquals(List.of(), HostDetection.host("antigravity").orElseThrow().versionProbe());
+        assertEquals(List.of("agy", "--version"), HostDetection.host("antigravity").orElseThrow().versionProbe());
         assertFalse(HostDetection.host("codex").orElseThrow().provisional());
         assertEquals(Optional.empty(), HostDetection.host(HostDetection.NEUTRAL));
         assertEquals(List.of("antigravity", "opencode", "claude", "codex", "neutral"), HostDetection.clientIds());

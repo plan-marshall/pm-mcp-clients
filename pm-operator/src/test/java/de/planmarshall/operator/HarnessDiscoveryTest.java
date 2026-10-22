@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -106,14 +107,27 @@ class HarnessDiscoveryTest {
     }
 
     @Test
-    @DisplayName("records an unreported version for a profile without a version probe")
-    void antigravityHasNoVersionProbe() throws Exception {
-        var marker = root.resolve("antigravity-ran");
-        Files.writeString(bin.resolve("antigravity"),
-                            "#!/bin/sh\ntouch '" + marker + "'\nprintf 'antigravity preview\\n'\n");
-        Files.setPosixFilePermissions(bin.resolve("antigravity"), PosixFilePermissions.fromString("rwx------"));
+    @DisplayName("probes the executable and the version the antigravity profile declares")
+    void antigravityVersionProbe() throws Exception {
+        var executable = executable("agy", "Antigravity CLI 1.4.2", 0);
 
         var harness = HarnessDiscovery.discover("antigravity", Map.of("PATH", bin.toString()));
+
+        assertAll(
+                            () -> assertEquals("antigravity", harness.client()),
+                            () -> assertEquals(executable, harness.executable()),
+                            () -> assertEquals("1.4.2", harness.version()));
+    }
+
+    @Test
+    @DisplayName("records an unreported version for a profile without a version probe")
+    void profileWithoutVersionProbe() throws Exception {
+        var marker = root.resolve("neutral-ran");
+        Files.writeString(bin.resolve("neutral"),
+                            "#!/bin/sh\ntouch '" + marker + "'\nprintf 'neutral preview\\n'\n");
+        Files.setPosixFilePermissions(bin.resolve("neutral"), PosixFilePermissions.fromString("rwx------"));
+
+        var harness = HarnessDiscovery.discover("neutral", Map.of("PATH", bin.toString()));
 
         assertEquals(HarnessDiscovery.UNREPORTED_VERSION, harness.version());
         assertFalse(Files.exists(marker), "a profile without a version probe never runs the executable");
