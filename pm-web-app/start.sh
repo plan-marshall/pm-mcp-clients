@@ -12,6 +12,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+# The address resolution and the printed coordinates; sourced so the matrix has a test seam.
+# shellcheck source=scripts/connection-urls.sh
+source "$SCRIPT_DIR/scripts/connection-urls.sh"
 mkdir -p "$SCRIPT_DIR/target"
 PID_FILE="$SCRIPT_DIR/target/pm-web-app.pid"
 PORT_FILE="$SCRIPT_DIR/target/pm-web-app.port"
@@ -20,70 +23,6 @@ NODE_MODULES="$SCRIPT_DIR/node_modules"
 
 # Also clean up legacy dot-file if present
 rm -f "$SCRIPT_DIR/.pm-web-app.pid" 2>/dev/null || true
-
-# The primary IPv4 address of this machine, or empty when none is reachable.
-primary_ipv4() {
-    local ip=""
-    case "$(uname -s)" in
-        Darwin)
-            ip="$(ipconfig getifaddr en0 2>/dev/null || true)"
-            if [ -z "$ip" ]; then
-                ip="$(ipconfig getifaddr en1 2>/dev/null || true)"
-            fi
-            ;;
-        *)
-            ip="$(hostname -I 2>/dev/null | awk '{print $1}' || true)"
-            ;;
-    esac
-    printf '%s' "$ip"
-}
-
-# The reachable name of this machine: the name is preferred over the address, because it
-# survives DHCP changes and resolves through mDNS/Bonjour. The IP is the fallback.
-reachable_host() {
-    if [ -n "${PM_WEB_HOST:-}" ]; then
-        printf '%s' "$PM_WEB_HOST"
-        return 0
-    fi
-
-    local local_name=""
-    local_name="$(scutil --get LocalHostName 2>/dev/null || true)"
-    if [ -n "$local_name" ]; then
-        printf '%s.local' "$local_name"
-        return 0
-    fi
-
-    local fqdn=""
-    fqdn="$(hostname -f 2>/dev/null || true)"
-    if [ -n "$fqdn" ] && [ "$fqdn" != "localhost" ]; then
-        printf '%s' "$fqdn"
-        return 0
-    fi
-
-    local short=""
-    short="$(hostname 2>/dev/null || true)"
-    if [ -n "$short" ] && [ "$short" != "localhost" ]; then
-        printf '%s' "$short"
-        return 0
-    fi
-
-    local ip
-    ip="$(primary_ipv4)"
-    if [ -n "$ip" ]; then
-        printf '%s' "$ip"
-        return 0
-    fi
-
-    printf 'localhost'
-}
-
-# Whether a host reaches the machine without the network (so no phone can use it).
-is_loopback_host() {
-    case "$1" in
-        localhost|127.0.0.1|::1|'[::1]') return 0 ;;
-        *) return 1 ;;
-    esac
-}
 
 # The port the running server listens on; 5173 unless overridden.
 web_port_from_args() {
@@ -141,46 +80,6 @@ current_pairing_code() {
     printf '%s' "$pairing_code"
 }
 
-print_paired_url_if_available() {
-    local web_port
-    web_port="$(web_port_from_args "$@")"
-    local pairing_code
-    pairing_code="$(current_pairing_code)"
-    if [ -z "$pairing_code" ]; then
-        return 0
-    fi
-
-    local host
-    host="$(reachable_host)"
-    if is_loopback_host "$host"; then
-        local ip
-        ip="$(primary_ipv4)"
-        if [ -n "$ip" ]; then
-            host="$ip"
-        fi
-    fi
-    echo "Paired:      http://$host:$web_port/pair#code=$pairing_code"
-}
-
-# The coordinates a phone can use: the loopback URL, the machine's name, and the IP when it
-# differs. A loopback-only host (PM_WEB_HOST=127.0.0.1) prints only the local URL.
-print_connection_urls() {
-    local web_port="$1"
-    local host
-    host="$(reachable_host)"
-    local ip
-    ip="$(primary_ipv4)"
-
-    echo "Local:       http://localhost:$web_port"
-    if ! is_loopback_host "$host"; then
-        echo "Network:     http://$host:$web_port"
-    fi
-    if [ -n "$ip" ] && [ "$ip" != "$host" ]; then
-        echo "Network (IP): http://$ip:$web_port"
-    fi
-    print_paired_url_if_available --port "$web_port"
-}
-
 # 1. Check if already running
 if [ -f "$PID_FILE" ]; then
     EXISTING_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
@@ -194,7 +93,7 @@ if [ -f "$PID_FILE" ]; then
             esac
         fi
         echo "pm-web-app is already running (PID: $EXISTING_PID)."
-        print_connection_urls "$local_port"
+        render_connection_urls "$local_port" "$(current_pairing_code)"
         echo "Logs:    $LOG_FILE"
         echo "To stop: $SCRIPT_DIR/stop.sh"
         exit 0
@@ -277,7 +176,7 @@ cd "$SCRIPT_DIR"
 
 if [ "$FOREGROUND" = true ]; then
     echo "Starting pm-web-app in foreground..."
-    print_connection_urls "$WEB_PORT"
+    render_connection_urls "$WEB_PORT" "$(current_pairing_code)"
     echo "$$" > "$PID_FILE"
     echo "$WEB_PORT" > "$PORT_FILE"
     trap 'rm -f "$PID_FILE" "$PORT_FILE"' EXIT INT TERM
@@ -329,7 +228,7 @@ fs.writeFileSync(process.argv[1], String(child.pid));
 
     echo "$WEB_PORT" > "$PORT_FILE"
     echo "pm-web-app started successfully (PID: $PID)."
-    print_connection_urls "$WEB_PORT"
+    render_connection_urls "$WEB_PORT" "$(current_pairing_code)"
     echo "Logs:    $LOG_FILE"
     echo "To stop: $SCRIPT_DIR/stop.sh"
 fi

@@ -1,10 +1,10 @@
 # Implementation Plan: `web-session-follow-up-fixes` (Close the Dev-Host Loopback Output Gap, Reconcile the Designer Route with a Dirty Draft, and Retire the Dead Pre-Pairing Status Probe)
 
-This implementation plan resolves the post-landing findings recorded during the Step 8 verification of [`web-session-pairing-and-dev-host`](verified/web-session-pairing-and-dev-host-plan-report.md) (PR #173). The original plan landed the eight web-client findings; this follow-up closes two user-facing gaps and one dead code path that the post-landing audit found.
+This implementation plan resolves the post-landing findings recorded during the Step 8 verification of [`web-session-pairing-and-dev-host`](../verified/web-session-pairing-and-dev-host-plan-report.md) (PR #173). The original plan landed the eight web-client findings; this follow-up closes two user-facing gaps and one dead code path that the post-landing audit found.
 
 The pairing contract, the mock runtime's device-secret lifecycle, and the Vite network binding are **not** changed. The dev-host fix only makes the printed output honour the operator's explicit loopback choice; the designer fix only reconciles the URL with the project the operator actually keeps; the pairing-page cleanup removes a probe that cannot run on the only page that renders it.
 
-It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -12,13 +12,13 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Findings Source** | Step 8 verification of [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md); verified report [`web-session-pairing-and-dev-host-plan-report.md`](verified/web-session-pairing-and-dev-host-plan-report.md) |
-| **Use Cases** | [`UC-ENT-1`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-PLN-3`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3) (Design a Plan's Process) |
-| **Specifications** | [`03-web-server.adoc#two-listeners`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners), [`#web-listener`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-listener) |
-| **Local Client Design** | [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) |
-| **Predecessor Plans** | [`implemented/web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md), [`implemented/web-reports-system-and-designer-plan.md`](implemented/web-reports-system-and-designer-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Findings Source** | Step 8 verification of [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md); verified report [`web-session-pairing-and-dev-host-plan-report.md`](../verified/web-session-pairing-and-dev-host-plan-report.md) |
+| **Use Cases** | [`UC-ENT-1`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-PLN-3`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3) (Design a Plan's Process) |
+| **Specifications** | [`03-web-server.adoc#two-listeners`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners), [`#web-listener`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-listener) |
+| **Local Client Design** | [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc) |
+| **Predecessor Plans** | [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md), [`web-reports-system-and-designer-plan.md`](web-reports-system-and-designer-plan.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis (post-landing finding -> root cause -> correction)
 
@@ -120,20 +120,20 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` on branch `fix/web-session-follow-up-fixes` off latest `main`; Step 1 committed and pushed.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the start-script helper, store helper, and designer reconciliation.
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for the Bash/Vitest regression cases.
   - `plan-marshall-persona-documenter` for the README, report, and link-rebase correction.
   - `plan-marshall-persona-code-reviewer` for the adversarial review and review-bot triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/web-session-follow-up-fixes-plan-report.md`), initial plan moved to `doc/agy/implemented/web-session-follow-up-fixes-plan.md`, **all relative links rebased for the new location**, and the dashboard/implemented index updated. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes TypeScript, shell scripts, and `package.json`).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/web-session-follow-up-fixes-plan-report.md`), initial plan moved to `doc/agy/implemented/web-session-follow-up-fixes-plan.md`, **all relative links rebased for the new location**, and the dashboard/implemented index updated. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes TypeScript, shell scripts, and `package.json`).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on a worker PR), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-session-follow-up-fixes-plan-report.md` by the orchestrator session.
 
 > [!IMPORTANT]
-> **Plan archival link rule**: this plan is written at `doc/agy/`, so its links use `../meta`, `../design`, `../findings-web.txt`, `../../../plan-marshall-documentation`, and sibling `implemented/<name>.md` paths. When Step 4 moves it to `doc/agy/implemented/`, rebase every relative link and re-run the internal-link check. The predecessor plan's 27 broken links after its move are the regression this rule prevents.
+> **Plan archival link rule**: this plan was written at `doc/agy/`, where its links used `../meta`, `../design`, `../../../plan-marshall-documentation`, `runbook.md`, `verified/…`, and sibling `implemented/<name>.md` paths. It was moved to `doc/agy/implemented/` at Step 4, every relative link was rebased for the new depth (`../../meta`, `../../design`, `../../../../plan-marshall-documentation`, `../runbook.md`, `../verified/…`, sibling `<name>.md`), and the internal-link check was re-run. The predecessor plan's 27 broken links after its move are the regression this rule prevents.
 
 ---
 
@@ -153,7 +153,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 1: Dev-Host Output (F1)
 
-- [ ] **1.1 Extract the sourceable URL helper**:
+- [x] **1.1 Extract the sourceable URL helper**:
   - Create `pm-web-app/scripts/connection-urls.sh` with the standard license header and:
     - `primary_ipv4()`: keep the macOS `en0`/`en1` and Linux `hostname -I` resolution.
     - `reachable_host()`: keep `PM_WEB_HOST` -> macOS `LocalHostName.local` -> `hostname -f` -> `hostname` -> IPv4 -> `localhost`.
@@ -161,7 +161,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     - `render_connection_urls <web_port> <pairing_code>`: print `Local:` always; print `Network:`/`Network (IP):` only for a non-loopback host; print `Paired:` from the resolved host and the supplied code, never from a substituted IP.
   - In `pm-web-app/start.sh`, source `"$SCRIPT_DIR/scripts/connection-urls.sh"` after `SCRIPT_DIR` is set, delete the moved functions, and replace both `print_connection_urls` call sites with `render_connection_urls "$port" "$(current_pairing_code)"`.
   - Keep `current_pairing_code` in `start.sh`; it owns `REPO_ROOT`, `/mock/state`, `POST /mock/pairing`, and the log fallback.
-- [ ] **1.2 Add the Bash regression test**:
+- [x] **1.2 Add the Bash regression test**:
   - Create executable `pm-web-app/scripts/connection-urls.test.sh` with `set -euo pipefail`.
   - Source the helper and override `reachable_host`/`primary_ipv4` per case through a small `run_case` helper.
   - Cases:
@@ -172,13 +172,13 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     5. No pairing code: no `Paired`.
     6. Empty IPv4: no `Network (IP)`.
   - Add `"test:urls": "bash scripts/connection-urls.test.sh"` to `pm-web-app/package.json`.
-- [ ] **1.3 Update the documentation**:
+- [x] **1.3 Update the documentation**:
   - Keep `pm-web-app/README.md`'s statement accurate: with `PM_WEB_HOST=127.0.0.1`, only local coordinates are printed.
   - Add a short note to the README's phone-reaching section that `Paired:` uses the resolved host and never swaps in the IP.
 
 ### Phase 2: Designer Route Reconciliation (F2)
 
-- [ ] **2.1 Add `replaceDesignerProject`**:
+- [x] **2.1 Add `replaceDesignerProject`**:
   - In `runtime.ts`, add and export:
     ```ts
     export function replaceDesignerProject(projectId: string | null): void {
@@ -188,7 +188,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     }
     ```
   - Guard against non-designer state only if the call would surprise another route; the designer is the only caller.
-- [ ] **2.2 Rework the route effect and guard**:
+- [x] **2.2 Rework the route effect and guard**:
   - Replace `appliedRouteProjectId` assignment-before-guard with an explicit adoption function:
     - first render/onMount seeds `appliedRouteProjectId = routeProjectId` and `projectId = routeProjectId`;
     - if the next route equals the applied value, do nothing;
@@ -196,10 +196,10 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     - if dirty, store the pending route project and a stay callback; on discard adopt the new project; on stay use `replaceDesignerProject(loadedProjectId)` and set `appliedRouteProjectId = loadedProjectId`.
   - Remove the `next === null` early return so `/designer` is a real machine-scope route.
   - Keep `beforeunload` and the existing leave modal; do not introduce a second modal.
-- [ ] **2.3 Keep local selection in the URL**:
+- [x] **2.3 Keep local selection in the URL**:
   - In `onProjectChange`, after the guard commits and `loadAll()` has set `loadedProjectId`, call `replaceDesignerProject(loadedProjectId)`.
   - Use replace semantics (`syncUrl(..., true)`), so changing the selector does not add a history entry.
-- [ ] **2.4 Add Vitest cases** in `ProcessDesigner.test.ts`:
+- [x] **2.4 Add Vitest cases** in `ProcessDesigner.test.ts`:
   - dirty route A -> B -> Stay: URL remains `/designer?project=A`, select A, `appliedRouteProjectId` A; a subsequent B route opens the guard again.
   - dirty route A -> B -> Discard: URL and select B.
   - dirty route A -> `/designer` -> Discard: URL `/designer`, select machine scope.
@@ -209,24 +209,24 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 3: Dead Pre-Pairing Probe (F3)
 
-- [ ] **3.1 Remove the dead code**:
+- [x] **3.1 Remove the dead code**:
   - In `PairingView.svelte`, remove the `ConnectionStatus`/`onMount` imports, `status`, the `onMount` probe, the `fingerprint` markup, and the fingerprint CSS.
   - Keep `pairingErrorText`, single-use/offline/revoked copy, form, QR, and command copy.
-- [ ] **3.2 Update tests**:
+- [x] **3.2 Update tests**:
   - Remove the fingerprint test that arranges `isPaired: true` on the pairing page.
   - Keep the no-probe test, the invalid-code test, the offline test, and the revoked-reason test.
   - Do not touch `SettingsView`'s LAN fingerprint or its E2E test.
-- [ ] **3.3 Documentation**:
+- [x] **3.3 Documentation**:
   - State in the report that the TLS warning is the pre-pairing fingerprint source; the in-page block was unreachable.
   - Remove any claim that the pairing page itself shows the fingerprint before pairing.
 
 ### Phase 4: Verification & Archival
 
-- [ ] **4.1 Targeted tests**:
+- [x] **4.1 Targeted tests**:
   - `bash pm-web-app/scripts/connection-urls.test.sh`
   - `cd pm-web-app && npm test`
   - `cd pm-web-app && npm run check && npm run lint && npm run format:check`
-- [ ] **4.2 Full pre-commit gate**:
+- [x] **4.2 Full pre-commit gate**:
   - `./mvnw verify -Ppre-commit` with `BUILD SUCCESS` and a clean `git status`.
   - Do not revert unrelated OpenRewrite reformatting; commit what the gate writes, per `doc/agy/runbook.md` Step 4.
 - [ ] **4.3 Manual evidence**:
@@ -234,7 +234,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - Without the override, prints `Local`, `Network` on the machine name, `Network (IP)` when the IP differs, and `Paired` on the name.
   - Open a plan's `Design process`, edit to make the draft dirty, navigate to another plan's designer, choose Stay: the URL stays on the first plan and the select matches. Repeat with Discard: URL/select move to the second plan.
   - Change the designer selector: the URL query updates; reload keeps the selection.
-- [ ] **4.4 Report and archive**:
+- [x] **4.4 Report and archive**:
   - Write `doc/agy/web-session-follow-up-fixes-plan-report.md` with the findings, artifacts, test evidence, manual checks, and the link-rebase result.
   - Move the plan to `doc/agy/implemented/web-session-follow-up-fixes-plan.md` and **rebase all relative links**; run an internal-link check.
   - Update `doc/agy/implemented/README.md` and the dashboard.

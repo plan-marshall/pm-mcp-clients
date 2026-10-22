@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import ProcessDesigner from './ProcessDesigner.svelte';
 import { apiClient } from '../api/client';
 import type { WorkflowCatalogue, WorkflowUnit, WorkflowValidationResult } from '../api/client';
+import { runtimeStore } from '../stores/runtime';
 
 const finalizeText = [
   'workflow phase-6-finalize version 5 format 1',
@@ -513,5 +515,136 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(screen.getByTestId('designer-phone-note')).toBeInTheDocument();
 
     window.matchMedia = original;
+  });
+});
+
+/**
+ * The designer route against a dirty draft: a refused route change must leave the project, the
+ * selector, and the address bar on the loaded project, and a local selection must reach the URL.
+ */
+describe('ProcessDesigner route reconciliation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/');
+    runtimeStore.update((s) => ({ ...s, designerProjectId: null }));
+    vi.spyOn(apiClient, 'getWorkflows').mockResolvedValue(units);
+    vi.spyOn(apiClient, 'getWorkflowCatalogue').mockResolvedValue(catalogue);
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      favourites: [],
+      recent: [],
+      all_projects: [
+        {
+          project_id: 'project-a',
+          display_name: 'Project A',
+          readiness: 'ready',
+          needs_operator_count: 0,
+          active_plans_count: 0,
+          active_epics_count: 0,
+          is_favourite: false,
+          is_released: false,
+        },
+        {
+          project_id: 'project-b',
+          display_name: 'Project B',
+          readiness: 'ready',
+          needs_operator_count: 0,
+          active_plans_count: 0,
+          active_epics_count: 0,
+          is_favourite: false,
+          is_released: false,
+        },
+      ],
+      being_added: [],
+    });
+    vi.spyOn(apiClient, 'validateWorkflow').mockResolvedValue(validResult);
+  });
+
+  /** @param value the text to type into the editor */
+  async function makeDirty(value: string): Promise<void> {
+    await fireEvent.input(screen.getByTestId('workflow-text'), { target: { value } });
+  }
+
+  it('keeps the project, the selector, and the route when Stay refuses a dirty route change', async () => {
+    const workflows = vi.spyOn(apiClient, 'getWorkflows');
+    const { rerender } = render(ProcessDesigner, { props: { projectId: 'project-a' } });
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('project-a'));
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await makeDirty(`${finalizeText}state draft\n`);
+
+    await rerender({ projectId: 'project-b' });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Stay' }));
+
+    expect((screen.getByTestId('project-select') as HTMLSelectElement).value).toBe('project-a');
+    expect(window.location.pathname + window.location.search).toBe('/designer?project=project-a');
+    expect(window.history.length).toBe(1);
+    expect(get(runtimeStore).designerProjectId).toBe('project-a');
+
+    // The route returns to A, so a later route to B is a new request, not an already-adopted one.
+    await rerender({ projectId: 'project-a' });
+    await rerender({ projectId: 'project-b' });
+    expect(await screen.findByRole('button', { name: 'Discard the draft' })).toBeInTheDocument();
+  });
+
+  it('moves the project, the selector, and the route to B when the dirty change is discarded', async () => {
+    const workflows = vi.spyOn(apiClient, 'getWorkflows');
+    const { rerender } = render(ProcessDesigner, { props: { projectId: 'project-a' } });
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('project-a'));
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await makeDirty(`${finalizeText}state draft\n`);
+
+    await rerender({ projectId: 'project-b' });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Discard the draft' }));
+
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('project-b'));
+    await waitFor(() =>
+      expect((screen.getByTestId('project-select') as HTMLSelectElement).value).toBe('project-b'),
+    );
+    expect(window.location.pathname + window.location.search).toBe('/designer?project=project-b');
+    expect(get(runtimeStore).designerProjectId).toBe('project-b');
+  });
+
+  it('adopts machine scope for a dirty change to a plain /designer route', async () => {
+    const workflows = vi.spyOn(apiClient, 'getWorkflows');
+    const { rerender } = render(ProcessDesigner, { props: { projectId: 'project-a' } });
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('project-a'));
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await makeDirty(`${finalizeText}state draft\n`);
+
+    await rerender({ projectId: null });
+    await fireEvent.click(await screen.findByRole('button', { name: 'Discard the draft' }));
+
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith(null));
+    expect(window.location.pathname + window.location.search).toBe('/designer');
+    expect(screen.getByTestId('designer-checked')).toHaveTextContent(
+      "checked against this machine's projects",
+    );
+    expect(get(runtimeStore).designerProjectId).toBeNull();
+  });
+
+  it('keeps a local selection in the route, so a rerender and a reload open it again', async () => {
+    const workflows = vi.spyOn(apiClient, 'getWorkflows');
+    const { rerender, unmount } = render(ProcessDesigner, {
+      props: { projectId: 'project-a' },
+    });
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('project-a'));
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    const select = screen.getByTestId('project-select') as HTMLSelectElement;
+    await fireEvent.change(select, { target: { value: 'project-b' } });
+
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('project-b'));
+    await waitFor(() => expect(select.value).toBe('project-b'));
+    expect(window.location.pathname + window.location.search).toBe('/designer?project=project-b');
+
+    // The store follows the selection, so the same prop comes back on a rerender with no reload.
+    await rerender({ projectId: 'project-b' });
+    expect(screen.queryByRole('button', { name: 'Stay' })).not.toBeInTheDocument();
+    expect(window.location.pathname + window.location.search).toBe('/designer?project=project-b');
+
+    // A reload remounts the designer with the project the address bar now names.
+    unmount();
+    render(ProcessDesigner, { props: { projectId: 'project-b' } });
+    await waitFor(() => expect(screen.getByTestId('project-select')).toHaveValue('project-b'));
   });
 });

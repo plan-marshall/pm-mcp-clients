@@ -12,7 +12,7 @@
     type WorkflowUnit,
     type WorkflowValidationResult,
   } from '../api/client';
-  import { runtimeStore, navigateTo } from '../stores/runtime';
+  import { runtimeStore, navigateTo, replaceDesignerProject } from '../stores/runtime';
   import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
     editFrontmatter,
@@ -81,7 +81,7 @@
   let pendingAction = $state<(() => void) | null>(null);
   let savedAuthor = $state('');
 
-  /** The route project the designer has already adopted, so a later route change reloads it. */
+  /** The route project the designer has settled on, so the same route is not adopted twice. */
   let appliedRouteProjectId: string | null = null;
   let routeProjectSeeded = false;
 
@@ -159,23 +159,21 @@
       (frontmatter.author === '' || frontmatter.author === 'plan-marshall'),
   );
 
-  // A navigation from one `/designer?project=…` to another keeps this component mounted: follow
-  // the route's project once it changes, through the same leave guard as the project selector.
+  // A navigation from one `/designer?project=…` to another keeps this component mounted: adopt
+  // the route's project only once the leave guard commits, through the same guard as the
+  // selector. A plain `/designer` is machine scope, not "keep the previous project".
   $effect(() => {
     const next = routeProjectId ?? null;
     if (next === appliedRouteProjectId) {
       return;
     }
-    const seeded = routeProjectSeeded;
-    appliedRouteProjectId = next;
-    routeProjectSeeded = true;
-    if (!seeded || next === null || next === projectId) {
+    if (!routeProjectSeeded) {
+      // The first render is seeded by onMount, which also loads the units.
+      appliedRouteProjectId = next;
+      routeProjectSeeded = true;
       return;
     }
-    guardDraft(() => {
-      projectId = next;
-      void loadAll();
-    });
+    guardDraft(() => void adoptProject(next));
   });
 
   onMount(() => {
@@ -385,10 +383,12 @@
     pendingAction = action;
   }
 
-  /** Keeps the draft and stays. */
+  /** Keeps the draft and stays on the project whose units are loaded, with the route put back. */
   function stayInDesigner(): void {
     pendingAction = null;
     projectId = loadedProjectId;
+    appliedRouteProjectId = loadedProjectId;
+    replaceDesignerProject(loadedProjectId);
   }
 
   /** Discards the draft and runs the change that was waiting for the answer. */
@@ -398,6 +398,22 @@
     const action = pendingAction;
     pendingAction = null;
     action?.();
+  }
+
+  /**
+   * Opens a project scope and keeps the address bar on it without adding a history entry.
+   *
+   * The units load first, so a restored draft's project wins over the requested one and the URL
+   * names the scope the designer actually shows. Both the route effect and the local selector
+   * adopt through here.
+   *
+   * @param next the project to open, or `null` for machine scope
+   */
+  async function adoptProject(next: string | null): Promise<void> {
+    projectId = next;
+    appliedRouteProjectId = next;
+    await loadAll();
+    replaceDesignerProject(loadedProjectId);
   }
 
   /** Leaves the designer, asking first when a draft is unsaved. */
@@ -844,10 +860,9 @@
     }
   }
 
-  async function onProjectChange(): Promise<void> {
-    guardDraft(() => {
-      void loadAll();
-    });
+  /** Opens the selected scope once the leave guard commits, and keeps it in the address bar. */
+  function onProjectChange(): void {
+    guardDraft(() => void adoptProject(projectId));
   }
 
   /** @param kind a diff row's kind @returns its glyph, so the row does not rely on colour */

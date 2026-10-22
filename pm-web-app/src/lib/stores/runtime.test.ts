@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
-import { checkUrlHashForCode, initRuntime, openStartPage, runtimeStore } from './runtime';
+import {
+  checkUrlHashForCode,
+  initRuntime,
+  openStartPage,
+  replaceDesignerProject,
+  runtimeStore,
+} from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 
 const PAIRED_STATUS: StatusResponse = {
@@ -127,5 +133,32 @@ describe('the runtime store', () => {
     // Assert: the target is the current route, so no duplicate history entry is pushed.
     expect(window.location.pathname).toBe('/projects');
     expect(get(runtimeStore).currentRoute).toBe('projects');
+  });
+
+  it('replaces the designer project in the store and the address bar', () => {
+    // Arrange
+    window.history.replaceState(null, '', '/projects');
+
+    // Act
+    replaceDesignerProject('pm-mcp-clients');
+
+    // Assert: the query names the project, and the entry is replaced rather than pushed.
+    expect(get(runtimeStore).designerProjectId).toBe('pm-mcp-clients');
+    expect(window.location.pathname + window.location.search).toBe(
+      '/designer?project=pm-mcp-clients',
+    );
+    expect(window.history.length).toBe(1);
+  });
+
+  it('writes a plain designer path for machine scope', () => {
+    // Arrange
+    window.history.replaceState(null, '', '/designer?project=pm-mcp-clients');
+
+    // Act
+    replaceDesignerProject(null);
+
+    // Assert
+    expect(get(runtimeStore).designerProjectId).toBeNull();
+    expect(window.location.pathname + window.location.search).toBe('/designer');
   });
 });

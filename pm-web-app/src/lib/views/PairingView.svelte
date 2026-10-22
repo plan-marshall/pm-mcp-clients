@@ -1,17 +1,14 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import PairingQr from '../components/PairingQr.svelte';
-  import { apiClient, type ConnectionStatus } from '../api/client';
   import { pairBrowser, runtimeStore, navigateTo } from '../stores/runtime';
 
   let codeInput = '';
   let isPairing = false;
   let errorMessage = '';
   let copiedCommand: string | null = null;
-  let status: ConnectionStatus | null = null;
 
   const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
   const cmdLocal = 'pm-operator web open --pair';
@@ -23,20 +20,6 @@
     typeof window !== 'undefined'
       ? `${window.location.origin}/pair#code=${codeInput.replace(/[^A-Za-z0-9]/g, '').toUpperCase()}`
       : '';
-
-  onMount(async () => {
-    // The fingerprint and the listener state are shown on the network listener only. An unpaired
-    // page carries no device secret, so it must not probe an authenticated route: a 401 there
-    // means "this route needs pairing", not "the device was revoked". The browser's own TLS
-    // warning carries the fingerprint before pairing.
-    if (!isLoopback && apiClient.isPaired()) {
-      try {
-        status = await apiClient.getConnectionStatus();
-      } catch {
-        status = null;
-      }
-    }
-  });
 
   /**
    * Explains a refused pairing attempt without treating every failure as an invalid code.
@@ -134,14 +117,6 @@
           bind:value={codeInput}
         />
       </div>
-
-      {#if !isLoopback && status?.lan_fingerprint}
-        <div class="fingerprint" data-testid="pairing-fingerprint">
-          <span class="fingerprint__label">{$t('web.pair.page.fingerprint')}</span>
-          <code class="fingerprint__value">{status.lan_fingerprint}</code>
-          <span class="fingerprint__hint">{$t('web.pair.page.fingerprint_hint')}</span>
-        </div>
-      {/if}
 
       <div class="pair-card__help">
         <p class="pair-card__help-title">{$t('web.pair.page.get_code')}</p>
@@ -265,33 +240,6 @@
     border-radius: var(--radius-md);
     background-color: var(--color-bg-app);
     color: var(--color-text-primary);
-  }
-
-  .fingerprint {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    padding: var(--space-3) var(--space-4);
-    margin-bottom: var(--space-4);
-    background-color: var(--color-bg-subtle);
-    border-radius: var(--radius-md);
-  }
-
-  .fingerprint__label {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    color: var(--color-text-secondary);
-  }
-
-  .fingerprint__value {
-    font-size: var(--text-sm);
-    color: var(--color-text-primary);
-    overflow-wrap: anywhere;
-  }
-
-  .fingerprint__hint {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
   }
 
   .pair-card__help {

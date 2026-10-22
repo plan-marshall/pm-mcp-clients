@@ -143,31 +143,6 @@ describe('PairingView against the mock runtime scenarios', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pair this browser');
   });
 
-  it('shows the network certificate fingerprint on the network listener', async () => {
-    // The probe is authenticated: only a browser that is already paired reads it.
-    localStorage.setItem('pm_device_secret', 'pmw_valid');
-    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
-      loopback_open: true,
-      lan_enabled: true,
-      lan_fingerprint: '4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07',
-      paired_devices_count: 1,
-      onboarded: false,
-    });
-
-    // The page reads the listener it was reached over; a LAN host is not loopback.
-    vi.spyOn(window, 'location', 'get').mockReturnValue({
-      ...window.location,
-      hostname: '192.168.1.20',
-      origin: 'https://192.168.1.20:7421',
-      pathname: '/pair',
-    } as Location);
-
-    render(PairingView);
-
-    await waitFor(() => expect(screen.getByTestId('pairing-fingerprint')).toBeInTheDocument());
-    expect(screen.getByTestId('pairing-fingerprint')).toHaveTextContent('Fingerprint SHA-256');
-  });
-
   it('does not probe the authenticated connection status before pairing', async () => {
     const probe = vi.spyOn(apiClient, 'getConnectionStatus');
     vi.spyOn(window, 'location', 'get').mockReturnValue({
@@ -185,13 +160,6 @@ describe('PairingView against the mock runtime scenarios', () => {
   });
 
   it('presents the pairing URL as a QR code on the network listener', async () => {
-    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
-      loopback_open: true,
-      lan_enabled: true,
-      lan_fingerprint: '4F:1A:9C',
-      paired_devices_count: 0,
-      onboarded: false,
-    });
     vi.spyOn(window, 'location', 'get').mockReturnValue({
       ...window.location,
       hostname: '192.168.1.20',
