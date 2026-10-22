@@ -82,8 +82,8 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - [x] 4. Final completion report written (`doc/agy/cli-fullscreen-reports-system-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-reports-system-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
 - [x] 6. PR opened (#165, no `skip-bot-review`), review window waited, 100% of bot & Sonar findings resolved via `persona-code-reviewer` (8 CodeRabbit findings fixed in `411f9f5`; SonarCloud green).
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-reports-system-plan-report.md` by orchestrator session.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-reports-system-plan-report.md` by orchestrator session.
 
 ---
 
