@@ -577,7 +577,7 @@ describe('ProcessDesigner route reconciliation', () => {
 
     expect((screen.getByTestId('project-select') as HTMLSelectElement).value).toBe('project-a');
     expect(window.location.pathname + window.location.search).toBe('/designer?project=project-a');
-    expect(window.history.length).toBe(1);
+    expect(window.history).toHaveLength(1);
     expect(get(runtimeStore).designerProjectId).toBe('project-a');
 
     // The route returns to A, so a later route to B is a new request, not an already-adopted one.
@@ -646,5 +646,52 @@ describe('ProcessDesigner route reconciliation', () => {
     unmount();
     render(ProcessDesigner, { props: { projectId: 'project-b' } });
     await waitFor(() => expect(screen.getByTestId('project-select')).toHaveValue('project-b'));
+  });
+
+  it('moves the route to the project a restored draft names', async () => {
+    localStorage.setItem(
+      'pm_designer_draft',
+      JSON.stringify({
+        text: `${finalizeText}state draft\n`,
+        unitName: 'phase-6-finalize',
+        unitKind: 'subworkflow',
+        projectId: 'project-a',
+        savedAt: '2026-10-22T09:30:00Z',
+      }),
+    );
+    const workflows = vi.spyOn(apiClient, 'getWorkflows');
+
+    render(ProcessDesigner, { props: { projectId: 'project-b' } });
+
+    await waitFor(() => expect(workflows).toHaveBeenCalledWith('project-a'));
+    await waitFor(() =>
+      expect(window.location.pathname + window.location.search).toBe('/designer?project=project-a'),
+    );
+    expect(get(runtimeStore).designerProjectId).toBe('project-a');
+    await waitFor(() =>
+      expect((screen.getByTestId('project-select') as HTMLSelectElement).value).toBe('project-a'),
+    );
+  });
+
+  it('keeps the previous project and route when the new scope fails to load', async () => {
+    const workflows = vi.spyOn(apiClient, 'getWorkflows').mockImplementation(async (project) => {
+      if (project === 'project-b') {
+        throw new Error('unreachable');
+      }
+      return units;
+    });
+    render(ProcessDesigner, { props: { projectId: 'project-a' } });
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    const select = screen.getByTestId('project-select') as HTMLSelectElement;
+    await fireEvent.change(select, { target: { value: 'project-b' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('designer-notice')).toHaveTextContent('could not be loaded'),
+    );
+    expect(workflows).toHaveBeenCalledWith('project-b');
+    await waitFor(() => expect(select.value).toBe('project-a'));
+    expect(window.location.pathname + window.location.search).toBe('/designer?project=project-a');
+    expect(get(runtimeStore).designerProjectId).toBe('project-a');
   });
 });

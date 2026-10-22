@@ -70,8 +70,24 @@ reachable_host() {
 # Whether a host reaches the machine without the network (so no phone can use it).
 is_loopback_host() {
     case "$1" in
-        localhost|127.0.0.1|::1|'[::1]') return 0 ;;
-        *) return 1 ;;
+        localhost|::1|'[::1]') return 0 ;;
+    esac
+    # 127.0.0.0/8 is the IPv4 loopback block, not only 127.0.0.1.
+    [[ "$1" =~ ^127\.[0-9]+\.[0-9]+\.[0-9]+$ ]]
+}
+
+# A host as the authority of a URL: a bare IPv6 address needs its brackets.
+#
+# $1 the resolved host
+url_host() {
+    case "$1" in
+        *:*)
+            case "$1" in
+                \[*\]) printf '%s' "$1" ;;
+                *) printf '[%s]' "$1" ;;
+            esac
+            ;;
+        *) printf '%s' "$1" ;;
     esac
 }
 
@@ -88,17 +104,19 @@ render_connection_urls() {
     local pairing_code="${2:-}"
     local host
     host="$(reachable_host)"
+    local authority
+    authority="$(url_host "$host")"
     local ip
     ip="$(primary_ipv4)"
 
     printf 'Local:       http://localhost:%s\n' "$web_port"
     if ! is_loopback_host "$host"; then
-        printf 'Network:     http://%s:%s\n' "$host" "$web_port"
+        printf 'Network:     http://%s:%s\n' "$authority" "$web_port"
         if [ -n "$ip" ] && [ "$ip" != "$host" ]; then
             printf 'Network (IP): http://%s:%s\n' "$ip" "$web_port"
         fi
     fi
     if [ -n "$pairing_code" ]; then
-        printf 'Paired:      http://%s:%s/pair#code=%s\n' "$host" "$web_port" "$pairing_code"
+        printf 'Paired:      http://%s:%s/pair#code=%s\n' "$authority" "$web_port" "$pairing_code"
     fi
 }

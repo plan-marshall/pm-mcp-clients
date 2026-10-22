@@ -75,37 +75,49 @@ assert_contains 'Local:       http://localhost:5173'
 assert_not_contains 'Network'
 assert_contains 'Paired:      http://127.0.0.1:5173/pair#code=KXQB-MRTN'
 
-# 2. The localhost name is loopback too.
+# 2. The whole 127.0.0.0/8 block is loopback, not only 127.0.0.1.
+run_case 'loopback 127.0.0.2' '127.0.0.2' '192.168.1.20' 'KXQB-MRTN'
+assert_not_contains 'Network'
+assert_contains 'Paired:      http://127.0.0.2:5173/pair#code=KXQB-MRTN'
+
+# 3. The localhost name is loopback too.
 run_case 'loopback localhost' 'localhost' '192.168.1.20' 'KXQB-MRTN'
 assert_contains 'Local:       http://localhost:5173'
 assert_not_contains 'Network'
 assert_contains 'Paired:      http://localhost:5173/pair#code=KXQB-MRTN'
 
-# 3. The IPv6 loopback spellings are loopback as well.
+# 4. The IPv6 loopback spellings are loopback as well, and the paired URL brackets the host.
 run_case 'loopback ::1' '::1' '192.168.1.20' 'KXQB-MRTN'
 assert_not_contains 'Network'
+assert_contains 'Paired:      http://[::1]:5173/pair#code=KXQB-MRTN'
 
 run_case 'loopback [::1]' '[::1]' '192.168.1.20' 'KXQB-MRTN'
 assert_not_contains 'Network'
+assert_contains 'Paired:      http://[::1]:5173/pair#code=KXQB-MRTN'
 
-# 4. A real name prints the name, the differing IP, and the paired URL on the name.
+# 5. A real name prints the name, the differing IP, and the paired URL on the name.
 run_case 'name and IP' 'Mac-Mini.local' '192.168.1.20' 'KXQB-MRTN'
 assert_contains 'Network:     http://Mac-Mini.local:5173'
 assert_contains 'Network (IP): http://192.168.1.20:5173'
 assert_contains 'Paired:      http://Mac-Mini.local:5173/pair#code=KXQB-MRTN'
 
-# 5. A host equal to the IP prints one network line, with no duplicate IP line.
+# 6. A non-loopback IPv6 host is bracketed in every URL.
+run_case 'IPv6 network host' 'fe80::1234' '' 'KXQB-MRTN'
+assert_contains 'Network:     http://[fe80::1234]:5173'
+assert_contains 'Paired:      http://[fe80::1234]:5173/pair#code=KXQB-MRTN'
+
+# 7. A host equal to the IP prints one network line, with no duplicate IP line.
 run_case 'host equals IP' '192.168.1.20' '192.168.1.20' 'KXQB-MRTN'
 assert_contains 'Network:     http://192.168.1.20:5173'
 assert_count 'Network:' 1
 assert_not_contains 'Network (IP)'
 
-# 6. No pairing code prints no Paired line.
+# 8. No pairing code prints no Paired line.
 run_case 'no pairing code' 'Mac-Mini.local' '192.168.1.20' ''
 assert_contains 'Network:     http://Mac-Mini.local:5173'
 assert_not_contains 'Paired'
 
-# 7. No IPv4 prints the name without an IP line.
+# 9. No IPv4 prints the name without an IP line.
 run_case 'no IPv4' 'Mac-Mini.local' '' 'KXQB-MRTN'
 assert_contains 'Network:     http://Mac-Mini.local:5173'
 assert_not_contains 'Network (IP)'

@@ -147,7 +147,7 @@ describe('the runtime store', () => {
     expect(window.location.pathname + window.location.search).toBe(
       '/designer?project=pm-mcp-clients',
     );
-    expect(window.history.length).toBe(1);
+    expect(window.history).toHaveLength(1);
   });
 
   it('writes a plain designer path for machine scope', () => {

@@ -188,7 +188,14 @@
       mediaQuery.addEventListener('change', onMediaChange);
     }
     window.addEventListener('beforeunload', onBeforeUnload);
-    void loadAll();
+    void loadAll().then((loaded) => {
+      // A restored draft names its own project; the route follows what the editor shows, so a
+      // reload does not land on the project the draft overrode.
+      if (loaded && loadedProjectId !== (routeProjectId ?? null)) {
+        appliedRouteProjectId = loadedProjectId;
+        replaceDesignerProject(loadedProjectId);
+      }
+    });
   });
 
   onDestroy(() => {
@@ -309,7 +316,13 @@
     selectedBlock = null;
   }
 
-  async function loadAll(): Promise<void> {
+  /**
+   * Loads the open scope.
+   *
+   * @returns whether the units loaded; on failure the screen keeps the notice and the caller
+   * restores the scope whose units are still displayed
+   */
+  async function loadAll(): Promise<boolean> {
     notice = '';
     const draft = readDraft();
     // A restored draft names the project it was written for; fetch that project's units so the
@@ -329,13 +342,15 @@
         dirty = true;
         touched = true;
         notice = $t('designer.draft.restored', { time: formatDraftTime(draft.savedAt) });
-        return;
+        return true;
       }
       if (units.length > 0) {
         openUnit(units[0]);
       }
+      return true;
     } catch {
       notice = $t('designer.draft.restored_loading_failed');
+      return false;
     }
   }
 
@@ -404,16 +419,24 @@
    * Opens a project scope and keeps the address bar on it without adding a history entry.
    *
    * The units load first, so a restored draft's project wins over the requested one and the URL
-   * names the scope the designer actually shows. Both the route effect and the local selector
-   * adopt through here.
+   * names the scope the designer actually shows. A failed load puts the project, the selector,
+   * and the route back on the scope that is still on screen. Both the route effect and the local
+   * selector adopt through here.
    *
    * @param next the project to open, or `null` for machine scope
    */
   async function adoptProject(next: string | null): Promise<void> {
+    const previousProjectId = loadedProjectId;
     projectId = next;
     appliedRouteProjectId = next;
-    await loadAll();
-    replaceDesignerProject(loadedProjectId);
+    if (await loadAll()) {
+      replaceDesignerProject(loadedProjectId);
+      return;
+    }
+    projectId = previousProjectId;
+    loadedProjectId = previousProjectId;
+    appliedRouteProjectId = previousProjectId;
+    replaceDesignerProject(previousProjectId);
   }
 
   /** Leaves the designer, asking first when a draft is unsaved. */
