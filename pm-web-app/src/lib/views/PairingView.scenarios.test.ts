@@ -88,6 +88,20 @@ describe('PairingView against the mock runtime scenarios', () => {
     });
   });
 
+  it('shows the pairing-lost reason when the runtime refuses the secret', async () => {
+    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('unauthorized'));
+
+    render(PairingView);
+    await fireEvent.input(screen.getByLabelText(/code/i), { target: { value: 'KXQB-MRTN' } });
+    await fireEvent.click(screen.getByRole('button', { name: /pair this browser/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pairing-error')).toHaveTextContent(
+        'Its pairing is no longer accepted.',
+      );
+    });
+  });
+
   it('pairs the browser and opens where the app left off', async () => {
     vi.spyOn(apiClient, 'pair').mockResolvedValue({
       device_secret: 'secret',

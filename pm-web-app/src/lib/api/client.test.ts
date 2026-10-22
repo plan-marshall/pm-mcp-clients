@@ -598,7 +598,8 @@ describe('ApiClient', () => {
 
     // Act
     const offFirst = client.subscribeEvents(first);
-    const offSecond = client.subscribeEvents(second);
+    const controller = new AbortController();
+    const offSecond = client.subscribeEvents(second, controller.signal);
 
     // Assert: one connection carries the event to both listeners.
     await vi.waitFor(() =>
@@ -612,8 +613,10 @@ describe('ApiClient', () => {
     const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal as AbortSignal;
     offFirst();
     expect(signal.aborted).toBe(false);
-    offSecond();
+    controller.abort();
     expect(signal.aborted).toBe(true);
+    // The manual unsubscribe after the abort is a harmless no-op.
+    offSecond();
   });
 
   it('reports a 401 on the shared event stream once', async () => {
@@ -667,5 +670,23 @@ describe('ApiClient', () => {
     // Assert
     off();
     vi.useRealTimers();
+  });
+
+  it('does not open a stream for a subscriber whose signal is already aborted', () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+    const controller = new AbortController();
+    controller.abort();
+    const listener = vi.fn();
+
+    // Act
+    const off = client.subscribeEvents(listener, controller.signal);
+    off();
+
+    // Assert
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(listener).not.toHaveBeenCalled();
   });
 });

@@ -3490,17 +3490,15 @@ export class ApiClient {
       }
       signal.addEventListener('abort', () => this.unsubscribeEvent(onEvent), { once: true });
     }
-    if (!this.eventStreamAbort) {
-      this.eventStreamAbort = this.subscribeStream('/api/v1/events', (event, data) => {
-        for (const listener of [...this.eventSubscribers]) {
-          try {
-            listener(event, data);
-          } catch {
-            // One broken listener must not starve the others or look like a stream failure.
-          }
+    this.eventStreamAbort ??= this.subscribeStream('/api/v1/events', (event, data) => {
+      this.eventSubscribers.forEach((listener) => {
+        try {
+          listener(event, data);
+        } catch {
+          // One broken listener must not starve the others or look like a stream failure.
         }
       });
-    }
+    });
     return () => this.unsubscribeEvent(onEvent);
   }
 

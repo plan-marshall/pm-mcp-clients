@@ -49,6 +49,9 @@ public final class MockRuntime implements AutoCloseable {
      * is owned by the Wave 3 finalization; this runtime seam is removed with the transitional
      * {@code startCase} fallback when that wave makes the mapping authoritative.
      */
+    /** The owner-only mode of the runtime token and the web device secret. */
+    private static final String FILE_MODE = "rw-------";
+
     private static final Map<String, String> LEGACY_CASE_STATES = Map.ofEntries(
             Map.entry(StandardScenarios.PROJECTS, "projects.explorer"),
             Map.entry(StandardScenarios.ENROLMENT, "enrol.scan"),
@@ -245,7 +248,7 @@ public final class MockRuntime implements AutoCloseable {
             // runtime.token
             var tempToken = paths.runDir().resolve("runtime.token.tmp");
             Files.writeString(tempToken, token);
-            Files.setPosixFilePermissions(tempToken, PosixFilePermissions.fromString("rw-------"));
+            Files.setPosixFilePermissions(tempToken, PosixFilePermissions.fromString(FILE_MODE));
             Files.move(tempToken, paths.runtimeToken(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 
             // state/runtime.json
@@ -256,7 +259,7 @@ public final class MockRuntime implements AutoCloseable {
                     + ",\"socket_path\":\"" + paths.socket().toString().replace("\\", "\\\\") + "\"}";
             var tempRecord = paths.stateDir().resolve("runtime.json.tmp");
             Files.writeString(tempRecord, runtimeJson);
-            Files.setPosixFilePermissions(tempRecord, PosixFilePermissions.fromString("rw-------"));
+            Files.setPosixFilePermissions(tempRecord, PosixFilePermissions.fromString(FILE_MODE));
             Files.move(tempRecord, paths.runtimeRecord(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } else {
             Files.createDirectories(paths.runDir());
@@ -319,7 +322,7 @@ public final class MockRuntime implements AutoCloseable {
         try {
             Files.writeString(temp, secret);
             try {
-                Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString("rw-------"));
+                Files.setPosixFilePermissions(temp, PosixFilePermissions.fromString(FILE_MODE));
             } catch (UnsupportedOperationException _) {
                 // A non-POSIX file system has no mode to set: the state directory guards the file.
             }

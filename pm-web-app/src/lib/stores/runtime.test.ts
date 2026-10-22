@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
-import { checkUrlHashForCode, initRuntime, runtimeStore } from './runtime';
+import { checkUrlHashForCode, initRuntime, openStartPage, runtimeStore } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 
 const PAIRED_STATUS: StatusResponse = {
@@ -99,5 +99,33 @@ describe('the runtime store', () => {
 
     // Assert
     expect(get(runtimeStore).isOffline).toBe(false);
+  });
+
+  it('does not open a start page while the browser is unpaired', async () => {
+    // Arrange
+    const projects = vi.spyOn(apiClient, 'getProjects');
+    runtimeStore.set(makeRuntimeState({ isPaired: false, currentRoute: 'pair' }));
+
+    // Act
+    await openStartPage();
+
+    // Assert
+    expect(projects).not.toHaveBeenCalled();
+    expect(get(runtimeStore).currentRoute).toBe('pair');
+  });
+
+  it('leaves the address bar alone when the start page is already shown', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState(null, '', '/projects');
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'projects', isPaired: true }));
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+
+    // Act
+    await openStartPage();
+
+    // Assert: the target is the current route, so no duplicate history entry is pushed.
+    expect(window.location.pathname).toBe('/projects');
+    expect(get(runtimeStore).currentRoute).toBe('projects');
   });
 });

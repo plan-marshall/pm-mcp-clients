@@ -68,7 +68,7 @@ The eight live findings in [`doc/findings-web.txt`](../findings-web.txt) are res
 
 ### Unit, component, and module tests
 
-- `pm-web-app`: `npm test` — **52 files, 437 tests passed**.
+- `pm-web-app`: `npm test` — **52 files, 443 tests passed**.
 - `npm run check` — **0 errors, 0 warnings**; `npm run lint` — clean.
 - `npm run format:check` was checked for the changed files and they are Prettier-clean.
 - `pm-mock-runtime`: `./mvnw -q test -pl pm-mock-runtime -am` — **all tests passed** (415 tests in the reactor for that module's run), including the new secret-persistence, CLI, and `/mock/pairing` tests.
@@ -138,6 +138,7 @@ Recorded against the real launch scripts on this machine:
 - **`PM_WEB_ALLOWED_HOSTS` adds names.** It is merged with the machine's own name forms rather than replacing them, and the `PM_WEB_HOST` name is part of the machine names, so every non-loopback host `start.sh` prints is accepted by Vite.
 - **Advisories follow their source.** The advisory layer remembers the title it generated, so a changed `data-advisory`, `aria-label`, or visible label updates the hover text, while a view-authored `title` is still never overwritten.
 - **A designer route change while mounted reloads the selection.** `/designer?project=A` → `/designer?project=B` follows the same leave guard as the project selector instead of keeping the old project.
+- **SonarCloud findings resolved.** The owner-only file mode is a single constant, the shared-stream guard uses `??=`, listeners are dispatched with `Set.forEach`, and `checkUrlHashForCode` is split into a pairing probe and a fragment drop so its cognitive complexity is under the limit. Tests were added for the probe paths, an already-aborted subscription, the LAN badge with an unavailable status, a regenerated empty device-secret file, and the advisory layer removing a title it wrote.
 
 ## Workflow Status
 

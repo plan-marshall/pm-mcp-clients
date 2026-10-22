@@ -74,6 +74,17 @@ describe('the advisory title layer', () => {
     expect(button.getAttribute('title')).toBe('Keep my words');
   });
 
+  it('removes a title it wrote when the label disappears', () => {
+    const button = document.createElement('button');
+    button.textContent = 'Save';
+    advisory(button);
+    expect(button.getAttribute('title')).toBe('Save');
+
+    button.textContent = '';
+    advisory(button);
+    expect(button.hasAttribute('title')).toBe(false);
+  });
+
   it('follows a changed advisory and aria-label', () => {
     const button = document.createElement('button');
     button.textContent = 'Save';

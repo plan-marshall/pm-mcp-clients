@@ -104,4 +104,25 @@ describe('the app shell', () => {
     expect(screen.queryByTestId('brand-home')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nav-designer-btn')).not.toBeInTheDocument();
   });
+
+  it('marks the LAN mode and keeps the detail when the connection status fails', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
+    vi.spyOn(apiClient, 'getConnectionStatus').mockRejectedValue(new Error('unavailable'));
+    vi.spyOn(window, 'location', 'get').mockReturnValue({
+      ...window.location,
+      hostname: '192.168.1.20',
+      origin: 'http://192.168.1.20:5173',
+      pathname: '/reports',
+    } as Location);
+
+    render(Layout);
+
+    const badge = await screen.findByTestId('header-machine');
+    await waitFor(() => expect(badge).toHaveAttribute('data-connection-mode', 'lan'));
+    expect(badge).toHaveAttribute(
+      'title',
+      'This browser reaches the machine over HTTPS on the network.',
+    );
+  });
 });

@@ -173,43 +173,70 @@ function subscribeToEvents(): void {
   });
 }
 
-export async function checkUrlHashForCode(): Promise<boolean> {
-  if (typeof window !== 'undefined' && window.location.hash) {
-    const match = /code=([^&]+)/.exec(window.location.hash);
-    if (match?.[1]) {
-      const extracted = decodeURIComponent(match[1]);
-      // A code is single use and this browser already holds a secret: probe it rather than
-      // redeeming again (the spec's Redeem rule). Only a refused secret falls through.
-      if (apiClient.isPaired()) {
-        try {
-          await apiClient.getStatus();
-          // The pairing still works: drop the fragment and continue normal startup.
-          history.replaceState(null, '', window.location.pathname);
-          runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
-          return false;
-        } catch (err: unknown) {
-          if ((err as Error)?.message !== 'unauthorized') {
-            // The runtime is offline: keep the fragment so a later visit can retry.
-            runtimeStore.update((s) => ({ ...s, isOffline: true, pairingFailed: false }));
-            return false;
-          }
-        }
-        // The stored secret is no longer accepted: redeem the code instead.
-      }
-      try {
-        await pairBrowser(extracted);
-        // Redeemed: drop the fragment so a reload does not replay a single-use code.
-        history.replaceState(null, '', window.location.pathname);
-        runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
-        return true;
-      } catch {
-        // Keep the fragment: a premature rewrite loses the code and makes the refusal look like
-        // a plain redirect to /pair. The pairing page shows that the code was refused.
-        runtimeStore.update((s) => ({ ...s, pairingFailed: true }));
-      }
-    }
+/**
+ * What the probe of an existing pairing found.
+ *
+ * `still-paired` keeps the pairing and never redeems; `refused` means the stored secret is no
+ * longer accepted, so the code in the address bar is redeemed; `offline` keeps the fragment.
+ */
+type PairingProbe = 'unpaired' | 'still-paired' | 'refused' | 'offline';
+
+/**
+ * Probes the stored secret before a code in the address bar is redeemed.
+ *
+ * @returns what the probe found
+ */
+async function probeExistingPairing(): Promise<PairingProbe> {
+  if (!apiClient.isPaired()) {
+    return 'unpaired';
   }
-  return false;
+  try {
+    await apiClient.getStatus();
+    return 'still-paired';
+  } catch (err: unknown) {
+    return (err as Error)?.message === 'unauthorized' ? 'refused' : 'offline';
+  }
+}
+
+/** Drops the code fragment after the browser is known to be paired. */
+function dropCodeFragment(): void {
+  history.replaceState(null, '', window.location.pathname);
+  runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
+}
+
+export async function checkUrlHashForCode(): Promise<boolean> {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const match = /code=([^&]+)/.exec(window.location.hash);
+  if (!match?.[1]) {
+    return false;
+  }
+  const extracted = decodeURIComponent(match[1]);
+
+  // A code is single use and this browser already holds a secret: probe it rather than redeeming
+  // again (the spec's Redeem rule). Only a refused secret falls through.
+  const probe = await probeExistingPairing();
+  if (probe === 'still-paired') {
+    dropCodeFragment();
+    return false;
+  }
+  if (probe === 'offline') {
+    // The runtime is unreachable: keep the fragment so a later visit can retry.
+    runtimeStore.update((s) => ({ ...s, isOffline: true, pairingFailed: false }));
+    return false;
+  }
+
+  try {
+    await pairBrowser(extracted);
+    dropCodeFragment();
+    return true;
+  } catch {
+    // Keep the fragment: a premature rewrite loses the code and makes the refusal look like a
+    // plain redirect to /pair. The pairing page shows that the code was refused.
+    runtimeStore.update((s) => ({ ...s, pairingFailed: true }));
+    return false;
+  }
 }
 
 /** Reads whether the machine is onboarded, and its name, from a status response. */
