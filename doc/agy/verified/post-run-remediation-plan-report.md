@@ -1,8 +1,8 @@
 # Completion Report: `post-run-remediation` (TUI Signal Lifecycle, Interactive Entry, Codec Closure & Mobile E2E)
 
-**Plan**: [`doc/agy/implemented/post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md)
+**Plan**: [`doc/agy/implemented/post-run-remediation-plan.md`](../implemented/post-run-remediation-plan.md)
 **Branch**: `feat/post-run-remediation`
-**Runbook**: [`doc/agy/runbook.md`](runbook.md)
+**Runbook**: [`doc/agy/runbook.md`](../runbook.md)
 **Addressed findings**: CLI-2 (High), CLI-1 (Medium), MOCK-1 (Low), WEB-1 (Low)
 
 ---
@@ -61,7 +61,7 @@ All scoped remediation checks pass. One pre-existing, unrelated end-to-end test 
 
 | File | Change |
 |---|---|
-| `doc/agy/post-run-remediation-plan-report.md` | This report. |
+| `doc/agy/verified/post-run-remediation-plan-report.md` | This report. |
 | `doc/agy/implemented/post-run-remediation-plan.md` | The completed plan, moved from `doc/agy/`. |
 | `doc/agy/implemented/README.md` | Archive index row for this plan. |
 
@@ -140,11 +140,11 @@ SonarCloud on PR #168 reports the quality gate **OK**: 0 new issues, 83.7% new-c
 
 ### 5.1 Notes and deliberate deviations
 
-1. **`PlanView` / `EpicView` do not exist in `pm-api`.** The plan named those codecs, but the repository has no such types: the plan detail is served as a `ProcessTree` (`GET /api/v1/plans/{id}/process`), and the epic detail is an `EpicResource` (`GET /api/v1/epics/{id}`). The closure was implemented against the real resources instead of inventing types, covering the plan/epic detail, process, intent, outline, activity, and completion routes that the scenarios actually use. A plain `GET /api/v1/plans/{id}` has no codec and no scenario route; it keeps the fallback, with a comment saying why.
+1. **`PlanView` / `EpicView` do not exist in `pm-api`.** The plan named those codecs, but the repository has no such types: the plan detail is served as a `ProcessTree` (`GET /api/v1/plans/{id}/process`), and the epic detail is an `EpicResource` (`GET /api/v1/epics/{id}`). The closure was implemented against the real resources instead of inventing types, covering the plan/epic detail, process, intent, outline, activity, and completion routes that the scenarios actually use. The archived plan now names those real resources. A plain `GET /api/v1/plans/{id}` has no codec and no scenario route; it keeps the fallback, with a comment saying why.
 2. **`operator.console.welcome` does not exist.** The greeting has no such key. The hint is a new `operator.console.hint.tui` line printed once in the greeting (only when the view can open), and `tui` was added to `operator.console.help.body` in both languages.
 3. **Pre-existing OpenRewrite drift in the baseline.** Running `./mvnw verify -Ppre-commit` applies the parent's `OrderImports` recipe to the whole tree and rewrote 226 files that this plan does not touch (a blank line between import groups, text-block re-indentation, and `test`-prefix renames). Those unrelated rewrites were reverted so the PR stays inside the plan's declared boundary; the files this plan touches are in the gate's rewritten form. The drift is a baseline condition of `main` after the parent bump, not a result of this change, and should be handled by a separate formatting landing.
 4. **Playwright is skipped by default in the Maven gate.** The mobile suite was executed explicitly against a locally started `pm-mock-runtime`; the Maven build runs its ESLint pass.
-5. **Two sibling-repository links name documents that have moved.** The plan's `terminal-safety.adoc` and `scenario-format.adoc` targets no longer exist in `plan-marshall-documentation`; the relative depth was repaired for the plan's new location, but the upstream documents themselves have moved and the link targets are unchanged.
+5. **Two sibling-repository links name documents that have moved.** The plan's `terminal-safety.adoc` and `scenario-format.adoc` targets no longer exist in `plan-marshall-documentation`; the relative depth was repaired for the plan's new location, but the upstream documents themselves have moved and the link targets are unchanged. The Step 8 housekeeping pass retargets the scenario-format link to `runtime-model/05-mock-runtime.adoc` and replaces the terminal-safety link with the existing local terminal-design links.
 
 ---
 

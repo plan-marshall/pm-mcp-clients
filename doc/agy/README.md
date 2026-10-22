@@ -20,11 +20,11 @@ Every work package in `doc/agy/` is governed by coordinated architectural layers
 
 ## 2. Active Wave: Post-Run Remediation & Web Remediation
 
-Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc) identified four cross-cutting findings (CLI signal restoration, interactive entry flag, dynamic route codec validation closure, and mobile viewport E2E coverage) unified into one remediation plan, which has landed on `main` (PR #168). A second, independent remediation plan is now staged from the web-client findings in [`doc/findings-web.txt`](../findings-web.txt).
+Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc) identified four cross-cutting findings (CLI signal restoration, interactive entry flag, dynamic route codec validation closure, and mobile viewport E2E coverage) unified into one remediation plan, which has landed on `main` and passed Step 8 verification (PR #168). A second, independent remediation plan is now staged from the web-client findings in [`doc/findings-web.txt`](../findings-web.txt).
 
 | Stream | Active / Last Completed Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
-| **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed (PR #168) |
+| **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed & Verified (PR #168) |
 | **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Staged; Step 1 pending |
 
 *(Note: The web remediation plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete).*

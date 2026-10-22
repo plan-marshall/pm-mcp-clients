@@ -12,7 +12,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 |---|---|
 | **Audit Standard** | [`doc/meta/post_run_review.adoc`](../../meta/post_run_review.adoc), [`doc/meta/verification-protocol.adoc`](../../meta/verification-protocol.adoc) |
 | **Audit Report** | `post_run_wave_review_report.md` (Artifact from Post-Run Review) |
-| **Specifications & Design** | CLI: [`doc/design/terminal-client/04-console.adoc`](../../design/terminal-client/04-console.adoc) (`#console`), [`15-overview.adoc`](../../design/terminal-client/15-overview.adoc) (`#full-screen`), [`doc/specification/terminal-safety.adoc`](../../../../plan-marshall-documentation/doc/specification/terminal-safety.adoc)<br>Mock: [`doc/specification/scenario-format.adoc`](../../../../plan-marshall-documentation/doc/specification/scenario-format.adoc)<br>Web: [`doc/design/web-app/`](../../design/web-app/) (Responsive 320px viewport invariant) |
+| **Specifications & Design** | CLI: [`doc/design/terminal-client/04-console.adoc`](../../design/terminal-client/04-console.adoc) (`#console`), [`15-overview.adoc`](../../design/terminal-client/15-overview.adoc) (`#full-screen`)<br>Mock: [`doc/specification/runtime-model/05-mock-runtime.adoc`](../../../../plan-marshall-documentation/doc/specification/runtime-model/05-mock-runtime.adoc) (scenario format)<br>Web: [`doc/design/web-app/`](../../design/web-app/) (Responsive 320px viewport invariant) |
 | **Addressed Findings** | **CLI-2** (High: TUI signal & shutdown hook terminal restoration)<br>**CLI-1** (Medium: interactive entry & `--tui` flag on root command)<br>**MOCK-1** (Low: route codec validation closure for plans and epics)<br>**WEB-1** (Low: mobile viewport Playwright smoke tests) |
 | **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
 | **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
@@ -28,9 +28,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 2. **Interactive TUI Entry & Console Prompt Guidance (`pm-operator`, CLI-1)**:
    - Add `--tui` option to root [`PmOperator.java`](../../../pm-operator/src/main/java/de/planmarshall/operator/PmOperator.java) to allow explicit, direct launch of [`OverviewFullScreenApp`](../../../pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java) without needing the `plans` subcommand.
    - In [`PmConsole.java`](../../../pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java), add `tui` to auto-completion candidates as an alias for `plans`.
-   - Update `operator.console.welcome` / prompt banner in `pm-api` message catalogues to mention `plans` (or `tui`) for entering the full-screen view.
+   - Add `operator.console.hint.tui` to the greeting and the `tui` line to `operator.console.help.body` in the EN and DE `pm-api` catalogues.
 3. **Parameterized Route Codec Closure (`pm-mock-runtime`, MOCK-1)**:
-   - In [`ScenarioLoader.java`](../../../pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java), expand `validateRouteRepresentation` to validate route representations matching `/api/v1/plans/{id}` and `/api/v1/epics/{id}` against their `pm-api` codecs (`PlanView` / `EpicView`), eliminating the generic fallback for known route patterns.
+   - In [`ScenarioLoader.java`](../../../pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java), expand `validateRouteRepresentation` to validate route representations matching `/api/v1/plans/{id}` and `/api/v1/epics/{id}` against their actual `pm-api` codecs (`ProcessTree`, `PlanIntentResource`, `OutlineResource`, `PlanCompletionReport`, `TaskActivity`, `EpicResource`, `EpicProcess`, `EpicIntentResource`), eliminating the generic fallback for known route shapes.
    - Verify closed schema validation passes across all scenarios in `src/main/resources/scenarios/`.
 4. **Mobile Viewport E2E Verification (`pm-web-e2e`, WEB-1)**:
    - Add targeted mobile viewport assertions (375x667 and 320x568) in [`pm-web-e2e`](../../../pm-web-e2e/tests/) for critical user journeys:
@@ -71,8 +71,8 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 - [x] 4. Final completion report written (`doc/agy/post-run-remediation-plan-report.md`) and initial plan moved to `doc/agy/implemented/post-run-remediation-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
 - [x] 6. PR opened (#168, no `skip-bot-review`), review window waited, 100% of bot & Sonar findings resolved via `persona-code-reviewer` (5 CodeRabbit findings fixed in `76f9a08`; 6 SonarCloud findings and the coverage gap fixed in `4b8fbbe`; 3 further SonarCloud findings fixed in `c4b5d0d`; SonarCloud gate green at 83.7% new coverage).
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/post-run-remediation-plan-report.md` by orchestrator session.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/post-run-remediation-plan-report.md` by orchestrator session.
 
 ---
 
@@ -114,9 +114,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 
 ### Phase 3: Dynamic Route Codec Validation (`pm-mock-runtime`, MOCK-1)
 1. In `ScenarioLoader.java:validateRouteRepresentation`:
-   - Match routes starting with `GET /api/v1/plans/` and decode using `PlanView.fromMap(map)`.
-   - Match routes starting with `GET /api/v1/epics/` and decode using `EpicView.fromMap(map)`.
-   - Ensure exceptions are cleanly wrapped in `ScenarioValidationException`.
+   - Resolve recognized `GET /api/v1/plans/...` shapes to `ProcessTree` (process), `PlanIntentResource` (intent), `OutlineResource` (outline), `PlanCompletionReport` (completion), and `TaskActivity` (task activity).
+   - Resolve recognized `GET /api/v1/epics/...` shapes to `EpicResource` (detail), `EpicProcess` (process), and `EpicIntentResource` (intent).
+   - Refuse a list for a recognized object resource, leave non-2xx error bodies undecoded, and ensure exceptions are cleanly wrapped in `ScenarioValidationException`.
 2. Run `./mvnw test -pl pm-mock-runtime` and assert all scenarios load cleanly.
 
 ### Phase 4: Mobile Viewport E2E Tests (`pm-web-e2e`, WEB-1)
