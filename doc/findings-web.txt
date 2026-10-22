@@ -1,4 +1,7 @@
 Findings for running pm-web-app
 
 No open findings. All eight findings from the 2026-10-22 review are planned in
-doc/agy/web-session-pairing-and-dev-host-plan.md.
+doc/agy/implemented/web-session-pairing-and-dev-host-plan.md.
+
+Post-landing follow-ups from the verified report are planned in
+doc/agy/web-session-follow-up-fixes-plan.md.
