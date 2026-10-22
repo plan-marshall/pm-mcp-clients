@@ -360,20 +360,20 @@ class MockRuntimeTest {
         var tempBase = Files.createTempDirectory(Path.of(System.getProperty("java.io.tmpdir")), "pmz");
         try {
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                    .scenario(StandardScenarios.WEB_PAIRING)
-                    .base(tempBase)
-                    .cleanupBaseOnClose(false)
-                    .build())) {
+                         .scenario(StandardScenarios.WEB_PAIRING)
+                         .base(tempBase)
+                         .cleanupBaseOnClose(false)
+                         .build())) {
                 assertFalse(runtime.deviceSecret().isBlank());
             }
             var secretFile = tempBase.resolve("state").resolve(MockRuntime.DEVICE_SECRET_FILE);
             Files.writeString(secretFile, "  \n");
 
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                    .scenario(StandardScenarios.WEB_PAIRING)
-                    .base(tempBase)
-                    .cleanupBaseOnClose(false)
-                    .build())) {
+                         .scenario(StandardScenarios.WEB_PAIRING)
+                         .base(tempBase)
+                         .cleanupBaseOnClose(false)
+                         .build())) {
                 assertFalse(runtime.deviceSecret().isBlank());
                 assertEquals(runtime.deviceSecret(), Files.readString(secretFile).trim());
                 assertEquals("rw-------", PosixFilePermissions.toString(Files.getPosixFilePermissions(secretFile)));
@@ -388,7 +388,8 @@ class MockRuntimeTest {
      *
      * @param directory the directory to remove
      */
-    private static void deleteTree(Path directory) {        if (!Files.exists(directory)) {
+    private static void deleteTree(Path directory) {
+        if (!Files.exists(directory)) {
             return;
         }
         try (var walk = Files.walk(directory)) {
