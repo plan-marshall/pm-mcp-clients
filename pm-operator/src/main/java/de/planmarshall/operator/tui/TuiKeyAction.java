@@ -60,6 +60,16 @@ public enum TuiKeyAction {
     SYSTEM("system"),
     /** Open the unread reports. */
     REPORTS("reports"),
+    /** Mark the selected report read. */
+    MARK_READ("read"),
+    /** Mark every report the level shows read. */
+    MARK_ALL_READ("read_all"),
+    /** Cycle the system view's models window. */
+    WINDOW("window"),
+    /** Switch the system view's models grouping. */
+    GROUP_BY("by"),
+    /** Switch the system view between all projects and one project. */
+    PER_PROJECT("per_project"),
     /** Filter the rows. */
     FILTER("filter"),
     /** Read everything again from the runtime. */

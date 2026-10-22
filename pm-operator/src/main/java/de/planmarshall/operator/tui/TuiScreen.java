@@ -28,10 +28,11 @@ import org.jspecify.annotations.Nullable;
  * @param footerText    the footer to draw instead of the one the key registry generates, or
  *                      {@code null} for the registry's footer
  * @param menu          the modal actions menu drawn below a row or the header, or {@code null}
+ * @param banner        a progress line drawn below the header, or {@code null}
  */
 public record TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
 String filter, boolean help, boolean connected, int reportsCount, @Nullable String footerText,
-@Nullable TuiMenu menu) {
+@Nullable TuiMenu menu, @Nullable String banner) {
 
     /**
      * @param breadcrumb    the header's left side
@@ -45,7 +46,7 @@ String filter, boolean help, boolean connected, int reportsCount, @Nullable Stri
      */
     public TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
                         String filter, boolean help, boolean connected, int reportsCount) {
-        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, null, null);
+        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, null, null, null);
     }
 
     /**
@@ -62,7 +63,8 @@ String filter, boolean help, boolean connected, int reportsCount, @Nullable Stri
     public TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
                         String filter, boolean help, boolean connected, int reportsCount,
                         @Nullable String footerText) {
-        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, footerText, null);
+        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, footerText, null,
+                            null);
     }
 
     /**
@@ -75,6 +77,26 @@ String filter, boolean help, boolean connected, int reportsCount, @Nullable Stri
      * @param connected     whether the event stream is open
      * @param reportsCount  the number of unread reports
      * @param footerText    the footer to draw, or {@code null}
+     * @param menu          the modal menu, or {@code null}
+     */
+    public TuiScreen(String breadcrumb, TuiLevel.Kind kind, List<TuiRow> rows, int selectedIndex,
+                        String filter, boolean help, boolean connected, int reportsCount,
+                        @Nullable String footerText, @Nullable TuiMenu menu) {
+        this(breadcrumb, kind, rows, selectedIndex, filter, help, connected, reportsCount, footerText, menu, null);
+    }
+
+    /**
+     * @param breadcrumb    the header's left side
+     * @param kind          the kind of level
+     * @param rows          the visible rows
+     * @param selectedIndex the index of the selected row, or {@code -1}
+     * @param filter        the filter text
+     * @param help          whether the help overlay is shown
+     * @param connected     whether the event stream is open
+     * @param reportsCount  the number of unread reports
+     * @param footerText    the footer to draw, or {@code null}
+     * @param menu          the modal menu, or {@code null}
+     * @param banner        a progress line below the header, or {@code null}
      */
     public TuiScreen {
         Objects.requireNonNull(breadcrumb, "breadcrumb");

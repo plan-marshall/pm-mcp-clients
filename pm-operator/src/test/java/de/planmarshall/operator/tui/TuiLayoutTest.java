@@ -81,6 +81,20 @@ class TuiLayoutTest {
     }
 
     @Test
+    @DisplayName("a banner stands below the header without changing the height")
+    void bannerBelowHeader() {
+        var withBanner = new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW, screen(0, 3).rows(), 0, "",
+                            false, true, 0, null, null, "Stopping when what runs is done \u00b7 2 left");
+        var lines = layout.render(withBanner, 120, 12);
+        assertAll(
+                            () -> assertEquals(12, lines.size()),
+                            () -> assertTrue(lines.get(0).toString().contains("Running work")),
+                            () -> assertTrue(lines.get(1).toString().contains("\u2500")),
+                            () -> assertTrue(lines.get(2).toString().contains("Stopping when what runs is done"))
+        );
+    }
+
+    @Test
     @DisplayName("the footer comes from the key registry")
     void footerFromRegistry() {
         var footer = layout.render(screen(0, 2), 120, 10).getLast().toString();
@@ -113,6 +127,24 @@ class TuiLayoutTest {
             assertFalse(detailsVisible(99));
             assertFalse(detailsVisible(TuiLayout.COMPACT_COLUMNS));
             assertFalse(detailsVisible(TuiLayout.MIN_COLUMNS));
+        }
+
+        @Test
+        @DisplayName("the system view draws its details from 80 columns on")
+        void systemDrawsDetailsFromEighty() {
+            var row = new TuiRow("sys:runtime", "Runtime   running", "memory 412 MB", false, true);
+            var system = new TuiScreen("System \u00b7 pm-mcpd 0.9.1", TuiLevel.Kind.SYSTEM, List.of(row), 0, "",
+                                false, true, 0);
+            var wide = layout.render(system, TuiLayout.COMPACT_COLUMNS, 12).stream()
+                                .map(Object::toString).toList();
+            var narrow = layout.render(system, TuiLayout.COMPACT_COLUMNS - 1, 12).stream()
+                                .map(Object::toString).toList();
+            assertAll(
+                                () -> assertTrue(wide.stream().anyMatch(line -> line.contains("memory 412 MB")),
+                                                    wide.toString()),
+                                () -> assertFalse(narrow.stream().anyMatch(line -> line.contains("memory 412 MB")),
+                                                    narrow.toString())
+            );
         }
     }
 

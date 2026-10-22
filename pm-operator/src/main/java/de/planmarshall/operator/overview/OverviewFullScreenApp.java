@@ -46,8 +46,14 @@ import de.planmarshall.api.project.FavouritesUpdateRequest;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.api.report.PlanCompletionReport;
+import de.planmarshall.api.report.ReadReportsRequest;
+import de.planmarshall.api.report.ReportItem;
+import de.planmarshall.api.report.ReportKind;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.api.system.RuntimeDrainingEvent;
+import de.planmarshall.api.system.SystemSnapshot;
+import de.planmarshall.api.system.SystemWindow;
 import de.planmarshall.operator.ConsoleNotice;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
 import de.planmarshall.operator.OperatorActions;
@@ -68,6 +74,8 @@ import de.planmarshall.operator.planview.WorkerActivityLevel;
 import de.planmarshall.operator.projects.ProjectOpenEntry;
 import de.planmarshall.operator.projects.ProjectsExplorerActions;
 import de.planmarshall.operator.projects.ProjectsExplorerLevel;
+import de.planmarshall.operator.reports.ReportsLevel;
+import de.planmarshall.operator.system.SystemLevel;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiLevel;
@@ -93,15 +101,21 @@ public final class OverviewFullScreenApp {
     /**
      * Initial CLI selection state.
      *
-     * @param project optional initial project ID
-     * @param by      optional initial view grouping (epic/plan)
-     * @param ended   whether initial level is ended work
-     * @param plan    optional plan to open in its full-screen plan view
-     * @param explorer whether the explorer is the root instead of running work
+     * @param project      optional initial project ID
+     * @param by           optional initial view grouping (epic/plan)
+     * @param ended        whether initial level is ended work
+     * @param plan         optional plan to open in its full-screen plan view
+     * @param explorer     whether the explorer is the root instead of running work
+     * @param system       whether the system view opens above the root
+     * @param systemWindow optional system view window ({@code hour}, {@code today}, {@code 7d})
+     * @param systemGroup  optional system view grouping ({@code model} or {@code role})
+     * @param systemProject optional project the system view shows, or {@code null} for the saved one
      */
     public record InitialSelection(@Nullable String project, @Nullable String by, boolean ended,
-    @Nullable String plan, boolean explorer) {
-        public static final InitialSelection DEFAULT = new InitialSelection(null, null, false, null, false);
+    @Nullable String plan, boolean explorer, boolean system, @Nullable String systemWindow,
+    @Nullable String systemGroup, @Nullable String systemProject) {
+        public static final InitialSelection DEFAULT =
+                            new InitialSelection(null, null, false, null, false, false, null, null, null);
 
         /**
          * @param project optional initial project ID
@@ -109,7 +123,7 @@ public final class OverviewFullScreenApp {
          * @param ended   whether the initial level is ended work
          */
         public InitialSelection(@Nullable String project, @Nullable String by, boolean ended) {
-            this(project, by, ended, null, false);
+            this(project, by, ended, null, false, false, null, null, null);
         }
 
         /**
@@ -117,14 +131,25 @@ public final class OverviewFullScreenApp {
          * @return the selection
          */
         public static InitialSelection plan(String plan) {
-            return new InitialSelection(null, null, false, plan, false);
+            return new InitialSelection(null, null, false, plan, false, false, null, null, null);
         }
 
         /**
          * @return the selection that opens the projects explorer as the root
          */
         public static InitialSelection explorerRoot() {
-            return new InitialSelection(null, null, false, null, true);
+            return new InitialSelection(null, null, false, null, true, false, null, null, null);
+        }
+
+        /**
+         * @param window  the system view's window, or {@code null} for the saved one
+         * @param group   the system view's grouping, or {@code null} for the saved one
+         * @param project the project the system view shows, or {@code null} for the saved one
+         * @return the selection that opens the system view above the overview's root
+         */
+        public static InitialSelection system(@Nullable String window, @Nullable String group,
+                            @Nullable String project) {
+            return new InitialSelection(null, null, false, null, false, true, window, group, project);
         }
     }
 
@@ -150,9 +175,12 @@ public final class OverviewFullScreenApp {
     private final AtomicReference<WorkerActivityLevel> currentActivity = new AtomicReference<>();
     private final AtomicReference<PlanCompletionLevel> currentCompletion = new AtomicReference<>();
     private final AtomicReference<EpicViewLevel> currentEpicView = new AtomicReference<>();
+    private final AtomicReference<ReportsLevel> currentReports = new AtomicReference<>();
+    private final AtomicReference<SystemLevel> currentSystem = new AtomicReference<>();
     private final AtomicBoolean activityFollow = new AtomicBoolean(true);
     private volatile @Nullable String pendingAnswerPlanId;
     private @Nullable ActionsMenu actionsMenu;
+    private @Nullable TuiMenu runtimeMenu;
     private @Nullable TuiMenu projectMenu;
     private @Nullable EnrolledProject projectMenuProject;
     private @Nullable BeingAddedProject projectMenuBeing;
@@ -162,6 +190,7 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuKind;
     private @Nullable String menuLandingUnit;
     private @Nullable String statusMessage;
+    private @Nullable String systemBanner;
     private @Nullable PrintWriter consoleOut;
     private @Nullable TuiScreenDriver activeDriver;
     private @Nullable OverviewKeyHandler activeKeyHandler;
@@ -286,6 +315,13 @@ public final class OverviewFullScreenApp {
         var rootLevel = new ProjectsOverviewLevel(projects);
         var rootRows = rootLevel.rows(locale, clock);
 
+        if (initialSelection.system()) {
+            stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, null);
+            openSystem(initialSelection.systemWindow(), initialSelection.systemGroup(),
+                                initialSelection.systemProject());
+            return;
+        }
+
         var saved = stateStore.read().orElse(OverviewSavedState.empty());
 
         var initialPlan = initialSelection.plan();
@@ -358,15 +394,56 @@ public final class OverviewFullScreenApp {
     }
 
     void fetchUnreadReports(RuntimeClient runtime) {
+        var page = fetchReportsPage(runtime);
+        if (page != null) {
+            unreadReports.set(page.unreadCount());
+        }
+    }
+
+    /**
+     * Reads the first page of unread reports.
+     *
+     * @param runtime the runtime client
+     * @return the page, or {@code null} when the runtime did not serve it
+     */
+    @Nullable
+    ReportsPage fetchReportsPage(RuntimeClient runtime) {
         try {
             var response = runtime.send(HttpRequest.get("/api/v1/reports"));
             if (response.status() == 200) {
                 var page = ReportsPage.fromJson(response.bodyText());
                 unreadReports.set(page.unreadCount());
+                return page;
             }
         } catch (IOException | IllegalArgumentException _) {
-            // unread count defaults to 0
+            // The last page the view holds stays until the runtime answers again.
         }
+        return null;
+    }
+
+    /**
+     * Reads the system snapshot for one choice of window and project.
+     *
+     * @param runtime   the runtime client
+     * @param window    the models' window
+     * @param projectId the project, or {@code null} for all projects
+     * @return the snapshot, or {@code null} when the runtime did not serve it
+     */
+    @Nullable
+    SystemSnapshot fetchSystemSnapshot(RuntimeClient runtime, SystemWindow window,
+                        @Nullable String projectId) {
+        try {
+            var path = "/api/v1/system?window=" + OperatorUrlUtil.encodePathSegment(window.value())
+                                + (projectId != null
+                                ? "&project=" + OperatorUrlUtil.encodePathSegment(projectId) : "");
+            var response = runtime.send(HttpRequest.get(path));
+            if (response.status() == 200) {
+                return SystemSnapshot.fromJson(response.bodyText());
+            }
+        } catch (IOException | IllegalArgumentException _) {
+            // The view keeps the snapshot it showed and says it could not reload.
+        }
+        return null;
     }
 
     boolean isCurrentProjectSetupNeedingOperator() {
@@ -505,9 +582,15 @@ public final class OverviewFullScreenApp {
                 // The explorer is a root of its own; it does not move the overview's start point.
                 return;
             }
-            if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
-                // A sub-level of a plan does not describe a place of the overview; keep the
-                // snapshot the operator had before opening it.
+            if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION
+                                || kind == TuiLevel.Kind.REPORTS) {
+                // A sub-level of a plan, or the reports, does not describe a place of the
+                // overview; keep the snapshot the operator had before opening it.
+                return;
+            }
+            if (kind == TuiLevel.Kind.SYSTEM) {
+                stateStore.write(withSystemChoice(existing, existing.projectId(), existing.projectView(),
+                                    existing.selectedId()));
                 return;
             }
             var sel = stack.selected();
@@ -535,18 +618,34 @@ public final class OverviewFullScreenApp {
                 }
             }
 
-            var updated = new OverviewSavedState(
-                                projectId,
-                                projectView,
-                                selectedId,
-                                existing.systemWindow(),
-                                existing.systemGroupBy(),
-                                existing.systemProjectId()
-            );
+            var updated = withSystemChoice(existing, projectId, projectView, selectedId);
             stateStore.write(updated);
         } catch (IOException _) {
             // best effort persistence
         }
+    }
+
+    /**
+     * The saved state with the operator's system choice carried over, whether or not the view
+     * ended on a system level: {@code w}, {@code b} and {@code p} must survive leaving the view
+     * from any level ({@code doc/design/terminal-client/15-overview.adoc#overview-persistence}).
+     *
+     * @param existing  the state as it was
+     * @param projectId the project the overview ended in, or {@code null}
+     * @param view      the overview's view, or {@code null}
+     * @param selected  the overview's selection, or {@code null}
+     * @return the state to write
+     */
+    private OverviewSavedState withSystemChoice(OverviewSavedState existing, @Nullable String projectId,
+                        @Nullable String view, @Nullable String selected) {
+        var system = currentSystem.get();
+        return new OverviewSavedState(
+                            projectId,
+                            view,
+                            selected,
+                            system != null ? system.window().value() : existing.systemWindow(),
+                            system != null ? system.groupBy() : existing.systemGroupBy(),
+                            system != null ? system.projectId() : existing.systemProjectId());
     }
 
     static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
@@ -607,6 +706,20 @@ public final class OverviewFullScreenApp {
                 breadcrumb = view.level(locale).title();
                 footer = view.footer(locale);
             }
+        } else if (kind == TuiLevel.Kind.REPORTS) {
+            var view = currentReports.get();
+            if (view != null) {
+                breadcrumb = view.breadcrumb(locale);
+            }
+        } else if (kind == TuiLevel.Kind.SYSTEM) {
+            var view = currentSystem.get();
+            if (view != null) {
+                var section = SystemLevel.sectionOf(lvl != null ? lvl.id() : null);
+                breadcrumb = view.breadcrumb(locale, section);
+                if (section == SystemLevel.Section.ROOT) {
+                    footer = view.footer(locale);
+                }
+            }
         }
         var rows = stack.visibleRows();
         if (statusMessage != null && !statusMessage.isBlank()) {
@@ -618,6 +731,8 @@ public final class OverviewFullScreenApp {
         TuiMenu menu = null;
         if (projectMenu != null) {
             menu = projectMenu;
+        } else if (runtimeMenu != null) {
+            menu = runtimeMenu;
         } else if (actionsMenu != null) {
             menu = actionsMenu.screenMenu();
         }
@@ -631,7 +746,8 @@ public final class OverviewFullScreenApp {
                             connected.get(),
                             unreadReports.get(),
                             footer,
-                            menu
+                            menu,
+                            kind == TuiLevel.Kind.SYSTEM ? systemBanner : null
         );
     }
 
@@ -673,6 +789,10 @@ public final class OverviewFullScreenApp {
         }
         var selectedId = selected.id();
         var kind = lvl.kind();
+        if (kind == TuiLevel.Kind.SYSTEM) {
+            openRuntimeActions();
+            return;
+        }
         try {
             if (kind == TuiLevel.Kind.ENDED) {
                 var ended = currentEndedLevel.get();
@@ -861,6 +981,10 @@ public final class OverviewFullScreenApp {
      * @return {@code true} to keep the view open
      */
     private boolean handleMenu(String trigger) {
+        if (runtimeMenu != null) {
+            handleRuntimeMenu(trigger);
+            return true;
+        }
         if (projectMenu != null) {
             var handler = activeKeyHandler;
             if (handler != null) {
@@ -1039,8 +1163,45 @@ public final class OverviewFullScreenApp {
         var name = eventName != null ? eventName : "";
         var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
 
+        if (isReportEvent(name, type)) {
+            refreshReports();
+            return;
+        }
+        if ("runtime.draining".equals(name) || "runtime.draining".equals(type)) {
+            applyDrainingBanner(eventMap);
+            return;
+        }
+        if ("system.metrics".equals(name) || "system.metrics".equals(type)) {
+            refreshSystem();
+            return;
+        }
+
         if (isStructuralChange(name, type)) {
             refreshActiveLevels();
+        }
+    }
+
+    static boolean isReportEvent(String name, String type) {
+        return "report.sent".equals(name) || "report.read".equals(name)
+                            || "report.sent".equals(type) || "report.read".equals(type);
+    }
+
+    /**
+     * The progress line below the system view's header while the runtime drains: how many tasks and
+     * jobs are left and which they are ({@code doc/design/terminal-client/25-system.adoc#full-screen}).
+     *
+     * @param eventMap the {@code runtime.draining} event
+     */
+    void applyDrainingBanner(Map<String, Object> eventMap) {
+        try {
+            var event = RuntimeDrainingEvent.fromMap(eventMap);
+            var what = String.join(", ", event.remainingItems().stream()
+                                .map(OutputSafety::stripControlSequences).toList());
+            systemBanner = MessageCatalogue.format(locale, "system.stopping.line",
+                                Map.of("count", event.remainingCount(), "what", what));
+            terminal.raise(Terminal.Signal.WINCH);
+        } catch (IOException _) {
+            // A malformed event leaves the last line in place.
         }
     }
 
@@ -1074,6 +1235,14 @@ public final class OverviewFullScreenApp {
         }
         if (targetKind == TuiLevel.Kind.PROJECTS) {
             refreshExplorer();
+            return;
+        }
+        if (targetKind == TuiLevel.Kind.REPORTS) {
+            refreshReports();
+            return;
+        }
+        if (targetKind == TuiLevel.Kind.SYSTEM) {
+            refreshSystem();
             return;
         }
 
@@ -1249,6 +1418,248 @@ public final class OverviewFullScreenApp {
     }
 
 
+    private void openRuntimeActions() {
+        var level = currentSystem.get();
+        if (level == null) {
+            return;
+        }
+        var entries = new ArrayList<TuiMenuEntry>();
+        entries.add(TuiMenuEntry.enabled("s", "stop",
+                            MessageCatalogue.format(locale, "system.action.stop", Map.of())));
+        entries.add(TuiMenuEntry.enabled("r", "restart",
+                            MessageCatalogue.format(locale, "system.action.restart", Map.of())));
+        if (level.upgradeSupported()) {
+            entries.add(TuiMenuEntry.enabled("u", "upgrade",
+                                MessageCatalogue.format(locale, "system.action.upgrade", Map.of())));
+        }
+        if (level.versionUnknown()) {
+            entries.add(TuiMenuEntry.enabled("c", "check",
+                                MessageCatalogue.format(locale, "operator.system.action.check", Map.of())));
+        }
+        runtimeMenu = TuiMenu.opening(SystemLevel.ROW_RUNTIME, entries);
+    }
+
+    /**
+     * @param trigger the menu's mnemonic, or the empty string to close the menu
+     */
+    private void handleRuntimeMenu(String trigger) {
+        if (trigger.isEmpty()) {
+            runtimeMenu = null;
+            return;
+        }
+        var menu = runtimeMenu;
+        runtimeMenu = null;
+        if (menu == null) {
+            return;
+        }
+        var entry = menu.entry(trigger);
+        if (entry == null) {
+            return;
+        }
+        switch (entry.action()) {
+            case "stop" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                "runtime", "stop"));
+            case "restart" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                "runtime", "restart"));
+            case "upgrade" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                "runtime", "upgrade"));
+            case "check" -> runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(),
+                                "runtime", "upgrade", "--check"));
+            default -> {
+                // An entry this view does not know leaves the view unchanged.
+            }
+        }
+        refreshSystem();
+    }
+
+    /**
+     * The {@code R} key and the console's {@code reports}: reads the first page of unread reports
+     * and opens the reports level above the current one
+     * ({@code doc/design/terminal-client/24-reports.adoc#full-screen}).
+     */
+    void openReports() {
+        ReportsPage page = null;
+        try {
+            page = fetchReportsPage(context.runtime(true));
+        } catch (IOException _) {
+            // The level opens with what it has; the status line says the read failed.
+        }
+        var level = page != null
+                            ? new ReportsLevel(page.items(), page.unreadCount())
+                            : new ReportsLevel(List.of(), unreadReports.get());
+        currentReports.set(level);
+        var rows = level.rows(locale);
+        stack.push(TuiLevel.of(TuiLevel.Kind.REPORTS, "reports", level.breadcrumb(locale)), rows,
+                            firstReportRowId(rows));
+        if (page == null) {
+            statusMessage = MessageCatalogue.format(locale, "report.list.load_failed", Map.of());
+        }
+        skipReportHeadings(1);
+    }
+
+    /**
+     * The {@code S} key and the console's {@code system}: reads the snapshot and opens the system
+     * level above the current one ({@code doc/design/terminal-client/25-system.adoc#full-screen}).
+     *
+     * @param initialWindow the window the caller asked for, or {@code null} for the saved one
+     * @param initialGroup  the grouping the caller asked for, or {@code null} for the saved one
+     */
+    void openSystem(@Nullable String initialWindow, @Nullable String initialGroup,
+                        @Nullable String initialProject) {
+        var saved = stateStore.read().orElse(OverviewSavedState.empty());
+        var window = initialWindow != null ? SystemWindow.fromValue(initialWindow)
+                            : SystemWindow.fromValue(saved.systemWindow());
+        var groupBy = initialGroup != null ? initialGroup : saved.systemGroupBy();
+        var projectId = initialProject != null ? initialProject : saved.systemProjectId();
+        SystemSnapshot snapshot = null;
+        try {
+            snapshot = fetchSystemSnapshot(context.runtime(true), window, projectId);
+        } catch (IOException _) {
+            // The level opens with the failure line; r reads it again.
+        }
+        var level = snapshot != null
+                            ? SystemLevel.root(snapshot, window, groupBy, projectId)
+                            : SystemLevel.unavailable(window, groupBy, projectId);
+        currentSystem.set(level);
+        systemBanner = null;
+        stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.LEVEL_ID, level.breadcrumb(locale)),
+                            level.rows(locale), SystemLevel.ROW_RUNTIME);
+    }
+
+    /**
+     * Reads the reports again and shows them without moving the selection off its report.
+     */
+    void refreshReports() {
+        ReportsPage page;
+        try {
+            page = fetchReportsPage(context.runtime(false));
+        } catch (IOException _) {
+            return;
+        }
+        if (page == null) {
+            return;
+        }
+        var level = new ReportsLevel(page.items(), page.unreadCount());
+        currentReports.set(level);
+        synchronized (this) {
+            var lvl = stack.level();
+            if (lvl != null && lvl.kind() == TuiLevel.Kind.REPORTS) {
+                var selected = stack.selected();
+                stack.refresh(level.rows(locale));
+                if (selected != null && level.reportOf(selected.id()) != null) {
+                    stack.select(selected.id());
+                }
+                skipReportHeadings(1);
+            }
+        }
+        terminal.raise(Terminal.Signal.WINCH);
+    }
+
+    /**
+     * Reads the system snapshot again with the operator's window and project.
+     */
+    void refreshSystem() {
+        var level = currentSystem.get();
+        if (level == null) {
+            return;
+        }
+        SystemSnapshot snapshot;
+        try {
+            snapshot = fetchSystemSnapshot(context.runtime(false), level.window(), level.projectId());
+        } catch (IOException _) {
+            return;
+        }
+        if (snapshot == null) {
+            return;
+        }
+        var fresh = level.withSnapshot(snapshot);
+        if (!currentSystem.compareAndSet(level, fresh)) {
+            // The operator changed the window, grouping, or project during the read; their choice
+            // and its own read win.
+            return;
+        }
+        synchronized (this) {
+            var lvl = stack.level();
+            if (lvl == null || lvl.kind() != TuiLevel.Kind.SYSTEM) {
+                return;
+            }
+            var section = SystemLevel.sectionOf(lvl.id());
+            var selected = stack.selected();
+            stack.refresh(fresh.rows(locale, section));
+            if (selected != null) {
+                stack.select(selected.id());
+            }
+        }
+        terminal.raise(Terminal.Signal.WINCH);
+    }
+
+    /**
+     * @param reportId the report
+     * @return {@code true} when the runtime accepted the read or the report was read already
+     */
+    boolean markReportRead(String reportId) {
+        try {
+            var path = "/api/v1/reports/" + OperatorUrlUtil.encodePathSegment(reportId) + "/read";
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
+            return response.status() >= 200 && response.status() < 300 || response.status() == 404;
+        } catch (IOException _) {
+            return false;
+        }
+    }
+
+    /**
+     * @param reportIds the reports the level shows
+     * @return {@code true} when the runtime accepted the read
+     */
+    boolean markReportsRead(List<String> reportIds) {
+        if (reportIds.isEmpty()) {
+            return false;
+        }
+        try {
+            var request = new ReadReportsRequest(reportIds, false);
+            var response = context.runtime(true).send(
+                                HttpRequest.json("POST", "/api/v1/reports/read", request.toJson()));
+            return response.status() >= 200 && response.status() < 300;
+        } catch (IOException _) {
+            return false;
+        }
+    }
+
+    private static @Nullable String firstReportRowId(List<TuiRow> rows) {
+        for (var row : rows) {
+            if (ReportsLevel.reportIdOf(row.id()) != null) {
+                return row.id();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Moves the selection off a group heading, as the explorer does for its own headings.
+     *
+     * @param delta the direction of the movement: {@code 1} down, {@code -1} up
+     */
+    private void skipReportHeadings(int delta) {
+        var lvl = stack.level();
+        if (lvl == null || lvl.kind() != TuiLevel.Kind.REPORTS) {
+            return;
+        }
+        int direction = delta == 0 ? 1 : delta;
+        boolean reversed = false;
+        int guard = 0;
+        while (stack.selected() != null && ReportsLevel.isHeading(stack.selected().id()) && guard++ < 100) {
+            int before = stack.selectedIndex();
+            stack.move(direction);
+            if (stack.selectedIndex() == before) {
+                if (reversed) {
+                    return;
+                }
+                direction = -direction;
+                reversed = true;
+            }
+        }
+    }
+
     private final class OverviewKeyHandler implements TuiScreenDriver.KeyHandler {
 
         private OverviewKeyHandler() {
@@ -1275,6 +1686,8 @@ public final class OverviewFullScreenApp {
             synchronized (OverviewFullScreenApp.this) {
                 if (projectMenu != null) {
                     projectMenu = projectMenu.move(delta);
+                } else if (runtimeMenu != null) {
+                    runtimeMenu = runtimeMenu.move(delta);
                 } else if (actionsMenu != null) {
                     actionsMenu.move(delta);
                 }
@@ -1290,11 +1703,13 @@ public final class OverviewFullScreenApp {
                     }
                     stack.move(-1);
                     skipExplorerHeaders(-1);
+                    skipReportHeadings(-1);
                     checkEndedPagination();
                 }
                 case MOVE_DOWN -> {
                     stack.move(1);
                     skipExplorerHeaders(1);
+                    skipReportHeadings(1);
                     if (isActivityLevel()) {
                         activityFollow.set(true);
                     }
@@ -1306,11 +1721,13 @@ public final class OverviewFullScreenApp {
                     }
                     stack.page(-1);
                     skipExplorerHeaders(-1);
+                    skipReportHeadings(-1);
                     checkEndedPagination();
                 }
                 case PAGE_DOWN -> {
                     stack.page(1);
                     skipExplorerHeaders(1);
+                    skipReportHeadings(1);
                     if (isActivityLevel()) {
                         activityFollow.set(true);
                     }
@@ -1319,10 +1736,12 @@ public final class OverviewFullScreenApp {
                 case FIRST -> {
                     stack.first();
                     skipExplorerHeaders(1);
+                    skipReportHeadings(1);
                 }
                 case LAST -> {
                     stack.last();
                     skipExplorerHeaders(-1);
+                    skipReportHeadings(-1);
                     if (isActivityLevel()) {
                         activityFollow.set(true);
                     }
@@ -1347,7 +1766,12 @@ public final class OverviewFullScreenApp {
                     return false;
                 }
                 case REPORTS -> openReports();
-                case SYSTEM -> openSystem();
+                case SYSTEM -> openSystem(null, null, null);
+                case MARK_READ -> markSelectedReportRead();
+                case MARK_ALL_READ -> markShownReportsRead();
+                case WINDOW -> systemCycleWindow();
+                case GROUP_BY -> systemToggleGroup();
+                case PER_PROJECT -> systemToggleProject();
                 case EXPAND_ALL -> expandSelected();
                 case WHERE -> planJumpToWhere();
                 case NON_LANE -> planToggleNonLane();
@@ -1433,6 +1857,10 @@ public final class OverviewFullScreenApp {
         }
 
         private void jumpToEpic() {
+            if (isReportsLevel()) {
+                openReportEpic();
+                return;
+            }
             var lvl = stack.level();
             if (lvl != null && lvl.kind() == TuiLevel.Kind.PLAN) {
                 try {
@@ -1501,6 +1929,13 @@ public final class OverviewFullScreenApp {
                 return epicOpenSelected(selectedId);
             }
             if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
+                return true;
+            }
+            if (kind == TuiLevel.Kind.REPORTS) {
+                return openSelectedReport();
+            }
+            if (kind == TuiLevel.Kind.SYSTEM) {
+                systemOpenSelected();
                 return true;
             }
             if (!selected.openable()) {
@@ -1645,6 +2080,10 @@ public final class OverviewFullScreenApp {
         }
 
         private void jumpToProject() {
+            if (isReportsLevel()) {
+                openReportProject();
+                return;
+            }
             var lvl = stack.level();
             if (lvl != null && lvl.kind() == TuiLevel.Kind.EPIC) {
                 var view = currentEpicView.get();
@@ -1904,17 +2343,299 @@ public final class OverviewFullScreenApp {
             }
         }
 
-        private void openReports() {
-            var title = MessageCatalogue.format(locale, "report.list.empty", Map.of());
-            var reportsLevel = TuiLevel.of(TuiLevel.Kind.REPORTS, "reports", "Reports");
-            var rows = List.of(new TuiRow("rep-0", title, null, false, false));
-            stack.push(reportsLevel, rows, null);
+        private boolean isReportsLevel() {
+            var lvl = stack.level();
+            return lvl != null && lvl.kind() == TuiLevel.Kind.REPORTS;
         }
 
-        private void openSystem() {
-            var systemLevel = TuiLevel.of(TuiLevel.Kind.SYSTEM, "system", "System");
-            var rows = List.of(new TuiRow("sys-0", "System view", null, false, false));
-            stack.push(systemLevel, rows, null);
+        private boolean isSystemLevel() {
+            var lvl = stack.level();
+            return lvl != null && lvl.kind() == TuiLevel.Kind.SYSTEM;
+        }
+
+        private void markSelectedReportRead() {
+            var level = currentReports.get();
+            var selected = stack.selected();
+            if (level == null || selected == null) {
+                return;
+            }
+            var reportId = ReportsLevel.reportIdOf(selected.id());
+            if (reportId == null) {
+                return;
+            }
+            if (!markReportRead(reportId)) {
+                statusMessage = MessageCatalogue.format(locale, "report.list.mark_read_failed", Map.of());
+                return;
+            }
+            var neighbour = level.neighbourOf(reportId, locale);
+            applyReports(level.without(reportId), neighbour);
+        }
+
+        private void markShownReportsRead() {
+            var level = currentReports.get();
+            var ids = ReportsLevel.reportIdsIn(stack.visibleRows());
+            if (level == null || ids.isEmpty()) {
+                return;
+            }
+            if (!markReportsRead(ids)) {
+                statusMessage = MessageCatalogue.format(locale, "report.list.mark_all_failed", Map.of());
+                return;
+            }
+            applyReports(level.withoutAll(ids), null);
+        }
+
+        private void applyReports(ReportsLevel level, @Nullable String selectedRowId) {
+            currentReports.set(level);
+            unreadReports.set(level.unreadCount());
+            stack.refresh(level.rows(locale));
+            if (selectedRowId != null) {
+                stack.select(selectedRowId);
+            }
+            skipReportHeadings(1);
+        }
+
+        /**
+         * Opens the report's detail in the same view and reads the report in the same act
+         * ({@code doc/design/terminal-client/24-reports.adoc#full-screen}).
+         *
+         * @return {@code true} to keep the view open
+         */
+        private boolean openSelectedReport() {
+            var level = currentReports.get();
+            var selected = stack.selected();
+            if (level == null || selected == null) {
+                return true;
+            }
+            var report = level.reportOf(selected.id());
+            if (report == null) {
+                return true;
+            }
+            if (!openReportDetail(report)) {
+                statusMessage = MessageCatalogue.format(locale, "report.list.load_failed", Map.of());
+                return true;
+            }
+            if (!markReportRead(report.id())) {
+                statusMessage = MessageCatalogue.format(locale, "report.list.mark_read_failed", Map.of());
+                return true;
+            }
+            var updated = level.without(report.id());
+            currentReports.set(updated);
+            unreadReports.set(updated.unreadCount());
+            return true;
+        }
+
+        private boolean openReportDetail(ReportItem report) {
+            var runtime = runtimeQuietly();
+            if (runtime == null) {
+                return false;
+            }
+            var planId = trimToNull(report.from().planId());
+            var epicId = trimToNull(report.from().epicId());
+            if (report.kind() == ReportKind.PLAN_ENDED) {
+                return planId != null && openCompletion(runtime, planId);
+            }
+            if (report.kind() == ReportKind.SYSTEM_CLEANUP_DUE) {
+                openSystem(null, null, null);
+                return pushSystemSection(SystemLevel.Section.CLEANUP);
+            }
+            if (planId != null && openPlan(runtime, planId, null)) {
+                return true;
+            }
+            if (epicId != null && openEpicView(epicId)) {
+                return true;
+            }
+            if (!report.from().isSystem()) {
+                openProject(runtime, report.from().projectId(), false, null);
+                return true;
+            }
+            return false;
+        }
+
+        private void openReportProject() {
+            var report = selectedReport();
+            if (report == null || report.from().isSystem()) {
+                return;
+            }
+            try {
+                openProject(context.runtime(true), report.from().projectId(), false, null);
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+        }
+
+        private void openReportEpic() {
+            var report = selectedReport();
+            if (report == null) {
+                return;
+            }
+            var epicId = trimToNull(report.from().epicId());
+            if (epicId == null) {
+                return;
+            }
+            if (openEpicView(epicId)) {
+                return;
+            }
+            try {
+                openProject(context.runtime(true), report.from().projectId(), true, epicId);
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+        }
+
+        private @Nullable ReportItem selectedReport() {
+            var level = currentReports.get();
+            var selected = stack.selected();
+            return level != null && selected != null ? level.reportOf(selected.id()) : null;
+        }
+
+        private @Nullable RuntimeClient runtimeQuietly() {
+            try {
+                return context.runtime(true);
+            } catch (IOException _) {
+                return null;
+            }
+        }
+
+        private boolean pushSystemSection(SystemLevel.Section section) {
+            var level = currentSystem.get();
+            if (level == null) {
+                return false;
+            }
+            var rows = level.rows(locale, section);
+            stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.levelId(section),
+                                level.breadcrumb(locale, section)), rows, null);
+            return true;
+        }
+
+        private void systemOpenSelected() {
+            var lvl = stack.level();
+            var selected = stack.selected();
+            if (lvl == null || selected == null) {
+                return;
+            }
+            var section = SystemLevel.sectionOf(lvl.id());
+            if (section == SystemLevel.Section.JOBS) {
+                if (SystemLevel.ROW_LOCKS.equals(selected.id())) {
+                    pushSystemSection(SystemLevel.Section.LOCKS);
+                }
+                return;
+            }
+            if (section != SystemLevel.Section.ROOT) {
+                return;
+            }
+            var figure = SystemLevel.figureOf(selected.id());
+            if (figure == null) {
+                return;
+            }
+            switch (figure) {
+                case RUNTIME -> openRuntimeActions();
+                case WORK -> followWorkToOverview();
+                case WORKERS -> pushSystemSection(SystemLevel.Section.WORKERS);
+                case JOBS -> pushSystemSection(SystemLevel.Section.JOBS);
+                case MODELS -> pushSystemSection(SystemLevel.Section.MODELS);
+                case CLEANUP -> pushSystemSection(SystemLevel.Section.CLEANUP);
+            }
+        }
+
+        /**
+         * The work figure leads to the overview of the running work: back to it where the system
+         * level sits above one, otherwise the overview opens as a level of its own.
+         */
+        private void followWorkToOverview() {
+            if (stack.depth() > 1) {
+                var below = stack.levelAt(stack.depth() - 2);
+                if (below != null && below.kind() == TuiLevel.Kind.OVERVIEW) {
+                    stack.back();
+                    refreshPoppedLevel();
+                    return;
+                }
+            }
+            var cached = cachedProjects.get();
+            var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
+            var levelModel = new ProjectsOverviewLevel(projects);
+            stack.push(ProjectsOverviewLevel.level(locale), levelModel.rows(locale, clock), null);
+        }
+
+        private void systemCycleWindow() {
+            var level = currentSystem.get();
+            if (level == null || !isSystemLevel()) {
+                return;
+            }
+            applySystemChoice(level.withChoice(level.nextWindow(), level.groupBy(), level.projectId()));
+        }
+
+        private void systemToggleGroup() {
+            var level = currentSystem.get();
+            if (level == null || !isSystemLevel()) {
+                return;
+            }
+            applySystemChoice(level.withChoice(level.window(), level.nextGroupBy(), level.projectId()));
+        }
+
+        private void systemToggleProject() {
+            var level = currentSystem.get();
+            if (level == null || !isSystemLevel()) {
+                return;
+            }
+            if (level.projectId() != null) {
+                applySystemChoice(level.withChoice(level.window(), level.groupBy(), null));
+                return;
+            }
+            var projectId = projectForSystem();
+            if (projectId == null) {
+                statusMessage = MessageCatalogue.format(locale, "operator.system.per_project_unavailable", Map.of());
+                return;
+            }
+            applySystemChoice(level.withChoice(level.window(), level.groupBy(), projectId));
+        }
+
+        private @Nullable String projectForSystem() {
+            var initial = initialSelection.project();
+            if (initial != null && !initial.isBlank()) {
+                return initial;
+            }
+            var cached = cachedProjects.get();
+            return cached != null && !cached.projects().isEmpty()
+                                ? cached.projects().getFirst().projectId() : null;
+        }
+
+        private void applySystemChoice(SystemLevel chosen) {
+            SystemSnapshot snapshot = null;
+            try {
+                snapshot = fetchSystemSnapshot(context.runtime(true), chosen.window(), chosen.projectId());
+            } catch (IOException _) {
+                // The choice stands; the figures stay as they were.
+            }
+            var level = snapshot != null
+                                ? chosen.withSnapshot(snapshot)
+                                : SystemLevel.unavailable(chosen.window(), chosen.groupBy(), chosen.projectId());
+            currentSystem.set(level);
+            var lvl = stack.level();
+            var section = lvl != null ? SystemLevel.sectionOf(lvl.id()) : SystemLevel.Section.ROOT;
+            stack.refresh(level.rows(locale, section));
+        }
+
+        private void refreshPoppedLevel() {
+            var lvl = stack.level();
+            if (lvl == null) {
+                return;
+            }
+            if (lvl.kind() == TuiLevel.Kind.REPORTS) {
+                var level = currentReports.get();
+                if (level != null) {
+                    stack.refresh(level.rows(locale));
+                    skipReportHeadings(1);
+                }
+            } else if (lvl.kind() == TuiLevel.Kind.SYSTEM) {
+                var level = currentSystem.get();
+                if (level != null) {
+                    stack.refresh(level.rows(locale, SystemLevel.sectionOf(lvl.id())));
+                }
+            }
+        }
+
+        private static @Nullable String trimToNull(@Nullable String value) {
+            return value == null || value.isBlank() ? null : value;
         }
 
         private boolean isExplorerLevel() {
@@ -2332,6 +3053,7 @@ public final class OverviewFullScreenApp {
             }
             if (stack.depth() > 1) {
                 stack.back();
+                refreshPoppedLevel();
                 return true;
             }
             // A plan opened by name is the whole view; there is no caller to return to.
