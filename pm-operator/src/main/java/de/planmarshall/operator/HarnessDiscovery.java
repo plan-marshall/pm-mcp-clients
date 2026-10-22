@@ -39,8 +39,8 @@ import de.planmarshall.api.host.HostDetection;
  * <p>
  * The probe reports only facts the operator sees before the enrolment is recorded; it never hands
  * the operator's environment to the probed executable and never stores a harness credential. A
- * profile that declares no version probe (the antigravity profile does not) is enrolled with the
- * version {@value #UNREPORTED_VERSION} instead of running an unsupported flag.
+ * profile that declares no version probe is enrolled with the version {@value #UNREPORTED_VERSION}
+ * instead of running an unsupported flag.
  */
 final class HarnessDiscovery {
 
@@ -127,7 +127,7 @@ final class HarnessDiscovery {
         }
         var probe = HostDetection.host(client).map(HostDetection.Host::versionProbe).orElse(List.of());
         if (probe.size() <= 1) {
-            // the profile declares no version probe (antigravity); record the path and digest only
+            // the profile declares no version probe; record the path and digest only
             var executable = resolveExecutable(client, environment);
             return new Harness(client, executable, UNREPORTED_VERSION, sha256(executable));
         }

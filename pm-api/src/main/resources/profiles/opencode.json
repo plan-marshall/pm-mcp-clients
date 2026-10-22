@@ -47,7 +47,7 @@
       "read_only": { "args": [ "--agent", "plan" ], "tool_set": "enforced" },
       "zero_tool": null
     },
-    "env": { "OPENCODE_CONFIG_CONTENT": "{{agent}}" },
+    "env": { "OPENCODE_CONFIG_CONTENT": "{\"agent\": {{agent}}, \"mcp\": {{mcp_config}}}" },
     "capabilities": [ "result_schema", "usage_fields", "exit_reliable", "extension_isolation" ],
     "output": { "format": "jsonl", "result_pointer": null },
     "usage": {
