@@ -70,7 +70,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Final completion report written (`doc/agy/post-run-remediation-plan-report.md`) and initial plan moved to `doc/agy/implemented/post-run-remediation-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`).
-- [ ] 6. PR opened (no `skip-bot-review`), review window waited, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 6. PR opened (#168, no `skip-bot-review`), review window waited, 100% of bot & Sonar findings resolved via `persona-code-reviewer` (5 CodeRabbit findings fixed in `76f9a08`; 6 SonarCloud findings and the coverage gap fixed in `4b8fbbe`; 3 further SonarCloud findings fixed in `c4b5d0d`; SonarCloud gate green at 83.7% new coverage).
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/post-run-remediation-plan-report.md` by orchestrator session.
 

@@ -123,18 +123,20 @@ All six canonical scenario files (`designer`, `fully-onboarded`, `onboarding`, `
 ./mvnw verify -Ppre-commit
 ...
 [INFO] Reactor Summary for pm-mcp-clients 0.1.0-SNAPSHOT:
-[INFO] pm-mcp-clients ..................................... SUCCESS [  7.749 s]
-[INFO] pm-api ............................................. SUCCESS [01:05 min]
-[INFO] pm-exec ............................................ SUCCESS [  9.565 s]
-[INFO] pm-mock-runtime .................................... SUCCESS [ 46.641 s]
-[INFO] pm-relay ........................................... SUCCESS [ 11.287 s]
-[INFO] pm-operator ........................................ SUCCESS [03:31 min]
-[INFO] pm-web-app ......................................... SUCCESS [ 49.988 s]
-[INFO] pm-web-e2e ......................................... SUCCESS [  6.919 s]
+[INFO] pm-mcp-clients ..................................... SUCCESS [ 10.298 s]
+[INFO] pm-api ............................................. SUCCESS [01:48 min]
+[INFO] pm-exec ............................................ SUCCESS [ 16.831 s]
+[INFO] pm-mock-runtime .................................... SUCCESS [01:16 min]
+[INFO] pm-relay ........................................... SUCCESS [ 17.728 s]
+[INFO] pm-operator ........................................ SUCCESS [04:08 min]
+[INFO] pm-web-app ......................................... SUCCESS [01:16 min]
+[INFO] pm-web-e2e ......................................... SUCCESS [  9.640 s]
 [INFO] BUILD SUCCESS
 ```
 
 The gate covers the OpenRewrite recipes, license headers, Checkstyle, the enforcer rules, Javadoc, the full unit suite, and the `pm-web-e2e` ESLint pass (the new spec is lint-clean).
+
+SonarCloud on PR #168 reports the quality gate **OK**: 0 new issues, 83.7% new-code coverage (threshold 80%), 0% duplicated lines, 100% security hotspots reviewed, and reliability, security, and maintainability ratings of A.
 
 ### 5.1 Notes and deliberate deviations
 
