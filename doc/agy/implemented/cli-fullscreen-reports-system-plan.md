@@ -81,7 +81,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Final completion report written (`doc/agy/cli-fullscreen-reports-system-plan-report.md`) and initial plan moved to `doc/agy/implemented/cli-fullscreen-reports-system-plan.md`. (Do NOT move report to `verified/` — Step 8 is reserved for orchestrator).
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit` for code/config; skipped for standalone documentation).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on worker PRs; reserved for orchestrator docs PRs), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 6. PR opened (#165, no `skip-bot-review`), review window waited, 100% of bot & Sonar findings resolved via `persona-code-reviewer` (8 CodeRabbit findings fixed in `411f9f5`; SonarCloud green).
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-reports-system-plan-report.md` by orchestrator session.
 
@@ -126,5 +126,5 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - [x] **4.1 `ReportsFullScreenTest` & `SystemFullScreenTest` (`VirtualScreenTerminal`)**:
   - Assert `R` opening `ReportsLevel`, grouping by project/epic/plan, `m` single read, `M` mark all shown read, `p`/`e` navigation without marking read, `Enter` opening detail & marking read, `c` opening `CompletionReportLevel`, and live report arrival preserving selection.
   - Assert `S` and `system` opening `SystemLevel`, `w`/`b`/`p` toggles persisted to `overview.json`, `Enter` drill-downs, `a` runtime action menu, 80-col compact mode, and `< 60`-col `too_narrow` snapshot fallback.
-- [ ] **4.2 Pre-Commit & Operational Gate**:
+- [x] **4.2 Pre-Commit & Operational Gate**:
   - Run `./mvnw verify -Ppre-commit` and execute PR/review workflow per [`doc/agy/runbook.md`](runbook.md).

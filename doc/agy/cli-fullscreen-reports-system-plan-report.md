@@ -1,6 +1,6 @@
 # Completion Report: `cli-fullscreen-reports-system` (Full-Screen Reports `R` & System `S` Views in `pm-operator`)
 
-**Status:** Implemented on `feat/cli-fullscreen-reports-system`; pre-commit gate passed; review window and landing follow in Steps 5–7.
+**Status:** Implemented on `feat/cli-fullscreen-reports-system`; PR **#165** open with every CI check, SonarCloud, and the review bots green; awaiting the merge queue (Step 7) and Step 8 verification.
 **Plan:** [`doc/agy/implemented/cli-fullscreen-reports-system-plan.md`](../implemented/cli-fullscreen-reports-system-plan.md)
 **Branch:** `feat/cli-fullscreen-reports-system`
 **Governed by:** [`doc/agy/runbook.md`](../runbook.md)
@@ -142,6 +142,6 @@ All eight actionable findings of the CodeRabbit review were accepted and fixed i
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Final completion report written, initial plan moved to `doc/agy/implemented/cli-fullscreen-reports-system-plan.md`, archive index updated. (Report **not** moved to `verified/` — Step 8 is the orchestrator's.)
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`, whole reactor, `BUILD SUCCESS`).
-- [ ] 6. PR opened (no `skip-bot-review`), review window waited, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 6. PR opened (#165, no `skip-bot-review`), review window waited (two windows), 100% of bot & Sonar findings resolved via `persona-code-reviewer` — 8 CodeRabbit findings fixed in `411f9f5`, SonarCloud quality gate green.
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/cli-fullscreen-reports-system-plan-report.md` by the orchestrator session.
