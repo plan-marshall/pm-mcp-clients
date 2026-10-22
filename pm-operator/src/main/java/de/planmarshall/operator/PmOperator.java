@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -18,9 +19,13 @@ import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.PmVersion;
+import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.tui.TuiLayout;
+import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 /**
  * The operator command line {@code pm-operator}: the verbs a human runs at a terminal.
@@ -66,6 +71,10 @@ public final class PmOperator implements Callable<Integer> {
 
     private final @Nullable OperatorContext context;
 
+    /** Launches the full-screen overview instead of the console. */
+    @Option(names = {"--tui"}, description = "Launch the full-screen overview TUI directly")
+    boolean tui;
+
     /** Supplies the release version to {@code --version}. */
     static final class Version implements CommandLine.IVersionProvider {
         @Override
@@ -88,11 +97,31 @@ public final class PmOperator implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        if (context != null) {
-            context.gate().verify();
-            return new PmConsole(context).run();
+        if (context == null) {
+            return 0;
         }
-        return 0;
+        context.gate().verify();
+        if (tui && runFullScreen()) {
+            return 0;
+        }
+        return new PmConsole(context).run();
+    }
+
+    /**
+     * Opens the overview directly on the terminal when the machine and the terminal allow it.
+     *
+     * @return {@code true} when the full-screen view ran
+     * @throws IOException if the terminal cannot be opened or the view cannot be drawn
+     */
+    private boolean runFullScreen() throws IOException {
+        try (var terminal = context.createTerminal()) {
+            if (!TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+                return false;
+            }
+            var out = new PrintWriter(terminal.writer(), true);
+            new OverviewFullScreenApp(context, terminal, null, null, false).run(out);
+            return true;
+        }
     }
 
     /**

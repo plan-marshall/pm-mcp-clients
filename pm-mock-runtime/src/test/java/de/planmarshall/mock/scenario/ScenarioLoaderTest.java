@@ -365,4 +365,73 @@ class ScenarioLoaderTest {
                 () -> ScenarioLoader.load(json, "closed-codec.json"));
         assertEquals("routes.GET /api/v1/projects.representation", ex.field());
     }
+
+    @Test
+    @DisplayName("rejects a parameterized plan process route the ProcessTree codec refuses")
+    void rejectsMalformedPlanProcessRoute() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/plans/fix-relay/process":{"representation":{"title":"no id"}}},
+                 "states":{"a":{"representation":{}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "plan-process.json"));
+        assertEquals("routes.GET /api/v1/plans/fix-relay/process.representation", ex.field());
+        assertTrue(ex.getMessage().contains("plan_id"), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("rejects a parameterized epic detail route the EpicResource codec refuses")
+    void rejectsMalformedEpicDetailRoute() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/epics/relay-hardening":{"representation":{"epic_id":"relay-hardening"}}},
+                 "states":{"a":{"representation":{}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "epic-detail.json"));
+        assertEquals("routes.GET /api/v1/epics/relay-hardening.representation", ex.field());
+        assertTrue(ex.getMessage().contains("project_id"), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("keeps the generic fallback for a parameterized plan route no codec registers")
+    void acceptsParameterizedRouteWithoutCodec() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/plans/fix-relay/unregistered":{"representation":{"anything":true}}},
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]}}}}
+                """;
+        assertNotNull(ScenarioLoader.load(json, "plan-unregistered.json"));
+    }
+
+    @Test
+    @DisplayName("accepts an error-status plan route whose body is the error, not the resource")
+    void acceptsErrorStatusRoute() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/plans/fix-relay/process":{"status":404,
+                  "representation":{"error":{"code":"not_found"}}}},
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]}}}}
+                """;
+        var scenario = ScenarioLoader.load(json, "plan-error.json");
+        assertEquals(404, scenario.route("GET", "/api/v1/plans/fix-relay/process").status());
+    }
+
+    @Test
+    @DisplayName("rejects a list representation for a recognized plan resource route")
+    void rejectsListRepresentationForRegisteredRoute() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/plans/fix-relay/process":{"representation":[]}},
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "plan-list.json"));
+        assertEquals("routes.GET /api/v1/plans/fix-relay/process.representation", ex.field());
+        assertTrue(ex.getMessage().contains("not a list"), ex.getMessage());
+    }
 }

@@ -153,6 +153,41 @@ class PmConsoleTest {
     }
 
     @Test
+    @DisplayName("tui is an alias of plans and falls back to the status output off a full-screen terminal")
+    void tuiAliasDispatchesToPlans() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[{\"label\":\"local browser\",\"paired_by\":\"open\"}]");
+            } else if ("/api/v1/plans".equals(request.target())) {
+                response.json(200, "[\"plan fix-relay (running)\"]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var inStream = new ByteArrayInputStream("tui\nexit\n".getBytes(StandardCharsets.UTF_8));
+        var outStream = new ByteArrayOutputStream();
+        var context = new OperatorContext(
+                            fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(inStream, outStream),
+                            null
+        );
+
+        int exitCode = new PmConsole(context).run();
+
+        var output = outStream.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertEquals(0, exitCode),
+                            () -> assertTrue(output.contains("plan fix-relay (running)"), output)
+        );
+    }
+
+    @Test
     @DisplayName("empty Enter continues onboarding when setup badge is present")
     void emptyEnterContinuesSetup() throws Exception {
         fixture.start((request, response) -> {
