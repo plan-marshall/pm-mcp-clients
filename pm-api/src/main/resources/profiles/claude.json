@@ -41,7 +41,7 @@
     "update_evidence": { "method": "none", "signer": null },
     "agent_mode": "inline",
     "argv": [ "-p", "{{prompt_file}}", "--model", "{{model}}", "--output-format", "stream-json",
-      "--strict-mcp-config", "--agents", "{{agent}}" ],
+      "--mcp-config", "{{mcp_config}}", "--strict-mcp-config", "--agents", "{{agent}}" ],
     "mcp_config": { "delivery": "slot", "path": null, "exclusive": true },
     "classes": {
       "writer": { "args": [ "--permission-mode", "acceptEdits" ], "tool_set": "enforced" },
@@ -66,7 +66,7 @@
       "kinds": {
         "text": { "match": [ "assistant" ], "text": "/message/content/0/text" },
         "tool_call": { "match": [ "tool_use" ], "tool": "/name",
-          "target": [ "/input/file_path", "/input.command" ] },
+          "target": [ "/input/file_path", "/input/command" ] },
         "tool_result": { "match": [ "user" ], "size": "/size", "is_error": null },
         "file_changed": { "match": [ "file_changed" ], "path": "/path" },
         "turn": { "match": [ "result" ], "stop_reason": null }

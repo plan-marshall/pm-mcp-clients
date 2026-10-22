@@ -71,7 +71,7 @@ class HostDetectionTest {
     void noSessionIdVariable() {
         var environment = env("CLAUDE_CODE_SESSION_ID", "abc", "ANTIGRAVITY_CONVERSATION_ID", "c-1");
 
-        assertTrue(List.of("claude", "opencode", "antigravity", "codex").stream()
+        assertTrue(HostDetection.clientIds().stream().filter(client -> !HostDetection.NEUTRAL.equals(client))
                 .map(client -> HostDetection.host(client).orElseThrow().sessionId(environment))
                 .allMatch(Optional::isEmpty));
     }
