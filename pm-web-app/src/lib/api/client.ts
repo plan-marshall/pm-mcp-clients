@@ -3493,7 +3493,11 @@ export class ApiClient {
     if (!this.eventStreamAbort) {
       this.eventStreamAbort = this.subscribeStream('/api/v1/events', (event, data) => {
         for (const listener of [...this.eventSubscribers]) {
-          listener(event, data);
+          try {
+            listener(event, data);
+          } catch {
+            // One broken listener must not starve the others or look like a stream failure.
+          }
         }
       });
     }

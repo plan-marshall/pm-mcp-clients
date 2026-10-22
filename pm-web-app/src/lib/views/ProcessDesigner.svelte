@@ -81,6 +81,10 @@
   let pendingAction = $state<(() => void) | null>(null);
   let savedAuthor = $state('');
 
+  /** The route project the designer has already adopted, so a later route change reloads it. */
+  let appliedRouteProjectId: string | null = null;
+  let routeProjectSeeded = false;
+
   // Editor and structure
   let textareaElement = $state<HTMLTextAreaElement | null>(null);
   let gutterElement = $state<HTMLDivElement | null>(null);
@@ -155,9 +159,30 @@
       (frontmatter.author === '' || frontmatter.author === 'plan-marshall'),
   );
 
+  // A navigation from one `/designer?project=…` to another keeps this component mounted: follow
+  // the route's project once it changes, through the same leave guard as the project selector.
+  $effect(() => {
+    const next = routeProjectId ?? null;
+    if (next === appliedRouteProjectId) {
+      return;
+    }
+    const seeded = routeProjectSeeded;
+    appliedRouteProjectId = next;
+    routeProjectSeeded = true;
+    if (!seeded || next === null || next === projectId) {
+      return;
+    }
+    guardDraft(() => {
+      projectId = next;
+      void loadAll();
+    });
+  });
+
   onMount(() => {
     // The route seeds the selection; a restored draft overrides it in loadAll.
     projectId = routeProjectId;
+    appliedRouteProjectId = routeProjectId ?? null;
+    routeProjectSeeded = true;
     savedAuthor = readAuthor();
     if (typeof window !== 'undefined' && window.matchMedia) {
       mediaQuery = window.matchMedia('(max-width: 639px)');

@@ -30,7 +30,7 @@ The eight live findings in [`doc/findings-web.txt`](../findings-web.txt) are res
 - `src/lib/components/Button.svelte` — `use:advisory`; `ConnectionStatusBanner.svelte` and its test removed.
 - `src/lib/views/PlanView.svelte` — `Design process` action opening `/designer?project=<id>`; `AppRouter.svelte` and `ProcessDesigner.svelte` accept the preselected project.
 - `src/lib/routes.ts` — designer query path; `routes.test.ts`, `layout.test.ts`, `runtime.test.ts`, `advisoryTitle.test.ts`, `PlanView.test.ts`, `ProcessDesigner.test.ts`, `PairingView.scenarios.test.ts` extended.
-- `vite.config.ts` — network host, allowed host names (DNS name, short name, both `.local` forms), development-only comment.
+- `vite.config.ts` — network host, allowed host names (the `PM_WEB_HOST` name, the DNS name, the short name, and both `.local` forms, plus `PM_WEB_ALLOWED_HOSTS` additions), and a `/mock` proxy bypass that refuses non-loopback clients so the development server's LAN exposure does not expose the mock's unauthenticated control routes.
 - `start.sh` — host resolution order, `primary_ipv4`, printed `Local`/`Network`/`Network (IP)`/`Paired`, and the `/mock/pairing` fallback for a consumed code.
 - `README.md` — phone-reaching section, printed output, name-vs-IP rationale, LAN exposure note, single-use note, header/designer/advisory behavior.
 
@@ -68,7 +68,7 @@ The eight live findings in [`doc/findings-web.txt`](../findings-web.txt) are res
 
 ### Unit, component, and module tests
 
-- `pm-web-app`: `npm test` — **52 files, 434 tests passed**.
+- `pm-web-app`: `npm test` — **52 files, 437 tests passed**.
 - `npm run check` — **0 errors, 0 warnings**; `npm run lint` — clean.
 - `npm run format:check` was checked for the changed files and they are Prettier-clean.
 - `pm-mock-runtime`: `./mvnw -q test -pl pm-mock-runtime -am` — **all tests passed** (415 tests in the reactor for that module's run), including the new secret-persistence, CLI, and `/mock/pairing` tests.
@@ -134,6 +134,10 @@ Recorded against the real launch scripts on this machine:
 - **Vite allows the short name and its `.local` form in addition to `os.hostname()` and `<hostname>.local`.** `os.hostname()` is usually the DNS name, so the plan's two-entry list alone rejected the `Mac-Mini.local` URL that `start.sh` prints. The list is now the union of the DNS name, the short name, and both `.local` forms.
 - **Stable base fallback.** A Unix socket path is limited to 104 bytes; this worktree's `pm-mock-runtime/target/machine/run/runtime.sock` is 119. `start.sh` keeps `target/machine` where it fits and otherwise uses a short stable base under the temp directory, derived from the repository path, so the paired-session guarantee holds in deep worktrees too. The printed `Base` names the directory actually used.
 - **`onOnline` notifies only on a real change.** The first implementation reported online on every successful request, which re-notified the store, restarted the observers, and looped the connection-status reads. It now writes only when `isOffline` is set.
+- **The `/mock` proxy is loopback-only.** Vite is network-bound for the app, but the mock's control routes are unauthenticated development tooling. A proxy `bypass` refuses non-loopback clients with `403`, while `/api` remains reachable; the web app itself never calls `/mock`. Verified with a request through the machine's LAN address.
+- **`PM_WEB_ALLOWED_HOSTS` adds names.** It is merged with the machine's own name forms rather than replacing them, and the `PM_WEB_HOST` name is part of the machine names, so every non-loopback host `start.sh` prints is accepted by Vite.
+- **Advisories follow their source.** The advisory layer remembers the title it generated, so a changed `data-advisory`, `aria-label`, or visible label updates the hover text, while a view-authored `title` is still never overwritten.
+- **A designer route change while mounted reloads the selection.** `/designer?project=A` → `/designer?project=B` follows the same leave guard as the project selector instead of keeping the old project.
 
 ## Workflow Status
 
@@ -141,4 +145,5 @@ Recorded against the real launch scripts on this machine:
 - Step 2 (personas, implementation, tests) — complete.
 - Step 3 (this report, plan archived, dashboard) — complete.
 - Step 4 (pre-commit gate) — `BUILD SUCCESS`; see the OpenRewrite note above.
-- Steps 5–7 (PR, review window, merge queue, cleanup) and Step 8 (post-landing verification) are performed by the orchestrator/worker session after this report.
+- Steps 5–7 (PR, review window, merge queue, cleanup) — PR [#173](https://github.com/plan-marshall/pm-mcp-clients/pull/173) opened; the CodeRabbit review's ten findings were evaluated with the code-reviewer lens and addressed (checklist consistency, dashboard entry, fresh-machine instructions, the allowed-host override, `/mock` LAN exposure, subscriber isolation, advisory updates, designer same-route navigation, and the async header-status test).
+- Step 8 (post-landing verification) is performed by the orchestrator session after the merge.

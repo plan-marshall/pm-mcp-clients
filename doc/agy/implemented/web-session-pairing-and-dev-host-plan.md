@@ -320,7 +320,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - Re-open the same `#code=` URL in the paired browser: it stays in the app.
   - Use the printed fresh code in a second browser/phone and pair it; the consumed code remains refused with the single-use message.
   - Confirm the full-width connection banner is gone, the header badge carries the connection title/mode, the logo opens the start page, hover text appears on header/list/modal actions, and the designer opens from the header and from a plan.
-- [ ] **5.4 Documentation and report**:
+- [x] **5.4 Documentation and report**:
   - Update `pm-web-app/README.md`, `pm-mock-runtime/README.adoc`, and the root `README.md` with the final output, the single-use/fresh-code explanation, and the new header/designer/advisory behavior.
   - Write `doc/agy/web-session-pairing-and-dev-host-plan-report.md` with the eight findings, their root causes, delivered artifacts, test evidence, and the manual phone/session/chrome checks.
   - Mark the plan done in [`doc/agy/README.md`](README.md) when archiving, and move it to `doc/agy/implemented/`.

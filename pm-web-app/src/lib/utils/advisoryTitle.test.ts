@@ -74,6 +74,40 @@ describe('the advisory title layer', () => {
     expect(button.getAttribute('title')).toBe('Keep my words');
   });
 
+  it('follows a changed advisory and aria-label', () => {
+    const button = document.createElement('button');
+    button.textContent = 'Save';
+    button.setAttribute('data-advisory', 'Save the plan');
+    advisory(button);
+    expect(button.getAttribute('title')).toBe('Save the plan');
+
+    button.setAttribute('data-advisory', 'Save the draft');
+    advisory(button);
+    expect(button.getAttribute('title')).toBe('Save the draft');
+
+    button.removeAttribute('data-advisory');
+    button.setAttribute('aria-label', 'Save now');
+    advisory(button);
+    expect(button.getAttribute('title')).toBe('Save now');
+  });
+
+  it('follows a changed visible label', async () => {
+    const root = document.createElement('main');
+    document.body.appendChild(root);
+    stop = installAdvisoryTitles(root);
+
+    const button = document.createElement('button');
+    button.textContent = 'Delete';
+    root.appendChild(button);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(button.getAttribute('title')).toBe('Delete');
+
+    // A text node that changes in place is followed through characterData.
+    (button.firstChild as CharacterData).data = 'Archive';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(button.getAttribute('title')).toBe('Archive');
+  });
+
   it('applies the rule to buttons rendered after it was installed', async () => {
     const root = document.createElement('main');
     document.body.appendChild(root);

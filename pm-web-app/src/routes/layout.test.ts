@@ -49,7 +49,9 @@ describe('the app shell', () => {
     await screen.findByTestId('header-machine');
     const badge = screen.getByTestId('header-machine');
     expect(badge).toHaveAttribute('data-connection-mode', 'loopback');
-    expect(badge).toHaveAttribute('title', expect.stringContaining('2 paired devices'));
+    await waitFor(() =>
+      expect(badge).toHaveAttribute('title', expect.stringContaining('2 paired devices')),
+    );
     expect(screen.queryByTestId('connection-status-banner')).not.toBeInTheDocument();
   });
 

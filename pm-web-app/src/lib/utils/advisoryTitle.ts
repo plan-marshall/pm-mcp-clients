@@ -11,6 +11,15 @@
 const ADVISORY_ATTRIBUTE = 'data-advisory';
 
 /**
+ * The title this layer wrote on each button.
+ *
+ * A title that differs from this value was authored by the view and is never overwritten. Keeping
+ * the value also lets a changed `data-advisory`, `aria-label`, or visible label update the hover
+ * text instead of freezing the first title.
+ */
+const generatedTitles = new WeakMap<HTMLElement, string>();
+
+/**
  * @param node the button
  * @returns the trimmed visible label, or an empty string for an icon-only control
  */
@@ -39,20 +48,31 @@ function titleFor(node: HTMLElement, explicit?: string): string {
 }
 
 /**
- * Sets the title of a button unless the button already carries one.
+ * Sets the title of a button unless the view authored one.
  *
  * @param node the button
  * @param explicit the words the view chose for it, e.g. a catalogue hint
  */
 function applyAdvisory(node: HTMLElement, explicit?: string): void {
-  const existing = node.getAttribute('title')?.trim();
-  if (existing) {
+  const current = node.getAttribute('title')?.trim() ?? '';
+  const generated = generatedTitles.get(node);
+  if (current && current !== generated) {
+    // The view supplied its own title: it keeps it.
+    generatedTitles.delete(node);
     return;
   }
   const title = titleFor(node, explicit);
-  if (title) {
+  if (!title) {
+    if (current) {
+      node.removeAttribute('title');
+    }
+    generatedTitles.delete(node);
+    return;
+  }
+  if (title !== current) {
     node.setAttribute('title', title);
   }
+  generatedTitles.set(node, title);
 }
 
 /**
@@ -96,6 +116,14 @@ export function installAdvisoryTitles(root: ParentNode = document): () => void {
 
   const observer = new MutationObserver((records) => {
     for (const record of records) {
+      if (record.type === 'characterData') {
+        // A label whose text changed keeps its advisory in step with it.
+        const button = record.target.parentElement?.closest('button');
+        if (button) {
+          visit(button);
+        }
+        continue;
+      }
       if (record.type === 'attributes') {
         visit(record.target as Element);
         continue;
@@ -103,6 +131,11 @@ export function installAdvisoryTitles(root: ParentNode = document): () => void {
       record.addedNodes.forEach((added) => {
         if (added.nodeType === Node.ELEMENT_NODE) {
           visitTree(added as Element);
+        } else if (added.nodeType === Node.TEXT_NODE) {
+          const button = added.parentElement?.closest('button');
+          if (button) {
+            visit(button);
+          }
         }
       });
     }
@@ -110,6 +143,7 @@ export function installAdvisoryTitles(root: ParentNode = document): () => void {
   observer.observe(root as Node, {
     childList: true,
     subtree: true,
+    characterData: true,
     attributes: true,
     attributeFilter: ['aria-label', ADVISORY_ATTRIBUTE, 'title'],
   });
