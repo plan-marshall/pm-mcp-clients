@@ -83,7 +83,7 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 
 ### Stream D: Web Session, Pairing & Dev Host Remediation (`pm-web-app` / `pm-mock-runtime`)
 1. **Active (Staged)**: [`web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md)
-   *(Session persistence across mock restarts; authenticated-only `401` handling; system-name Vite/start-script host for phone access; already-paired code probe; fresh-code control endpoint and second-device pairing; single-use pairing copy)*
+   *(Session persistence across mock restarts; authenticated-only `401` handling; system-name Vite/start-script host for phone access; already-paired code probe; fresh-code control endpoint and second-device pairing; single-use pairing copy; redundant-banner removal, clickable brand, action hover advisories, and discoverable process designer)*
 
 ---
 

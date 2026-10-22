@@ -1,10 +1,12 @@
-# Implementation Plan: `web-session-pairing-and-dev-host` (Keep Web Sessions Alive, Reach the Dev App from a Phone, and Make Single-Use Pairing Codes Understandable)
+# Implementation Plan: `web-session-pairing-and-dev-host` (Keep Web Sessions Alive, Reach the Dev App from a Phone, Make Single-Use Pairing Codes Understandable, and Close the Web Chrome, Navigation & Action-Advisory Gaps)
 
-This implementation plan resolves the four live findings recorded in [`doc/findings-web.txt`](../findings-web.txt) for the browser client (`pm-web-app`), the mock runtime (`pm-mock-runtime`), and the development launch scripts.
+This implementation plan resolves the eight live findings recorded in [`doc/findings-web.txt`](../findings-web.txt) for the browser client (`pm-web-app`), the mock runtime (`pm-mock-runtime`), and the development launch scripts.
 
-The findings are not four independent bugs. Finding 1 has two root causes: the mock runtime generates a fresh device secret on every start, and the browser treats every `401` as a revocation. Findings 3 and 4 share one root cause: a pairing code is single use by contract, while the web-only development loop never issues or shows the next code. Finding 2 is an independent development-host defect.
+The first four findings are not independent bugs. Finding 1 has two root causes: the mock runtime generates a fresh device secret on every start, and the browser treats every `401` as a revocation. Findings 3 and 4 share one root cause: a pairing code is single use by contract, while the web-only development loop never issues or shows the next code. Finding 2 is an independent development-host defect.
 
-The single-use rule of [`03-web-server.adoc#web-pairing`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing) is load-bearing security and is **not** changed by this plan. What changes is the surrounding development experience: sessions survive a mock restart, a phone reaches the Vite development server by the machine's real name, a paired browser never re-redeems a code, and a second device can always obtain a fresh one.
+The four additional findings are web-chrome and discoverability gaps: a full-width connection banner duplicates the header, the brand/logo is inert, action buttons carry no hover advisory, and the process designer has no visible entry point from the app shell or a plan. They are independent of the session/pairing work but share the same web-app shell and catalogue surfaces.
+
+The single-use rule of [`03-web-server.adoc#web-pairing`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing) is load-bearing security and is **not** changed by this plan. What changes is the surrounding development experience: sessions survive a mock restart, a phone reaches the Vite development server by the machine's real name, a paired browser never re-redeems a code, a second device can always obtain a fresh one, the shell carries only the status that is not already in the header, and every action is discoverable and explains itself on hover.
 
 It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
 
@@ -14,8 +16,8 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Findings Source** | [`doc/findings-web.txt`](../findings-web.txt) (all four findings are planned here; the finding list is emptied on plan creation) |
-| **Use Cases** | [`UC-ENT-1`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ENT-2`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2) (Manage Paired Devices), [`UC-ONB-3`](../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3) (Languages and Message Catalogue) |
+| **Findings Source** | [`doc/findings-web.txt`](../findings-web.txt) (all eight findings are planned here; the finding list is emptied when the plan is updated) |
+| **Use Cases** | [`UC-ENT-1`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ENT-2`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2) (Manage Paired Devices), [`UC-ONB-3`](../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3) (Languages and Message Catalogue), [`UC-PLN-1`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-PLN-3`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3) (Design a Plan's Process), [`UC-PLN-4`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs, Across Projects) |
 | **Specifications** | [`03-web-server.adoc#web-pairing`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing), [`#fresh-code`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code), [`#devices`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices), [`#two-listeners`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners), [`#web-listener`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-listener) |
 | **Local Client Design** | [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc), [`doc/design/terminal-client/05-transcripts-entry.adoc`](../design/terminal-client/05-transcripts-entry.adoc) |
 | **Roadmap Packages** | [`entry-contract.adoc`](../plans/implemented/entry-contract.adoc), [`web-app-foundation.adoc`](../plans/implemented/web-app-foundation.adoc) (delivered) |
@@ -31,6 +33,10 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | **2** | *The host (from the start-script) says localhost, so it can not be tested with a phone. Always use the actual system name as a host: Consider what works best here: ip vs. name* | `vite.config.ts` sets no `server.host`, so Vite binds loopback only. `pm-web-app/start.sh` and `MockRuntimeCli` print `localhost` URLs. `start.sh` has no notion of a reachable machine name, and Vite's host check would reject an unknown system name. | Bind Vite to all interfaces for development, allow the machine's real host names, resolve the best host (system name first, IP fallback) in `start.sh`, print `Local` and `Network`/`Paired` URLs, and update the mock CLI and READMEs. |
 | **3** | *When I call http://localhost:5173/pair#code=KXQB-MRTN again, the code is not accepted a second time, why? No more valid?* | The code is single use by specification, and `MockRuntimeEngine.handlePairing` sets `currentPairingCode = null` after redemption (`03-web-server.adoc#web-pairing`). `runtime.ts#checkUrlHashForCode` redeems **before** checking `isPaired()`, so an already paired browser re-redeems a consumed code. The mock issues the next code only when the terminal client calls `POST /api/v1/web/pairings`; the web-only development loop has no terminal client, and `/mock/state` correctly reports an empty code after redemption, so `start.sh` prints no replacement. | Probe an existing valid pairing before redeeming (spec `#Redeem`: a paired browser does not redeem); add a mock control endpoint that returns the open code or issues a fresh one; make `start.sh` use it and print the replacement; state the single-use rule in the pairing error copy. |
 | **4** | *A second connection using http://localhost:5173/pair#code=KXQB-MRTN does not work at all, blaming an invalid code. An issue of the mock system or a general failure?* | Same single-use rule as finding 3, plus no fresh code is surfaced in the web-only loop. On a phone/system-name URL the unpaired pairing page's authenticated status probe also returns `401`, and the browser is shown as revoked rather than as an invalid code. | Same fresh-code mechanism as finding 3, the unauthenticated-probe guard of finding 1, a second-browser Playwright test, and documentation that a second device needs a **fresh** code (never the consumed one). |
+| **5** | *There is a banner saying the same like the header bar: connected to mock... What is the benefit?* | `+layout.svelte` renders `ConnectionStatusBanner` under the header for every paired browser. It repeats the header's machine identity with `Connected over loopback` / `Connected over the network`, a detail sentence, and a device count, consuming a full-width row for status that is either already implied by a usable app or available in Settings → Paired devices. The only non-redundant facts are the listener mode (loopback vs. network) and the paired-device count. | Remove the full-width banner. Move the listener mode and device count into the existing header machine badge as a `title` plus a mode marker, keeping the LAN-off view and `listener.changed` handling. Update the component test and catalogue copy. |
+| **6** | *Clicking on the logo on the upper left does nothing. Should link to the start page* | The `.app-header__brand` is a plain `div` with a `span` logo and a `span` title; it has no click handler, link, or route. | Render the brand as a button/link that opens the operator's start page: the remembered start route when one is set, otherwise the default landing route (overview while work runs, projects otherwise). Give it an `aria-label` and a `title`; keep it inert while unpaired. Add the catalogue keys and tests. |
+| **7** | *Actions, like button: Must all provide an advisory text that will be shown as hover (title attribute should be enough here)* | Only a handful of buttons set `title` (disabled reasons, the file picker, some source badges). The shared `Button.svelte` and the many native `<button>` elements carry no hover advisory; icon-only controls (theme, language, logo, favourite/star, list actions, modal closes) have no explanation at all. | Add a shared advisory layer: a Svelte action for `Button.svelte` plus an `installAdvisoryTitles()` observer for native buttons, filling `title` from an explicit `data-advisory`, an existing `title`/`aria-label`, or the visible label. Add specific hints for icon-only or ambiguous actions, catalogue keys in EN and DE, and source plus rendered tests that every action has a non-empty title. |
+| **8** | *Where is the designer for plans? I cannot see / access them* | The `/designer` route and `ProcessDesigner` exist and work, but the only entry is a button inside `MachineSettingsView`. The header has no Designer action (the catalogue key `web.frame.nav.designer` is unused), and a plan view offers no route to design the plan's process. | Add a `Process Designer` header action visible while paired, and a `Design process` action in the plan header that opens `/designer` with the plan's project preselected. Carry the project in the designer route (`/designer?project=<id>`) so reload and bookmarks keep it. Add tests for the header, the plan action, and the preselection. |
 
 > [!NOTE]
 > The single-use rule and the bounded failed-redemption rule are security properties of the runtime, not defects. The defect is that the mock/development loop did not expose the replacement code and that the app re-redeemed from an already paired browser.
@@ -80,12 +86,31 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 4. **Verify a second device**:
    - A Playwright test pairs one browser, verifies a second browser is refused the consumed code with the clear message, obtains a fresh code from `/mock/pairing`, and pairs the second browser successfully.
 
+### Part D: Close the Web Chrome, Navigation & Action-Advisory Gaps
+
+1. **Remove the redundant connection banner**:
+   - Stop rendering the full-width `ConnectionStatusBanner` under the header. Move its two genuinely useful facts — listener mode (loopback vs. network) and paired-device count — into the existing header machine badge's `title` (and a `data-connection-mode` marker for styling). Keep the LAN-off view and `listener.changed` handling untouched.
+   - Delete the banner markup/CSS and its component test; cover the header badge instead.
+2. **Make the brand/logo open the start page**:
+   - Turn `.app-header__brand` into a button/link. It opens the operator's remembered start route when one is set, otherwise the default landing route (overview while work runs, projects otherwise). It is inert while unpaired.
+   - Give it a catalogue-driven `aria-label` and `title`; add the keys in EN and DE and test the navigation.
+3. **Give every action a hover advisory**:
+   - Add a shared advisory layer: a Svelte action for `Button.svelte` and an `installAdvisoryTitles()` observer for native `<button>` elements. `title` comes from an explicit `data-advisory`, an existing `title`/`aria-label`, or the visible label; it never overwrites an explicit title.
+   - Add explicit hints for icon-only or ambiguous controls (theme, language, logo, favourite/star, list actions, modal closes) through catalogue keys in EN and DE.
+   - Add a source guard for glyph-only buttons (no readable text) that lack `title`, `aria-label`, or `data-advisory`, and a rendered test that actions in the main shell and list views expose a non-empty `title` after the observer runs.
+4. **Make the process designer discoverable**:
+   - Add a `Process Designer` header action visible while paired, using the existing `web.frame.nav.designer` catalogue key.
+   - Add a `Design process` action to the plan header that opens the designer with the plan's project preselected.
+   - Carry the selection in the designer route (`/designer?project=<id>`), so reload, bookmark, and the browser's back keep it. Update `routes.ts`, `runtime.ts`, `AppRouter.svelte`, and `ProcessDesigner.svelte`.
+   - Keep the existing machine-settings entry; the header and plan actions are additional, not replacements.
+
 ### Non-Goals (Explicitly Out of Scope)
 
 - Changing the single-use pairing contract, the failed-redemption limit, or the device-secret format.
 - Adding TLS, OAuth, or a LAN listener to the Vite development server.
 - Changing the real runtime's `web.enabled`/`web.lan` listener configuration.
-- Reworking the general connection banner or unrelated views.
+- Redesigning the views, the navigation model, or the visual language beyond the four chrome/navigation/advisory findings above.
+- Turning every button label into a bespoke help sentence; the advisory layer uses the visible label as the fallback and specific hints only where the label alone is ambiguous.
 
 ---
 
@@ -101,18 +126,30 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - `pm-web-app/src/lib/api/client.ts` and `client.test.ts`
   - `pm-web-app/src/lib/stores/runtime.ts` and a new `runtime.test.ts`
   - `pm-web-app/src/lib/views/PairingView.svelte` and `PairingView.scenarios.test.ts`
-  - `pm-web-app/src/lib/components/ConnectionStatusBanner.svelte` (only if the shared-stream contract requires it)
+  - `pm-web-app/src/routes/+layout.svelte`
+  - `pm-web-app/src/lib/components/ConnectionStatusBanner.svelte` and its test (removed or folded into the header badge)
+  - `pm-web-app/src/lib/components/Button.svelte`
+  - `pm-web-app/src/lib/utils/advisoryTitle.ts` and its test (new)
+  - `pm-web-app/src/lib/views/PlanView.svelte` and `PlanView.test.ts`
+  - `pm-web-app/src/lib/views/ProcessDesigner.svelte` and `ProcessDesigner.test.ts`
+  - `pm-web-app/src/lib/views/AppRouter.svelte`
+  - `pm-web-app/src/lib/routes.ts` and `routes.test.ts`
   - `pm-web-app/vite.config.ts`, `pm-web-app/start.sh`, `pm-web-app/README.md`
   - `pm-mock-runtime/src/main/java/de/planmarshall/mock/MockRuntime.java`, `MockRuntimeConfig.java`
   - `pm-mock-runtime/src/main/java/de/planmarshall/mock/cli/MockRuntimeCli.java`
   - `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` (only the `/mock/pairing` control route)
   - `pm-mock-runtime/start.sh`, `pm-mock-runtime/README.adoc`
   - `pm-api/src/main/resources/messages/pairing.en.properties`, `pairing.de.properties`
+  - `pm-api/src/main/resources/messages/common.en.properties`, `common.de.properties` (home/advisory/designer hints)
+  - `pm-api/src/main/resources/messages/entry.en.properties`, `entry.de.properties` (header status title)
+  - `pm-api/src/main/resources/messages/designer.en.properties`, `designer.de.properties` (plan-view entry hints)
+  - the owning area catalogue (`overview`, `projects`, `reports`, `decisions`, `system`) for each new action hint
   - `pm-mock-runtime/src/test/java/de/planmarshall/mock/MockRuntimeTest.java`, `MockRuntimeCliTest.java`, `runtime/MockRuntimeEngineTest.java`
-  - `pm-web-e2e/tests/pairing.spec.js`
+  - `pm-web-app/src/lib/i18n/catalogue.test.ts`
+  - `pm-web-e2e/tests/pairing.spec.js` and a new browser test for the logo, designer, and action advisories
   - `README.md` and [`doc/agy/README.md`](README.md)
 - **No Touch**:
-  - Other web views (`OverviewView`, `ReportsView`, `SystemView`, `ProcessDesigner`, etc.) except a test mock if a shared component changes.
+  - Other web views (`OverviewView`, `ReportsView`, `SystemView`, `ProjectExplorerView`, etc.) except a test mock if a shared component changes.
   - `pm-operator` production verbs and the real runtime's pairing implementation.
   - Scenario JSON fixtures (the new code works with the existing `pairing_code` and `device.paired` contract).
   - `doc/plans/` (no new roadmap package is needed).
@@ -123,7 +160,8 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 - [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` on branch `fix/web-session-pairing-and-dev-host` off latest `main`; Step 1 committed and pushed.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
-  - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the web session, pairing, and Vite changes.
+  - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the web session, pairing, navigation, advisory layer, and Vite changes.
+  - `pm-dev-frontend:css` for the header badge, banner removal, and hover/focus styling.
   - `plan-marshall-persona-security-expert` & `pm-dev-java:java-security` for the mock device-secret store, atomic `0600` publication, and the unauthenticated-probe boundary.
   - `plan-marshall-persona-module-tester` & `pm-dev-java:junit-core` for the mock-runtime tests.
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for Vitest and Playwright coverage.
@@ -145,8 +183,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | **Phase 1: Session Persistence** | `plan-marshall-persona-implementer` | `pm-dev-java:java-security`<br>`pm-dev-frontend:javascript` | Atomic `0600` secret store, stable base, authenticated-only `401` handling, pre-pairing guard, one event stream, offline recovery. |
 | **Phase 2: Reachable Dev Host** | `plan-marshall-persona-implementer` | `pm-dev-frontend:javascript`<br>`plan-marshall-persona-documenter` | Vite network binding, `allowedHosts`, host resolution order, printed URLs, README accuracy. |
 | **Phase 3: Pairing Lifecycle & UX** | `plan-marshall-persona-implementer` | `pm-dev-frontend:javascript`<br>`plan-marshall-persona-security-expert` | Already-paired probe, mock control endpoint, fresh-code display, single-use copy, second-device behavior. |
-| **Phase 4: Unit, Java & E2E Verification** | `plan-marshall-persona-module-tester` | `pm-dev-java:junit-core`<br>`pm-dev-frontend:jest-testing` | Secret persistence tests, `401` matrix tests, Vitest pairing tests, two-browser Playwright test. |
-| **Phase 5: Review Gate** | `plan-marshall-persona-code-reviewer` | `plan-marshall-ref-code-quality` | Adversarial review of the security boundary, the single-use contract, and the dev-only network exposure. |
+| **Phase 4: Web Chrome, Navigation & Action Advisories** | `plan-marshall-persona-implementer` | `pm-dev-frontend:javascript`<br>`pm-dev-frontend:css` | Banner removal and header status, clickable brand, shared advisory layer, designer header/plan entry, route-carried project. |
+| **Phase 5: Unit, Java & E2E Verification** | `plan-marshall-persona-module-tester` | `pm-dev-java:junit-core`<br>`pm-dev-frontend:jest-testing` | Secret persistence tests, `401` matrix tests, Vitest pairing/chrome tests, two-browser and navigation Playwright tests. |
+| **Phase 6: Review Gate** | `plan-marshall-persona-code-reviewer` | `plan-marshall-ref-code-quality` | Adversarial review of the security boundary, the single-use contract, the dev-only network exposure, and the global advisory mechanism. |
 
 ---
 
@@ -234,22 +273,56 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     3. **Second browser, fresh code**: `POST /mock/pairing` for a fresh code, pair the second context, and assert the app header/machine line appears.
   - Keep the existing scenario reset in `beforeEach` so the initial code is deterministic.
 
-### Phase 4: Verification & Archival
+### Phase 4: Close the Web Chrome, Navigation & Action-Advisory Gaps
 
-- [ ] **4.1 Targeted tests**:
+- [ ] **4.1 Remove the redundant connection banner and move its two useful facts into the header**:
+  - Remove `<ConnectionStatusBanner />` from `pm-web-app/src/routes/+layout.svelte` and delete the full-width banner markup/CSS (or reduce the component to a headless status helper). Keep the status loading, the 30-second heartbeat, and the `listener.changed` / `device.paired` / `device.revoked` subscriptions.
+  - Render the listener mode and paired-device count in the existing `.app-header__machine` badge: `title` carries the `entry.connection.loopback.detail` / `entry.connection.lan.detail` text plus `entry.connection.devices`, and `data-connection-mode="loopback|lan"` drives a small colour marker. The header remains the only always-on status row.
+  - Keep the LAN-off route/view and the listener-closed handling unchanged.
+  - Tests: replace `ConnectionStatusBanner.test.ts` with a header-status test that asserts the title and mode; update any scenario/E2E expectation that looked for `connection-status-banner`.
+- [ ] **4.2 Make the brand/logo open the start page**:
+  - In `+layout.svelte`, turn `.app-header__brand` into a `<button type="button">` (or an anchor that calls the same handler) with `aria-label` and `title` from the catalogue. Add `web.frame.home` and `web.frame.home.hint` in EN and DE.
+  - The handler opens the operator's start page: `rememberedStartRoute()` when set, otherwise the default landing route (`overview` while work runs or waits, `projects` otherwise). Use the existing `landingRoute`/`hasWork` logic rather than a new rule.
+  - Keep the brand non-interactive while the browser is unpaired (pairing, onboarding, revoked, listener-off) and when it would land on the route already shown.
+  - Tests: a layout test asserts a paired brand click navigates to the remembered/default route; an unpaired brand exposes no action.
+- [ ] **4.3 Give every action a hover advisory**:
+  - Add `pm-web-app/src/lib/utils/advisoryTitle.ts` with:
+    - `advisory(node, text?)`: sets `title` from the explicit text, else an existing `title`, else `aria-label`, else the trimmed visible label; never overwrites an explicit `title`.
+    - `installAdvisoryTitles(root = document)`: a `MutationObserver` that applies the same rule to every current and future `<button>` and disconnects cleanly.
+  - Use `use:advisory` in `Button.svelte` so shared buttons are covered immediately; call `installAdvisoryTitles()` from `+layout.svelte` on mount and disconnect on destroy so native buttons and later-rendered views are covered.
+  - Add `data-advisory={$t('...')}` to icon-only or ambiguous controls: header theme/language, the brand, favourite/star toggles, list-row actions, modal close buttons, and any glyph-only control. Use visible labels as the fallback everywhere else.
+  - Add the new hint keys to the EN and DE catalogues (common/overview/designer areas as appropriate) and to `catalogue.test.ts`.
+  - Tests: `advisoryTitle.test.ts` covers explicit text, `aria-label`, visible-label fallback, no-overwrite, and dynamic insertion; a source guard fails any glyph-only button (no readable text) that lacks `aria-label`, `data-advisory`, or `title`; rendered tests for the shell and the main list views assert every button has a non-empty `title` after the observer runs.
+- [ ] **4.4 Make the process designer discoverable**:
+  - Add a `Process Designer` header action in `+layout.svelte`, visible while paired, using `web.frame.nav.designer`, with `aria-label`/`title`. It calls `navigateTo('designer')`.
+  - Add a `Design process` action to `PlanView.svelte`'s header actions. It calls `navigateTo('designer', { projectId: plan.project.project_id })`.
+  - Extend the designer route: `pathForRoute('designer', { projectId })` returns `/designer?project=<id>`; `adoptRouteFromLocation` reads the `project` query for the designer; `runtimeStore` carries `designerProjectId`; `AppRouter.svelte` passes it to `ProcessDesigner.svelte` as a prop; the designer uses it as the initial `projectId` when no draft overrides it.
+  - Keep the existing `MachineSettingsView` designer button. Add `designer.plan.open` / `designer.plan.hint` catalogue keys in EN and DE.
+  - Tests: `routes.test.ts` covers the designer query; `PlanView.test.ts` asserts the action navigates with the plan's project; `ProcessDesigner.test.ts` asserts the preselected project; a Playwright test opens the designer from the header and from a plan and survives a reload.
+- [ ] **4.5 Browser-level verification for the chrome findings**:
+  - Add a Playwright spec (or extend the existing overview/navigation spec) that asserts:
+    1. The full-width connection banner is gone and the header machine badge carries the connection title/mode.
+    2. The brand click reaches the start page.
+    3. Header, list, and modal actions expose a non-empty `title` on hover.
+    4. The header `Process Designer` action and the plan `Design process` action open `/designer` (with `?project=` from a plan).
+
+### Phase 5: Verification & Archival
+
+- [ ] **5.1 Targeted tests**:
   - `./mvnw -q test -pl pm-mock-runtime -am` (secret persistence, CLI URL, control endpoint, existing entry/pairing tests).
-  - `cd pm-web-app && npm test` (client `401` matrix, shared stream, `checkUrlHashForCode`, pairing view, catalogue guard).
-  - `cd pm-web-e2e && npx playwright test tests/pairing.spec.js` (already-paired re-open, second browser, fresh code).
-- [ ] **4.2 Full pre-commit gate**:
+  - `cd pm-web-app && npm test` (client `401` matrix, shared stream, `checkUrlHashForCode`, pairing view, advisory layer, chrome/navigation, catalogue guard).
+  - `cd pm-web-e2e && npx playwright test tests/pairing.spec.js` (already-paired re-open, second browser, fresh code) plus the chrome/navigation spec (banner, brand, advisories, designer).
+- [ ] **5.2 Full pre-commit gate**:
   - `./mvnw verify -Ppre-commit` with `BUILD SUCCESS` and a clean `git status`.
-- [ ] **4.3 Manual evidence for the findings**:
+- [ ] **5.3 Manual evidence for the findings**:
   - Pair in a browser, stop `pm-mock-runtime`, start it again via `pm-mock-runtime/start.sh`, reload the browser: the session remains paired (no revoked page).
   - Run `pm-web-app/start.sh` and open the printed `Network`/`Paired` URL from a phone on the same network; pair and reach the start view.
   - Re-open the same `#code=` URL in the paired browser: it stays in the app.
   - Use the printed fresh code in a second browser/phone and pair it; the consumed code remains refused with the single-use message.
-- [ ] **4.4 Documentation and report**:
-  - Update `pm-web-app/README.md`, `pm-mock-runtime/README.adoc`, and the root `README.md` with the final output and the single-use/fresh-code explanation.
-  - Write `doc/agy/web-session-pairing-and-dev-host-plan-report.md` with the four findings, their root causes, delivered artifacts, test evidence, and the manual phone/session checks.
+  - Confirm the full-width connection banner is gone, the header badge carries the connection title/mode, the logo opens the start page, hover text appears on header/list/modal actions, and the designer opens from the header and from a plan.
+- [ ] **5.4 Documentation and report**:
+  - Update `pm-web-app/README.md`, `pm-mock-runtime/README.adoc`, and the root `README.md` with the final output, the single-use/fresh-code explanation, and the new header/designer/advisory behavior.
+  - Write `doc/agy/web-session-pairing-and-dev-host-plan-report.md` with the eight findings, their root causes, delivered artifacts, test evidence, and the manual phone/session/chrome checks.
   - Mark the plan done in [`doc/agy/README.md`](README.md) when archiving, and move it to `doc/agy/implemented/`.
 
 ---
@@ -265,6 +338,10 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | **3. Code re-use** | Re-opening the `#code=` URL in the already paired browser never re-redeems; the browser stays in the app. | `runtime.test.ts` + Playwright "already paired re-open". |
 | **3. Code re-use** | After a redemption, `start.sh` prints a fresh code; the consumed code remains refused with a single-use message. | `MockRuntimeEngineTest` control endpoint test + Playwright consumed-code test. |
 | **4. Second connection** | A second browser with the consumed code sees the single-use explanation, and pairs successfully with the fresh code from `start.sh`/`POST /mock/pairing`. | Playwright two-browser test + manual phone check. |
+| **5. Banner duplication** | The full-width connection banner is gone; the header machine badge carries the listener mode and paired-device count as a `title` and mode marker, and the LAN-off view still works. | Header status test + Playwright chrome check. |
+| **6. Inert logo** | Clicking the brand opens the operator's start page (remembered or default landing) and does nothing while unpaired. | Layout test + Playwright brand check. |
+| **7. Missing hover advisories** | Every action button exposes a non-empty `title` on hover; icon-only/glyph-only controls carry a meaningful hint; the source guard rejects a glyph-only button without one. | `advisoryTitle.test.ts` + source guard + rendered/Playwright checks. |
+| **8. Hidden designer** | The header offers `Process Designer`, a plan offers `Design process`, and both open `/designer` with the plan's project preselected and carried in the URL. | `routes.test.ts` + `PlanView.test.ts` + `ProcessDesigner.test.ts` + Playwright designer check. |
 
 ---
 
@@ -275,3 +352,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - **Single-use contract**: the plan does not relax the single-use rule. A reviewer must reject any change that makes a consumed code redeemable again; the correct recovery is always a fresh code.
 - **Already-paired probe**: the probe adds one authenticated `GET /api/v1/status` before normal startup when the URL carries a code. It must not consume the code and must not fail startup when the runtime is offline; the fragment is kept for a later retry.
 - **Fingerprint before pairing**: the unpaired pairing page no longer calls the authenticated `GET /api/v1/status/connection`, because a `401` there was the phone's spurious revocation path. On the real LAN listener the browser's certificate warning carries the fingerprint before pairing; an unauthenticated fingerprint read on the pairing page would need a specification change and is a follow-up, not a regression introduced silently here.
+- **Banner removal**: the only facts that leave the always-on shell are the listener mode and the paired-device count; both remain in the header badge's `title`. The LAN-off view and the listener-closed route are unchanged, so a loss of network access still has its dedicated page.
+- **Global advisory observer**: the observer must never overwrite an explicit `title`, must prefer `data-advisory` and `aria-label` over visible text, and must disconnect on destroy. It is a safety net, not a replacement for meaningful hints on icon-only controls.
+- **Designer route**: `/designer?project=<id>` must be readable on reload and through the browser's back. The project is a UI selection, not a new authorization scope; the existing device secret remains the only access control.
+- **Brand navigation**: the brand click must not push a duplicate history entry when it targets the route already shown, and must stay inert while unpaired or in the revoked/listener-off states.
