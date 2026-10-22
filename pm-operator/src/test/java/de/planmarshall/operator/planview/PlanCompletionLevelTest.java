@@ -40,6 +40,15 @@ class PlanCompletionLevelTest {
                           "ended_at": "2026-10-18T12:00:00Z",
                           "deliverables": [{"name": "transport", "state": "done"}],
                           "decision_records": [{"id": "Q-1", "question": "Keep v1?", "by": "operator"}],
+                           "own_calls": [
+                             {"kind": "shortcut", "description": "reuse the SSE adapter",
+                              "limit": "single subscriber", "ends_when": "a second subscriber connects",
+                              "judgment": "conflicts", "conflict_target": "the transport test"},
+                             {"kind": "design", "description": "the relay writes the cursor",
+                              "judgment": "consistent"}
+                           ],
+                           "change_map": {"diagram": "relay -> cursor\\n  +--> sse",
+                                          "state": "partial", "cause": "the vendored tree is not tracked"},
                           "token_usage": {"total_tokens": 412000, "input_tokens": 380000,
                                           "output_tokens": 32000, "tasks_measured": 15, "tasks_total": 17}
                         }
@@ -67,6 +76,29 @@ class PlanCompletionLevelTest {
         assertTrue(text.contains("2 / 17"), text);
     }
 
+    @Test
+    @DisplayName("the report names the plan's own calls and its change map as delivered")
+    void ownCallsAndChangeMap() throws Exception {
+        var text = text();
+
+        assertAll(
+                            () -> assertTrue(text.contains("Own calls"), text),
+                            () -> assertTrue(text.contains("shortcut"), text),
+                            () -> assertTrue(text.contains("reuse the SSE adapter"), text),
+                            () -> assertTrue(text.contains("limit single subscriber"), text),
+                            () -> assertTrue(text.contains("ends when a second subscriber connects"), text),
+                            () -> assertTrue(text.contains("conflicts with the transport test"), text),
+                            () -> assertTrue(text.contains("design call"), text),
+                            () -> assertTrue(text.contains("the relay writes the cursor"), text),
+                            () -> assertTrue(text.contains("consistent"), text),
+                            () -> assertTrue(text.contains("Change map"), text),
+                            () -> assertTrue(text.contains("partial"), text),
+                            () -> assertTrue(text.contains("cause: the vendored tree is not tracked"), text),
+                            () -> assertTrue(text.contains("relay -> cursor"), text),
+                            () -> assertTrue(text.contains("  +--> sse"), text)
+        );
+    }
+
 
     @Test
     @DisplayName("a minimal report shows the raw time and omits the empty sections")
@@ -89,6 +121,8 @@ class PlanCompletionLevelTest {
                             () -> assertTrue(text.contains("5 min"), text),
                             () -> assertFalse(text.contains("Deliverables"), text),
                             () -> assertFalse(text.contains("Decisions"), text),
+                            () -> assertFalse(text.contains("Own calls"), text),
+                            () -> assertFalse(text.contains("Change map"), text),
                             () -> assertFalse(text.contains("Tokens"), text)
         );
     }
@@ -102,5 +136,19 @@ class PlanCompletionLevelTest {
         var text = level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
         assertFalse(text.contains("\u001B[31m"), "control sequence must be stripped");
         assertTrue(text.contains("the relay transport is hardened"));
+    }
+
+    @Test
+    @DisplayName("a control sequence in the change map diagram is stripped without redrawing it")
+    void sanitizesDiagram() throws Exception {
+        var injected = REPORT.replace("relay -> cursor\\n  +--> sse",
+                            "relay \\u001B[31m-> cursor\\n  +--> sse");
+        var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(injected));
+        var text = level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+        assertAll(
+                            () -> assertFalse(text.contains("\u001B[31m"), "control sequence must be stripped"),
+                            () -> assertTrue(text.contains("relay -> cursor"), text),
+                            () -> assertTrue(text.contains("  +--> sse"), text)
+        );
     }
 }

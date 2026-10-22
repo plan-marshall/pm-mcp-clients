@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.report;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -20,8 +21,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-
 import org.junit.jupiter.api.Test;
+
+import de.planmarshall.api.json.JsonFormatException;
 
 class ReportRecordsTest {
 
@@ -195,6 +197,16 @@ class ReportRecordsTest {
                 new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null)
         );
 
+        var ownCalls = List.of(
+                new OwnCallRecord("shortcut", "reuse the existing SSE adapter", "the single-subscriber path only",
+                        "a second subscriber connects", "conflicts", "a test per transport, websocket and SSE"),
+                new OwnCallRecord("design", "the relay writes the cursor", null, null, "consistent", null),
+                new OwnCallRecord("dependency", "a file-backed cursor replaces the in-memory one", null, null,
+                        "consistent", null)
+        );
+        var changeMap = new ChangeMapRecord("relay -> cursor -> fsync\n  +--> sse -> websocket (not traced)",
+                "partial", "the vendored tree is not tracked");
+
         var components = new TokenComponentRecord(310000L, 62000L, 8000L, 29000L, 3000L);
         var breakdownPhase = List.of(
                 new TokenBreakdownItem("refine", 38000, 35000, 3000, 0, false, null, null),
@@ -244,7 +256,9 @@ class ReportRecordsTest {
                 deliverables,
                 replanning,
                 decisions,
-                tokenUsage
+                tokenUsage,
+                ownCalls,
+                changeMap
         );
     }
 
@@ -265,6 +279,101 @@ class ReportRecordsTest {
         assertEquals("TASK-5 added", parsed.replanningRecords().getFirst().change());
         assertEquals(2, parsed.decisionRecords().size());
         assertEquals("rebase", parsed.decisionRecords().getFirst().answer());
+    }
+
+    @Test
+    void shouldRoundTripOwnCallsAndChangeMap() throws Exception {
+        var parsed = PlanCompletionReport.fromJson(createFullPlanCompletionReport().toJson());
+
+        assertEquals(3, parsed.ownCalls().size());
+        var shortcut = parsed.ownCalls().getFirst();
+        assertEquals("shortcut", shortcut.kind());
+        assertEquals("reuse the existing SSE adapter", shortcut.description());
+        assertEquals("the single-subscriber path only", shortcut.limit());
+        assertEquals("a second subscriber connects", shortcut.endsWhen());
+        assertEquals("conflicts", shortcut.judgment());
+        assertEquals("a test per transport, websocket and SSE", shortcut.conflictTarget());
+        assertNull(parsed.ownCalls().get(1).limit());
+
+        assertNotNull(parsed.changeMap());
+        assertEquals("partial", parsed.changeMap().state());
+        assertEquals("the vendored tree is not tracked", parsed.changeMap().cause());
+        assertEquals("relay -> cursor -> fsync\n  +--> sse -> websocket (not traced)",
+                parsed.changeMap().diagram());
+    }
+
+    @Test
+    void shouldRejectAnOwnCallWithoutItsRequiredMembers() {
+        assertAll(
+                () -> assertThrows(NullPointerException.class,
+                        () -> new OwnCallRecord(null, "design", null, null, "consistent", null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> new OwnCallRecord("design", null, null, null, "consistent", null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> new OwnCallRecord("design", "a call", null, null, null, null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> new ChangeMapRecord(null, "ok", null)),
+                () -> assertThrows(NullPointerException.class,
+                        () -> new ChangeMapRecord("diagram", null, null))
+        );
+    }
+
+    @Test
+    void shouldRejectAnOwnCallOrChangeMapMissingItsContractFields() {
+        assertAll(
+                () -> assertThrows(JsonFormatException.class,
+                        () -> OwnCallRecord.fromMap(Map.of("description", "a call", "judgment", "consistent"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> OwnCallRecord.fromMap(Map.of("kind", "design", "description", "a call"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> OwnCallRecord.fromMap(Map.of("kind", "design", "judgment", "consistent"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> ChangeMapRecord.fromMap(Map.of("state", "ok"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> ChangeMapRecord.fromMap(Map.of("diagram", "relay -> cursor")))
+        );
+    }
+
+    @Test
+    void shouldRejectAnOwnCallOrChangeMapThatViolatesItsStateInvariants() {
+        assertAll(
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new OwnCallRecord("shortcut", "a shortcut", null, "a second subscriber",
+                                "consistent", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new OwnCallRecord("shortcut", "a shortcut", "single subscriber", null,
+                                "consistent", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new OwnCallRecord("design", "a call", null, null, "conflicts", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new ChangeMapRecord("relay -> cursor", "partial", null)),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new ChangeMapRecord("relay -> cursor", "indeterminate", " ")),
+                () -> assertThrows(IllegalArgumentException.class,
+                        () -> new ChangeMapRecord("relay -> cursor", "ok", "not a cause"))
+        );
+    }
+
+    @Test
+    void shouldRejectMalformedOwnCallAndChangeMapSections() {
+        var base = Map.<String, Object>of(
+                "plan_id", "p",
+                "started_at", "2026-10-16T08:40:00Z",
+                "ended_at", "2026-10-16T09:00:00Z");
+        assertAll(
+                () -> assertThrows(JsonFormatException.class,
+                        () -> PlanCompletionReport.fromMap(with(base, "own_calls", "not-an-array"))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> PlanCompletionReport.fromMap(with(base, "own_calls", List.of("not-an-object")))),
+                () -> assertThrows(JsonFormatException.class,
+                        () -> PlanCompletionReport.fromMap(with(base, "change_map", "not-an-object")))
+        );
+    }
+
+    private static Map<String, Object> with(Map<String, Object> base, String key, Object value) {
+        var map = new java.util.LinkedHashMap<String, Object>(base);
+        map.put(key, value);
+        return map;
     }
 
     @Test
@@ -325,6 +434,8 @@ class ReportRecordsTest {
         assertEquals("no_change", parsed.outcome());
         assertNull(parsed.tokenUsage());
         assertTrue(parsed.deliverables().isEmpty());
+        assertTrue(parsed.ownCalls().isEmpty());
+        assertNull(parsed.changeMap());
     }
 
     @Test

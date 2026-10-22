@@ -121,8 +121,10 @@ import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.api.project.ProjectReleaseResult;
 import de.planmarshall.api.project.ProjectReleasedEvent;
 import de.planmarshall.api.project.ReleaseWaitStatus;
+import de.planmarshall.api.report.ChangeMapRecord;
 import de.planmarshall.api.report.DecisionRecord;
 import de.planmarshall.api.report.DeliverableSummary;
+import de.planmarshall.api.report.OwnCallRecord;
 import de.planmarshall.api.report.PlanCompletionReport;
 import de.planmarshall.api.report.ReadReportsRequest;
 import de.planmarshall.api.report.ReplanningRecord;
@@ -4731,6 +4733,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 new DecisionRecord("Q-003", "Rebase onto main", "rebase", "operator", "web", "iPad"),
                 new DecisionRecord("Q-005", "Pick transport", "sse", "delegated", null, null)
         );
+        var fixRelayOwnCalls = List.of(
+                new OwnCallRecord("shortcut", "reuse the existing SSE adapter for the websocket path",
+                        "the single-subscriber path only", "a second subscriber connects", "conflicts",
+                        "a test per transport, websocket and SSE"),
+                new OwnCallRecord("design", "the relay writes the cursor, the client never does",
+                        null, null, "consistent", null),
+                new OwnCallRecord("dependency", "a file-backed cursor replaces the in-memory one",
+                        null, null, "consistent", null)
+        );
+        var fixRelayChangeMap = new ChangeMapRecord(
+                "relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)",
+                "partial", "the vendored tree is not tracked");
         var fixRelayComponents = new TokenComponentRecord(310000L, 62000L, 8000L, 29000L, 3000L);
         var fixRelayPhase = List.of(
                 new TokenBreakdownItem("refine", 38000, 35000, 3000, 0, false, null, null),
@@ -4775,7 +4789,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 fixRelayDeliverables,
                 fixRelayReplanning,
                 fixRelayDecisions,
-                fixRelayTokens
+                fixRelayTokens,
+                fixRelayOwnCalls,
+                fixRelayChangeMap
         ));
 
         completionReports.put(CONST_DOCS_TYPO, new PlanCompletionReport(

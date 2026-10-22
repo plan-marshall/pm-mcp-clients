@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
@@ -44,6 +45,10 @@ import de.planmarshall.api.json.JsonTree;
  * @param replanningRecords history of re-planning events
  * @param decisionRecords   decisions asked and answered
  * @param tokenUsage        token usage record
+ * @param ownCalls          calls the plan took on its own, apart from the operator's decisions
+ * @param changeMap         the change map the runtime rendered, or {@code null}
+ * @param rawEnded          the end time as the runtime wrote it, when it is not an instant
+ * @param rawRan            the run duration as the runtime wrote it, or {@code null}
  */
 public record PlanCompletionReport(
         String planId,
@@ -63,6 +68,8 @@ public record PlanCompletionReport(
         List<ReplanningRecord> replanningRecords,
         List<DecisionRecord> decisionRecords,
         @Nullable TokenUsageRecord tokenUsage,
+        List<OwnCallRecord> ownCalls,
+        @Nullable ChangeMapRecord changeMap,
         @Nullable String rawEnded,
         @Nullable String rawRan
 ) {
@@ -85,7 +92,31 @@ public record PlanCompletionReport(
             List<DecisionRecord> decisionRecords,
             @Nullable TokenUsageRecord tokenUsage
     ) {
-        this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, null, null);
+        this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, List.of(), null, null, null);
+    }
+
+    public PlanCompletionReport(
+            String planId,
+            String title,
+            ReportFrom from,
+            String outcome,
+            @Nullable String terminalReason,
+            @Nullable Integer pullRequestNumber,
+            @Nullable String pullRequestUrl,
+            @Nullable String reason,
+            Instant startedAt,
+            Instant endedAt,
+            long durationSeconds,
+            long pausedSeconds,
+            @Nullable String pausedBy,
+            List<DeliverableSummary> deliverables,
+            List<ReplanningRecord> replanningRecords,
+            List<DecisionRecord> decisionRecords,
+            @Nullable TokenUsageRecord tokenUsage,
+            List<OwnCallRecord> ownCalls,
+            @Nullable ChangeMapRecord changeMap
+    ) {
+        this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, ownCalls, changeMap, null, null);
     }
 
     public String ended() {
@@ -112,6 +143,8 @@ public record PlanCompletionReport(
     private static final String FIELD_REPLANNING = "replanning_records";
     private static final String FIELD_DECISIONS = "decision_records";
     private static final String FIELD_TOKEN_USAGE = "token_usage";
+    private static final String FIELD_OWN_CALLS = "own_calls";
+    private static final String FIELD_CHANGE_MAP = "change_map";
 
     public PlanCompletionReport {
         Objects.requireNonNull(planId, "planId");
@@ -123,6 +156,7 @@ public record PlanCompletionReport(
         deliverables = deliverables != null ? Collections.unmodifiableList(new ArrayList<>(deliverables)) : List.of();
         replanningRecords = replanningRecords != null ? Collections.unmodifiableList(new ArrayList<>(replanningRecords)) : List.of();
         decisionRecords = decisionRecords != null ? Collections.unmodifiableList(new ArrayList<>(decisionRecords)) : List.of();
+        ownCalls = ownCalls != null ? Collections.unmodifiableList(new ArrayList<>(ownCalls)) : List.of();
     }
 
     /**
@@ -150,6 +184,10 @@ public record PlanCompletionReport(
         map.put(FIELD_DECISIONS, decisionRecords.stream().map(DecisionRecord::toMap).toList());
         if (tokenUsage != null) {
             map.put(FIELD_TOKEN_USAGE, tokenUsage.toMap());
+        }
+        map.put(FIELD_OWN_CALLS, ownCalls.stream().map(OwnCallRecord::toMap).toList());
+        if (changeMap != null) {
+            map.put(FIELD_CHANGE_MAP, changeMap.toMap());
         }
         return map;
     }
@@ -201,8 +239,10 @@ public record PlanCompletionReport(
         var replan = parseReplanning(map);
         var decisions = parseDecisions(map);
         var tokenUsage = parseTokenUsage(map);
+        var ownCalls = parseOwnCalls(map);
+        var changeMap = parseChangeMap(map);
 
-        return new PlanCompletionReport(planId, title, from, outcome, termReason, prNumber, prUrl, reason, startedAt, ended.instant(), duration, paused, pausedBy, deliverables, replan, decisions, tokenUsage, ended.raw(), rawRan);
+        return new PlanCompletionReport(planId, title, from, outcome, termReason, prNumber, prUrl, reason, startedAt, ended.instant(), duration, paused, pausedBy, deliverables, replan, decisions, tokenUsage, ownCalls, changeMap, ended.raw(), rawRan);
     }
 
     private static ReportFrom parseFrom(Object fromObj, String planId) throws IOException {
@@ -320,6 +360,36 @@ public record PlanCompletionReport(
             }
         }
         return list;
+    }
+
+    private static List<OwnCallRecord> parseOwnCalls(Map<String, Object> map) throws IOException {
+        if (!map.containsKey(FIELD_OWN_CALLS)) {
+            return List.of();
+        }
+        var ownCallsObj = map.get(FIELD_OWN_CALLS);
+        if (!(ownCallsObj instanceof List<?> ocl)) {
+            throw new JsonFormatException("Expected an array for " + FIELD_OWN_CALLS);
+        }
+        var list = new ArrayList<OwnCallRecord>();
+        for (var elem : ocl) {
+            var m = JsonTree.asObject(elem);
+            if (m == null) {
+                throw new JsonFormatException("Expected an object in " + FIELD_OWN_CALLS);
+            }
+            list.add(OwnCallRecord.fromMap(m));
+        }
+        return list;
+    }
+
+    private static @Nullable ChangeMapRecord parseChangeMap(Map<String, Object> map) throws IOException {
+        if (!map.containsKey(FIELD_CHANGE_MAP)) {
+            return null;
+        }
+        var changeMap = JsonTree.asObject(map.get(FIELD_CHANGE_MAP));
+        if (changeMap == null) {
+            throw new JsonFormatException("Expected an object for " + FIELD_CHANGE_MAP);
+        }
+        return ChangeMapRecord.fromMap(changeMap);
     }
 
     private static @Nullable TokenUsageRecord parseTokenUsage(Map<String, Object> map) {

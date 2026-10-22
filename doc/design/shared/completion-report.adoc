@@ -29,6 +29,14 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
                    ✓ fsync of the cursor file
   Re-planning    1 · after the base moved (09:55): TASK-5 added
   Decisions      2 · Q-003 Rebase onto main (you, web app) · Q-005 (left to the plan)
+  Own calls      3 · shortcuts first
+                   shortcut     reuse the existing SSE adapter for the websocket path
+                                limit the single-subscriber path only · ends when a second subscriber connects · conflicts with a test per transport, websocket and SSE
+                   design call  the relay writes the cursor, the client never does · consistent
+                   replaced dependency  a file-backed cursor replaces the in-memory one · consistent
+  Change map     partial · the vendored tree is not tracked
+                   relay ──> cursor ──> fsync
+                     └────> sse ──────> websocket (not traced)
   Tokens         ≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 h 40 min      [Tokens]
                  6 workers · 3 models · 3 of 41 tasks not measured
   ─────────────────────────────────────────────────────────────────────────────
@@ -41,6 +49,8 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 * *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
 * *Re-planning*: how often the plan was revised, each with its trigger (the base moved, a failed gate, a chat of the operator) and what changed in one line; opening one leads to it in the plan's history.
 * *Decisions*: how many were asked, each with its id, the answer, and how it was taken, as its decision record names it (link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words]): by you, with the channel and device, chosen, interpreted from your words, your own option, or left to the plan, which took the part's recommendation (`delegated`); by a quorum; or withdrawn; opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
+* *Own calls*: the decisions the plan took on its own, apart from _Decisions_ and never mixed with them: shortcuts first, each with the limit it accepts and the condition that ends it, and each with the self-review's judgment (`consistent`, or `conflicts` with the item it names). A design call and a replaced dependency follow. The report shows the calls in the order the runtime recorded them and adds none.
+* *Change map*: the fixed-width text diagram the runtime rendered, shown as delivered in a fixed-width font, never redrawn or re-wrapped; `partial` or `indeterminate` with its cause, and its lists one step away. The client computes no part of the map.
 * *Tokens*: the tokens the plan used, with the split and the wall time, the workers, the models, and the coverage; _Tokens_ opens the section of its own, one step away (<<tokens>>). No money is shown.
 * *Actions*: _Its plan view_ opens the plan as it ended; _Chat_ opens the read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). The report has no other action: the archive never changes.
 
@@ -150,6 +160,42 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |`report.completion.decision_by`
 |{by, select, operator {you, {channel}} delegated {left to the plan} quorum {a quorum} withdrawn {withdrawn} other {{by}}}
 |{by, select, operator {du, {channel}} delegated {dem Plan überlassen} quorum {ein Quorum} withdrawn {zurückgezogen} other {{by}}}
+
+|`report.completion.own_calls`
+|Own calls
+|Eigene Entscheidungen
+
+|`report.completion.own_call_kind`
+|{kind, select, design {design call} shortcut {shortcut} dependency {replaced dependency} other {{kind}}}
+|{kind, select, design {Entwurfsentscheidung} shortcut {Abkürzung} dependency {ersetzte Abhängigkeit} other {{kind}}}
+
+|`report.completion.own_call_limit`
+|limit {limit}
+|Grenze {limit}
+
+|`report.completion.own_call_ends`
+|ends when {condition}
+|endet, wenn {condition}
+
+|`report.completion.own_call_consistent`
+|consistent
+|stimmig
+
+|`report.completion.own_call_conflicts`
+|conflicts with {item}
+|widerspricht {item}
+
+|`report.completion.change_map`
+|Change map
+|Änderungskarte
+
+|`report.completion.change_map_state`
+|{state, select, ok {complete} partial {partial} indeterminate {indeterminate} other {{state}}}
+|{state, select, ok {vollständig} partial {teilweise} indeterminate {unbestimmt} other {{state}}}
+
+|`report.completion.change_map_cause`
+|cause: {cause}
+|Ursache: {cause}
 
 |`report.completion.tokens`
 |Tokens

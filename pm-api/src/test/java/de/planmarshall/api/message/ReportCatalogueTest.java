@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import java.util.TreeSet;
-
 import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.report.ReportKind;
@@ -91,6 +90,15 @@ class ReportCatalogueTest {
                 "report.completion.replanning_entry",
                 "report.completion.decisions",
                 "report.completion.decision_by",
+                "report.completion.own_calls",
+                "report.completion.own_call_kind",
+                "report.completion.own_call_limit",
+                "report.completion.own_call_ends",
+                "report.completion.own_call_consistent",
+                "report.completion.own_call_conflicts",
+                "report.completion.change_map",
+                "report.completion.change_map_state",
+                "report.completion.change_map_cause",
                 "report.completion.tokens",
                 "report.completion.tokens_value",
                 "report.completion.tokens_scope",
@@ -152,5 +160,18 @@ class ReportCatalogueTest {
 
         var openHint = MessageCatalogue.format("en", "operator.reports.open_hint", Map.of("id", "rep-0142"));
         assertEquals("reports open rep-0142", openHint);
+
+        assertEquals("design call",
+                MessageCatalogue.format("en", "report.completion.own_call_kind", Map.of("kind", "design")));
+        assertEquals("ersetzte Abhängigkeit",
+                MessageCatalogue.format("de", "report.completion.own_call_kind", Map.of("kind", "dependency")));
+        assertEquals("conflicts with the transport test",
+                MessageCatalogue.format("en", "report.completion.own_call_conflicts", Map.of("item", "the transport test")));
+        assertEquals("stimmig",
+                MessageCatalogue.format("de", "report.completion.own_call_consistent", Map.of()));
+        assertEquals("partial",
+                MessageCatalogue.format("en", "report.completion.change_map_state", Map.of("state", "partial")));
+        assertEquals("unbestimmt",
+                MessageCatalogue.format("de", "report.completion.change_map_state", Map.of("state", "indeterminate")));
     }
 }

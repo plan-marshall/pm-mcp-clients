@@ -36,6 +36,26 @@ describe('CompletionReportView component', () => {
       },
       { id: 'Q-005', question: '', answer: '', by: 'the plan' },
     ],
+    own_calls: [
+      {
+        kind: 'shortcut',
+        description: 'reuse the existing SSE adapter',
+        limit: 'the single-subscriber path only',
+        ends_when: 'a second subscriber connects',
+        judgment: 'conflicts',
+        conflict_target: 'a test per transport, websocket and SSE',
+      },
+      {
+        kind: 'design',
+        description: 'the relay writes the cursor',
+        judgment: 'consistent',
+      },
+    ],
+    change_map: {
+      diagram: 'relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)',
+      state: 'partial',
+      cause: 'the vendored tree is not tracked',
+    },
     token_usage: {
       total: 412000,
       input: 380000,
@@ -127,6 +147,36 @@ describe('CompletionReportView component', () => {
     expect(screen.getByText('Q-003')).toBeInTheDocument();
     expect(screen.getByText('Rebase onto main')).toBeInTheDocument();
     expect(screen.getByText('(you, web app)')).toBeInTheDocument();
+  });
+
+  it('renders own calls with their limits and self-review judgments', async () => {
+    render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+    expect(screen.getByText('Own calls')).toBeInTheDocument();
+    expect(screen.getByText('shortcut')).toBeInTheDocument();
+    expect(screen.getByText('reuse the existing SSE adapter')).toBeInTheDocument();
+    expect(screen.getByText('limit the single-subscriber path only')).toBeInTheDocument();
+    expect(screen.getByText('ends when a second subscriber connects')).toBeInTheDocument();
+    expect(
+      screen.getByText('conflicts with a test per transport, websocket and SSE'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('design call')).toBeInTheDocument();
+    expect(screen.getByText('the relay writes the cursor')).toBeInTheDocument();
+    expect(screen.getByText('consistent')).toBeInTheDocument();
+  });
+
+  it('renders the change map as delivered in a fixed-width block', async () => {
+    render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+    expect(screen.getByText('Change map')).toBeInTheDocument();
+    expect(screen.getByText('partial')).toBeInTheDocument();
+    expect(screen.getByText('cause: the vendored tree is not tracked')).toBeInTheDocument();
+
+    const diagram = screen.getByText(/relay ──> cursor/);
+    expect(diagram.tagName).toBe('PRE');
+    expect(diagram.textContent).toBe(
+      'relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)',
+    );
   });
 
   it('renders tokens section with coverage, breakdown, and toggles raw components', async () => {

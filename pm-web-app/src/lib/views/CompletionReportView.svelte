@@ -58,6 +58,16 @@
     }
     return d.by || $t('report.completion.delegated');
   }
+
+  function judgmentLabel(call: { judgment: string; conflict_target?: string }): string {
+    if (call.judgment?.toLowerCase() === 'conflicts') {
+      return $t('report.completion.own_call_conflicts', { item: call.conflict_target || '—' });
+    }
+    if (call.judgment?.toLowerCase() === 'consistent') {
+      return $t('report.completion.own_call_consistent');
+    }
+    return call.judgment;
+  }
 </script>
 
 <div class="completion-report">
@@ -228,9 +238,70 @@
         </section>
       {/if}
 
+      <!-- Own calls -->
+      {#if data.own_calls && data.own_calls.length > 0}
+        <section class="report-section">
+          <h2 class="section-title">
+            {$t('report.completion.own_calls')}
+            <span class="section-badge">{data.own_calls.length}</span>
+          </h2>
+          <ul class="own-calls-list">
+            {#each data.own_calls as call}
+              <li class="own-call-item">
+                <div class="own-call-head">
+                  <span class="own-call-kind">
+                    {$t('report.completion.own_call_kind', { kind: call.kind })}
+                  </span>
+                  <span class="own-call-chip own-call-chip--{call.judgment?.toLowerCase()}">
+                    {judgmentLabel(call)}
+                  </span>
+                </div>
+                <p class="own-call-description">{call.description}</p>
+                {#if call.limit || call.ends_when}
+                  <p class="own-call-detail text-muted">
+                    {#if call.limit}
+                      <span>{$t('report.completion.own_call_limit', { limit: call.limit })}</span>
+                    {/if}
+                    {#if call.limit && call.ends_when}
+                      <span class="own-call-sep">·</span>
+                    {/if}
+                    {#if call.ends_when}
+                      <span
+                        >{$t('report.completion.own_call_ends', {
+                          condition: call.ends_when,
+                        })}</span
+                      >
+                    {/if}
+                  </p>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
+
+      <!-- Change map -->
+      {#if data.change_map}
+        <section class="report-section">
+          <h2 class="section-title">
+            {$t('report.completion.change_map')}
+            <span class="section-badge">
+              {$t('report.completion.change_map_state', {
+                state: data.change_map.state?.toLowerCase() ?? '',
+              })}
+            </span>
+          </h2>
+          {#if data.change_map.cause}
+            <p class="change-map-cause text-muted">
+              {$t('report.completion.change_map_cause', { cause: data.change_map.cause })}
+            </p>
+          {/if}
+          <pre class="change-map-diagram mono">{data.change_map.diagram}</pre>
+        </section>
+      {/if}
+
       <!-- Tokens section -->
-      {#if data.token_usage}
-        {@const usage = data.token_usage}
+      {#if data.token_usage}        {@const usage = data.token_usage}
         <section class="report-section tokens-section">
           <div class="tokens-header">
             <h2 class="section-title">{$t('report.completion.tokens')}</h2>
@@ -659,6 +730,88 @@
   .decision-item {
     font-size: var(--text-sm);
     line-height: 1.5;
+  }
+
+  .own-calls-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .own-call-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .own-call-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .own-call-kind {
+    font-size: var(--text-sm);
+    font-weight: 600;
+  }
+
+  .own-call-chip {
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-bg-subtle);
+    color: var(--color-text-secondary);
+    font-size: var(--text-xs);
+  }
+
+  .own-call-chip--consistent {
+    background: var(--color-success-subtle);
+    color: var(--color-success);
+    border-color: var(--color-success-border);
+  }
+
+  .own-call-chip--conflicts {
+    background: var(--color-danger-subtle);
+    color: var(--color-danger);
+    border-color: var(--color-danger-border);
+  }
+
+  .own-call-description {
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+
+  .own-call-detail {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+  }
+
+  .own-call-sep {
+    color: var(--color-border);
+  }
+
+  .change-map-cause {
+    margin: 0 0 var(--space-2) 0;
+    font-size: var(--text-sm);
+  }
+
+  .change-map-diagram {
+    margin: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-subtle);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
   }
 
   .tokens-header {

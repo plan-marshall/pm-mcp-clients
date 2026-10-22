@@ -17,6 +17,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -35,8 +36,10 @@ import de.planmarshall.api.process.ProcessNode;
 import de.planmarshall.api.process.ProcessTokens;
 import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.api.process.TaskActivity;
+import de.planmarshall.api.report.ChangeMapRecord;
 import de.planmarshall.api.report.DecisionRecord;
 import de.planmarshall.api.report.DeliverableSummary;
+import de.planmarshall.api.report.OwnCallRecord;
 import de.planmarshall.api.report.PlanCompletionReport;
 import de.planmarshall.api.report.ReplanningRecord;
 import de.planmarshall.api.report.TokenBreakdownItem;
@@ -907,6 +910,8 @@ public final class PlanCommand implements Callable<Integer> {
             printDeliverables(out, report.deliverables());
             printReplanning(out, report.replanningRecords());
             printDecisions(out, report.decisionRecords());
+            printOwnCalls(out, report.ownCalls());
+            printChangeMap(out, report.changeMap());
 
             var usage = report.tokenUsage();
             if (usage != null) {
@@ -974,6 +979,77 @@ public final class PlanCommand implements Callable<Integer> {
                     decList.add(decText);
                 }
                 out.printf("  %-14s %d · %s%n", "decisions", decisionRecords.size(), String.join(" · ", decList));
+            }
+        }
+
+        private static void printOwnCalls(PrintWriter out, List<OwnCallRecord> ownCalls) {
+            if (ownCalls.isEmpty()) {
+                return;
+            }
+            out.printf("  %-14s %d%n", "own calls", ownCalls.size());
+            for (var ownCall : ownCalls) {
+                var kind = ownCallKind(ownCall.kind());
+                var description = ConsoleNotice.stripControlSequences(ownCall.description());
+                var judgment = ownCallJudgment(ownCall);
+                if (hasOwnCallDetails(ownCall)) {
+                    out.printf("                   %-19s %s%n", kind, description);
+                    var details = new ArrayList<String>();
+                    if (ownCall.limit() != null && !ownCall.limit().isBlank()) {
+                        details.add("limit " + ConsoleNotice.stripControlSequences(ownCall.limit()));
+                    }
+                    if (ownCall.endsWhen() != null && !ownCall.endsWhen().isBlank()) {
+                        details.add("ends when " + ConsoleNotice.stripControlSequences(ownCall.endsWhen()));
+                    }
+                    details.add(judgment);
+                    out.printf("                   %-19s %s%n", "", String.join(" · ", details));
+                } else {
+                    out.printf("                   %-19s %s · %s%n", kind, description, judgment);
+                }
+            }
+        }
+
+        private static String ownCallKind(String kind) {
+            return switch (kind) {
+                case "design" -> "design call";
+                case "shortcut" -> "shortcut";
+                case "dependency" -> "replaced dependency";
+                default -> ConsoleNotice.stripControlSequences(kind);
+            };
+        }
+
+        private static boolean hasOwnCallDetails(OwnCallRecord ownCall) {
+            return ownCall.limit() != null && !ownCall.limit().isBlank()
+                                || ownCall.endsWhen() != null && !ownCall.endsWhen().isBlank();
+        }
+
+        private static String ownCallJudgment(OwnCallRecord ownCall) {
+            if ("conflicts".equalsIgnoreCase(ownCall.judgment())) {
+                var target = ownCall.conflictTarget();
+                var item = target != null && !target.isBlank() ? ConsoleNotice.stripControlSequences(target) : "-";
+                return "conflicts with " + item;
+            }
+            if ("consistent".equalsIgnoreCase(ownCall.judgment())) {
+                return "consistent";
+            }
+            return ConsoleNotice.stripControlSequences(ownCall.judgment());
+        }
+
+        private static void printChangeMap(PrintWriter out, @Nullable ChangeMapRecord changeMap) {
+            if (changeMap == null) {
+                return;
+            }
+            var value = switch (changeMap.state().toLowerCase(Locale.ROOT)) {
+                case "ok" -> "complete";
+                case "partial" -> "partial";
+                case "indeterminate" -> "indeterminate";
+                default -> ConsoleNotice.stripControlSequences(changeMap.state());
+            };
+            if (changeMap.cause() != null && !changeMap.cause().isBlank()) {
+                value += " · cause: " + ConsoleNotice.stripControlSequences(changeMap.cause());
+            }
+            out.printf(FMT_14S, "change map", value);
+            for (var line : changeMap.diagram().split("\n", -1)) {
+                out.printf("                   %s%n", ConsoleNotice.stripControlSequences(line));
             }
         }
 
