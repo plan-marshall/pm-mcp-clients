@@ -127,7 +127,7 @@ public final class TuiScreenDriver {
     private @Nullable Display activeDisplay;
     private final AtomicReference<@Nullable Attributes> savedAttributes = new AtomicReference<>();
     private final AtomicReference<@Nullable Thread> shutdownHook = new AtomicReference<>();
-    private boolean suspended;
+    private final AtomicBoolean suspended = new AtomicBoolean();
 
     /**
      * @param terminal the terminal to draw on
@@ -278,20 +278,18 @@ public final class TuiScreenDriver {
      * @param handler  the receiver of the keys
      * @param previous the screen drawn before, or {@code null}
      * @return the screen to remember and whether the view stays open
-     * @throws IOException if the terminal cannot be read
      */
     private Turn readTurn(BindingReader reader, Display display, TuiScreen screen,
-                        KeyMap<TuiKeyAction> keyMap, KeyHandler handler, @Nullable TuiScreen previous)
-                        throws IOException {
+                        KeyMap<TuiKeyAction> keyMap, KeyHandler handler, @Nullable TuiScreen previous) {
         var menu = screen.menu();
         if (menu != null) {
             var binding = reader.readBinding(menuKeyMap(menu), null, false);
             if (binding == null) {
                 return new Turn(previous, true);
             }
-            suspended = false;
+            suspended.set(false);
             boolean keep = dispatchMenu(handler, menu, binding);
-            return new Turn(suspended ? null : previous, keep);
+            return new Turn(suspended.get() ? null : previous, keep);
         }
         var action = reader.readBinding(keyMap, null, false);
         if (action == null || !boundOn(screen.kind(), action)) {
@@ -303,9 +301,9 @@ public final class TuiScreenDriver {
             resume(display);
             return new Turn(null, true);
         }
-        suspended = false;
+        suspended.set(false);
         boolean keep = handler.handle(action);
-        return new Turn(suspended ? null : previous, keep);
+        return new Turn(suspended.get() ? null : previous, keep);
     }
 
     /**
@@ -479,7 +477,7 @@ public final class TuiScreenDriver {
         try {
             task.run();
         } finally {
-            suspended = true;
+            suspended.set(true);
             resume(display);
         }
     }
