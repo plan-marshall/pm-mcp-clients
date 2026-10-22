@@ -405,4 +405,33 @@ class ScenarioLoaderTest {
                 """;
         assertNotNull(ScenarioLoader.load(json, "plan-unregistered.json"));
     }
+
+    @Test
+    @DisplayName("accepts an error-status plan route whose body is the error, not the resource")
+    void acceptsErrorStatusRoute() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/plans/fix-relay/process":{"status":404,
+                  "representation":{"error":{"code":"not_found"}}}},
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]}}}}
+                """;
+        var scenario = ScenarioLoader.load(json, "plan-error.json");
+        assertEquals(404, scenario.route("GET", "/api/v1/plans/fix-relay/process").status());
+    }
+
+    @Test
+    @DisplayName("rejects a list representation for a recognized plan resource route")
+    void rejectsListRepresentationForRegisteredRoute() {
+        var json = """
+                {"format_version":1,"name":"x","start":"a",
+                 "routes":{"GET /api/v1/plans/fix-relay/process":{"representation":[]}},
+                 "states":{"a":{"representation":{"scope":{"kind":"machine"},
+                  "state":{"state_id":"a","kind":"operator_wait"},"links":[]}}}}
+                """;
+        var ex = assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(json, "plan-list.json"));
+        assertEquals("routes.GET /api/v1/plans/fix-relay/process.representation", ex.field());
+        assertTrue(ex.getMessage().contains("not a list"), ex.getMessage());
+    }
 }

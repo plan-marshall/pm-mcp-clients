@@ -24,6 +24,7 @@ import java.util.Set;
 
 
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.designer.WorkflowCatalogue;
@@ -255,8 +256,8 @@ public class ScenarioLoader {
                 throw new ScenarioValidationException(scenario, null, "routes." + routeKey + ".representation",
                         "route representation must be a JSON object or a list");
             }
-            validateRouteRepresentation(routeKey, rep, scenario);
             var status = asInt(routeMap.get("status"), 200);
+            validateRouteRepresentation(routeKey, rep, status, scenario);
             result.put(routeKey, new RouteDefinition(rep, status));
         }
         return result;
@@ -515,10 +516,30 @@ public class ScenarioLoader {
     /**
      * Decodes a static route representation with the {@code pm-api} codec the endpoint's contract
      * names. A route the registry does not know is left to the callers; the known operator API
-     * routes fail the load when their representation is not what the contract allows.
+     * routes fail the load when their representation is not what the contract allows. A route that
+     * answers with an error status carries the error's own body, not the success resource, so it is
+     * not decoded.
+     *
+     * @param routeKey       the route key of the scenario
+     * @param representation the route representation
+     * @param status         the status the route answers with
+     * @param scenario       the scenario identifier for error reporting
      */
-    private static void validateRouteRepresentation(String routeKey, Object representation, String scenario) {
+    private static void validateRouteRepresentation(String routeKey, Object representation, int status,
+            String scenario) {
         try {
+            if (status < 200 || status >= 300) {
+                return;
+            }
+            var resource = planOrEpicResource(routeKey);
+            if (resource != null) {
+                var map = JsonTree.asObject(representation);
+                if (map == null) {
+                    throw new IOException("the " + resource.label() + " resource is a JSON object, not a list");
+                }
+                decodePlanOrEpicResource(resource, map);
+                return;
+            }
             if (representation instanceof List<?> units) {
                 if (routeKey.endsWith("/workflows")) {
                     validateUnitList(units);
@@ -536,7 +557,9 @@ public class ScenarioLoader {
                 case "GET /api/v1/system" -> SystemSnapshot.fromMap(map);
                 case "GET /api/v1/workflows/catalogue" -> WorkflowCatalogue.fromMap(map);
                 case "GET /api/v1/system/cleanup" -> CleanupJob.fromMap(map);
-                default -> decodePlanOrEpicRoute(routeKey, map);
+                default -> {
+                    // No closed codec is registered for this endpoint.
+                }
             }
         }
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
@@ -546,69 +569,77 @@ public class ScenarioLoader {
         }
     }
 
+    /** The operator resource a recognized parameterized plan or epic route decodes to. */
+    private enum PlanEpicResource {
+        EPIC_DETAIL("epic detail"),
+        PLAN_PROCESS("plan process"),
+        EPIC_PROCESS("epic process"),
+        PLAN_INTENT("plan intent"),
+        EPIC_INTENT("epic intent"),
+        PLAN_OUTLINE("plan outline"),
+        PLAN_COMPLETION("plan completion"),
+        TASK_ACTIVITY("task activity");
+
+        private final String label;
+
+        PlanEpicResource(String label) {
+            this.label = label;
+        }
+
+        String label() {
+            return label;
+        }
+    }
+
     /**
-     * Decodes a route that names a plan or an epic by id with the codec of its resource. The
-     * registry covers the detail, process, intent, outline, activity, and completion resources, so
-     * a scenario cannot declare one the operator contract refuses; a route of another shape keeps
-     * the generic fallback.
+     * Resolves a route that names a plan or an epic by id to the codec of its resource. The
+     * registry covers the detail, process, intent, outline, activity, and completion resources; a
+     * route of another shape keeps the generic fallback.
      *
      * @param routeKey the route key of the scenario
-     * @param map      the route representation
-     * @throws IOException if the representation does not decode with the resource's codec
+     * @return the resource, or {@code null} when the route is not a registered one
      */
-    private static void decodePlanOrEpicRoute(String routeKey, Map<String, Object> map) throws IOException {
+    private static @Nullable PlanEpicResource planOrEpicResource(String routeKey) {
         if (!routeKey.startsWith("GET ")) {
-            return;
+            return null;
         }
         var path = routeKey.substring("GET ".length());
         if (!path.startsWith("/api/v1/plans/") && !path.startsWith("/api/v1/epics/")) {
-            return;
+            return null;
         }
         var segments = path.substring(1).split("/", -1);
-        var collection = segments[2];
+        var plans = "plans".equals(segments[2]);
         if (segments.length == 4) {
-            if ("epics".equals(collection) && !segments[3].isBlank()) {
-                EpicResource.fromMap(map);
-            }
             // A plan's own detail has no codec of its own; its view is the process resource.
-            return;
+            return !plans && !segments[3].isBlank() ? PlanEpicResource.EPIC_DETAIL : null;
         }
         if (segments.length == 5 && !segments[3].isBlank()) {
-            switch (segments[4]) {
-                case "process" -> {
-                    if ("plans".equals(collection)) {
-                        ProcessTree.fromMap(map);
-                    } else {
-                        EpicProcess.fromMap(map);
-                    }
-                }
-                case "intent" -> {
-                    if ("plans".equals(collection)) {
-                        PlanIntentResource.fromMap(map);
-                    } else {
-                        EpicIntentResource.fromMap(map);
-                    }
-                }
-                case "outline" -> {
-                    if ("plans".equals(collection)) {
-                        OutlineResource.fromMap(map);
-                    }
-                }
-                case "completion" -> {
-                    if ("plans".equals(collection)) {
-                        PlanCompletionReport.fromMap(map);
-                    }
-                }
-                default -> {
-                    // No closed codec is registered for this sub-resource yet.
-                }
-            }
-            return;
+            return switch (segments[4]) {
+                case "process" -> plans ? PlanEpicResource.PLAN_PROCESS : PlanEpicResource.EPIC_PROCESS;
+                case "intent" -> plans ? PlanEpicResource.PLAN_INTENT : PlanEpicResource.EPIC_INTENT;
+                case "outline" -> plans ? PlanEpicResource.PLAN_OUTLINE : null;
+                case "completion" -> plans ? PlanEpicResource.PLAN_COMPLETION : null;
+                default -> null;
+            };
         }
-        if (segments.length == 7 && "plans".equals(collection) && "tasks".equals(segments[4])
-                && "activity".equals(segments[6]) && !segments[3].isBlank()
-                && !segments[5].isBlank()) {
-            TaskActivity.fromMap(map);
+        if (segments.length == 7 && plans && "tasks".equals(segments[4]) && "activity".equals(segments[6])
+                && !segments[3].isBlank() && !segments[5].isBlank()) {
+            return PlanEpicResource.TASK_ACTIVITY;
+        }
+        return null;
+    }
+
+    private static void decodePlanOrEpicResource(PlanEpicResource resource, Map<String, Object> map)
+            throws IOException {
+        switch (resource) {
+            case EPIC_DETAIL -> EpicResource.fromMap(map);
+            case PLAN_PROCESS -> ProcessTree.fromMap(map);
+            case EPIC_PROCESS -> EpicProcess.fromMap(map);
+            case PLAN_INTENT -> PlanIntentResource.fromMap(map);
+            case EPIC_INTENT -> EpicIntentResource.fromMap(map);
+            case PLAN_OUTLINE -> OutlineResource.fromMap(map);
+            case PLAN_COMPLETION -> PlanCompletionReport.fromMap(map);
+            case TASK_ACTIVITY -> TaskActivity.fromMap(map);
         }
     }
 

@@ -1,8 +1,8 @@
 # Implementation Plan: `post-run-remediation` (TUI Signal Lifecycle, Interactive Entry, Codec Closure & Mobile E2E)
 
-This implementation plan governs the post-run remediation of findings identified during the post-run review wave ([`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc)) across `pm-operator`, `pm-mock-runtime`, and `pm-web-e2e`.
+This implementation plan governs the post-run remediation of findings identified during the post-run review wave ([`doc/meta/post_run_review.adoc`](../../meta/post_run_review.adoc)) across `pm-operator`, `pm-mock-runtime`, and `pm-web-e2e`.
 
-It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -10,30 +10,30 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Audit Standard** | [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc), [`doc/meta/verification-protocol.adoc`](../meta/verification-protocol.adoc) |
+| **Audit Standard** | [`doc/meta/post_run_review.adoc`](../../meta/post_run_review.adoc), [`doc/meta/verification-protocol.adoc`](../../meta/verification-protocol.adoc) |
 | **Audit Report** | `post_run_wave_review_report.md` (Artifact from Post-Run Review) |
-| **Specifications & Design** | CLI: [`doc/design/terminal-client/04-console.adoc`](../design/terminal-client/04-console.adoc) (`#console`), [`15-overview.adoc`](../design/terminal-client/15-overview.adoc) (`#full-screen`), [`doc/specification/terminal-safety.adoc`](../../../plan-marshall-documentation/doc/specification/terminal-safety.adoc)<br>Mock: [`doc/specification/scenario-format.adoc`](../../../plan-marshall-documentation/doc/specification/scenario-format.adoc)<br>Web: [`doc/design/web-app/`](../design/web-app/) (Responsive 320px viewport invariant) |
+| **Specifications & Design** | CLI: [`doc/design/terminal-client/04-console.adoc`](../../design/terminal-client/04-console.adoc) (`#console`), [`15-overview.adoc`](../../design/terminal-client/15-overview.adoc) (`#full-screen`), [`doc/specification/terminal-safety.adoc`](../../../../plan-marshall-documentation/doc/specification/terminal-safety.adoc)<br>Mock: [`doc/specification/scenario-format.adoc`](../../../../plan-marshall-documentation/doc/specification/scenario-format.adoc)<br>Web: [`doc/design/web-app/`](../../design/web-app/) (Responsive 320px viewport invariant) |
 | **Addressed Findings** | **CLI-2** (High: TUI signal & shutdown hook terminal restoration)<br>**CLI-1** (Medium: interactive entry & `--tui` flag on root command)<br>**MOCK-1** (Low: route codec validation closure for plans and epics)<br>**WEB-1** (Low: mobile viewport Playwright smoke tests) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ---
 
 ## 2. Scope & Objectives
 
 1. **TUI Terminal State Restoration & Signal Traps (`pm-operator`, CLI-2)**:
-   - In [`TuiScreenDriver.java`](../pm-operator/src/main/java/de/planmarshall/operator/tui/TuiScreenDriver.java), ensure that entering raw mode and alternate screen buffer registers a JVM shutdown hook (`Runtime.getRuntime().addShutdownHook`) and handles `SIGINT`/`SIGTERM` so that any abnormal termination, kill signal, or uncaught exception cleanly invokes `restore()` (restores keypad mode, restores cursor visibility via `\033[?25h`, exits alternate screen via `\033[?1049l`, and restores terminal attributes).
+   - In [`TuiScreenDriver.java`](../../../pm-operator/src/main/java/de/planmarshall/operator/tui/TuiScreenDriver.java), ensure that entering raw mode and alternate screen buffer registers a JVM shutdown hook (`Runtime.getRuntime().addShutdownHook`) and handles `SIGINT`/`SIGTERM` so that any abnormal termination, kill signal, or uncaught exception cleanly invokes `restore()` (restores keypad mode, restores cursor visibility via `\033[?25h`, exits alternate screen via `\033[?1049l`, and restores terminal attributes).
    - Verify that multiple exits (normal `finally` vs. shutdown hook) are idempotent and thread-safe via atomic state flags.
    - Add unit tests verifying shutdown hook registration and deregistration upon normal exit.
 2. **Interactive TUI Entry & Console Prompt Guidance (`pm-operator`, CLI-1)**:
-   - Add `--tui` option to root [`PmOperator.java`](../pm-operator/src/main/java/de/planmarshall/operator/PmOperator.java) to allow explicit, direct launch of [`OverviewFullScreenApp`](../pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java) without needing the `plans` subcommand.
-   - In [`PmConsole.java`](../pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java), add `tui` to auto-completion candidates as an alias for `plans`.
+   - Add `--tui` option to root [`PmOperator.java`](../../../pm-operator/src/main/java/de/planmarshall/operator/PmOperator.java) to allow explicit, direct launch of [`OverviewFullScreenApp`](../../../pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java) without needing the `plans` subcommand.
+   - In [`PmConsole.java`](../../../pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java), add `tui` to auto-completion candidates as an alias for `plans`.
    - Update `operator.console.welcome` / prompt banner in `pm-api` message catalogues to mention `plans` (or `tui`) for entering the full-screen view.
 3. **Parameterized Route Codec Closure (`pm-mock-runtime`, MOCK-1)**:
-   - In [`ScenarioLoader.java`](../pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java), expand `validateRouteRepresentation` to validate route representations matching `/api/v1/plans/{id}` and `/api/v1/epics/{id}` against their `pm-api` codecs (`PlanView` / `EpicView`), eliminating the generic fallback for known route patterns.
+   - In [`ScenarioLoader.java`](../../../pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java), expand `validateRouteRepresentation` to validate route representations matching `/api/v1/plans/{id}` and `/api/v1/epics/{id}` against their `pm-api` codecs (`PlanView` / `EpicView`), eliminating the generic fallback for known route patterns.
    - Verify closed schema validation passes across all scenarios in `src/main/resources/scenarios/`.
 4. **Mobile Viewport E2E Verification (`pm-web-e2e`, WEB-1)**:
-   - Add targeted mobile viewport assertions (375x667 and 320x568) in [`pm-web-e2e`](../pm-web-e2e/tests/) for critical user journeys:
+   - Add targeted mobile viewport assertions (375x667 and 320x568) in [`pm-web-e2e`](../../../pm-web-e2e/tests/) for critical user journeys:
      - Onboarding flow (`onboarding.spec.js` or dedicated `mobile.spec.js`)
      - Overview attention band and cards (`overview.spec.js`)
    - Assert that no horizontal document overflow (`scrollWidth > clientWidth`) occurs and interactive elements remain accessible.

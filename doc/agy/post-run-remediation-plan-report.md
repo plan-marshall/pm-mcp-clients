@@ -13,10 +13,10 @@ The post-run remediation wave closes the four findings of the post-run review ac
 
 - **CLI-2 — terminal restoration on abnormal termination.** `TuiScreenDriver` now registers a JVM shutdown hook when it opens the alternate screen. The hook restores the keypad mode, shows the cursor, leaves the alternate screen, and restores the terminal attributes the raw mode replaced, so `SIGINT`, `SIGTERM`, and any shutdown that skips the `finally` no longer leave the operator's terminal unreadable. The hook and the normal exit share one atomic idempotence latch and may race safely; the hook is removed on a clean exit.
 - **CLI-1 — interactive entry.** The root command accepts `--tui` and opens `OverviewFullScreenApp` directly when the machine configuration and the terminal allow it. The console completes and dispatches `tui` as an alias of `plans`, and its greeting names both when the full-screen view can open.
-- **MOCK-1 — parameterized route codec closure.** `ScenarioLoader` no longer falls back silently for plan and epic routes: every parameterized detail, process, intent, outline, activity, and completion route is decoded with its `pm-api` codec, and a representation the contract refuses fails the scenario load with the route and the reason.
+- **MOCK-1 — parameterized route codec closure.** `ScenarioLoader` no longer falls back silently for plan and epic routes: every recognized plan and epic route shape (epic detail, process, intent, outline, activity, and completion) is decoded with its `pm-api` codec, and a representation the contract refuses fails the scenario load with the route and the reason. A route of another shape keeps the generic fallback, and an error-status route is not decoded as a success resource.
 - **WEB-1 — mobile viewport coverage.** A dedicated Playwright suite verifies the onboarding wizard and the running-work overview at 320x568 and 375x667: no horizontal document overflow, the attention badges and plan cards render, and the primary controls stay inside the viewport.
 
-All code, unit, component, and end-to-end checks pass. The pre-commit reactor build is `BUILD SUCCESS`.
+All scoped remediation checks pass. One pre-existing, unrelated end-to-end test fails and is recorded in §3.3. The pre-commit reactor build is `BUILD SUCCESS`.
 
 ---
 
@@ -48,8 +48,8 @@ All code, unit, component, and end-to-end checks pass. The pre-commit reactor bu
 
 | File | Change |
 |---|---|
-| `pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java` | `decodePlanOrEpicRoute(...)` matches `GET /api/v1/plans/...` and `GET /api/v1/epics/...` by path segment and decodes with the real codecs: `EpicResource` (epic detail), `ProcessTree` / `EpicProcess` (process), `PlanIntentResource` / `EpicIntentResource` (intent), `OutlineResource` (plan outline), `TaskActivity` (task activity), `PlanCompletionReport` (completion). Unknown sub-resources keep the generic fallback. |
-| `pm-mock-runtime/src/test/java/de/planmarshall/mock/scenario/ScenarioLoaderTest.java` | Three new tests: a malformed plan process route and a malformed epic detail route are refused with the route field and the codec's reason; a parameterized route without a registered codec keeps the fallback. |
+| `pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java` | `planOrEpicResource(...)` resolves a `GET /api/v1/plans/...` or `GET /api/v1/epics/...` route shape to its codec and `decodePlanOrEpicResource(...)` decodes it: `EpicResource` (epic detail), `ProcessTree` / `EpicProcess` (process), `PlanIntentResource` / `EpicIntentResource` (intent), `OutlineResource` (plan outline), `TaskActivity` (task activity), `PlanCompletionReport` (completion). A recognized object resource refuses a list representation; a non-2xx route carries the error's own body and is not decoded; unknown sub-resources keep the generic fallback. |
+| `pm-mock-runtime/src/test/java/de/planmarshall/mock/scenario/ScenarioLoaderTest.java` | Five new tests: a malformed plan process route and a malformed epic detail route are refused with the route field and the codec's reason; a parameterized route without a registered codec keeps the fallback; an error-status route whose body is the error loads; a list representation for a recognized plan resource is refused. |
 
 ### 2.5 `pm-web-e2e` — mobile viewport verification (WEB-1)
 
@@ -75,7 +75,7 @@ All code, unit, component, and end-to-end checks pass. The pre-commit reactor bu
 |---|---|
 | `TuiScreenDriverTest` | 17 tests, 0 failures (3 new) |
 | `PmConsoleTest` | 7 tests, 0 failures (1 new) |
-| `ScenarioLoaderTest` | 22 tests, 0 failures (3 new), including the six canonical scenario files loaded from the classpath |
+| `ScenarioLoaderTest` | 24 tests, 0 failures (5 new), including the six canonical scenario files loaded from the classpath |
 | Full reactor unit suite (`./mvnw verify -Ppre-commit`) | `BUILD SUCCESS` across `pm-api`, `pm-exec`, `pm-mock-runtime`, `pm-relay`, `pm-operator`, `pm-web-app`, `pm-web-e2e` |
 
 ### 3.2 Component tests
@@ -141,6 +141,7 @@ The gate covers the OpenRewrite recipes, license headers, Checkstyle, the enforc
 2. **`operator.console.welcome` does not exist.** The greeting has no such key. The hint is a new `operator.console.hint.tui` line printed once in the greeting (only when the view can open), and `tui` was added to `operator.console.help.body` in both languages.
 3. **Pre-existing OpenRewrite drift in the baseline.** Running `./mvnw verify -Ppre-commit` applies the parent's `OrderImports` recipe to the whole tree and rewrote 226 files that this plan does not touch (a blank line between import groups, text-block re-indentation, and `test`-prefix renames). Those unrelated rewrites were reverted so the PR stays inside the plan's declared boundary; the files this plan touches are in the gate's rewritten form. The drift is a baseline condition of `main` after the parent bump, not a result of this change, and should be handled by a separate formatting landing.
 4. **Playwright is skipped by default in the Maven gate.** The mobile suite was executed explicitly against a locally started `pm-mock-runtime`; the Maven build runs its ESLint pass.
+5. **Two sibling-repository links name documents that have moved.** The plan's `terminal-safety.adoc` and `scenario-format.adoc` targets no longer exist in `plan-marshall-documentation`; the relative depth was repaired for the plan's new location, but the upstream documents themselves have moved and the link targets are unchanged.
 
 ---
 
