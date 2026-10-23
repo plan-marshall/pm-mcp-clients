@@ -87,6 +87,34 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await expectWithinViewport(page, cardAction, phone.width);
       await expectNoHorizontalOverflow(page);
     });
+
+    test(`reports filter and split layout stay usable at ${phone.label}`, async ({
+      page,
+      request,
+    }) => {
+      await page.setViewportSize({ width: phone.width, height: phone.height });
+      await useScenario(request, 'reports');
+      await pair(page);
+
+      await page
+        .locator('.app-header')
+        .getByRole('button', { name: /Reports/i })
+        .click();
+      await expect(page.locator('.reports-view')).toBeVisible();
+
+      const filter = page.getByTestId('filter-input');
+      await expectWithinViewport(page, filter, phone.width);
+      await filter.fill('overlap with relay-auth-v2');
+      await expect(page.locator('.report-card')).toHaveCount(1);
+      await expectNoHorizontalOverflow(page);
+
+      await page.getByTestId('layout-split').click();
+      await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
+      // Below the split breakpoint the view is one column: the empty detail pane is hidden.
+      await expect(page.locator('.reports-split__detail')).toBeHidden();
+      await expect(page.locator('.reports-tree')).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+    });
   }
 
   test.afterAll(async ({ request }) => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -587,5 +587,144 @@ describe('DecisionView component', () => {
       part_answers: { '1': '1', '2': '2' },
       note: 'one file per plan\nrun the verb by hand',
     });
+  });
+
+  /** @param value the filter text @returns the filter input */
+  async function typeFilter(value: string): Promise<HTMLElement> {
+    const input = await screen.findByTestId('filter-input');
+    await fireEvent.input(input, { target: { value } });
+    return input;
+  }
+
+  it('filters decisions by title, subject, and description', async () => {
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+
+    await typeFilter('merge strategy');
+    expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    expect(screen.queryByText('fix-relay asks for a waiver')).toBeNull();
+
+    await typeFilter('fix-relay');
+    expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    expect(screen.getByText('fix-relay asks for a waiver')).toBeInTheDocument();
+
+    await typeFilter('linear git history');
+    expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    expect(screen.queryByText('fix-relay asks for a waiver')).toBeNull();
+  });
+
+  it('filters decisions by an option label and by an evidence value', async () => {
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+
+    await typeFilter('Merge main into branch');
+    expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    expect(screen.queryByText('fix-relay asks for a waiver')).toBeNull();
+
+    await typeFilter('target_branch');
+    expect(screen.getByText('Select merge strategy')).toBeInTheDocument();
+    expect(screen.queryByText('fix-relay asks for a waiver')).toBeNull();
+  });
+
+  it('filters waiver decisions by the gate and the reason', async () => {
+    render(DecisionView);
+    await screen.findByText('fix-relay asks for a waiver');
+
+    await typeFilter('Coverage of pm-relay');
+    expect(screen.getByText('fix-relay asks for a waiver')).toBeInTheDocument();
+    expect(screen.queryByText('Select merge strategy')).toBeNull();
+
+    await typeFilter('annotation processor');
+    expect(screen.getByText('fix-relay asks for a waiver')).toBeInTheDocument();
+    expect(screen.queryByText('Select merge strategy')).toBeNull();
+  });
+
+  it('shows an explicit no-match state and keeps the open count', async () => {
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+
+    await typeFilter('nothing-matches-this');
+
+    expect(await screen.findByTestId('decisions-filter-empty')).toHaveTextContent(
+      'No open decision matches the filter.',
+    );
+    expect(screen.getByText('2 open')).toBeInTheDocument();
+    expect(screen.getByTestId('filter-results')).toHaveTextContent('No matches');
+  });
+
+  it('keeps notification banners outside the filtered list', async () => {
+    const captured: { handler?: (event: string, data: unknown) => void } = {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      captured.handler = callback as (event: string, data: unknown) => void;
+      return () => {};
+    });
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+    captured.handler?.('decision.opened', mockDecision);
+    expect(await screen.findByTestId('notify-banner')).toBeInTheDocument();
+
+    await typeFilter('nothing-matches-this');
+
+    expect(screen.getByTestId('notify-banner')).toBeInTheDocument();
+  });
+
+  it('lists summaries in split mode and shows only the selected decision', async () => {
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+
+    await fireEvent.click(screen.getByTestId('layout-split'));
+
+    expect(screen.getByTestId('decision-summary-dec-101')).toBeInTheDocument();
+    expect(screen.getByTestId('decision-summary-WR-001')).toBeInTheDocument();
+    expect(document.querySelectorAll('.decision-card')).toHaveLength(0);
+    expect(screen.getByText('Select a decision to see it here.')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('decision-summary-dec-101'));
+
+    expect(document.querySelectorAll('.decision-card')).toHaveLength(1);
+    const detail = document.querySelector('.decisions-split__detail') as HTMLElement;
+    expect(within(detail).getByText('Select merge strategy')).toBeInTheDocument();
+    expect(within(detail).getByText('Rebase onto main')).toBeInTheDocument();
+  });
+
+  it('clears a split selection the filter hides', async () => {
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getByTestId('decision-summary-dec-101'));
+    expect(screen.getByText('Rebase onto main')).toBeInTheDocument();
+
+    await typeFilter('Coverage of pm-relay');
+
+    await waitFor(() => {
+      expect(screen.queryByText('Rebase onto main')).toBeNull();
+      expect(screen.getByText('Select a decision to see it here.')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('decision-summary-WR-001')).toBeInTheDocument();
+  });
+
+  it('keeps the actions reachable in compact mode', async () => {
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+
+    await fireEvent.click(screen.getByTestId('layout-compact'));
+
+    expect(document.querySelector('.decisions-view')).toHaveAttribute('data-layout', 'compact');
+    expect(screen.getByRole('button', { name: 'Decide' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Waive the gate' })).toBeInTheDocument();
+    expect(screen.getByText('refine · outline')).toBeInTheDocument();
+  });
+
+  it('remembers the layout across a remount', async () => {
+    const { unmount } = render(DecisionView);
+    await screen.findByText('Select merge strategy');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    expect(localStorage.getItem('pm_view_layout_decisions')).toBe('split');
+
+    unmount();
+    render(DecisionView);
+    await screen.findByText('Select merge strategy');
+    expect(document.querySelector('.decisions-view')).toHaveAttribute('data-layout', 'split');
   });
 });

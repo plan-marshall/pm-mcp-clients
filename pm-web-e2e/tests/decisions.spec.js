@@ -212,4 +212,27 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     await expect(decisionCard).not.toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId('decision-notices')).toContainText('answered in the console');
   });
+
+  test('filters decisions by an option phrase and keeps the actions in compact mode', async ({
+    page,
+  }) => {
+    await openDecisions(page);
+
+    const filter = page.getByTestId('filter-input');
+    await expect(filter).toBeVisible();
+    await filter.fill('Rebase onto main');
+
+    await expect(page.locator('article[data-decision-id="Q-007"]')).toBeVisible();
+    await expect(page.locator('article[data-decision-id="WR-2"]')).not.toBeVisible();
+    await expect(page.getByTestId('filter-results')).toContainText('1 match');
+
+    await page.getByTestId('layout-compact').click();
+    await expect(page.locator('.decisions-view')).toHaveAttribute('data-layout', 'compact');
+
+    const laterBtn = page
+      .locator('article[data-decision-id="Q-007"]')
+      .getByRole('button', { name: 'later' });
+    await expect(laterBtn).toBeVisible();
+    await expect(laterBtn).toBeEnabled();
+  });
 });

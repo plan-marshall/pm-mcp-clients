@@ -4,6 +4,8 @@
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
+  import FilterInput from '../components/FilterInput.svelte';
+  import ViewLayoutToggle from '../components/ViewLayoutToggle.svelte';
   import {
     apiClient,
     type ChatReadBack,
@@ -12,12 +14,21 @@
     type DecisionInterpretation,
   } from '../api/client';
   import { runtimeStore, refreshDecisionsCount } from '../stores/runtime';
+  import { createViewLayout, VIEW_LAYOUTS } from '../stores/viewLayout';
+  import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
 
   const NOTIFY_KEY = 'pm_decision_notify';
 
   let decisions = $state<DecisionEnvelope[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state('');
+
+  /** The layout choice, remembered per view. */
+  const layout = createViewLayout('decisions', 'comfortable');
+  /** The filter query; it runs over the loaded decisions only. */
+  let query = $state('');
+  /** The decision the split layout shows on the right. */
+  let selectedDecisionId = $state<string | null>(null);
 
   let showEvidence = $state<Record<string, boolean>>({});
   /** The chosen option of each part, keyed by decision and part id. */
@@ -48,6 +59,93 @@
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
+
+  /** The normalized query tokens, computed once per keystroke rather than once per decision. */
+  const queryTokens = $derived(tokenize(query));
+
+  /** One normalized haystack per loaded decision, rebuilt only when the list changes. */
+  const decisionHaystacks = $derived.by(() => {
+    const haystacks = new Map<string, string>();
+    for (const dec of decisions) {
+      haystacks.set(dec.id, buildHaystack(decisionVisibleFields(dec)));
+    }
+    return haystacks;
+  });
+
+  /** The loaded decisions that match the filter, in the served order. */
+  const matchingDecisions = $derived.by(() => {
+    if (queryTokens.length === 0) return decisions;
+    return decisions.filter((dec) =>
+      matchesHaystack(queryTokens, decisionHaystacks.get(dec.id) ?? ''),
+    );
+  });
+
+  /** The decision the split layout shows, where it still matches the filter. */
+  const selectedDecision = $derived(
+    matchingDecisions.find((dec) => dec.id === selectedDecisionId) ?? null,
+  );
+
+  // A selection the filter hides is no longer the decision the detail pane shows.
+  $effect(() => {
+    if (selectedDecisionId !== null && selectedDecision === null) {
+      selectedDecisionId = null;
+    }
+  });
+
+  /**
+   * The fields the decision views can show.
+   *
+   * The card, the waiver card, the option list, and the evidence block all contribute, so a
+   * query that matches only an option, the gate, the evidence, or a note finds the decision.
+   *
+   * @param dec the decision
+   * @returns every visible value, for the shared haystack
+   */
+  function decisionVisibleFields(dec: DecisionEnvelope): Array<string | null | undefined> {
+    const values: Array<string | null | undefined> = [
+      dec.id,
+      dec.title,
+      dec.header,
+      dec.subject,
+      dec.scope,
+      dec.asking_phase,
+      dec.asking_role,
+      dec.blocks,
+      $t(`decision.blocks.${dec.blocks}`),
+      dec.reversibility,
+      $t(`decision.reversibility.${dec.reversibility}`),
+      dec.description,
+      dec.change,
+      dec.waiver_gate,
+      dec.waiver_result,
+      dec.waiver_reason,
+      dec.evidence ? JSON.stringify(dec.evidence) : '',
+      dec.delivered_at,
+      dec.is_waiver ? $t('decision.waiver.title', { plan: dec.subject ?? '' }) : '',
+    ];
+    dec.parts.forEach((part: DecisionPart, index: number) => {
+      values.push(
+        part.question,
+        part.recommendation,
+        part.recommendation_rationale,
+        part.recommending_role,
+        part.answer_type,
+        part.dependency,
+        partNotes[keyOf(dec, part, index)],
+      );
+      for (const option of part.options) {
+        values.push(
+          option.key,
+          option.label,
+          option.tradeoff_description,
+          option.consequences,
+          option.quorum_support?.dissent_summary,
+        );
+        if (part.recommendation === option.key) values.push(option.label);
+      }
+    });
+    return values;
+  }
 
   onMount(async () => {
     isMounted = true;
@@ -565,74 +663,7 @@
   }
 </script>
 
-<div class="decisions-view">
-  <div class="decisions-container">
-    <header class="decisions-header">
-      <h1 class="decisions-heading">
-        {$t('decisions.list.title')}
-        {#if decisions.length > 0}
-          <span class="unread-pill">{$t('decisions.list.open', { count: decisions.length })}</span>
-        {/if}
-      </h1>
-    </header>
-
-    {#if notifyState === 'default' && !notifyAsked && sawDecisionEvent && decisions.length > 0}
-      <div class="notify-banner" data-testid="notify-banner" role="region">
-        <p class="notify-banner__text">{$t('decision.notify.ask')}</p>
-        <div class="notify-banner__actions">
-          <Button variant="secondary" onclick={denyNotifications}>
-            {$t('decision.notify.deny')}
-          </Button>
-          <Button variant="primary" onclick={allowNotifications}>
-            {$t('decision.notify.allow')}
-          </Button>
-        </div>
-      </div>
-    {/if}
-    {#if notifyMessage}
-      <p class="notify-message" data-testid="notify-message" role="status">{notifyMessage}</p>
-    {/if}
-
-    {#if notices.length > 0}
-      <div class="notice-list" data-testid="decision-notices">
-        {#each notices as notice (notice.id)}
-          <div class="notice-line" role="status">
-            <span>{notice.text}</span>
-            <button
-              type="button"
-              class="notice-dismiss"
-              aria-label={$t('common.close')}
-              onclick={() => (notices = notices.filter((entry) => entry.id !== notice.id))}
-            >
-              ×
-            </button>
-          </div>
-        {/each}
-      </div>
-    {/if}
-
-    {#if errorMessage}
-      <div class="error-banner" role="alert">
-        <p>{errorMessage}</p>
-        <Button variant="secondary" size="small" onclick={loadDecisions}
-          >{$t('web.common.retry')}</Button
-        >
-      </div>
-    {/if}
-
-    {#if isLoading}
-      <div class="loading-state">
-        <Spinner size="2.5rem" label={$t('decisions.list.loading')} />
-      </div>
-    {:else if decisions.length === 0}
-      <div class="empty-state">
-        <p class="empty-title">
-          {$t('decisions.list.empty')}
-        </p>
-      </div>
-    {:else}
-      <div class="decisions-list">
-        {#each decisions as dec (dec.id)}
+{#snippet decisionCard(dec: DecisionEnvelope)}
           <article class="decision-card" data-decision-id={dec.id}>
             {#if dec.is_waiver || dec.id.startsWith('WR-')}
               <!-- Waiver Request View -->
@@ -1056,8 +1087,150 @@
               </div>
             {/if}
           </article>
+{/snippet}
+
+<div
+  class="decisions-view"
+  class:layout-split={$layout === 'split'}
+  class:layout-compact={$layout === 'compact'}
+  data-layout={$layout}
+>
+  <div class="decisions-container">
+    <header class="decisions-header">
+      <div class="decisions-header__row">
+        <h1 class="decisions-heading">
+          {$t('decisions.list.title')}
+          {#if decisions.length > 0}
+            <span class="unread-pill"
+              >{$t('decisions.list.open', { count: decisions.length })}</span
+            >
+          {/if}
+        </h1>
+        <ViewLayoutToggle
+          layout={$layout}
+          modes={VIEW_LAYOUTS}
+          onchange={(mode) => layout.set(mode)}
+        />
+      </div>
+    </header>
+
+    {#if notifyState === 'default' && !notifyAsked && sawDecisionEvent && decisions.length > 0}
+      <div class="notify-banner" data-testid="notify-banner" role="region">
+        <p class="notify-banner__text">{$t('decision.notify.ask')}</p>
+        <div class="notify-banner__actions">
+          <Button variant="secondary" onclick={denyNotifications}>
+            {$t('decision.notify.deny')}
+          </Button>
+          <Button variant="primary" onclick={allowNotifications}>
+            {$t('decision.notify.allow')}
+          </Button>
+        </div>
+      </div>
+    {/if}
+    {#if notifyMessage}
+      <p class="notify-message" data-testid="notify-message" role="status">{notifyMessage}</p>
+    {/if}
+
+    {#if notices.length > 0}
+      <div class="notice-list" data-testid="decision-notices">
+        {#each notices as notice (notice.id)}
+          <div class="notice-line" role="status">
+            <span>{notice.text}</span>
+            <button
+              type="button"
+              class="notice-dismiss"
+              aria-label={$t('common.close')}
+              onclick={() => (notices = notices.filter((entry) => entry.id !== notice.id))}
+            >
+              ×
+            </button>
+          </div>
         {/each}
       </div>
+    {/if}
+
+    {#if errorMessage}
+      <div class="error-banner" role="alert">
+        <p>{errorMessage}</p>
+        <Button variant="secondary" size="small" onclick={loadDecisions}
+          >{$t('web.common.retry')}</Button
+        >
+      </div>
+    {/if}
+
+    {#if isLoading}
+      <div class="loading-state">
+        <Spinner size="2.5rem" label={$t('decisions.list.loading')} />
+      </div>
+    {:else if decisions.length === 0}
+      <div class="empty-state">
+        <p class="empty-title">
+          {$t('decisions.list.empty')}
+        </p>
+      </div>
+    {:else}
+      <FilterInput
+        value={query}
+        label={$t('decisions.filter.label')}
+        placeholder={$t('decisions.filter.placeholder')}
+        resultCount={matchingDecisions.length}
+        onchange={(value) => (query = value)}
+      />
+
+      {#if matchingDecisions.length === 0}
+        <div class="empty-state" data-testid="decisions-filter-empty">
+          <p class="empty-title">{$t('decisions.filter.no_matches')}</p>
+        </div>
+      {:else if $layout === 'split'}
+        <div
+          class="decisions-split"
+          class:decisions-split--has-detail={selectedDecision !== null}
+        >
+          <div class="decisions-split__list">
+            {#each matchingDecisions as dec (dec.id)}
+              <button
+                type="button"
+                class="decision-summary"
+                class:decision-summary--active={selectedDecisionId === dec.id}
+                aria-current={selectedDecisionId === dec.id ? 'true' : undefined}
+                data-testid="decision-summary-{dec.id}"
+                onclick={() => (selectedDecisionId = dec.id)}
+              >
+                <span class="decision-summary__title">{dec.title}</span>
+                <span class="decision-summary__badges">
+                  <span class="badge badge-subject">{dec.subject}</span>
+                  <span class="badge">{$t(`decision.blocks.${dec.blocks}`)}</span>
+                  <span class="badge badge-reversibility badge-{dec.reversibility}">
+                    {$t(`decision.reversibility.${dec.reversibility}`)}
+                  </span>
+                </span>
+                <span class="waiting-time">
+                  {$t('decision.waiting', {
+                    subject: dec.scope || 'plan',
+                    time: dec.delivered_at || 'now',
+                  })}
+                </span>
+              </button>
+            {/each}
+          </div>
+          <div
+            class="decisions-split__detail"
+            class:decisions-split__detail--empty={selectedDecision === null}
+          >
+            {#if selectedDecision}
+              {@render decisionCard(selectedDecision)}
+            {:else}
+              <p class="split-placeholder">{$t('decisions.split.select')}</p>
+            {/if}
+          </div>
+        </div>
+      {:else}
+        <div class="decisions-list">
+          {#each matchingDecisions as dec (dec.id)}
+            {@render decisionCard(dec)}
+          {/each}
+        </div>
+      {/if}
     {/if}
   </div>
 </div>
@@ -1075,6 +1248,95 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+  }
+
+  /* The split layout uses the window; the single-column modes keep a readable measure. */
+  .decisions-view.layout-split .decisions-container {
+    max-width: none;
+  }
+
+  .decisions-header__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .decisions-split {
+    display: grid;
+    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .decisions-split__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+    max-height: calc(100vh - var(--space-8));
+    overflow-y: auto;
+    position: sticky;
+    top: var(--space-4);
+  }
+
+  .decisions-split__detail {
+    min-width: 0;
+  }
+
+  .decision-summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    width: 100%;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-surface);
+    text-align: left;
+  }
+
+  .decision-summary:hover {
+    background-color: var(--color-bg-subtle);
+  }
+
+  .decision-summary--active {
+    border-color: var(--color-primary);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+  }
+
+  .decision-summary__title {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .decision-summary__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+
+  .split-placeholder {
+    padding: var(--space-10) var(--space-4);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  /* Compact: tighter cards and gaps; the evidence stays behind its disclosure. */
+  .decisions-view.layout-compact .decisions-list {
+    gap: var(--space-3);
+  }
+
+  .decisions-view.layout-compact .decision-card {
+    padding: var(--space-3);
+  }
+
+  .decisions-view.layout-compact .card-header {
+    margin-bottom: var(--space-2);
   }
 
   .decisions-header {
@@ -1575,6 +1837,27 @@
     margin: var(--space-2) 0 0 0;
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
+  }
+
+  @media (max-width: 959px) {
+    /* Below the split breakpoint the view is one column again: list or detail, never both. */
+    .decisions-split {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .decisions-split__list {
+      position: static;
+      max-height: none;
+      overflow-y: visible;
+    }
+
+    .decisions-split--has-detail .decisions-split__list {
+      display: none;
+    }
+
+    .decisions-split__detail--empty {
+      display: none;
+    }
   }
 
   @media (max-width: 640px) {

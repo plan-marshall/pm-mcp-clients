@@ -446,4 +446,85 @@ describe('OverviewView component', () => {
       expect(apiClient.getProjects).toHaveBeenCalledTimes(2);
     });
   });
+
+  /** @param value the filter text */
+  async function typeFilter(value: string): Promise<void> {
+    const input = await screen.findByTestId('filter-input');
+    await fireEvent.input(input, { target: { value } });
+  }
+
+  it('filters the running plans while keeping the project tiles unfiltered', async () => {
+    render(OverviewView);
+    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+
+    await typeFilter('Message catalogue');
+
+    expect(screen.getAllByTestId('plan-card')).toHaveLength(1);
+    expect(screen.getByText('Message catalogue')).toBeInTheDocument();
+    expect(screen.queryByText('Console history of answers')).toBeNull();
+    // The sidebar's project tiles are navigation, not list items.
+    expect(screen.getByRole('tab', { name: /pm-mcp-core/ })).toBeInTheDocument();
+  });
+
+  it('filters the running plans by their epic and state', async () => {
+    render(OverviewView);
+    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+
+    await typeFilter('client work');
+    expect(screen.getAllByTestId('plan-card')).toHaveLength(2);
+    expect(screen.queryByText('Console history of answers')).toBeNull();
+
+    await typeFilter('pausing');
+    expect(screen.getAllByTestId('plan-card')).toHaveLength(1);
+    expect(screen.getByText('Message catalogue')).toBeInTheDocument();
+  });
+
+  it('shows a no-match state for the running plans', async () => {
+    render(OverviewView);
+    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+
+    await typeFilter('nothing-matches-this');
+
+    expect(await screen.findByTestId('running-filter-empty')).toHaveTextContent(
+      'Nothing matches the filter.',
+    );
+    expect(screen.queryAllByTestId('plan-card')).toHaveLength(0);
+  });
+
+  it('filters the running epics by their identifier', async () => {
+    render(OverviewView);
+    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+    await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
+    await waitFor(() => expect(screen.getByTestId('epic-card')).toBeInTheDocument());
+
+    await typeFilter('epc-client-work');
+    expect(screen.getAllByTestId('epic-card')).toHaveLength(1);
+
+    await typeFilter('nothing-matches-this');
+    expect(await screen.findByTestId('running-filter-empty')).toBeInTheDocument();
+  });
+
+  it('filters the ended-work page by title, outcome, and reason', async () => {
+    render(OverviewView);
+    await waitFor(() => expect(screen.getByText('Ended work')).toBeInTheDocument());
+    await fireEvent.click(screen.getByText('Ended work'));
+    await waitFor(() => expect(screen.getAllByTestId('ended-item').length).toBe(3));
+
+    await typeFilter('Relay drops');
+    expect(screen.getAllByTestId('ended-item')).toHaveLength(1);
+    expect(screen.getByText('Relay drops events on reconnect')).toBeInTheDocument();
+
+    await typeFilter('cancelled');
+    expect(screen.getAllByTestId('ended-item')).toHaveLength(1);
+    expect(screen.getByText("Fix the relay's event loss")).toBeInTheDocument();
+
+    await typeFilter('replaced by plan relay-v2');
+    expect(screen.getAllByTestId('ended-item')).toHaveLength(1);
+
+    await typeFilter('nothing-matches-this');
+    expect(await screen.findByTestId('ended-filter-empty')).toHaveTextContent(
+      'Nothing matches the filter.',
+    );
+    expect(screen.queryAllByTestId('ended-item')).toHaveLength(0);
+  });
 });

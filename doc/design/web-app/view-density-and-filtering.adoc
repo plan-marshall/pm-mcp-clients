@@ -1,0 +1,121 @@
+= Design: View Density and Filtering
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Web App] » View Density and Filtering
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+
+Status: `FINAL`.
+
+The list views of the web app (`/reports`, `/decisions`, the running and ended work of the overview, and the workstreams of an epic) hold their items client-side already. This design gives them one deliberate way to use a wide window and one shared way to find an item in the list: three layout modes and a filter-as-you-type control.
+
+It changes nothing about the data: no endpoint, no record, no server-side search, and no pagination semantics.
+
+[#layouts]
+== Layout Modes
+
+Every adopted view offers the same three modes and remembers the choice per view in the browser's `localStorage` under `pm_view_layout_<view>`:
+
+[cols="1,1,4",options="header"]
+|===
+| Mode | Storage value | Behaviour
+
+| Comfortable
+| `comfortable`
+| Today's single column with a readable measure (`900px` for reports, `800px` for decisions), the current spacing, and the full body of every item. This is the default when the browser holds no valid choice.
+
+| Compact
+| `compact`
+| A denser list: card padding `--space-2 --space-3`, gaps `--space-1`, the header metadata on one line, and the body clamped to two lines behind a disclosure ("Show the text"). Decisions collapse their evidence block behind its existing disclosure and keep the badge row and the action bar.
+
+| Split
+| `split`
+| The list on the left, the detail on the right. Reports use `minmax(320px, 420px) minmax(0, 1fr)`; decisions use `minmax(300px, 380px) minmax(0, 1fr)`. The list pane scrolls independently and stays mounted; the selected item is marked with `aria-current` and a primary left border. The hard width cap is removed only in this mode.
+|===
+
+[#breakpoint]
+=== The split breakpoint
+
+`split` collapses to one column at `max-width: 959px`. Below it the view behaves like the single-column modes: the list fills the window, and only a selected detail replaces it (never both). No horizontal scrollbar appears at any width down to `320px`.
+
+The layout choice survives that collapse: a view left in `split` on a desktop is still in `split` when the same browser opens it on a phone, and it returns to two panes on a wide screen.
+
+[#filter]
+== The Filter Contract
+
+One utility (`filterText.ts`) and one component (`FilterInput.svelte`) power every adopted view.
+
+* *Normalized substring matching*: text is decomposed (NFD), stripped of combining marks, lower-cased, and its whitespace collapsed. `Ärger` therefore matches `arger`.
+* *Tokens are ANDed, fields are ORed*: the query is split on whitespace; every token must appear as a substring of at least one visible field. A token may not be assembled from the end of one field and the start of the next.
+* *Loaded data only*: the filter runs synchronously over the items the view already holds. Typing never fetches. Reports are paginated, so the view says so while `has_older` is true and "Show older" widens the loaded set without clearing the query.
+* *Served order*: matching keeps the order the runtime served; nothing is re-ranked.
+* *No fuzzy matching, stemming, regex, or highlighting*: substring over normalized text is the whole contract.
+* *One haystack per item*: each view builds a normalized haystack when the item list changes, not on every keystroke.
+* *Empty query matches everything*: an empty or whitespace-only query is not a filter.
+
+[#filter-control]
+=== The control
+
+`FilterInput` renders a visible label and a labelled `<input type="search">` inside `role="search"`.
+
+* `oninput` emits immediately; there is no debounce because the lists are bounded by what is loaded.
+* `Esc` clears the query and keeps the focus; `/` focuses the field unless the focus is already in an input, textarea, select, or contenteditable element.
+* A clear button appears while the query is non-empty.
+* The result count sits in an `aria-live="polite"` region, e.g. "3 matches" or "No matches".
+* A view with no match shows its own empty state (`common.filter.empty` or `<view>.filter.no_matches`); pagination chrome stays visible.
+
+Header counts keep their own meaning: the reports heading still shows the unread count of all loaded reports, and the decisions heading still shows the open-decision count. The filter's count is a separate "matches" figure.
+
+[#field-matrices]
+== Field Matrices
+
+Every field a view can render takes part, so a query that matches only a body, an option, or a piece of evidence still finds the item.
+
+[cols="1,3",options="header"]
+|===
+| View | Fields
+
+| Reports
+| `from.project`, `from.project_title`, `from.epic`, `from.epic_title`, `from.plan`, `from.plan_title`, `from.phase`, `from.role`, `from.harness`, `from.model`, `title`, `subject`, `kind`, `body`, `summary`, `status`, the localized unread/read state, the rendered created/sent time, and `created_at`.
+
+| Decisions
+| `id`, `title`, `header`, `subject`, `scope`, `asking_phase`, `asking_role`, `blocks` (raw and localized), `reversibility` (raw and localized), `description`, `change`, `waiver_gate`, `waiver_result`, `waiver_reason`, the serialized evidence values, `delivered_at`, the localized waiver title, every part's `question`, `recommendation` (key and the matching option label), `recommendation_rationale`, `recommending_role`, `answer_type`, `dependency`, every option's `key`, `label`, `tradeoff_description`, `consequences`, and dissent summary, and any note typed into the card.
+
+| Overview — running plans
+| `plan_id`, `title`, the selected project's display name and id, `epic_id`, `epic_title`, `current_phase`, `phase_state`, and the off-track signal.
+
+| Overview — running epics
+| `epic_id`, `title`, the selected project's display name and id, the needs-operator kind, and the identifiers and titles of the nested plans.
+
+| Overview — ended work
+| `id`/`item_id`, `kind`, `title`, `outcome`, `terminal_reason`, `reason`, `ended_at`, and its rendered relative date.
+
+| Epic — workstreams
+| The workstream's `id` and `name` plus each row's `plan_id`, `title`, `status`, `wait_reason`, `wait_plan_id`, `change`, `objective`, `deliverables`, `surface`, `dependencies`, and `overlap_files`.
+|===
+
+Group headings follow their items: a project, epic, or workstream with no match disappears, and returns when the query is cleared. A folded workstream opens itself while a query is active, so a match is never hidden behind a fold.
+
+[#adoption]
+== Adoption Rule
+
+Adopt the shared components in a view when *all* of these hold:
+
+. The view renders a list (or several list sections) of items it already holds.
+. The items carry more than one piece of text worth searching.
+. Filtering can be done without a request or a change to the served order.
+
+Do **not** add a filter to:
+
+* a single-record view (`SettingsView`, `SystemView`, `CleanupView` and their detail panes);
+* a form, a wizard step, or a picker whose list is itself the input;
+* a navigation surface such as the overview's project tiles, which choose what the main panel shows rather than being list items.
+
+A view that adopts the components must not implement its own matching rules. A new multi-element list imports `filterText` and `FilterInput`, publishes its field matrix here, and follows the result-count and empty-state behaviour above.
+
+[#rollback]
+== Rollback
+
+Removing the layout toggle and the filter inputs and restoring the single-column CSS returns the views to their earlier behaviour. No data, endpoint, or stored record changes with it; only the per-view `localStorage` keys remain and are harmless.
