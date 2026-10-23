@@ -12,6 +12,7 @@
     "dev": "vite",
     "build": "vite build",
     "prepare": "svelte-kit sync",
+    "audit:fix": "bash scripts/audit-fix.sh",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
