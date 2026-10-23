@@ -32,7 +32,7 @@ was modified.
 | `pm-web-app/package.json` | Modified | `test:dev-host` runs the matrix. |
 | `pm-web-app/src/routes/+layout.svelte` | Modified | The heartbeat's effect depends on an `isInitialized && isPaired` derived value, so an unrelated store update no longer tears down and re-opens the event subscription. |
 | `pm-web-app/src/routes/layout.test.ts` | Modified | Fake-interval case: first probe, a second probe after 30 s, and the stale offline banner cleared by the successful probe. |
-| `pm-mock-runtime/scripts/mock-device-secret.sh` | New | `mock_secret_file`, `new_mock_device_secret`, `ensure_mock_device_secret`; atomic same-directory publication, `0600`, value only on stdout. |
+| `pm-mock-runtime/scripts/mock-device-secret.sh` | New | `mock_secret_file`, `new_mock_device_secret`, `ensure_mock_device_secret`; exclusive `mkdir` lock, atomic same-directory publication, `0600`, value only on stdout. |
 | `pm-mock-runtime/scripts/mock-device-secret.test.sh` | New | Nine cases: default path, override, creation, mode, silent stderr, reuse, empty-file regeneration, tightening an existing file, and two concurrent calls agreeing on one secret. |
 | `pm-mock-runtime/start.sh` | Modified | Parses `-d`/`--device-secret`/`--device-secret=*`; supplies the machine-wide secret only when the operator did not; base comment corrected. |
 | `README.md`, `pm-mock-runtime/README.adoc`, `pm-web-app/README.md` | Modified | Document the global secret path, the reset action, the canonical host, and the new check. |
