@@ -94,6 +94,11 @@ url_host() {
 # Prints the coordinates a phone can use: the local URL always, the machine's name and the IP
 # only for a reachable host, and the paired URL on the resolved host.
 #
+# The host is printed lower case without a trailing dot: a browser sends that form in its `Host`
+# header, and Vite's allowed-host check compares the header with the list by exact string
+# equality. Printing the resolved spelling (`Mac-Mini.local`) would name a host the list does not
+# hold even though it is allowed in its canonical form.
+#
 # A loopback host is the operator's explicit no-exposure choice: it prints no network
 # coordinate, even when a primary IPv4 exists, and the paired URL never swaps in that IP.
 #
@@ -104,6 +109,9 @@ render_connection_urls() {
     local pairing_code="${2:-}"
     local host
     host="$(reachable_host)"
+    # Bash 3.2 (macOS) has no ${var,,}; `tr` keeps the renderer portable.
+    host="$(printf '%s' "$host" | tr '[:upper:]' '[:lower:]')"
+    host="${host%.}"
     local authority
     authority="$(url_host "$host")"
     local ip

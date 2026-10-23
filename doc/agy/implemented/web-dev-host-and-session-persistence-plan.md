@@ -7,7 +7,7 @@ This implementation plan resolves two live findings from the web development loo
 
 The single-use pairing contract, the failed-redemption limit, the pairing-code lifetime, the real runtime's 90-day device idle expiry, and the Vite network binding are **not** changed. This plan makes the dev-host allow-list match the name it prints, and gives the dev loop one machine-wide device secret that survives builds and checkouts.
 
-It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -15,13 +15,13 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Findings Source** | Operator report of the `403` blocked host and the recurring session/pairing loss, against the verified [`web-session-pairing-and-dev-host`](verified/web-session-pairing-and-dev-host-plan-report.md) and [`web-session-follow-up-fixes`](verified/web-session-follow-up-fixes-plan-report.md) landings |
-| **Use Cases** | [`UC-ENT-1`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ENT-2`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2) (Manage Paired Devices) |
-| **Specifications** | [`03-web-server.adoc#web-listener`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-listener) (Host validation), [`#devices`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices) (device secret, `last_used_at`, idle expiry), [`#web-app`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app) (localStorage device secret) |
-| **Local Client Design** | [`doc/design/web-app/entry.adoc`](../design/web-app/entry.adoc), [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) |
-| **Predecessor Plans** | [`implemented/web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md), [`implemented/web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Findings Source** | Operator report of the `403` blocked host and the recurring session/pairing loss, against the verified [`web-session-pairing-and-dev-host`](../verified/web-session-pairing-and-dev-host-plan-report.md) and [`web-session-follow-up-fixes`](../verified/web-session-follow-up-fixes-plan-report.md) landings |
+| **Use Cases** | [`UC-ENT-1`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ENT-2`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2) (Manage Paired Devices) |
+| **Specifications** | [`03-web-server.adoc#web-listener`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-listener) (Host validation), [`#devices`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices) (device secret, `last_used_at`, idle expiry), [`#web-app`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app) (localStorage device secret) |
+| **Local Client Design** | [`doc/design/web-app/entry.adoc`](../../design/web-app/entry.adoc), [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc) |
+| **Predecessor Plans** | [`implemented/web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md), [`implemented/web-session-follow-up-fixes-plan.md`](web-session-follow-up-fixes-plan.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis (finding -> root cause -> correction)
 
@@ -113,15 +113,15 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` on branch `fix/web-dev-host-and-session-persistence` off latest `main`; Step 1 committed and pushed.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the Vite host canonicalization and the shell secret helper.
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for the curl matrix, Bash test, and heartbeat test.
   - `plan-marshall-persona-security-expert` for the `0600` secret file, atomic publication, and no-secret-in-log rule.
   - `plan-marshall-persona-documenter` for the README and the global-secret lifecycle.
   - `plan-marshall-persona-code-reviewer` for review-bot triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Final completion report written (`doc/agy/web-dev-host-and-session-persistence-plan-report.md`), initial plan moved to `doc/agy/implemented/web-dev-host-and-session-persistence-plan.md`, **all relative links rebased for the new location**, and the dashboard/implemented index updated. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
-- [ ] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes TypeScript, shell scripts, and `package.json`/docs).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Final completion report written (`doc/agy/web-dev-host-and-session-persistence-plan-report.md`), initial plan moved to `doc/agy/implemented/web-dev-host-and-session-persistence-plan.md`, **all relative links rebased for the new location**, and the dashboard/implemented index updated. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
+- [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes TypeScript, shell scripts, and `package.json`/docs).
 - [ ] 6. PR opened (NEVER use `skip-bot-review` on a worker PR), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
 - [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-dev-host-and-session-persistence-plan-report.md` by the orchestrator session.
@@ -147,7 +147,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 1: Reproduce the Two Failures
 
-- [ ] **1.1 Reproduce the host rejection**:
+- [x] **1.1 Reproduce the host rejection**:
   - In `pm-web-app`, start Vite with `PM_WEB_HOST=Mac-Mini.local npm run dev -- --host 127.0.0.1 --port 5199 --strictPort` (background; wait for the port).
   - Run:
     ```bash
@@ -156,7 +156,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     ```
     Expect **403** before the fix. Record the exact body: it names `mac-mini.local` and `server.allowedHosts`.
   - Confirm the allow-list code keeps the mixed-case `Mac-Mini.local` (`vite.config.ts#machineHostNames`) and that Vite compares the lower-case `Host` header exactly (`isHostAllowedInternal`).
-- [ ] **1.2 Reproduce the session loss**:
+- [x] **1.2 Reproduce the session loss**:
   - Start the mock via `pm-mock-runtime/start.sh --scenario web-pairing --web-port 7420`.
   - Read the open code from `GET /mock/state`, redeem it with `POST /api/v1/pair`, and capture `device_secret`.
   - `curl -H "Authorization: Bearer $SECRET" -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7420/api/v1/status` → expect **200**.
@@ -165,7 +165,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 2: Host Allow-List (F1)
 
-- [ ] **2.1 Canonicalize names in Vite**:
+- [x] **2.1 Canonicalize names in Vite**:
   - In `vite.config.ts`, add:
     ```ts
     function normalizeHost(value: string): string {
@@ -175,11 +175,11 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - Build `machineHostNames()` from `normalizeHost(process.env.PM_WEB_HOST ?? os.hostname())`; for a DNS name include the normalized name, `${name}.local`, the short name, and `${short}.local`; do not synthesize `.local` forms for an IP literal.
   - Normalize `PM_WEB_ALLOWED_HOSTS` additions with the same helper and deduplicate the union.
   - Keep `allowedHosts` finite; do not set `allowedHosts: true`.
-- [ ] **2.2 Print the canonical name**:
+- [x] **2.2 Print the canonical name**:
   - In `connection-urls.sh`, normalize the resolved host to lower case before `url_host`; keep the existing loopback and IPv6 handling.
   - Update `connection-urls.test.sh`: add `Mac-Mini.local` → `mac-mini.local`; keep the IPv6, name+IP, no-code, and no-IPv4 cases.
   - Only touch `start.sh` if the call-site needs no change; the rendering helper owns the output.
-- [ ] **2.3 Add the curl host test**:
+- [x] **2.3 Add the curl host test**:
   - Add `pm-web-app/scripts/verify-dev-host.sh` (or record the exact commands in the completion report if a committed script would duplicate the Vite launch):
     ```bash
     PM_WEB_HOST=Mac-Mini.local npm run dev -- --host 127.0.0.1 --port 5199 --strictPort &
@@ -193,7 +193,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 3: Machine-Wide Dev Secret (F2)
 
-- [ ] **3.1 Add the secret helper**:
+- [x] **3.1 Add the secret helper**:
   - Create `pm-mock-runtime/scripts/mock-device-secret.sh` with:
     - `mock_secret_file`: `${PM_MOCK_DEVICE_SECRET_FILE:-$HOME/.plan-marshall-mcp/mock-web-device-secret}`.
     - `ensure_mock_device_secret`: ensure the parent directory; if the file is absent or empty, generate `pmw_mock_secret_<random>`; write a same-directory temp file with `umask 077`/mode `0600`; `mv` it into place; print only the secret value on stdout for the caller.
@@ -203,33 +203,33 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
     - The file is non-empty and `0600`.
     - An empty file is regenerated.
     - Two calls in the same state directory return the same secret.
-- [ ] **3.2 Wire `start.sh`**:
+- [x] **3.2 Wire `start.sh`**:
   - Add `HAS_DEVICE_SECRET=false` and parse `-d|--device-secret` and `--device-secret=*` into `PASSED_ARGS`; keep an explicit operator secret authoritative.
   - When no explicit secret is given, source `scripts/mock-device-secret.sh`, set `SECRET="$(ensure_mock_device_secret)"`, and append `--device-secret "$SECRET"` to `FINAL_ARGS`.
   - Keep the `--base` logic exactly as is; the base still carries the scenario state, runtime token, and socket. Do not put the global secret under `target/`.
-- [ ] **3.3 Document the reset**:
+- [x] **3.3 Document the reset**:
   - `pm-mock-runtime/README.adoc`, root `README.md`, and `pm-web-app/README.md`: the dev secret is at the global path, survives `mvn clean` and worktree switches, and is reset by deleting that file. Deleting `target/machine` resets scenario state but **not** the device secret.
-- [ ] **3.4 Keep the session heartbeat honest**:
+- [x] **3.4 Keep the session heartbeat honest**:
   - Add a `layout.test.ts` case with fake timers: render paired, assert the first `getConnectionStatus` call, advance 30 seconds, assert a second call, and assert the offline state is cleared when a probe succeeds.
   - The existing 30-second heartbeat is the keepalive; do not change the 90-day real-runtime idle expiry. If the test shows the effect stops on a route, fix that route's dependency/cleanup path.
 
 ### Phase 4: Verification (Curl Is Mandatory)
 
-- [ ] **4.1 Host curl matrix** (exact commands above): `200` for the printed lower-case name and `/pair`, `200` for the explicit lower-case Host header, `403` for an unknown host. Record the four status codes in the report.
-- [ ] **4.2 Session curl proof**:
+- [x] **4.1 Host curl matrix** (exact commands above): `200` for the printed lower-case name and `/pair`, `200` for the explicit lower-case Host header, `403` for an unknown host. Record the four status codes in the report.
+- [x] **4.2 Session curl proof**:
   - Start the mock with the new global secret; pair via `curl` as in Phase 1 and capture `SECRET`.
   - `curl -H "Authorization: Bearer $SECRET" .../api/v1/status` → `200`.
   - Stop; `rm -rf pm-mock-runtime/target/machine`; start again; same curl → **`200`** (the fix), with the global secret file unchanged.
   - Repeat the restart from a second worktree when available; the same secret must still return `200`.
   - `curl` with no secret and with a wrong secret → `401` (sanity).
-- [ ] **4.3 Unit/module gates**:
+- [x] **4.3 Unit/module gates**:
   - `bash pm-mock-runtime/scripts/mock-device-secret.test.sh`
   - `cd pm-web-app && npm run test:urls`
   - `cd pm-web-app && npm test`
   - `cd pm-web-app && npm run check && npm run lint`
   - Prettier check on every changed file (`npx prettier --check <files>`); record any pre-existing repo-wide drift without changing untouched files.
   - `./mvnw verify -Ppre-commit` with `BUILD SUCCESS` and a clean `git status`.
-- [ ] **4.4 Report and archive**:
+- [x] **4.4 Report and archive**:
   - Write `doc/agy/web-dev-host-and-session-persistence-plan-report.md` with the two curl matrices, the restart proof, the secret-file mode/path, the test counts, and the link-rebase result.
   - Move the plan to `doc/agy/implemented/web-dev-host-and-session-persistence-plan.md` and **rebase all relative links**; run the internal-link check.
   - Update `doc/agy/implemented/README.md` and the dashboard; mark Steps 1–7 as executed, leaving Step 8 for the orchestrator.

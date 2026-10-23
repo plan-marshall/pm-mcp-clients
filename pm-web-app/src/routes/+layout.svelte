@@ -74,9 +74,13 @@
   });
 
   // The connection status follows the session: read on mount, on a listener/device event, and on
-  // a heartbeat, so a machine that went away or came back is seen without a reload.
+  // a heartbeat, so a machine that went away or came back is seen without a reload. Only the two
+  // fields the heartbeat needs are dependencies: an unrelated store update (the offline flag, a
+  // decision count) must not tear down and re-open the event subscription.
+  const connectionActive = $derived($runtimeStore.isInitialized && $runtimeStore.isPaired);
+
   $effect(() => {
-    if (!$runtimeStore.isInitialized || !$runtimeStore.isPaired) {
+    if (!connectionActive) {
       return;
     }
     let mounted = true;
