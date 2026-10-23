@@ -22,10 +22,10 @@ No server, endpoint, `pm-api` process record, or live-event format changed. A no
 
 | File | Change |
 |---|---|
-| `src/lib/views/PlanView.svelte` | `TreeSelection` union (`task` / `node`); selectable row bodies as native buttons; independent expand toggles with `aria-expanded`; deliberate default/refresh fallback; node narrative inspector branch; shared state helper; selected-row affordances. |
+| `src/lib/views/PlanView.svelte` | `TreeSelection` union (`task` / `node`); selectable row bodies as native buttons; independent expand toggles with `aria-expanded`; recursive tree rendering at every nesting depth; deliberate default/refresh fallback; stale-activity generation guard; node narrative inspector branch; shared state helper; selected-row affordances. |
 | `src/lib/components/NodeNarrative.svelte` | New narrative panel: title, kind, state, run count, duration, waits-for, prune reason, carried tasks with activity markers, sub-part outline, explicit no-activity state. |
 | `src/lib/utils/processNode.ts` | New shared `getNodeGlyph` / `getNodeStateText`, used by both the tree and the narrative. |
-| `src/lib/views/PlanView.test.ts` | Node selection, done-task activity, done-task empty state, toggle independence, refresh stability/fallback, default selection, accessibility. |
+| `src/lib/views/PlanView.test.ts` | Node selection, done-task activity, done-task empty state, toggle independence, refresh stability/fallback, nested sub-workflow depth, stale activity-load ordering, default selection, accessibility. |
 | `src/lib/components/NodeNarrative.test.ts` | Header fields, run counts, child-task callback, sub-node callback, no-activity copy, control-sequence stripping. |
 | `src/lib/api/scenarioContracts.test.ts` | New contract test over both canonical scenarios: `session-log` process and activity routes, activity-link/route consistency, deliberate activity-less task. |
 
@@ -71,7 +71,7 @@ All commands were run in the plan worktree.
 $ cd pm-web-app
 $ npm test
 Test Files  56 passed (56)
-Tests       488 passed (488)
+Tests       490 passed (490)
 ```
 
 Focused suites:

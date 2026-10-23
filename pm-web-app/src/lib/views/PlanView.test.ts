@@ -742,6 +742,116 @@ describe('PlanView component', () => {
     expect(apiClient.getTaskActivity).not.toHaveBeenCalled();
   });
 
+  it('keeps the newest activity when an older task load resolves late', async () => {
+    const planWithTwoTasks: ProcessTree = {
+      ...mockPlan,
+      nodes: [
+        mockPlan.nodes[0],
+        {
+          ...mockPlan.nodes[1],
+          leaf_tasks: [
+            {
+              task_id: 'TASK-001',
+              role: 'implement',
+              harness: 'claude',
+              model: 'sonnet',
+              attempt: 1,
+              status: 'done',
+              duration_seconds: 240,
+              tokens_so_far: 22000,
+            },
+            mockPlan.nodes[1].leaf_tasks[0],
+          ],
+        },
+        mockPlan.nodes[2],
+      ],
+    };
+    const pending = new Map<string, (activity: TaskActivity) => void>();
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithTwoTasks);
+    vi.spyOn(apiClient, 'getTaskActivity').mockImplementation(
+      (_planId, taskId) =>
+        new Promise<TaskActivity>((resolve) => {
+          pending.set(taskId, resolve);
+        }),
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await waitFor(() => expect(pending.has('TASK-003')).toBe(true));
+
+    await fireEvent.click(screen.getByTestId('task-TASK-001'));
+    await waitFor(() => expect(pending.has('TASK-001')).toBe(true));
+
+    pending.get('TASK-001')?.({
+      ...mockActivity,
+      task_id: 'TASK-001',
+      entries: [{ timestamp: '13:40:02', kind: 'text', content: 'Newer selection' }],
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-feed')).toHaveTextContent('Newer selection'),
+    );
+
+    pending.get('TASK-003')?.({
+      ...mockActivity,
+      task_id: 'TASK-003',
+      entries: [{ timestamp: '14:00:00', kind: 'text', content: 'Stale selection' }],
+    });
+    await Promise.resolve();
+
+    expect(screen.getByTestId('activity-feed')).toHaveTextContent('Newer selection');
+    expect(screen.getByTestId('activity-feed')).not.toHaveTextContent('Stale selection');
+  });
+
+  it('renders and selects nested sub-workflows at every depth', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+      ...mockPlan,
+      nodes: [
+        mockPlan.nodes[0],
+        {
+          ...mockPlan.nodes[1],
+          leaf_tasks: [],
+          sub_nodes: [
+            {
+              node_id: 'execute.envelope',
+              title: 'execute.envelope',
+              kind: 'tasks',
+              state: 'running',
+              run_count: 1,
+              current_run: 1,
+              duration_seconds: 360,
+              sub_nodes: [
+                {
+                  node_id: 'execute.envelope.remediation',
+                  title: 'remediation.ci-failure',
+                  kind: 'sub_workflow',
+                  state: 'planned',
+                  run_count: 0,
+                  current_run: 0,
+                  duration_seconds: 0,
+                  sub_nodes: [],
+                  leaf_tasks: [],
+                },
+              ],
+              leaf_tasks: [],
+            },
+          ],
+        },
+        mockPlan.nodes[2],
+      ],
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const nested = await screen.findByTestId('node-execute.envelope.remediation');
+    expect(nested).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('select-node-execute.envelope.remediation'));
+
+    expect(screen.getByTestId('node-narrative-title')).toHaveTextContent('remediation.ci-failure');
+    expect(screen.getByTestId('node-narrative-state')).toHaveTextContent('planned');
+  });
+
   it('makes the row body a separately announced selection control', async () => {
     render(PlanView);
     await screen.findByTestId('plan-title');

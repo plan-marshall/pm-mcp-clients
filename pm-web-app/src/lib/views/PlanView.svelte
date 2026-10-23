@@ -81,6 +81,14 @@
 
   let unsubscribeEvents: (() => void) | null = null;
   let unsubscribeActivity: (() => void) | null = null;
+  /**
+   * The activity load that owns the panel.
+   *
+   * A task request can resolve after the operator selected something else; the generation is
+   * bumped on every load and on every switch away from a task, so a stale answer never replaces
+   * the current feed and never opens a subscription the operator cannot see.
+   */
+  let activityLoadGeneration = 0;
 
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
@@ -113,6 +121,7 @@
     if (selectedTaskId && planId) {
       void loadTaskActivity(planId, selectedTaskId);
     } else {
+      activityLoadGeneration += 1;
       taskActivity = null;
       if (unsubscribeActivity) {
         unsubscribeActivity();
@@ -304,6 +313,7 @@
   }
 
   async function loadTaskActivity(pId: string, tId: string) {
+    const generation = ++activityLoadGeneration;
     if (unsubscribeActivity) {
       unsubscribeActivity();
       unsubscribeActivity = null;
@@ -311,7 +321,9 @@
 
     isLoadingActivity = true;
     try {
-      taskActivity = await apiClient.getTaskActivity(pId, tId);
+      const loaded = await apiClient.getTaskActivity(pId, tId);
+      if (generation !== activityLoadGeneration) return;
+      taskActivity = loaded;
       unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (event, data) => {
         const entry = toActivityEntry(event, data);
         if (taskActivity && entry) {
@@ -322,9 +334,13 @@
         }
       });
     } catch {
-      taskActivity = null;
+      if (generation === activityLoadGeneration) {
+        taskActivity = null;
+      }
     } finally {
-      isLoadingActivity = false;
+      if (generation === activityLoadGeneration) {
+        isLoadingActivity = false;
+      }
     }
   }
 
@@ -736,173 +752,100 @@
         aria-label={$t('plan.view.tree_label')}
         data-testid="process-tree"
       >
-        <div class="tree-container">
-          {#each plan.nodes.filter((n) => n.state !== 'not_in_plan') as node}
-            <div
-              class="node-item node-item--level-1 node-item--{node.state}"
-              data-testid="node-{node.node_id}"
-            >
-              <div class="node-row {isNodeSelected(node.node_id) ? 'node-row--selected' : ''}">
-                <button
-                  type="button"
-                  class="toggle-btn"
-                  onclick={() => toggleNode(node.node_id)}
-                  aria-label={$t('plan.view.toggle_node')}
-                  aria-expanded={hasChildren(node)
-                    ? Boolean(expandedNodes[node.node_id])
-                    : undefined}
-                  data-testid="toggle-node-{node.node_id}"
+        {#snippet processNode(node: ProcessNode, level: 'root' | 'sub')}
+          <div
+            class="node-item {level === 'root'
+              ? 'node-item--level-1'
+              : 'node-item--sub'} node-item--{node.state}"
+            data-testid="node-{node.node_id}"
+          >
+            <div class="node-row {isNodeSelected(node.node_id) ? 'node-row--selected' : ''}">
+              <button
+                type="button"
+                class="toggle-btn"
+                onclick={() => toggleNode(node.node_id)}
+                aria-label={level === 'root'
+                  ? $t('plan.view.toggle_node')
+                  : $t('plan.view.toggle_sub_node')}
+                aria-expanded={hasChildren(node) ? Boolean(expandedNodes[node.node_id]) : undefined}
+                data-testid="toggle-node-{node.node_id}"
+              >
+                <span class="node-glyph">{getNodeGlyph(node.state)}</span>
+                <span class="toggle-icon">
+                  {#if hasChildren(node)}
+                    {expandedNodes[node.node_id] ? '▾' : '▸'}
+                  {:else}
+                    &nbsp;
+                  {/if}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="node-info node-select"
+                onclick={() => selectNode(node.node_id)}
+                aria-pressed={isNodeSelected(node.node_id)}
+                aria-current={isNodeSelected(node.node_id) ? 'true' : undefined}
+                aria-label={`${stripControlSequences(node.title)} — ${$t('plan.node.select')}`}
+                data-testid="select-node-{node.node_id}"
+              >
+                {#if level === 'root' && node.kind === 'phase'}
+                  <WorkflowIcon id={phaseIconId(node.node_id)} size={16} />
+                {/if}
+                <span class="node-kind-badge">{level === 'sub' ? `↳ ${node.kind}` : node.kind}</span
                 >
-                  <span class="node-glyph">{getNodeGlyph(node.state)}</span>
-                  <span class="toggle-icon">
-                    {#if hasChildren(node)}
-                      {expandedNodes[node.node_id] ? '▾' : '▸'}
-                    {:else}
-                      &nbsp;
-                    {/if}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  class="node-info node-select"
-                  onclick={() => selectNode(node.node_id)}
-                  aria-pressed={isNodeSelected(node.node_id)}
-                  aria-current={isNodeSelected(node.node_id) ? 'true' : undefined}
-                  aria-label={`${stripControlSequences(node.title)} — ${$t('plan.node.select')}`}
-                  data-testid="select-node-{node.node_id}"
-                >
-                  {#if node.kind === 'phase'}
-                    <WorkflowIcon id={phaseIconId(node.node_id)} size={16} />
-                  {/if}
-                  <span class="node-kind-badge">{node.kind}</span>
-                  <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
-                  <span class="node-state-text">{getNodeStateText(node, $t)}</span>
-                  {#if node.duration_seconds > 0}
-                    <span class="node-duration">{formatDurationSeconds(node.duration_seconds)}</span
-                    >
-                  {/if}
-                </button>
-              </div>
-
-              <!-- Children (Sub-nodes or Leaf Tasks) -->
-              {#if expandedNodes[node.node_id]}
-                <div class="node-children">
-                  <!-- Sub Nodes -->
-                  {#if node.sub_nodes && node.sub_nodes.length > 0}
-                    {#each node.sub_nodes as subNode}
-                      <div
-                        class="node-item node-item--sub node-item--{subNode.state}"
-                        data-testid="node-{subNode.node_id}"
-                      >
-                        <div
-                          class="node-row {isNodeSelected(subNode.node_id)
-                            ? 'node-row--selected'
-                            : ''}"
-                        >
-                          <button
-                            type="button"
-                            class="toggle-btn"
-                            onclick={() => toggleNode(subNode.node_id)}
-                            aria-label={$t('plan.view.toggle_sub_node')}
-                            aria-expanded={hasChildren(subNode)
-                              ? Boolean(expandedNodes[subNode.node_id])
-                              : undefined}
-                            data-testid="toggle-node-{subNode.node_id}"
-                          >
-                            <span class="node-glyph">{getNodeGlyph(subNode.state)}</span>
-                            <span class="toggle-icon">
-                              {#if hasChildren(subNode)}
-                                {expandedNodes[subNode.node_id] ? '▾' : '▸'}
-                              {:else}
-                                &nbsp;
-                              {/if}
-                            </span>
-                          </button>
-                          <button
-                            type="button"
-                            class="node-info node-select"
-                            onclick={() => selectNode(subNode.node_id)}
-                            aria-pressed={isNodeSelected(subNode.node_id)}
-                            aria-current={isNodeSelected(subNode.node_id) ? 'true' : undefined}
-                            aria-label={`${stripControlSequences(subNode.title)} — ${$t('plan.node.select')}`}
-                            data-testid="select-node-{subNode.node_id}"
-                          >
-                            <span class="node-kind-badge">↳ {subNode.kind}</span>
-                            <span class="node-title">{stripControlSequences(subNode.title)}</span>
-                            <span class="node-state-text">{getNodeStateText(subNode, $t)}</span>
-                          </button>
-                        </div>
-
-                        <!-- Sub-node leaf tasks -->
-                        {#if expandedNodes[subNode.node_id] && subNode.leaf_tasks}
-                          <div class="tasks-list">
-                            {#each subNode.leaf_tasks as task}
-                              <button
-                                class="task-row {selectedTaskId === task.task_id
-                                  ? 'task-row--selected'
-                                  : ''}"
-                                onclick={() => selectTask(task.task_id)}
-                                aria-current={selectedTaskId === task.task_id ? 'true' : undefined}
-                                data-testid="task-{task.task_id}"
-                              >
-                                <span class="task-glyph">{getNodeGlyph(task.status)}</span>
-                                <span class="task-id font-semibold">{task.task_id}</span>
-                                <span class="task-role">{task.role}</span>
-                                <span class="task-model">{task.harness} {task.model}</span>
-                                <span class="task-attempt">attempt {task.attempt}</span>
-                                <span
-                                  class="task-status badge badge--state badge--state-{task.status}"
-                                  >{task.status}</span
-                                >
-                                {#if task.off_track}
-                                  <span
-                                    class="badge badge--warning"
-                                    data-testid="task-off-track-badge"
-                                  >
-                                    off track: {task.off_track.signal}
-                                  </span>
-                                {/if}
-                              </button>
-                            {/each}
-                          </div>
-                        {/if}
-                      </div>
-                    {/each}
-                  {/if}
-
-                  <!-- Leaf Tasks at Node level -->
-                  {#if node.leaf_tasks && node.leaf_tasks.length > 0}
-                    <div class="tasks-list">
-                      {#each node.leaf_tasks as task}
-                        <button
-                          class="task-row {selectedTaskId === task.task_id
-                            ? 'task-row--selected'
-                            : ''}"
-                          onclick={() => selectTask(task.task_id)}
-                          aria-current={selectedTaskId === task.task_id ? 'true' : undefined}
-                          data-testid="task-{task.task_id}"
-                        >
-                          <span class="task-glyph">{getNodeGlyph(task.status)}</span>
-                          <span class="task-id font-semibold">{task.task_id}</span>
-                          <span class="task-role">{task.role}</span>
-                          <span class="task-model">{task.harness} {task.model}</span>
-                          <span class="task-attempt">attempt {task.attempt}</span>
-                          <span class="task-status badge badge--state badge--state-{task.status}"
-                            >{task.status}</span
-                          >
-                          {#if task.off_track}
-                            <span class="badge badge--warning" data-testid="task-off-track-badge">
-                              off track: {task.off_track.signal}
-                            </span>
-                          {/if}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              {/if}
+                <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
+                <span class="node-state-text">{getNodeStateText(node, $t)}</span>
+                {#if node.duration_seconds > 0}
+                  <span class="node-duration">{formatDurationSeconds(node.duration_seconds)}</span>
+                {/if}
+              </button>
             </div>
+
+            <!-- Children (sub-nodes at every depth, then this node's leaf tasks) -->
+            {#if expandedNodes[node.node_id]}
+              <div class="node-children">
+                {#if node.sub_nodes && node.sub_nodes.length > 0}
+                  {#each node.sub_nodes as child (child.node_id)}
+                    {@render processNode(child, 'sub')}
+                  {/each}
+                {/if}
+                {#if node.leaf_tasks && node.leaf_tasks.length > 0}
+                  <div class="tasks-list">
+                    {#each node.leaf_tasks as task (task.task_id)}
+                      <button
+                        class="task-row {selectedTaskId === task.task_id
+                          ? 'task-row--selected'
+                          : ''}"
+                        onclick={() => selectTask(task.task_id)}
+                        aria-current={selectedTaskId === task.task_id ? 'true' : undefined}
+                        data-testid="task-{task.task_id}"
+                      >
+                        <span class="task-glyph">{getNodeGlyph(task.status)}</span>
+                        <span class="task-id font-semibold">{task.task_id}</span>
+                        <span class="task-role">{task.role}</span>
+                        <span class="task-model">{task.harness} {task.model}</span>
+                        <span class="task-attempt">attempt {task.attempt}</span>
+                        <span class="task-status badge badge--state badge--state-{task.status}"
+                          >{task.status}</span
+                        >
+                        {#if task.off_track}
+                          <span class="badge badge--warning" data-testid="task-off-track-badge">
+                            off track: {task.off_track.signal}
+                          </span>
+                        {/if}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/snippet}
+
+        <div class="tree-container">
+          {#each plan.nodes.filter((n) => n.state !== 'not_in_plan') as node (node.node_id)}
+            {@render processNode(node, 'root')}
           {/each}
 
           <!-- Pruned / Not in plan section -->
