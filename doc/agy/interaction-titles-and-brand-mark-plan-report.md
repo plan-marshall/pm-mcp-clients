@@ -4,7 +4,7 @@
 
 The web app's two contradictory interaction surfaces are corrected.
 
-**The hover advisory now says something or nothing.** `titleFor` no longer falls back to the visible label or the `aria-label`; only an explicitly authored `title` or a `data-advisory` produces a tooltip. The catalogue convention is now exact and enforced: a control's label key `X` owns an advisory key `X.title`, the advisory must add information, and a control with nothing better to say carries no `title` at all. The audit added 47 advisory keys across the header, plan view, reports, decisions, overview/epic, project explorer, designer, and work controls; it deliberately left the text buttons whose labels already name their effect without one.
+**The hover advisory now says something or nothing.** `titleFor` no longer falls back to the visible label or the `aria-label`; only an explicitly authored `title` or a `data-advisory` produces a tooltip. The catalogue convention is now exact and enforced: a control's label key `X` owns an advisory key `X.title`, the advisory must add information, and a control with nothing better to say carries no `title` at all. The audit added 48 advisory keys across the header, plan view, reports, decisions, overview/epic, project explorer, designer, and work controls; it deliberately left the text buttons whose labels already name their effect without one.
 
 **The header now carries the project's own mark.** The `✦` character is gone from both brand branches. In its place is `plan-marshall-mark.svg`, an original 24 × 24 vector drawn for this project: three ascending plan sheets, a diagonal baton across them, and a node at the leading edge. It is delivered through `BrandMark.svelte` as a `currentColor` CSS mask, is decorative beside the visible `plan-marshall` text, and also serves as the browser-tab icon.
 
@@ -72,6 +72,7 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 | Plan, ended completion report | `report.completion.open` | `report.completion.open.title` | Added |
 | Plan, expand/collapse node | `plan.view.toggle_node` | `plan.view.toggle_node.title` | Added (toggle) |
 | Plan, expand/collapse sub-node | `plan.view.toggle_sub_node` | `plan.view.toggle_sub_node.title` | Added (toggle) |
+| Plan, select a part | `plan.node.select` | `plan.node.select.title` | Added after the landed narrative work |
 | Plan, task row | task data | `plan.view.select_task.title` | Added |
 | Plan, breadcrumb project/epic, retry, token toggle | their labels | — | None |
 | Reports, mark all shown read | `report.action.mark_all_read` | `report.action.mark_all_read.title` | Added (scope) |
@@ -115,7 +116,7 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 
 | Check | Command | Result |
 |---|---|---|
-| Web unit tests | `cd pm-web-app && npm test` | **56 files, 482 tests passed** |
+| Web unit tests | `cd pm-web-app && npm test` | **58 files, 501 tests passed** |
 | Advisory convention | `npx vitest run src/lib/utils/advisoryTitle.convention.test.ts` | **3 tests passed** (only `.title` keys, both locales, advisory differs from base) |
 | Svelte/TypeScript | `npm run check` | **0 errors, 0 warnings** |
 | ESLint | `npm run lint` | **clean** |
@@ -129,6 +130,10 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 ### Advisory behaviour tests
 
 The suite proves the six acceptance cases: a label-only button and an `aria-label`-only button get no `title`; a `data-advisory` becomes the title; a view-authored `title` survives a label change; a changed `data-advisory` follows; and removing it removes the title. The observer test covers buttons rendered before and after installation.
+
+### Known pre-existing end-to-end failure
+
+`pm-web-e2e/tests/plan-view.spec.js` › _narrates every part of session-log, including done phases and done tasks_ fails at its first-activity-entry assertion. The failure is present on `main` at `a175e438` without this branch: the `session-log` task route returns "The session log now keeps its narrative per generation." first, while the view shows the `fix-relay` entry "Reading the relay's transport before changing it." It belongs to the landed session-log plan, not to this change, and the plan's own scope excludes the plan-view selection logic. All other plan-view and chrome tests pass.
 
 ### Brand mark
 
