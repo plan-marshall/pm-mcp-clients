@@ -113,6 +113,7 @@ public final class PmOperator implements Callable<Integer> {
      * @return {@code true} when the full-screen view ran
      * @throws IOException if the terminal cannot be opened or the view cannot be drawn
      */
+    @SuppressWarnings("java:S2093") // the terminal is closed only when this context owns it
     private boolean runFullScreen() throws IOException {
         var terminal = context.createTerminal();
         try {

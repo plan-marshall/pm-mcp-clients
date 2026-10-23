@@ -57,8 +57,10 @@ public final class PmConsole {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
+    private static final String PLANS = "plans";
+
     /** The verbs that draw their full-screen view on the terminal the console already owns. */
-    private static final Set<String> FULL_SCREEN_VERBS = Set.of("plans", "plan", "projects", "system");
+    private static final Set<String> FULL_SCREEN_VERBS = Set.of(PLANS, "plan", "projects", "system");
 
     private final OperatorContext context;
     private final AtomicBoolean running = new AtomicBoolean(true);
@@ -261,7 +263,7 @@ public final class PmConsole {
         }
 
         // `tui` is the alias of `plans`; the rewrite keeps its trailing arguments.
-        var command = "tui".equals(verb) ? "plans" + line.substring(verb.length()) : line;
+        var command = "tui".equals(verb) ? PLANS + line.substring(verb.length()) : line;
         switch (verb) {
             case "help" -> printHelp(out, parts);
             case "web" -> handleWebCommand(out, parts);

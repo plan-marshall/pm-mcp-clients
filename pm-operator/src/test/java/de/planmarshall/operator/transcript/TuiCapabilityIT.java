@@ -83,7 +83,7 @@ class TuiCapabilityIT {
     }
 
     @AfterEach
-    void stopRuntime() throws IOException {
+    void stopRuntime() {
         if (runtime != null) {
             runtime.close();
         }
@@ -105,7 +105,7 @@ class TuiCapabilityIT {
             assertTrue(session.alternateScreenExits() >= 1, session.screenText());
             assertTrue(session.cursorVisible(), session.screenText());
         }
-        record("tui-capability-" + binary.mode(), Map.of(
+        recordVerification("tui-capability-" + binary.mode(), Map.of(
                             "mode", binary.mode(),
                             "columns", 120L,
                             "rows", 30L,
@@ -320,7 +320,7 @@ class TuiCapabilityIT {
      * @param item   the verification item
      * @param values the measured values
      */
-    static void record(String item, Map<String, Object> values) {
+    static void recordVerification(String item, Map<String, Object> values) {
         try {
             var all = new LinkedHashMap<String, Object>(values);
             VerificationResults.write(item, all, true);

@@ -22,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 
 import de.planmarshall.operator.tui.AnsiScreen;
@@ -123,7 +124,10 @@ public final class PtySession implements AutoCloseable {
             if (!process.isAlive() || System.nanoTime() >= deadline) {
                 return contains(text);
             }
-            Thread.sleep(POLL.toMillis());
+            LockSupport.parkNanos(POLL.toNanos());
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
         }
     }
 

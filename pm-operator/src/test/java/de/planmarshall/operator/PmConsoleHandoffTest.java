@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
 import de.planmarshall.mock.MockRuntime;
@@ -58,7 +59,7 @@ class PmConsoleHandoffTest {
     }
 
     @AfterEach
-    void stopRuntime() throws IOException {
+    void stopRuntime() {
         if (runtime != null) {
             runtime.close();
         }
@@ -167,7 +168,10 @@ class PmConsoleHandoffTest {
             if (System.nanoTime() > deadline) {
                 fail("the console did not reach the expected state in time");
             }
-            Thread.sleep(20L);
+            LockSupport.parkNanos(20_000_000L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
         }
     }
 }
