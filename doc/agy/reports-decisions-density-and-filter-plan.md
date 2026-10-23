@@ -103,7 +103,7 @@ The work is confined to `pm-web-app` plus the message catalogue. No API, record,
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` on branch `feat/reports-decisions-density-filter` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` on branch `feat/reports-decisions-density-filter` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the shared primitives and views;
   - `pm-dev-frontend:css` for grid/container-query layouts and the compact density;
