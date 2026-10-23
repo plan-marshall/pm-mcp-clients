@@ -505,4 +505,68 @@ describe('EpicView component', () => {
     );
     expect(resource).toHaveBeenCalledTimes(2);
   });
+
+  /** @param value the filter text */
+  async function typeFilter(value: string): Promise<void> {
+    const input = await screen.findByTestId('filter-input');
+    await fireEvent.input(input, { target: { value } });
+  }
+
+  it('filters the workstream plans by plan, status, and workstream name', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('workstream-WS-1');
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(3);
+
+    await typeFilter('relay-docs');
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(1);
+    expect(screen.getByTestId('epic-row-relay-docs')).toBeInTheDocument();
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 staged');
+
+    await typeFilter('running');
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(1);
+    expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
+
+    await typeFilter('Reconnect');
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(3);
+  });
+
+  it('filters the workstream plans by a wait reason and its overlap file', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('workstream-WS-1');
+
+    await typeFilter('overlap');
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(1);
+    expect(screen.getByTestId('epic-row-relay-docs')).toBeInTheDocument();
+
+    await typeFilter('Docs.java');
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(1);
+    expect(screen.getByTestId('epic-row-relay-docs')).toBeInTheDocument();
+  });
+
+  it('shows a no-match state and drops the empty workstream', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('workstream-WS-1');
+
+    await typeFilter('nothing-matches-this');
+
+    expect(await screen.findByTestId('epic-filter-empty')).toHaveTextContent(
+      'Nothing matches the filter.',
+    );
+    expect(screen.queryByTestId('workstream-WS-1')).not.toBeInTheDocument();
+  });
+
+  it('opens a folded workstream while a filter is active', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('workstream-WS-1');
+    await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
+    expect(screen.queryByTestId('epic-row-relay-docs')).not.toBeInTheDocument();
+
+    await typeFilter('relay-docs');
+
+    expect(screen.getByTestId('epic-row-relay-docs')).toBeInTheDocument();
+  });
 });

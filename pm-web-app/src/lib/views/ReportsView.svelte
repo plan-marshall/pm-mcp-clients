@@ -3,8 +3,12 @@
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import FilterInput from '../components/FilterInput.svelte';
+  import ViewLayoutToggle from '../components/ViewLayoutToggle.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
+  import { createViewLayout, VIEW_LAYOUTS } from '../stores/viewLayout';
+  import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
 
   let items = $state<ReportItem[]>([]);
@@ -24,6 +28,18 @@
   let activeDetailPlanId = $state<string | null>(null);
   let syncedRouteReportPlan: string | null | undefined;
 
+  /** The layout choice, remembered per view. */
+  const layout = createViewLayout('reports', 'comfortable');
+  /** The filter query; it runs over the loaded reports only. */
+  let query = $state('');
+  /** The reports whose body the compact layout keeps open. */
+  let shownBodies = $state<Record<string, boolean>>({});
+  /**
+   * The reports read by opening their detail in the split layout: they stay in the list, marked
+   * read, until the detail closes, so the selected row does not vanish under the pointer.
+   */
+  let retainedReadIds = $state<Record<string, boolean>>({});
+
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
 
@@ -35,10 +51,35 @@
     projectItems: ReportItem[];
   }
 
+  /** The normalized query tokens, computed once per keystroke rather than once per item. */
+  const queryTokens = $derived(tokenize(query));
+
+  /** One normalized haystack per loaded report, rebuilt only when the list or locale changes. */
+  const reportHaystacks = $derived.by(() => {
+    const unreadLabel = $t('report.state.unread');
+    const readLabel = $t('report.state.read');
+    const haystacks = new Map<string, string>();
+    for (const item of items) {
+      haystacks.set(
+        item.id,
+        buildHaystack(reportVisibleFields(item, retainedReadIds[item.id] ? readLabel : unreadLabel)),
+      );
+    }
+    return haystacks;
+  });
+
+  /** The loaded reports that match the filter, in the served order. */
+  const matchingItems = $derived.by(() => {
+    if (queryTokens.length === 0) return items;
+    return items.filter((item) =>
+      matchesHaystack(queryTokens, reportHaystacks.get(item.id) ?? ''),
+    );
+  });
+
   let groupedReports = $derived.by<ProjectGroup[]>(() => {
     const projectMap: Record<string, ProjectGroup> = {};
 
-    for (const item of items) {
+    for (const item of matchingItems) {
       const proj = item.from?.project || $t('report.list.machine');
       if (!projectMap[proj]) {
         projectMap[proj] = {
@@ -67,6 +108,48 @@
   });
 
   /**
+   * The fields the list can show for one report.
+   *
+   * A filter over the subject alone would miss the body, the origin, and the state; this is the
+   * matrix the design note publishes for `/reports`.
+   *
+   * @param item the report
+   * @param readState the localized unread or read state the list shows
+   * @returns every visible value, for the shared haystack
+   */
+  function reportVisibleFields(item: ReportItem, readState: string): Array<string | null | undefined> {
+    return [
+      item.from?.project,
+      item.from?.project_title,
+      item.from?.epic,
+      item.from?.epic_title,
+      item.from?.plan,
+      item.from?.plan_title,
+      item.from?.phase,
+      item.from?.role,
+      item.from?.harness,
+      item.from?.model,
+      item.title,
+      item.subject,
+      item.kind,
+      item.body,
+      item.summary,
+      item.status,
+      readState,
+      formatTime(item),
+      item.created_at,
+    ];
+  }
+
+  /** Drops the rows that opening a detail in split mode read in place. */
+  function flushRetainedReads(): void {
+    const retained = Object.keys(retainedReadIds);
+    if (retained.length === 0) return;
+    items = items.filter((item) => !retainedReadIds[item.id]);
+    retainedReadIds = {};
+  }
+
+  /**
    * The plan whose completion report the route opened, from `/reports?plan={id}` or the store a
    * plan view set when it led here.
    *
@@ -82,6 +165,7 @@
 
   /** Leaves the detail and returns to the list, clearing the plan from the address bar. */
   function closeDetail(): void {
+    flushRetainedReads();
     activeDetailPlanId = null;
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
     syncUrl('/reports', true);
@@ -96,6 +180,7 @@
     if (routePlan === syncedRouteReportPlan) return;
     syncedRouteReportPlan = routePlan;
     activeDetailPlanId = routePlan;
+    if (routePlan === null) flushRetainedReads();
   });
 
   onMount(async () => {
@@ -142,7 +227,7 @@
       const readData = data as { report_id?: string; report_ids?: string[] };
       const ids = readData?.report_ids || (readData?.report_id ? [readData.report_id] : []);
       if (ids.length > 0) {
-        items = items.filter((i) => !ids.includes(i.id));
+        items = items.filter((i) => !ids.includes(i.id) || retainedReadIds[i.id]);
         unreadCount = Math.max(0, unreadCount - ids.length);
       } else {
         void loadReports();
@@ -212,10 +297,23 @@
     }
   }
 
-  async function markRead(item: ReportItem) {
+  /**
+   * Marks a report read.
+   *
+   * In split mode the row stays in the list, marked read, so the detail keeps its selected row
+   * beside it; {@link flushRetainedReads} drops it once the detail closes.
+   *
+   * @param item the report to read
+   * @param retain whether the row stays in the list until the detail closes
+   */
+  async function markRead(item: ReportItem, retain = false) {
     try {
       await apiClient.markReportRead(item.id);
-      items = items.filter((i) => i.id !== item.id);
+      if (retain) {
+        retainedReadIds[item.id] = true;
+      } else {
+        items = items.filter((i) => i.id !== item.id);
+      }
       unreadCount = Math.max(0, unreadCount - 1);
       void refreshReportsCount();
     } catch (err: unknown) {
@@ -229,6 +327,7 @@
     try {
       await apiClient.markAllReportsRead(ids);
       items = [];
+      retainedReadIds = {};
       unreadCount = 0;
       void refreshReportsCount();
     } catch (err: unknown) {
@@ -333,6 +432,22 @@
   }
 
   /**
+   * @param item a report
+   * @returns whether opening it stays in this view, in the completion report's detail pane
+   */
+  function opensCompletionDetail(item: ReportItem): boolean {
+    const kind = subjectKindOf(item);
+    if (kind === 'plan' || kind === 'plan_completed') {
+      const link = item.detail_link || item.detail || '';
+      return item.kind === 'plan.ended' || link.includes('/completion');
+    }
+    if (['epic', 'project', 'start', 'cleanup', 'decision'].includes(kind)) return false;
+    const detailLink = item.detail_link || item.detail;
+    if (!detailLink) return Boolean(item.from?.plan);
+    return /plans\/[^/]+\/completion/.test(detailLink);
+  }
+
+  /**
    * Opens a report's detail and reads the report in the same act.
    *
    * @param report the report to open
@@ -340,8 +455,9 @@
   async function openDetail(item: ReportItem) {
     if (item.subject_deleted) return;
 
-    // Opening the details reads the report, in the same act.
-    void markRead(item);
+    // Opening the details reads the report, in the same act. The split layout keeps the row it
+    // read in place, so the list beside the detail does not lose its selection.
+    void markRead(item, $layout === 'split' && opensCompletionDetail(item));
 
     const kind = subjectKindOf(item);
     if (kind === 'plan' || kind === 'plan_completed') {
@@ -419,9 +535,21 @@
   }
 </script>
 
-<div class="reports-view">
+<div
+  class="reports-view"
+  class:layout-split={$layout === 'split'}
+  class:layout-compact={$layout === 'compact'}
+  data-layout={$layout}
+>
   {#snippet reportCard(item: ReportItem)}
-    <div class="report-card" class:report-card--deleted={item.subject_deleted}>
+    {@const isActive = activeDetailPlanId !== null && activeDetailPlanId === planIdOf(item)}
+    <div
+      class="report-card"
+      class:report-card--deleted={item.subject_deleted}
+      class:report-card--active={isActive}
+      aria-current={isActive ? 'true' : undefined}
+      data-report-id={item.id}
+    >
       <div class="report-card__header">
         <span class="item-glyph" aria-hidden="true">▸</span>
         <span class="report-from mono">
@@ -461,13 +589,32 @@
           {/if}
         </span>
         <span class="item-subject font-semibold">{item.subject}</span>
+        {#if retainedReadIds[item.id]}
+          <span class="item-state text-muted" data-testid="report-read-state">
+            {$t('report.state.read')}
+          </span>
+        {/if}
         <span class="item-time text-muted">{formatTime(item)}</span>
       </div>
 
       {#if item.body || item.summary}
-        <div class="report-card__body text-muted">
+        {@const bodyOpen = $layout !== 'compact' || shownBodies[item.id]}
+        <div
+          class="report-card__body text-muted"
+          class:report-card__body--clamped={$layout === 'compact' && !bodyOpen}
+        >
           {item.body || item.summary}
         </div>
+        {#if $layout === 'compact'}
+          <button
+            type="button"
+            class="body-disclosure"
+            aria-expanded={bodyOpen}
+            onclick={() => (shownBodies[item.id] = !shownBodies[item.id])}
+          >
+            {bodyOpen ? $t('report.body.less') : $t('report.body.more')}
+          </button>
+        {/if}
       {/if}
 
       <div class="report-card__actions">
@@ -510,11 +657,7 @@
     {/if}
   </div>
 
-  {#if activeDetailPlanId}
-    {#key activeDetailPlanId}
-      <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
-    {/key}
-  {:else}
+  {#snippet listPane()}
     <div class="reports-container">
       <!-- Header -->
       <header class="reports-header">
@@ -527,11 +670,18 @@
               </span>
             {/if}
           </h1>
-          {#if items.length > 0}
-            <Button variant="secondary" size="small" onclick={markAllShownRead}>
-              {$t('report.action.mark_all_read')}
-            </Button>
-          {/if}
+          <div class="reports-header__actions">
+            <ViewLayoutToggle
+              layout={$layout}
+              modes={VIEW_LAYOUTS}
+              onchange={(mode) => layout.set(mode)}
+            />
+            {#if items.length > 0}
+              <Button variant="secondary" size="small" onclick={markAllShownRead}>
+                {$t('report.action.mark_all_read')}
+              </Button>
+            {/if}
+          </div>
         </div>
       </header>
 
@@ -555,73 +705,92 @@
           </p>
         </div>
       {:else}
-        <!-- Grouped List -->
-        <div class="reports-tree">
-          {#each groupedReports as pGroup}
-            <section class="project-section">
-              <h2 class="project-header">
-                <span class="project-glyph" aria-hidden="true">▪</span>
-                {#if pGroup.projectId}
-                  <button
-                    type="button"
-                    class="group-link"
-                    aria-label={$t('report.from.open_project', { project: pGroup.project })}
-                    onclick={() => navigateTo('projects', { explorerProjectId: pGroup.projectId })}
-                  >
-                    {pGroup.project}
-                  </button>
-                {:else}
-                  <span class="project-title">{$t('report.list.machine')}</span>
-                {/if}
-              </h2>
+        <FilterInput
+          value={query}
+          label={$t('report.filter.label')}
+          placeholder={$t('report.filter.placeholder')}
+          resultCount={matchingItems.length}
+          onchange={(value) => (query = value)}
+        />
 
-              <div class="project-content">
-                <!-- Epic groups -->
-                {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems]}
-                  <div class="epic-section">
-                    <h3 class="epic-header">
-                      <span class="epic-glyph" aria-hidden="true">◇</span>
-                      <button
-                        type="button"
-                        class="group-link"
-                        aria-label={$t('report.from.open_epic', { epic: epicName })}
-                        onclick={() => openFromPart('epic', epicItems[0])}
-                      >
-                        {epicName}
-                      </button>
-                    </h3>
+        {#if matchingItems.length === 0}
+          <div class="empty-state" data-testid="report-filter-empty">
+            <p class="empty-title">{$t('report.filter.no_matches')}</p>
+          </div>
+        {:else}
+          <!-- Grouped List -->
+          <div class="reports-tree">
+            {#each groupedReports as pGroup}
+              <section class="project-section">
+                <h2 class="project-header">
+                  <span class="project-glyph" aria-hidden="true">▪</span>
+                  {#if pGroup.projectId}
+                    <button
+                      type="button"
+                      class="group-link"
+                      aria-label={$t('report.from.open_project', { project: pGroup.project })}
+                      onclick={() => navigateTo('projects', { explorerProjectId: pGroup.projectId })}
+                    >
+                      {pGroup.project}
+                    </button>
+                  {:else}
+                    <span class="project-title">{$t('report.list.machine')}</span>
+                  {/if}
+                </h2>
+
+                <div class="project-content">
+                  <!-- Epic groups -->
+                  {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems]}
+                    <div class="epic-section">
+                      <h3 class="epic-header">
+                        <span class="epic-glyph" aria-hidden="true">◇</span>
+                        <button
+                          type="button"
+                          class="group-link"
+                          aria-label={$t('report.from.open_epic', { epic: epicName })}
+                          onclick={() => openFromPart('epic', epicItems[0])}
+                        >
+                          {epicName}
+                        </button>
+                      </h3>
+                      <div class="items-list">
+                        {#each epicItems as item}
+                          {@render reportCard(item)}
+                        {/each}
+                      </div>
+                    </div>
+                  {/each}
+
+                  <!-- Plan items under project without epic -->
+                  {#if pGroup.planItems.length > 0}
                     <div class="items-list">
-                      {#each epicItems as item}
+                      {#each pGroup.planItems as item}
                         {@render reportCard(item)}
                       {/each}
                     </div>
-                  </div>
-                {/each}
+                  {/if}
 
-                <!-- Plan items under project without epic -->
-                {#if pGroup.planItems.length > 0}
-                  <div class="items-list">
-                    {#each pGroup.planItems as item}
-                      {@render reportCard(item)}
-                    {/each}
-                  </div>
-                {/if}
-
-                <!-- Project-level items -->
-                {#if pGroup.projectItems.length > 0}
-                  <div class="items-list">
-                    {#each pGroup.projectItems as item}
-                      {@render reportCard(item)}
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-            </section>
-          {/each}
-        </div>
+                  <!-- Project-level items -->
+                  {#if pGroup.projectItems.length > 0}
+                    <div class="items-list">
+                      {#each pGroup.projectItems as item}
+                        {@render reportCard(item)}
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </section>
+            {/each}
+          </div>
+        {/if}
 
         <!-- Pagination -->
         {#if hasOlder}
+          {#if query.trim().length > 0}
+            <p class="loaded-only-hint" data-testid="loaded-only-hint">
+              {$t('report.filter.loaded_only')}
+            </p>
+          {/if}
           <div class="pagination-bar">
             <Button variant="secondary" disabled={isLoadingOlder} onclick={loadOlder}>
               {#if isLoadingOlder}
@@ -636,6 +805,32 @@
         {/if}
       {/if}
     </div>
+  {/snippet}
+
+  {#if $layout === 'split'}
+    <div class="reports-split" class:reports-split--has-detail={activeDetailPlanId !== null}>
+      <div class="reports-split__list">
+        {@render listPane()}
+      </div>
+      <div
+        class="reports-split__detail"
+        class:reports-split__detail--empty={activeDetailPlanId === null}
+      >
+        {#if activeDetailPlanId}
+          {#key activeDetailPlanId}
+            <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+          {/key}
+        {:else}
+          <p class="split-placeholder">{$t('report.split.select')}</p>
+        {/if}
+      </div>
+    </div>
+  {:else if activeDetailPlanId}
+    {#key activeDetailPlanId}
+      <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+    {/key}
+  {:else}
+    {@render listPane()}
   {/if}
 </div>
 
@@ -644,6 +839,51 @@
     max-width: 900px;
     margin: 0 auto;
     padding: var(--space-6) var(--space-4);
+  }
+
+  /* The split layout uses the window: the list keeps a readable measure, the detail takes the rest. */
+  .reports-view.layout-split {
+    max-width: none;
+  }
+
+  .reports-split {
+    display: grid;
+    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .reports-split__list {
+    min-width: 0;
+    max-height: calc(100vh - var(--space-8));
+    overflow-y: auto;
+    position: sticky;
+    top: var(--space-4);
+  }
+
+  .reports-split__detail {
+    min-width: 0;
+  }
+
+  .split-placeholder {
+    padding: var(--space-10) var(--space-4);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  .reports-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+  }
+
+  .loaded-only-hint {
+    margin: var(--space-4) 0 0 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
   }
 
   .reports-header {
@@ -850,6 +1090,55 @@
     opacity: 0.85;
   }
 
+  .report-card--active {
+    border-color: var(--color-primary);
+    box-shadow: inset 3px 0 0 var(--color-primary);
+  }
+
+  /* Compact: tighter rows, one header line, and a two-line body behind a disclosure. */
+  .reports-view.layout-compact .report-card {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-1);
+  }
+
+  .reports-view.layout-compact .reports-tree,
+  .reports-view.layout-compact .items-list {
+    gap: var(--space-1);
+  }
+
+  .reports-view.layout-compact .report-card__header {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  .reports-view.layout-compact .report-card__body {
+    padding-left: 0;
+  }
+
+  .report-card__body--clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .body-disclosure {
+    align-self: flex-start;
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    text-decoration: underline;
+  }
+
+  .item-state {
+    font-size: var(--text-xs);
+    font-style: italic;
+  }
+
   .action-btn:disabled {
     color: var(--color-text-muted);
     cursor: not-allowed;
@@ -906,6 +1195,27 @@
     display: flex;
     justify-content: center;
     margin-top: var(--space-6);
+  }
+
+  @media (max-width: 959px) {
+    /* Below the split breakpoint the view is one column again. */
+    .reports-split {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .reports-split__list {
+      position: static;
+      max-height: none;
+      overflow-y: visible;
+    }
+
+    .reports-split--has-detail .reports-split__list {
+      display: none;
+    }
+
+    .reports-split__detail--empty {
+      display: none;
+    }
   }
 
   @media (max-width: 640px) {

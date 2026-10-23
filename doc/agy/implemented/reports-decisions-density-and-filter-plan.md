@@ -12,15 +12,15 @@ The work is confined to `pm-web-app` plus the message catalogue. No API, record,
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-PLN-6`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6) (Catch Up on What Happened), [`UC-PLN-2`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2) (Decide What a Plan Asks), [`UC-PLN-4`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs, Across Projects) |
+| **Use Cases** | [`UC-PLN-6`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6) (Catch Up on What Happened), [`UC-PLN-2`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2) (Decide What a Plan Asks), [`UC-PLN-4`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs, Across Projects) |
 | **Requirements** | `PM-SEC-7` (both clients as dependable views), `PM-WORK-7` (worker activity and signals, where relevant to report text) |
-| **Reports today** | [`ReportsView.svelte`](../../pm-web-app/src/lib/views/ReportsView.svelte) — `groupedReports`, `.reports-view { max-width: 900px }`, list-or-detail switch, pagination |
-| **Decisions today** | [`DecisionView.svelte`](../../pm-web-app/src/lib/views/DecisionView.svelte) — `.decisions-container { max-width: 800px }`, single `.decisions-list` |
-| **Existing tests** | [`ReportsView.test.ts`](../../pm-web-app/src/lib/views/ReportsView.test.ts), [`DecisionView.test.ts`](../../pm-web-app/src/lib/views/DecisionView.test.ts) |
-| **E2E** | [`pm-web-e2e/tests/reports.spec.js`](../../pm-web-e2e/tests/reports.spec.js), [`pm-web-e2e/tests/decisions.spec.js`](../../pm-web-e2e/tests/decisions.spec.js), [`pm-web-e2e/tests/mobile.spec.js`](../../pm-web-e2e/tests/mobile.spec.js) |
-| **Catalogue** | `reports.{en,de}.properties`, `decisions.{en,de}.properties`, `common.{en,de}.properties` under [`pm-api/src/main/resources/messages`](../../pm-api/src/main/resources/messages) |
-| **Design tokens** | [`tokens.css`](../../pm-web-app/src/styles/tokens.css), [`base.css`](../../pm-web-app/src/styles/base.css) |
-| **Operational SOP** | [`runbook.md`](runbook.md) |
+| **Reports today** | [`ReportsView.svelte`](../../../pm-web-app/src/lib/views/ReportsView.svelte) — `groupedReports`, `.reports-view { max-width: 900px }`, list-or-detail switch, pagination |
+| **Decisions today** | [`DecisionView.svelte`](../../../pm-web-app/src/lib/views/DecisionView.svelte) — `.decisions-container { max-width: 800px }`, single `.decisions-list` |
+| **Existing tests** | [`ReportsView.test.ts`](../../../pm-web-app/src/lib/views/ReportsView.test.ts), [`DecisionView.test.ts`](../../../pm-web-app/src/lib/views/DecisionView.test.ts) |
+| **E2E** | [`pm-web-e2e/tests/reports.spec.js`](../../../pm-web-e2e/tests/reports.spec.js), [`pm-web-e2e/tests/decisions.spec.js`](../../../pm-web-e2e/tests/decisions.spec.js), [`pm-web-e2e/tests/mobile.spec.js`](../../../pm-web-e2e/tests/mobile.spec.js) |
+| **Catalogue** | `reports.{en,de}.properties`, `decisions.{en,de}.properties`, `common.{en,de}.properties` under [`pm-api/src/main/resources/messages`](../../../pm-api/src/main/resources/messages) |
+| **Design tokens** | [`tokens.css`](../../../pm-web-app/src/styles/tokens.css), [`base.css`](../../../pm-web-app/src/styles/base.css) |
+| **Operational SOP** | [`runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis
 
@@ -103,8 +103,8 @@ The work is confined to `pm-web-app` plus the message catalogue. No API, record,
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` on branch `feat/reports-decisions-density-filter` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` on branch `feat/reports-decisions-density-filter` off latest `main`.
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the shared primitives and views;
   - `pm-dev-frontend:css` for grid/container-query layouts and the compact density;
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for matching and component tests;
@@ -112,15 +112,15 @@ The work is confined to `pm-web-app` plus the message catalogue. No API, record,
   - `plan-marshall-persona-security-expert` for rendering untrusted report/decision text;
   - `plan-marshall-persona-documenter` for the design note and report;
   - `plan-marshall-persona-code-reviewer` for review triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Completion report written (`doc/agy/reports-decisions-density-and-filter-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
-- [ ] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
-- [ ] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Completion report written (`doc/agy/reports-decisions-density-and-filter-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
+- [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
+- [x] 6. PR opened as #191 (never `skip-bot-review` on worker PRs); Sonar clean (0 new issues); CodeRabbit and Sourcery returned no findings because their review quotas were exhausted (documented in the report).
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
 
 > [!IMPORTANT]
-> **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../design`, `../../pm-web-app`, `../../pm-api`, `../../pm-web-e2e`, `../../../plan-marshall-documentation`, and `implemented/<name>.md`. When Step 4 moves it, rebase every link and re-run the internal-link check.
+> **Plan archival link rule**: this plan now lives at `doc/agy/implemented/`; its links use `../../design`, `../../../pm-web-app`, `../../../pm-api`, `../../../pm-web-e2e`, and `../../../../plan-marshall-documentation`.
 
 ---
 
@@ -141,86 +141,86 @@ The work is confined to `pm-web-app` plus the message catalogue. No API, record,
 
 ### Phase 1: Shared Filter and Layout Primitives (`pm-web-app`)
 
-- [ ] **1.1 `src/lib/utils/filterText.ts`**
+- [x] **1.1 `src/lib/utils/filterText.ts`**
   - `normalizeText`: `value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim()`; guard `null`/`undefined`.
   - `matchesQuery(query, values)`: empty/whitespace query matches everything; every token must match at least one value.
   - `buildHaystack(values)`: one normalized string per item; keep the raw values for rendering separate.
   - Export the functions with JSDoc; no DOM access.
-- [ ] **1.2 `src/lib/components/FilterInput.svelte`**
+- [x] **1.2 `src/lib/components/FilterInput.svelte`**
   - Props: `value`, `label`, `placeholder`, `resultCount`, `onchange(value)`, optional `testid`.
   - Render `<div role="search">` with a visible or visually-hidden label, `<input type="search">`, and a clear button.
   - `oninput` emits immediately (client-only; no debounce unless profiling shows a need for large lists; if added, cap at 100 ms and test it).
   - `Esc` clears; `/` focuses unless the event target is an input, textarea, select, or contenteditable.
   - `aria-live="polite"` result text, e.g. `report.filter.results`.
-- [ ] **1.3 `src/lib/stores/viewLayout.ts`**
+- [x] **1.3 `src/lib/stores/viewLayout.ts`**
   - `ViewLayout` union; `readLayout(view, fallback)`, `writeLayout(view, layout)` with `try/catch` around `localStorage` and an SSR guard.
   - `createViewLayout(view, fallback)` returning a Svelte store with persistence.
   - Storage keys: `pm_view_layout_reports`, `pm_view_layout_decisions`, `pm_view_layout_overview`, `pm_view_layout_epic`.
-- [ ] **1.4 `src/lib/components/ViewLayoutToggle.svelte`**
+- [x] **1.4 `src/lib/components/ViewLayoutToggle.svelte`**
   - Props: `layout`, `modes`, `onchange`.
   - Three buttons with `aria-pressed`, visible labels/icons, `data-testid="layout-{mode}"`.
   - Keyboard: native buttons; no roving tabindex needed.
-- [ ] **1.5 Catalogue** in `common.{en,de}.properties`:
+- [x] **1.5 Catalogue** in `common.{en,de}.properties`:
   - `common.filter.label=Filter`, `common.filter.placeholder=Filter as you type`, `common.filter.clear=Clear filter`, `common.filter.results={count, plural, =1 {1 match} other {{count} matches}}`, `common.filter.empty=Nothing matches the filter.`, `common.layout.label=Layout`, `common.layout.comfortable=Comfortable`, `common.layout.compact=Compact`, `common.layout.split=Split`.
 
 ### Phase 2: Reports (`ReportsView.svelte`)
 
-- [ ] **2.1 Layout**
+- [x] **2.1 Layout**
   - Add `const layout = createViewLayout('reports', 'comfortable')`.
   - `data-layout={$layout}` on `.reports-view`.
   - `comfortable`: `max-width: 68ch`-class measure (keep the existing `900px` as an upper bound), current spacing.
   - `compact`: reduce card padding to `--space-2 --space-3`, gaps to `--space-1`, hide the body by default and expose it through a disclosure; keep the header metadata on one line.
   - `split`: CSS grid `grid-template-columns: minmax(320px, 420px) minmax(0, 1fr)`; list pane scrolls independently; right pane hosts `CompletionReportView`; at `< 960px` collapse to one column and the existing list-or-detail behavior.
   - Remove the hard `max-width: 900px` only in `split`; retain a readable measure in the other modes.
-- [ ] **2.2 Detail placement**
+- [x] **2.2 Detail placement**
   - `activeDetailPlanId` remains the source of truth.
   - `comfortable`/`compact`: keep today's replacement behavior.
   - `split`: render the list and the detail side by side; `closeDetail()` clears the id and leaves the list in place.
   - Mark the active report card with `aria-current`/`report-card--active`.
-- [ ] **2.3 Filter**
+- [x] **2.3 Filter**
   - Add `query` state and a `FilterInput` above the tree.
   - Build a haystack per report from the field matrix in §2; filter `items` first, then rebuild `groupedReports` from the matches so empty project/epic groups disappear.
   - Result count uses the filtered item count; the unread pill stays based on all loaded items.
   - `hasOlder`: show `report.filter.loaded_only` while a query is active; `Load older` remains available and appends to the loaded set without clearing the query.
   - No matches: `common.filter.empty` replaces the tree; keep the pagination bar visible.
-- [ ] **2.4 Catalogue** in `reports.{en,de}.properties`:
+- [x] **2.4 Catalogue** in `reports.{en,de}.properties`:
   - `report.filter.label`, `report.filter.placeholder`, `report.filter.loaded_only`, `report.filter.no_matches`.
   - Keep all copy in both locales.
 
 ### Phase 3: Decisions (`DecisionView.svelte`)
 
-- [ ] **3.1 Layout**
+- [x] **3.1 Layout**
   - Add `const layout = createViewLayout('decisions', 'comfortable')`.
   - `comfortable`: current cards.
   - `compact`: reduced padding/gaps, evidence collapsed behind a disclosure, badge row kept, action bar visible.
   - `split`: `grid-template-columns: minmax(300px, 380px) minmax(0, 1fr)`; left pane lists compact decision summaries (title, subject, blocks, reversibility, waiting time); right pane renders the selected decision's full card; at `< 960px` collapse to one column.
   - `selectedDecisionId` drives the split; selecting a summary sets it; a filtered-out selection is cleared and the right pane shows a non-error placeholder.
-- [ ] **3.2 Filter**
+- [x] **3.2 Filter**
   - Add `query` state and a `FilterInput` above the list.
   - Build the haystack from the field matrix in §2; filter `decisions` before rendering.
   - Keep notification banners and notice lines outside the filtered list (they are view chrome, not items).
   - Result count uses the filtered decision count; the header count stays the open-decision count.
-- [ ] **3.3 Catalogue** in `decisions.{en,de}.properties`:
+- [x] **3.3 Catalogue** in `decisions.{en,de}.properties`:
   - `decisions.filter.label`, `decisions.filter.placeholder`, `decisions.filter.no_matches`, `decisions.split.select`, `decisions.layout.*` if not shared.
 
 ### Phase 4: Adoption in Other Multi-Element Views
 
-- [ ] **4.1 `OverviewView.svelte`**
+- [x] **4.1 `OverviewView.svelte`**
   - Add a filter to the running-work plan and epic lists and to the ended-work page.
   - Fields: plan id/title/project/epic/phase/state; epic id/title/project/state; ended item title/subject/outcome/reason/date.
   - Do not filter the project summary tiles; they are navigation, not list items.
-- [ ] **4.2 `EpicView.svelte`**
+- [x] **4.2 `EpicView.svelte`**
   - Add a filter to the workstream plan lists.
   - Fields: plan id/title/status/waits-for/phase/state and the workstream name.
-- [ ] **4.3 Assess the remaining views**
+- [x] **4.3 Assess the remaining views**
   - Record in the report which multi-element views adopted the component and which deliberately did not (single-record settings/system/cleanup, forms, pickers).
   - Do not add a filter to a view that has only one record or is a form.
 
 ### Phase 5: Tests and Accessibility
 
-- [ ] **5.1 `filterText.test.ts`**
+- [x] **5.1 `filterText.test.ts`**
   - case folding, diacritics (`Ärger` matches `arger`), whitespace collapse, multi-token AND, token split across fields, `null`/`undefined`, empty query.
-- [ ] **5.2 `ReportsView.test.ts`**
+- [x] **5.2 `ReportsView.test.ts`**
   - filter by project, epic, plan, body, status, and created date;
   - multi-token query across fields;
   - group headers disappear when empty and reappear when cleared;
@@ -229,35 +229,35 @@ The work is confined to `pm-web-app` plus the message catalogue. No API, record,
   - layout toggle switches modes and persists across a remount;
   - split mode keeps the list mounted when a detail opens and marks the active card;
   - unread count unaffected by the filter.
-- [ ] **5.3 `DecisionView.test.ts`**
+- [x] **5.3 `DecisionView.test.ts`**
   - filter by title, subject, description, option label, evidence, waiver gate, and reason;
   - filtered-out selection clears the split detail;
   - compact mode keeps actions reachable;
   - notification banners remain outside the filtered list;
   - no-match empty state.
-- [ ] **5.4 `OverviewView.test.ts` / `EpicView.test.ts`**
+- [x] **5.4 `OverviewView.test.ts` / `EpicView.test.ts`**
   - one representative field per list and the no-match state; no regression in the unfiltered order.
-- [ ] **5.5 Playwright**
+- [x] **5.5 Playwright**
   - `reports.spec.js`: type a body phrase, assert the matching card and the count; assert a non-matching phrase shows the empty state; toggle `split`, open a report, assert the list is still visible; reload and assert the layout persisted.
   - `decisions.spec.js`: filter by an option/evidence phrase; assert the matching decision; toggle `compact`; assert an action remains clickable.
   - `mobile.spec.js`: the filter is usable at phone width, `split` collapses, and no horizontal scroll appears.
-- [ ] **5.6 Accessibility**
+- [x] **5.6 Accessibility**
   - label and `role="search"` on the filter; result count in a polite live region; `Esc` clears; `/` focuses only outside editable fields; layout toggle announces the pressed mode; focus remains visible in all three modes.
 
 ### Phase 6: Verification, Docs, Report
 
-- [ ] **6.1 Verification**
+- [x] **6.1 Verification**
   - `cd pm-web-app && npm test -- filterText ReportsView DecisionView OverviewView EpicView`;
   - `npm run check`, `npm run lint`;
   - the Playwright reports/decisions/mobile specs;
   - `./mvnw verify -Ppre-commit`.
-- [ ] **6.2 Design note** `doc/design/web-app/view-density-and-filtering.adoc`:
+- [x] **6.2 Design note** `doc/design/web-app/view-density-and-filtering.adoc`:
   - the three layout modes and their breakpoints;
   - the filter contract (normalized substring, AND tokens, loaded data only, no network);
   - the field matrices per view;
   - the adoption rule for future multi-element views.
-- [ ] **6.3 Report** `doc/agy/reports-decisions-density-and-filter-plan-report.md`: before/after width evidence, the field matrices, the test commands and results, mobile and keyboard evidence, and the adoption list.
-- [ ] **6.4 Archive**: move the plan to `doc/agy/implemented/`, rebase links, update the dashboard, keep the report for Step 8.
+- [x] **6.3 Report** `doc/agy/reports-decisions-density-and-filter-plan-report.md`: before/after width evidence, the field matrices, the test commands and results, mobile and keyboard evidence, and the adoption list.
+- [x] **6.4 Archive**: move the plan to `doc/agy/implemented/`, rebase links, update the dashboard, keep the report for Step 8.
 
 ---
 

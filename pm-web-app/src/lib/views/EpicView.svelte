@@ -3,6 +3,7 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
@@ -26,6 +27,7 @@
     navigateTo,
   } from '../stores/runtime';
   import { formatSplit, formatTokens } from '../utils/tokenFormat';
+  import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import { refreshesEpicView } from './epicEvents';
 
   let epicId = $derived($runtimeStore.selectedEpicId || '');
@@ -48,6 +50,62 @@
 
   /** The workstreams the operator has folded or unfolded, overriding the resource's own default. */
   let workstreamToggles = $state<Record<string, boolean>>({});
+
+  /** The filter over the workstream plans. */
+  let query = $state('');
+
+  /** The normalized query tokens, computed once per keystroke. */
+  const queryTokens = $derived(tokenize(query));
+
+  /**
+   * The workstreams whose rows match the filter; an empty workstream disappears with the rows
+   * that gave it its heading.
+   */
+  const filteredWorkstreams = $derived.by(() => {
+    if (!resource) return [];
+    if (queryTokens.length === 0) return resource.workstreams;
+    return resource.workstreams
+      .map((workstream) => ({
+        ...workstream,
+        rows: workstream.rows.filter((row) =>
+          matchesHaystack(queryTokens, workstreamHaystack(workstream, row)),
+        ),
+      }))
+      .filter((workstream) => workstream.rows.length > 0);
+  });
+
+  /** How many workstream plans the filter leaves visible. */
+  const matchingPlanCount = $derived(
+    filteredWorkstreams.reduce((count, workstream) => count + workstream.rows.length, 0),
+  );
+
+  /**
+   * The fields a workstream plan shows, plus the name of its workstream.
+   *
+   * @param workstream the workstream the row belongs to
+   * @param row the plan row
+   * @returns every visible value, for the shared filter
+   */
+  function workstreamHaystack(
+    workstream: { id: string; name: string },
+    row: EpicWorkRow,
+  ): string {
+    return buildHaystack([
+      workstream.id,
+      workstream.name,
+      row.plan_id,
+      row.title,
+      row.status,
+      row.wait_reason,
+      row.wait_plan_id,
+      row.change,
+      row.objective,
+      ...(row.deliverables ?? []),
+      ...(row.surface ?? []),
+      ...(row.dependencies ?? []),
+      ...(row.overlap_files ?? []),
+    ]);
+  }
 
   /** A landing row: a row the runtime served a pull request number for. */
   type LandingRow = EpicWorkRow & { pull_request_number: number };
@@ -582,7 +640,19 @@
         <!-- Workstreams and member plans -->
         <section class="plans-section" data-testid="epic-workstreams">
           <h2 class="section-title">{$t('epic.views.workstreams')}</h2>
-          {#each resource.workstreams as workstream (workstream.id)}
+          {#if resource.workstreams.length > 0}
+            <FilterInput
+              value={query}
+              label={$t('common.filter.label')}
+              placeholder={$t('common.filter.placeholder')}
+              resultCount={matchingPlanCount}
+              onchange={(value) => (query = value)}
+            />
+          {/if}
+          {#if filteredWorkstreams.length === 0}
+            <p class="text-muted" data-testid="epic-filter-empty">{$t('common.filter.empty')}</p>
+          {/if}
+          {#each filteredWorkstreams as workstream (workstream.id)}
             <div class="workstream" data-testid={`workstream-${workstream.id}`}>
               <h3 class="workstream__title">
                 <button
@@ -602,7 +672,7 @@
                   {countsText(workstream.rows)}
                 </span>
               </h3>
-              {#if isWorkstreamOpen(workstream)}
+              {#if query.trim().length > 0 || isWorkstreamOpen(workstream)}
                 <div class="workstream__rows">
                   {#each workstream.rows as row (row.plan_id)}
                     <div class="workstream__row" data-testid={`epic-row-${row.plan_id}`}>
