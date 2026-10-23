@@ -633,8 +633,12 @@
               </span>
             {/if}
           </div>
-          <Button variant="secondary" on:click={closeEndedWork}>
-            {$t('web.common.back')}
+          <Button
+            variant="secondary"
+            on:click={closeEndedWork}
+            data-advisory={$t('common.actions.back.title')}
+          >
+            {$t('common.actions.back')}
           </Button>
         </div>
 
@@ -725,6 +729,7 @@
                           class="ended-report"
                           on:click={() => openEndedReport(item)}
                           data-testid="ended-report-{item.id ?? item.item_id}"
+                          data-advisory={$t('report.completion.open.title')}
                         >
                           {$t('report.completion.open')}
                         </button>
@@ -741,6 +746,7 @@
               variant="secondary"
               disabled={!endedPage.has_newer || currentEndedPage <= 1}
               on:click={() => loadEndedWork(selectedProjectId!, currentEndedPage - 1)}
+              data-advisory={$t('overview.ended.newer.title')}
             >
               {$t('overview.ended.newer')}
             </Button>
@@ -748,6 +754,7 @@
               variant="secondary"
               disabled={!endedPage.has_older}
               on:click={() => loadEndedWork(selectedProjectId!, currentEndedPage + 1)}
+              data-advisory={$t('overview.ended.older.title')}
             >
               {$t('overview.ended.older')}
             </Button>
@@ -772,6 +779,7 @@
                 class:toggle-btn--active={viewMode === 'plan'}
                 role="radio"
                 aria-checked={viewMode === 'plan'}
+                data-advisory={$t('overview.view.by_plan.title')}
                 on:click={() => setViewMode('plan')}
               >
                 {$t('overview.view.by_plan')}
@@ -781,13 +789,18 @@
                 class:toggle-btn--active={viewMode === 'epic'}
                 role="radio"
                 aria-checked={viewMode === 'epic'}
+                data-advisory={$t('overview.view.by_epic.title')}
                 on:click={() => setViewMode('epic')}
               >
                 {$t('overview.view.by_epic')}
               </button>
             </div>
 
-            <Button variant="secondary" on:click={openEndedWork}>
+            <Button
+              variant="secondary"
+              on:click={openEndedWork}
+              data-advisory={$t('overview.ended.open.title')}
+            >
               {$t('overview.ended.open')}
             </Button>
 
@@ -885,6 +898,7 @@
                         type="button"
                         class="card-action"
                         data-testid="overview-actions-{plan.plan_id}"
+                        data-advisory={$t('control.actions.open.title')}
                         on:click|stopPropagation={() => openControls('plan', plan.plan_id)}
                       >
                         {$t('control.actions.open')}
@@ -985,6 +999,7 @@
                         class="card-action"
                         data-testid="overview-actions-epic-{(epic as any).epic_id ||
                           (epic as any).epicId}"
+                        data-advisory={$t('control.actions.open.title')}
                         on:click|stopPropagation={() =>
                           openControls('epic', (epic as any).epic_id || (epic as any).epicId)}
                       >
@@ -1038,6 +1053,7 @@
                               class="card-action"
                               data-testid="overview-actions-{(childPlan as any).plan_id ||
                                 (childPlan as any).planId}"
+                              data-advisory={$t('control.actions.open.title')}
                               on:click|stopPropagation={() =>
                                 openControls(
                                   'plan',

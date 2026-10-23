@@ -76,7 +76,7 @@ describe('the app shell', () => {
     expect(get(runtimeStore).currentRoute).toBe('designer');
   });
 
-  it('gives the header actions a hover advisory', async () => {
+  it('gives the header actions a hover advisory that adds to their label', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
     vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
@@ -89,18 +89,47 @@ describe('the app shell', () => {
     render(Layout);
     await screen.findByTestId('brand-home');
 
-    expect(screen.getByTestId('brand-home')).toHaveAttribute(
+    const brand = screen.getByTestId('brand-home');
+    expect(brand).toHaveAttribute(
       'title',
       'Open the overview or the projects, wherever you usually start',
     );
-    expect(screen.getByTestId('nav-projects-btn')).toHaveAttribute('title', 'Projects');
-    expect(screen.getByTestId('nav-designer-btn')).toHaveAttribute('title', 'Process Designer');
+    expect(brand).not.toHaveAttribute('title', 'Start page');
+
+    // A text button whose label says it all keeps no tooltip of its own.
+    expect(screen.getByTestId('nav-projects-btn')).not.toHaveAttribute('title');
+    expect(screen.getByTestId('nav-designer-btn')).not.toHaveAttribute('title');
+
+    // An icon-only control still explains what it does.
+    expect(screen.getByLabelText('Toggle light/dark theme')).toHaveAttribute(
+      'title',
+      'Switch between the light and dark theme',
+    );
+  });
+
+  it('shows the project mark in the linked brand beside the visible text', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+
+    render(Layout);
+    const brand = await screen.findByTestId('brand-home');
+
+    expect(brand.querySelectorAll('[data-testid="brand-mark"]')).toHaveLength(1);
+    expect(brand).toHaveTextContent('plan-marshall');
   });
 
   it('leaves the brand inert while the browser is unpaired', async () => {
     render(Layout);
 
-    await screen.findByTestId('brand-inert');
+    const inert = await screen.findByTestId('brand-inert');
+    expect(inert.querySelectorAll('[data-testid="brand-mark"]')).toHaveLength(1);
+    expect(inert).toHaveTextContent('plan-marshall');
     expect(screen.queryByTestId('brand-home')).not.toBeInTheDocument();
     expect(screen.queryByTestId('nav-designer-btn')).not.toBeInTheDocument();
   });

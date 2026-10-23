@@ -62,7 +62,9 @@
     for (const item of items) {
       haystacks.set(
         item.id,
-        buildHaystack(reportVisibleFields(item, retainedReadIds[item.id] ? readLabel : unreadLabel)),
+        buildHaystack(
+          reportVisibleFields(item, retainedReadIds[item.id] ? readLabel : unreadLabel),
+        ),
       );
     }
     return haystacks;
@@ -71,9 +73,7 @@
   /** The loaded reports that match the filter, in the served order. */
   const matchingItems = $derived.by(() => {
     if (queryTokens.length === 0) return items;
-    return items.filter((item) =>
-      matchesHaystack(queryTokens, reportHaystacks.get(item.id) ?? ''),
-    );
+    return items.filter((item) => matchesHaystack(queryTokens, reportHaystacks.get(item.id) ?? ''));
   });
 
   let groupedReports = $derived.by<ProjectGroup[]>(() => {
@@ -117,7 +117,10 @@
    * @param readState the localized unread or read state the list shows
    * @returns every visible value, for the shared haystack
    */
-  function reportVisibleFields(item: ReportItem, readState: string): Array<string | null | undefined> {
+  function reportVisibleFields(
+    item: ReportItem,
+    readState: string,
+  ): Array<string | null | undefined> {
     return [
       item.from?.project,
       item.from?.project_title,
@@ -623,7 +626,7 @@
             <button
               class="action-btn action-btn--detail"
               disabled
-              title={$t('report.detail.deleted_by_cleanup', {
+              data-advisory={$t('report.action.details.deleted.title', {
                 item: subjectLabelOf(item),
                 date: item.created || item.created_at,
               })}
@@ -637,12 +640,20 @@
               })}
             </span>
           {:else}
-            <button class="action-btn action-btn--detail" onclick={() => openDetail(item)}>
+            <button
+              class="action-btn action-btn--detail"
+              data-advisory={$t('report.action.details.title')}
+              onclick={() => openDetail(item)}
+            >
               {$t('report.action.details')}
             </button>
           {/if}
         {/if}
-        <button class="action-btn action-btn--read" onclick={() => markRead(item)}>
+        <button
+          class="action-btn action-btn--read"
+          data-advisory={$t('report.action.mark_read.title')}
+          onclick={() => markRead(item)}
+        >
           {$t('report.action.mark_read')}
         </button>
       </div>
@@ -677,7 +688,12 @@
               onchange={(mode) => layout.set(mode)}
             />
             {#if items.length > 0}
-              <Button variant="secondary" size="small" onclick={markAllShownRead}>
+              <Button
+                variant="secondary"
+                size="small"
+                onclick={markAllShownRead}
+                data-advisory={$t('report.action.mark_all_read.title')}
+              >
                 {$t('report.action.mark_all_read')}
               </Button>
             {/if}
@@ -729,7 +745,8 @@
                       type="button"
                       class="group-link"
                       aria-label={$t('report.from.open_project', { project: pGroup.project })}
-                      onclick={() => navigateTo('projects', { explorerProjectId: pGroup.projectId })}
+                      onclick={() =>
+                        navigateTo('projects', { explorerProjectId: pGroup.projectId })}
                     >
                       {pGroup.project}
                     </button>
@@ -792,7 +809,12 @@
             </p>
           {/if}
           <div class="pagination-bar">
-            <Button variant="secondary" disabled={isLoadingOlder} onclick={loadOlder}>
+            <Button
+              variant="secondary"
+              disabled={isLoadingOlder}
+              onclick={loadOlder}
+              data-advisory={$t('report.list.show_older.title')}
+            >
               {#if isLoadingOlder}
                 {$t('report.list.loading_older')}
               {:else if olderCount > 0}

@@ -160,6 +160,9 @@
             data-testid={`action-${availability.action}`}
             disabled={!availability.available || busy}
             title={!availability.available ? (availability.reason ?? '') : ''}
+            data-advisory={availability.action === 'chat'
+              ? $t('control.plan.chat.title')
+              : undefined}
             on:click={() => choose(availability.action)}
           >
             {label(availability.action)}

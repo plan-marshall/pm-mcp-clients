@@ -562,11 +562,16 @@
             variant="secondary"
             onclick={() => navigateTo('designer', { projectId: plan!.project.project_id })}
             data-testid="design-process-btn"
-            data-advisory={$t('designer.plan.hint')}
+            data-advisory={$t('designer.plan.open.title')}
           >
             {$t('designer.plan.open')}
           </Button>
-          <Button variant="secondary" onclick={jumpToCurrentPosition} data-testid="jump-btn">
+          <Button
+            variant="secondary"
+            onclick={jumpToCurrentPosition}
+            data-testid="jump-btn"
+            data-advisory={$t('plan.path.jump.title')}
+          >
             {$t('plan.path.jump')}
           </Button>
           {#if plan.pull_request_number}
@@ -584,10 +589,16 @@
             class="report-link-btn"
             onclick={() => openReport(plan!.plan_id)}
             data-testid="completion-report-link"
+            data-advisory={$t('report.action.details.title')}
           >
             {$t('report.action.details')}
           </button>
-          <Button variant="ghost" onclick={goBackToCaller} data-testid="back-btn">
+          <Button
+            variant="ghost"
+            onclick={goBackToCaller}
+            data-testid="back-btn"
+            data-advisory={$t('common.actions.back.title')}
+          >
             {$t('common.actions.back')}
           </Button>
         </div>
@@ -638,6 +649,7 @@
             class="report-link-btn"
             onclick={() => openReport(plan!.plan_id)}
             data-testid="ended-completion-report"
+            data-advisory={$t('report.completion.open.title')}
           >
             {$t('report.completion.open')}
           </button>
@@ -767,6 +779,9 @@
                 aria-label={level === 'root'
                   ? $t('plan.view.toggle_node')
                   : $t('plan.view.toggle_sub_node')}
+                data-advisory={level === 'root'
+                  ? $t('plan.view.toggle_node.title')
+                  : $t('plan.view.toggle_sub_node.title')}
                 aria-expanded={hasChildren(node) ? Boolean(expandedNodes[node.node_id]) : undefined}
                 data-testid="toggle-node-{node.node_id}"
               >
@@ -787,6 +802,7 @@
                 aria-pressed={isNodeSelected(node.node_id)}
                 aria-current={isNodeSelected(node.node_id) ? 'true' : undefined}
                 aria-label={`${stripControlSequences(node.title)} — ${$t('plan.node.select')}`}
+                data-advisory={$t('plan.node.select.title')}
                 data-testid="select-node-{node.node_id}"
               >
                 {#if level === 'root' && node.kind === 'phase'}
@@ -820,6 +836,7 @@
                         onclick={() => selectTask(task.task_id)}
                         aria-current={selectedTaskId === task.task_id ? 'true' : undefined}
                         data-testid="task-{task.task_id}"
+                        data-advisory={$t('plan.view.select_task.title')}
                       >
                         <span class="task-glyph">{getNodeGlyph(task.status)}</span>
                         <span class="task-id font-semibold">{task.task_id}</span>

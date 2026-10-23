@@ -402,7 +402,13 @@
       onAction={handleAction}
     />
   {:else}
-    <button type="button" class="work-control__chat" data-testid="action-chat" onclick={openChat}>
+    <button
+      type="button"
+      class="work-control__chat"
+      data-testid="action-chat"
+      data-advisory={$t('control.plan.chat_ended.title')}
+      onclick={openChat}
+    >
       {$t('control.plan.chat')}
     </button>
   {/if}

@@ -1,0 +1,118 @@
+= Design: Web App, Interaction Affordances
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Interaction Affordances
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] (enter and connect), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (follow a plan down to its parts), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (see what runs), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6] (catch up on what happened)_
+
+_Relies on: link:README.adoc#frame[Web App, The Frame] (where a control sits), link:../shared/texts-and-languages.adoc[Texts and Languages] (the catalogue is the only source of copy)_
+
+Status: `FINAL`. This document is the authority for the hover advisory of a control: when a control carries one, which catalogue key it reads, what it may say, and how the convention is checked.
+
+[#purpose]
+== What a Hover Advisory Is
+
+A hover advisory is the native `title` of a control. It is the second sentence a person can get without leaving the view: the visible label names the action, and the advisory says what the action does where the label cannot. The web app uses the native attribute only; it adds no tooltip library, popover, or custom hover card.
+
+The advisory is a courtesy, never the only name of a control. A control whose advisory is missing is still operable and still named by its label or its `aria-label`.
+
+[#convention]
+== The Key Convention
+
+A control's visible or accessible label is identified by a catalogue key stem `X`. Its advisory is a separate key `X.title`.
+
+[cols="2,2,3",options="header"]
+|===
+|Label key |Advisory key |Advisory text
+
+|`plan.path.jump`
+|`plan.path.jump.title`
+|Jump to the position that runs now and expand its path
+
+|`report.action.mark_all_read`
+|`report.action.mark_all_read.title`
+|Mark every loaded report as read; older reports stay unread
+
+|`decision.notify.allow`
+|`decision.notify.allow.title`
+|Allow desktop notifications for decisions in this browser
+
+|`web.frame.home`
+|`web.frame.home.title`
+|Open the overview or the projects, wherever you usually start
+|===
+
+The suffix is part of the key's meaning, not decoration: a `.title` key is an advisory, and a view passes it through `data-advisory` (or an authored `title`) rather than rendering it as visible copy. Both locales carry it; the catalogue's parity test fails on a key that exists in only one.
+
+[#rules]
+== What an Advisory Says
+
+An advisory earns its place only by adding information to the label. It does that in one of four ways:
+
+* *Consequence*: what changes because of the action, especially where it cannot be undone ("Decline the waiver; the gate stays failed").
+* *Scope*: what the action reaches beyond the control's own row ("Mark every loaded report as read; older reports stay unread").
+* *Shortcut or state*: a fact the operator would otherwise have to discover ("Switch the interface language; this browser remembers the choice").
+* *Where the action goes*: for a label that does not name its destination ("Return to the view you came from").
+
+Two rules bound the text:
+
+. *Never restate the label.* An advisory whose text equals its base key is a defect: the convention test fails on it, and the fix is either a sentence that adds information or no advisory at all.
+. *No useful sentence, no tooltip.* A control whose label already says everything ("Projects", "Back", "Retry", "Show the details") carries no advisory. The absence is the correct state, not a gap.
+
+The words stay short, in sentence case, and without a trailing period, matching the label style of the frame (link:README.adoc#typography[Web App, Typography]). An advisory never contains markup: the value is catalogue copy, and the layer writes it with `setAttribute`, so it can never become DOM.
+
+[#behaviour]
+== Behaviour
+
+The layer lives in `pm-web-app/src/lib/utils/advisoryTitle.ts`:
+
+* *Candidates*: an advisory is an explicitly authored `title` or a `data-advisory` attribute. The visible text and the `aria-label` are never candidates; that is what stops a button from repeating itself on hover.
+* *Nothing to say*: when neither is present, the layer removes a `title` it wrote earlier and adds nothing.
+* *Authored titles win*: a `title` whose value differs from the one the layer wrote is the view's own words, and is never overwritten. A `WeakMap` keeps the value the layer wrote, so a changed `data-advisory` updates the tooltip instead of freezing the first text.
+* *Late buttons*: the shared `Button` component applies the rule through a Svelte action. Native `<button>` elements and views rendered after the frame's mount are covered by `installAdvisoryTitles`, a `MutationObserver` that watches the subtree for added buttons and for changes to `data-advisory` and `title`.
+
+[#audit]
+== The Audit
+
+A control is audited by its class, not one by one. Every class below must carry an advisory unless its label already names the full consequence:
+
+[cols="2,3",options="header"]
+|===
+|Class |Why it needs one
+
+|Icon-only controls (the language and theme switches, the favourite star, the notice dismiss)
+|The glyph or the icon does not name the action; the advisory is the only explanation in words.
+
+|Destructive or irreversible actions (waive or decline, discard the draft, release or unenrol a project, stop the runtime now)
+|The operator must know what cannot be taken back before the click.
+
+|Actions whose scope is wider than the visible item (mark all shown read, load older reports, ended-work pagination)
+|The label names the act; the advisory names what it reaches.
+
+|Toggles and segmented controls (the overview's by-plan / by-epic switch, expand or collapse a tree node)
+|The label is a state or a short word; the advisory says what the other state will do.
+
+|Filter reset and search clear
+|A single glyph (`✕`) whose consequence is "show everything again".
+
+|Back and navigation entries whose label does not name the destination
+|The advisory names where the operator returns to.
+
+|Primary confirmation of a decision or a plan action
+|The advisory names what the submission starts.
+|===
+
+The audit table of a change records, per control, its class, its label key, its advisory key, and the decision (advisory added, or deliberately none). The completion report of a web change carries that table.
+
+[#enforcement]
+== Enforcement
+
+Three deterministic checks guard the convention, and no review depends on someone remembering it:
+
+. *The convention test* (`pm-web-app/src/lib/utils/advisoryTitle.convention.test.ts`): every `data-advisory=` expression passes only `.title` keys; every referenced `.title` key exists in English and in German; and an advisory whose base key exists never equals it. The failure names the file and the key.
+. *The catalogue parity test* (`pm-web-app/src/lib/i18n/catalogue.test.ts`): the two locales carry the same keys, and every key a view looks up exists.
+. *The behaviour tests* (`pm-web-app/src/lib/utils/advisoryTitle.test.ts`): a label-only and an `aria-label`-only button get no title, an advisory becomes the title, a changed advisory follows, and removing it removes the title.
+
+The `.title` keys of headings are not hover advisories. A heading such as `start.recipe.parameters.title` may name the same thing as its body text, and the convention test therefore scopes the divergence rule to the advisory surface.

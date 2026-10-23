@@ -89,6 +89,7 @@
         class="filter__clear"
         data-testid="filter-clear"
         aria-label={$t('common.filter.clear')}
+        data-advisory={$t('common.filter.clear.title')}
         onclick={() => {
           onchange('');
           inputElement?.focus();

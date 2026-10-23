@@ -546,7 +546,12 @@
               {$t('epic.review.ready')}
             </span>
           {/if}
-          <Button variant="ghost" onclick={goBackToCaller} data-testid="back-btn">
+          <Button
+            variant="ghost"
+            onclick={goBackToCaller}
+            data-testid="back-btn"
+            data-advisory={$t('common.actions.back.title')}
+          >
             {$t('common.actions.back')}
           </Button>
         </div>
@@ -660,6 +665,7 @@
                   class="workstream__toggle"
                   aria-expanded={isWorkstreamOpen(workstream)}
                   data-testid={`workstream-toggle-${workstream.id}`}
+                  data-advisory={$t('epic.views.toggle_workstream.title')}
                   onclick={() => toggleWorkstream(workstream)}
                 >
                   <span class="workstream__marker" aria-hidden="true">
@@ -679,6 +685,7 @@
                       <button
                         type="button"
                         class="workstream__plan"
+                        data-advisory={$t('epic.views.open_plan.title')}
                         onclick={() => openPlan(row.plan_id)}
                       >
                         <span class="plan-glyph">{statusGlyph(row.status)}</span>
@@ -776,6 +783,7 @@
               type="button"
               class="review-open"
               data-testid="open-findings-review"
+              data-advisory={$t('epic.views.review_open.title')}
               onclick={() => void openReview('findings')}
             >
               {$t('epic.views.review_open')}
