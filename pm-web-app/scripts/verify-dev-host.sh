@@ -17,9 +17,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEB_APP_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# The host `start.sh` actually prints: `reachable_host` is the same resolver, so an unset
+# `PM_WEB_HOST` is tested by the machine's real name rather than a synthetic one.
+# shellcheck source=connection-urls.sh
+source "$SCRIPT_DIR/connection-urls.sh"
 PORT="${PM_VERIFY_DEV_HOST_PORT:-5199}"
-# The spelling an operator may configure; the accepted and printed form is its lower-case name.
-CONFIGURED_HOST="${PM_WEB_HOST:-Mac-Mini.local}"
+CONFIGURED_HOST="${PM_WEB_HOST:-$(reachable_host)}"
 LOWER_HOST="$(printf '%s' "$CONFIGURED_HOST" | tr '[:upper:]' '[:lower:]')"
 LOWER_HOST="${LOWER_HOST%.}"
 UNKNOWN_HOST="not-this-machine.local"
@@ -64,7 +67,7 @@ for _ in {1..60}; do
         cat "$LOG_FILE" >&2
         exit 1
     fi
-    if curl -sS -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then
+    if curl --noproxy '*' -sS -o /dev/null "http://127.0.0.1:$PORT/" 2>/dev/null; then
         READY=true
         break
     fi
@@ -77,7 +80,8 @@ if [ "$READY" = false ]; then
 fi
 
 status_of() {
-    curl -sS -o /dev/null -w '%{http_code}' "$@"
+    # A configured proxy must not answer for the loopback server: every assertion is local.
+    curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' "$@"
 }
 
 FAILURES=0
