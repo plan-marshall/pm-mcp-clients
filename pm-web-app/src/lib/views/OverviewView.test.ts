@@ -270,7 +270,7 @@ describe('OverviewView component', () => {
     await fireEvent.click(byPlanBtn);
 
     await waitFor(() => {
-      expect(screen.getAllByTestId('plan-card').length).toBe(3);
+      expect(screen.getAllByTestId('plan-card')).toHaveLength(3);
     });
   });
 
@@ -375,7 +375,7 @@ describe('OverviewView component', () => {
     });
     await fireEvent.click(screen.getByText('Ended work'));
     await waitFor(() => {
-      expect(screen.getAllByTestId('ended-item').length).toBe(3);
+      expect(screen.getAllByTestId('ended-item')).toHaveLength(3);
     });
 
     await fireEvent.click(screen.getByTestId('ended-open-pln-relay-drops'));
@@ -406,7 +406,7 @@ describe('OverviewView component', () => {
 
     await waitFor(() => {
       expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 2);
-      expect(screen.getAllByTestId('ended-item').length).toBe(3);
+      expect(screen.getAllByTestId('ended-item')).toHaveLength(3);
     });
   });
 
@@ -455,7 +455,7 @@ describe('OverviewView component', () => {
 
   it('filters the running plans while keeping the project tiles unfiltered', async () => {
     render(OverviewView);
-    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+    await waitFor(() => expect(screen.getAllByTestId('plan-card')).toHaveLength(3));
 
     await typeFilter('Message catalogue');
 
@@ -468,7 +468,7 @@ describe('OverviewView component', () => {
 
   it('filters the running plans by their epic and state', async () => {
     render(OverviewView);
-    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+    await waitFor(() => expect(screen.getAllByTestId('plan-card')).toHaveLength(3));
 
     await typeFilter('client work');
     expect(screen.getAllByTestId('plan-card')).toHaveLength(2);
@@ -481,7 +481,7 @@ describe('OverviewView component', () => {
 
   it('shows a no-match state for the running plans', async () => {
     render(OverviewView);
-    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+    await waitFor(() => expect(screen.getAllByTestId('plan-card')).toHaveLength(3));
 
     await typeFilter('nothing-matches-this');
 
@@ -493,7 +493,7 @@ describe('OverviewView component', () => {
 
   it('filters the running epics by their identifier', async () => {
     render(OverviewView);
-    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBe(3));
+    await waitFor(() => expect(screen.getAllByTestId('plan-card')).toHaveLength(3));
     await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
     await waitFor(() => expect(screen.getByTestId('epic-card')).toBeInTheDocument());
 
@@ -508,7 +508,7 @@ describe('OverviewView component', () => {
     render(OverviewView);
     await waitFor(() => expect(screen.getByText('Ended work')).toBeInTheDocument());
     await fireEvent.click(screen.getByText('Ended work'));
-    await waitFor(() => expect(screen.getAllByTestId('ended-item').length).toBe(3));
+    await waitFor(() => expect(screen.getAllByTestId('ended-item')).toHaveLength(3));
 
     await typeFilter('Relay drops');
     expect(screen.getAllByTestId('ended-item')).toHaveLength(1);

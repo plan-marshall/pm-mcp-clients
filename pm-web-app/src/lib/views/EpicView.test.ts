@@ -516,7 +516,7 @@ describe('EpicView component', () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);
     await screen.findByTestId('workstream-WS-1');
-    expect(screen.getAllByTestId(/epic-row-/).length).toBe(3);
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(3);
 
     await typeFilter('relay-docs');
     expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(1);
