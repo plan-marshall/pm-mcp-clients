@@ -1,6 +1,6 @@
 # Completion Report: `workflow-visual-language-and-icons`
 
-**Plan**: [`doc/agy/implemented/workflow-visual-language-and-icons-plan.md`](implemented/workflow-visual-language-and-icons-plan.md)
+**Plan**: [`doc/agy/implemented/workflow-visual-language-and-icons-plan.md`](../implemented/workflow-visual-language-and-icons-plan.md)
 **Branch**: `feat/workflow-visual-language`
 **Repositories**: `pm-mcp-clients` (this report), `pm-mcp-core` (schema, landed), `plan-marshall-mcp` (default units, still gated)
 
@@ -94,7 +94,7 @@ The client never relies on a name-to-icon table for a unit that carries its own 
 | Order | Repository | Scope | State |
 |---|---|---|---|
 | 1 | `pm-mcp-core` | `icon` field in the `pmwf` schema, reader, printer, docs, ADR, fixture migration | **Landed** — [PR #150](https://github.com/plan-marshall/pm-mcp-core/pull/150), merge `ac347032` |
-| 2 | `pm-mcp-clients` | Visual specification, 40 icons, registry, component, `pm-api`/web model, designer and phase views, tests | **Implemented in this report's branch** |
+| 2 | `pm-mcp-clients` | Visual specification, 40 icons, registry, component, `pm-api`/web model, designer and phase views, tests | **Landed** — [PR #187](https://github.com/plan-marshall/pm-mcp-clients/pull/187), merge `4a6d2fa9` |
 | 3 | `plan-marshall-mcp` | `icon:` lines in the shipped default units and recipes, sibling drift check | **Blocked** — `pm-mcp-server/src/main/resources/workflows/*.pmwf` does not exist on `main`; no placeholder units were created |
 
 ### 5.1 Follow-Up Gate
@@ -115,6 +115,14 @@ All 40 icons are standalone original line art drawn for this project. No icon-fo
 ## 7. Notes and Non-Goals
 
 - The delivered set has **40** ids: the plan's 39 plus `unit.lesson`. `lessons` is a designable compiled unit in the process designer (see `process-designer.adoc`), and the acceptance criterion requires every designable unit to have a distinct icon, so the lesson family was added and catalogued rather than sharing `unit.source`.
+- **Step 8 correction**: the visual unit/phase map named two remediation aliases rather than the actual units. It now names `remediation.review-findings` and `remediation.qgate-findings`; the registry's category fallback already resolved both, so no client behavior changed.
 - The optional `StartView` recipe-card surface was evaluated and left out: the recipe representation exposes no workflow frontmatter icon, and adding a redundant API field was out of scope. It is recorded here as the follow-up rather than invented.
+
+## 8. Workflow Status
+
+- Steps 1–5 — complete.
+- Steps 6–7 — PR [#187](https://github.com/plan-marshall/pm-mcp-clients/pull/187) merged; the review rate-limit left no unresolved findings; the worktree and branch were removed.
+- Step 8 — complete for the clients workstream: the post-landing audit verified the visual layer and moved this report to `doc/agy/verified/`.
+- The sibling default-units phase remains gated on `plan-marshall-mcp`'s `default-units-and-drift-tests`; no stub units exist.
 - Task nodes, worker rows, plan titles, projects, and epics are deliberately not iconified; the visual language covers workflows and phases.
 - Icons are data: adding one is an SVG, a registry entry, a catalogue row, and the unit's `icon:` line. No view edit is required.

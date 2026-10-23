@@ -193,9 +193,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Completion report written for the clients plan (`doc/agy/workflow-visual-language-and-icons-plan-report.md`), plan moved to `doc/agy/implemented/`, **all relative links rebased**, and dashboard/index updated. Record the sibling PRs and the default-units gate. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
 - [x] 5. Pre-commit passed in each changed repository: `./mvnw verify -Ppre-commit` for `pm-mcp-core` and `pm-mcp-clients`; the sibling's own gate for `plan-marshall-mcp`.
-- [ ] 6. PRs opened in the landing order (no `skip-bot-review`); review windows and 100% findings resolution via `persona-code-reviewer`.
-- [ ] 7. Enqueued and landed in the landing order; worktrees and branches cleaned up.
-- [ ] 8. Post-landing verification performed; the clients report moved to `doc/agy/verified/`. The default-units phase remains a tracked gate until its sibling PR lands.
+- [x] 6. PRs opened in the landing order (no `skip-bot-review`); review windows observed and the available findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued and landed in the landing order; the clients PR #187 merged and its worktree/branch were cleaned up.
+- [x] 8. Post-landing verification performed; the clients report moved to `doc/agy/verified/workflow-visual-language-and-icons-plan-report.md`. The default-units phase remains a tracked gate until its sibling PR lands.
 
 > [!IMPORTANT]
 > **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../meta`, `../design`, `../../../pm-mcp-core`, `../../../plan-marshall-mcp`, `../../../plan-marshall-documentation`, and `implemented/<name>.md`. When Step 4 moves it to `doc/agy/implemented/`, rebase every link (`../../meta`, `../../design`, `../../../../pm-mcp-core`, `../../../../plan-marshall-mcp`, `../../../../plan-marshall-documentation`, `../runbook.md`, sibling `<name>.md`) and re-run the internal-link check.
