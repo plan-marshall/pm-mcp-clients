@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
+  import NodeNarrative from '../components/NodeNarrative.svelte';
   import Spinner from '../components/Spinner.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
@@ -27,6 +28,10 @@
   } from '../stores/runtime';
   import { formatSplit, formatTokens, formatDurationSeconds } from '../utils/tokenFormat';
   import { stripControlSequences } from '../utils/outputSafety';
+  import { getNodeGlyph, getNodeStateText } from '../utils/processNode';
+
+  /** What the inspector shows: a leaf task's live feed, or a node's own narrative. */
+  type TreeSelection = { kind: 'task'; taskId: string } | { kind: 'node'; nodeId: string };
 
   let planId = $derived($runtimeStore.selectedPlanId || '');
   let plan = $state<ProcessTree | null>(null);
@@ -62,7 +67,13 @@
       [],
   });
 
-  let selectedTaskId = $state<string | null>($runtimeStore.selectedTaskId || null);
+  let selection = $state<TreeSelection | null>(
+    $runtimeStore.selectedTaskId ? { kind: 'task', taskId: $runtimeStore.selectedTaskId } : null,
+  );
+  let selectedTaskId = $derived(selection?.kind === 'task' ? selection.taskId : null);
+  let selectedNode = $derived(
+    findNode(plan?.nodes ?? [], selection?.kind === 'node' ? selection.nodeId : null),
+  );
   let taskActivity = $state<TaskActivity | null>(null);
   let isLoadingActivity = $state(false);
 
@@ -70,6 +81,14 @@
 
   let unsubscribeEvents: (() => void) | null = null;
   let unsubscribeActivity: (() => void) | null = null;
+  /**
+   * The activity load that owns the panel.
+   *
+   * A task request can resolve after the operator selected something else; the generation is
+   * bumped on every load and on every switch away from a task, so a stale answer never replaces
+   * the current feed and never opens a subscription the operator cannot see.
+   */
+  let activityLoadGeneration = 0;
 
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event) => {
@@ -102,6 +121,7 @@
     if (selectedTaskId && planId) {
       void loadTaskActivity(planId, selectedTaskId);
     } else {
+      activityLoadGeneration += 1;
       taskActivity = null;
       if (unsubscribeActivity) {
         unsubscribeActivity();
@@ -131,19 +151,12 @@
         }
         expand(res.nodes);
         expandedNodes = initExpanded;
+      }
 
-        // Auto-select initial task if provided or running task
-        if (!selectedTaskId) {
-          const runningTask = findRunningTask(res.nodes);
-          if (runningTask) {
-            selectedTaskId = runningTask.task_id;
-          } else {
-            const firstTask = findFirstTask(res.nodes);
-            if (firstTask) {
-              selectedTaskId = firstTask.task_id;
-            }
-          }
-        }
+      // Keep the inspected subject while it still exists; otherwise fall back deliberately, so a
+      // refresh never leaves the inspector on an item the tree no longer shows.
+      if (res.nodes && !isSelectionValid(res.nodes, selection)) {
+        selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
       errorMessage = (err as Error)?.message || $t('plan.view.load_failed');
@@ -154,6 +167,7 @@
 
   function findRunningTask(nodes: ProcessNode[]): LeafTask | null {
     for (const node of nodes) {
+      if (node.state === 'not_in_plan') continue;
       if (node.leaf_tasks && node.leaf_tasks.length > 0) {
         const running = node.leaf_tasks.find((t) => t.status === 'running');
         if (running) return running;
@@ -166,17 +180,95 @@
     return null;
   }
 
-  function findFirstTask(nodes: ProcessNode[]): LeafTask | null {
+  /**
+   * @param nodes the process tree
+   * @param nodeId the node to find, or `null`
+   * @returns the node, or `null` when the tree does not carry it
+   */
+  function findNode(nodes: ProcessNode[], nodeId: string | null): ProcessNode | null {
+    if (!nodeId) return null;
     for (const node of nodes) {
-      if (node.leaf_tasks && node.leaf_tasks.length > 0) {
-        return node.leaf_tasks[0];
-      }
-      if (node.sub_nodes && node.sub_nodes.length > 0) {
-        const found = findFirstTask(node.sub_nodes);
-        if (found) return found;
-      }
+      if (node.state === 'not_in_plan') continue;
+      if (node.node_id === nodeId) return node;
+      const found = findNode(node.sub_nodes ?? [], nodeId);
+      if (found) return found;
     }
     return null;
+  }
+
+  /**
+   * @param nodes the process tree
+   * @param taskId the leaf task to find
+   * @returns the task, or `null` when no visible node carries it
+   */
+  function findTask(nodes: ProcessNode[], taskId: string): LeafTask | null {
+    for (const node of nodes) {
+      if (node.state === 'not_in_plan') continue;
+      const task = node.leaf_tasks?.find((candidate) => candidate.task_id === taskId);
+      if (task) return task;
+      const found = findTask(node.sub_nodes ?? [], taskId);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /**
+   * @param nodes the process tree
+   * @returns the first running node the tree shows, or `null`
+   */
+  function findRunningNode(nodes: ProcessNode[]): ProcessNode | null {
+    for (const node of nodes) {
+      if (node.state === 'not_in_plan') continue;
+      if (node.state === 'running') return node;
+      const found = findRunningNode(node.sub_nodes ?? []);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  /**
+   * @param nodes the process tree
+   * @returns the first node the tree shows, or `null`
+   */
+  function findFirstVisibleNode(nodes: ProcessNode[]): ProcessNode | null {
+    return nodes.find((node) => node.state !== 'not_in_plan') ?? null;
+  }
+
+  /**
+   * The deliberate fallback order: a running task, else a running node, else the first visible
+   * node. The inspector therefore always names something the tree shows.
+   *
+   * @param nodes the process tree
+   * @returns the selection to inspect
+   */
+  function defaultSelection(nodes: ProcessNode[]): TreeSelection | null {
+    const runningTask = findRunningTask(nodes);
+    if (runningTask) {
+      return { kind: 'task', taskId: runningTask.task_id };
+    }
+    const runningNode = findRunningNode(nodes);
+    if (runningNode) {
+      return { kind: 'node', nodeId: runningNode.node_id };
+    }
+    const firstNode = findFirstVisibleNode(nodes);
+    if (firstNode) {
+      return { kind: 'node', nodeId: firstNode.node_id };
+    }
+    return null;
+  }
+
+  /**
+   * @param nodes the process tree
+   * @param current the selection to check
+   * @returns whether the tree still shows the selected subject
+   */
+  function isSelectionValid(nodes: ProcessNode[], current: TreeSelection | null): boolean {
+    if (!current) return false;
+    if (current.kind === 'task') {
+      return findTask(nodes, current.taskId) !== null;
+    }
+    const node = findNode(nodes, current.nodeId);
+    return node !== null && node.state !== 'not_in_plan';
   }
 
   /** A field that is a string, or `null`; JSON says nothing about the type it carries. */
@@ -221,6 +313,7 @@
   }
 
   async function loadTaskActivity(pId: string, tId: string) {
+    const generation = ++activityLoadGeneration;
     if (unsubscribeActivity) {
       unsubscribeActivity();
       unsubscribeActivity = null;
@@ -228,7 +321,9 @@
 
     isLoadingActivity = true;
     try {
-      taskActivity = await apiClient.getTaskActivity(pId, tId);
+      const loaded = await apiClient.getTaskActivity(pId, tId);
+      if (generation !== activityLoadGeneration) return;
+      taskActivity = loaded;
       unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (event, data) => {
         const entry = toActivityEntry(event, data);
         if (taskActivity && entry) {
@@ -239,9 +334,13 @@
         }
       });
     } catch {
-      taskActivity = null;
+      if (generation === activityLoadGeneration) {
+        taskActivity = null;
+      }
     } finally {
-      isLoadingActivity = false;
+      if (generation === activityLoadGeneration) {
+        isLoadingActivity = false;
+      }
     }
   }
 
@@ -263,7 +362,12 @@
 
     const running = findRunningTask(plan.nodes);
     if (running) {
-      selectedTaskId = running.task_id;
+      selection = { kind: 'task', taskId: running.task_id };
+    } else {
+      const runningNode = findRunningNode(plan.nodes);
+      if (runningNode) {
+        selection = { kind: 'node', nodeId: runningNode.node_id };
+      }
     }
     if (typeof document !== 'undefined') {
       const el = document.querySelector('.node-item--running, .node-item--waiting');
@@ -271,48 +375,6 @@
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }
-
-  function getNodeGlyph(state: string): string {
-    switch (state?.toLowerCase()) {
-      case 'done':
-        return '✓';
-      case 'running':
-        return '▶';
-      case 'waiting':
-      case 'waiting_for_you':
-        return '!';
-      case 'failed':
-        return '✗';
-      case 'planned':
-        return '○';
-      case 'not_taken':
-        return '–';
-      case 'not_in_plan':
-        return '·';
-      default:
-        return '○';
-    }
-  }
-
-  function getNodeStateText(node: ProcessNode): string {
-    const s = node.state?.toLowerCase();
-    if (s === 'done' && node.run_count > 1) {
-      return $t('plan.node.state.done_times', { count: node.run_count });
-    }
-    if (s === 'running' && node.current_run > 1) {
-      return $t('plan.node.state.running_run', { run: node.current_run });
-    }
-    if (s === 'waiting' || s === 'waiting_for_you') {
-      return $t('plan.node.state.waiting');
-    }
-    if (s === 'done') return $t('plan.node.state.done');
-    if (s === 'running') return $t('plan.node.state.running');
-    if (s === 'failed') return $t('plan.node.state.failed');
-    if (s === 'planned') return $t('plan.node.state.planned');
-    if (s === 'not_taken') return $t('plan.node.state.not_taken');
-    if (s === 'not_in_plan') return $t('plan.node.state.not_in_plan');
-    return node.state;
   }
 
   function formatCoverage(tokens: ProcessTokens): string {
@@ -435,7 +497,19 @@
   }
 
   function selectTask(taskId: string) {
-    selectedTaskId = taskId;
+    selection = { kind: 'task', taskId };
+  }
+
+  function selectNode(nodeId: string) {
+    selection = { kind: 'node', nodeId };
+  }
+
+  function isNodeSelected(nodeId: string): boolean {
+    return selection?.kind === 'node' && selection.nodeId === nodeId;
+  }
+
+  function hasChildren(node: ProcessNode): boolean {
+    return (node.sub_nodes?.length ?? 0) > 0 || (node.leaf_tasks?.length ?? 0) > 0;
   }
 </script>
 
@@ -678,141 +752,100 @@
         aria-label={$t('plan.view.tree_label')}
         data-testid="process-tree"
       >
-        <div class="tree-container">
-          {#each plan.nodes.filter((n) => n.state !== 'not_in_plan') as node}
-            <div
-              class="node-item node-item--level-1 node-item--{node.state}"
-              data-testid="node-{node.node_id}"
-            >
-              <div class="node-row">
-                <button
-                  class="toggle-btn"
-                  onclick={() => toggleNode(node.node_id)}
-                  aria-label={$t('plan.view.toggle_node')}
+        {#snippet processNode(node: ProcessNode, level: 'root' | 'sub')}
+          <div
+            class="node-item {level === 'root'
+              ? 'node-item--level-1'
+              : 'node-item--sub'} node-item--{node.state}"
+            data-testid="node-{node.node_id}"
+          >
+            <div class="node-row {isNodeSelected(node.node_id) ? 'node-row--selected' : ''}">
+              <button
+                type="button"
+                class="toggle-btn"
+                onclick={() => toggleNode(node.node_id)}
+                aria-label={level === 'root'
+                  ? $t('plan.view.toggle_node')
+                  : $t('plan.view.toggle_sub_node')}
+                aria-expanded={hasChildren(node) ? Boolean(expandedNodes[node.node_id]) : undefined}
+                data-testid="toggle-node-{node.node_id}"
+              >
+                <span class="node-glyph">{getNodeGlyph(node.state)}</span>
+                <span class="toggle-icon">
+                  {#if hasChildren(node)}
+                    {expandedNodes[node.node_id] ? '▾' : '▸'}
+                  {:else}
+                    &nbsp;
+                  {/if}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                class="node-info node-select"
+                onclick={() => selectNode(node.node_id)}
+                aria-pressed={isNodeSelected(node.node_id)}
+                aria-current={isNodeSelected(node.node_id) ? 'true' : undefined}
+                aria-label={`${stripControlSequences(node.title)} — ${$t('plan.node.select')}`}
+                data-testid="select-node-{node.node_id}"
+              >
+                {#if level === 'root' && node.kind === 'phase'}
+                  <WorkflowIcon id={phaseIconId(node.node_id)} size={16} />
+                {/if}
+                <span class="node-kind-badge">{level === 'sub' ? `↳ ${node.kind}` : node.kind}</span
                 >
-                  <span class="node-glyph">{getNodeGlyph(node.state)}</span>
-                  <span class="toggle-icon">
-                    {#if (node.sub_nodes && node.sub_nodes.length > 0) || (node.leaf_tasks && node.leaf_tasks.length > 0)}
-                      {expandedNodes[node.node_id] ? '▾' : '▸'}
-                    {:else}
-                      &nbsp;
-                    {/if}
-                  </span>
-                </button>
-
-                <div class="node-info">
-                  {#if node.kind === 'phase'}
-                    <WorkflowIcon id={phaseIconId(node.node_id)} size={16} />
-                  {/if}
-                  <span class="node-kind-badge">{node.kind}</span>
-                  <span class="node-title font-semibold">{node.title}</span>
-                  <span class="node-state-text">{getNodeStateText(node)}</span>
-                  {#if node.duration_seconds > 0}
-                    <span class="node-duration">{formatDurationSeconds(node.duration_seconds)}</span
-                    >
-                  {/if}
-                </div>
-              </div>
-
-              <!-- Children (Sub-nodes or Leaf Tasks) -->
-              {#if expandedNodes[node.node_id]}
-                <div class="node-children">
-                  <!-- Sub Nodes -->
-                  {#if node.sub_nodes && node.sub_nodes.length > 0}
-                    {#each node.sub_nodes as subNode}
-                      <div
-                        class="node-item node-item--sub node-item--{subNode.state}"
-                        data-testid="node-{subNode.node_id}"
-                      >
-                        <div class="node-row">
-                          <button
-                            class="toggle-btn"
-                            onclick={() => toggleNode(subNode.node_id)}
-                            aria-label={$t('plan.view.toggle_sub_node')}
-                          >
-                            <span class="node-glyph">{getNodeGlyph(subNode.state)}</span>
-                            <span class="toggle-icon">
-                              {#if subNode.leaf_tasks && subNode.leaf_tasks.length > 0}
-                                {expandedNodes[subNode.node_id] ? '▾' : '▸'}
-                              {:else}
-                                &nbsp;
-                              {/if}
-                            </span>
-                          </button>
-                          <div class="node-info">
-                            <span class="node-kind-badge">↳ {subNode.kind}</span>
-                            <span class="node-title">{subNode.title}</span>
-                            <span class="node-state-text">{getNodeStateText(subNode)}</span>
-                          </div>
-                        </div>
-
-                        <!-- Sub-node leaf tasks -->
-                        {#if expandedNodes[subNode.node_id] && subNode.leaf_tasks}
-                          <div class="tasks-list">
-                            {#each subNode.leaf_tasks as task}
-                              <button
-                                class="task-row {selectedTaskId === task.task_id
-                                  ? 'task-row--selected'
-                                  : ''}"
-                                onclick={() => selectTask(task.task_id)}
-                                data-testid="task-{task.task_id}"
-                              >
-                                <span class="task-glyph">{getNodeGlyph(task.status)}</span>
-                                <span class="task-id font-semibold">{task.task_id}</span>
-                                <span class="task-role">{task.role}</span>
-                                <span class="task-model">{task.harness} {task.model}</span>
-                                <span class="task-attempt">attempt {task.attempt}</span>
-                                <span
-                                  class="task-status badge badge--state badge--state-{task.status}"
-                                  >{task.status}</span
-                                >
-                                {#if task.off_track}
-                                  <span
-                                    class="badge badge--warning"
-                                    data-testid="task-off-track-badge"
-                                  >
-                                    off track: {task.off_track.signal}
-                                  </span>
-                                {/if}
-                              </button>
-                            {/each}
-                          </div>
-                        {/if}
-                      </div>
-                    {/each}
-                  {/if}
-
-                  <!-- Leaf Tasks at Node level -->
-                  {#if node.leaf_tasks && node.leaf_tasks.length > 0}
-                    <div class="tasks-list">
-                      {#each node.leaf_tasks as task}
-                        <button
-                          class="task-row {selectedTaskId === task.task_id
-                            ? 'task-row--selected'
-                            : ''}"
-                          onclick={() => selectTask(task.task_id)}
-                          data-testid="task-{task.task_id}"
-                        >
-                          <span class="task-glyph">{getNodeGlyph(task.status)}</span>
-                          <span class="task-id font-semibold">{task.task_id}</span>
-                          <span class="task-role">{task.role}</span>
-                          <span class="task-model">{task.harness} {task.model}</span>
-                          <span class="task-attempt">attempt {task.attempt}</span>
-                          <span class="task-status badge badge--state badge--state-{task.status}"
-                            >{task.status}</span
-                          >
-                          {#if task.off_track}
-                            <span class="badge badge--warning" data-testid="task-off-track-badge">
-                              off track: {task.off_track.signal}
-                            </span>
-                          {/if}
-                        </button>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              {/if}
+                <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
+                <span class="node-state-text">{getNodeStateText(node, $t)}</span>
+                {#if node.duration_seconds > 0}
+                  <span class="node-duration">{formatDurationSeconds(node.duration_seconds)}</span>
+                {/if}
+              </button>
             </div>
+
+            <!-- Children (sub-nodes at every depth, then this node's leaf tasks) -->
+            {#if expandedNodes[node.node_id]}
+              <div class="node-children">
+                {#if node.sub_nodes && node.sub_nodes.length > 0}
+                  {#each node.sub_nodes as child (child.node_id)}
+                    {@render processNode(child, 'sub')}
+                  {/each}
+                {/if}
+                {#if node.leaf_tasks && node.leaf_tasks.length > 0}
+                  <div class="tasks-list">
+                    {#each node.leaf_tasks as task (task.task_id)}
+                      <button
+                        class="task-row {selectedTaskId === task.task_id
+                          ? 'task-row--selected'
+                          : ''}"
+                        onclick={() => selectTask(task.task_id)}
+                        aria-current={selectedTaskId === task.task_id ? 'true' : undefined}
+                        data-testid="task-{task.task_id}"
+                      >
+                        <span class="task-glyph">{getNodeGlyph(task.status)}</span>
+                        <span class="task-id font-semibold">{task.task_id}</span>
+                        <span class="task-role">{task.role}</span>
+                        <span class="task-model">{task.harness} {task.model}</span>
+                        <span class="task-attempt">attempt {task.attempt}</span>
+                        <span class="task-status badge badge--state badge--state-{task.status}"
+                          >{task.status}</span
+                        >
+                        {#if task.off_track}
+                          <span class="badge badge--warning" data-testid="task-off-track-badge">
+                            off track: {task.off_track.signal}
+                          </span>
+                        {/if}
+                      </button>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/snippet}
+
+        <div class="tree-container">
+          {#each plan.nodes.filter((n) => n.state !== 'not_in_plan') as node (node.node_id)}
+            {@render processNode(node, 'root')}
           {/each}
 
           <!-- Pruned / Not in plan section -->
@@ -836,89 +869,104 @@
         class="plan-detail-panel"
         aria-label={$t('plan.view.inspector_label')}
         data-testid="task-inspector"
+        data-selected-kind={selection?.kind ?? 'none'}
       >
-        {#if isLoadingActivity}
-          <div class="detail-loading">
-            <Spinner size="2rem" label={$t('plan.activity.loading')} />
-          </div>
-        {:else if taskActivity}
-          <div class="task-inspector" data-testid="activity-feed">
-            <div class="task-inspector__head">
-              <div class="task-headline">
-                <h3 class="task-title font-semibold">{taskActivity.task_id}</h3>
-                <span class="task-role-tag">{taskActivity.role}</span>
-                <span class="task-meta">{taskActivity.harness} {taskActivity.model}</span>
-                <span class="task-meta">attempt {taskActivity.attempt}</span>
+        {#if selection?.kind === 'task'}
+          {#if isLoadingActivity}
+            <div class="detail-loading">
+              <Spinner size="2rem" label={$t('plan.activity.loading')} />
+            </div>
+          {:else if taskActivity}
+            <div class="task-inspector" data-testid="activity-feed">
+              <div class="task-inspector__head">
+                <div class="task-headline">
+                  <h3 class="task-title font-semibold">{taskActivity.task_id}</h3>
+                  <span class="task-role-tag">{taskActivity.role}</span>
+                  <span class="task-meta">{taskActivity.harness} {taskActivity.model}</span>
+                  <span class="task-meta">attempt {taskActivity.attempt}</span>
+                </div>
+                <div class="task-metrics mono">
+                  <span>{formatDurationSeconds(taskActivity.duration_seconds)}</span>
+                  {#if taskActivity.tokens_so_far > 0}
+                    <span>· {taskActivity.tokens_so_far} tokens</span>
+                  {/if}
+                </div>
               </div>
-              <div class="task-metrics mono">
-                <span>{formatDurationSeconds(taskActivity.duration_seconds)}</span>
-                {#if taskActivity.tokens_so_far > 0}
-                  <span>· {taskActivity.tokens_so_far} tokens</span>
+
+              <!-- Off-track alert banner -->
+              {#if taskActivity.off_track}
+                <div class="off-track-banner" data-testid="off-track-alert" role="alert">
+                  <span class="warning-icon">⚠</span>
+                  <span class="off-track-msg">
+                    {$t('plan.activity.off_track', {
+                      signal: taskActivity.off_track.signal,
+                      value: taskActivity.off_track.value ?? '?',
+                      threshold: taskActivity.off_track.threshold ?? '?',
+                      action: taskActivity.off_track.action,
+                    })}
+                  </span>
+                </div>
+              {/if}
+
+              <!-- Activity Entries -->
+              <div class="activity-entries">
+                {#if taskActivity.entries.length === 0}
+                  <div class="activity-empty text-muted">{$t('plan.activity.empty')}</div>
+                {:else}
+                  {#each taskActivity.entries as entry}
+                    <div
+                      class="activity-entry activity-entry--{entry.kind}"
+                      data-testid="activity-entry"
+                    >
+                      <span class="entry-time mono">{entry.timestamp}</span>
+                      <span class="entry-kind-tag entry-kind-tag--{entry.kind}">{entry.kind}</span>
+                      <div class="entry-body">
+                        {#if entry.kind === 'tool' || entry.kind === 'tool_call'}
+                          <div class="tool-call mono">
+                            <span class="tool-name">{entry.tool_name}</span>
+                            <span class="tool-target"
+                              >{stripControlSequences(entry.tool_target)}</span
+                            >
+                            {#if entry.tool_failed}
+                              <span class="badge badge--danger">failed · {entry.size || ''}</span>
+                            {/if}
+                          </div>
+                        {:else if entry.kind === 'changed' || entry.kind === 'file_changed'}
+                          <div class="file-changed mono">
+                            {stripControlSequences(
+                              entry.content || (entry.files && entry.files[0]) || '',
+                            )}
+                          </div>
+                        {:else if entry.kind === 'gap'}
+                          <div class="activity-gap text-muted italic">
+                            {stripControlSequences(entry.content || '')}
+                          </div>
+                        {:else}
+                          <div class="entry-content">
+                            {stripControlSequences(entry.content)}
+                          </div>
+                        {/if}
+                      </div>
+                    </div>
+                  {/each}
                 {/if}
               </div>
             </div>
-
-            <!-- Off-track alert banner -->
-            {#if taskActivity.off_track}
-              <div class="off-track-banner" data-testid="off-track-alert" role="alert">
-                <span class="warning-icon">⚠</span>
-                <span class="off-track-msg">
-                  {$t('plan.activity.off_track', {
-                    signal: taskActivity.off_track.signal,
-                    value: taskActivity.off_track.value ?? '?',
-                    threshold: taskActivity.off_track.threshold ?? '?',
-                    action: taskActivity.off_track.action,
-                  })}
-                </span>
-              </div>
-            {/if}
-
-            <!-- Activity Entries -->
-            <div class="activity-entries">
-              {#if taskActivity.entries.length === 0}
-                <div class="activity-empty text-muted">{$t('plan.activity.empty')}</div>
-              {:else}
-                {#each taskActivity.entries as entry}
-                  <div
-                    class="activity-entry activity-entry--{entry.kind}"
-                    data-testid="activity-entry"
-                  >
-                    <span class="entry-time mono">{entry.timestamp}</span>
-                    <span class="entry-kind-tag entry-kind-tag--{entry.kind}">{entry.kind}</span>
-                    <div class="entry-body">
-                      {#if entry.kind === 'tool' || entry.kind === 'tool_call'}
-                        <div class="tool-call mono">
-                          <span class="tool-name">{entry.tool_name}</span>
-                          <span class="tool-target">{stripControlSequences(entry.tool_target)}</span
-                          >
-                          {#if entry.tool_failed}
-                            <span class="badge badge--danger">failed · {entry.size || ''}</span>
-                          {/if}
-                        </div>
-                      {:else if entry.kind === 'changed' || entry.kind === 'file_changed'}
-                        <div class="file-changed mono">
-                          {stripControlSequences(
-                            entry.content || (entry.files && entry.files[0]) || '',
-                          )}
-                        </div>
-                      {:else if entry.kind === 'gap'}
-                        <div class="activity-gap text-muted italic">
-                          {stripControlSequences(entry.content || '')}
-                        </div>
-                      {:else}
-                        <div class="entry-content">
-                          {stripControlSequences(entry.content)}
-                        </div>
-                      {/if}
-                    </div>
-                  </div>
-                {/each}
-              {/if}
+          {:else}
+            <div class="no-task-selected text-muted" data-testid="task-no-activity">
+              <p>{$t('plan.activity.empty')}</p>
             </div>
-          </div>
+          {/if}
+        {:else if selectedNode}
+          <NodeNarrative
+            node={selectedNode}
+            {plan}
+            onSelectTask={selectTask}
+            onSelectNode={selectNode}
+          />
         {:else}
-          <div class="no-task-selected text-muted">
-            <p>{$t('plan.activity.select_task')}</p>
+          <div class="no-task-selected text-muted" data-testid="nothing-selected">
+            <p>{$t('plan.activity.select_item')}</p>
           </div>
         {/if}
       </section>
@@ -1201,6 +1249,27 @@
     align-items: center;
     padding: var(--space-2) var(--space-3);
     gap: var(--space-2);
+    border-radius: var(--radius-sm, 4px);
+  }
+
+  .node-row--selected {
+    background-color: rgba(59, 130, 246, 0.1);
+  }
+
+  .node-select {
+    padding: var(--space-1);
+    margin: calc(var(--space-1) * -1) 0;
+    border: none;
+    border-radius: var(--radius-sm, 4px);
+    background: none;
+    color: inherit;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .node-select:hover {
+    background-color: var(--color-bg-subtle, #f8fafc);
   }
 
   .toggle-btn {

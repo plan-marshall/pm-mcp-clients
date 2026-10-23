@@ -1,0 +1,192 @@
+= Design: Plan View Interaction
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Design] » Web App » Plan View Interaction
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+
+_Relies on: link:../shared/plan-view.adoc[Plan View], link:../shared/texts-and-languages.adoc[Texts and Languages]_
+
+Status: `DRAFT`. The web app's interaction with the shared plan view (link:../shared/plan-view.adoc[Plan View]). The process contract, the records, and the server are unchanged: the right-hand narrative is derived from the `ProcessTree` the view already holds.
+
+[#layout]
+== The Two-Panel Rule
+
+The plan view keeps the structure the operator already knows:
+
+----
+  header       project › epic › plan · title · phase · state · tokens · actions
+  ──────────────────────────────────────────────────────────────────────────
+  tree (left)                             narrative (right)
+  ├─ ✓ phase init           done          part narrative for init
+  ├─ ✓ phase refine         done          state · duration · runs
+  ├─ ▶ phase execute        running       tasks in this part
+  │    └─ ▶ tasks execute.envelope        TASK-001 · TASK-002 · TASK-003
+  └─ ○ phase finalize       planned       or: nothing selected
+----
+
+The tree is the navigation surface; the narrative is what the tree points at. The split is
+preserved on the desktop and stacks on the tablet and the phone, as the visual language says
+(link:README.adoc#breakpoints[Web App, Responsive Breakpoints]).
+
+[#selection]
+== Selection, Expansion, and Scrolling
+
+There are three acts, and none of them stands in for another:
+
+[cols="1,2,3",options="header"]
+|===
+|Act |Control |Effect
+
+|Select a part
+|the row body of a phase, sub-workflow, or task group, a native button
+|The right panel shows that part's narrative. A row body never expands or collapses.
+
+|Select a task
+|the body of a leaf task row
+|The right panel shows the task's live activity feed and subscribes to its stream.
+
+|Expand or collapse
+|the chevron/glyph button beside the row
+|The children show or hide. A toggle never changes the selection or the right panel.
+|===
+
+* The row body is a `<button>` with an accessible name made of the node's own title and the
+  catalogue's inspect action; the toggle is a sibling button with its own `aria-label`
+  (`plan.view.toggle_node`, `plan.view.toggle_sub_node`). Buttons are never nested.
+* `Enter` and `Space` select the focused row body; `Tab` moves between the toggle and the body.
+  The selected row keeps the focus ring of the design system and the selected background.
+* The selected row carries `aria-current` and the `node-row--selected` style; a selected task
+  carries `aria-current` and `task-row--selected`.
+* Only a task selection subscribes to `subscribeTaskActivity`. Selecting a node unsubscribes and
+  clears the feed, so a hidden stream cannot keep appending to a panel nobody sees.
+* Ordinary selection does not scroll. Only the jump control expands the path to the current
+  position, selects the running task (or the running node when there is no running task), and
+  scrolls that item into view.
+
+[#defaults]
+== Opening, Defaults, and Refresh
+
+* On first load the selection is the running task; if there is none, the running node; if there
+  is none, the first visible node. The tree never opens with the panel at “select something” while
+  it shows at least one item.
+* A refresh (`plan.changed`, `activity.changed`, `phase.changed`, `task.off_track`,
+  `project.work_ended`) keeps the inspected subject when the refreshed tree still shows it —
+  matched by task id or node id, never by list position. When the subject disappeared, or became
+  `not_in_plan`, the same fallback order applies deliberately.
+* Nodes omitted from the tree (`not_in_plan`) stay in the pruned group at the end and are not
+  selectable. Their reason remains visible there.
+
+[#node-narrative]
+== What a Node Narrative Contains
+
+A selected phase, sub-workflow, or task group narrates only what the process resource and its
+child tasks already contain:
+
+* *The head*: the part's title, its kind, its localized state (with the run count where the plan
+  ran it more than once), and its duration. `waits_for` and `prune_reason` are shown when the
+  node carries them.
+* *Tasks in this part*: one row per leaf task the node carries, including the tasks of its
+  sub-nodes. Each row names the task id, role, harness and model, attempt, status, duration,
+  tokens, and whether an activity route exists. Selecting a row opens that task's live feed.
+* *Parts in this part*: the direct sub-nodes as a compact outline with their state. Selecting one
+  opens its own narrative, so the operator can walk down the tree from the right panel as well as
+  from the left.
+* *No invented summary*: a node narrative never aggregates free-text activity into a fabricated
+  phase summary, never adds a state the process did not report, and never fetches anything the
+  plan view did not already load.
+
+[#empty-states]
+== The Three Empty States
+
+[cols="1,2,2",options="header"]
+|===
+|Situation |What the panel says |Key
+
+|Nothing is selected
+|Select a part or a task on the left to inspect it.
+|`plan.activity.select_item`
+
+|A selected part carries no leaf tasks
+|This part has no task-level activity. Its state and duration are shown above.
+|`plan.node.no_activity`
+
+|A selected task has no activity entries
+|No activity entries yet.
+|`plan.activity.empty`
+|===
+
+The three states are distinct on purpose: “nothing selected” is not a property of a part, and a
+part that completed without tasks is not a task with an empty feed.
+
+[#safety]
+== Untrusted Text
+
+`title`, `waits_for`, `prune_reason`, sub-node titles, task labels, and activity content are
+untrusted text from the runtime. They are rendered as text after `stripControlSequences`, never
+with `{@html}`, and never turned into links the client follows. The narrative inherits the same
+trust boundary as the existing activity feed (link:../shared/plan-view.adoc#worker[Plan View, A
+Worker at Work]).
+
+[#texts]
+== Texts
+
+Keys of the area `plan`; English and German carry every key.
+
+[cols="3,4,4",options="header"]
+|===
+|Key |English |German
+
+|`plan.node.select`
+|Inspect this part
+|Diesen Teil ansehen
+
+|`plan.node.narrative`
+|Part narrative
+|Erzählung des Teils
+
+|`plan.node.child_tasks`
+|Tasks in this part
+|Tasks in diesem Teil
+
+|`plan.node.child_nodes`
+|Parts in this part
+|Untergeordnete Teile
+
+|`plan.node.waits_for`
+|Waits for
+|Wartet auf
+
+|`plan.node.prune_reason`
+|Left out because
+|Weggelassen, weil
+
+|`plan.node.attempt`
+|attempt {attempt}
+|Versuch {attempt}
+
+|`plan.node.run`
+|{count, plural, =1 {1 run} other {{count} runs}}
+|{count, plural, =1 {1 Durchlauf} other {{count} Durchläufe}}
+
+|`plan.node.no_activity`
+|This part has no task-level activity. Its state and duration are shown above.
+|Dieser Teil hat keine Aktivität auf Task-Ebene. Zustand und Dauer stehen oben.
+
+|`plan.node.has_activity`
+|Activity recorded
+|Aktivität aufgezeichnet
+
+|`plan.node.no_activity_link`
+|No activity recorded
+|Keine Aktivität aufgezeichnet
+
+|`plan.activity.select_item`
+|Select a part or a task on the left to inspect it.
+|Wähle links einen Teil oder eine Aufgabe, um ihn zu betrachten.
+|===
+
+The tree and the node narrative share `getNodeStateText` and `getNodeGlyph`, so a state cannot
+drift into one wording in the tree and another in the narrative.
