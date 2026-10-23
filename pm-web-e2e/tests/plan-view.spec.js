@@ -91,6 +91,56 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await jumpBtn.click();
   });
 
+  test('narrates every part of session-log, including done phases and done tasks', async ({
+    page,
+  }) => {
+    // Open session-log from the overview: its project tab, then its own plan card.
+    await page.getByRole('tab', { name: /pm-mcp-core/ }).click();
+    const sessionLogCard = page
+      .locator('[data-testid="plan-card"]')
+      .filter({ hasText: 'Session log and generations' });
+    await expect(sessionLogCard).toBeVisible();
+    await sessionLogCard.click();
+
+    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
+
+    // The positive structure: the tree on the left, the narrative on the right.
+    await expect(page.locator('[data-testid="process-tree"]')).toBeVisible();
+    await expect(page.locator('[data-testid="task-inspector"]')).toBeVisible();
+
+    // A done phase narrates its own state and duration instead of leaving the panel at "select".
+    await page.locator('[data-testid="select-node-init"]').click();
+    const narrative = page.locator('[data-testid="node-narrative"]');
+    await expect(narrative).toBeVisible();
+    await expect(narrative.locator('[data-testid="node-narrative-title"]')).toContainText('init');
+    await expect(narrative.locator('[data-testid="node-narrative-state"]')).toContainText('done');
+    await expect(narrative.locator('[data-testid="node-narrative-duration"]')).toBeVisible();
+    await expect(page.locator('[data-testid="task-inspector"]')).toHaveAttribute(
+      'data-selected-kind',
+      'node',
+    );
+
+    // A done leaf task still shows its live-activity feed.
+    await page.locator('[data-testid="task-TASK-001"]').click();
+    await expect(page.locator('[data-testid="activity-feed"]')).toContainText('TASK-001');
+    await expect(page.locator('[data-testid="activity-entry"]').first()).toContainText(
+      'The session log now keeps its narrative per generation.',
+    );
+
+    // Expanding and collapsing is independent of selection: the inspected task stays on the right.
+    // The live feed may append an entry, so the stable head is what must not change.
+    const inspector = page.locator('[data-testid="task-inspector"]');
+    const headBefore = await inspector.locator('.task-inspector__head').innerText();
+    const executeToggle = page.locator('[data-testid="toggle-node-execute"]');
+    await expect(executeToggle).toHaveAttribute('aria-expanded', 'true');
+    await executeToggle.click();
+    await expect(executeToggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(inspector).toHaveAttribute('data-selected-kind', 'task');
+    await expect(inspector.locator('.task-inspector__head')).toHaveText(headBefore);
+    await expect(inspector).toContainText('TASK-001');
+    await expect(page.locator('[data-testid="node-narrative"]')).toHaveCount(0);
+  });
+
   test('navigates to epic view, verifies running and staged plans, and returns', async ({
     page,
   }) => {
