@@ -437,13 +437,14 @@ class SystemFullScreenTest {
             var context = createContext(virtual);
             context.setConsoleActive(true);
             var out = new StringWriter();
+            var err = new StringWriter();
 
-            var exit = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
-                                "system");
+            var exit = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "system");
 
             assertEquals(0, exit);
-            assertTrue(out.toString().contains("The system view needs 60 columns"), out.toString());
+            assertTrue(err.toString().contains("too narrow"), err.toString());
             assertTrue(out.toString().contains("Runtime"), out.toString());
+            assertTrue(out.toString().contains("System"), out.toString());
         }
     }
 

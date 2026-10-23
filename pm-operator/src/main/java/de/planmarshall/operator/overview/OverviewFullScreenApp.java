@@ -2990,7 +2990,9 @@ public final class OverviewFullScreenApp {
         private boolean askYes(String prompt) throws IOException {
             var driver = activeDriver;
             var confirmTerminal = driver != null ? driver.terminal() : context.createTerminal();
-            boolean owned = driver == null;
+            // A driver owns its terminal; of a terminal the confirmation opened itself, only the
+            // one the context owns may be closed (never the console's lent terminal).
+            boolean owned = driver == null && context.ownsTerminal(confirmTerminal);
             try {
                 var reader = LineReaderBuilder.builder().terminal(confirmTerminal).build();
                 var answer = reader.readLine(prompt + "  \u203a ");

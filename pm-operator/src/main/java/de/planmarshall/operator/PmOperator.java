@@ -114,13 +114,18 @@ public final class PmOperator implements Callable<Integer> {
      * @throws IOException if the terminal cannot be opened or the view cannot be drawn
      */
     private boolean runFullScreen() throws IOException {
-        try (var terminal = context.createTerminal()) {
-            if (!TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+        var terminal = context.createTerminal();
+        try {
+            if (!TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS).available()) {
                 return false;
             }
             var out = new PrintWriter(terminal.writer(), true);
             new OverviewFullScreenApp(context, terminal, null, null, false).run(out);
             return true;
+        } finally {
+            if (context.ownsTerminal(terminal)) {
+                terminal.close();
+            }
         }
     }
 

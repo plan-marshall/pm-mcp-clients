@@ -74,8 +74,9 @@ public final class ProjectsCommand implements Callable<Integer> {
                 // Without a terminal the scrollback list is the whole view.
             }
             try {
-                if (terminal != null
-                                    && TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+                var availability = terminal == null ? null
+                                    : TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
+                if (availability != null && availability.available()) {
                     var app = new OverviewFullScreenApp(context, terminal, InitialSelection.explorerRoot(),
                                         Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
                                         context.noticeBuffer());
@@ -83,9 +84,11 @@ public final class ProjectsCommand implements Callable<Integer> {
                     if (result != TuiScreenDriver.Result.TOO_NARROW) {
                         return 0;
                     }
+                } else if (availability != null) {
+                    TuiScreenDriver.printUnavailable(context, spec.commandLine().getErr(), availability);
                 }
             } finally {
-                if (terminal != null) {
+                if (context.ownsTerminal(terminal)) {
                     terminal.close();
                 }
             }

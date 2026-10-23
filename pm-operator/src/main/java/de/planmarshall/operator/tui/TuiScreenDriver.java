@@ -10,6 +10,7 @@
 package de.planmarshall.operator.tui;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -141,7 +142,7 @@ public final class TuiScreenDriver {
 
     /**
      * Decides whether a full-screen view may open on this terminal and under this machine
-     * configuration.
+     * configuration, and names the reason when it may not.
      *
      * <p>It opens only on an interactive terminal whose type is not {@code dumb}, when
      * {@code console.full_screen} of {@code machine-config.json} is not {@code false} (the default
@@ -149,25 +150,64 @@ public final class TuiScreenDriver {
      * does not keep the view from opening: the view uses no colour, only the inverse video of the
      * selected row, which every terminal that can address a cursor shows.
      *
+     * <p>The reasons are checked in the order the operator can act on them: the process's terminal
+     * attachment, the terminal's type, the machine configuration, and its width. The same verdict
+     * decides the greeting's hint, the console hand-off, and the refusal line of a requested verb.
+     *
+     * @param context    the operator context
+     * @param terminal   the terminal the view would draw on
+     * @param minColumns the narrowest width the view accepts
+     * @return the verdict, with the first applicable reason when the view may not open
+     */
+    public static FullScreenAvailability availability(OperatorContext context, Terminal terminal,
+                        int minColumns) {
+        Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(terminal, "terminal");
+        if (!context.isInteractiveTerminal()) {
+            return FullScreenAvailability.refused(FullScreenAvailability.Reason.NON_INTERACTIVE);
+        }
+        var type = terminal.getType();
+        if (type == null || Terminal.TYPE_DUMB.equals(type) || "dumb-color".equals(type)) {
+            return FullScreenAvailability.refused(FullScreenAvailability.Reason.DUMB_TERMINAL);
+        }
+        if (!fullScreenConfigured(context)) {
+            return FullScreenAvailability.refused(FullScreenAvailability.Reason.CONFIGURED_OFF);
+        }
+        if (terminal.getColumns() < minColumns) {
+            return FullScreenAvailability.refused(FullScreenAvailability.Reason.TOO_NARROW);
+        }
+        return FullScreenAvailability.open();
+    }
+
+    /**
+     * Decides whether a full-screen view may open.
+     *
      * @param context    the operator context
      * @param terminal   the terminal the view would draw on
      * @param minColumns the narrowest width the view accepts
      * @return {@code true} when the view may open
      */
     public static boolean canOpenFullScreen(OperatorContext context, Terminal terminal, int minColumns) {
+        return availability(context, terminal, minColumns).available();
+    }
+
+    /**
+     * Prints the one catalogue line naming why a requested full-screen view cannot open. The caller
+     * keeps the scrollback output; the line only tells the operator that the fallback is not a
+     * broken view but a terminal or configuration verdict.
+     *
+     * @param context      the operator context
+     * @param err          the writer of the refusal line
+     * @param availability the verdict of {@link #availability}
+     */
+    public static void printUnavailable(OperatorContext context, PrintWriter err,
+                        FullScreenAvailability availability) {
         Objects.requireNonNull(context, "context");
-        Objects.requireNonNull(terminal, "terminal");
-        if (!context.isInteractiveTerminal()) {
-            return false;
-        }
-        var type = terminal.getType();
-        if (type == null || Terminal.TYPE_DUMB.equals(type) || "dumb-color".equals(type)) {
-            return false;
-        }
-        if (!fullScreenConfigured(context)) {
-            return false;
-        }
-        return terminal.getColumns() >= minColumns;
+        Objects.requireNonNull(err, "err");
+        Objects.requireNonNull(availability, "availability");
+        err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            availability.messageKey(), Map.of()));
+        err.flush();
     }
 
     /**

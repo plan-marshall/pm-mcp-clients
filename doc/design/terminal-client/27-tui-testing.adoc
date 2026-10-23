@@ -1,0 +1,166 @@
+= Terminal Client: The TUI's Tests
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:README.adoc[Terminal Client] » The TUI's Tests
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+
+The full-screen views are proved on three layers, each answering a different question. The lower
+layer is fast and deterministic; the upper layer is the only one that proves an operator's real
+terminal. A defect is fixed at the lowest layer that can show it, and the process-level case stays
+as the regression record.
+
+[#layers]
+== The Three Layers
+
+[cols="2,3,3",options="header"]
+|===
+|Layer |What it drives |What it proves
+
+|Model and layout (`TuiLayoutTest`, the level tests)
+|The rows, the selection, the filter, and the drawing strings, with no terminal at all
+|Every width threshold, wrapping, truncation, and the state-to-text mapping
+
+|In-memory terminal (`VirtualScreenTerminal`)
+|A JLine `ExternalTerminal` over scripted input and captured output, parsed by `AnsiScreen`
+|The keys reach the handler, the screen draws, the alternate screen is entered and left, a resize
+ redraws, and the terminal is restored on `q` and on a renderer error
+
+|Real pseudo-terminal (`PtySession`)
+|The `pm-operator` process (JVM or native) on a `script(1)` PTY with a pinned size
+|The process sees an interactive terminal, the console hand-off opens the view, a key typed mid-run
+ reaches the view, the visible screen is right, and `exit` returns `0`
+|===
+
+The in-memory layer replaces nothing above it: it cannot prove that the console and the view share
+one terminal, because it never starts a process and never sees JLine choose a system terminal. That
+is what the process layer adds.
+
+[#screen]
+[#ansi-screen]
+=== `AnsiScreen`
+
+`AnsiScreen` is the one parser both terminal layers use. It turns the bytes a view wrote into the
+visible lines, the rows drawn inverted, whether the alternate screen is active, how often it was
+entered and left, and whether the cursor is visible. It understands the subset the view and an
+`xterm` terminal use: cursor addressing and movement, erase in line and display, SGR (inverse only),
+the private modes 1049/47/1047 (alternate screen) and 25 (cursor), OSC, and the string introducers.
+Everything else is skipped.
+
+`VirtualScreenTerminal` delegates to it, so an assertion means the same thing on both layers.
+`AnsiScreenTest` covers the sequences the view emits, wrapping, wide glyphs, OSC, and the
+alternate-screen and cursor modes.
+
+[#in-memory]
+=== `VirtualScreenTerminal`
+
+The in-memory harness is a JLine `ExternalTerminal` over a scripted `InputStream` and a captured
+`OutputStream`. `type("j")` queues keys, `endOfInput()` ends the script, `resize(...)` raises the
+resize signal, and `screen()` parses what was drawn. `isClosed()` reports whether the JLine terminal
+was closed, which is how an ownership test tells a closed terminal from a borrowed one.
+
+The console hand-off is tested here in `PmConsoleHandoffTest`: a provider counts terminal creations,
+so the test asserts that console `plans` creates exactly one terminal, that the scope is set during
+the dispatch and cleared afterwards, that the nested verb does not close the console's terminal, and
+that a direct `plans` does close the one it created.
+
+[#pty]
+=== `PtySession`
+
+`PtySession` runs one process on a real pseudo-terminal:
+
+* `script(1)` allocates the terminal: on macOS `/usr/bin/script -q /dev/null /bin/sh -c ...`, on
+  Linux `/usr/bin/script -q -e -c ... /dev/null`.
+* `stty rows R cols C` pins the size before the process starts, so the layout does not depend on the
+  machine that runs the test. `TERM`, sent to the child, is part of the test case.
+* stdin stays open, so `send("plans\n")` and `send("q")` type into the running process; a reader
+  thread accumulates the output.
+* `awaitText(text, timeout)` polls the parsed screen. A bare fixed sleep is never the assertion.
+* `screen()`, `rawOutput()`, `alternateScreenEntries()`, `alternateScreenExits()`,
+  `alternateScreenActive()`, `cursorVisible()`, `awaitExit(...)`, and `exitCode()` are what a test
+  asserts.
+* The child's exit status is written to a side file, because the macOS `script` does not propagate
+  it; `close()` destroys the child, closes the streams, and deletes the side file, idempotently.
+
+The tests skip with an assumption when `/usr/bin/script` is missing. No native PTY library is added;
+`script(1)` is the operating system's own, and the test scope keeps it out of the binary.
+
+[#matrix]
+== What the Capability Suite Covers
+
+`TuiCapabilityIT` (`-Pintegration-tests`, macOS and Linux) starts a mock runtime with the
+`fully-onboarded` scenario and drives the process through `PtySession`:
+
+[cols="2,3",options="header"]
+|===
+|Case |What it asserts
+
+|`plans` at 120×30 and at 80×24
+|Alternate screen entered once, `Running work` drawn, `q` restores the cursor and exits `0`
+
+|`--tui`
+|The same view opens directly
+
+|`plan fix-relay`
+|The plan view opens on the plan id, `q` restores
+
+|`projects`
+|The explorer opens on `All projects`, `q` restores
+
+|Console `plans`, console `tui`
+|The prompt, the alternate screen with `Running work`, then the prompt again and `exit` with `0`
+
+|Console `system`
+|The system view opens from the prompt and returns to it
+
+|`plans --json`
+|JSON on stdout, no alternate screen
+
+|50×20
+|The too-narrow reason line, the tree, no alternate screen, exit `0`
+
+|`TERM=dumb`
+|The dumb-terminal reason line, the tree, no alternate screen, exit `0`
+
+|`console.full_screen=false`
+|The configured-off reason line, the tree, no alternate screen, exit `0`
+
+|VS Code shape (`TERM_PROGRAM=vscode`, `TERM=xterm-256color`, 80×24)
+|The view opens; the reported environment is supported
+
+|Native or JVM
+|The run records its mode under `target/verification-results/`; the native binary is used whenever
+ `target/pm-operator` exists
+|===
+
+The console cases are the regression for the hand-off: before the fix, `PlansCommand` opened a
+second JLine terminal, JLine fell back to a dumb `0 × 0` terminal, the view refused, and the console
+printed the status tree instead. The failing-before capture is in
+link:../../agy/operator-tui-pty-and-console-handoff-plan-report.md[the plan's report].
+
+[#flake]
+== Flake Control
+
+* Every wait is a condition (`awaitText`) with a generous timeout (15 to 20 seconds), never a fixed
+  sleep for the main assertion.
+* A failed assertion carries the raw output (`session.rawOutput()`, `session.screenText()`), so a
+  failure shows the screen the process actually drew.
+* Every session and runtime is closed in a `finally` (try-with-resources); no child is left on the
+  test machine.
+* The size and `TERM` are pinned per case, so the suite does not depend on the terminal that started
+  Maven.
+
+[#snapshots]
+== Why a Real PTY
+
+Other terminal applications test the same way: they start the application on a pseudo-terminal,
+inject keys, parse the ANSI screen, and assert the visible state. OpenCode is one of them; the
+approach is not specific to this client. A screen snapshot is the only assertion that covers the
+whole chain the operator sees — the process's terminal detection, the console's hand-off, the view's
+drawing, and the restoration on exit — without reaching into the classes under test.
+
+The in-memory terminal stays for the fast, exhaustive cases: layout, scrolling, resize, renderer
+exceptions, and the console's dispatch and ownership. The process layer is deliberately narrower:
+one case per entry point and per documented fallback, not a second copy of the layout suite.

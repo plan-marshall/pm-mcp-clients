@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,6 +56,9 @@ import de.planmarshall.operator.tui.TuiScreenDriver;
 public final class PmConsole {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
+    /** The verbs that draw their full-screen view on the terminal the console already owns. */
+    private static final Set<String> FULL_SCREEN_VERBS = Set.of("plans", "plan", "projects", "system");
 
     private final OperatorContext context;
     private final AtomicBoolean running = new AtomicBoolean(true);
@@ -123,7 +127,7 @@ public final class PmConsole {
         Thread sseThread = startEventListener(reader);
 
         try {
-            runRepl(out, reader);
+            runRepl(out, reader, terminal);
         } finally {
             context.setConsoleActive(false);
             running.set(false);
@@ -134,7 +138,7 @@ public final class PmConsole {
         return 0;
     }
 
-    private void runRepl(PrintWriter out, LineReader reader) {
+    private void runRepl(PrintWriter out, LineReader reader, Terminal terminal) {
         var locale = locale();
         while (running.get()) {
             var line = readCommand(reader, out, locale);
@@ -146,7 +150,7 @@ public final class PmConsole {
             } else if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
                 break;
             } else {
-                dispatchCommand(line, out, reader);
+                dispatchCommand(line, out, reader, terminal);
             }
         }
     }
@@ -244,7 +248,7 @@ public final class PmConsole {
         }
     }
 
-    private void dispatchCommand(String line, PrintWriter out, LineReader reader) {
+    private void dispatchCommand(String line, PrintWriter out, LineReader reader, Terminal terminal) {
         var locale = locale();
         var parts = line.split("\\s+");
         var verb = parts[0];
@@ -256,11 +260,12 @@ public final class PmConsole {
             return;
         }
 
+        // `tui` is the alias of `plans`; the rewrite keeps its trailing arguments.
+        var command = "tui".equals(verb) ? "plans" + line.substring(verb.length()) : line;
         switch (verb) {
             case "help" -> printHelp(out, parts);
             case "web" -> handleWebCommand(out, parts);
-            case "tui" -> runOperatorVerb("plans" + line.substring(verb.length()), out, reader);
-            default -> runOperatorVerb(line, out, reader);
+            default -> runOperatorVerb(command, out, reader, terminal);
         }
         out.flush();
     }
@@ -268,16 +273,48 @@ public final class PmConsole {
     /**
      * Runs one operator verb of the console, with the project selector in front of it.
      *
-     * @param line   the command line to run
-     * @param out    the console's writer
-     * @param reader the line reader
+     * <p>A full-screen verb draws on the console's own terminal: the terminal is scoped on the
+     * context, so the nested command never opens a second JLine terminal (which would fall back to
+     * a dumb 0&times;0 terminal and refuse the view). While the view is open the notice buffer holds
+     * what the runtime pushes; leaving it prints one coalesced meanwhile line. {@code --json} and a
+     * terminal that cannot open the view run without the notice hold.
+     *
+     * @param line     the command line to run
+     * @param out      the console's writer
+     * @param reader   the line reader
+     * @param terminal the terminal the console owns
      */
-    private void runOperatorVerb(String line, PrintWriter out, LineReader reader) {
+    private void runOperatorVerb(String line, PrintWriter out, LineReader reader, Terminal terminal) {
         var args = parseArgs(line);
         var selection = ProjectSelector.rewrite(context, out, out, args.toArray(String[]::new), reader);
-        if (selection.proceed()) {
-            PmOperator.execute(context, out, out, selection.args().toArray(String[]::new));
+        if (!selection.proceed()) {
+            return;
         }
+        var effective = selection.args().toArray(String[]::new);
+        if (!isFullScreenVerb(effective)) {
+            PmOperator.execute(context, out, out, effective);
+            return;
+        }
+        var json = List.of(effective).contains("--json");
+        var hold = !json
+                            && TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS).available();
+        context.useTerminal(terminal);
+        if (hold) {
+            enterFullScreen();
+        }
+        try {
+            PmOperator.execute(context, out, out, effective);
+        } finally {
+            if (hold) {
+                leaveFullScreen(out);
+            }
+            context.clearTerminal();
+            out.flush();
+        }
+    }
+
+    private static boolean isFullScreenVerb(String[] args) {
+        return args.length > 0 && FULL_SCREEN_VERBS.contains(args[0]);
     }
 
     private void handleWebCommand(PrintWriter out, String[] parts) {
@@ -541,7 +578,7 @@ public final class PmConsole {
      * @param terminal the terminal the console runs on
      */
     private void printFullScreenHint(PrintWriter out, Terminal terminal) {
-        if (TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+        if (TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS).available()) {
             out.println(MessageCatalogue.format(locale(), "operator.console.hint.tui", Map.of()));
             out.flush();
         }
