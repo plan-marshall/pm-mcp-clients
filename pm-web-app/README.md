@@ -76,7 +76,9 @@ The Vite development server binds to all interfaces on purpose, so a phone on th
 
 The `Paired:` URL is printed on the resolved host, never on a substituted primary IPv4: a phone that opens it stays on the address the operator chose. With a loopback `PM_WEB_HOST`, that URL stays on the loopback host.
 
-The machine's name is preferred over its IP: the name survives DHCP address changes and resolves through mDNS/Bonjour, while `Network (IP)` is the fallback for networks that block name resolution. `PM_WEB_HOST` sets the name explicitly, and `PM_WEB_ALLOWED_HOSTS` (comma separated) adds further names Vite accepts; the machine's own names stay allowed. IP addresses are allowed by Vite without an entry.
+The machine's name is preferred over its IP: the name survives DHCP address changes and resolves through mDNS/Bonjour, while `Network (IP)` is the fallback for networks that block name resolution. `PM_WEB_HOST` sets the name explicitly, and `PM_WEB_ALLOWED_HOSTS` (comma separated) adds further names Vite accepts; the machine's own names stay allowed. IP addresses are allowed by Vite without an entry. Every name is printed and compared in its canonical lower-case form without a trailing dot, because the browser's `Host` header is lower case and Vite compares it with the allowed list by exact string equality; `scripts/verify-dev-host.sh` proves the printed name returns `200` and an unknown host still returns `403`.
+
+The mock's web device secret is one file per machine at `~/.plan-marshall-mcp/mock-web-device-secret` (mode `0600`; `PM_MOCK_DEVICE_SECRET_FILE` overrides the path), so a paired browser survives `mvn clean`, a mock restart, and a switch to another worktree. To reset the development session, stop the mock and delete that file. Deleting `pm-mock-runtime/target/machine` (or the printed `Base` when the checkout is too deep) resets the scenario but **not** the device secret.
 
 A pairing code works once. When the code was already consumed, `start.sh` asks `POST /mock/pairing` for the replacement and prints it as the `Paired:` URL; re-running `start.sh` while a code is open returns the same code. The header is the only always-on status row: its machine badge carries the listener mode and the paired-device count as a hover title, the brand opens the start page, and the header offers the Process Designer. Every action explains itself on hover.
 
@@ -100,6 +102,7 @@ A pairing code works once. When the code was already consumed, `start.sh` asks `
 | `npm run preview` | Serves the production build locally for verification. |
 | `npm test` | Runs unit and component tests using Vitest and Testing Library. |
 | `npm run test:urls` | Runs the Bash matrix test for the development connection URLs printed by `start.sh`. |
+| `npm run test:dev-host` | Starts Vite on loopback and proves the printed lower-case name returns `200` while an unknown host returns `403` (`curl --resolve`, no mDNS). |
 | `npm run test:watch` | Runs Vitest in interactive watch mode. |
 | `npm run lint` | Lints TypeScript and Svelte components with ESLint. |
 | `npm run format:check` | Checks code formatting with Prettier. |

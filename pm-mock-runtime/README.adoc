@@ -111,7 +111,7 @@ Use 'pm-operator' with PM_MCP_BASE=/tmp/pm-mock12345/b to interact.
 
 The web app URL names the machine, not `localhost`, so a phone on the same network can open it; `PM_WEB_HOST` overrides the name. The loopback listener line stays the local coordinate.
 
-`start.sh` starts the mock on a stable base (`pm-mock-runtime/target/machine`) by default, so the web device secret survives a restart and a paired browser stays paired. A checkout path too deep for a Unix-domain socket falls back to a short stable base under the temp directory; the printed `Base` names it. To start a fresh machine, stop the mock and remove that printed `Base` directory; an operator-supplied `--base` keeps its own directory. `-d`/`--device-secret` sets a fixed secret for a manual run.
+`start.sh` keeps the web device secret in one machine-wide file, `~/.plan-marshall-mcp/mock-web-device-secret` (mode `0600`; `PM_MOCK_DEVICE_SECRET_FILE` overrides the path), and passes it to the mock with `--device-secret`. The secret therefore survives `mvn clean`, a mock restart, and a switch to another worktree, so a paired browser stays paired. To reset the development session, stop the mock and delete that file. The mock still starts on a stable base (`pm-mock-runtime/target/machine`, or a short stable temp path when the checkout is too deep for a Unix-domain socket) for the scenario state, runtime token, and socket; deleting the printed `Base` directory resets the scenario but does not change the device secret. An operator-supplied `--base` keeps its own directory, and `-d`/`--device-secret` overrides the machine-wide secret for a manual run.
 
 Export `PM_MCP_BASE` in another shell to run `pm-operator` against the mock runtime:
 

@@ -80,6 +80,7 @@ fi
 HAS_SCENARIO=false
 HAS_PORT=false
 HAS_BASE=false
+HAS_DEVICE_SECRET=false
 REQUESTED_PORT=7420
 FOREGROUND=false
 PASSED_ARGS=()
@@ -99,6 +100,24 @@ while [ $# -gt 0 ]; do
             HAS_BASE=true
             PASSED_ARGS+=("$1" "$2")
             shift 2
+            ;;
+        -d|--device-secret)
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: $1 requires a non-empty secret." >&2
+                exit 1
+            fi
+            HAS_DEVICE_SECRET=true
+            PASSED_ARGS+=("$1" "$2")
+            shift 2
+            ;;
+        --device-secret=*)
+            if [ -z "${1#--device-secret=}" ]; then
+                echo "Error: --device-secret requires a secret." >&2
+                exit 1
+            fi
+            HAS_DEVICE_SECRET=true
+            PASSED_ARGS+=(--device-secret "${1#--device-secret=}")
+            shift
             ;;
         --scenario=*)
             HAS_SCENARIO=true
@@ -261,9 +280,11 @@ fi
 
 FINAL_ARGS+=(--web-port "$WEB_PORT")
 
-# A stable base by default, so the web device secret survives a restart and a paired browser
-# stays paired. `rm -rf "$SCRIPT_DIR/target/machine"` is the explicit "fresh machine" action;
-# an operator-supplied --base keeps its own directory.
+# A stable base by default, so the scenario state survives a restart. The base carries the
+# scenario state, the runtime token, and the socket only; the web device secret is machine-wide
+# (see `scripts/mock-device-secret.sh`), so deleting this base does not unpair a browser.
+# `rm -rf "$SCRIPT_DIR/target/machine"` is the explicit "fresh scenario state" action; an
+# operator-supplied --base keeps its own directory.
 if [ "$HAS_BASE" = false ]; then
     STABLE_BASE="$SCRIPT_DIR/target/machine"
     # A Unix socket path is limited (104 bytes on macOS and Linux). A deep worktree checkout can
@@ -274,6 +295,16 @@ if [ "$HAS_BASE" = false ]; then
     fi
     mkdir -p "$STABLE_BASE"
     FINAL_ARGS+=(--base "$STABLE_BASE")
+fi
+
+# One machine-wide web device secret, so `mvn clean`, a second worktree, or a temp cleanup does
+# not change the secret under an open browser. An explicit -d/--device-secret still wins; it is
+# already in PASSED_ARGS and is appended after this block.
+if [ "$HAS_DEVICE_SECRET" = false ]; then
+    # shellcheck source=scripts/mock-device-secret.sh
+    source "$SCRIPT_DIR/scripts/mock-device-secret.sh"
+    DEVICE_SECRET="$(ensure_mock_device_secret)"
+    FINAL_ARGS+=(--device-secret "$DEVICE_SECRET")
 fi
 
 FINAL_ARGS+=(${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"})

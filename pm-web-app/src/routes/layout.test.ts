@@ -125,4 +125,42 @@ describe('the app shell', () => {
       'This browser reaches the machine over HTTPS on the network.',
     );
   });
+
+  it('probes the connection again after 30 seconds and clears the offline banner', async () => {
+    // Only the interval is faked: promise callbacks and `waitFor` keep real time, so the probe's
+    // completion and the store update it triggers are observed without clock gymnastics.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    const originalFetch = globalThis.fetch;
+    try {
+      localStorage.setItem('pm_device_secret', 'pmw_valid');
+      vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          loopback_url: 'http://127.0.0.1:7420',
+          loopback_open: true,
+          lan_enabled: false,
+          paired_devices_count: 1,
+          onboarded: true,
+        }),
+      });
+      // The spy calls through: the real request runs and its success reports the machine online.
+      const probe = vi.spyOn(apiClient, 'getConnectionStatus');
+
+      render(Layout);
+      await waitFor(() => expect(probe).toHaveBeenCalledTimes(1));
+
+      // The machine was reported offline; the next heartbeat reaches it again.
+      runtimeStore.update((state) => ({ ...state, isOffline: true }));
+      expect(get(runtimeStore).isOffline).toBe(true);
+      vi.advanceTimersByTime(30_000);
+
+      await waitFor(() => expect(probe).toHaveBeenCalledTimes(2));
+      await waitFor(() => expect(get(runtimeStore).isOffline).toBe(false));
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
+  });
 });

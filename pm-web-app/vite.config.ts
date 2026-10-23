@@ -8,16 +8,43 @@ import { defineConfig } from 'vitest/config';
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 /**
+ * Canonicalizes a host name to the form Vite compares against.
+ *
+ * A browser sends the `Host` header lower case, while `os.hostname()` and an operator's
+ * `PM_WEB_HOST` may carry upper case; a trailing dot is the same name in DNS. Vite compares the
+ * header by exact string equality, so every name the list holds must be in this form.
+ *
+ * @param value the configured or resolved host name
+ * @returns the trimmed, lower-case name without a trailing dot
+ */
+function normalizeHost(value: string): string {
+  return value.trim().toLowerCase().replace(/\.$/, '');
+}
+
+/**
+ * Whether a host is an IP literal, for which no `.local` name forms exist.
+ *
+ * @param host the normalized host
+ * @returns `true` for an IPv4 or IPv6 literal
+ */
+function isIpLiteral(host: string): boolean {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
+}
+
+/**
  * The names a phone can use to reach this machine.
  *
  * `PM_WEB_HOST` names the host `start.sh` prints; `os.hostname()` is often the DNS name
  * (`box.example.net`) while the name a phone uses is the short Bonjour name (`box.local`), so
- * every form of the name is listed.
+ * every form of the name is listed. An IP literal has no name forms and stays as it is.
  *
  * @returns the host name, the short name, and both `.local` forms, without duplicates
  */
 function machineHostNames(): string[] {
-  const host = process.env.PM_WEB_HOST?.trim() || os.hostname();
+  const host = normalizeHost(process.env.PM_WEB_HOST?.trim() || os.hostname());
+  if (isIpLiteral(host)) {
+    return [host];
+  }
   const short = host.split('.')[0];
   return [...new Set([host, `${host}.local`, short, `${short}.local`])];
 }
@@ -26,14 +53,15 @@ function machineHostNames(): string[] {
  * The allowed host list: every name of this machine plus the operator's additions.
  *
  * `PM_WEB_ALLOWED_HOSTS` adds names (comma separated); it does not replace the machine's own
- * names, so a single addition cannot make the printed Network URL unreachable.
+ * names, so a single addition cannot make the printed Network URL unreachable. An addition is
+ * canonicalized like the machine's own names, so an operator may type either case.
  *
  * @returns the allowed host names, without duplicates
  */
 function allowedHostNames(): string[] {
   const additions = (process.env.PM_WEB_ALLOWED_HOSTS ?? '')
     .split(',')
-    .map((host) => host.trim())
+    .map(normalizeHost)
     .filter(Boolean);
   return [...new Set([...machineHostNames(), ...additions])];
 }

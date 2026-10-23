@@ -95,11 +95,13 @@ run_case 'loopback [::1]' '[::1]' '192.168.1.20' 'KXQB-MRTN'
 assert_not_contains 'Network'
 assert_contains 'Paired:      http://[::1]:5173/pair#code=KXQB-MRTN'
 
-# 5. A real name prints the name, the differing IP, and the paired URL on the name.
+# 5. A real name prints the canonical lower-case name, the differing IP, and the paired URL.
+# The browser sends its lower-case `Host` header; Vite compares that string exactly.
 run_case 'name and IP' 'Mac-Mini.local' '192.168.1.20' 'KXQB-MRTN'
-assert_contains 'Network:     http://Mac-Mini.local:5173'
+assert_contains 'Network:     http://mac-mini.local:5173'
 assert_contains 'Network (IP): http://192.168.1.20:5173'
-assert_contains 'Paired:      http://Mac-Mini.local:5173/pair#code=KXQB-MRTN'
+assert_contains 'Paired:      http://mac-mini.local:5173/pair#code=KXQB-MRTN'
+assert_not_contains 'Mac-Mini'
 
 # 6. A non-loopback IPv6 host is bracketed in every URL.
 run_case 'IPv6 network host' 'fe80::1234' '' 'KXQB-MRTN'
@@ -114,14 +116,20 @@ assert_not_contains 'Network (IP)'
 
 # 8. No pairing code prints no Paired line.
 run_case 'no pairing code' 'Mac-Mini.local' '192.168.1.20' ''
-assert_contains 'Network:     http://Mac-Mini.local:5173'
+assert_contains 'Network:     http://mac-mini.local:5173'
 assert_not_contains 'Paired'
 
 # 9. No IPv4 prints the name without an IP line.
 run_case 'no IPv4' 'Mac-Mini.local' '' 'KXQB-MRTN'
-assert_contains 'Network:     http://Mac-Mini.local:5173'
+assert_contains 'Network:     http://mac-mini.local:5173'
 assert_not_contains 'Network (IP)'
-assert_contains 'Paired:      http://Mac-Mini.local:5173/pair#code=KXQB-MRTN'
+assert_contains 'Paired:      http://mac-mini.local:5173/pair#code=KXQB-MRTN'
+
+# 10. A trailing dot is the same DNS name, and the canonical form drops it.
+run_case 'trailing dot' 'Mac-Mini.Local.' '192.168.1.20' 'KXQB-MRTN'
+assert_contains 'Network:     http://mac-mini.local:5173'
+assert_contains 'Paired:      http://mac-mini.local:5173/pair#code=KXQB-MRTN'
+assert_not_contains 'mac-mini.local.:5173'
 
 if [ "$FAILURES" -ne 0 ]; then
     printf 'connection-urls: %s case(s) failed\n' "$FAILURES" >&2
