@@ -3,7 +3,7 @@
 The printed development host is now the canonical name Vite accepts, and the mock runtime's web
 device secret is one machine-wide file that survives a rebuild and a worktree switch.
 
-Companion plan: [`implemented/web-dev-host-and-session-persistence-plan.md`](implemented/web-dev-host-and-session-persistence-plan.md)
+Companion plan: [`doc/agy/implemented/web-dev-host-and-session-persistence-plan.md`](../implemented/web-dev-host-and-session-persistence-plan.md)
 (input plan, archived after this report).
 
 ---
@@ -190,4 +190,10 @@ CI on PR #180:
   `/Users/oliver/git/plan-marshall-documentation` carries the target `02-entry.adoc`. This is a
   pre-existing cross-repository checkout condition, not a link introduced here.
 - `doc/agy/implemented/README.md` and `doc/agy/README.md` record the plan and this report.
-- Step 8 (moving this report to `doc/agy/verified/`) remains with the orchestrator session.
+- Step 8 (moving this report to `doc/agy/verified/`) is complete.
+
+## 8. Workflow Status
+
+- Steps 1–6 — complete.
+- Step 7 — PR [#180](https://github.com/plan-marshall/pm-mcp-clients/pull/180) merged; worktree and branch removed.
+- Step 8 — complete: the post-landing audit verified the two findings; this report was moved to `doc/agy/verified/`.
