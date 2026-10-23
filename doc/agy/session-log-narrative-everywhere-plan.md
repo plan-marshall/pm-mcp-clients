@@ -82,7 +82,7 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative` on branch `feat/session-log-narrative` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative` on branch `feat/session-log-narrative` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the selection model and node narrative;
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for unit and component tests;
