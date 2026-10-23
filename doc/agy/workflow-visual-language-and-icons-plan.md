@@ -219,18 +219,20 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 1: Add the Schema Field (`pm-mcp-core`)
 
-- [ ] **1.1 Extend the frontmatter model**:
+> **Landed**: [pm-mcp-core PR #150](https://github.com/plan-marshall/pm-mcp-core/pull/150), merge commit `ac347032`. The schema and all fixtures are migrated; the format stays 1.
+
+- [x] **1.1 Extend the frontmatter model**:
   - In `UnitFrontmatter`, add a required `String icon` after `type`. Update the Javadoc.
   - In `UnitFrontmatterReader`, add `KEY_ICON` to `KEYS`, `SINGLE_KEYS`, and `REQUIRED_KEYS`; read it once; validate the icon-id grammar; put the value into `Complete`.
   - In `WorkflowPrinter`, always print `icon` after `type`; keep the documented field order.
   - Keep `ProjectUnitLoader.COMPILED_FORMAT_VERSION` at `1`; no `.pmwf` header changes.
-- [ ] **1.2 Migrate the fixtures and tests**:
+- [x] **1.2 Migrate the fixtures and tests**:
   - Audit every `pm-workflow/src/test/resources/**/*.pmwf` and every inline unit text in `pm-workflow` tests; add `icon:` and keep `format 1`.
   - Preserve the intended first refusal in refused fixtures: add an icon where the fixture tests another rule; add dedicated `icon-missing.pmwf` and `icon-invalid.pmwf`; keep format-refusal fixtures at their tested format.
   - A valid unit with `icon: phase.init` round-trips through parser and printer.
   - A missing `icon` is refused; invalid values (`../x`, `Phase.Init`, `a/b`, 65+ chars) are refused; a repeated `icon` is refused.
   - The JSON/API model tests in `pm-api` mirror the required wire key.
-- [ ] **1.3 Documentation**:
+- [x] **1.3 Documentation**:
   - Update the grammar field table, the developer guide's field list, and the frontmatter example.
   - Add the required-field ADR: field required within format 1, no backward compatibility, every existing unit fixture migrated, and the format version changes only after a release.
 
