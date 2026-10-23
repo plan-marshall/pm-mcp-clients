@@ -107,7 +107,7 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` on branch `feat/titles-and-brand-mark` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` on branch `feat/titles-and-brand-mark` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the advisory behavior and component;
   - `pm-dev-frontend:css` for the mask sizing, header alignment, and theme contrast;
