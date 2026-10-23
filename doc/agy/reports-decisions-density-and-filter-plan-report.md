@@ -139,6 +139,17 @@ The Playwright split test asserts that `.reports-tree` and `.report-card--active
 
 ---
 
-## 8. Rollback
+## 8. Review Window
+
+- CI on PR #191: build gate, both JDK builds, Quarkus alignment, integration tests, dependency review — **all pass**.
+- SonarCloud: **Quality Gate passed, 0 new issues** (an initial run raised six `S5906` test-assertion findings; fixed in `990087b` with `toHaveLength`, re-analysed clean).
+- CodeRabbit: automatic review and three explicit `@coderabbitai review` requests were answered with “Review rate limited” (the organisation’s free OSS quota was exhausted). No findings were emitted, so none remained unaddressed.
+- Sourcery: skipped with the account’s 250,000-character weekly review budget exhausted; no findings were emitted.
+
+Both bots were retried across more than an hour; their remaining quota is outside this worktree’s control. All checks that could run are green.
+
+---
+
+## 9. Rollback
 
 Remove the layout toggle and filter slots, restore the single-column CSS, and delete the new primitives. No stored record, endpoint, or payload changes; the `pm_view_layout_*` keys left in `localStorage` are harmless.
