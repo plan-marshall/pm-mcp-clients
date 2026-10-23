@@ -165,6 +165,17 @@ All eight reactor modules succeeded. OpenRewrite introduced no additional change
 showed only the intended files after the gate. Javadoc warnings reported by the reactor are
 pre-existing in `pm-operator` and unrelated to this change.
 
+CI on PR #180:
+
+| Check | Result |
+|---|---|
+| `build / build (25)`, `build / build (26)` | Pass |
+| `integration-tests / test` | Pass |
+| `dependency-review / dependency-review` | Pass |
+| SonarCloud Code Analysis | Pass |
+| CodeRabbit | Six inline findings addressed in `6c63593`, `b6b89be`, and `f5674e4`; the re-review was rate-limited after the fixes |
+| Sourcery | Skipped — the account's 250,000 diff-character weekly budget was exhausted before this PR, so there were no Sourcery findings to resolve |
+
 ## 7. Plan Archival & Link Rebase
 
 - The plan moved to `doc/agy/implemented/web-dev-host-and-session-persistence-plan.md`.
