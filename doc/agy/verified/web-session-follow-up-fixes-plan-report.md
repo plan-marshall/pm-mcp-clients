@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The three findings left open by the Step 8 verification of [`web-session-pairing-and-dev-host`](verified/web-session-pairing-and-dev-host-plan-report.md) (PR #173) are closed in `pm-web-app` and its launch scripts. The follow-up does not change the pairing contract, the mock runtime's device-secret lifecycle, the Vite network binding, or the message catalogues.
+The three findings left open by the Step 8 verification of [`web-session-pairing-and-dev-host`](web-session-pairing-and-dev-host-plan-report.md) (PR #173) are closed in `pm-web-app` and its launch scripts. The follow-up does not change the pairing contract, the mock runtime's device-secret lifecycle, the Vite network binding, or the message catalogues.
 
 - **F1 — the dev-host output honours the loopback choice.** The URL rendering moved into the sourceable `scripts/connection-urls.sh`, and `start.sh` renders through it in both the already-running and the start branches. A loopback host (`127.0.0.0/8`, `localhost`, `::1`, `[::1]`) now prints only `Local:` and a loopback `Paired:` URL; no `Network` coordinate is printed even when a primary IPv4 exists, and the `Paired:` URL never swaps in that IP. IPv6 hosts are bracketed so every printed URL is valid. A real name still prints `Local`, `Network`, and `Network (IP)` when the IP differs.
 - **F2 — the designer route and a dirty draft are reconciled.** Route adoption is deferred until the leave guard commits. `Stay` restores the project, the selector, and the address bar to the loaded project; `Discard` adopts the new route project; a plain `/designer` is machine scope rather than "keep the previous project"; and a local selector change now writes `/designer?project=…` with `replaceState`, so reload, bookmark, and back all keep the selection. A failed load rolls the project, selector, and route back to the scope still on screen, and an initial draft restore moves the route to the project the draft names.
@@ -31,10 +31,10 @@ The three findings left open by the Step 8 verification of [`web-session-pairing
 ### Documentation
 
 - This report.
-- Pull request [#175](https://github.com/plan-marshall/pm-mcp-clients/pull/175) on branch `fix/web-session-follow-up-fixes`.
-- The plan archived at [`implemented/web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md), with every relative link rebased for the new location.
-- [`doc/agy/README.md`](README.md) dashboard row and the [`implemented/README.md`](implemented/README.md) archive index updated.
-- [`doc/findings-web.txt`](../findings-web.txt) — the follow-up pointer now names the archived plan.
+- Pull request [#175](https://github.com/plan-marshall/pm-mcp-clients/pull/175) merged from branch `fix/web-session-follow-up-fixes`.
+- The plan archived at [`implemented/web-session-follow-up-fixes-plan.md`](../implemented/web-session-follow-up-fixes-plan.md), with every relative link rebased for the new location.
+- [`doc/agy/README.md`](../README.md) dashboard row and the [`implemented/README.md`](../implemented/README.md) archive index updated.
+- [`doc/findings-web.txt`](../../findings-web.txt) — the follow-up pointer now names the archived plan.
 
 ## Finding-by-Finding Resolution
 
@@ -127,7 +127,7 @@ Recorded against the real launch scripts on this machine, with the mock runtime 
 
 3. **Both `start.sh` branches** — the already-running branch printed the same coordinates as the start branch for each case.
 
-The interactive dirty-route walkthrough (edit a draft, navigate to another plan's designer, choose Stay/Discard, change the selector, reload) was **not performed in a live browser**: this environment offers no browser tool. The same state transitions are driven by the four Vitest cases through the real component, including the address bar, the selector, the loaded project, and the store; the existing Playwright designer suite passed as a regression check.
+The interactive dirty-route walkthrough (edit a draft, navigate to another plan's designer, choose Stay/Discard, change the selector, reload) was **not performed in a live browser**: this environment offers no browser tool. The same state transitions are driven by the six Vitest cases through the real component, including the address bar, the selector, the loaded project, and the store; the existing Playwright designer suite passed as a regression check.
 
 ## Plan Archival & Link Rebase
 
@@ -140,4 +140,10 @@ The plan moved from `doc/agy/web-session-follow-up-fixes-plan.md` to `doc/agy/im
 | Runbook, sibling reports, verified archive | `runbook.md`, `verified/...` | `../runbook.md`, `../verified/...` |
 | Predecessor plans | `implemented/<name>.md` | `<name>.md` |
 
-An internal-link check over the moved plan resolved every relative path; the report's own links were checked in place. The dashboard row and the implemented index now point at the archived plan, and the report is left at `doc/agy/web-session-follow-up-fixes-plan-report.md` for the orchestrator's Step 8.
+An internal-link check over the moved plan resolved every relative path; this report's links were rebased when Step 8 moved it to `doc/agy/verified/`. The dashboard row and the implemented index now point at the archived plan and this verified report.
+
+## Workflow Status
+
+- Steps 1–5 — complete.
+- Steps 6–7 — PR [#175](https://github.com/plan-marshall/pm-mcp-clients/pull/175) merged; the review findings were resolved; the worktree and branch were removed.
+- Step 8 — complete: the post-landing audit verified the three findings, and this report was moved to `doc/agy/verified/`.

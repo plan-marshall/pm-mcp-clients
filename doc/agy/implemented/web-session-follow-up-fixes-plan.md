@@ -128,9 +128,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Final completion report written (`doc/agy/web-session-follow-up-fixes-plan-report.md`), initial plan moved to `doc/agy/implemented/web-session-follow-up-fixes-plan.md`, **all relative links rebased for the new location**, and the dashboard/implemented index updated. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
 - [x] 5. Pre-commit check passed (`./mvnw verify -Ppre-commit`; required because this plan changes TypeScript, shell scripts, and `package.json`).
-- [ ] 6. PR opened (NEVER use `skip-bot-review` on a worker PR), review timer scheduled, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
-- [ ] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and verified report moved to `doc/agy/verified/web-session-follow-up-fixes-plan-report.md` by the orchestrator session.
+- [x] 6. PR #175 opened (no `skip-bot-review`), review window observed, 100% of bot & Sonar findings resolved via `persona-code-reviewer`.
+- [x] 7. Enqueued in merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 8. Post-landing verification performed; verified report moved to `doc/agy/verified/web-session-follow-up-fixes-plan-report.md` by the orchestrator session.
 
 > [!IMPORTANT]
 > **Plan archival link rule**: this plan was written at `doc/agy/`, where its links used `../meta`, `../design`, `../../../plan-marshall-documentation`, `runbook.md`, `verified/…`, and sibling `implemented/<name>.md` paths. It was moved to `doc/agy/implemented/` at Step 4, every relative link was rebased for the new depth (`../../meta`, `../../design`, `../../../../plan-marshall-documentation`, `../runbook.md`, `../verified/…`, sibling `<name>.md`), and the internal-link check was re-run. The predecessor plan's 27 broken links after its move are the regression this rule prevents.
