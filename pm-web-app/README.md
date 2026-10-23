@@ -108,6 +108,12 @@ A pairing code works once. When the code was already consumed, `start.sh` asks `
 | `npm run format:check` | Checks code formatting with Prettier. |
 | `npm run quality` | Runs both lint and CI test suite. |
 
+### Editor: generated TypeScript configuration
+
+`tsconfig.json` extends `$app/tsconfig`, which `svelte-kit sync` writes to `node_modules/$app/tsconfig.json`. A fresh checkout has no `node_modules`, so install before opening the project in an editor: `npm ci` (its `prepare` script runs the sync) or a direct `npm run prepare`. If VS Code still reports `File '$app/tsconfig' not found` after an install, reload the window (`Developer: Reload Window`) so its TypeScript server re-reads the generated file.
+
+The TypeScript project covers `src`, `test`, and `vite.config.ts`. `eslint.config.js` is deliberately outside it — ESLint checks that file — and `noEmit` is set explicitly, so a missing generated config can never turn a type check into an emit over a source file.
+
 ---
 
 ## End-to-End Testing (`pm-web-e2e`)
