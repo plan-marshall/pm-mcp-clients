@@ -30,8 +30,11 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | **Web Dev Host & Session Persistence** | [`web-dev-host-and-session-persistence-plan.md`](implemented/web-dev-host-and-session-persistence-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` | `fix/web-dev-host-and-session-persistence` | Landed & Verified (PR #180); [report](verified/web-dev-host-and-session-persistence-plan-report.md) |
 | **Workflow Visual Language & Icons** | [`workflow-visual-language-and-icons-plan.md`](implemented/workflow-visual-language-and-icons-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-workflow-visual-language` | `feat/workflow-visual-language` | Clients landed & verified (PR #187); [report](verified/workflow-visual-language-and-icons-plan-report.md); schema PR #150; default-units sibling blocked |
 | **Web App Static Export & Server Import** | [`web-app-static-export-and-server-import-plan.md`](web-app-static-export-and-server-import-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-app-static-export` | `feat/web-app-static-export` | Staged; server sibling `plan-marshall-mcp`; server-level `WebAppIT` |
+| **Session-Log Narrative Everywhere** | [`session-log-narrative-everywhere-plan.md`](session-log-narrative-everywhere-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative` | `feat/session-log-narrative` | Staged; every tree item narrates on the right |
+| **Reports/Decisions Density & Filter** | [`reports-decisions-density-and-filter-plan.md`](reports-decisions-density-and-filter-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` | `feat/reports-decisions-density-filter` | Staged; layout modes and client-only filter |
+| **Interaction Titles & Brand Mark** | [`interaction-titles-and-brand-mark-plan.md`](interaction-titles-and-brand-mark-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` | `feat/titles-and-brand-mark` | Staged; separate `.title` keys and original vector mark |
 
-*(Note: The workflow visual language plan (default-units phase) and the web-app static export plan are the open work packages. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
+*(Note: the workflow visual language plan (default-units phase), the web-app static export plan, and the three web-app findings remediation plans are the open work packages. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
 
 ---
 
@@ -100,6 +103,14 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 ### Stream F: Web App Static Export & Server Import (`pm-mcp-clients` / `plan-marshall-mcp`)
 1. **Staged**: [`web-app-static-export-and-server-import-plan.md`](web-app-static-export-and-server-import-plan.md)
    *(Build the `pm-web-app` resource JAR, import it into `pm-mcp-server`, serve `META-INF/resources` with SPA fallback and native resources, and prove it with a packaged-daemon `WebAppIT`)*
+
+### Stream G: Web App Findings Remediation (`pm-web-app` / `pm-mock-runtime`)
+1. **Staged**: [`session-log-narrative-everywhere-plan.md`](session-log-narrative-everywhere-plan.md)
+   *(Every process-tree item — phase, sub-workflow, task group, leaf task — becomes selectable and narrates on the right; adds the missing `session-log` scenario routes; keeps the tree/narrative structure)*
+2. **Staged**: [`reports-decisions-density-and-filter-plan.md`](reports-decisions-density-and-filter-plan.md)
+   *(Comfortable/compact/split layouts for `/reports` and `/decisions`, a shared filter-as-you-type over all visible fields, and adoption in the overview and epic lists)*
+3. **Staged**: [`interaction-titles-and-brand-mark-plan.md`](interaction-titles-and-brand-mark-plan.md)
+   *(Separate `.title` keys with no label fallback for hover advisories, plus an original stylized vector brand mark replacing the `✦` glyph)*
 
 ---
 

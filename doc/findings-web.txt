@@ -1,21 +1,4 @@
 Findings for running pm-web-app
 
-No open findings. All eight findings from the 2026-10-22 review are planned in
-doc/agy/implemented/web-session-pairing-and-dev-host-plan.md.
-
-Post-landing follow-ups from the verified report are planned in
-doc/agy/implemented/web-session-follow-up-fixes-plan.md.
-
-The dev-host and session-persistence findings (Vite rejecting the printed
-`mac-mini.local` host, and the session secret changing with the
-checkout/build) were resolved in PR #180; the plan is archived at
-doc/agy/implemented/web-dev-host-and-session-persistence-plan.md and the
-report at doc/agy/verified/web-dev-host-and-session-persistence-plan-report.md.
-
-The workflow visual-language clients workstream (the `pmwf` `icon` field,
-the visual specification, the 40-icon set, and the web usage) was resolved
-in PR #187; the plan is archived at
-doc/agy/implemented/workflow-visual-language-and-icons-plan.md and the
-report at doc/agy/verified/workflow-visual-language-and-icons-plan-report.md.
-The default-unit `icon:` lines remain gated on the blocked
-plan-marshall-mcp default-units package.
+Positive (keep here )
+- plans/session-log: The tree on left with naratives on the right
