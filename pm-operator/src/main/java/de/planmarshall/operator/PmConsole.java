@@ -105,7 +105,7 @@ public final class PmConsole {
         }
 
         var completer = new StringsCompleter(
-                            "exit", "quit", "help", "status", "plans", "tui", "plan", "epic", "questions",
+                            "exit", "quit", "help", "status", PLANS, "tui", "plan", "epic", "questions",
                             "answer", "web", "runtime", "config", "credentials", "projects", "project",
                             "client", "drain"
         );
