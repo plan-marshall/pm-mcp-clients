@@ -128,7 +128,7 @@ Reproduced on `main` against `pm-mock-runtime` with `fully-onboarded`, under a p
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-operator-tui-pty-handoff` on branch `fix/operator-tui-pty-handoff` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-operator-tui-pty-handoff` on branch `fix/operator-tui-pty-handoff` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for the terminal ownership and console hand-off;
   - `plan-marshall-persona-module-tester` & `pm-dev-java:junit-core` for the unit-level ownership tests;
